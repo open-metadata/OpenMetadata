@@ -8,12 +8,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
-import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
@@ -66,7 +65,9 @@ public class SearchCompanyContextTool implements McpTool {
       result = errorResponse("Vector search service is not initialized");
     } else {
       int size = Math.min(Math.max(McpParams.getInt(params, "size", DEFAULT_SIZE), 1), MAX_SIZE);
-      int from = cursorOffsetOrDefault(params, Math.max(McpParams.getInt(params, "from", 0), 0));
+      int from =
+          VectorPagingContract.cursorOffsetOrDefault(
+              params, Math.max(McpParams.getInt(params, "from", 0), 0));
       try {
         VectorSearchResponse response =
             vectorService.search(
@@ -102,52 +103,14 @@ public class SearchCompanyContextTool implements McpTool {
     result.put("returnedCount", pills.size());
     int rawCount = pills.size();
     fitResultsToBudget(result, pills);
-    attachPagingContract(result, from, rawCount, requestedSize, response);
+    VectorPagingContract.attach(
+        result,
+        from,
+        rawCount,
+        requestedSize,
+        response,
+        "Showing %d knowledge pills. Pass 'nextCursor' to fetch the next page.");
     return result;
-  }
-
-  private static void attachPagingContract(
-      Map<String, Object> result,
-      int from,
-      int rawCount,
-      int requestedSize,
-      VectorSearchResponse response) {
-    int returned =
-        result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
-    boolean budgetTrimmed = returned < rawCount;
-    boolean fullPage = rawCount >= requestedSize;
-    boolean moreInIndex = hasMoreInIndex(response, from, rawCount, fullPage);
-    if (budgetTrimmed || (fullPage && moreInIndex)) {
-      result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
-      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
-    }
-    if (fullPage && !budgetTrimmed && moreInIndex) {
-      result.put(
-          McpResponseTrim.MESSAGE_KEY,
-          String.format(
-              "Showing %d knowledge pills. Pass 'nextCursor' to fetch the next page.", returned));
-    }
-  }
-
-  private static boolean hasMoreInIndex(
-      VectorSearchResponse response, int from, int rawCount, boolean fullPage) {
-    if (response.getTotalHits() != null) {
-      return (long) from + rawCount < response.getTotalHits();
-    }
-    if (response.getHasMore() != null) {
-      return response.getHasMore();
-    }
-    return fullPage;
-  }
-
-  private static int cursorOffsetOrDefault(Map<String, Object> params, int defaultFrom) {
-    int from = defaultFrom;
-    String token = params.get("cursor") instanceof String value ? value : null;
-    Optional<PageCursor.Cursor> cursor = PageCursor.decode(token);
-    if (cursor.isPresent() && cursor.get().isOffset()) {
-      from = cursor.get().offset();
-    }
-    return from;
   }
 
   /**

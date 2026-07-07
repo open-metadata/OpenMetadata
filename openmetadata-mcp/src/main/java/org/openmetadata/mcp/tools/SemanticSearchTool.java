@@ -6,12 +6,11 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
-import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
@@ -55,7 +54,7 @@ public class SemanticSearchTool implements McpTool {
 
     int from = McpParams.getInt(params, "from", 0);
     from = Math.max(from, 0);
-    from = cursorOffsetOrDefault(params, from);
+    from = VectorPagingContract.cursorOffsetOrDefault(params, from);
 
     int k = McpParams.getInt(params, "k", DEFAULT_K);
     k = Math.min(Math.max(k, 1), MAX_K);
@@ -113,61 +112,15 @@ public class SemanticSearchTool implements McpTool {
 
     int rawCount = cleanedResults.size();
     fitResultsToBudget(result, cleanedResults);
-    attachPagingContract(result, from, rawCount, requestedSize, response);
+    VectorPagingContract.attach(
+        result,
+        from,
+        rawCount,
+        requestedSize,
+        response,
+        "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
+            + "Adjust 'threshold' to filter by similarity score.");
     return result;
-  }
-
-  /**
-   * Sets the unified paging markers after budget trimming. {@code nextCursor} advances by the count
-   * actually returned this page (not the requested size), so a budget-trimmed page never skips the
-   * rows it dropped. A full page ({@code rawCount >= requestedSize}) implies more candidates remain
-   * in the top-k, so it is paged too — previously only the budget-trim path signalled {@code
-   * hasMore}, leaving a full page with no way forward.
-   */
-  private static void attachPagingContract(
-      Map<String, Object> result,
-      int from,
-      int rawCount,
-      int requestedSize,
-      VectorSearchResponse response) {
-    int returned =
-        result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
-    boolean budgetTrimmed = returned < rawCount;
-    boolean fullPage = rawCount >= requestedSize;
-    boolean moreInIndex = hasMoreInIndex(response, from, rawCount, fullPage);
-    if (budgetTrimmed || (fullPage && moreInIndex)) {
-      result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
-      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
-    }
-    if (fullPage && !budgetTrimmed && moreInIndex) {
-      result.put(
-          McpResponseTrim.MESSAGE_KEY,
-          String.format(
-              "Showing %d results. Pass 'nextCursor' to fetch the next page, or refine your query. "
-                  + "Adjust 'threshold' to filter by similarity score.",
-              returned));
-    }
-  }
-
-  private static boolean hasMoreInIndex(
-      VectorSearchResponse response, int from, int rawCount, boolean fullPage) {
-    if (response.getTotalHits() != null) {
-      return (long) from + rawCount < response.getTotalHits();
-    }
-    if (response.getHasMore() != null) {
-      return response.getHasMore();
-    }
-    return fullPage;
-  }
-
-  private static int cursorOffsetOrDefault(Map<String, Object> params, int defaultFrom) {
-    int from = defaultFrom;
-    String token = params.get("cursor") instanceof String value ? value : null;
-    Optional<PageCursor.Cursor> cursor = PageCursor.decode(token);
-    if (cursor.isPresent() && cursor.get().isOffset()) {
-      from = cursor.get().offset();
-    }
-    return from;
   }
 
   /**
