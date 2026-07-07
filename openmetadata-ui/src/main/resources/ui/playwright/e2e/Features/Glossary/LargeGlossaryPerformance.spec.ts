@@ -321,12 +321,7 @@ test.describe('Large Glossary Performance Tests', () => {
 
     await confirmationDragAndDropGlossary(page, 'Term_10', 'Term_1');
 
-    await expect(
-      page.getByRole('cell', {
-        name: 'Term_10',
-        exact: true,
-      })
-    ).not.toBeVisible();
+    await expect(page.getByTestId('Term_10')).not.toBeVisible();
 
     const termRes = page.waitForResponse('/api/v1/glossaryTerms?*');
 
@@ -334,12 +329,7 @@ test.describe('Large Glossary Performance Tests', () => {
     await page.getByTestId('expand-collapse-all-button').click();
     await termRes;
 
-    await expect(
-      page.getByRole('cell', {
-        name: 'Term_10',
-        exact: true,
-      })
-    ).toBeVisible();
+    await expect(page.getByTestId('Term_10')).toBeVisible();
   });
 });
 
@@ -416,7 +406,9 @@ test.describe('Large Glossary Child Term Performace', () => {
       page.getByText('Term_1_Child_3', { exact: true })
     ).toBeVisible();
 
-    const initialTerms = await page.locator('tbody tr[data-level="1"]').count();
+    const initialTerms = await page
+      .locator('tbody .glossary-term-level-1')
+      .count();
 
     // 51 because last row contain button to view next 50 terms
     expect(initialTerms).toBe(51);
@@ -434,7 +426,9 @@ test.describe('Large Glossary Child Term Performace', () => {
       page.getByText('Term_1_Child_54', { exact: true })
     ).toBeVisible();
 
-    const finalTerms = await page.locator('tbody tr[data-level="1"]').count();
+    const finalTerms = await page
+      .locator('tbody .glossary-term-level-1')
+      .count();
 
     expect(finalTerms).toBe(100);
 

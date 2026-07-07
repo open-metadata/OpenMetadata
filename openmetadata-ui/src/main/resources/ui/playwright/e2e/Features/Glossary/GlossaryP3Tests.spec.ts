@@ -213,7 +213,7 @@ test.describe('Glossary P3 Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       // Search should not crash - either shows results, table, or empty state
-      const table = page.getByTestId('glossary-term-table');
+      const table = page.getByTestId('glossary-terms-table');
       const emptyState = page.getByText(/no.*term.*found|no.*result/i);
 
       // eslint-disable-next-line playwright/no-wait-for-timeout -- search results need time to render after special character input
@@ -676,7 +676,7 @@ test.describe('Glossary P3 Tests', () => {
       // Wait for page to load
 
       // Page should be functional - either shows table or empty state
-      const table = page.getByTestId('glossary-term-table');
+      const table = page.getByTestId('glossary-terms-table');
       const pageContent = page.locator('.glossary-details');
 
       const isLoaded =

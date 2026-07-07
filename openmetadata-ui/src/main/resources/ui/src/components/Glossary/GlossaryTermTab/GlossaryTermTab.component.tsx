@@ -1280,7 +1280,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       const isExpanded = expandedRowKeys.includes(
         record.fullyQualifiedName || ''
       );
-      const rowClasses: string[] = [];
+      const rowClasses: string[] = [`glossary-term-level-${record.level ?? 0}`];
 
       if (!record.isLoadMoreButton) {
         rowClasses.push('glossary-term-draggable-row');

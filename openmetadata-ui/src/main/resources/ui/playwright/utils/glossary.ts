@@ -101,7 +101,9 @@ export const selectActiveGlossaryTerm = async (
 
   await expect(glossaryTermEntry).toBeVisible();
   await glossaryTermEntry.scrollIntoViewIfNeeded().catch(() => undefined);
-  await glossaryTermEntry.click({ force: true }).catch(async () =>
+  // A plain click drives the term link's navigation on the TableV2 (react-aria)
+  // rows; a forced click is swallowed by the draggable row's pointer handling.
+  await glossaryTermEntry.click().catch(async () =>
     glossaryTermEntry.evaluate((node) => {
       (node as HTMLElement).click();
     })
@@ -1060,7 +1062,12 @@ export const confirmationDragAndDropGlossary = async (
   const patchGlossaryTermResponse = page.waitForResponse(
     '/api/v1/glossaryTerms/*'
   );
-  await page.getByRole('button', { name: 'Move' }).click();
+  // Scope to the modal: TableV2 drag handles expose aria-label "Move the term",
+  // which otherwise also matches getByRole('button', { name: 'Move' }).
+  await page
+    .getByTestId('confirmation-modal')
+    .getByRole('button', { name: 'Move' })
+    .click();
   await patchGlossaryTermResponse;
 };
 
@@ -1458,12 +1465,9 @@ export async function openColumnDropdown(page: Page): Promise<void> {
 
   await dropdownButton.click();
 
-  await page
-    .locator('.ant-dropdown [role="menu"]')
-    .getByTestId('column-dropdown-title')
-    .waitFor({
-      state: 'visible',
-    });
+  await page.getByTestId('column-dropdown-title').waitFor({
+    state: 'visible',
+  });
 }
 
 export async function selectColumns(
