@@ -135,6 +135,8 @@ export interface FieldProp {
   helperText?: ReactNode;
   helperTextType?: HelperTextType;
   showHelperText?: boolean;
+  /** Markdown documentation for this field, shown in the field doc popover. */
+  doc?: string;
   hasSeparator?: boolean;
   formItemLayout?: FormItemLayout;
 }
