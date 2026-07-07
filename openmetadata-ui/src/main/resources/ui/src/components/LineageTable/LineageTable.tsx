@@ -15,10 +15,10 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
+  Card,
   Dropdown,
 } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/es/table';
-import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -949,29 +949,34 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
         'lineage-card lineage-card-table'
       )}
       data-testid="lineage-card-table"
-      title={cardHeader}>
-      <Table
-        bordered
-        className="h-full"
-        columns={columns}
-        customPaginationProps={pagingProps}
-        dataSource={dataSource}
-        defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
-        entityType="impact_analysis"
-        extraTableFilters={extraTableFilters}
-        key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
-        loading={loading}
-        locale={{
-          emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
-        }}
-        pagination={false}
-        rowKey={
-          impactLevel === EImpactLevel.TableLevel
-            ? 'fullyQualifiedName'
-            : 'docId'
-        }
-        staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
-      />
+      variant="default">
+      <div className="lineage-card-head tw:border-b tw:border-secondary tw:px-6 tw:py-4">
+        {cardHeader}
+      </div>
+      <div className="lineage-card-body tw:p-6">
+        <Table
+          bordered
+          className="h-full"
+          columns={columns}
+          customPaginationProps={pagingProps}
+          dataSource={dataSource}
+          defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
+          entityType="impact_analysis"
+          extraTableFilters={extraTableFilters}
+          key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
+          loading={loading}
+          locale={{
+            emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+          }}
+          pagination={false}
+          rowKey={
+            impactLevel === EImpactLevel.TableLevel
+              ? 'fullyQualifiedName'
+              : 'docId'
+          }
+          staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
+        />
+      </div>
     </Card>
   );
 };
