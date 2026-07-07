@@ -120,6 +120,11 @@ public class AuditReportResource extends EntityResource<AuditReport, AuditReport
     AuditReport report =
         mapper.createToEntity(create, securityContext.getUserPrincipal().getName());
 
+    AuditReport inFlight = AuditPackGenerator.findActiveDuplicate(report);
+    if (inFlight != null) {
+      return Response.ok(inFlight).build();
+    }
+
     Response response = create(uriInfo, securityContext, report);
     if (report.getId() != null) {
       AuditPackGenerator.submit(report.getId());

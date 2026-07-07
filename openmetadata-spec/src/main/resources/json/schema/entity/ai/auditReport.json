@@ -162,6 +162,10 @@
       "description": "Stack/message if status=Failed",
       "type": "string"
     },
+    "runningOn": {
+      "description": "Identifier of the server node that claimed and is running this job. Used to detect and recover jobs orphaned by a pod restart.",
+      "type": "string"
+    },
     "artifacts": {
       "description": "Generated artifacts available for download",
       "type": "array",

@@ -12,6 +12,7 @@
  */
 package org.openmetadata.service.resources.ai;
 
+import jakarta.json.JsonPatch;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -21,10 +22,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ThreadFactory;
-import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Consumer;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.AuditReport;
@@ -33,53 +31,58 @@ import org.openmetadata.schema.entity.ai.AuditReportFormat;
 import org.openmetadata.schema.entity.ai.AuditReportManifest;
 import org.openmetadata.schema.entity.ai.AuditReportScope;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.AuditReportRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
- * Synchronous-async audit-pack generator. The Resource hands a freshly-created
- * AuditReport to {@link #submit(UUID)}; the executor walks the scope, builds a
- * JSON document, encodes it as a data:application/json;base64 URL, and PATCHes
- * the report to Completed. Errors PATCH the report to Failed with the message.
+ * Async audit-pack generator. The Resource hands a freshly-created AuditReport to
+ * {@link #submit(UUID)}; a shared virtual thread walks the scope, builds a JSON
+ * document, encodes it as a data:application/json;base64 URL, and PATCHes the report
+ * to Completed. Errors PATCH the report to Failed with the message.
+ *
+ * <p>Runs on the shared {@link AsyncService} rather than a private pool so it is not
+ * capped per-pod and participates in server lifecycle. Because the AuditReport row is the
+ * durable job record, jobs survive a pod restart: {@link #recoverInterruptedReports()}
+ * (wired into server startup) re-drives {@code Queued} reports the crash left un-run and
+ * reclaims {@code Running} reports orphaned mid-flight. The owning node is stamped in
+ * {@code runningOn}. Re-submitting a duplicate request returns the in-flight report via
+ * {@link #findActiveDuplicate(AuditReport)} instead of generating the same pack twice.
  *
  * <p>Storage strategy is deliberately simple in v1: the artifact bytes are
  * embedded directly in the artifacts[] entry's downloadUrl. PDF rendering is
  * deferred — Pdf/Both reports complete as JSON-only with a note in the manifest.
  */
 @Slf4j
-final class AuditPackGenerator {
+public final class AuditPackGenerator {
   private static final String ADMIN_USER = "admin";
   private static final int PAGE_SIZE = 500;
 
-  private static final ExecutorService EXECUTOR =
-      Executors.newFixedThreadPool(
-          2,
-          new ThreadFactory() {
-            private final AtomicInteger counter = new AtomicInteger(1);
+  /**
+   * A {@code Running} report whose {@code startedAt} is older than this is treated as orphaned by
+   * a crashed pod and re-queued on recovery. Audit assembly is in-memory JSON that completes in
+   * seconds, so a generous window avoids reclaiming a genuinely in-flight job.
+   */
+  private static final long STALE_RUNNING_MILLIS = 15 * 60 * 1000L;
 
-            @Override
-            public Thread newThread(Runnable r) {
-              Thread thread = new Thread(r, "audit-pack-" + counter.getAndIncrement());
-              thread.setDaemon(true);
-              return thread;
-            }
-          });
+  private static final int RECOVERY_SCAN_CAP = 10000;
 
   private AuditPackGenerator() {}
 
   static void submit(UUID reportId) {
-    EXECUTOR.execute(() -> run(reportId));
+    AsyncService.getInstance().execute(() -> run(reportId));
   }
 
   private static void run(UUID reportId) {
-    AuditReportRepository repository =
-        (AuditReportRepository) Entity.getEntityRepository(Entity.AUDIT_REPORT);
+    AuditReportRepository repository = auditReportRepository();
     AuditReport report;
     try {
       report = repository.get(null, reportId, repository.getFields("id,name,scope,format"));
@@ -91,7 +94,14 @@ final class AuditPackGenerator {
       return;
     }
     long started = System.currentTimeMillis();
-    transition(reportId, AuditReportStatus.Running, started, null, null, null);
+    String serverId = currentServerId();
+    updateReport(
+        reportId,
+        current -> {
+          current.setStatus(AuditReportStatus.Running);
+          current.setStartedAt(started);
+          current.setRunningOn(serverId);
+        });
     try {
       AuditPackPayload payload = assemble(report);
       String json = JsonUtils.pojoToJson(payload.body);
@@ -111,71 +121,175 @@ final class AuditPackGenerator {
       manifest.setControlCount(payload.controlCount);
       manifest.setComplianceRecordCount(payload.complianceRecordCount);
 
-      transition(
+      updateReport(
           reportId,
-          AuditReportStatus.Completed,
-          null,
-          System.currentTimeMillis(),
-          artifacts,
-          manifest);
+          current -> {
+            current.setStatus(AuditReportStatus.Completed);
+            current.setCompletedAt(System.currentTimeMillis());
+            current.setArtifacts(artifacts);
+            current.setManifest(manifest);
+          });
     } catch (Exception failure) {
       LOG.warn("Audit pack generation failed for {}", reportId, failure);
-      transition(
+      String message = failure.getMessage();
+      updateReport(
           reportId,
-          AuditReportStatus.Failed,
-          null,
-          System.currentTimeMillis(),
-          null,
-          null,
-          failure.getMessage());
+          current -> {
+            current.setStatus(AuditReportStatus.Failed);
+            current.setCompletedAt(System.currentTimeMillis());
+            current.setFailureReason(message);
+          });
     }
   }
 
-  private static void transition(
-      UUID reportId,
-      AuditReportStatus status,
-      Long startedAt,
-      Long completedAt,
-      List<AuditReportArtifact> artifacts,
-      AuditReportManifest manifest) {
-    transition(reportId, status, startedAt, completedAt, artifacts, manifest, null);
+  /**
+   * Re-drives audit reports left non-terminal by a pod restart or crash: {@code Queued} reports
+   * were never picked up (the previous in-memory queue did not survive), and {@code Running}
+   * reports older than {@link #STALE_RUNNING_MILLIS} were orphaned mid-run. Both are safe to
+   * regenerate — an audit pack is a deterministic snapshot. Wired into server startup.
+   */
+  public static void recoverInterruptedReports() {
+    try {
+      long now = System.currentTimeMillis();
+      List<AuditReport> interrupted = collectInterruptedReports(now);
+      for (AuditReport report : interrupted) {
+        requeueAndSubmit(report);
+      }
+      if (!interrupted.isEmpty()) {
+        LOG.info(
+            "Audit pack recovery: re-submitted {} interrupted report(s) on startup",
+            interrupted.size());
+      }
+    } catch (Exception recoveryError) {
+      LOG.warn("Audit pack recovery sweep failed: {}", recoveryError.getMessage());
+    }
   }
 
-  private static void transition(
-      UUID reportId,
-      AuditReportStatus status,
-      Long startedAt,
-      Long completedAt,
-      List<AuditReportArtifact> artifacts,
-      AuditReportManifest manifest,
-      String failureReason) {
-    AuditReportRepository repository =
-        (AuditReportRepository) Entity.getEntityRepository(Entity.AUDIT_REPORT);
+  /**
+   * Returns an in-flight ({@code Queued}/{@code Running}) report whose request signature matches
+   * {@code candidate}, so a retried submission returns the existing job instead of generating the
+   * same pack twice. Best-effort: scans up to {@link #RECOVERY_SCAN_CAP} reports.
+   */
+  static AuditReport findActiveDuplicate(AuditReport candidate) {
+    AuditReport result = null;
+    try {
+      String signature = signatureOf(candidate);
+      result = scanForActiveSignature(signature);
+    } catch (Exception lookupError) {
+      LOG.warn("Audit pack duplicate lookup failed: {}", lookupError.getMessage());
+    }
+    return result;
+  }
+
+  private static List<AuditReport> collectInterruptedReports(long now) {
+    AuditReportRepository repository = auditReportRepository();
+    List<AuditReport> result = new ArrayList<>();
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    String after = null;
+    int scanned = 0;
+    do {
+      ResultList<AuditReport> page =
+          repository.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+      for (AuditReport report : page.getData()) {
+        if (isInterrupted(report, now)) {
+          result.add(report);
+        }
+      }
+      scanned += page.getData().size();
+      after = page.getPaging() == null ? null : page.getPaging().getAfter();
+    } while (after != null && scanned < RECOVERY_SCAN_CAP);
+    return result;
+  }
+
+  private static AuditReport scanForActiveSignature(String signature) {
+    AuditReportRepository repository = auditReportRepository();
+    AuditReport result = null;
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    String after = null;
+    int scanned = 0;
+    do {
+      ResultList<AuditReport> page =
+          repository.listAfter(null, EntityUtil.Fields.EMPTY_FIELDS, filter, PAGE_SIZE, after);
+      for (AuditReport report : page.getData()) {
+        if (isActive(report) && signature.equals(signatureOf(report))) {
+          result = report;
+          break;
+        }
+      }
+      scanned += page.getData().size();
+      after = result != null || page.getPaging() == null ? null : page.getPaging().getAfter();
+    } while (after != null && scanned < RECOVERY_SCAN_CAP);
+    return result;
+  }
+
+  static boolean isInterrupted(AuditReport report, long now) {
+    boolean result = false;
+    AuditReportStatus status = report.getStatus();
+    if (status == AuditReportStatus.Queued) {
+      result = true;
+    } else if (status == AuditReportStatus.Running) {
+      Long startedAt = report.getStartedAt();
+      result = startedAt == null || now - startedAt > STALE_RUNNING_MILLIS;
+    }
+    return result;
+  }
+
+  private static boolean isActive(AuditReport report) {
+    return report.getStatus() == AuditReportStatus.Queued
+        || report.getStatus() == AuditReportStatus.Running;
+  }
+
+  private static void requeueAndSubmit(AuditReport report) {
+    if (report.getStatus() == AuditReportStatus.Running) {
+      updateReport(
+          report.getId(),
+          current -> {
+            current.setStatus(AuditReportStatus.Queued);
+            current.setRunningOn(null);
+          });
+    }
+    submit(report.getId());
+  }
+
+  static String signatureOf(AuditReport report) {
+    return String.join(
+        "|",
+        enumValue(report.getScope()),
+        refId(report.getScopeTarget()),
+        refId(report.getFramework()),
+        enumValue(report.getFormat()),
+        String.valueOf(report.getAsOfDate()),
+        String.valueOf(Boolean.TRUE.equals(report.getIncludeRedacted())));
+  }
+
+  private static String enumValue(Object enumConstant) {
+    return enumConstant == null ? "" : enumConstant.toString();
+  }
+
+  private static String refId(EntityReference ref) {
+    return ref == null || ref.getId() == null ? "" : ref.getId().toString();
+  }
+
+  private static String currentServerId() {
+    return ServerIdentityResolver.getInstance().getServerId();
+  }
+
+  private static AuditReportRepository auditReportRepository() {
+    return (AuditReportRepository) Entity.getEntityRepository(Entity.AUDIT_REPORT);
+  }
+
+  private static void updateReport(UUID reportId, Consumer<AuditReport> mutation) {
+    AuditReportRepository repository = auditReportRepository();
     try {
       AuditReport current =
           repository.get(null, reportId, repository.getFields("id,name,artifacts,manifest"));
       String originalJson = JsonUtils.pojoToJson(current);
-      current.setStatus(status);
-      if (startedAt != null) {
-        current.setStartedAt(startedAt);
-      }
-      if (completedAt != null) {
-        current.setCompletedAt(completedAt);
-      }
-      if (artifacts != null) {
-        current.setArtifacts(artifacts);
-      }
-      if (manifest != null) {
-        current.setManifest(manifest);
-      }
-      if (failureReason != null) {
-        current.setFailureReason(failureReason);
-      }
+      mutation.accept(current);
       String updatedJson = JsonUtils.pojoToJson(current);
-      jakarta.json.JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
+      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
       repository.patch(null, reportId, ADMIN_USER, patch);
-    } catch (Exception transitionError) {
-      LOG.warn("Failed to transition audit report {}: {}", reportId, transitionError.getMessage());
+    } catch (Exception updateError) {
+      LOG.warn("Failed to update audit report {}: {}", reportId, updateError.getMessage());
     }
   }
 
