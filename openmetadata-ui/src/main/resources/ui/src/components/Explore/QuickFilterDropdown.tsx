@@ -62,7 +62,7 @@ const QuickFilterDropdown: FC<QuickFilterDropdownProps> = ({
   const searchPlaceholder = `${t('label.search-entity', { entity: label })}...`;
 
   const handleSearchRef = useRef<(value: string) => void>(() => undefined);
-  
+
   useEffect(() => {
     handleSearchRef.current = (value: string) => onSearch(value, searchKey);
   }, [onSearch, searchKey]);
