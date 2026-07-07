@@ -333,14 +333,15 @@ describe('TestCaseFormDrawer', () => {
     expect(await screen.findByTestId('service-doc-panel')).toBeInTheDocument();
   });
 
-  it('should render the doc panel inside the floating hint card in ai variant', async () => {
+  it('should not render the service doc panel in ai variant', async () => {
     renderDrawer({ variant: 'ai' });
 
     expect(
       await screen.findByTestId('test-case-form-body')
     ).toBeInTheDocument();
-    expect(screen.getByTestId('test-case-form-hint')).toBeInTheDocument();
-    expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+    // The AI variant replaces the ServiceDocPanel hint with the per-field
+    // documentation popover (gated by the Show Hint toggle).
+    expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
   });
 
   it('should call addIngestionPipeline and deployIngestionPipelineById when canCreatePipeline is true', async () => {
@@ -519,20 +520,30 @@ describe('TestCaseFormDrawer', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('should show the form hint by default and hide it when Show Hint is toggled off', async () => {
+    it('gates the field doc popover behind the Show Hint toggle', async () => {
       renderDrawer({ variant: 'ai' });
 
-      await screen.findByRole('dialog');
+      const testType = await screen.findByLabelText(/test type/i);
 
-      expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+      // Show Hint is on by default: focusing a field shows its doc popover.
+      await act(async () => {
+        testType.focus();
+      });
 
+      expect(
+        await screen.findByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+
+      // Toggling Show Hint off removes the popover.
       await act(async () => {
         fireEvent.click(
           screen.getByRole('switch', { name: 'label.show-hint' })
         );
       });
 
-      expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText(/kind of validation to run/i)
+      ).not.toBeInTheDocument();
     });
 
     it('shows the field doc popover in the AI variant on focus', async () => {

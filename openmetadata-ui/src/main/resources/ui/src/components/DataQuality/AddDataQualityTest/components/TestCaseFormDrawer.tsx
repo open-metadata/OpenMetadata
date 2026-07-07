@@ -10,14 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  FeaturedIcon,
-  HookForm,
-  Toggle,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { Lightbulb02 } from '@untitledui/icons';
+import { HookForm, Toggle } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -278,34 +271,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   }, [isAiVariant, open, isOpen, openDrawer, closeDrawer]);
 
   if (isAiVariant) {
-    const aiHint = showHint ? (
-      // 366px hint card floats to the right of the centered modal (Figma).
-      <Box
-        className="tw:w-[366px] tw:shrink-0 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
-        data-testid="test-case-form-hint"
-        direction="col">
-        <Box
-          align="center"
-          className="tw:gap-3 tw:border-b tw:border-secondary tw:px-4 tw:py-3"
-          direction="row">
-          <FeaturedIcon
-            color="brand"
-            icon={Lightbulb02}
-            radius="md"
-            shape="square"
-            size="sm"
-            theme="light"
-          />
-          <Typography size="text-sm" weight="semibold">
-            {t('label.form-hint')}
-          </Typography>
-        </Box>
-        <Box className="tw:px-4 tw:py-3 service-doc-panel markdown-parser">
-          {serviceDocPanel}
-        </Box>
-      </Box>
-    ) : undefined;
-
     return (
       <AiFormModal
         headerActions={
@@ -318,7 +283,6 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             />
           )
         }
-        hint={aiHint}
         open={open}
         subtitle={t('message.page-sub-header-for-data-quality')}
         title={title ?? t('label.add-entity', { entity: t('label.test-case') })}
@@ -332,7 +296,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           renderFieldDoc={(markdown) => (
             <RichTextEditorPreviewerV1 markdown={markdown} />
           )}
-          showFieldDocs={isAiVariant}
+          showFieldDocs={showHint}
           onSubmit={form.handleSubmit(
             (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
             () => scrollToError()
