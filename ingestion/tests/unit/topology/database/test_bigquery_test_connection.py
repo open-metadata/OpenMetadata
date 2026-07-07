@@ -28,6 +28,7 @@ from metadata.ingestion.source.database.bigquery.helper import (
     clone_connection_for_project,
 )
 from metadata.ingestion.source.database.bigquery.metadata import BigquerySource
+from metadata.utils.constants import THREE_MIN
 
 _CONNECTION_MODULE = "metadata.ingestion.source.database.bigquery.connection"
 _METADATA_MODULE = "metadata.ingestion.source.database.bigquery.metadata"
@@ -82,10 +83,8 @@ def test_test_connection_probes_each_project_with_a_valid_timeout(mock_creds, mo
     for call in mock_runner.call_args_list:
         service_type, timeout_seconds = call.args[1], call.args[2]
         assert service_type == "BigQuery"
-        # the regression guard: the original bug passed the service connection
-        # positionally into timeout_seconds, which then reached signal.alarm().
-        # A valid timeout reaching the runner proves the signature is right.
-        assert isinstance(timeout_seconds, int)
+        # BigQuery keeps its larger per-step budget via step_timeout_seconds.
+        assert timeout_seconds == THREE_MIN
 
 
 @patch(f"{_CONNECTION_MODULE}.create_generic_db_connection")

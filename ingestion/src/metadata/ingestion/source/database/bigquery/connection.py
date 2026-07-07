@@ -61,6 +61,7 @@ from metadata.ingestion.source.database.bigquery.helper import (
 )
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
 from metadata.utils.bigquery_utils import get_bigquery_client
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.credentials import (
     InvalidPrivateKeyException,
     set_google_credentials,
@@ -251,15 +252,11 @@ _OBJECT_TYPES = ("TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW")
 
 
 def probe_table_view_enumeration(connection: Engine) -> Evidence:
-    """Probe that datasets and their objects can be enumerated for the project.
+    """Probe that datasets and their objects can be enumerated.
 
-    Streams the datasets visible to the connection and, for each, attempts to list
-    a single object. A ``NotFound`` on an individual dataset is tolerated - the
-    dataset can be dropped between listing datasets and listing its tables
-    (https://github.com/googleapis/python-bigquery-sqlalchemy/issues/105). A listing
-    failure that is not that race (e.g. ``Forbidden``) propagates so the step fails
-    and is classified. The dataset iterator is consumed lazily so a project with
-    many datasets is not fully materialized just to report the count.
+    A ``NotFound`` on a dataset is tolerated - it can be dropped between listing
+    datasets and listing its tables (python-bigquery-sqlalchemy#105); any other
+    failure propagates so the step fails and is classified.
     """
     dataset_count = 0
     with connection.connect() as conn:
@@ -381,6 +378,10 @@ class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
         )
         self._on_close(engine.dispose)
         return engine
+
+    # BigQuery enumerates every dataset and queries INFORMATION_SCHEMA; keep the
+    # pre-migration 3-minute per-step budget so slow projects are not failed.
+    step_timeout_seconds = THREE_MIN
 
     def checks(self) -> ChecksProvider:
         return BigQueryChecks(
