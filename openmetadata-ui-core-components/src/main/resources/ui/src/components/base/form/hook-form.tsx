@@ -19,6 +19,7 @@ interface FormProps<TFieldValues extends FieldValues = FieldValues>
   showFieldDocs?: boolean;
   renderFieldDoc?: (doc: string) => ReactNode;
   fieldDocHeader?: ReactNode;
+  fieldDocOffset?: number;
 }
 
 interface FormFieldProps<
@@ -69,6 +70,7 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   showFieldDocs = false,
   renderFieldDoc,
   fieldDocHeader,
+  fieldDocOffset,
   ...props
 }: FormProps<TFieldValues>) => {
   if (!showFieldDocs) {
@@ -83,7 +85,11 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
     <FormProvider {...form}>
       <FieldDocProvider enabled={showFieldDocs}>
         <AriaForm {...props} />
-        <FieldDocPopover header={fieldDocHeader} renderDoc={renderFieldDoc} />
+        <FieldDocPopover
+          header={fieldDocHeader}
+          offset={fieldDocOffset}
+          renderDoc={renderFieldDoc}
+        />
       </FieldDocProvider>
     </FormProvider>
   );

@@ -7,6 +7,11 @@ export interface FieldDocPopoverProps {
   renderDoc?: (doc: string) => ReactNode;
   /** Optional card header (e.g. an icon + "Form Hint"); hidden when omitted. */
   header?: ReactNode;
+  /**
+   * Distance in px between the popover and the focused field. Consumers tune
+   * this to their layout (e.g. to clear a modal's padding). Defaults to 16.
+   */
+  offset?: number;
 }
 
 const defaultRenderDoc = (doc: string): ReactNode => (
@@ -16,6 +21,7 @@ const defaultRenderDoc = (doc: string): ReactNode => (
 export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   renderDoc,
   header,
+  offset = 16,
 }) => {
   const { entry, anchor } = useActiveFieldDoc();
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -30,7 +36,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
       isNonModal
       isOpen
       className="tw:w-[300px] tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
-      offset={16}
+      offset={offset}
       placement="right top"
       triggerRef={anchorRef}>
       <Dialog aria-label="Field documentation" className="tw:outline-none">

@@ -306,6 +306,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
               </Typography>
             </Box>
           }
+          fieldDocOffset={64}
           form={form}
           renderFieldDoc={(markdown) => (
             <RichTextEditorPreviewerV1 markdown={markdown} />
