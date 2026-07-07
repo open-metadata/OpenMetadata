@@ -115,7 +115,7 @@ const TagsForm = ({
 
     return {
       ...field,
-      muiLabel: <FormItemLabel label={t(field.muiLabel)} />,
+      muiLabel: t(field.muiLabel),
       props: {
         ...field.props,
         placeholder: t(field.placeholder),
