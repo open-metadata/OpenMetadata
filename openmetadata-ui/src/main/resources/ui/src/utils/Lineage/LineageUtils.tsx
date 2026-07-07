@@ -55,7 +55,7 @@ export const getTruncatedPath = (path: string) => {
 
   const items: BreadcrumbItemType[] = path
     .split('>')
-    .map((label, index) => ({ id: String(index), label }));
+    .map((label, index) => ({ id: String(index), label: label.trim() }));
 
   return <Breadcrumbs items={items} maxItems={2} size="xs" type="text" />;
 };
