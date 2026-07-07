@@ -69,7 +69,10 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
 
         return (
           <Fragment key={id}>
-            <Box className="tw:gap-[6px]" direction="col">
+            <Box
+              className="tw:gap-[6px]"
+              direction="col"
+              onFocusCapture={handleFocusCapture}>
               <FormItemLabel
                 label={label}
                 required={required}
@@ -103,13 +106,7 @@ export const Field: FC<{ field: FieldProp }> = ({ field }) => {
     </FormField>
   );
 
-  return hasDoc ? (
-    <div className="tw:contents" onFocusCapture={handleFocusCapture}>
-      {rendered}
-    </div>
-  ) : (
-    rendered
-  );
+  return rendered;
 };
 
 Field.displayName = 'Field';

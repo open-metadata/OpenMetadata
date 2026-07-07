@@ -267,6 +267,27 @@
       margin-top: @size-lg;
     }
   }
+
+  // Overlay the Custom Query action on the Select Test Type label row for both
+  // the classic drawer and the AI modal, like the legacy absolute header row.
+  // In custom query mode the container holds its own Test Type label and must
+  // flow normally so it does not overlap the SQL Expression label.
+  .test-type-card {
+    position: relative;
+
+    .custom-test-type-container:not(.justify-between) {
+      position: absolute;
+      top: @size-md;
+      left: @size-md;
+      right: @size-md;
+      z-index: 1;
+      margin: 0;
+    }
+
+    .custom-test-type-container:not(.justify-between) + * {
+      margin-top: 0;
+    }
+  }
 }
 
 // Classic drawer only: compact the core-components controls to match the
@@ -278,27 +299,6 @@
     [data-testid='form-item-label'] {
       color: @grey-700;
       font-weight: @font-medium;
-    }
-
-    // Overlay the Custom Query action on the Select Test Type label row,
-    // like the legacy absolute-positioned header row. In custom query mode
-    // the container holds its own Test Type label and must flow normally so
-    // it does not overlap the SQL Expression label.
-    .test-type-card {
-      position: relative;
-
-      .custom-test-type-container:not(.justify-between) {
-        position: absolute;
-        top: @size-md;
-        left: @size-md;
-        right: @size-md;
-        z-index: 1;
-        margin: 0;
-      }
-
-      .custom-test-type-container:not(.justify-between) + * {
-        margin-top: 0;
-      }
     }
 
     div[class*='tw:rounded-lg'][class*='tw:bg-primary'][class*='tw:shadow-xs'],
