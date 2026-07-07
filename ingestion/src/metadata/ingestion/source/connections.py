@@ -76,13 +76,24 @@ def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Call
     return None
 
 
-def _get_test_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:  # noqa: UP045
+def _get_test_fn_from_service_spec(
+    connection: BaseModel,
+    connection_obj: Optional[Any] = None,  # noqa: UP045
+) -> Optional[Callable]:  # noqa: UP045
     """
     Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
+
+    When ``connection_obj`` (an already-built client) is provided, the test runs
+    against it instead of opening a second connection. This avoids a redundant
+    sign-in that can invalidate the source's live session on single-session
+    services such as Tableau Personal Access Tokens.
     """
     connection_class = _get_connection_class_from_spec(connection)
     if connection_class:
-        return connection_class(connection).test_connection
+        base_connection = connection_class(connection)
+        if connection_obj is not None:
+            base_connection.adopt_client(connection_obj)
+        return base_connection.test_connection
     return None
 
 
@@ -98,11 +109,14 @@ def get_connection_fn(connection: BaseModel) -> Callable:
     return import_connection_fn(connection=connection, function_name=GET_CONNECTION_FN_NAME)
 
 
-def get_test_connection_fn(connection: BaseModel) -> Callable:
+def get_test_connection_fn(connection: BaseModel, connection_obj: Optional[Any] = None) -> Callable:  # noqa: UP045
     """
     Import the test_connection function from the source
+
+    ``connection_obj`` is the source's already-built client; when provided, the
+    ServiceSpec test path reuses it rather than opening a second connection.
     """
-    test_fn = _get_test_fn_from_service_spec(connection)
+    test_fn = _get_test_fn_from_service_spec(connection, connection_obj)
     if test_fn:
         return test_fn
     # Fallback to default
@@ -118,7 +132,7 @@ def get_connection(connection: BaseModel) -> Any:
 
 
 def test_connection_common(metadata: OpenMetadata, connection_obj, service_connection):
-    test_connection_fn = get_test_connection_fn(service_connection)
+    test_connection_fn = get_test_connection_fn(service_connection, connection_obj)
     # TODO: Remove this once we migrate all connectors to use the new test connection function
     try:
         result = test_connection_fn(metadata)

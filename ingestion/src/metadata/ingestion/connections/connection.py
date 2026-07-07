@@ -56,6 +56,7 @@ class BaseConnection(ABC, Generic[S, C]):
         self.service_connection = service_connection
         self._client = None
         self._closing = ExitStack()
+        self._owns_client = True
 
     @property
     def client(self) -> C:
@@ -63,6 +64,18 @@ class BaseConnection(ABC, Generic[S, C]):
         if self._client is None:
             self._client = self._get_client()
         return self._client
+
+    def adopt_client(self, client: C) -> None:
+        """Reuse an already-built client instead of building a new one.
+
+        The client is borrowed: its real owner (e.g. the ingestion source that
+        opened the session) keeps managing its lifecycle, so ``close()`` will
+        not tear it down. This lets a throwaway connection (such as the
+        test-connection step) run against the live client without opening a
+        second session — important for services like Tableau whose Personal
+        Access Tokens allow only one active session per token."""
+        self._client = client
+        self._owns_client = False
 
     @abstractmethod
     def _get_client(self) -> C:
@@ -106,10 +119,13 @@ class BaseConnection(ABC, Generic[S, C]):
         """Release the client and everything its build registered, then reset so
         the connection can be reused (the next ``client`` access rebuilds). The
         connection owns its lifecycle; callers use it as a context manager or
-        call ``close()`` when done."""
-        self._closing.close()
+        call ``close()`` when done. A borrowed client (see ``adopt_client``) is
+        detached but not torn down, since its real owner manages it."""
+        if self._owns_client:
+            self._closing.close()
         self._closing = ExitStack()
         self._client = None
+        self._owns_client = True
 
     def __enter__(self) -> "BaseConnection[S, C]":
         return self
