@@ -216,6 +216,8 @@ class BurstIQClient:
             )
         except Exception as exc:
             body = getattr(getattr(exc, "response", None), "text", "") or ""
+            if not body:
+                raise
             if "system wallet" in body.lower():
                 raise ConnectionError(
                     f"BurstIQ system wallet '{wallet_id}' is invalid or does not exist. "

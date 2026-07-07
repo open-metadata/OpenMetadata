@@ -98,6 +98,17 @@ def test_validate_system_wallet_defers_non_wallet_error():
         client.validate_system_wallet()
 
 
+def test_validate_system_wallet_reraises_network_error():
+    """Network/timeout errors (no HTTP response) must not be silently swallowed."""
+    client = _build_client(wallet_id=WALLET_ID)
+
+    with (
+        patch.object(client, "_make_request", side_effect=ConnectionError("timeout")),
+        pytest.raises(ConnectionError, match="timeout"),
+    ):
+        client.validate_system_wallet()
+
+
 # --- Root cause fix: wallet must not be in default auth headers ---
 
 
