@@ -61,7 +61,7 @@ describe('getSuggestionByType', () => {
     expect(janeGroup?.combinedData).toHaveLength(1); // Jane has 1 suggestion in total
   });
 
-  it('should ignore suggestions without valid createdBy user', () => {
+  it('should keep partial author suggestions grouped without creating avatar entries', () => {
     const suggestionMock: Suggestion[] = [
       {
         type: SuggestionType.SuggestTagLabel,
@@ -80,7 +80,9 @@ describe('getSuggestionByType', () => {
 
     expect(result.allUsersList).toEqual([{ id: '1', name: 'Jane Smith' }]);
     expect(result.groupedSuggestions.has('')).toBe(false);
-    expect(result.groupedSuggestions.get('Missing id')).toBeUndefined();
+    expect(
+      result.groupedSuggestions.get('Missing id')?.description
+    ).toHaveLength(1);
     expect(
       result.groupedSuggestions.get('Jane Smith')?.combinedData
     ).toHaveLength(1);
