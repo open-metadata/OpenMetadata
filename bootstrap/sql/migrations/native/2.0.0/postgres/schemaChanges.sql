@@ -1,6 +1,37 @@
 -- Task System Redesign - OpenMetadata 2.0.0
 -- This migration creates the new Task entity tables and related infrastructure
 
+-- CSV import/export and bulk-edit background job metadata.
+ALTER TABLE background_jobs
+  ADD COLUMN IF NOT EXISTS progress integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS total integer DEFAULT 0,
+  ADD COLUMN IF NOT EXISTS result text,
+  ADD COLUMN IF NOT EXISTS error text,
+  ADD COLUMN IF NOT EXISTS message character varying(2048),
+  ADD COLUMN IF NOT EXISTS cancelRequested boolean DEFAULT false,
+  ADD COLUMN IF NOT EXISTS completedAt bigint;
+
+CREATE INDEX IF NOT EXISTS idx_background_jobs_job_type_created_by
+  ON background_jobs (jobType, createdBy, createdAt);
+
+CREATE INDEX IF NOT EXISTS idx_background_jobs_status_updated_at
+  ON background_jobs (status, updatedAt);
+
+CREATE TABLE IF NOT EXISTS background_job_logs (
+  logId character varying(36) NOT NULL,
+  jobId bigint NOT NULL,
+  createdAt bigint NOT NULL,
+  level character varying(16) NOT NULL,
+  message character varying(4096) NOT NULL,
+  PRIMARY KEY (logId),
+  CONSTRAINT fk_background_job_logs_job_id
+    FOREIGN KEY (jobId) REFERENCES background_jobs(id)
+    ON DELETE CASCADE
+);
+
+CREATE INDEX IF NOT EXISTS idx_background_job_logs_job_id_created_at
+  ON background_job_logs (jobId, createdAt);
+
 CREATE TABLE IF NOT EXISTS task_entity (
     id character varying(36) NOT NULL,
     json jsonb NOT NULL,
@@ -308,6 +339,56 @@ CREATE TABLE IF NOT EXISTS context_memory (
 );
 CREATE INDEX IF NOT EXISTS idx_context_memory_updated_at ON context_memory (updatedAt);
 
+-- AI Governance Studio (Phase 4): framework + control entity tables.
+CREATE TABLE IF NOT EXISTS ai_governance_framework_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ai_governance_framework_name_index ON ai_governance_framework_entity(name);
+CREATE INDEX IF NOT EXISTS ai_governance_framework_deleted_index ON ai_governance_framework_entity(deleted);
+COMMENT ON TABLE ai_governance_framework_entity IS 'AI Governance Framework entities';
+
+CREATE TABLE IF NOT EXISTS ai_framework_control_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS ai_framework_control_name_index ON ai_framework_control_entity(name);
+CREATE INDEX IF NOT EXISTS ai_framework_control_deleted_index ON ai_framework_control_entity(deleted);
+COMMENT ON TABLE ai_framework_control_entity IS 'AI Framework Control entities';
+
+CREATE TABLE IF NOT EXISTS audit_report_entity (
+    id VARCHAR(36) GENERATED ALWAYS AS (json->>'id') STORED NOT NULL,
+    name VARCHAR(256) GENERATED ALWAYS AS (json->>'name') STORED NOT NULL,
+    fqnHash VARCHAR(768) NOT NULL,
+    json JSONB NOT NULL,
+    updatedAt BIGINT GENERATED ALWAYS AS ((json->>'updatedAt')::bigint) STORED NOT NULL,
+    updatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'updatedBy') STORED NOT NULL,
+    impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json->>'impersonatedBy') STORED,
+    deleted BOOLEAN GENERATED ALWAYS AS ((json->>'deleted')::boolean) STORED,
+    status VARCHAR(32) GENERATED ALWAYS AS (json->>'status') STORED,
+    PRIMARY KEY (id),
+    UNIQUE (fqnHash)
+);
+CREATE INDEX IF NOT EXISTS audit_report_name_index ON audit_report_entity(name);
+CREATE INDEX IF NOT EXISTS audit_report_status_index ON audit_report_entity(status);
+CREATE INDEX IF NOT EXISTS audit_report_deleted_index ON audit_report_entity(deleted);
+COMMENT ON TABLE audit_report_entity IS 'AI Audit Report entities';
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS user_session (
     id character varying(64) GENERATED ALWAYS AS ((json ->> 'id'::text)) STORED NOT NULL,
@@ -339,6 +420,10 @@ CREATE INDEX IF NOT EXISTS task_entity_name_index ON task_entity (name);
 CREATE INDEX IF NOT EXISTS announcement_entity_name_index ON announcement_entity (name);
 CREATE INDEX IF NOT EXISTS drive_folder_name_index ON drive_folder (name);
 CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);
+-- context_file / context_memory are also created above in this migration and are reindexed;
+-- they only had a `nameHash` unique key, so add the leading-`name` index the cursor query needs.
+CREATE INDEX IF NOT EXISTS context_file_name_index ON context_file (name);
+CREATE INDEX IF NOT EXISTS context_memory_name_index ON context_memory (name);
 
 -- MCP conversation table for MCP Client message tracking
 CREATE TABLE IF NOT EXISTS mcp_conversation (
@@ -369,3 +454,16 @@ CREATE TABLE IF NOT EXISTS mcp_message (
 );
 CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_index ON mcp_message (conversationId, messageIndex);
 CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_created ON mcp_message (conversationId, timestamp);
+-- Task workflow cutover support - OpenMetadata 2.0.0 (moved from 2.0.1)
+-- Maps legacy thread task IDs to new task entity IDs for migration traceability and redirects.
+
+CREATE TABLE IF NOT EXISTS task_migration_mapping (
+    old_thread_id character varying(36) NOT NULL,
+    new_task_id character varying(36) NOT NULL,
+    migrated_at bigint NOT NULL,
+    source character varying(64) DEFAULT 'thread_task_migration',
+    PRIMARY KEY (old_thread_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
+    ON task_migration_mapping (new_task_id);

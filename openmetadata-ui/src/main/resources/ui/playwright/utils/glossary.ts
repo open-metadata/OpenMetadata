@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
-import { ASSET_FILTER_NAMES } from '../constant/common';
+import { ASSET_FILTER_KEYS } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -946,9 +946,9 @@ export const verifyAssetModalFilters = async (
 
   await expect(filterButton).not.toBeVisible();
 
-  for (const filterName of ASSET_FILTER_NAMES) {
+  for (const filterKey of ASSET_FILTER_KEYS) {
     await expect(
-      page.locator(`[data-testid="search-dropdown-${filterName}"]`)
+      page.locator(`[data-testid="search-dropdown-${filterKey}"]`)
     ).toBeVisible();
   }
 
@@ -958,7 +958,7 @@ export const verifyAssetModalFilters = async (
   await testFilterWithSpecificOption(
     page,
     filterWrapper,
-    'Entity Type',
+    'entityType',
     'table',
     'table'
   );
@@ -966,17 +966,21 @@ export const verifyAssetModalFilters = async (
   await testFilterWithSpecificOption(
     page,
     filterWrapper,
-    'Service Type',
+    'serviceType',
     'mysql',
     'mysql'
   );
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Tag');
+  await testFilterWithFirstOption(page, filterWrapper, 'tags.tagFQN');
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Domains');
+  await testFilterWithFirstOption(
+    page,
+    filterWrapper,
+    'domains.displayName.keyword'
+  );
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Tier');
-  await testFilterWithFirstOption(page, filterWrapper, 'Owners');
+  await testFilterWithFirstOption(page, filterWrapper, 'tier.tagFQN');
+  await testFilterWithFirstOption(page, filterWrapper, 'ownerDisplayName');
 };
 
 export const updateNameForGlossaryTerm = async (

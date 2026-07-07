@@ -118,8 +118,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_newTerm,New Term,Test description,,synonym:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_newTerm,New Term,Test description,,synonym:%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -142,8 +142,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_legacyTerm,Legacy Term,Test description,,%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_legacyTerm,Legacy Term,Test description,,%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -176,8 +176,8 @@ public class GlossaryCsvRelationTypesIT {
     String termName = ns.prefix("") + "_mixedTerm";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Mixed Term,Test description,,synonym:%s;%s;broader:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Mixed Term,Test description,,synonym:%s;%s;broader:%s,,,,,Draft,,,,",
             termName,
             term1.getFullyQualifiedName(),
             term2.getFullyQualifiedName(),
@@ -206,8 +206,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_invalidRelTerm,Invalid Rel Term,Test description,,invalidtype:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_invalidRelTerm,Invalid Rel Term,Test description,,invalidtype:%s,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);
@@ -354,8 +354,8 @@ public class GlossaryCsvRelationTypesIT {
     String newTermName = ns.prefix("") + "_importedTerm";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Imported Term,Imported via CSV,,broader:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Imported Term,Imported via CSV,,broader:%s,,,,,Draft,,,,",
             newTermName, existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, false);
@@ -416,8 +416,8 @@ public class GlossaryCsvRelationTypesIT {
 
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s_colonTerm,Colon Term,Test description,,notarelation:%s.subterm,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s_colonTerm,Colon Term,Test description,,notarelation:%s.subterm,,,,,Draft,,,,",
             ns.prefix(""), existingTerm.getFullyQualifiedName());
 
     String result = importGlossaryCsv(glossary.getName(), csvContent, true);
@@ -444,8 +444,8 @@ public class GlossaryCsvRelationTypesIT {
     String newTermName = ns.prefix("") + "_mixed";
     String csvContent =
         String.format(
-            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                + ",%s,Mixed,Mixed term,,synonym:%s;%s;narrower:%s,,,,,Draft,,,",
+            "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                + ",%s,Mixed,Mixed term,,synonym:%s;%s;narrower:%s,,,,,Draft,,,,",
             newTermName,
             t1.getFullyQualifiedName(),
             t2.getFullyQualifiedName(),
@@ -576,8 +576,8 @@ public class GlossaryCsvRelationTypesIT {
       String newName = ns.prefix("") + "_imported";
       String csvImport =
           String.format(
-              "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension%n"
-                  + ",%s,Imported,via custom type,,%s:%s,,,,,Draft,,,",
+              "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension%n"
+                  + ",%s,Imported,via custom type,,%s:%s,,,,,Draft,,,,",
               newName, customType, effect.getFullyQualifiedName());
       String result = importGlossaryCsv(glossary.getName(), csvImport, false);
       assertNotNull(result);

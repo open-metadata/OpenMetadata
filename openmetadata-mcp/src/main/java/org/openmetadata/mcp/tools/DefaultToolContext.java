@@ -91,6 +91,10 @@ public class DefaultToolContext {
         case "get_company_context":
           result = new GetCompanyContextTool().execute(authorizer, securityContext, params);
           break;
+        case "create_context_memory":
+          result =
+              new CreateContextMemoryTool().execute(authorizer, limits, securityContext, params);
+          break;
         case "create_glossary":
           tool = new GlossaryTool();
           result = tool.execute(authorizer, limits, securityContext, params);

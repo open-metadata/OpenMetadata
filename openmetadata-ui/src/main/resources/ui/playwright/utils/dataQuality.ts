@@ -29,12 +29,52 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
 /**
+ * Matches the batched `dataQualityReport` POST the dashboard now fires instead
+ * of one GET per widget. The per-aggregation filter (`q`, `index`, ...) lives in
+ * the POST body, so pass `bodyToken` (a raw, non-URL-encoded substring) to assert
+ * a specific filter reached the API.
+ */
+export function isDashboardReportBatchResponse(
+  res: Response,
+  bodyToken?: string
+): boolean {
+  const request = res.request();
+  const isBatch =
+    request.url().includes('/dataQuality/testSuites/dataQualityReport/batch') &&
+    request.method() === 'POST';
+  let matches = isBatch && !bodyToken;
+
+  if (isBatch && bodyToken) {
+    const body = request.postData() ?? '';
+    matches = body.includes(bodyToken);
+    if (!matches) {
+      // Dotted FQNs are quoted (e.g. `"x.y"`); their quotes are JSON-escaped in
+      // the raw body, so fall back to matching parsed request field values.
+      try {
+        const parsed = JSON.parse(body) as {
+          requests?: Array<{ q?: string; domain?: string }>;
+        };
+        matches = (parsed.requests ?? []).some(
+          (item) =>
+            (item.q ?? '').includes(bodyToken) ||
+            (item.domain ?? '').includes(bodyToken)
+        );
+      } catch {
+        matches = false;
+      }
+    }
+  }
+
+  return matches;
+}
+
+/**
  * Navigate to the Data Quality dashboard (Dashboard sub-tab under Data Quality).
  */
 export async function goToDataQualityDashboard(page: Page): Promise<void> {
   await redirectToHomePage(page);
-  const dataQualityReportResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testSuites/dataQualityReport?q=*'
+  const dataQualityReportResponse = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res)
   );
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
   await page.getByTestId('dashboard').click();
@@ -402,6 +442,29 @@ export function captureReports(page: Page): CapturedReport[] {
     if (!url.includes('/dataQualityReport')) {
       return;
     }
+
+    // The dashboard batches every aggregation into one POST body; flatten each
+    // item back into a CapturedReport so callers keep asserting on q/index.
+    if (url.includes('/dataQualityReport/batch')) {
+      const body = req.postData();
+      if (!body) {
+        return;
+      }
+      let parsed: { requests?: Array<{ q?: string; index?: string }> };
+      try {
+        parsed = JSON.parse(body) as {
+          requests?: Array<{ q?: string; index?: string }>;
+        };
+      } catch {
+        return;
+      }
+      for (const item of parsed.requests ?? []) {
+        captured.push({ url, q: item.q ?? '', index: item.index ?? '' });
+      }
+
+      return;
+    }
+
     const u = new URL(url);
     captured.push({
       url,
@@ -409,6 +472,7 @@ export function captureReports(page: Page): CapturedReport[] {
       index: u.searchParams.get('index') ?? '',
     });
   });
+
   return captured;
 }
 
@@ -440,10 +504,8 @@ async function applyDashboardTagBasedFilter(
 
   await page.getByTestId(optionFqn).click();
 
-  const reportRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/dataQualityReport') &&
-      res.url().includes(encodeURIComponent(optionFqn))
+  const reportRes = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res, optionFqn)
   );
   await page.getByTestId('update-btn').click();
   await reportRes;

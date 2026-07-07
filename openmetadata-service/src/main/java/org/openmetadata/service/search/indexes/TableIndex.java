@@ -54,6 +54,10 @@ public record TableIndex(Table table) implements ColumnIndex, DataAssetIndex {
     // fetches the declared fields — without this it's dropped from _source on reindex,
     // breaking Explore's "Sort by Weekly Usage" (reads usageSummary.weeklyStats.count).
     fields.add("usageSummary");
+    // "testSuite" is fields-gated as well (TableRepository.clearFields nulls it when not
+    // requested). Lineage nodes read (node as Table).testSuite to render the data-observability
+    // summary, so without it getDataQualityLineage loses its test information after a reindex.
+    fields.add("testSuite");
     return java.util.Collections.unmodifiableSet(fields);
   }
 

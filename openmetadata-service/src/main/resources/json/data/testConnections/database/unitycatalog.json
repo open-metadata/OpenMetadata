@@ -6,7 +6,7 @@
     {
       "name": "CheckAccess",
       "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
-      "errorMessage": "Failed to connect to unity catalog, please validate to token, http path  & hostport",
+      "errorMessage": "Failed to connect to Unity Catalog, please validate the credentials, host and port, and http path",
       "shortCircuit": true,
       "mandatory": true
     },
@@ -30,7 +30,7 @@
     },
     {
       "name": "GetViews",
-      "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the tables of a random schema.",
+      "description": "From a given schema, list the views belonging to that schema. If no schema is specified, we'll list the views of a random schema.",
       "errorMessage": "Failed to fetch views, please validate if the user has enough privilege to fetch views.",
       "mandatory": false
     },

@@ -14,6 +14,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import java.lang.reflect.Field;
@@ -40,6 +41,7 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.vector.OpenSearchVectorService;
 
 class ElasticSearchBulkSinkBehaviorTest {
 
@@ -137,7 +139,7 @@ class ElasticSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void addEntityRecordsEntityNotFoundFailuresAndInvokesCallback() throws Exception {
+  void addEntityRecordsEntityNotFoundWarningsWithoutCallback() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
@@ -166,16 +168,12 @@ class ElasticSearchBulkSinkBehaviorTest {
           Collections.emptyMap());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
-      verify(tracker).recordProcess(StatsResult.FAILED);
-      verify(failureCallback)
-          .onFailure(
-              ENTITY_TYPE,
-              entityId.toString(),
-              "table.fqn",
-              "Entity with id [" + entityId + "] not found.",
-              IndexingFailureRecorder.FailureStage.PROCESS);
-      assertEquals(1, sink.getStats().getFailedRecords());
-      assertEquals(1, sink.getProcessStats().getFailedRecords());
+      verify(tracker).recordProcess(StatsResult.WARNING);
+      verifyNoInteractions(failureCallback);
+      assertEquals(0, sink.getStats().getFailedRecords());
+      assertEquals(1, sink.getStats().getWarningRecords());
+      assertEquals(0, sink.getProcessStats().getFailedRecords());
+      assertEquals(1, sink.getProcessStats().getWarningRecords());
     }
   }
 
@@ -366,6 +364,46 @@ class ElasticSearchBulkSinkBehaviorTest {
           Collections.emptyMap());
 
       assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
+    }
+  }
+
+  @Test
+  void addEntityNeverTouchesVectorServiceBecauseElasticsearchHasNoEmbeddingPath() throws Exception {
+    // Vector embedding is OpenSearch-only (SearchRepository: "Vector embedding is only supported
+    // with OpenSearch. Elasticsearch support is planned."). The ES sink therefore has no
+    // embedding-reuse path and needs no dimension guard. This test locks that invariant in: if ES
+    // vector support is ever added, the sink will start consulting OpenSearchVectorService and this
+    // test will fail — forcing the author to also add the embedding-dimension reuse guard that
+    // OpenSearchBulkSink#canReuseCachedEmbedding applies.
+    EntityInterface entity = mock(EntityInterface.class);
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+        MockedStatic<OpenSearchVectorService> vectorServiceMock =
+            mockStatic(OpenSearchVectorService.class)) {
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .thenReturn(new StubSearchIndex(Map.of("field", "value")));
+
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          entity,
+          "table_index",
+          tracker,
+          Collections.emptyMap());
+
+      vectorServiceMock.verify(OpenSearchVectorService::getInstance, never());
+      verify(tracker).recordProcess(StatsResult.SUCCESS);
+      assertEquals(1, sink.getProcessStats().getSuccessRecords());
     }
   }
 

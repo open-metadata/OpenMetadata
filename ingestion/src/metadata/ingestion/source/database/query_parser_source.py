@@ -30,12 +30,13 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.utils.helpers import get_start_and_end, retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+from metadata.utils.progress_tracking import ProgressTrackingMixin
 from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = ingestion_logger()
 
 
-class QueryParserSource(Source, ABC):
+class QueryParserSource(ProgressTrackingMixin, Source, ABC):
     """
     Core class to be inherited for sources that
     parse query logs, be it for usage or lineage.

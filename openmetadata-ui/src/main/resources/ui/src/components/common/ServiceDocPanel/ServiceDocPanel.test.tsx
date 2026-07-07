@@ -65,11 +65,13 @@ jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
   ))
 );
 
+let mockLanguage = 'en-US';
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({
     t: (key: string) => key,
     i18n: {
-      language: 'en-US',
+      language: mockLanguage,
     },
   }),
 }));
@@ -124,6 +126,7 @@ const mockSelectedEntity = {
 describe('ServiceDocPanel Component', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockLanguage = 'en-US';
     mockFetchMarkdownFile.mockResolvedValue('markdown content');
     mockQuerySelectorAll.mockReturnValue([]);
     mockQuerySelector.mockReturnValue(null);
@@ -181,6 +184,18 @@ describe('ServiceDocPanel Component', () => {
         );
       });
     });
+
+    it('should normalize short language codes before fetching markdown', async () => {
+      mockLanguage = 'en';
+
+      render(<ServiceDocPanel {...defaultProps} />);
+
+      await waitFor(() => {
+        expect(mockFetchMarkdownFile).toHaveBeenCalledWith(
+          'en-US/DatabaseService/mysql.md'
+        );
+      });
+    });
   });
 
   describe('Error Handling', () => {
@@ -234,6 +249,359 @@ describe('ServiceDocPanel Component', () => {
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           '$$note\nsome note\n$$'
         );
+      });
+    });
+
+    it('should render focused field docs without carrying requirements forward', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database $(id="database")',
+          'Database guidance.',
+          '$$',
+          '$$section',
+          '### Warehouse $(id="warehouse")',
+          'Warehouse guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/database"
+        />
+      );
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Database guidance.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Warehouse guidance.')
+        );
+      });
+    });
+
+    it('should render full requirements on focused docs landing state', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '$$note',
+          'Use Snowflake 8.0.0 and up.',
+          '$$',
+          '### Usage & Lineage',
+          'Grant lineage privileges.',
+          '### Profiler & Data Quality',
+          'Grant profiler privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database $(id="database")',
+          'Database guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(<ServiceDocPanel {...defaultProps} focusedMode />);
+
+      await waitFor(() => {
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.metadata')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('$$note\nUse Snowflake 8.0.0 and up.\n$$')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.lineage')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant lineage privileges.')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('### label.profiler')
+        );
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant profiler privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Database guidance.')
+        );
+      });
+    });
+
+    it('should show the dedicated service-name guidance for the service name focused field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database $(id="database")',
+          'Database guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="serviceName"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('label.name-this-service')).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('label.service-name')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Database guidance.')
+        );
+      });
+    });
+
+    it('should show a generic fallback card when a focused field has no matching docs section or schema metadata', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Salesforce',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Username $(id="username")',
+          'Username guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/account"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-intro')
+        ).toHaveTextContent('Account');
+        expect(
+          container.querySelector('.focused-service-docs-intro')
+        ).toHaveTextContent('message.openmetadata-docs-description');
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Username guidance.')
+        );
+      });
+    });
+
+    it('should show schema field metadata when a focused field has no matching docs section but schema metadata is available', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Salesforce',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Username $(id="username")',
+          'Username guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/account"
+          activeFieldMeta={{
+            title: 'Account Name',
+            description: 'The Snowflake account identifier.',
+          }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Account Name')).toBeInTheDocument();
+        expect(
+          screen.getByText('The Snowflake account identifier.')
+        ).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+      });
+    });
+  });
+
+  describe('Focused Doc Eyebrow', () => {
+    it('should show the Scope & Options eyebrow for a scope field with no matching docs section', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MySQL',
+          '## Connection Details',
+          '$$section',
+          '### Host Port $(id="hostPort")',
+          'Host port guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/databaseFilterPattern"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
+      });
+    });
+
+    it('should show the Scope & Options eyebrow for a scope field with a matching docs section', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MySQL',
+          '## Connection Details',
+          '$$section',
+          '### Database Filter Pattern $(id="databaseFilterPattern")',
+          'Database filter pattern guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/databaseFilterPattern"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
+      });
+    });
+
+    it('should still show the Connection eyebrow for a plain connection field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MySQL',
+          '## Connection Details',
+          '$$section',
+          '### Host Port $(id="hostPort")',
+          'Host port guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/hostPort"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.connection');
+      });
+    });
+
+    it('should still show the Advanced Config eyebrow for a lineage field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        ['# MySQL', '### Usage & Lineage', 'Lineage guidance.'].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/useAccessHistory"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.advanced-config');
+      });
+    });
+
+    it('should prioritize activeFieldMeta.section over the field-name heuristic', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# BigQuery',
+          '## Connection Details',
+          '$$section',
+          '### Usage Location $(id="usageLocation")',
+          'Usage location guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/usageLocation"
+          activeFieldMeta={{ section: 'scope' }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
+      });
+    });
+
+    it('should use activeFieldMeta.section even when a matching docs section is absent', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        ['# BigQuery', '## Connection Details'].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/usageLocation"
+          activeFieldMeta={{ section: 'scope' }}
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-eyebrow')
+        ).toHaveTextContent('label.scope-and-option-plural');
       });
     });
   });

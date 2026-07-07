@@ -4476,6 +4476,37 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertNotNull(result.getNumberOfRowsProcessed());
+
+    // Block until the async bulk worker commits the new entity. Without this, TestNamespace
+    // cleanup races the worker: the service's recursive hardDelete may scan its children before
+    // the worker establishes the parent→child relationship, leaving an orphan whose parent
+    // service no longer exists. That orphan trips unfiltered list calls in concurrent test
+    // classes. The 202 body carries each queued entity's FQN in successRequest; await the row
+    // via getEntityByName so cascade cleanup can find it. Applies to every entity that supports
+    // bulk, independent of search-index support.
+    awaitAsyncBulkEntitiesPersisted(result);
+  }
+
+  private void awaitAsyncBulkEntitiesPersisted(BulkOperationResult result) {
+    if (result.getSuccessRequest() == null || result.getSuccessRequest().isEmpty()) {
+      return;
+    }
+    for (BulkResponse accepted : result.getSuccessRequest()) {
+      Object request = accepted.getRequest();
+      if (!(request instanceof String fqn) || fqn.isEmpty()) {
+        continue;
+      }
+      Awaitility.await("Async bulk-created entity " + fqn + " visible by name")
+          .pollDelay(Duration.ofMillis(200))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                getEntityByName(fqn);
+                return true;
+              });
+    }
   }
 
   /**

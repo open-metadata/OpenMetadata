@@ -35,6 +35,12 @@ export interface HeaderBreadcrumbProps {
   divider?: BreadcrumbsDivider;
   /** Size of the crumbs. Defaults to 'sm'. */
   size?: BreadcrumbsSize;
+  /**
+   * Maximum number of crumbs to render inline; longer trails collapse the
+   * middle crumbs into a `…` menu (first crumb + trailing crumbs stay
+   * visible). Omit to always render every crumb.
+   */
+  maxItems?: number;
   /** Optional class name applied to the root nav element. */
   className?: string;
 }

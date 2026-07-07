@@ -86,6 +86,11 @@ export interface Glossary {
      */
     name: string;
     /**
+     * Namespace prefix to IRI mappings for terms imported from an external ontology. Used to
+     * render CURIEs and preserve identity when re-exporting the glossary as RDF/OWL.
+     */
+    namespaces?: Namespace[];
+    /**
      * Owners of this glossary.
      */
     owners?:   EntityReference[];
@@ -262,6 +267,17 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+export interface Namespace {
+    /**
+     * Full namespace IRI the prefix expands to (e.g., `http://example.com/ontology/hcp#`).
+     */
+    namespace?: string;
+    /**
+     * Short prefix for the namespace (e.g., `hcp`).
+     */
+    prefix?: string;
 }
 
 /**

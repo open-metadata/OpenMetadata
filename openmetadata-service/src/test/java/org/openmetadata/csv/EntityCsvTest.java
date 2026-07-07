@@ -2673,6 +2673,14 @@ public class EntityCsvTest {
     }
 
     @Override
+    protected EntityReference getEntityReferenceByName(String entityType, String fqn) {
+      EntityInterface entity = entitiesByTypeAndName.get(entityType + ":" + fqn);
+      return entity != null
+          ? entity.getEntityReference()
+          : super.getEntityReferenceByName(entityType, fqn);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> records)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(resultsPrinter, records);

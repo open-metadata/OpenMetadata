@@ -26,8 +26,10 @@ import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.search.CustomPropertySearchFields;
 import org.openmetadata.service.search.SearchSourceBuilderFactory;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.ContextMemoryIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.indexes.TestCaseIndex;
 import org.openmetadata.service.search.indexes.TestCaseResolutionStatusIndex;
@@ -338,6 +340,8 @@ public class OpenSearchSourceBuilderFactory
           "user",
           "team_search_index",
           "team" -> buildUserOrTeamSearchBuilderV2(searchQuery, fromOffset, size);
+      case "context_memory_search_index", "contextMemory" -> buildContextMemorySearchBuilderV2(
+          searchQuery, fromOffset, size);
       default -> buildAggregateSearchBuilderV2(searchQuery, fromOffset, size, includeAggregations);
     };
   }
@@ -400,6 +404,15 @@ public class OpenSearchSourceBuilderFactory
         buildSearchQueryBuilderV2(query, SearchIndex.getDefaultFields());
     os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
         buildHighlightsV2(new ArrayList<>());
+    return searchBuilderV2(queryBuilder, highlighter, from, size);
+  }
+
+  public OpenSearchRequestBuilder buildContextMemorySearchBuilderV2(
+      String query, int from, int size) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query queryBuilder =
+        buildSearchQueryBuilderV2(query, ContextMemoryIndex.getFields());
+    os.org.opensearch.client.opensearch.core.search.Highlight highlighter =
+        buildHighlightsV2(List.of("title", "summary", "question", "answer"));
     return searchBuilderV2(queryBuilder, highlighter, from, size);
   }
 
@@ -511,6 +524,7 @@ public class OpenSearchSourceBuilderFactory
     Map<String, Map<String, Float>> fieldsByType = groupFieldsByMatchType(assetConfig);
 
     addMatchTypeQueriesV2(combinedQuery, query, fieldsByType, multipliers);
+    addCustomPropertyMatchQueriesV2(combinedQuery, query, assetConfig);
 
     combinedQuery.minimumShouldMatch(1);
     return OpenSearchQueryBuilder.boolQuery().must(combinedQuery.build()).build();
@@ -1075,9 +1089,67 @@ public class OpenSearchSourceBuilderFactory
     addFuzzyMatchQueriesV2(
         combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_FUZZY), multipliers.fuzzyMatch);
     addStandardMatchQueriesV2(combinedQuery, query, fieldsByMatchType.get(MATCH_TYPE_STANDARD));
+    addCustomPropertyMatchQueriesV2(combinedQuery, query, assetConfig);
 
     combinedQuery.minimumShouldMatch(1);
     return OpenSearchQueryBuilder.boolQuery().must(combinedQuery.build()).build();
+  }
+
+  /**
+   * Adds a nested {@code customPropertiesTyped} clause for each admin-configured {@code
+   * extension.<name>} search field. The raw {@code extension} field is {@code enabled:false} so an
+   * oversized value can never reject the document, so the searchable value lives in the typed nested
+   * field — see {@link CustomPropertySearchFields}.
+   */
+  private void addCustomPropertyMatchQueriesV2(
+      OpenSearchQueryBuilder.BoolQueryBuilder combinedQuery,
+      String query,
+      AssetTypeConfiguration assetConfig) {
+    for (CustomPropertySearchFields.Spec spec : CustomPropertySearchFields.from(assetConfig)) {
+      combinedQuery.should(customPropertyNestedQueryV2(query, spec));
+    }
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query customPropertyNestedQueryV2(
+      String query, CustomPropertySearchFields.Spec spec) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query inner =
+        OpenSearchQueryBuilder.boolQuery()
+            .must(customPropertyTermV2(CustomPropertySearchFields.NAME_FIELD, spec.propertyName()))
+            .must(customPropertyValueQueryV2(query, spec))
+            .build();
+    return OpenSearchQueryBuilder.nestedQuery(
+        CustomPropertySearchFields.CUSTOM_PROPERTIES_TYPED, inner);
+  }
+
+  private os.org.opensearch.client.opensearch._types.query_dsl.Query customPropertyValueQueryV2(
+      String query, CustomPropertySearchFields.Spec spec) {
+    os.org.opensearch.client.opensearch._types.query_dsl.Query result;
+    if (spec.exact()) {
+      result =
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.term(
+                      t ->
+                          t.field(CustomPropertySearchFields.STRING_VALUE_FIELD)
+                              .value(FieldValue.of(query))
+                              .boost(spec.boost())));
+    } else {
+      result =
+          os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+              q ->
+                  q.match(
+                      m ->
+                          m.field(CustomPropertySearchFields.TEXT_VALUE_FIELD)
+                              .query(FieldValue.of(query))
+                              .boost(spec.boost())));
+    }
+    return result;
+  }
+
+  private static os.org.opensearch.client.opensearch._types.query_dsl.Query customPropertyTermV2(
+      String field, String value) {
+    return os.org.opensearch.client.opensearch._types.query_dsl.Query.of(
+        q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
   }
 
   private void addExactMatchQueriesV2(

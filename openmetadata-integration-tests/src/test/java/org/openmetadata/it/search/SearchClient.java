@@ -91,6 +91,50 @@ public final class SearchClient {
     return result;
   }
 
+  public JsonNode get(final String path) {
+    requireEmbedded("GET " + path);
+    return execute(HttpRequest.newBuilder(base.resolve(path)).GET().build());
+  }
+
+  public JsonNode post(final String path, final String jsonBody) {
+    requireEmbedded("POST " + path);
+    return execute(
+        HttpRequest.newBuilder(base.resolve(path))
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build());
+  }
+
+  public JsonNode put(final String path, final String jsonBody) {
+    requireEmbedded("PUT " + path);
+    return execute(
+        HttpRequest.newBuilder(base.resolve(path))
+            .header("Content-Type", "application/json")
+            .PUT(HttpRequest.BodyPublishers.ofString(jsonBody))
+            .build());
+  }
+
+  public void delete(final String path) {
+    requireEmbedded("DELETE " + path);
+    try {
+      final HttpResponse<String> response =
+          http.send(
+              HttpRequest.newBuilder(base.resolve(path)).DELETE().build(),
+              HttpResponse.BodyHandlers.ofString());
+      final int status = response.statusCode();
+      final boolean success = (status >= 200 && status < 300) || status == 404;
+      if (!success) {
+        throw new SearchClientException(
+            "HTTP " + status + " from DELETE " + path + ": " + response.body());
+      }
+    } catch (final InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new SearchClientException("DELETE " + path + " interrupted", e);
+    } catch (final IOException e) {
+      throw new SearchClientException("DELETE " + path + " failed", e);
+    }
+  }
+
   /** Mapping JSON for an index/alias. */
   public JsonNode mapping(final String index) {
     final JsonNode result;
@@ -183,6 +227,21 @@ public final class SearchClient {
       throw new SearchClientException("HEAD " + path + " interrupted", e);
     } catch (final IOException e) {
       throw new SearchClientException("HEAD " + path + " failed", e);
+    }
+  }
+
+  /**
+   * The raw {@link #get}/{@link #post}/{@link #put}/{@link #delete} helpers talk straight to the
+   * engine over {@code base}/{@code http}, which are null in external mode (there is no raw-path
+   * passthrough — only the typed read-only proxy). Fail fast with a clear message instead of a bare
+   * NPE so an external-mode run is self-explanatory.
+   */
+  private void requireEmbedded(final String operation) {
+    if (server.isExternal()) {
+      throw new SearchClientException(
+          operation
+              + " requires direct engine access, which is unavailable in external mode "
+              + "(the test-support proxy exposes only read-only introspection).");
     }
   }
 

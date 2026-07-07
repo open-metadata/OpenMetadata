@@ -94,15 +94,29 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
   async fillIngestionDetails(page: Page) {
     for (const filter of this.tableFilter) {
-      await page.fill('#root\\/tableFilterPattern\\/includes', filter);
+      await page.getByTestId('filter-section-tableFilterPattern').click();
+      await page.getByTestId('tableFilterPattern-only-specific-button').click();
       await page
-        .locator('#root\\/tableFilterPattern\\/includes')
+        .getByTestId('filter-section-tableFilterPattern')
+        .getByTestId('include-filter-input')
+        .locator('input')
+        .fill(filter);
+      await page
+        .getByTestId('filter-section-tableFilterPattern')
+        .getByTestId('include-filter-input')
+        .locator('input')
         .press('Enter');
     }
     for (const schema of this.excludeSchemas) {
-      await page.fill('#root\\/schemaFilterPattern\\/excludes', schema);
       await page
-        .locator('#root\\/schemaFilterPattern\\/excludes')
+        .getByTestId('filter-section-schemaFilterPattern')
+        .getByTestId('exclude-filter-input')
+        .locator('input')
+        .fill(schema);
+      await page
+        .getByTestId('filter-section-schemaFilterPattern')
+        .getByTestId('exclude-filter-input')
+        .locator('input')
         .press('Enter');
     }
   }

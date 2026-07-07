@@ -123,7 +123,7 @@ jest.mock('../../../../utils/PermissionsUtils', () => ({
   checkPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../../../utils/TasksUtils', () => ({
+jest.mock('../../../../utils/TaskNavigationUtils', () => ({
   getTaskDisplayId: jest.fn().mockReturnValue(9),
   getTaskDetailPath: jest.fn().mockReturnValue('/'),
 }));

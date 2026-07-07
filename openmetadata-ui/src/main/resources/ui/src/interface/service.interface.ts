@@ -149,11 +149,16 @@ export interface IngestionWorkflowFormProps {
   cancelText?: string;
   okText?: string;
   className?: string;
+  hideFooter?: boolean;
   onCancel: () => void;
   onFocus: (fieldId: string) => void;
   onSubmit: (data: IngestionWorkflowData) => void;
   onChange?: (data: IngestionWorkflowData) => void;
   serviceData?: ServicesUpdateRequest;
+}
+
+export interface IngestionWorkflowFormHandle {
+  submit: () => void;
 }
 
 export type ExtraInfoType = {

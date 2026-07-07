@@ -217,7 +217,7 @@
     },
     {
       "name": "get_entity_details",
-      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose metadata fields are excluded, and per-column descriptions and raw schema/model SQL are truncated at 500 characters (marked with 'columnDescriptionsTruncated' / 'schemaDefinitionTruncated', or 'sqlTruncated' inside 'dataModel', when cut). The entity-level description is always returned in full.",
+      "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose index/noise metadata fields are excluded. Descriptions (entity-level and per-column) are returned in FULL and are never truncated — total response size is bounded by column pagination instead. Only the raw schema DDL and dbt model SQL carry a large safety cap (~30000 characters, flagged with 'schemaDefinitionTruncated' or 'sqlTruncated' inside 'dataModel') to keep the response retrievable; realistic DDL/SQL is well under this. For wide entities (many columns), the 'columns' array is paginated: when it is capped the response sets 'columnsTruncated' with 'totalColumns', 'returnedColumns', 'columnOffset' and 'hasMoreColumns'. When 'hasMoreColumns' is true, fetch the next page by calling again with 'columnOffset' set to the previous 'columnOffset' + 'returnedColumns'; when it is false there are no further columns to retrieve.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
         "type": "object",
@@ -229,6 +229,14 @@
           "fqn": {
             "type": "string",
             "description": "Fully qualified name of the entity. IMPORTANT: Use the exact 'fullyQualifiedName' value from search_metadata or semantic_search results. Do not attempt to construct or modify the FQN."
+          },
+          "columnOffset": {
+            "type": "integer",
+            "description": "Zero-based index of the first column to return, for paging through a wide entity's columns. Defaults to 0. Only applies to entities that have a 'columns' array (e.g. tables)."
+          },
+          "columnLimit": {
+            "type": "integer",
+            "description": "Maximum number of columns to return starting at 'columnOffset'. Omit to return as many columns as fit the response size budget (columns beyond the budget are dropped and flagged with 'columnsTruncated'/'hasMoreColumns')."
           }
         },
         "required": [
@@ -859,6 +867,69 @@
           "fqn",
           "entityType"
         ]
+      }
+    },
+    {
+      "name": "create_context_memory",
+      "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "name": {
+            "type": "string",
+            "description": "Stable, unique system name for the memory. Reusing an existing name updates that memory instead of creating a new one."
+          },
+          "question": {
+            "type": "string",
+            "description": "The canonical question or instruction this memory represents (e.g. 'Which warehouse should finance dashboards query?')."
+          },
+          "answer": {
+            "type": "string",
+            "description": "The canonical answer or guidance to retain (e.g. 'Always query the FINANCE_PROD warehouse for finance dashboards')."
+          },
+          "title": {
+            "type": "string",
+            "description": "Short human-readable title shown in the Context Center."
+          },
+          "summary": {
+            "type": "string",
+            "description": "Optional one-line summary of the memory."
+          },
+          "description": {
+            "type": "string",
+            "description": "Optional longer description in Markdown format."
+          },
+          "displayName": {
+            "type": "string",
+            "description": "Human-readable display name for the memory."
+          },
+          "memoryType": {
+            "type": "string",
+            "description": "Category of the memory. Defaults to 'Note' when omitted.",
+            "enum": ["Preference", "UseCase", "Note", "Runbook", "Faq"]
+          },
+          "memoryScope": {
+            "type": "string",
+            "description": "Scope at which the memory applies. 'UserGlobal' applies broadly; 'EntityScoped' ties it to a specific entity.",
+            "enum": ["UserGlobal", "EntityScoped"]
+          },
+          "owners": {
+            "type": "array",
+            "description": "List of OpenMetadata usernames or team names to set as owners of this memory.",
+            "items": { "type": "string" }
+          },
+          "tags": {
+            "type": "array",
+            "description": "Tag FQNs to apply to this memory (e.g. 'Tier.Tier1', 'PII.Sensitive').",
+            "items": { "type": "string" }
+          },
+          "domains": {
+            "type": "array",
+            "description": "Fully qualified names of the domains this memory belongs to (e.g. 'Finance', 'Marketing').",
+            "items": { "type": "string" }
+          }
+        },
+        "required": ["name", "question", "answer"]
       }
     }
   ]

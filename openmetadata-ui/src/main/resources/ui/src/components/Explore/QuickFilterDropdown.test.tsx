@@ -134,7 +134,7 @@ describe('QuickFilterDropdown', () => {
     const onGetInitialOptions = jest.fn();
     renderDropdown({ onGetInitialOptions });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
 
     expect(onGetInitialOptions).toHaveBeenCalledWith('entityType');
   });
@@ -143,7 +143,7 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Table' }));
 
     expect(onChange).not.toHaveBeenCalled();
@@ -160,7 +160,7 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange, singleSelect: true });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Table' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Topic' }));
     fireEvent.click(screen.getByTestId('update-btn'));
@@ -175,7 +175,7 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange, hasNullOption: true });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.click(screen.getByTestId('no-option-checkbox'));
     fireEvent.click(screen.getByTestId('update-btn'));
 
@@ -192,7 +192,7 @@ describe('QuickFilterDropdown', () => {
     const onSearch = jest.fn();
     renderDropdown({ onSearch });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.change(screen.getByTestId('search-input'), {
       target: { value: 'tab' },
     });

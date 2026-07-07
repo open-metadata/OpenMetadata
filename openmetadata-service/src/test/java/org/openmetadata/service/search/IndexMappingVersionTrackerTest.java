@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -31,10 +32,13 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.IndexMappingVersionDAO;
+import org.openmetadata.service.jdbi3.SystemRepository;
 
 @ExtendWith(MockitoExtension.class)
 class IndexMappingVersionTrackerTest {
@@ -156,6 +160,48 @@ class IndexMappingVersionTrackerTest {
           new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester").getChangedMappings();
 
       assertEquals(List.of("table"), changedMappings);
+    }
+  }
+
+  @Test
+  void storedMappingEditSurfacesAsDriftAgainstSeededDefault() throws IOException {
+    Map<String, IndexMapping> mappings =
+        buildMappingsFromPairs("table", "/elasticsearch/%s/table_index_mapping.json");
+    try (var loaderMock = mockStatic(IndexMappingLoader.class);
+        var entityMock = mockStatic(Entity.class)) {
+      loaderMock.when(IndexMappingLoader::getInstance).thenReturn(indexMappingLoader);
+      when(indexMappingLoader.getIndexMapping()).thenReturn(mappings);
+      SystemRepository systemRepository = mock(SystemRepository.class);
+      entityMock.when(Entity::getSystemRepository).thenReturn(systemRepository);
+
+      IndexMappingVersionTracker tracker =
+          new IndexMappingVersionTracker(collectionDAO, "1.2.3", "tester");
+
+      when(systemRepository.getSearchIndexMappings()).thenReturn(null);
+      tracker.updateMappingVersions();
+      verify(indexMappingVersionDAO)
+          .upsertIndexMappingVersion(
+              eq("table"), hashCaptor.capture(), anyString(), eq("1.2.3"), anyLong(), eq("tester"));
+      String defaultHash = hashCaptor.getValue();
+      when(indexMappingVersionDAO.getAllMappingVersions())
+          .thenReturn(
+              List.of(new IndexMappingVersionDAO.IndexMappingVersion("table", defaultHash)));
+
+      assertTrue(
+          tracker.getChangedMappings().isEmpty(),
+          "no drift when stored mapping matches the seeded default");
+
+      Map<String, Object> editedTable =
+          Map.of(
+              "mappings", Map.of("properties", Map.of("customField", Map.of("type", "keyword"))));
+      SearchIndexMappings editedBlob =
+          new SearchIndexMappings().withLanguages(Map.of("en", Map.of("table", editedTable)));
+      when(systemRepository.getSearchIndexMappings()).thenReturn(editedBlob);
+
+      assertEquals(
+          List.of("table"),
+          tracker.getChangedMappings(),
+          "an admin edit to the stored mapping must surface as reindex-required drift");
     }
   }
 

@@ -539,7 +539,7 @@ export const clearAdvancedSearchFilters = async (page: Page) => {
   const clearResponse = page.waitForResponse(
     '/api/v1/search/query?*index=dataAsset*'
   );
-  await page.getByTestId('clear-filters').click();
+  await page.getByTestId('advance-search-clear-btn').click();
   await clearResponse;
   await waitForAllLoadersToDisappear(page);
 };

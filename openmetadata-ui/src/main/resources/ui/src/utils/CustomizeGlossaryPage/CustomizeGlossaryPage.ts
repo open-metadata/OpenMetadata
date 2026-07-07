@@ -16,7 +16,7 @@ import {
   GlossaryTermDetailPageWidgetKeys,
 } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
-import { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
+import type { WidgetConfig } from '../../pages/CustomizablePage/CustomizablePage.interface';
 import { getGlossaryWidgetFromKey } from '../GlossaryUtils';
 
 class CustomizeGlossaryPageClassBase {

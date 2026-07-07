@@ -15,20 +15,16 @@ import { ObjectFieldTemplatePropertyType } from '@rjsf/utils';
 import { MenuProps } from 'antd';
 import { get, isEmpty } from 'lodash';
 import { ServiceTypes } from 'Models';
-import React from 'react';
+import type { ComponentType } from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
-import KnowledgePageIcon from '../assets/svg/ic-articles.svg';
+import KnowledgeCenterIcon from '../assets/svg/context-center.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
-import LinkIcon from '../assets/svg/ic-link.svg';
+import QuickLinkIcon from '../assets/svg/ic-quick-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
-import AgentsStatusWidget from '../components/ServiceInsights/AgentsStatusWidget/AgentsStatusWidget';
-import PlatformInsightsWidget from '../components/ServiceInsights/PlatformInsightsWidget/PlatformInsightsWidget';
-import TotalDataAssetsWidget from '../components/ServiceInsights/TotalDataAssetsWidget/TotalDataAssetsWidget';
-import MetadataAgentsWidget from '../components/Settings/Services/Ingestion/MetadataAgentsWidget/MetadataAgentsWidget';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import {
@@ -79,6 +75,7 @@ import { getPipelineConfig } from './PipelineServiceUtils';
 import { getSearchServiceConfig } from './SearchServiceUtils';
 import { getSecurityConfig } from './SecurityServiceUtils';
 import { getServiceIcon } from './ServiceIconUtils';
+import { getDefaultInsightsTabWidgets } from './ServiceInsightsWidgets';
 import {
   getSearchIndexFromService,
   getTestConnectionName,
@@ -380,7 +377,7 @@ class ServiceUtilClassBase {
         (searchSource as KnowledgePageSearchSource)?.pageType ===
         PageType.QUICK_LINK;
 
-      return isQuickLink ? LinkIcon : KnowledgePageIcon;
+      return isQuickLink ? QuickLinkIcon : KnowledgeCenterIcon;
     }
 
     // Handle entities that don't have serviceType by using entity-specific icons
@@ -510,14 +507,7 @@ class ServiceUtilClassBase {
   }
 
   public getInsightsTabWidgets(_: ServiceTypes) {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgets: Record<string, React.ComponentType<any>> = {
-      AgentsStatusWidget,
-      PlatformInsightsWidget,
-      TotalDataAssetsWidget,
-    };
-
-    return widgets;
+    return getDefaultInsightsTabWidgets();
   }
 
   public getExtraInfo(): Promise<void> {
@@ -556,13 +546,11 @@ class ServiceUtilClassBase {
     return updatedData;
   }
 
-  public getAgentsTabWidgets() {
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    const widgets: Record<string, React.ComponentType<any>> = {
-      MetadataAgentsWidget,
-    };
-
-    return widgets;
+  public getAgentsTabWidgets(): Record<
+    string,
+    ComponentType<Record<string, unknown>>
+  > {
+    return {};
   }
 
   public getExtraIngestionMenuItems(

@@ -24,16 +24,19 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { EntityReference } from '../../../../generated/entity/type';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { getInstalledApplicationList } from '../../../../rest/applicationAPI';
+import { getMcpChatEnabled } from '../../../../rest/mcpClientAPI';
 import { ExtensionPointRegistry } from '../../../../utils/ExtensionPointRegistry';
 import Loader from '../../../common/Loader/Loader';
 import applicationsClassBase from '../AppDetails/ApplicationsClassBase';
 import type { AppPlugin } from '../plugins/AppPlugin';
+import { McpChatPlugin } from '../plugins/McpChatPlugin';
 import { ApplicationsContextType } from './ApplicationsProvider.interface';
 
 export const ApplicationsContext = createContext({} as ApplicationsContextType);
 
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
+  const [mcpChatEnabled, setMcpChatEnabled] = useState(false);
   const [loading, setLoading] = useState(true);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName, setApplicationsLoaded } = useApplicationStore();
@@ -75,8 +78,14 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [permissions]);
 
+  useEffect(() => {
+    getMcpChatEnabled()
+      .then(setMcpChatEnabled)
+      .catch(() => setMcpChatEnabled(false));
+  }, []);
+
   const installedPluginInstances: AppPlugin[] = useMemo(() => {
-    return applications
+    const plugins = applications
       .map((app) => {
         if (!app.name) {
           return null;
@@ -87,7 +96,13 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
         return PluginClass ? new PluginClass(app.name, true) : null;
       })
       .filter(Boolean) as AppPlugin[];
-  }, [applications]);
+
+    if (mcpChatEnabled) {
+      plugins.push(new McpChatPlugin('McpChatApplication', true));
+    }
+
+    return plugins;
+  }, [applications, mcpChatEnabled]);
 
   // Let plugins contribute to extension points
   useEffect(() => {
