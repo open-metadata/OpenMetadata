@@ -1,5 +1,5 @@
 import type { ComponentPropsWithoutRef, ReactNode } from 'react';
-import { createContext, useContext, useId } from 'react';
+import { createContext, useContext, useId, useRef } from 'react';
 import { Form as AriaForm } from 'react-aria-components';
 import type {
   Control,
@@ -9,11 +9,15 @@ import type {
   UseFormReturn,
 } from 'react-hook-form';
 import { FormProvider, useController, useFormContext } from 'react-hook-form';
+import { FieldDocProvider } from '../../application/form-field/field-doc-context';
+import { FieldDocPopover } from '../../application/form-field/field-doc-popover';
 
 interface FormProps<TFieldValues extends FieldValues = FieldValues>
   extends ComponentPropsWithoutRef<typeof AriaForm> {
   form: UseFormReturn<TFieldValues>;
   children: ReactNode;
+  showFieldDocs?: boolean;
+  renderFieldDoc?: (doc: string) => ReactNode;
 }
 
 interface FormFieldProps<
@@ -61,11 +65,28 @@ export const useFormFieldContext = () => {
 
 export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   form,
+  showFieldDocs = false,
+  renderFieldDoc,
   ...props
 }: FormProps<TFieldValues>) => {
+  const anchorRef = useRef<HTMLDivElement>(null);
+
+  if (!showFieldDocs) {
+    return (
+      <FormProvider {...form}>
+        <AriaForm {...props} />
+      </FormProvider>
+    );
+  }
+
   return (
     <FormProvider {...form}>
-      <AriaForm {...props} />
+      <FieldDocProvider enabled={showFieldDocs}>
+        <div className="tw:relative" ref={anchorRef}>
+          <AriaForm {...props} />
+        </div>
+        <FieldDocPopover renderDoc={renderFieldDoc} triggerRef={anchorRef} />
+      </FieldDocProvider>
     </FormProvider>
   );
 };
