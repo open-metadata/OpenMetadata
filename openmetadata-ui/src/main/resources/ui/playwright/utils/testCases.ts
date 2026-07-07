@@ -247,8 +247,12 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     .click();
   await responsePromise;
 
-  const { service, database, databaseSchema, displayName } =
-    table.entityResponseData;
+  const {
+    service,
+    database,
+    databaseSchema,
+    name: tableName,
+  } = table.entityResponseData;
 
   if (!service || !database || !databaseSchema) {
     throw new Error(
@@ -256,18 +260,28 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
     );
   }
 
-  await expect(page.getByTestId('breadcrumb-link').nth(0)).toHaveText(
-    `${service.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(1)).toHaveText(
-    `${database.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(2)).toHaveText(
-    `${databaseSchema.displayName}/`
-  );
-  await expect(page.getByTestId('breadcrumb-link').nth(3)).toHaveText(
-    `${displayName}/`
-  );
+  // The detail page renders a compact asset trail built from the table FQN
+  // (service > ... > table > test case): the middle crumbs (database and
+  // schema) are collapsed into the "..." menu and labels use entity names.
+  const breadcrumb = page.getByTestId('breadcrumb');
+
+  await expect(
+    breadcrumb.getByRole('link', { name: service.name })
+  ).toBeVisible();
+  await expect(breadcrumb.getByRole('link', { name: tableName })).toBeVisible();
+
+  await breadcrumb
+    .getByRole('button', { name: 'Show hidden breadcrumbs' })
+    .click();
+
+  await expect(
+    page.getByRole('menuitemradio', { name: database.name })
+  ).toBeVisible();
+  await expect(
+    page.getByRole('menuitemradio', { name: databaseSchema.name })
+  ).toBeVisible();
+
+  await page.keyboard.press('Escape');
 
   const tableResponsePromise = page.waitForResponse(
     (res) =>
@@ -275,8 +289,17 @@ export const verifyIncidentBreadcrumbsFromTablePageRedirect = async (
       res.request().method() === 'GET' &&
       res.status() === 200
   );
-  await page.getByTestId('breadcrumb-link').nth(3).click();
+  await breadcrumb.getByRole('link', { name: tableName }).click();
   await tableResponsePromise;
+
+  // The crumb opens the table's default tab; return to the Data Quality
+  // tab the flow started from so follow-up steps find the test case list.
+  await page.getByTestId('profiler').click();
+  const testCaseResponse = page.waitForResponse(
+    '/api/v1/dataQuality/testCases/search/list?*fields=*'
+  );
+  await page.getByRole('tab', { name: 'Data Quality' }).click();
+  await testCaseResponse;
 };
 
 export const findSystemTestDefinition = async (page: Page) => {
