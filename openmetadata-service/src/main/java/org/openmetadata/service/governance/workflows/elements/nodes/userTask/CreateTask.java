@@ -48,6 +48,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -1010,6 +1011,9 @@ public class CreateTask implements TaskListener {
       Object reason =
           new WorkflowVariableHandler(delegateTask)
               .getNamespacedVariable(GLOBAL_NAMESPACE, "manualGrantReason");
+      // Flowable process variables are untyped Object; the DAR path sets this as a String. Any
+      // other
+      // shape (or an unset variable → null) means "no reason", so mergeManualGrantReason no-ops.
       return reason instanceof String s ? s : null;
     } catch (Exception e) {
       // Missing variable already returns null above; only a real lookup error reaches here.
@@ -1024,29 +1028,16 @@ public class CreateTask implements TaskListener {
    * the description. Returns the payload unchanged for tasks/workflows that don't set one.
    */
   static Object mergeManualGrantReason(Object payload, String reason) {
-    if (reason == null || reason.isBlank()) {
-      return payload;
+    Object result = payload;
+    if (reason != null && !reason.isBlank()) {
+      // manualGrantReason is only ever set on the DAR path, so the payload is a
+      // DataAccessRequestPayload — bind the typed POJO and set the field instead of hand-merging a
+      // raw Map. JsonUtils ignores unknown properties, so the round-trip preserves every field.
+      result =
+          JsonUtils.convertValue(payload, DataAccessRequestPayload.class)
+              .withManualGrantReason(reason);
     }
-    Map<String, Object> merged = new LinkedHashMap<>();
-    if (payload instanceof Map<?, ?> rawMap) {
-      // Copy entries directly (like withGrantExpirationDate) rather than JsonUtils.getMap, which
-      // would convertValue the whole payload and could re-type nested values or throw.
-      rawMap.forEach((k, v) -> merged.put(String.valueOf(k), v));
-    } else if (payload != null) {
-      // Non-Map payload is not expected on the DAR path; convert defensively so the reason is never
-      // dropped, but never let a conversion problem break task creation.
-      try {
-        merged.putAll(JsonUtils.getMap(payload));
-      } catch (Exception e) {
-        LOG.warn(
-            "[CreateTask] Could not merge manualGrantReason into payload of type {}",
-            payload.getClass().getSimpleName(),
-            e);
-        return payload;
-      }
-    }
-    merged.put("manualGrantReason", reason);
-    return merged;
+    return result;
   }
 
   private EntityReference resolveCreatedByReference(

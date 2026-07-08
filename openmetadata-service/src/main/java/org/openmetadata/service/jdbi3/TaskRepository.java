@@ -441,12 +441,12 @@ public class TaskRepository extends EntityRepository<Task> {
     try {
       List<EntityReference> owners = Entity.getOwners(about);
       if (!nullOrEmpty(owners)) {
-        List<EntityReference> expanded = expandTeamsToUsers(owners);
-        task.setAssignees(expanded);
+        List<EntityReference> expandedAssignees = expandTeamsToUsers(owners);
+        task.setAssignees(expandedAssignees);
         LOG.debug(
             "Task {} defaulting assignees to entity owners: {}",
             task.getTaskId(),
-            expanded.stream().map(EntityReference::getName).toList());
+            expandedAssignees.stream().map(EntityReference::getName).toList());
       }
     } catch (Exception e) {
       LOG.debug(
