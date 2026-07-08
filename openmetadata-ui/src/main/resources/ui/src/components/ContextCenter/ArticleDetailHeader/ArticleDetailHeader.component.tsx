@@ -661,8 +661,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                   icon={
                     <SidebarCollapsible
                       className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
-                      height={18}
-                      width={18}
+                      height={20}
+                      width={20}
                     />
                   }
                   onClick={onToggleRightPanel}
