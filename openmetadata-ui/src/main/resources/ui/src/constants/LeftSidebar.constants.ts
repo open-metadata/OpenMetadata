@@ -14,6 +14,7 @@
 import { Cube01 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
@@ -38,7 +39,6 @@ import { ReactComponent as ArchiveIcon } from '../assets/svg/sidebar-icons/archi
 import { ReactComponent as ArticlesIcon } from '../assets/svg/sidebar-icons/articles.svg';
 import { ReactComponent as DashboardIcon } from '../assets/svg/sidebar-icons/dashboard.svg';
 import { ReactComponent as DocumentsIcon } from '../assets/svg/sidebar-icons/documents.svg';
-import { ReactComponent as MemoriesIcon } from '../assets/svg/sidebar-icons/memories.svg';
 import { LeftSidebarItem } from '../components/MyData/LeftSidebar/LeftSidebar.interface';
 import { SidebarItem } from '../enums/sidebar.enum';
 import { DataInsightTabs } from '../interface/data-insight.interface';

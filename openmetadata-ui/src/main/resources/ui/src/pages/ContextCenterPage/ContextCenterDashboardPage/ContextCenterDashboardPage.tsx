@@ -26,7 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
-import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memory.svg';
+import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
