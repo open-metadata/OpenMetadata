@@ -3801,6 +3801,34 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
 
         source.metadata.add_test_case_results.assert_called_once()
 
+    def test_real_pass_result_with_null_message_is_ingested(self):
+        """
+        Real test pass: status=pass, message=None.
+        Must call add_test_case_results exactly once.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(
+                status="pass", message=None, timing=[timing]
+            ),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = (
+                "snowflake.db.schema.orders.test_not_null_orders_id"
+            )
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
     def test_real_failure_result_is_ingested(self):
         """
         Real test failure: status=fail, message populated.
