@@ -225,6 +225,41 @@ describe('EdgeStyleUtils', () => {
       expect(style1).toBe(style2);
     });
 
+    it('recomputes cached styles when colors change', () => {
+      const edge = createMockEdge('edge1', 'entity1', 'entity2');
+      const tracedNodes = new Set(['entity1', 'entity2']);
+      const tracedColumns = new Set<string>();
+      const dqHighlightedEdges = new Set<string>();
+
+      const style1 = computeEdgeStyle(
+        edge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        colors,
+        false
+      );
+
+      expect(style1.stroke).toBe(colors.primary);
+
+      const updatedColors: LineageEdgeColors = {
+        ...colors,
+        primary: '#abcdef',
+      };
+      const style2 = computeEdgeStyle(
+        edge,
+        tracedNodes,
+        tracedColumns,
+        dqHighlightedEdges,
+        undefined,
+        updatedColors,
+        false
+      );
+
+      expect(style2.stroke).toBe('#abcdef');
+    });
+
     it('returns different styles for different cache keys', () => {
       const edge = createMockEdge('edge1', 'entity1', 'entity2');
       const tracedNodes1 = new Set<string>();

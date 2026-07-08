@@ -25,6 +25,7 @@ export interface LineageEdgeColors {
 }
 
 const edgeStyleCache = new Map<string, EdgeStyle>();
+let cachedColorSignature = '';
 
 function calculateEdgeStyle(
   edge: Edge,
@@ -88,6 +89,15 @@ export function computeEdgeStyle(
   targetHandle?: string | null,
   isEdgeHovered?: boolean
 ): EdgeStyle {
+  // Cache keys don't encode colors, so drop cached styles when the resolved
+  // colors change (e.g. the user updates the brand/custom theme) to avoid
+  // repainting stale strokes.
+  const colorSignature = `${colors.primary}|${colors.columnHighlight}|${colors.dqHighlight}`;
+  if (colorSignature !== cachedColorSignature) {
+    edgeStyleCache.clear();
+    cachedColorSignature = colorSignature;
+  }
+
   const fromEntityId = edge.data?.edge?.fromEntity?.id;
   const toEntityId = edge.data?.edge?.toEntity?.id;
 
