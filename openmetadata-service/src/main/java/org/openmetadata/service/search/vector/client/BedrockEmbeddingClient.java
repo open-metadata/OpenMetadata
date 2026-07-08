@@ -40,6 +40,10 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   private static final int COHERE_FIXED_DIMENSION = 1024;
   private static final int TITAN_V1_FIXED_DIMENSION = 1536;
 
+  // Bedrock validates each Cohere input against a 2048-character maxLength in the request schema
+  // before the Cohere-side `truncate` directive runs, so oversized text must be capped client-side.
+  private static final int COHERE_MAX_INPUT_CHARS = 2048;
+
   private static final BedrockEmbeddingFamily DEFAULT_FAMILY = BedrockEmbeddingFamily.TITAN_V2;
 
   private static final List<FamilyMatcher> FAMILY_MATCHERS =
@@ -88,7 +92,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
-        payload.putArray(FIELD_TEXTS).add(text);
+        payload.putArray(FIELD_TEXTS).add(capToCohereLimit(text));
         payload.put(
             FIELD_INPUT_TYPE,
             isQuery ? COHERE_INPUT_TYPE_SEARCH_QUERY : COHERE_INPUT_TYPE_SEARCH_DOCUMENT);
@@ -114,6 +118,14 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
 
     OptionalInt fixedDimension() {
       return fixedDimension;
+    }
+
+    private static String capToCohereLimit(String text) {
+      String capped = text;
+      if (text != null && text.length() > COHERE_MAX_INPUT_CHARS) {
+        capped = text.substring(0, COHERE_MAX_INPUT_CHARS);
+      }
+      return capped;
     }
   }
 
