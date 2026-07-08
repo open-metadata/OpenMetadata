@@ -36,6 +36,7 @@ from metadata.core.connections.test_connection.checks.database import (
     DatabaseStep,
     run_sql,
 )
+from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
     NetworkUnreachableError,
@@ -396,6 +397,14 @@ class DatabricksChecks:
 
 
 class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
+    def __init__(self, service_connection: DatabricksConnectionConfig) -> None:
+        super().__init__(service_connection)
+        # Databricks exposes a user-facing connectionTimeout (default 120s); a cold
+        # serverless warehouse can take longer than the framework default to resume,
+        # so the configured value drives the per-step budget. Resolved here (a plain
+        # config read, no network) so it feeds BaseConnection's step_timeout_seconds.
+        self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
+
     def _get_client(self) -> Engine:
         engine = get_connection(self.service_connection)
         self._on_close(engine.dispose)

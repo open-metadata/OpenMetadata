@@ -69,6 +69,24 @@ def test_close_disposes_the_engine_pool():
     engine.dispose.assert_called_once_with()
 
 
+def test_connection_timeout_drives_the_per_step_budget():
+    from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
+
+    # The user-configured connectionTimeout (default 120) must win as the per-step
+    # budget - a cold serverless warehouse can exceed the 60s framework default. Fed
+    # through BaseConnection.step_timeout_seconds, not a test_connection override.
+    default_config = _config()
+    assert DatabricksConnection(default_config).step_timeout_seconds == default_config.connectionTimeout
+
+    slow_config = _config()
+    slow_config.connectionTimeout = 300
+    assert DatabricksConnection(slow_config).step_timeout_seconds == 300
+
+    unset_config = _config()
+    unset_config.connectionTimeout = None
+    assert DatabricksConnection(unset_config).step_timeout_seconds == STEP_TIMEOUT_SECONDS
+
+
 def test_invalid_token_message_is_classified():
     error = _SqlAlchemyError(Exception("Error during request to server: Invalid access token"))
     assert DATABRICKS_ERRORS.classify(error).title == "Authentication failed"
