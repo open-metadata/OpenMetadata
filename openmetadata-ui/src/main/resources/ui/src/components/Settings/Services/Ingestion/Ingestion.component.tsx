@@ -13,7 +13,7 @@
 
 import { Tabs } from '@openmetadata/ui-core-components';
 import { isUndefined } from 'lodash';
-import { ComponentType, Key, useCallback, useEffect, useMemo } from 'react';
+import { ComponentType, Key, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as MetadataAgentIcon } from '../../../../assets/svg/ic-collapse.svg';
@@ -32,11 +32,11 @@ import { useRequiredParams } from '../../../../utils/useRequiredParams';
 import ErrorPlaceHolderIngestion from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolderIngestion';
 import DeploymentSummaryCard from '../../../ServiceAgents/components/DeploymentSummaryCard.component';
 import MetadataAgentsView from '../../../ServiceAgents/components/MetadataAgentsView.component';
-import { useMetadataAgents } from '../../../ServiceAgents/hooks/useMetadataAgents';
 import { IngestionProps } from './ingestion.interface';
 import './ingestion.less';
 
 const Ingestion: React.FC<IngestionProps> = ({
+  agents,
   serviceDetails,
   ingestionPipelineList,
   airflowInformation,
@@ -47,7 +47,6 @@ const Ingestion: React.FC<IngestionProps> = ({
   agentCounts,
   refreshAgentsList,
   workflowStartAt,
-  onDiscoveredAgentsCountChange,
 }: IngestionProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -58,16 +57,6 @@ const Ingestion: React.FC<IngestionProps> = ({
     subTab: string;
   }>();
   const { permissions } = usePermissionProvider();
-
-  const { agents, discoveredCount } = useMetadataAgents(
-    ingestionPipelineList,
-    serviceCategory,
-    decodedServiceFQN
-  );
-
-  useEffect(() => {
-    onDiscoveredAgentsCountChange?.(discoveredCount);
-  }, [discoveredCount, onDiscoveredAgentsCountChange]);
 
   const isDBService = useMemo(
     () => serviceCategory === ServiceCategory.DATABASE_SERVICES,

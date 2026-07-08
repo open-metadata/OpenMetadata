@@ -316,5 +316,81 @@ test.describe(
         });
       }
     });
+
+    test('agent discovered while on another tab updates count and appears on Agents tab', async ({
+      page,
+    }) => {
+      test.slow();
+
+      // Stay on the default tab; the discovery stream must be connected at
+      // page level for the tab count and agent list to update.
+      await redirectToHomePage(page);
+      await discoveryService.visitEntityPage(page);
+      await page.getByTestId('data-assets-header').waitFor();
+
+      const agentsTabCount = page
+        .getByTestId('agents')
+        .getByTestId('filter-count');
+      const initialTabCount = Number(
+        (await agentsTabCount.textContent()) ?? '0'
+      );
+
+      const { apiContext } = await getApiContext(page);
+
+      // Created only AFTER the page loaded, so the updates below can only
+      // come from the SSE stream — mirrors autopilot creating an agent.
+      const discoveredPipelineName = `pw-discovered-agent-${uuid()}`;
+      const pipelineResponse = await apiContext.post(
+        '/api/v1/services/ingestionPipelines',
+        {
+          data: {
+            airflowConfig: {},
+            loggerLevel: 'INFO',
+            name: discoveredPipelineName,
+            pipelineType: 'metadata',
+            service: {
+              id: discoveryService.entityResponseData.id,
+              type: 'databaseService',
+            },
+            sourceConfig: { config: { type: 'DatabaseMetadata' } },
+          },
+        }
+      );
+
+      expect(pipelineResponse.status()).toBe(201);
+
+      const discoveredPipeline = await pipelineResponse.json();
+      const runId = randomUUID();
+
+      const discoveryResponse = await apiContext.put(
+        `/api/v1/services/ingestionPipelines/progress/${encodeURIComponent(
+          discoveredPipeline.fullyQualifiedName
+        )}/${runId}`,
+        {
+          data: {
+            runId,
+            timestamp: Date.now(),
+            updateType: 'DISCOVERY',
+          },
+        }
+      );
+
+      expect(discoveryResponse.status()).toBe(200);
+
+      await test.step('Agents tab count updates while on another tab', async () => {
+        await expect(agentsTabCount).toHaveText(String(initialTabCount + 1));
+      });
+
+      await test.step('Discovered agent card is present on the Agents tab without reload', async () => {
+        await page.getByTestId('agents').click();
+
+        const metadataSubTab = page.getByTestId('metadata-sub-tab');
+        if (await metadataSubTab.isVisible()) {
+          await metadataSubTab.click();
+        }
+
+        await expect(getAgentCard(page, discoveredPipelineName)).toBeVisible();
+      });
+    });
   }
 );

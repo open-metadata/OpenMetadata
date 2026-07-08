@@ -20,8 +20,10 @@ import { Paging } from '../../../../generated/type/paging';
 import { UsePagingInterface } from '../../../../hooks/paging/usePaging';
 import { ServicesType } from '../../../../interface/service.interface';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
+import { Agent } from '../../../ServiceAgents/AgentsPage.interface';
 
 export interface IngestionProps {
+  agents: Agent[];
   ingestionPagingInfo: UsePagingInterface;
   serviceDetails: ServicesType;
   ingestionPipelineList: Array<IngestionPipeline>;
@@ -51,7 +53,6 @@ export interface IngestionProps {
   agentCounts?: Record<ServiceAgentSubTabs, number>;
   refreshAgentsList: (agentListType: ServiceAgentSubTabs) => Promise<void>;
   workflowStartAt?: number;
-  onDiscoveredAgentsCountChange?: (count: number) => void;
 }
 
 export interface SelectedRowDetails {

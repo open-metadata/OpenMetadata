@@ -378,6 +378,13 @@ jest.mock(
       ))
 );
 
+// The hook owns the SSE connection; mock it so jsdom never opens a stream.
+jest.mock('../../components/ServiceAgents/hooks/useMetadataAgents', () => ({
+  useMetadataAgents: jest
+    .fn()
+    .mockReturnValue({ agents: [], discoveredCount: 0 }),
+}));
+
 jest.mock(
   '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component',
   () =>

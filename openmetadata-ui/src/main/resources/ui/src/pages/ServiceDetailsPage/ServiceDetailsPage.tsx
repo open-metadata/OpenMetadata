@@ -44,6 +44,7 @@ import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable
 import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useMetadataAgents } from '../../components/ServiceAgents/hooks/useMetadataAgents';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -206,13 +207,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
     useState<WorkflowStatesData>();
   const [isWorkflowStatusLoading, setIsWorkflowStatusLoading] = useState(true);
   const [hostIp, setHostIp] = useState<string>();
-  // Agents inserted live from the progress stream that the paging totals
-  // don't know about yet; folded into the tab and sub-tab counts.
-  const [discoveredAgentsCount, setDiscoveredAgentsCount] = useState(0);
-
-  useEffect(() => {
-    setDiscoveredAgentsCount(0);
-  }, [decodedServiceFQN]);
 
   const fetchHostIp = async () => {
     try {
@@ -287,6 +281,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
   >([]);
+  // Lives at page level so the discovery stream stays connected on every tab;
+  // agents created while another tab is active still reach the list and counts.
+  const { agents: metadataAgents, discoveredCount } = useMetadataAgents(
+    ingestionPipelines,
+    serviceCategory as ServiceCategory,
+    decodedServiceFQN
+  );
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -1576,10 +1577,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const agentCounts = useMemo(() => {
     return {
       [ServiceAgentSubTabs.COLLATE_AI]: collateAgentPaging.total,
-      [ServiceAgentSubTabs.METADATA]:
-        ingestionPaging.total + discoveredAgentsCount,
+      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total + discoveredCount,
     };
-  }, [collateAgentPaging, ingestionPaging, discoveredAgentsCount]);
+  }, [collateAgentPaging, ingestionPaging, discoveredCount]);
 
   const refreshAgentsList = useCallback(
     async (agentListType: ServiceAgentSubTabs) => {
@@ -1608,6 +1608,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => (
       <Ingestion
         agentCounts={agentCounts}
+        agents={metadataAgents}
         airflowInformation={airflowInformation}
         collateAgentPagingInfo={collateAgentPagingInfo}
         collateAgentsList={collateAgentsList}
@@ -1626,7 +1627,6 @@ const ServiceDetailsPage: FunctionComponent = () => {
         typeFilter={typeFilter}
         workflowStartAt={workflowStatesData?.mainInstanceState.startedAt}
         onCollateAgentPageChange={onCollateAgentPageChange}
-        onDiscoveredAgentsCountChange={setDiscoveredAgentsCount}
         onIngestionWorkflowsUpdate={getAllIngestionWorkflows}
         onPageChange={onPageChange}
       />
@@ -1636,6 +1636,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       isIngestionPipelineLoading,
       serviceDetails,
       ingestionPipelines,
+      metadataAgents,
       ingestionPaging,
       getAllIngestionWorkflows,
       handleIngestionListUpdate,
@@ -1846,9 +1847,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
         key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
         count:
-          ingestionPaging.total +
-          collateAgentPaging.total +
-          discoveredAgentsCount,
+          ingestionPaging.total + collateAgentPaging.total + discoveredCount,
         children: ingestionTab,
       });
     }
@@ -1914,7 +1913,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     dataModelPaging,
     ingestionPaging,
     collateAgentPaging,
-    discoveredAgentsCount,
+    discoveredCount,
     ingestionTab,
     testConnectionTab,
     activeTab,
