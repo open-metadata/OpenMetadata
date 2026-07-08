@@ -408,8 +408,11 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> result, int from, long totalResults) {
     result.put(McpResponseTrim.TOTAL_KEY, totalResults);
     int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
-    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY))) {
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY)) && returned > 0) {
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+    } else if (returned == 0) {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
+      result.remove(McpResponseTrim.MESSAGE_KEY);
     }
   }
 

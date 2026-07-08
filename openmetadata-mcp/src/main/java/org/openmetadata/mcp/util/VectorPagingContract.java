@@ -24,6 +24,9 @@ public final class VectorPagingContract {
     if (canAdvance && (budgetTrimmed || (fullPage && moreInIndex))) {
       result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+    } else if (!canAdvance) {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
+      result.remove(McpResponseTrim.MESSAGE_KEY);
     }
     if (fullPage && !budgetTrimmed && moreInIndex && pageMessage != null) {
       result.put(McpResponseTrim.MESSAGE_KEY, String.format(pageMessage, returned));
