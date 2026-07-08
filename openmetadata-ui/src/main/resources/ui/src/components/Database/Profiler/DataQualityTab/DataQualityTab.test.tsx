@@ -349,13 +349,13 @@ jest.mock('../../../common/DeleteWidget/DeleteWidgetModal', () =>
 );
 
 jest.mock(
-  '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1',
+  '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer',
   () =>
-    jest.fn().mockImplementation(({ open, onCancel, onUpdate }) =>
+    jest.fn().mockImplementation(({ open, variant, onClose, onUpdate }) =>
       open ? (
-        <div>
+        <div data-testid="test-case-form-v1" data-variant={variant}>
           <p>EditTestCaseModal</p>
-          <button onClick={onCancel}>cancel</button>
+          <button onClick={onClose}>cancel</button>
           <button onClick={onUpdate}>submit</button>
         </div>
       ) : null
@@ -671,6 +671,59 @@ describe('DataQualityTab test', () => {
 
     expect(editButton).toBeInTheDocument();
     expect(editButton).not.toBeDisabled();
+  });
+
+  it('Should render TestCaseFormDrawer in drawer variant by default when editing', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const actionDropdown = await findByTestId(
+      firstRow,
+      `action-dropdown-${firstRowData.name}`
+    );
+
+    await act(async () => {
+      fireEvent.click(actionDropdown);
+    });
+
+    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
+    await act(async () => {
+      fireEvent.click(editButton);
+    });
+
+    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
+
+    expect(testCaseFormDrawer).toBeInTheDocument();
+    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'drawer');
+  });
+
+  it('Should forward editVariant="modal" as TestCaseFormDrawer variant', async () => {
+    const firstRowData = MOCK_TEST_CASE[0];
+    await act(async () => {
+      render(<DataQualityTab {...mockProps} editVariant="modal" />);
+    });
+    const tableRows = await screen.findAllByRole('row');
+    const firstRow = tableRows[1];
+    const actionDropdown = await findByTestId(
+      firstRow,
+      `action-dropdown-${firstRowData.name}`
+    );
+
+    await act(async () => {
+      fireEvent.click(actionDropdown);
+    });
+
+    const editButton = await screen.findByTestId(`edit-${firstRowData.name}`);
+    await act(async () => {
+      fireEvent.click(editButton);
+    });
+
+    const testCaseFormDrawer = await screen.findByTestId('test-case-form-v1');
+
+    expect(testCaseFormDrawer).toHaveAttribute('data-variant', 'modal');
   });
 
   it('Delete functionality - menu item is accessible', async () => {

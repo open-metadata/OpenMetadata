@@ -62,7 +62,7 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
+import TestCaseFormDrawer from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import AddToBundleSuiteModal from '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component';
 import BundleSuiteFormDrawer from '../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
@@ -125,6 +125,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   tableHeader,
   removeTableBorder = false,
   enableBulkActions = false,
+  editVariant = 'drawer',
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -863,10 +864,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         onSuccess={handleBundleSuiteSuccess}
       />
       {selectedTestCase?.action === 'UPDATE' && (
-        <EditTestCaseModalV1
+        <TestCaseFormDrawer
           open
           testCase={selectedTestCase?.data}
-          onCancel={handleCancel}
+          variant={editVariant}
+          onClose={handleCancel}
           onUpdate={onTestUpdate}
         />
       )}

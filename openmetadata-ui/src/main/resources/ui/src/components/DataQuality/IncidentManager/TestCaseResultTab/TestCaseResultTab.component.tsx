@@ -33,7 +33,7 @@ import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
-import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
+import TestCaseFormDrawer from '../../AddDataQualityTest/components/TestCaseFormDrawer';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import {
@@ -317,11 +317,12 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
             ))}
 
           {testCaseData && isParameterEdit && (
-            <EditTestCaseModal
+            <TestCaseFormDrawer
               showOnlyParameter
+              open={isParameterEdit}
               testCase={testCaseData}
-              visible={isParameterEdit}
-              onCancel={handleCancelParameter}
+              variant="drawer"
+              onClose={handleCancelParameter}
               onUpdate={setTestCase}
             />
           )}
