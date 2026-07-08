@@ -29,6 +29,7 @@ function ObservabilityAlertActions({
   alertPermission,
   loading,
   record,
+  onEditAlert,
   onSelectAlert,
 }: Readonly<ObservabilityAlertActionsProps>) {
   const { t } = useTranslation();
@@ -48,21 +49,38 @@ function ObservabilityAlertActions({
     );
   }
 
+  const editButton = (
+    <Button
+      className="flex flex-center"
+      data-testid={`alert-edit-${record.name}`}
+      icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
+      type="text"
+      onClick={
+        onEditAlert
+          ? (event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              onEditAlert(record);
+            }
+          : undefined
+      }
+    />
+  );
+
   return (
     <div className="d-flex items-center">
       {alertPermission.edit && (
         <Tooltip placement="bottom" title={t('label.edit')}>
-          <Link
-            to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
-              record.fullyQualifiedName ?? ''
-            )}>
-            <Button
-              className="flex flex-center"
-              data-testid={`alert-edit-${record.name}`}
-              icon={<EditIcon color={DE_ACTIVE_COLOR} width="16px" />}
-              type="text"
-            />
-          </Link>
+          {onEditAlert ? (
+            editButton
+          ) : (
+            <Link
+              to={observabilityRouterClassBase.getObservabilityAlertsEditPath(
+                record.fullyQualifiedName ?? ''
+              )}>
+              {editButton}
+            </Link>
+          )}
         </Tooltip>
       )}
       {alertPermission.delete && (
