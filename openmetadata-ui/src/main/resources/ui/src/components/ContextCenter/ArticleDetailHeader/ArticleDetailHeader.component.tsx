@@ -483,7 +483,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           {/* Action buttons */}
           <div className="tw:flex tw:items-center tw:gap-1 tw:shrink-0">
             <Box align="center" className="tw:mr-1.5" gap={3}>
-            {contentChangeIcon}
+              {contentChangeIcon}
             </Box>
 
             <Tooltip title={t('label.version-plural')}>
