@@ -123,16 +123,16 @@ export const useDelete = <
     setIsDeleting(true);
     const errors: string[] = [];
 
-    for (let i = 0; i < selectedEntities.length; i++) {
+    for (const entity of selectedEntities) {
       try {
         await deleteEntity(
           entityType,
-          selectedEntities[i].id,
+          entity.id,
           false, // recursive: false (safe default)
           true // hardDelete: true (permanent)
         );
-      } catch (error) {
-        errors.push(getEntityName(selectedEntities[i]));
+      } catch {
+        errors.push(getEntityName(entity));
       }
     }
 
