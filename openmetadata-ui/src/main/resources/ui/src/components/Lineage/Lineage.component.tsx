@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Card } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import {
   DragEvent,
@@ -46,7 +47,6 @@ import { SourceType } from '../SearchedData/SearchedData.interface';
 import { CanvasLayerWrapper } from './Edges/CanvasLayerWrapper/CanvasLayerWrapper';
 import { LineageProps } from './Lineage.interface';
 import LineageSkeleton from './LineageSkeleton.component';
-import { Card } from '@openmetadata/ui-core-components';
 const Lineage = ({
   deleted,
   entity,
@@ -157,7 +157,14 @@ const Lineage = ({
         />
       </div>
     ) : undefined;
-  }, [entity, entityType, isPlatformLineage]);
+  }, [
+    isPlatformLineage,
+    platformHeader,
+    showControls,
+    isEditMode,
+    deleted,
+    hasEditAccess,
+  ]);
 
   // Loading the react flow component after the nodes and edges are initialised improves performance
   // considerably. So added an init state for showing loader.

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useMemo } from "react";
-import { LineageEdgeColors } from "../utils/EdgeStyleUtils";
-import { useTheme } from "../context/UntitledUIThemeProvider/theme-provider";
+import { useMemo } from 'react';
+import { useTheme } from '../context/UntitledUIThemeProvider/theme-provider';
+import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
 
 /**
  * Resolves the literal colors used to paint lineage edges on the canvas.
@@ -27,9 +27,9 @@ export const useLineageEdgeColors = (): LineageEdgeColors => {
 
   return useMemo(() => {
     return {
-      primary: brandColors?.primaryColor ?? "#1570ef",
-      columnHighlight: "#444ce7", // It's a replacement to indigo-600 not a theme color
-      dqHighlight: brandColors?.errorColor ?? "#d92d20",
+      primary: brandColors?.primaryColor ?? '#1570ef',
+      columnHighlight: '#444ce7', // It's a replacement to indigo-600 not a theme color
+      dqHighlight: brandColors?.errorColor ?? '#d92d20',
     };
   }, [brandColors]);
 };

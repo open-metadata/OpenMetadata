@@ -37,8 +37,8 @@
 import {
   Button,
   Dropdown,
-  Typography,
   Table as UntitledTable,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import type { ColumnsType } from 'antd/es/table/interface';
