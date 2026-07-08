@@ -478,12 +478,10 @@ public class ElasticSearchVectorService implements VectorIndexService {
   }
 
   public void close() {
-    try {
-      if (client != null && client._transport() != null) {
-        client._transport().close();
-      }
-    } catch (Exception e) {
-      LOG.warn("Error closing Elasticsearch transport: {}", e.getMessage());
-    }
+    // No-op by design, mirroring OpenSearchVectorService. The elasticsearch-java client stored
+    // here was constructed elsewhere and its Rest5Client transport is shared with
+    // ElasticSearchClient and every other manager. Closing the transport from here would shut
+    // down HTTP I/O for the whole application (the same failure mode as the OpenSearch
+    // "I/O reactor has been shut down" production incident).
   }
 }
