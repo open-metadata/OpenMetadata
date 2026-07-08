@@ -158,6 +158,19 @@ public abstract class McpTestBase {
     return OBJECT_MAPPER.readValue(response.body(), responseType);
   }
 
+  protected static HttpResponse<String> putText(String path, String body) throws Exception {
+    String baseUrl = TestSuiteBootstrap.getBaseUrl();
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(baseUrl + "/api/v1/" + path))
+            .header("Content-Type", "text/plain")
+            .header("Authorization", authToken)
+            .PUT(HttpRequest.BodyPublishers.ofString(body))
+            .timeout(Duration.ofSeconds(30))
+            .build();
+    return HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+  }
+
   protected static JsonNode patch(String path, String jsonPatch) throws Exception {
     String baseUrl = TestSuiteBootstrap.getBaseUrl();
     HttpRequest request =
