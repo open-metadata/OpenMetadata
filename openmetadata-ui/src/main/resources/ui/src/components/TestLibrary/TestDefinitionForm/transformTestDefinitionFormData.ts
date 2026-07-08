@@ -130,6 +130,16 @@ export const buildCreateTestDefinitionPayload = (
   };
 };
 
+/**
+ * `buildFormDefaults` normalizes absent array fields (e.g. `supportedServices`)
+ * to `[]` so multi-selects always have a defined value to render. Without this
+ * guard, that `[]` default would round-trip back through `buildEditPatch` as a
+ * spurious `add` op against a `TestDefinition` that never had the key set,
+ * turning an untouched field into a false-positive diff.
+ */
+const isNoopEmptyArray = (value: unknown, initialValue: unknown): boolean =>
+  Array.isArray(value) && value.length === 0 && initialValue === undefined;
+
 export const buildEditPatch = (
   initialValues: TestDefinition,
   values: TestDefinitionFormValues
@@ -148,8 +158,12 @@ export const buildEditPatch = (
     enabled: values.enabled,
   };
 
+  const initialRecord = initialValues as unknown as Record<string, unknown>;
   const definedRaw = Object.fromEntries(
-    Object.entries(normalizedRaw).filter(([, value]) => value !== undefined)
+    Object.entries(normalizedRaw).filter(
+      ([key, value]) =>
+        value !== undefined && !isNoopEmptyArray(value, initialRecord[key])
+    )
   );
 
   return compare(initialValues, { ...initialValues, ...definedRaw });
