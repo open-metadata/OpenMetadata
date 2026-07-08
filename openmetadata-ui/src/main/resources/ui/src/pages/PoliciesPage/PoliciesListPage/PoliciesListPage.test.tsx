@@ -59,7 +59,7 @@ jest.mock('react-router-dom', () => ({
     </a>
   )),
 }));
-jest.mock('../../../components/common/DeleteWidget/DeleteWidgetModal', () =>
+jest.mock('../../../components/common/DeleteWidget/DeleteEntityModal', () =>
   jest.fn().mockReturnValue(<div>Delete Widget</div>)
 );
 jest.mock(
