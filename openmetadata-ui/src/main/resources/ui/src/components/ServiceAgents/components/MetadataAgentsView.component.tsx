@@ -227,7 +227,6 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           initialRunId={runsFor.runId}
           onClose={() => setRunsFor(null)}
           onOpenLogs={(agent) => {
-            setRunsFor(null);
             setLogsFor(agent);
           }}
           onRun={onRun}
