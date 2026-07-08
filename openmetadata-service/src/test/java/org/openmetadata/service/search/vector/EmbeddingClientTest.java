@@ -1,7 +1,9 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.ArrayList;
@@ -13,6 +15,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 
 class EmbeddingClientTest {
 
@@ -117,6 +120,94 @@ class EmbeddingClientTest {
     } finally {
       pool.shutdown();
     }
+  }
+
+  @Test
+  void testCircuitOpensAfterConsecutiveFailures() {
+    AtomicInteger calls = new AtomicInteger(0);
+    EmbeddingClient client = failingClient(calls, false);
+
+    for (int i = 0; i < 5; i++) {
+      assertThrows(RuntimeException.class, () -> client.embed("text"));
+    }
+
+    assertFalse(client.isAvailable());
+    assertThrows(EmbeddingUnavailableException.class, () -> client.embed("text"));
+    assertEquals(5, calls.get(), "provider must not be called once the circuit is open");
+  }
+
+  @Test
+  void testPermanentFailureOpensCircuitImmediately() {
+    AtomicInteger calls = new AtomicInteger(0);
+    EmbeddingClient client = failingClient(calls, true);
+
+    assertThrows(RuntimeException.class, () -> client.embed("text"));
+
+    assertFalse(client.isAvailable());
+    assertThrows(EmbeddingUnavailableException.class, () -> client.embed("text"));
+    assertEquals(1, calls.get(), "a permanent failure must open the circuit on the first failure");
+  }
+
+  @Test
+  void testCircuitRecoversWhenProviderReturns() {
+    AtomicInteger calls = new AtomicInteger(0);
+    EmbeddingClient client =
+        new EmbeddingClient() {
+          @Override
+          protected float[] doEmbed(String text) {
+            if (calls.incrementAndGet() <= 5) {
+              throw new RuntimeException("boom");
+            }
+            return new float[] {1.0f};
+          }
+
+          @Override
+          protected long openCooldownMillis(boolean permanent) {
+            return 0L;
+          }
+
+          @Override
+          public int getDimension() {
+            return 1;
+          }
+
+          @Override
+          public String getModelId() {
+            return "recovery-test";
+          }
+        };
+
+    for (int i = 0; i < 5; i++) {
+      assertThrows(RuntimeException.class, () -> client.embed("text"));
+    }
+
+    assertNotNull(client.embed("text"));
+    assertTrue(client.isAvailable());
+  }
+
+  private static EmbeddingClient failingClient(AtomicInteger calls, boolean permanent) {
+    return new EmbeddingClient() {
+      @Override
+      protected float[] doEmbed(String text) {
+        calls.incrementAndGet();
+        throw new RuntimeException("boom");
+      }
+
+      @Override
+      protected boolean isPermanentFailure(RuntimeException failure) {
+        return permanent;
+      }
+
+      @Override
+      public int getDimension() {
+        return 1;
+      }
+
+      @Override
+      public String getModelId() {
+        return "failing-test";
+      }
+    };
   }
 
   static class MockEmbeddingClient extends EmbeddingClient {

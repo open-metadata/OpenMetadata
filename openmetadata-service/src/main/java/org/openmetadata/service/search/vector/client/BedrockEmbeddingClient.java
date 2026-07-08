@@ -4,6 +4,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
+import java.net.HttpURLConnection;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMBedrockEmbeddingConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -82,15 +83,27 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       InvokeModelResponse response = bedrockClient.invokeModel(request);
       return parseEmbeddingResponse(response.body().asUtf8String());
     } catch (AwsServiceException e) {
-      LOG.error("AWS service error calling Bedrock: {}", e.getMessage(), e);
+      LOG.debug("AWS service error calling Bedrock: {}", e.getMessage());
       throw new RuntimeException("Bedrock embedding generation failed (AWS service error)", e);
     } catch (SdkClientException e) {
-      LOG.error("SDK client error calling Bedrock: {}", e.getMessage(), e);
+      LOG.debug("SDK client error calling Bedrock: {}", e.getMessage());
       throw new RuntimeException("Bedrock embedding generation failed (SDK client error)", e);
     } catch (IOException e) {
-      LOG.error("IO error calling Bedrock: {}", e.getMessage(), e);
+      LOG.debug("IO error calling Bedrock: {}", e.getMessage());
       throw new RuntimeException("Bedrock embedding generation failed (IO error)", e);
     }
+  }
+
+  @Override
+  protected boolean isPermanentFailure(RuntimeException failure) {
+    return failure.getCause() instanceof AwsServiceException awsError
+        && isNonRetryableStatus(awsError.statusCode());
+  }
+
+  private static boolean isNonRetryableStatus(int statusCode) {
+    return statusCode == HttpURLConnection.HTTP_UNAUTHORIZED
+        || statusCode == HttpURLConnection.HTTP_FORBIDDEN
+        || statusCode == HttpURLConnection.HTTP_NOT_FOUND;
   }
 
   @Override
