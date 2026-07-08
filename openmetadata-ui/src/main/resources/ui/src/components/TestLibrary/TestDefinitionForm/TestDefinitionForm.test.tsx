@@ -10,27 +10,51 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  act,
-  fireEvent,
-  render,
-  screen,
-  waitFor,
-} from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import type { TestDefinition } from '../../../generated/tests/testDefinition';
 import {
   DataQualityDimensions,
   DataType,
   EntityType,
-  TestDataType,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
 import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
-import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import TestDefinitionForm from './TestDefinitionForm.component';
+
+jest.mock('../../../rest/testAPI', () => ({
+  createTestDefinition: jest.fn().mockResolvedValue({}),
+  patchTestDefinition: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../utils/ToastUtils', () => ({
+  showSuccessToast: jest.fn(),
+}));
+
+jest.mock('./TestDefinitionFormBody', () => ({
+  __esModule: true,
+  default: ({
+    form,
+  }: {
+    form: { setValue: (name: string, value: unknown) => void };
+  }) => (
+    <div data-testid="form-body">
+      <button
+        data-testid="set-display-name"
+        type="button"
+        onClick={() => form.setValue('displayName', 'Updated Display Name')}>
+        set-display-name
+      </button>
+    </div>
+  ),
+}));
+
+jest.mock('../../common/ServiceDocPanel/ServiceDocPanel', () => ({
+  __esModule: true,
+  default: () => <div data-testid="service-doc-panel" />,
+}));
 
 const mockOnSuccess = jest.fn();
 const mockOnCancel = jest.fn();
@@ -44,958 +68,152 @@ const mockInitialValues: TestDefinition = {
   testPlatforms: [TestPlatform.OpenMetadata],
   dataQualityDimension: DataQualityDimensions.Completeness,
   supportedDataTypes: [DataType.String, DataType.Int],
+  supportedServices: [],
   enabled: true,
   sqlExpression: 'SELECT * FROM {table} WHERE {column} IS NOT NULL',
 };
 
-const mockExternalTestDefinition: TestDefinition = {
-  id: 'test-def-ext-1',
-  name: 'dbtSchemaTest',
-  displayName: 'DBT Schema Test',
-  description: 'External test managed by DBT',
-  entityType: EntityType.Table,
-  testPlatforms: [TestPlatform.Dbt],
-  dataQualityDimension: DataQualityDimensions.Accuracy,
-  supportedDataTypes: [DataType.String],
-  supportedServices: ['BigQuery', 'Snowflake'],
-  enabled: true,
-  sqlExpression: 'SELECT COUNT(*) FROM {{ref("model")}}',
-  parameterDefinition: [
-    {
-      name: 'threshold',
-      displayName: 'Threshold',
-      dataType: TestDataType.Int,
-      description: 'Minimum count threshold',
-      required: true,
-    },
-  ],
-};
-
-jest.mock('../../../rest/testAPI', () => ({
-  createTestDefinition: jest.fn(),
-  patchTestDefinition: jest.fn(),
-}));
-
-jest.mock('../../../utils/ToastUtils', () => ({
-  showSuccessToast: jest.fn(),
-}));
-
-jest.mock('../../AlertBar/AlertBar', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ message }) => (
-      <div data-testid="alert-bar">{message}</div>
-    )),
-}));
-
-jest.mock('../../../utils/formUtils', () => ({
-  createScrollToErrorHandler: jest.fn(() => jest.fn()),
-}));
-
-jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ value, onChange }) => (
-      <textarea
-        data-testid="code-editor"
-        value={value}
-        onChange={(e) => onChange?.(e.target.value)}
-      />
-    )),
-}));
-
-jest.mock('../../common/ServiceDocPanel/ServiceDocPanel', () => ({
-  __esModule: true,
-  default: jest.fn().mockImplementation(({ activeField, serviceName }) => (
-    <div data-testid="service-doc-panel">
-      {serviceName}:{activeField}
-    </div>
-  )),
-}));
-
-describe('TestDefinitionForm Component', () => {
-  beforeEach(() => {
+describe('TestDefinitionForm wrapper', () => {
+  afterEach(() => {
     jest.clearAllMocks();
-    (createTestDefinition as jest.Mock).mockResolvedValue({});
-    (patchTestDefinition as jest.Mock).mockResolvedValue({});
-    window.HTMLElement.prototype.scrollIntoView = jest.fn();
-    window.HTMLElement.prototype.scrollTo = jest.fn();
   });
 
-  describe('Rendering', () => {
-    it('should render form in create mode with all required fields', async () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
+  it('renders the drawer variant with the doc panel by default', () => {
+    render(
+      <TestDefinitionForm
+        open
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
 
-      expect(screen.getByLabelText('label.name')).toBeInTheDocument();
-      expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
-      expect(screen.getByLabelText('label.description')).toBeInTheDocument();
+    expect(screen.getByTestId('form-body')).toBeInTheDocument();
+    expect(screen.getByTestId('service-doc-panel')).toBeInTheDocument();
+  });
 
-      await screen.findByTestId('code-editor');
+  it('renders the modal variant without the doc panel', () => {
+    render(
+      <TestDefinitionForm
+        open
+        variant="modal"
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
 
-      expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
-      expect(
-        screen.getByLabelText('label.test-platform-plural')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByLabelText('label.data-quality-dimension')
-      ).toBeInTheDocument();
-      expect(
-        screen.getByLabelText('label.supported-data-type-plural')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('save-test-definition')).toBeInTheDocument();
-    });
+    expect(screen.getByTestId('form-body')).toBeInTheDocument();
+    expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
+    expect(screen.getByTestId('create-btn')).toBeInTheDocument();
+  });
 
-    it('should render form in edit mode with initial values populated', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockInitialValues}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
+  it('uses the add title when there are no initialValues', () => {
+    render(
+      <TestDefinitionForm
+        open
+        variant="modal"
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
 
-      expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
+    expect(screen.getByText('label.add-entity')).toBeInTheDocument();
+  });
 
-      const nameInput = screen.getByLabelText('label.name') as HTMLInputElement;
+  it('uses the edit title when initialValues are provided', () => {
+    render(
+      <TestDefinitionForm
+        open
+        initialValues={mockInitialValues}
+        variant="modal"
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
 
-      expect(nameInput.value).toBe('columnValuesToBeNotNull');
-      expect(nameInput).toBeDisabled();
+    expect(screen.getByText('label.edit-entity')).toBeInTheDocument();
+  });
 
-      const displayNameInput = screen.getByLabelText(
-        'label.display-name'
-      ) as HTMLInputElement;
+  it('calls createTestDefinition with the built payload on create submit', async () => {
+    render(
+      <TestDefinitionForm
+        open
+        variant="modal"
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
 
-      expect(displayNameInput.value).toBe('Column Values To Be Not Null');
+    fireEvent.click(screen.getByTestId('create-btn'));
 
-      const descriptionInput = screen.getByLabelText(
-        'label.description'
-      ) as HTMLTextAreaElement;
-
-      expect(descriptionInput.value).toBe(
-        'Ensures that all values in a column are not null'
-      );
-    });
-
-    it('should render SQL query editor section', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
-    });
-
-    it('should render field documentation panel and update active field on focus', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      expect(screen.getByTestId('service-doc-panel')).toHaveTextContent(
-        'TestDefinitionForm:'
-      );
-
-      fireEvent.focus(screen.getByLabelText('label.name'));
-
-      expect(ServiceDocPanel).toHaveBeenLastCalledWith(
+    await waitFor(() => {
+      expect(createTestDefinition).toHaveBeenCalledWith(
         expect.objectContaining({
-          activeField: 'root/name',
-          serviceName: 'TestDefinitionForm',
-          serviceType: 'OpenMetadata',
-        }),
-        expect.anything()
-      );
-
-      fireEvent.focus(screen.getByLabelText('label.description'));
-
-      expect(ServiceDocPanel).toHaveBeenLastCalledWith(
-        expect.objectContaining({
-          activeField: 'root/description',
-          serviceName: 'TestDefinitionForm',
-          serviceType: 'OpenMetadata',
-        }),
-        expect.anything()
+          testPlatforms: [TestPlatform.OpenMetadata],
+          entityType: EntityType.Table,
+        })
       );
     });
+    // Real payload built by buildCreateTestDefinitionPayload: FormSelectItem
+    // option objects must have been unwrapped to raw enum/string values, not
+    // passed through as `{ id, label }`.
+    const [payload] = (createTestDefinition as jest.Mock).mock.calls[0];
 
-    it('should render parameter section with add button', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
+    expect(typeof payload.entityType).toBe('string');
+    expect(
+      payload.testPlatforms.every((p: unknown) => typeof p === 'string')
+    ).toBe(true);
+    expect(patchTestDefinition).not.toHaveBeenCalled();
 
-      const addButtons = screen.getAllByRole('button', {
-        name: /label.add-entity/i,
-      });
-
-      expect(addButtons.length).toBeGreaterThan(0);
-    });
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
   });
 
-  describe('Form Field Behavior', () => {
-    it('should disable name field in edit mode', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockInitialValues}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
+  it('calls patchTestDefinition with a patch reflecting a real field change on edit submit', async () => {
+    render(
+      <TestDefinitionForm
+        open
+        initialValues={mockInitialValues}
+        variant="modal"
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
 
-      const nameInput = screen.getByLabelText('label.name');
+    fireEvent.click(screen.getByTestId('set-display-name'));
+    fireEvent.click(screen.getByTestId('create-btn'));
 
-      expect(nameInput).toBeDisabled();
-    });
-
-    it('should enable name field in create mode', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const nameInput = screen.getByLabelText('label.name');
-
-      expect(nameInput).not.toBeDisabled();
-    });
-
-    it('should show enabled switch in edit mode', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockInitialValues}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const enabledSwitch = screen.getByRole('switch');
-
-      expect(enabledSwitch).toBeInTheDocument();
-      expect(enabledSwitch).toBeChecked();
-    });
-
-    it('should not show enabled switch in create mode', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const switches = screen.queryAllByRole('switch');
-
-      expect(switches).toHaveLength(0);
-    });
-
-    it('should update SQL expression when typing in editor', async () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const sqlEditor = screen.getByTestId(
-        'code-editor'
-      ) as HTMLTextAreaElement;
-
-      await act(async () => {
-        fireEvent.change(sqlEditor, {
-          target: { value: 'SELECT * FROM {table} WHERE {column} IS NOT NULL' },
-        });
-      });
-
-      expect(sqlEditor.value).toBe(
-        'SELECT * FROM {table} WHERE {column} IS NOT NULL'
+    await waitFor(() => {
+      expect(patchTestDefinition).toHaveBeenCalledWith(
+        mockInitialValues.id,
+        expect.arrayContaining([
+          expect.objectContaining({
+            op: 'replace',
+            path: '/displayName',
+            value: 'Updated Display Name',
+          }),
+        ])
       );
     });
 
-    it('should populate SQL expression in edit mode', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockInitialValues}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
+    expect(createTestDefinition).not.toHaveBeenCalled();
 
-      const sqlEditor = screen.getByTestId('code-editor');
-
-      expect(sqlEditor).toHaveValue(
-        'SELECT * FROM {table} WHERE {column} IS NOT NULL'
-      );
-    });
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
   });
 
-  describe('Parameter Management', () => {
-    it('should add new parameter when add button is clicked', async () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const addButtons = screen.getAllByText('label.add-entity');
-      const parameterAddButton = addButtons[addButtons.length - 1];
-
-      await act(async () => {
-        fireEvent.click(parameterAddButton);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
-        expect(
-          screen.getByPlaceholderText('label.parameter-name')
-        ).toBeInTheDocument();
-      });
-    });
-
-    it('should remove parameter when remove button is clicked', async () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const addButtons = screen.getAllByText('label.add-entity');
-      const parameterAddButton = addButtons[addButtons.length - 1];
-
-      await act(async () => {
-        fireEvent.click(parameterAddButton);
-      });
-
-      await waitFor(() => {
-        expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
-      });
-
-      const removeButton = screen.getByLabelText('minus-circle');
-
-      await act(async () => {
-        fireEvent.click(removeButton);
-      });
-
-      await waitFor(() => {
-        expect(screen.queryByText('label.parameter 1')).not.toBeInTheDocument();
-      });
-    });
-  });
-
-  describe('Form Validation', () => {
-    it('should show validation errors when required fields are empty', async () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const saveButton = screen.getByTestId('save-test-definition');
-
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
-
-      await waitFor(() => {
-        const errors = screen.getAllByText('message.field-text-is-required');
-
-        expect(errors.length).toBeGreaterThan(0);
-      });
-    });
-  });
-
-  describe('Field Requirements', () => {
-    const submitEmptyForm = async () => {
-      const saveButton = screen.getByTestId('save-test-definition');
-      await act(async () => {
-        fireEvent.click(saveButton);
-      });
-    };
-
-    // name, entityType, and supportedDataTypes are required on empty submit.
-    // supportedDataTypes is required because testPlatforms defaults to [OpenMetadata].
-    it('should show exactly 3 validation errors when create form is submitted empty', async () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      await submitEmptyForm();
-
-      await waitFor(() => {
-        const errors = screen.getAllByText('message.field-text-is-required');
-
-        expect(errors).toHaveLength(3);
-      });
-    });
-
-    describe('Required fields', () => {
-      it('name field is required', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        await waitFor(() => {
-          expect(
-            screen.getAllByText('message.field-text-is-required').length
-          ).toBeGreaterThan(0);
-        });
-
-        const nameFormItem = screen
-          .getByLabelText('label.name')
-          .closest('.ant-form-item');
-
-        expect(nameFormItem).toHaveTextContent(
-          'message.field-text-is-required'
-        );
-      });
-
-      it('entityType field is required', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        await waitFor(() => {
-          expect(
-            screen.getAllByText('message.field-text-is-required').length
-          ).toBeGreaterThan(0);
-        });
-
-        const entityTypeFormItem = screen
-          .getByLabelText('label.entity-type')
-          .closest('.ant-form-item');
-
-        expect(entityTypeFormItem).toHaveTextContent(
-          'message.field-text-is-required'
-        );
-      });
-
-      it('testPlatforms field is required', () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        // testPlatforms defaults to [OpenMetadata] so submitting never triggers
-        // an error. Verify required status via the asterisk class Ant Design adds
-        // to the label when rules contain required: true.
-        const testPlatformsFormItem = screen
-          .getByLabelText('label.test-platform-plural')
-          .closest('.ant-form-item');
-
-        expect(
-          testPlatformsFormItem?.querySelector('.ant-form-item-required')
-        ).toBeInTheDocument();
-      });
-
-      it('parameter name field is required', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        const addButtons = screen.getAllByRole('button', {
-          name: /label.add-entity/i,
-        });
-        await act(async () => {
-          fireEvent.click(addButtons[addButtons.length - 1]);
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
-        });
-
-        await submitEmptyForm();
-
-        await waitFor(() => {
-          const paramNameFormItem = screen
-            .getByPlaceholderText('label.parameter-name')
-            .closest('.ant-form-item');
-
-          expect(paramNameFormItem).toHaveTextContent(
-            'message.field-text-is-required'
-          );
-        });
-      });
-    });
-
-    describe('Optional fields', () => {
-      // Helper: verifies that a form item contains no required-field error after submit.
-      const assertNoRequiredError = async (formItem: Element | null) => {
-        await waitFor(() => {
-          expect(formItem).not.toHaveTextContent(
-            'message.field-text-is-required'
-          );
-        });
-      };
-
-      it('displayName field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        const formItem = screen
-          .getByLabelText('label.display-name')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(formItem);
-      });
-
-      it('description field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        const formItem = screen
-          .getByLabelText('label.description')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(formItem);
-      });
-
-      it('sqlExpression field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        const formItem = screen
-          .getByTestId('code-editor')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(formItem);
-      });
-
-      it('dataQualityDimension field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        const formItem = screen
-          .getByLabelText('label.data-quality-dimension')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(formItem);
-      });
-
-      it('supportedServices field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        const formItem = screen
-          .getByLabelText('label.supported-service-plural')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(formItem);
-      });
-
-      it('supportedDataTypes field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        await submitEmptyForm();
-
-        const formItem = screen
-          .getByLabelText('label.supported-data-type-plural')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(formItem);
-      });
-
-      it('parameter dataType field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        const addButtons = screen.getAllByText('label.add-entity');
-        await act(async () => {
-          fireEvent.click(addButtons[addButtons.length - 1]);
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
-        });
-
-        await submitEmptyForm();
-
-        const formItem = screen
-          .getByLabelText('label.data-type')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(formItem);
-      });
-
-      it('parameter displayName field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        const addButtons = screen.getAllByText('label.add-entity');
-        await act(async () => {
-          fireEvent.click(addButtons[addButtons.length - 1]);
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
-        });
-
-        await submitEmptyForm();
-
-        const paramDisplayNameFormItem = screen
-          .getByPlaceholderText('label.parameter-display-name')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(paramDisplayNameFormItem);
-      });
-
-      it('parameter description field is optional', async () => {
-        render(
-          <TestDefinitionForm
-            onCancel={mockOnCancel}
-            onSuccess={mockOnSuccess}
-          />
-        );
-
-        const addButtons = screen.getAllByText('label.add-entity');
-        await act(async () => {
-          fireEvent.click(addButtons[addButtons.length - 1]);
-        });
-
-        await waitFor(() => {
-          expect(screen.getByText('label.parameter 1')).toBeInTheDocument();
-        });
-
-        await submitEmptyForm();
-
-        const paramDescFormItem = screen
-          .getByPlaceholderText('label.parameter-description')
-          .closest('.ant-form-item');
-
-        await assertNoRequiredError(paramDescFormItem);
-      });
-    });
-  });
-
-  describe('Form Submission', () => {
-    it('should have save button that triggers form submission', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const saveButton = screen.getByTestId('save-test-definition');
-
-      expect(saveButton).toBeInTheDocument();
-      expect(saveButton).toHaveTextContent('label.save');
-    });
-
-    it('should render form with proper structure for submission', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      expect(screen.getByLabelText('label.name')).toBeInTheDocument();
-      expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-      expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
-      expect(
-        screen.getByLabelText('label.test-platform-plural')
-      ).toBeInTheDocument();
-      expect(screen.getByTestId('save-test-definition')).toBeInTheDocument();
-    });
-
-    it('should initialize with testPlatforms field in edit mode', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockInitialValues}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const testPlatformField = screen.getByLabelText(
-        'label.test-platform-plural'
-      );
-
-      expect(testPlatformField).toBeInTheDocument();
-    });
-  });
-
-  describe('User Interactions', () => {
-    it('should call onCancel when cancel button is clicked', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const cancelButton = screen.getByText('label.cancel');
-      fireEvent.click(cancelButton);
-
-      expect(mockOnCancel).toHaveBeenCalled();
-    });
-
-    it('should close drawer when clicking close icon', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const drawer = screen.getByRole('dialog');
-
-      expect(drawer).toBeInTheDocument();
-    });
-  });
-
-  describe('External Test Definition Handling', () => {
-    it('should render SQL expression field as disabled textarea for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const sqlField = screen.getByLabelText('label.sql-query');
-
-      expect(sqlField).toBeInTheDocument();
-      expect(sqlField).toBeDisabled();
-      expect(sqlField.tagName).toBe('TEXTAREA');
-    });
-
-    it('should render entity type as disabled input for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const entityTypeField = screen.getByLabelText('label.entity-type');
-
-      expect(entityTypeField).toBeDisabled();
-      expect(entityTypeField.tagName).toBe('INPUT');
-    });
-
-    it('should render test platforms as disabled input for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const testPlatformsField = screen.getByLabelText(
-        'label.test-platform-plural'
-      );
-
-      expect(testPlatformsField).toBeDisabled();
-      expect(testPlatformsField.tagName).toBe('INPUT');
-    });
-
-    it('should allow editing display name for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const displayNameFields = screen.getAllByLabelText('label.display-name');
-      const testDefinitionDisplayNameField = displayNameFields[0];
-
-      expect(testDefinitionDisplayNameField).not.toBeDisabled();
-    });
-
-    it('should allow editing description for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const descriptionFields = screen.getAllByLabelText('label.description');
-      const testDefinitionDescriptionField = descriptionFields[0];
-
-      expect(testDefinitionDescriptionField).not.toBeDisabled();
-    });
-
-    it('should allow editing data quality dimension for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const dimensionField = screen.getByLabelText(
-        'label.data-quality-dimension'
-      );
-
-      expect(dimensionField).not.toBeDisabled();
-    });
-
-    it('should disable supported services field for external tests in edit mode', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const supportedServicesField = screen.getByLabelText(
-        'label.supported-service-plural'
-      );
-
-      expect(supportedServicesField).toBeDisabled();
-    });
-
-    it('should disable supported data types field for external tests in edit mode', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const supportedDataTypesField = screen.getByLabelText(
-        'label.supported-data-type-plural'
-      );
-
-      expect(supportedDataTypesField).toBeDisabled();
-    });
-
-    it('should disable all parameter fields for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const parameterNameField = screen.getByPlaceholderText(
-        'label.parameter-name'
-      );
-      const parameterDescriptionField = screen.getByPlaceholderText(
-        'label.parameter-description'
-      );
-
-      expect(parameterNameField).toBeDisabled();
-      expect(parameterDescriptionField).toBeDisabled();
-    });
-
-    it('should hide add parameter button for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const addButtons = screen.queryAllByText('label.add-entity');
-      const parameterAddButton = addButtons.find((btn) =>
-        btn.textContent?.includes('label.parameter')
-      );
-
-      expect(parameterAddButton).toBeUndefined();
-    });
-
-    it('should hide remove parameter button for external tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockExternalTestDefinition}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const removeButton = screen.queryByLabelText('minus-circle');
-
-      expect(removeButton).not.toBeInTheDocument();
-    });
-
-    it('should render supported services field for all tests', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      const supportedServicesField = screen.getByLabelText(
-        'label.supported-service-plural'
-      );
-
-      expect(supportedServicesField).toBeInTheDocument();
-      expect(supportedServicesField).not.toBeDisabled();
-    });
-
-    it('should render supported services field in edit mode for OpenMetadata tests', () => {
-      render(
-        <TestDefinitionForm
-          initialValues={mockInitialValues}
-          onCancel={mockOnCancel}
-          onSuccess={mockOnSuccess}
-        />
-      );
-
-      const supportedServicesField = screen.getByLabelText(
-        'label.supported-service-plural'
-      );
-
-      expect(supportedServicesField).toBeInTheDocument();
-      expect(supportedServicesField).not.toBeDisabled();
-    });
-
-    it('should show all fields in create mode regardless of platform', () => {
-      render(
-        <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
-      );
-
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
-      expect(screen.getByLabelText('label.entity-type')).not.toBeDisabled();
-      expect(
-        screen.getByLabelText('label.test-platform-plural')
-      ).not.toBeDisabled();
-      expect(
-        screen.getByLabelText('label.supported-data-type-plural')
-      ).not.toBeDisabled();
-    });
+  it('does not call patchTestDefinition for an unchanged edit but still calls onSuccess', async () => {
+    render(
+      <TestDefinitionForm
+        open
+        initialValues={mockInitialValues}
+        variant="modal"
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('create-btn'));
+
+    await waitFor(() => expect(mockOnSuccess).toHaveBeenCalled());
+
+    expect(patchTestDefinition).not.toHaveBeenCalled();
   });
 });
