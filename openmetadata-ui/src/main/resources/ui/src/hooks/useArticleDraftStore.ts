@@ -55,6 +55,9 @@ export const useArticleDraftStore = create<ArticleDraftStore>()(
 
       removeDraft: (articleId: string) => {
         set((state) => {
+          if (!state.drafts[articleId]) {
+            return state;
+          }
           const { [articleId]: _, ...rest } = state.drafts;
 
           return { drafts: rest };

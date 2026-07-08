@@ -225,9 +225,7 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         }
       } else {
         setKnowledgePage(response);
-        if (draft) {
-          removeDraft(response.id);
-        }
+        removeDraft(response.id);
       }
 
       addToKnowledgeCenterRecentViewed({ ...response, timestamp: 0 });
