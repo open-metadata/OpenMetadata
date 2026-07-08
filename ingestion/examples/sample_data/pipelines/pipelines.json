@@ -367,6 +367,22 @@
 				"downstreamTasks": [],
 				"taskType": "PythonOperator"
 				}]
+		},
+		{
+			"name": "customer_profiles_pipeline",
+			"displayName": "Customer Profiles Pipeline",
+			"description": "Search relevancy fixture pipeline for loading customer profiles reference data.",
+			"sourceUrl": "https://airflow.example.com/dags/customer_profiles_pipeline",
+			"scheduleInterval": "0 3 * * *",
+			"service": "sample_airflow",
+			"tasks": [{
+				"name": "load_customer_profiles",
+				"displayName": "Load Customer Profiles",
+				"description": "Load the customer profiles fixture table.",
+				"sourceUrl": "https://airflow.example.com/dags/customer_profiles_pipeline/tasks/load_customer_profiles",
+				"downstreamTasks": [],
+				"taskType": "PythonOperator"
+				}]
 		}
 	]
 }

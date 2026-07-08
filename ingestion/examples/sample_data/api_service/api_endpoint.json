@@ -294,6 +294,34 @@
           }
         ]
       }
+    },
+    {
+      "name": "customer_profiles_endpoint",
+      "apiCollection": "sample_api_service.pet",
+      "displayName": "Customer Profiles Endpoint",
+      "description": "Search relevancy fixture endpoint for customer profiles lookups.",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/customerProfiles",
+      "requestMethod": "GET",
+      "responseSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "customer_id",
+            "dataType": "INT",
+            "description": "Customer identifier"
+          },
+          {
+            "name": "customer_profile_id",
+            "dataType": "STRING",
+            "description": "Customer profile identifier"
+          },
+          {
+            "name": "profile_status",
+            "dataType": "STRING",
+            "description": "Customer profile status"
+          }
+        ]
+      }
     }
   ]
 }

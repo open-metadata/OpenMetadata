@@ -120,6 +120,15 @@
 			"replicationFactor":2,
 			"maximumMessageSize":167,
 			"cleanupPolicies": ["delete"]
+		},
+		{
+			"name": "customer_profiles_events",
+			"description": "Search relevancy fixture topic for customer profiles events.",
+			"partitions": 24,
+			"retentionSize": 455858109,
+			"replicationFactor":2,
+			"maximumMessageSize":167,
+			"cleanupPolicies": ["delete"]
 		}
 	]
 }

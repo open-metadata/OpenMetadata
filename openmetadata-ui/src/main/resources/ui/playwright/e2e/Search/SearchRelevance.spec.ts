@@ -23,6 +23,11 @@ import { sidebarClick } from '../../utils/sidebar';
 
 const RELEVANCE_QUERY = 'provider address texas';
 const STOPWORD_RELEVANCE_QUERY = 'provider address in texas';
+const CUSTOMER_QUERY = 'customer';
+const CUSTOMERS_QUERY = 'customers';
+const CUSTOMER_PROFILE_QUERY = 'customer profile';
+const CUSTOMER_PROFILE_STATUS_QUERY = 'customer profile status';
+const CUSTOMER_PROFILES_QUERY = 'customer profiles';
 const CLEAR_NAME_TABLE_FQN =
   'sample_data.ecommerce_db.shopify.provider_address';
 const EXACT_TABLE_FQN =
@@ -35,11 +40,28 @@ const TIER_USAGE_DESCRIPTION_TABLE_FQN =
   'sample_data.ecommerce_db.shopify.regional_directory_tier1_usage';
 const WEAK_TIER_USAGE_DESCRIPTION_TABLE_FQN =
   'sample_data.ecommerce_db.shopify.work';
+const CUSTOMER_TABLE_FQN = 'sample_data.ecommerce_db.shopify.customer';
+const CUSTOMERS_TABLE_FQN = 'sample_data.ecommerce_db.shopify.customers';
+const CUSTOMER_PROFILE_TABLE_FQN =
+  'sample_data.ecommerce_db.shopify.customer_profile';
+const CUSTOMER_PROFILES_TABLE_FQN =
+  'sample_data.ecommerce_db.shopify.customer_profiles';
+const CUSTOMER_STRUCTURAL_TABLE_FQN =
+  'sample_data.ecommerce_db.shopify.identity_resolution_registry';
+const CUSTOMER_WEAK_TIER_USAGE_TABLE_FQN =
+  'sample_data.ecommerce_db.shopify.support_case_rollup_tier1_usage';
 
-const RELEVANCE_FIXTURES: ReadonlyArray<{
+interface SearchFixture {
   fqn: string;
   index: string;
-}> = [
+}
+
+interface RankedFixture {
+  key: string;
+  fqn: string;
+}
+
+const RELEVANCE_FIXTURES: ReadonlyArray<SearchFixture> = [
   {
     fqn: EXACT_TABLE_FQN,
     index: 'table',
@@ -70,6 +92,41 @@ const RELEVANCE_FIXTURES: ReadonlyArray<{
   },
   {
     fqn: 'sample_api_service.pet.provider_address_texas_endpoint',
+    index: 'apiEndpoint',
+  },
+];
+
+const CUSTOMER_RELEVANCE_FIXTURES: ReadonlyArray<SearchFixture> = [
+  {
+    fqn: CUSTOMER_PROFILES_TABLE_FQN,
+    index: 'table',
+  },
+  {
+    fqn: 'sample_kafka.customer_profiles_events',
+    index: 'topic',
+  },
+  {
+    fqn: 'sample_superset.customer_profiles_dashboard',
+    index: 'dashboard',
+  },
+  {
+    fqn: 'sample_airflow.customer_profiles_pipeline',
+    index: 'pipeline',
+  },
+  {
+    fqn: 'mlflow_svc.customer_profiles_model',
+    index: 'mlmodel',
+  },
+  {
+    fqn: 's3_storage_sample.departments.customer_profiles_exports',
+    index: 'container',
+  },
+  {
+    fqn: 'elasticsearch_sample.customer_profiles_index',
+    index: 'searchIndex',
+  },
+  {
+    fqn: 'sample_api_service.pet.customer_profiles_endpoint',
     index: 'apiEndpoint',
   },
 ];
@@ -154,6 +211,27 @@ const fqnOf = (hit: SearchHit) => hit._source?.fullyQualifiedName ?? '';
 const findRank = (fqns: string[], fqn: string) =>
   fqns.findIndex((value) => value === fqn);
 
+const compareTableFixtureRanks = async (
+  apiContext: APIRequestContext,
+  query: string,
+  fixtures: ReadonlyArray<RankedFixture>,
+  weakFixtureFqn: string
+): Promise<Record<string, boolean>> => {
+  const hits = await getSearchHits(apiContext, 'table', query, { size: 100 });
+  const fqns = hits.map(fqnOf);
+  const weakFixtureRank = findRank(fqns, weakFixtureFqn);
+  const rankComparison: Record<string, boolean> = {};
+
+  for (const fixture of fixtures) {
+    const fixtureRank = findRank(fqns, fixture.fqn);
+
+    rankComparison[fixture.key] =
+      fixtureRank >= 0 && weakFixtureRank >= 0 && fixtureRank < weakFixtureRank;
+  }
+
+  return rankComparison;
+};
+
 const searchTableFixtures = async (
   apiContext: APIRequestContext,
   query = RELEVANCE_QUERY
@@ -200,9 +278,10 @@ const searchTableFixtures = async (
 
 const searchFixture = async (
   apiContext: APIRequestContext,
-  fixture: (typeof RELEVANCE_FIXTURES)[number]
+  fixture: SearchFixture,
+  query = RELEVANCE_QUERY
 ) => {
-  const hits = await getSearchHits(apiContext, fixture.index, RELEVANCE_QUERY);
+  const hits = await getSearchHits(apiContext, fixture.index, query);
 
   return hits.some((hit) => fqnOf(hit) === fixture.fqn);
 };
@@ -309,6 +388,128 @@ test.describe(
       }
     });
 
+    test('ranks customer and customers identity matches before high-signal description matches', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const singularPluralFixtures: ReadonlyArray<RankedFixture> = [
+        {
+          key: 'customerBeforeWeakDescription',
+          fqn: CUSTOMER_TABLE_FQN,
+        },
+        {
+          key: 'customersBeforeWeakDescription',
+          fqn: CUSTOMERS_TABLE_FQN,
+        },
+      ];
+
+      try {
+        await expect
+          .poll(
+            () =>
+              compareTableFixtureRanks(
+                apiContext,
+                CUSTOMER_QUERY,
+                singularPluralFixtures,
+                CUSTOMER_WEAK_TIER_USAGE_TABLE_FQN
+              ),
+            {
+              intervals: [2_000, 5_000],
+              timeout: 90_000,
+            }
+          )
+          .toEqual({
+            customerBeforeWeakDescription: true,
+            customersBeforeWeakDescription: true,
+          });
+
+        await expect
+          .poll(
+            () =>
+              compareTableFixtureRanks(
+                apiContext,
+                CUSTOMERS_QUERY,
+                singularPluralFixtures,
+                CUSTOMER_WEAK_TIER_USAGE_TABLE_FQN
+              ),
+            {
+              intervals: [2_000, 5_000],
+              timeout: 90_000,
+            }
+          )
+          .toEqual({
+            customerBeforeWeakDescription: true,
+            customersBeforeWeakDescription: true,
+          });
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test('ranks customer profile name and column matches before high-signal description matches', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+      const customerProfileFixtures: ReadonlyArray<RankedFixture> = [
+        {
+          key: 'customerProfileBeforeWeakDescription',
+          fqn: CUSTOMER_PROFILE_TABLE_FQN,
+        },
+        {
+          key: 'customerProfilesBeforeWeakDescription',
+          fqn: CUSTOMER_PROFILES_TABLE_FQN,
+        },
+        {
+          key: 'structuralBeforeWeakDescription',
+          fqn: CUSTOMER_STRUCTURAL_TABLE_FQN,
+        },
+      ];
+
+      try {
+        await expect
+          .poll(
+            () =>
+              compareTableFixtureRanks(
+                apiContext,
+                CUSTOMER_PROFILE_QUERY,
+                customerProfileFixtures,
+                CUSTOMER_WEAK_TIER_USAGE_TABLE_FQN
+              ),
+            {
+              intervals: [2_000, 5_000],
+              timeout: 90_000,
+            }
+          )
+          .toEqual({
+            customerProfileBeforeWeakDescription: true,
+            customerProfilesBeforeWeakDescription: true,
+            structuralBeforeWeakDescription: true,
+          });
+
+        await expect
+          .poll(
+            () =>
+              compareTableFixtureRanks(
+                apiContext,
+                CUSTOMER_PROFILE_STATUS_QUERY,
+                customerProfileFixtures,
+                CUSTOMER_WEAK_TIER_USAGE_TABLE_FQN
+              ),
+            {
+              intervals: [2_000, 5_000],
+              timeout: 90_000,
+            }
+          )
+          .toEqual({
+            customerProfileBeforeWeakDescription: true,
+            customerProfilesBeforeWeakDescription: true,
+            structuralBeforeWeakDescription: true,
+          });
+      } finally {
+        await afterAction();
+      }
+    });
+
     test('finds provider address texas fixtures across searchable asset indexes', async ({
       page,
     }) => {
@@ -322,6 +523,31 @@ test.describe(
                 intervals: [2_000, 5_000],
                 timeout: 90_000,
               })
+              .toBe(true);
+          });
+        }
+      } finally {
+        await afterAction();
+      }
+    });
+
+    test('finds customer profiles fixtures across searchable asset indexes', async ({
+      page,
+    }) => {
+      const { apiContext, afterAction } = await getApiContext(page);
+
+      try {
+        for (const fixture of CUSTOMER_RELEVANCE_FIXTURES) {
+          await test.step(`Find ${fixture.fqn}`, async () => {
+            await expect
+              .poll(
+                () =>
+                  searchFixture(apiContext, fixture, CUSTOMER_PROFILES_QUERY),
+                {
+                  intervals: [2_000, 5_000],
+                  timeout: 90_000,
+                }
+              )
               .toBe(true);
           });
         }

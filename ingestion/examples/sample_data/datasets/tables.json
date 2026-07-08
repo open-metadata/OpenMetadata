@@ -33961,6 +33961,352 @@
           "state": "Confirmed"
         }
       ]
+    },
+    {
+      "name": "customer",
+      "displayName": "Customers",
+      "description": "Search relevancy fixture for singular customer records. The display name intentionally uses customers so singular and plural queries can be compared.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/customer",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE customer(customer_id NUMERIC PRIMARY KEY, customer_name VARCHAR(200), customer_email VARCHAR(200), customer_profile_status VARCHAR(50))",
+      "retentionPeriod": "30D",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the customer.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_name",
+          "dataType": "VARCHAR",
+          "dataLength": 200,
+          "dataTypeDisplay": "varchar",
+          "description": "Customer full name.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "customer_email",
+          "dataType": "VARCHAR",
+          "dataLength": 200,
+          "dataTypeDisplay": "varchar",
+          "description": "Customer email address.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "customer_profile_status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Status of the customer profile.",
+          "tags": [],
+          "ordinalPosition": 4
+        }
+      ],
+      "tags": []
+    },
+    {
+      "name": "customers",
+      "displayName": "Customer",
+      "description": "Search relevancy fixture for plural customers records. The display name intentionally uses customer so plural and singular queries can be compared.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/customers",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE customers(customer_id NUMERIC PRIMARY KEY, customer_name VARCHAR(200), preferred_channel VARCHAR(100), lifecycle_status VARCHAR(50))",
+      "retentionPeriod": "30D",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the customer.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_name",
+          "dataType": "VARCHAR",
+          "dataLength": 200,
+          "dataTypeDisplay": "varchar",
+          "description": "Customer full name.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "preferred_channel",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Preferred communication channel.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "lifecycle_status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Lifecycle status for the customer.",
+          "tags": [],
+          "ordinalPosition": 4
+        }
+      ],
+      "tags": []
+    },
+    {
+      "name": "customer_profile",
+      "displayName": "Customer Profile",
+      "description": "Search relevancy fixture for customer profile enrichment. Clear name matches should outrank high-signal tables that only mention customer profile in description.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/customer_profile",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE customer_profile(customer_id NUMERIC PRIMARY KEY, customer_profile_id VARCHAR(100), customer_profile_status VARCHAR(50), loyalty_segment VARCHAR(100), account_region VARCHAR(100))",
+      "retentionPeriod": "30D",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the customer.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_profile_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Identifier for the customer profile.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "customer_profile_status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Status of the customer profile.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "loyalty_segment",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Assigned loyalty segment.",
+          "tags": [],
+          "ordinalPosition": 4
+        },
+        {
+          "name": "account_region",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Region for the account.",
+          "tags": [],
+          "ordinalPosition": 5
+        }
+      ],
+      "tags": []
+    },
+    {
+      "name": "customer_profiles",
+      "displayName": "Customer Profiles",
+      "description": "Search relevancy fixture for customers profile records. Close singular/plural name matches should rank before Tier 1 usage-only description matches.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/customer_profiles",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE customer_profiles(customer_id NUMERIC PRIMARY KEY, customer_profile_id VARCHAR(100), customer_profile_status VARCHAR(50), profile_score NUMERIC, loyalty_segment VARCHAR(100))",
+      "retentionPeriod": "30D",
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the customer.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_profile_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Identifier for the customer profile.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "customer_profile_status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Status of the customer profile.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "profile_score",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Profile completeness score.",
+          "tags": [],
+          "ordinalPosition": 4
+        },
+        {
+          "name": "loyalty_segment",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Assigned loyalty segment.",
+          "tags": [],
+          "ordinalPosition": 5
+        }
+      ],
+      "tags": []
+    },
+    {
+      "name": "identity_resolution_registry",
+      "description": "Registry used for identity resolution workflows. Search fixture: table name does not contain customer profile, but column names do.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/identity_resolution_registry",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE identity_resolution_registry(identity_id NUMERIC PRIMARY KEY, customer_profile_id VARCHAR(100), customer_profile_status VARCHAR(50), customers_matched_count NUMERIC, resolution_status VARCHAR(50))",
+      "retentionPeriod": "30D",
+      "columns": [
+        {
+          "name": "identity_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the identity record.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_profile_id",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Matched customer profile identifier.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "customer_profile_status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Status copied from the matched customer profile.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "customers_matched_count",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Number of customers matched into this identity.",
+          "tags": [],
+          "ordinalPosition": 4
+        },
+        {
+          "name": "resolution_status",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Current identity resolution status.",
+          "tags": [],
+          "ordinalPosition": 5
+        }
+      ],
+      "tags": []
+    },
+    {
+      "name": "support_case_rollup_tier1_usage",
+      "description": "Support rollup used by executives. Search fixture: intentionally Tier 1 and very high usage while only mentioning customer profile status and customers in description.",
+      "version": 0.1,
+      "updatedAt": 1638354087391,
+      "updatedBy": "anonymous",
+      "href": "http://localhost:8585/api/v1/tables/support_case_rollup_tier1_usage",
+      "tableType": "Regular",
+      "schemaDefinition": "CREATE TABLE support_case_rollup_tier1_usage(case_id NUMERIC PRIMARY KEY, support_queue VARCHAR(100), case_priority VARCHAR(50), resolution_state VARCHAR(50), agent_team VARCHAR(100))",
+      "retentionPeriod": "30D",
+      "columns": [
+        {
+          "name": "case_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the support case.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "support_queue",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Support queue for the case.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "case_priority",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Priority assigned to the support case.",
+          "tags": [],
+          "ordinalPosition": 3
+        },
+        {
+          "name": "resolution_state",
+          "dataType": "VARCHAR",
+          "dataLength": 50,
+          "dataTypeDisplay": "varchar",
+          "description": "Resolution state for the support case.",
+          "tags": [],
+          "ordinalPosition": 4
+        },
+        {
+          "name": "agent_team",
+          "dataType": "VARCHAR",
+          "dataLength": 100,
+          "dataTypeDisplay": "varchar",
+          "description": "Team assigned to resolve the support case.",
+          "tags": [],
+          "ordinalPosition": 5
+        }
+      ],
+      "tags": [
+        {
+          "tagFQN": "Tier.Tier1",
+          "description": "Tier 1 data - critical business data",
+          "source": "Classification",
+          "labelType": "Manual",
+          "state": "Confirmed"
+        }
+      ]
     }
   ]
 }

@@ -105,6 +105,40 @@
 			],
 			"tags": [],
 			"followers": []
+		},
+		{
+			"name": "customer_profiles_index",
+			"displayName": "Customer Profiles Index",
+			"fullyQualifiedName": "elasticsearch_sample.customer_profiles_index",
+			"description": "Search relevancy fixture index for customer profiles documents.",
+			"version": 0.1,
+			"updatedAt": 1638354087591,
+			"serviceType": "ElasticSearch",
+			"fields": [
+				{
+					"name": "customer_id",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Customer identifier.",
+					"tags": []
+				},
+				{
+					"name": "customer_profile_id",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Customer profile search field.",
+					"tags": []
+				},
+				{
+					"name": "profile_status",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Customer profile status search field.",
+					"tags": []
+				}
+			],
+			"tags": [],
+			"followers": []
 		}
 	]
 }

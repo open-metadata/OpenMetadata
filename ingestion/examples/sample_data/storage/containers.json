@@ -237,5 +237,48 @@
       "csv",
       "parquet"
     ]
+  },
+  {
+    "name": "customer_profiles_exports",
+    "displayName": "Customer Profiles Exports",
+    "description": "Search relevancy fixture container for customer profiles export files.",
+    "parent": "s3_storage_sample.departments",
+    "prefix": "/departments/customer-profiles/",
+    "dataModel": {
+      "isPartitioned": false,
+      "columns": [
+        {
+          "name": "customer_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the customer.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "customer_profile_id",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "varchar",
+          "description": "Customer profile identifier exported for downstream systems.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "profile_status",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "varchar",
+          "description": "Customer profile status.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    "numberOfObjects": "12",
+    "size": "98304",
+    "fileFormats": [
+      "csv",
+      "parquet"
+    ]
   }
 ]
