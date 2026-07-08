@@ -12,7 +12,7 @@
  */
 import { Col, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { EntityType } from '../../enums/entity.enum';
 import { getEntityName } from '../../utils/EntityNameUtils';
@@ -74,7 +74,7 @@ const ObservabilityAlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          <DeleteWidgetModal
+          <DeleteEntityModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}
             entityId={selectedAlert?.id ?? ''}

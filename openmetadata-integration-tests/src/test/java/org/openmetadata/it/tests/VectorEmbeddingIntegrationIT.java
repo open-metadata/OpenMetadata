@@ -398,6 +398,70 @@ class VectorEmbeddingIntegrationIT {
   }
 
   @SuppressWarnings("unchecked")
+  @Test
+  void testMultiChunkEmbeddingIndexesEveryChunkAndDeletesStale() throws Exception {
+    // A body well over the 380-word chunk size must yield multiple chunk documents (issue #4789).
+    String longBody =
+        "Quarterly revenue reporting and financial reconciliation across all regions. ".repeat(80);
+    UUID parentId = UUID.randomUUID();
+    Table longTable =
+        createTestTable(parentId, "Long Article", longBody, "test.database.longArticle");
+
+    vectorService.updateEntityEmbeddingChunks(longTable, TEST_INDEX);
+    openSearchClient.indices().refresh(r -> r.index(TEST_INDEX));
+
+    List<Map<String, Object>> chunks = searchByParent(parentId.toString());
+    assertTrue(chunks.size() > 1, "a long body must index multiple chunk docs, not just chunk 0");
+    java.util.Set<Object> chunkIndexes = new java.util.HashSet<>();
+    for (Map<String, Object> chunk : chunks) {
+      chunkIndexes.add(chunk.get("chunkIndex"));
+      assertNotNull(chunk.get("embedding"), "each chunk doc must carry its own embedding");
+      assertEquals(parentId.toString(), chunk.get("parentId"));
+    }
+    assertEquals(chunks.size(), chunkIndexes.size(), "each chunk must have a distinct chunkIndex");
+
+    // Re-embedding a now-short body must delete the stale chunks, leaving exactly one.
+    Table shrunk =
+        createTestTable(parentId, "Long Article", "now a short body", "test.database.longArticle");
+    vectorService.updateEntityEmbeddingChunks(shrunk, TEST_INDEX);
+    openSearchClient.indices().refresh(r -> r.index(TEST_INDEX));
+    assertEquals(
+        1,
+        searchByParent(parentId.toString()).size(),
+        "shrinking the body must delete orphan chunks");
+  }
+
+  private List<Map<String, Object>> searchByParent(String parentId) throws Exception {
+    String query = "{\"size\":100,\"query\":{\"term\":{\"parentId\":\"" + parentId + "\"}}}";
+    var genericClient = openSearchClient.generic();
+    try (var response =
+        genericClient.execute(
+            os.org.opensearch.client.opensearch.generic.Requests.builder()
+                .method("POST")
+                .endpoint("/" + TEST_INDEX + "/_search")
+                .json(query)
+                .build())) {
+      String body =
+          response
+              .getBody()
+              .map(
+                  b -> {
+                    try {
+                      return new String(b.bodyAsBytes(), java.nio.charset.StandardCharsets.UTF_8);
+                    } catch (Exception e) {
+                      return "{}";
+                    }
+                  })
+              .orElse("{}");
+      JsonNode hitsNode = mapper.readTree(body).path("hits").path("hits");
+      List<Map<String, Object>> results = new ArrayList<>();
+      for (JsonNode hit : hitsNode) {
+        results.add(mapper.convertValue(hit.path("_source"), Map.class));
+      }
+      return results;
+    }
+  }
+
   private List<Map<String, Object>> executeKnnSearch(String queryText, int size) throws Exception {
     openSearchClient.indices().refresh(r -> r.index(TEST_INDEX));
 
