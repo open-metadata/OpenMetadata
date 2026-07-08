@@ -18,7 +18,7 @@ import {
   JsonTree,
   Query,
   Utils as QbUtils,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { Col, Form, Input, Row, Skeleton } from 'antd';
 import { debounce, isEmpty, isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';

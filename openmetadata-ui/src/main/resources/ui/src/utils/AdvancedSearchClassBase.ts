@@ -12,15 +12,14 @@
  */
 
 import {
-  AntdConfig,
+  BasicConfig,
   type AsyncFetchListValuesResult,
-  type BasicConfig,
   type Field,
   type Fields,
   type ListItem,
   type ListValues,
   type SelectFieldSettings,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
   SearchOutputType,
@@ -58,7 +57,7 @@ const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
-  baseConfig = AntdConfig;
+  baseConfig = BasicConfig;
   configTypes: BasicConfig['types'] = {
     ...this.baseConfig.types,
     multiselect: {

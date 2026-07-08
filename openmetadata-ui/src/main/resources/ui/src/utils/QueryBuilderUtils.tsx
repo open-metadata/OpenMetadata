@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
-import type { RenderSettings } from '@react-awesome-query-builder/antd';
+import type { RenderSettings } from '@react-awesome-query-builder/ui';
 import { Button } from 'antd';
 import { t } from './i18next/LocalUtil';
 

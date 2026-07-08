@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { JsonTree, Utils } from '@react-awesome-query-builder/antd';
+import { JsonTree, Utils } from '@react-awesome-query-builder/ui';
 import '@testing-library/jest-dom';
 import {
   act,
@@ -93,8 +93,8 @@ const mocks = {
   },
 };
 
-jest.mock('@react-awesome-query-builder/antd', () => {
-  const actual = jest.requireActual('@react-awesome-query-builder/antd');
+jest.mock('@react-awesome-query-builder/ui', () => {
+  const actual = jest.requireActual('@react-awesome-query-builder/ui');
 
   return {
     ...actual,

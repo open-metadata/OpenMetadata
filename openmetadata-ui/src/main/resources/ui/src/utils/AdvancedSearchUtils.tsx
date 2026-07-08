@@ -19,7 +19,7 @@ import {
   ListValues,
   RenderSettings,
   ValueSource,
-} from '@react-awesome-query-builder/antd';
+} from '@react-awesome-query-builder/ui';
 import { Button, Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
 import { isArray, isEmpty } from 'lodash';
 import React from 'react';
