@@ -33,6 +33,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   size,
   maxItems,
   className,
+  noMargin = false,
 }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -71,7 +72,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
 
   return (
     <Breadcrumbs
-      className={classNames('tw:mb-3', className)}
+      className={classNames(noMargin ? undefined : 'tw:mb-3', className)}
       data-testid="breadcrumb"
       divider={divider}
       items={allItems}

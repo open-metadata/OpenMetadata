@@ -21,22 +21,20 @@ const ColumnBulkOperations = () => {
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
 
-  const breadcrumb = (
-    <HeaderBreadcrumb items={[{ label: t('label.column-bulk-operations') }]} />
-  );
+  const breadcrumbItems = [{ label: t('label.column-bulk-operations') }];
 
   return (
     <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
       <div>
         {isAiMode ? (
           <HeaderShell
-            breadcrumb={breadcrumb}
+            breadcrumb={<HeaderBreadcrumb noMargin items={breadcrumbItems} />}
             className="tw:mb-4"
             title={t('label.column-bulk-operations')}
             variant="gradient"
           />
         ) : (
-          breadcrumb
+          <HeaderBreadcrumb items={breadcrumbItems} />
         )}
         <ColumnGrid />
       </div>

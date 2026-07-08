@@ -599,7 +599,10 @@ const GlossaryPage = () => {
       {isAiMode && (
         <HeaderShell
           breadcrumb={
-            <HeaderBreadcrumb items={[{ label: t('label.glossary') }]} />
+            <HeaderBreadcrumb
+              noMargin
+              items={[{ label: t('label.glossary') }]}
+            />
           }
           title={t('label.glossary')}
           variant="gradient"

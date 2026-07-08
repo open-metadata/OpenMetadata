@@ -179,7 +179,7 @@ const DataProductListPage = ({
   );
 
   const headerBreadcrumb = (
-    <HeaderBreadcrumb className="tw:!mb-0" items={breadcrumbItems} />
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} />
   );
 
   const { pageHeader } = usePageHeader({

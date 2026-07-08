@@ -762,6 +762,7 @@ const TagsPage = () => {
         <HeaderShell
           breadcrumb={
             <HeaderBreadcrumb
+              noMargin
               items={[{ label: t('label.classification-plural') }]}
             />
           }

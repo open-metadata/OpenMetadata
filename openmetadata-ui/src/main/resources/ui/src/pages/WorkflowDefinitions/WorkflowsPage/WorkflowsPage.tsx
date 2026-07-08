@@ -271,6 +271,7 @@ const WorkflowsPage = () => {
             actions={createWorkflowButton}
             breadcrumb={
               <HeaderBreadcrumb
+                noMargin
                 items={[{ label: t('label.workflow-plural') }]}
               />
             }

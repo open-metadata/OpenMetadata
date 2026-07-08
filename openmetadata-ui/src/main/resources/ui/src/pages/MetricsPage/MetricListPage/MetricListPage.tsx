@@ -813,6 +813,7 @@ const MetricListPage = () => {
               actions={metricActions}
               breadcrumb={
                 <HeaderBreadcrumb
+                  noMargin
                   items={[{ label: t('label.metric-plural') }]}
                 />
               }
