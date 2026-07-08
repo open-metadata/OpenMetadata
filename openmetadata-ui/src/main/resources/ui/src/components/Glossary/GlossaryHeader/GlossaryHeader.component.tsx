@@ -30,10 +30,10 @@ import { ReactComponent as ImportIcon } from '../../../assets/svg/ic-import.svg'
 import { ReactComponent as VersionIcon } from '../../../assets/svg/ic-version.svg';
 import { ReactComponent as IconDropdown } from '../../../assets/svg/menu.svg';
 import { ReactComponent as StyleIcon } from '../../../assets/svg/style.svg';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import { useEntityExportModalProvider } from '../../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import { EntityHeader } from '../../../components/Entity/EntityHeader/EntityHeader.component';
-import EntityDeleteModal from '../../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../../components/Modals/EntityNameModal/EntityNameModal.component';
 import { FQN_SEPARATOR_CHAR } from '../../../constants/char.constants';
 import { DE_ACTIVE_COLOR } from '../../../constants/constants';
@@ -56,7 +56,6 @@ import {
   getGlossariesById,
   getGlossaryTermsById,
 } from '../../../rest/glossaryAPI';
-import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityImportPath } from '../../../utils/EntityPureUtils';
 import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import Fqn from '../../../utils/Fqn';
@@ -641,13 +640,14 @@ const GlossaryHeader = ({
         </div>
       </div>
       {selectedData && (
-        <EntityDeleteModal
-          bodyText={getEntityDeleteMessage(selectedData.name, '')}
-          entityName={selectedData.name}
-          entityType="Glossary"
-          visible={isDelete}
+        <DeleteModal
+          entityTitle={selectedData.name}
+          message={t('message.delete-entity-message', {
+            entity: selectedData.name,
+          })}
+          open={isDelete}
           onCancel={() => setIsDelete(false)}
-          onConfirm={handleDelete}
+          onDelete={handleDelete}
         />
       )}
 

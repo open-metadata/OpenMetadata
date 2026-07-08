@@ -841,10 +841,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
         }}
         secondPanel={{
           flex: 0.8,
-          minWidth: 800,
+          minWidth: 812,
           children: (
             <Box className="tw:h-full" colGap={3}>
-              <div className="h-full tw:flex tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
+              <div className="h-full tw:flex tw:min-w-[400px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
                 <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
                   {!loading && !isElasticSearchIssue ? (
                     <SearchedData
@@ -864,7 +864,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 </Card>
                 {!loading && !isElasticSearchIssue && totalValue > 0 ? (
                   <PaginationCardWithControls
-                    className="tw:rounded-t-none"
                     page={validCurrentPage}
                     pageSize={pageSize}
                     pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}

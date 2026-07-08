@@ -50,7 +50,6 @@ import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
-import { getTypeBadge, TYPE_BADGE_KEY } from './ExploreSearchCard.utils';
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
@@ -124,16 +123,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       if (source?.entityType === EntityType.TABLE_COLUMN) {
         const columnSource = source as TableColumnSearchSource;
         const columnDetails: ExtraInfo[] = [];
-
-        if (columnSource.dataType) {
-          columnDetails.push({
-            key: TYPE_BADGE_KEY,
-            value: getTypeBadge(
-              columnSource.dataTypeDisplay ?? columnSource.dataType,
-              true
-            ),
-          });
-        }
 
         if (columnSource.table) {
           columnDetails.push({
