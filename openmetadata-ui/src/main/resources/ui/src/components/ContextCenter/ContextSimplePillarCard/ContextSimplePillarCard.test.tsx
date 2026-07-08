@@ -33,7 +33,10 @@ describe('ContextSimplePillarCard', () => {
 
   it('renders skeleton loaders when isLoading is true', () => {
     render(
-      <ContextSimplePillarCard isLoading icon={MockIcon} title="Recently Viewed">
+      <ContextSimplePillarCard
+        isLoading
+        icon={MockIcon}
+        title="Recently Viewed">
         <div>List content</div>
       </ContextSimplePillarCard>
     );
