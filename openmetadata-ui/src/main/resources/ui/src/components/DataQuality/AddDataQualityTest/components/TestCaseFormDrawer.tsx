@@ -82,7 +82,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   variant = 'drawer',
   title,
   headerActions,
-  width = '80vw',
+  width,
   showDocPanel = variant === 'drawer',
   testCase,
   showOnlyParameter = false,
@@ -315,6 +315,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     </div>
   ) : null;
 
+  // Without the doc panel the form spans the full drawer, so drop the drawer
+  // width to roughly the form's original 65% column and let it fill (see the
+  // .no-doc-panel grid override in TestCaseFormV1.less).
+  const resolvedWidth = width ?? (showDocPanel ? '80vw' : '52vw');
+
   const scrollToError = useMemo(
     () =>
       createScrollToErrorHandler({
@@ -331,7 +336,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           submitAndClose(data, handleSubmit, () => closeDrawerRef.current()),
         () => scrollToError()
       )}>
-      <div className="drawer-content-wrapper">
+      <div
+        className={`drawer-content-wrapper${
+          showDocPanel ? '' : ' no-doc-panel'
+        }`}>
         <div className="drawer-form-content">{testCaseFormBody}</div>
         {docPanel}
       </div>
@@ -360,7 +368,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       hookForm: form,
       form: formBody,
       headerActions,
-      width,
+      width: resolvedWidth,
       submitLabel: isEditMode ? t('label.update') : t('label.create'),
       submitTestId: 'create-btn',
       submitLoading: formContext?.isCheckingPermissions ?? false,

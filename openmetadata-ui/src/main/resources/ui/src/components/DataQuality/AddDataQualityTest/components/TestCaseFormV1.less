@@ -226,6 +226,11 @@
   gap: 24px;
   height: calc(100vh - 120px); // Account for drawer header and footer
 
+  // No doc panel (e.g. params-only edit): the form spans the full drawer.
+  &.no-doc-panel {
+    grid-template-columns: 1fr;
+  }
+
   .drawer-form-content {
     overflow-y: auto;
     padding-right: 8px;
