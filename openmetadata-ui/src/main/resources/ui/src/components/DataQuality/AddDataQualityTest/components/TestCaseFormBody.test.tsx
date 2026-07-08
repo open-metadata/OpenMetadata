@@ -744,6 +744,29 @@ describe('TestCaseFormBody', () => {
         label: 'Column Values To Be Between',
       });
     });
+
+    it('keeps the prefilled dimension columns and top dimensions on a column-dimension edit', async () => {
+      await act(async () => {
+        renderBody(
+          { table: SELECTED_TABLE, isEditMode: true },
+          {
+            testLevel: TestLevel.COLUMN_DIMENSION,
+            selectedTable: TABLE_FQN,
+            selectedColumn: 'email',
+            dimensionColumns: ['id'],
+            topDimensions: 5,
+          }
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(formRef?.getValues('selectedColumn')).toBe('email');
+      expect(formRef?.getValues('dimensionColumns')).toEqual(['id']);
+      expect(formRef?.getValues('topDimensions')).toBe(5);
+    });
   });
 
   describe('showOnlyParameter', () => {

@@ -451,9 +451,14 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   ]);
 
   useEffect(() => {
-    form.setValue('dimensionColumns', undefined);
-    form.setValue('topDimensions', undefined);
-  }, [selectedColumn, form]);
+    // Edit mode prefills dimensionColumns/topDimensions via
+    // form.reset(buildEditDefaults(...)); the column field is disabled there,
+    // so this effect only fires from that prefill and must not wipe it.
+    if (!isEditMode) {
+      form.setValue('dimensionColumns', undefined);
+      form.setValue('topDimensions', undefined);
+    }
+  }, [selectedColumn, form, isEditMode]);
 
   useEffect(() => {
     if (selectedTestLevel) {
