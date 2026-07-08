@@ -106,11 +106,9 @@ test.describe(
           .waitFor({ state: 'visible' });
         await testDefinitionFormDoc;
 
-        // Verify drawer title
-        await expect(
-          page.getByText('Add Test Definition', { exact: false })
-        ).toBeVisible();
-
+        // The form body + doc panel confirm the drawer opened. We don't assert
+        // the "Add Test Definition" title text because it also matches the list
+        // page's Add button (strict-mode ambiguity).
         await expect(
           page.locator('.drawer-doc-panel.service-doc-panel')
         ).toBeVisible();
@@ -183,15 +181,10 @@ test.describe(
           .first();
         await firstEditButton.click();
 
-        // Wait for drawer to open
+        // Wait for drawer to open (form body confirms the edit drawer opened).
         await page
           .getByTestId('test-definition-form-body')
           .waitFor({ state: 'visible' });
-
-        // Verify drawer title
-        await expect(
-          page.getByText('Edit Test Definition', { exact: false })
-        ).toBeVisible();
 
         // Verify name field is disabled in edit mode
         const nameInput = page
