@@ -412,6 +412,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             </Box>
           )
         }
+        isSubmitting={form.formState.isSubmitting}
         open={open}
         reserveHintSpace={showHint}
         submitLabel={isEditMode ? t('label.update') : undefined}
