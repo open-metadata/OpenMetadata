@@ -85,6 +85,15 @@ public class DefaultToolContext {
           tool = new GetEntityTool();
           result = tool.execute(authorizer, securityContext, params);
           break;
+        case "get_asset_context":
+          result = new GetAssetContextTool().execute(authorizer, securityContext, params);
+          break;
+        case "find_context":
+          result = new FindContextTool().execute(authorizer, securityContext, params);
+          break;
+        case "get_knowledge_content":
+          result = new GetKnowledgeContentTool().execute(authorizer, securityContext, params);
+          break;
         case "search_company_context":
           result = new SearchCompanyContextTool().execute(authorizer, securityContext, params);
           break;
