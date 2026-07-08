@@ -130,21 +130,18 @@ test.describe(
           .locator('textarea')
           .fill(TEST_DEFINITION_DESCRIPTION);
 
-        // Select entity type
-        await page.getByTestId('entity-type').click();
+        // Select entity type (react-aria Select: click the field, pick option)
+        await page.locator('[id="root/entityType"]').click();
         await page.getByRole('option', { name: 'TABLE', exact: true }).click();
 
-        // Select supported data types (required when OpenMetadata platform is selected)
-        await page.getByTestId('supported-data-types').click();
-        await page
-          .getByTestId('supported-data-types')
-          .locator('input')
-          .fill('NUMBER');
+        // Supported data types (multi-select combobox: type to populate the
+        // options, then pick — required while the OpenMetadata platform is set).
+        // The combobox closes on selection, so no Escape (Escape closes the drawer).
+        await page.locator('[id="root/supportedDataTypes"]').fill('NUMBER');
         await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
-        await page.keyboard.press('Escape');
 
-        // Select test platform
-        await page.getByTestId('test-platforms').click();
+        // Add a test platform (multi-select combobox)
+        await page.locator('[id="root/testPlatforms"]').fill('dbt');
         await page.getByRole('option', { name: 'dbt', exact: true }).click();
 
         // Wait for POST response when creating test definition
