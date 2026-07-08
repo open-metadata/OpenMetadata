@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
@@ -40,6 +40,7 @@ import { Paging } from '../../generated/type/paging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getListKPIs } from '../../rest/KpiAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
@@ -60,6 +61,7 @@ const KPIList = () => {
   const [kpiPage, setKpiPage] = useState(INITIAL_PAGING_VALUE);
   const [kpiPaging, setKpiPaging] = useState<Paging>(pagingObject);
   const [selectedKpi, setSelectedKpi] = useState<Kpi>();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchKpiList = async (param?: Record<string, string>) => {
     try {
@@ -203,6 +205,20 @@ const KPIList = () => {
     fetchKpiList();
   }, [fetchKpiList]);
 
+  const handleKpiDelete = async () => {
+    setIsDeleting(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(selectedKpi),
+      selectedKpi?.id ?? '',
+      EntityType.KPI
+    );
+    if (isSuccess) {
+      handleAfterDeleteAction();
+    }
+    setSelectedKpi(undefined);
+    setIsDeleting(false);
+  };
+
   const noDataPlaceHolder = useMemo(
     () =>
       viewKPIPermission ? (
@@ -244,17 +260,15 @@ const KPIList = () => {
       />
 
       {selectedKpi && (
-        <DeleteEntityModal
-          afterDeleteAction={handleAfterDeleteAction}
-          allowSoftDelete={false}
-          deleteMessage={t('message.are-you-sure-delete-entity', {
+        <DeleteModal
+          entityTitle={getEntityName(selectedKpi)}
+          isDeleting={isDeleting}
+          message={t('message.are-you-sure-delete-entity', {
             entity: getEntityName(selectedKpi),
           })}
-          entityId={selectedKpi.id}
-          entityName={getEntityName(selectedKpi)}
-          entityType={EntityType.KPI}
-          visible={!isUndefined(selectedKpi)}
+          open={!isUndefined(selectedKpi)}
           onCancel={() => setSelectedKpi(undefined)}
+          onDelete={handleKpiDelete}
         />
       )}
     </>

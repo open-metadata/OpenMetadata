@@ -11,10 +11,12 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
+import { useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { EntityType } from '../../enums/entity.enum';
+import { hardDeleteEntity } from '../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import ObservabilityAlertsHeader from './components/ObservabilityAlertsHeader';
 import ObservabilityAlertsTable from './components/ObservabilityAlertsTable';
@@ -42,6 +44,22 @@ const ObservabilityAlertsPage = () => {
     onViewAlert,
     onPageChange,
   } = useObservabilityAlerts();
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleAlertHardDelete = async () => {
+    setIsDeleting(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(selectedAlert),
+      selectedAlert?.id ?? '',
+      EntityType.SUBSCRIPTION
+    );
+    if (isSuccess) {
+      await handleAlertDelete();
+    } else {
+      handleSelectAlert(undefined);
+    }
+    setIsDeleting(false);
+  };
 
   return (
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
@@ -74,14 +92,15 @@ const ObservabilityAlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          <DeleteEntityModal
-            afterDeleteAction={handleAlertDelete}
-            allowSoftDelete={false}
-            entityId={selectedAlert?.id ?? ''}
-            entityName={getEntityName(selectedAlert)}
-            entityType={EntityType.SUBSCRIPTION}
-            visible={Boolean(selectedAlert)}
+          <DeleteModal
+            entityTitle={getEntityName(selectedAlert)}
+            isDeleting={isDeleting}
+            message={t('message.permanently-delete-common-message', {
+              entity: getEntityName(selectedAlert)?.toLowerCase?.() ?? '',
+            })}
+            open={Boolean(selectedAlert)}
             onCancel={() => handleSelectAlert(undefined)}
+            onDelete={handleAlertHardDelete}
           />
         </Col>
       </Row>
