@@ -441,7 +441,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                         className="tw:p-1"
                         color="tertiary"
                         data-testid="edit-owner-btn"
-                        icon={<EditIcon className="tw:text-gray-500 tw:hover:text-gray-600" height={11} width={11} />}
+                        icon={<EditIcon height={14} width={14} />}
                         tooltip={t('label.edit-entity', {
                           entity: t('label.owner-plural'),
                         })}
@@ -566,7 +566,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
               onClick={handleFollowClick}
             />
             <CopyLinkButton
-              className="tw:w-7.5 tw:h-7.5"
+              className="tw:w-8 tw:h-8"
               color="tertiary"
               testId="copy-btn"
               url={window.location.href}>
