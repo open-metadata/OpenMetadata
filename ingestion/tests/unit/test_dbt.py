@@ -3442,6 +3442,40 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             DbtCommonEnum.UPSTREAM.value: upstream or [],
         }
 
+    @staticmethod
+    def _make_parsed_test_result(status, message):
+        run_results = parse_run_results(
+            {
+                "metadata": {
+                    "dbt_schema_version": "https://schemas.getdbt.com/dbt/run-results/v4.json",
+                    "dbt_version": "1.11.6",
+                    "generated_at": "2026-03-27T07:01:00.000000Z",
+                    "invocation_id": "00000000-0000-0000-0000-000000000000",
+                    "env": {},
+                },
+                "results": [
+                    {
+                        "status": status,
+                        "timing": [
+                            {
+                                "name": "execute",
+                                "started_at": "2026-03-27T07:00:00.000000Z",
+                                "completed_at": "2026-03-27T07:00:01.000000Z",
+                            }
+                        ],
+                        "thread_id": "Thread-1",
+                        "execution_time": 1.0,
+                        "message": message,
+                        "adapter_response": {},
+                        "unique_id": "test.pkg.test_not_null_orders_id",
+                    }
+                ],
+                "elapsed_time": 1.0,
+                "args": {},
+            }
+        )
+        return run_results.results[0]
+
     def test_compiled_only_null_message_is_skipped(self):
         """
         Compiled-only entry: status=success, message=None.
@@ -3483,6 +3517,54 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             source.add_dbt_test_result(dbt_test)
 
         source.metadata.add_test_case_results.assert_called_once()
+
+    def test_real_pass_result_with_null_message_is_ingested(self):
+        """
+        Real test pass: status=pass, message=None.
+        Must call add_test_case_results exactly once.
+        """
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        timing = MagicMock()
+        timing.name = "execute"
+        timing.completed_at = "2026-03-27T07:00:00.000000Z"
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_test_result(status="pass", message=None, timing=[timing]),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+
+    def test_parsed_pass_result_with_null_message_is_ingested(self):
+        """
+        Real dbt artifact result: status=pass, message=None.
+        Must be ingested after parsing run_results.json.
+        """
+        from metadata.generated.schema.tests.basic import TestCaseStatus
+        from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
+
+        source = self._make_dbt_source()
+        dbt_test = {
+            DbtCommonEnum.MANIFEST_NODE.value: self._make_manifest_node(),
+            DbtCommonEnum.RESULTS.value: self._make_parsed_test_result(status="pass", message=None),
+            DbtCommonEnum.UPSTREAM.value: ["snowflake.db.schema.orders"],
+        }
+        with patch("metadata.ingestion.source.database.dbt.metadata.fqn") as mock_fqn:
+            mock_fqn.split.return_value = ["snowflake", "db", "schema", "orders"]
+            mock_fqn.build.return_value = "snowflake.db.schema.orders.test_not_null_orders_id"
+            source.add_dbt_test_result(dbt_test)
+
+        source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        assert test_case_result.testCaseStatus == TestCaseStatus.Success
+        assert test_case_result.testResultValue[0].value == "1"
 
     def test_real_failure_result_is_ingested(self):
         """
