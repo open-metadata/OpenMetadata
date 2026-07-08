@@ -14,6 +14,7 @@ import {
   Button,
   FieldProp,
   FieldTypes,
+  FormItemLabel,
   FormItemLayout,
   FormSelectItem,
   getField,
@@ -136,7 +137,11 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
   return (
     <div>
       <div className="tw:flex tw:items-center tw:gap-2 tw:mb-1">
-        <span>{label}</span>
+        <FormItemLabel
+          label={label}
+          required={data.required}
+          tooltip={data.description}
+        />
         <Button
           aria-label={t('label.add-entity', { entity: label })}
           data-testid={`add-${data.name}`}
