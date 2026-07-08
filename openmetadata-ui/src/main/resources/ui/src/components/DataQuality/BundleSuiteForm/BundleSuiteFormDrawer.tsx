@@ -49,7 +49,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   onClose,
   onSuccess,
   initialValues,
-  variant = 'classic',
+  variant = 'drawer',
   title,
   headerActions,
   width = 736,
@@ -184,7 +184,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
     [handleFormSubmit, t]
   );
 
-  const isAiVariant = variant === 'ai';
+  const isModalVariant = variant === 'modal';
 
   const bundleSuiteFormBody = (
     <BundleSuiteFormBody
@@ -247,7 +247,7 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   closeDrawerRef.current = closeDrawer;
 
   useEffect(() => {
-    if (isAiVariant) {
+    if (isModalVariant) {
       return;
     }
     if (open) {
@@ -255,9 +255,9 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
     } else if (isOpen) {
       closeDrawer();
     }
-  }, [isAiVariant, open, isOpen, openDrawer, closeDrawer]);
+  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
 
-  if (isAiVariant) {
+  if (isModalVariant) {
     return (
       <AiFormModal
         cancelTestId="cancel-button"

@@ -47,7 +47,7 @@ export interface TestCaseFormDrawerProps {
   table?: Table;
   testSuite?: TestSuite;
   testLevel?: TestLevel;
-  variant?: 'classic' | 'ai';
+  variant?: 'drawer' | 'modal';
   title?: ReactNode;
   headerActions?: ReactNode;
   width?: number | string;

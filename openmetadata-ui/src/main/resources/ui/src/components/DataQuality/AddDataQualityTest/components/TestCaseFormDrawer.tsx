@@ -69,11 +69,11 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   table,
   testSuite,
   testLevel,
-  variant = 'classic',
+  variant = 'drawer',
   title,
   headerActions,
   width = '80vw',
-  showDocPanel = variant === 'classic',
+  showDocPanel = variant === 'drawer',
 }: TestCaseFormDrawerProps) => {
   const { t } = useTranslation();
   const { getResourceLimit } = useLimitStore();
@@ -205,7 +205,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     />
   );
 
-  const isAiVariant = variant === 'ai';
+  const isModalVariant = variant === 'modal';
 
   const docPanel = showDocPanel ? (
     <div className="drawer-doc-panel service-doc-panel markdown-parser">
@@ -266,7 +266,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   closeDrawerRef.current = closeDrawer;
 
   useEffect(() => {
-    if (isAiVariant) {
+    if (isModalVariant) {
       return;
     }
     if (open) {
@@ -274,9 +274,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     } else if (isOpen) {
       closeDrawer();
     }
-  }, [isAiVariant, open, isOpen, openDrawer, closeDrawer]);
+  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
 
-  if (isAiVariant) {
+  if (isModalVariant) {
     return (
       <AiFormModal
         headerActions={
@@ -289,7 +289,12 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
                 weight="medium">
                 {t('label.show-hint')}
               </Typography>
-              <Toggle isSelected={showHint} size="sm" onChange={setShowHint} />
+              <Toggle
+                aria-label={t('label.show-hint')}
+                isSelected={showHint}
+                size="sm"
+                onChange={setShowHint}
+              />
             </Box>
           )
         }

@@ -328,13 +328,13 @@ describe('TestCaseFormDrawer', () => {
   });
 
   it('should render the doc panel in classic variant', async () => {
-    renderDrawer({ variant: 'classic' });
+    renderDrawer({ variant: 'drawer' });
 
     expect(await screen.findByTestId('service-doc-panel')).toBeInTheDocument();
   });
 
   it('should not render the service doc panel in ai variant', async () => {
-    renderDrawer({ variant: 'ai' });
+    renderDrawer({ variant: 'modal' });
 
     expect(
       await screen.findByTestId('test-case-form-body')
@@ -424,7 +424,7 @@ describe('TestCaseFormDrawer', () => {
 
   describe('ai variant', () => {
     it('should render a centered modal (role=dialog) instead of the slideout drawer when open', async () => {
-      renderDrawer({ variant: 'ai' });
+      renderDrawer({ variant: 'modal' });
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument();
       expect(
@@ -439,7 +439,7 @@ describe('TestCaseFormDrawer', () => {
     });
 
     it('should render the default ai header title', async () => {
-      renderDrawer({ variant: 'ai' });
+      renderDrawer({ variant: 'modal' });
 
       await screen.findByRole('dialog');
 
@@ -448,7 +448,7 @@ describe('TestCaseFormDrawer', () => {
 
     it('should call onClose exactly once when the cancel button is clicked', async () => {
       const onClose = jest.fn();
-      renderDrawer({ variant: 'ai', onClose });
+      renderDrawer({ variant: 'modal', onClose });
 
       await screen.findByRole('dialog');
 
@@ -461,7 +461,7 @@ describe('TestCaseFormDrawer', () => {
 
     it('should call onClose exactly once when the X close button is clicked', async () => {
       const onClose = jest.fn();
-      renderDrawer({ variant: 'ai', onClose });
+      renderDrawer({ variant: 'modal', onClose });
 
       await screen.findByRole('dialog');
 
@@ -475,7 +475,7 @@ describe('TestCaseFormDrawer', () => {
     it('should create the test case and call onClose once on a successful submit', async () => {
       const onFormSubmit = jest.fn();
       const onClose = jest.fn();
-      renderDrawer({ variant: 'ai', onFormSubmit, onClose });
+      renderDrawer({ variant: 'modal', onFormSubmit, onClose });
 
       await screen.findByRole('dialog');
 
@@ -505,7 +505,7 @@ describe('TestCaseFormDrawer', () => {
         response: { data: { message: 'boom' } },
       });
       const onClose = jest.fn();
-      renderDrawer({ variant: 'ai', onClose });
+      renderDrawer({ variant: 'modal', onClose });
 
       await screen.findByRole('dialog');
 
@@ -521,7 +521,7 @@ describe('TestCaseFormDrawer', () => {
     });
 
     it('gates the field doc popover behind the Show Hint toggle', async () => {
-      renderDrawer({ variant: 'ai' });
+      renderDrawer({ variant: 'modal' });
 
       const testType = await screen.findByLabelText(/test type/i);
 
@@ -547,7 +547,7 @@ describe('TestCaseFormDrawer', () => {
     });
 
     it('shows the field doc popover in the AI variant on focus', async () => {
-      renderDrawer({ variant: 'ai' });
+      renderDrawer({ variant: 'modal' });
 
       const testType = await screen.findByLabelText(/test type/i);
 
@@ -562,7 +562,7 @@ describe('TestCaseFormDrawer', () => {
   });
 
   it('does not show the field doc popover in the classic variant on focus', async () => {
-    renderDrawer({ variant: 'classic' });
+    renderDrawer({ variant: 'drawer' });
 
     const testType = await screen.findByLabelText(/test type/i);
 

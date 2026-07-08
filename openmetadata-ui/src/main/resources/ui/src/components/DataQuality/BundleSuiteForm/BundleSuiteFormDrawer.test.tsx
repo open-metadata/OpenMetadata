@@ -510,7 +510,7 @@ describe('BundleSuiteFormDrawer', () => {
   describe('ai variant', () => {
     it('renders a centered modal (role=dialog) instead of the slideout drawer when open', async () => {
       await act(async () => {
-        renderDrawer({ variant: 'ai' });
+        renderDrawer({ variant: 'modal' });
       });
 
       expect(await screen.findByRole('dialog')).toBeInTheDocument();
@@ -520,7 +520,7 @@ describe('BundleSuiteFormDrawer', () => {
 
     it('renders the default ai header title', async () => {
       await act(async () => {
-        renderDrawer({ variant: 'ai' });
+        renderDrawer({ variant: 'modal' });
       });
 
       await screen.findByRole('dialog');
@@ -530,7 +530,7 @@ describe('BundleSuiteFormDrawer', () => {
 
     it('does not render a Show Hint toggle in the bundle ai modal', async () => {
       await act(async () => {
-        renderDrawer({ variant: 'ai' });
+        renderDrawer({ variant: 'modal' });
       });
 
       await screen.findByRole('dialog');
@@ -543,7 +543,7 @@ describe('BundleSuiteFormDrawer', () => {
     it('calls onClose exactly once when the cancel button is clicked', async () => {
       const onClose = jest.fn();
       await act(async () => {
-        renderDrawer({ variant: 'ai', onClose });
+        renderDrawer({ variant: 'modal', onClose });
       });
 
       await screen.findByRole('dialog');
@@ -558,7 +558,7 @@ describe('BundleSuiteFormDrawer', () => {
     it('calls onClose exactly once when the X close button is clicked', async () => {
       const onClose = jest.fn();
       await act(async () => {
-        renderDrawer({ variant: 'ai', onClose });
+        renderDrawer({ variant: 'modal', onClose });
       });
 
       await screen.findByRole('dialog');
@@ -574,7 +574,7 @@ describe('BundleSuiteFormDrawer', () => {
       const onSuccess = jest.fn();
       const onClose = jest.fn();
       await act(async () => {
-        renderDrawer({ variant: 'ai', onSuccess, onClose });
+        renderDrawer({ variant: 'modal', onSuccess, onClose });
       });
 
       await screen.findByRole('dialog');
@@ -602,7 +602,7 @@ describe('BundleSuiteFormDrawer', () => {
       });
       const onClose = jest.fn();
       await act(async () => {
-        renderDrawer({ variant: 'ai', onClose });
+        renderDrawer({ variant: 'modal', onClose });
       });
 
       await screen.findByRole('dialog');
