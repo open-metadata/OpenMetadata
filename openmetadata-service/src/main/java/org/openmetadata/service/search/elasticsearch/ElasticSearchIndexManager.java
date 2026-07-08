@@ -108,6 +108,11 @@ public class ElasticSearchIndexManager implements IndexManagementClient {
       client.indices().putMapping(request);
       LOG.info("Successfully updated mapping for index: {}", indexName);
 
+    } catch (IllegalStateException e) {
+      // Mapping-enrichment failures (e.g. embedding-dimension drift) are hard configuration errors.
+      // Swallowing them would let bootstrap/reindex proceed against a broken index, so surface it —
+      // same contract as createIndex.
+      throw e;
     } catch (Exception e) {
       LOG.error(
           "Failed to update Elasticsearch index {} due to",
