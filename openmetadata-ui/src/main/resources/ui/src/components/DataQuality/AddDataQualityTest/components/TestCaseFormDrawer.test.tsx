@@ -759,3 +759,58 @@ describe('TestCaseFormDrawer', () => {
     });
   });
 });
+
+describe('createUpdatedTestCasePatch (phantom tags op)', () => {
+  // createUpdatedTestCasePatch is mocked module-wide above for the drawer
+  // tests; pull the real implementation to verify the tags-diffing edge case
+  // that used to live in EditTestCaseModal(V1)'s tests.
+  const { createUpdatedTestCasePatch: realCreateUpdatedTestCasePatch } =
+    jest.requireActual('../../../../utils/DataQuality/DataQualityPureUtils');
+
+  const baseTestCase = {
+    id: 'test-case-id',
+    name: 'existing-test-case',
+    displayName: 'Existing Test Case',
+    entityLink: '<#E::table::service.db.schema.table>',
+    tags: undefined,
+  } as unknown as TestCase;
+
+  it('does not emit a phantom /tags op when editing display name of a tagless test case', () => {
+    const patch = realCreateUpdatedTestCasePatch({
+      testCase: baseTestCase,
+      value: { displayName: 'Updated Display Name' },
+      createTestCaseObject: {},
+      isComputeRowCountFieldVisible: false,
+    });
+
+    expect(patch).not.toContainEqual(
+      expect.objectContaining({ path: '/tags' })
+    );
+    expect(patch).toContainEqual({
+      op: 'replace',
+      path: '/displayName',
+      value: 'Updated Display Name',
+    });
+  });
+
+  it('emits a /tags replace op when tags actually change', () => {
+    const patch = realCreateUpdatedTestCasePatch({
+      testCase: baseTestCase,
+      value: {
+        displayName: 'Existing Test Case',
+        tags: [
+          {
+            tagFQN: 'PII.Sensitive',
+            source: 'Classification',
+            labelType: 'Manual',
+            state: 'Confirmed',
+          },
+        ],
+      },
+      createTestCaseObject: {},
+      isComputeRowCountFieldVisible: false,
+    });
+
+    expect(patch).toContainEqual(expect.objectContaining({ path: '/tags' }));
+  });
+});
