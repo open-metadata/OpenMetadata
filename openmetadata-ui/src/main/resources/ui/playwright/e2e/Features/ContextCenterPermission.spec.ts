@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -2149,19 +2149,24 @@ test.describe('Context Center Permissions', () => {
         await rightPanel.evaluate((el) => el.scrollTo(0, el.scrollHeight));
 
         const tagsContainer = dataStewardPage.getByTestId('tags-container');
-        const glossaryContainer = dataStewardPage.getByTestId('glossary-container');
+        const glossaryContainer =
+          dataStewardPage.getByTestId('glossary-container');
         await expect(
           tagsContainer
-          .getByTestId('add-tag')
-          .or(glossaryContainer.getByTestId('edit-tag'))
+            .getByTestId('add-tag')
+            .or(glossaryContainer.getByTestId('edit-tag'))
         ).toBeVisible();
-       await expect(
-        glossaryContainer
-          .getByTestId('add-tag')
-          .or(glossaryContainer.getByTestId('edit-tag'))
-      ).toBeVisible();
-      await expect(dataStewardPage.getByTestId('add-domain')).not.toBeVisible();
-      await expect(dataStewardPage.getByTestId('edit-domain')).not.toBeVisible();
+        await expect(
+          glossaryContainer
+            .getByTestId('add-tag')
+            .or(glossaryContainer.getByTestId('edit-tag'))
+        ).toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('add-domain')
+        ).not.toBeVisible();
+        await expect(
+          dataStewardPage.getByTestId('edit-domain')
+        ).not.toBeVisible();
 
         await expect(
           dataStewardPage
