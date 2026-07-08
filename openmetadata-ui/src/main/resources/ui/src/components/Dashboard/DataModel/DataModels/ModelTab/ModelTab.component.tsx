@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Typography } from 'antd';
+import { TableProps, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { groupBy, isEmpty, omit, uniqBy } from 'lodash';
 import { EntityTags, TagFilterOptions } from 'Models';
@@ -31,7 +31,6 @@ import { TagLabel, TagSource } from '../../../../../generated/type/tagLabel';
 import { usePaging } from '../../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../../../hooks/useFqnDeepLink';
-import { useTreeTagFilter } from '../../../../../hooks/useTreeTagFilter';
 import {
   getDataModelColumnsByFQN,
   searchDataModelColumnsByFQN,
@@ -41,6 +40,7 @@ import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getColumnSorter } from '../../../../../utils/EntitySortUtils';
 import { columnFilterIcon } from '../../../../../utils/TableColumn.util';
 import {
+  getExpandAllKeysToDepth,
   getHighlightedRowClassName,
   pruneEmptyChildren,
   updateColumnInNestedStructure,
@@ -76,6 +76,14 @@ const ModelTab = () => {
   const [editColumnDescription, setEditColumnDescription] = useState<Column>();
   const [_expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [searchText, setSearchText] = useState('');
+  const [activeTagFilter, setActiveTagFilter] = useState<{
+    tags: string[];
+    glossaryTerms: string[];
+  }>({ tags: [], glossaryTerms: [] });
+
+  const tagsParam = activeTagFilter.tags.join(',');
+  const glossaryTermsParam = activeTagFilter.glossaryTerms.join(',');
+  const hasTagFilter = Boolean(tagsParam || glossaryTermsParam);
   const { openColumnDetailPanel, selectedColumn, setDisplayedColumns } =
     useGenericContext<DashboardDataModel>();
 
@@ -128,19 +136,25 @@ const ModelTab = () => {
       try {
         const offset = (page - 1) * pageSize;
 
-        // Use search API if there's a search query, otherwise use regular pagination
-        const response = searchQuery
-          ? await searchDataModelColumnsByFQN(entityFqn, {
-              limit: pageSize,
-              offset,
-              fields: TabSpecificField.TAGS,
-              q: searchQuery,
-            })
-          : await getDataModelColumnsByFQN(entityFqn, {
-              limit: pageSize,
-              offset,
-              fields: TabSpecificField.TAGS,
-            });
+        // Use search API when there's a search query or an active tag filter,
+        // otherwise use regular pagination
+        const response =
+          searchQuery || hasTagFilter
+            ? await searchDataModelColumnsByFQN(entityFqn, {
+                limit: pageSize,
+                offset,
+                fields: TabSpecificField.TAGS,
+                q: searchQuery ?? '',
+                ...(tagsParam ? { tags: tagsParam } : {}),
+                ...(glossaryTermsParam
+                  ? { glossaryTerms: glossaryTermsParam }
+                  : {}),
+              })
+            : await getDataModelColumnsByFQN(entityFqn, {
+                limit: pageSize,
+                offset,
+                fields: TabSpecificField.TAGS,
+              });
 
         const data = pruneEmptyChildren(response.data) || [];
         setPaginatedColumns(data);
@@ -155,7 +169,14 @@ const ModelTab = () => {
       }
       setColumnsLoading(false);
     },
-    [entityFqn, pageSize, handlePagingChange]
+    [
+      entityFqn,
+      pageSize,
+      handlePagingChange,
+      hasTagFilter,
+      tagsParam,
+      glossaryTermsParam,
+    ]
   );
 
   const handleColumnsPageChange = useCallback(
@@ -165,6 +186,19 @@ const ModelTab = () => {
       handlePageChange(currentPage);
     },
     [paging, fetchPaginatedColumns, searchText, handlePageChange]
+  );
+
+  const handleColumnFilterChange = useCallback<
+    NonNullable<TableProps<Column>['onChange']>
+  >(
+    (_pagination, tableFilters) => {
+      const tags = (tableFilters?.[TABLE_COLUMNS_KEYS.TAGS] as string[]) ?? [];
+      const glossaryTerms =
+        (tableFilters?.[TABLE_COLUMNS_KEYS.GLOSSARY] as string[]) ?? [];
+      setActiveTagFilter({ tags, glossaryTerms });
+      handlePageChange(1);
+    },
+    [handlePageChange]
   );
 
   const { deleted } = useMemo(
@@ -191,19 +225,28 @@ const ModelTab = () => {
   }, [permissions]);
 
   const tagFilter = useMemo(() => {
-    const tags = getAllTags(data ?? []);
+    const tags = getAllTags([...(dataModel?.columns ?? []), ...(data ?? [])]);
 
     return groupBy(uniqBy(tags, 'value'), (tag) => tag.source) as Record<
       TagSource,
       TagFilterOptions[]
     >;
-  }, [data]);
+  }, [dataModel?.columns, data]);
 
   useEffect(() => {
     if (entityFqn) {
       fetchPaginatedColumns(1, searchText || undefined);
     }
   }, [entityFqn, searchText, fetchPaginatedColumns, pageSize, dataModel]);
+
+  useEffect(() => {
+    setExpandedRowKeys((prev) => {
+      const depth = searchText || hasTagFilter ? Number.MAX_SAFE_INTEGER : 1;
+      const autoKeys = getExpandAllKeysToDepth(paginatedColumns ?? [], depth);
+
+      return [...new Set([...autoKeys, ...prev])];
+    });
+  }, [paginatedColumns, searchText, hasTagFilter]);
 
   // Sync displayed columns with GenericProvider for ColumnDetailPanel navigation
   useEffect(() => {
@@ -311,7 +354,7 @@ const ModelTab = () => {
       currentPage,
       showPagination,
       isLoading: columnsLoading,
-      isNumberBased: Boolean(searchText),
+      isNumberBased: Boolean(searchText || hasTagFilter),
       pageSize,
       paging,
       pagingHandler: handleColumnsPageChange,
@@ -322,14 +365,13 @@ const ModelTab = () => {
       showPagination,
       columnsLoading,
       searchText,
+      hasTagFilter,
       pageSize,
       paging,
       handleColumnsPageChange,
       handlePageSizeChange,
     ]
   );
-  const { tagFilterState, filteredData, handleTableChange } =
-    useTreeTagFilter(data);
 
   const tableColumn: ColumnsType<Column> = useMemo(
     () => [
@@ -401,7 +443,9 @@ const ModelTab = () => {
         filters: tagFilter.Classification,
         filterIcon: columnFilterIcon,
         filterDropdown: ColumnFilter,
-        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.TAGS] ?? null,
+        filteredValue: activeTagFilter.tags.length
+          ? activeTagFilter.tags
+          : null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
@@ -424,7 +468,9 @@ const ModelTab = () => {
         filterIcon: columnFilterIcon,
         filters: tagFilter.Glossary,
         filterDropdown: ColumnFilter,
-        filteredValue: tagFilterState[TABLE_COLUMNS_KEYS.GLOSSARY] ?? null,
+        filteredValue: activeTagFilter.glossaryTerms.length
+          ? activeTagFilter.glossaryTerms
+          : null,
         render: (tags: TagLabel[], record: Column, index: number) => (
           <TableTags<Column>
             entityFqn={entityFqn ?? ''}
@@ -444,7 +490,7 @@ const ModelTab = () => {
       entityFqn,
       isReadOnly,
       tagFilter,
-      tagFilterState,
+      activeTagFilter,
       hasEditTagsPermission,
       hasEditGlossaryTermPermission,
       editColumnDescription,
@@ -463,7 +509,7 @@ const ModelTab = () => {
         columns={tableColumn}
         customPaginationProps={paginationProps}
         data-testid="data-model-column-table"
-        dataSource={filteredData}
+        dataSource={data}
         defaultVisibleColumns={DEFAULT_DASHBOARD_DATA_MODEL_VISIBLE_COLUMNS}
         expandable={{
           ...getTableExpandableConfig<Column>(false, 'text-link-color'),
@@ -480,7 +526,7 @@ const ModelTab = () => {
         searchProps={searchProps}
         size="small"
         staticVisibleColumns={COMMON_STATIC_TABLE_VISIBLE_COLUMNS}
-        onChange={handleTableChange}
+        onChange={handleColumnFilterChange}
       />
 
       {editColumnDescription && (

@@ -114,6 +114,8 @@ export interface DataModelColumnParams {
 
 export interface SearchDataModelColumnsParams extends DataModelColumnParams {
   q?: string; // Search query
+  tags?: string; // Comma-separated classification tag FQNs
+  glossaryTerms?: string; // Comma-separated glossary term FQNs
 }
 
 export const getDataModelColumnsByFQN = async (

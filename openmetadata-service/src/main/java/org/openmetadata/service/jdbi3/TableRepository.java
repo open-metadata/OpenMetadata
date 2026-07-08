@@ -34,8 +34,6 @@ import static org.openmetadata.service.Entity.getEntityReferenceById;
 import static org.openmetadata.service.Entity.populateEntityFieldTags;
 import static org.openmetadata.service.monitoring.RequestLatencyContext.phase;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsGracefully;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTagsWithPreFetched;
-import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 import static org.openmetadata.service.resources.tags.TagLabelUtil.mergeTagsWithIncomingPrecedence;
 import static org.openmetadata.service.search.SearchClient.GLOBAL_SEARCH_ALIAS;
 import static org.openmetadata.service.util.EntityUtil.getLocalColumnName;
@@ -129,6 +127,8 @@ import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.PropagationDescriptor;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.mask.PIIMasker;
+import org.openmetadata.service.util.ColumnSearchUtil;
+import org.openmetadata.service.util.ColumnSearchUtil.ColumnTagFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -3345,11 +3345,14 @@ public class TableRepository extends EntityRepository<Table> {
     String searchTerm = nullOrEmpty(query) ? null : query.toLowerCase().trim();
     boolean hasTagFilter = columnTagFilter != null && !columnTagFilter.isEmpty();
     Map<String, List<TagLabel>> tagsByHash =
-        hasTagFilter ? resolveColumnTagsForFilter(table) : Map.of();
+        hasTagFilter
+            ? ColumnSearchUtil.resolveColumnTagsForFilter(
+                table.getFullyQualifiedName(), daoCollection)
+            : Map.of();
 
     List<Column> matchingTree =
-        pruneColumnsToMatches(allColumns, searchTerm, columnTagFilter, tagsByHash);
-    matchingTree.sort(columnComparator(sortBy, sortOrder));
+        ColumnSearchUtil.pruneColumnsToMatches(allColumns, searchTerm, columnTagFilter, tagsByHash);
+    matchingTree.sort(ColumnSearchUtil.columnComparator(sortBy, sortOrder));
 
     int total = matchingTree.size();
     int startIndex = Math.min(offset, total);
@@ -3359,7 +3362,7 @@ public class TableRepository extends EntityRepository<Table> {
             ? new ArrayList<>(matchingTree.subList(startIndex, endIndex))
             : List.of();
 
-    List<Column> paginatedColumns = flattenTableColumns(paginatedRoots);
+    List<Column> paginatedColumns = ColumnSearchUtil.flattenColumns(paginatedRoots);
     Fields fields = getFields(fieldsParam);
     if (fields.contains("customMetrics") || fields.contains("*")) {
       Map<String, List<CustomMetric>> metricsByColumn =
@@ -3383,140 +3386,6 @@ public class TableRepository extends EntityRepository<Table> {
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = endIndex < total ? String.valueOf(endIndex) : null;
     return new ResultList<>(paginatedRoots, before, after, total);
-  }
-
-  /**
-   * Prune the column tree to nodes that match the search term and tag filter, keeping every matched
-   * node at its real depth together with its ancestor path. Mirrors the UI's getFilteredTagsData so
-   * the server-side filter renders the same nested view, paginated across the whole table instead of
-   * the loaded page. A node is kept when it matches itself or has a kept descendant; a kept node's
-   * children are pruned to the matched paths only.
-   */
-  private List<Column> pruneColumnsToMatches(
-      List<Column> columns,
-      String searchTerm,
-      ColumnTagFilter columnTagFilter,
-      Map<String, List<TagLabel>> tagsByHash) {
-    List<Column> pruned = new ArrayList<>();
-    for (Column column : columns) {
-      List<Column> prunedChildren =
-          nullOrEmpty(column.getChildren())
-              ? new ArrayList<>()
-              : pruneColumnsToMatches(
-                  column.getChildren(), searchTerm, columnTagFilter, tagsByHash);
-      boolean matches = columnMatchesSearch(column, searchTerm, columnTagFilter, tagsByHash);
-      if (matches || !prunedChildren.isEmpty()) {
-        column.setChildren(prunedChildren);
-        pruned.add(column);
-      }
-    }
-    return pruned;
-  }
-
-  private boolean columnMatchesSearch(
-      Column column,
-      String searchTerm,
-      ColumnTagFilter columnTagFilter,
-      Map<String, List<TagLabel>> tagsByHash) {
-    boolean matchesQuery = searchTerm == null || columnNameMatches(column, searchTerm);
-    boolean matchesTags =
-        columnTagFilter == null
-            || columnTagFilter.isEmpty()
-            || columnMatchesTagFilter(column, columnTagFilter, tagsByHash);
-    return matchesQuery && matchesTags;
-  }
-
-  private boolean columnNameMatches(Column column, String searchTerm) {
-    boolean nameMatches =
-        column.getName() != null && column.getName().toLowerCase().contains(searchTerm);
-    boolean displayNameMatches =
-        column.getDisplayName() != null
-            && column.getDisplayName().toLowerCase().contains(searchTerm);
-    return nameMatches || displayNameMatches;
-  }
-
-  private Comparator<Column> columnComparator(String sortBy, String sortOrder) {
-    Comparator<Column> comparator;
-    if ("ordinalPosition".equals(sortBy)) {
-      comparator =
-          Comparator.comparing(
-              Column::getOrdinalPosition, Comparator.nullsLast(Comparator.naturalOrder()));
-    } else {
-      comparator =
-          Comparator.comparing(
-              Column::getName, Comparator.nullsLast(String.CASE_INSENSITIVE_ORDER));
-    }
-    if ("desc".equalsIgnoreCase(sortOrder)) {
-      comparator = comparator.reversed();
-    }
-    return comparator;
-  }
-
-  /**
-   * Column-level tag filter. {@code tagFQNs} and {@code glossaryTermFQNs} mirror the two
-   * independent column filters in the UI. Values within each group are OR-ed; the two groups are
-   * AND-ed when both are present (matching AntD's cross-column filter semantics).
-   */
-  public record ColumnTagFilter(Set<String> tagFQNs, Set<String> glossaryTermFQNs) {
-    public boolean isEmpty() {
-      return nullOrEmpty(tagFQNs) && nullOrEmpty(glossaryTermFQNs);
-    }
-  }
-
-  /**
-   * Resolve column tags the same way the column list responses (and therefore the UI filter
-   * dropdown) see them: direct tag_usage rows enriched with glossary-derived tags. The raw DAO is
-   * used instead of {@link #getTagsByPrefix} so certification-classification tags are not stripped,
-   * keeping the filter consistent with the tags shown on each column.
-   */
-  private Map<String, List<TagLabel>> resolveColumnTagsForFilter(Table table) {
-    Map<String, List<TagLabel>> directTagsByHash =
-        daoCollection.tagUsageDAO().getTagsByPrefix(table.getFullyQualifiedName(), ".%", true);
-    if (nullOrEmpty(directTagsByHash)) {
-      return Map.of();
-    }
-    List<TagLabel> allDirectTags =
-        directTagsByHash.values().stream().flatMap(List::stream).collect(Collectors.toList());
-    Map<String, List<TagLabel>> derivedTagsMap;
-    try {
-      derivedTagsMap = batchFetchDerivedTags(allDirectTags);
-    } catch (Exception ex) {
-      LOG.warn("Failed to fetch derived tags for column tag filter; matching direct tags only", ex);
-      derivedTagsMap = Map.of();
-    }
-    Map<String, List<TagLabel>> effectiveTagsByHash = new HashMap<>();
-    for (Map.Entry<String, List<TagLabel>> entry : directTagsByHash.entrySet()) {
-      effectiveTagsByHash.put(
-          entry.getKey(), addDerivedTagsWithPreFetched(entry.getValue(), derivedTagsMap));
-    }
-    return effectiveTagsByHash;
-  }
-
-  private boolean columnMatchesTagFilter(
-      Column column, ColumnTagFilter columnTagFilter, Map<String, List<TagLabel>> tagsByHash) {
-    List<TagLabel> tags =
-        tagsByHash.get(FullyQualifiedName.buildHash(column.getFullyQualifiedName()));
-    Set<String> columnTagFQNs =
-        nullOrEmpty(tags)
-            ? Set.of()
-            : tags.stream().map(TagLabel::getTagFQN).collect(Collectors.toSet());
-    return matchesTagGroup(columnTagFQNs, columnTagFilter.tagFQNs())
-        && matchesTagGroup(columnTagFQNs, columnTagFilter.glossaryTermFQNs());
-  }
-
-  private boolean matchesTagGroup(Set<String> columnTagFQNs, Set<String> filterGroup) {
-    return nullOrEmpty(filterGroup) || filterGroup.stream().anyMatch(columnTagFQNs::contains);
-  }
-
-  private List<Column> flattenTableColumns(List<Column> columns) {
-    List<Column> flattened = new ArrayList<>();
-    for (Column column : columns) {
-      flattened.add(column);
-      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-        flattened.addAll(flattenTableColumns(column.getChildren()));
-      }
-    }
-    return flattened;
   }
 
   private void indexPipelineStatus(Table table, PipelineObservability observability)

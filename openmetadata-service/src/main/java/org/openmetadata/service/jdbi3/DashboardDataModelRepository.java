@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.FIELD_TAGS;
@@ -47,6 +48,8 @@ import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.databases.DatabaseUtil;
 import org.openmetadata.service.resources.datamodels.DashboardDataModelResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
+import org.openmetadata.service.util.ColumnSearchUtil;
+import org.openmetadata.service.util.ColumnSearchUtil.ColumnTagFilter;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -430,76 +433,79 @@ public class DashboardDataModelRepository extends EntityRepository<DashboardData
   }
 
   public ResultList<Column> searchDataModelColumnsById(
-      UUID id, String query, int limit, int offset, String fieldsParam, Include include) {
+      UUID id,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      ColumnTagFilter columnTagFilter) {
     DashboardDataModel dataModel = get(null, id, getFields(fieldsParam), include, false);
-    return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
+    return searchDataModelColumnsInternal(
+        dataModel, query, limit, offset, fieldsParam, sortBy, sortOrder, columnTagFilter);
   }
 
   public ResultList<Column> searchDataModelColumnsByFQN(
-      String fqn, String query, int limit, int offset, String fieldsParam, Include include) {
+      String fqn,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      Include include,
+      String sortBy,
+      String sortOrder,
+      ColumnTagFilter columnTagFilter) {
     DashboardDataModel dataModel = getByName(null, fqn, getFields(fieldsParam), include, false);
-    return searchDataModelColumnsInternal(dataModel, query, limit, offset, fieldsParam);
+    return searchDataModelColumnsInternal(
+        dataModel, query, limit, offset, fieldsParam, sortBy, sortOrder, columnTagFilter);
   }
 
   private ResultList<Column> searchDataModelColumnsInternal(
-      DashboardDataModel dataModel, String query, int limit, int offset, String fieldsParam) {
-    List<Column> allColumns = dataModel.getColumns();
-    if (allColumns == null || allColumns.isEmpty()) {
+      DashboardDataModel dataModel,
+      String query,
+      int limit,
+      int offset,
+      String fieldsParam,
+      String sortBy,
+      String sortOrder,
+      ColumnTagFilter columnTagFilter) {
+    if (nullOrEmpty(dataModel.getColumns())) {
       return new ResultList<>(List.of(), null, null, 0);
     }
+    // Copy so pruning and field population never mutate the loaded entity's column tree.
+    List<Column> allColumns = JsonUtils.deepCopyList(dataModel.getColumns(), Column.class);
 
-    // Flatten nested columns for search
-    List<Column> flattenedColumns = flattenColumns(allColumns);
+    String searchTerm = nullOrEmpty(query) ? null : query.toLowerCase().trim();
+    boolean hasTagFilter = columnTagFilter != null && !columnTagFilter.isEmpty();
+    Map<String, List<TagLabel>> tagsByHash =
+        hasTagFilter
+            ? ColumnSearchUtil.resolveColumnTagsForFilter(
+                dataModel.getFullyQualifiedName(), daoCollection)
+            : Map.of();
 
-    List<Column> matchingColumns;
-    if (query == null || query.trim().isEmpty()) {
-      matchingColumns = flattenedColumns;
-    } else {
-      String searchTerm = query.toLowerCase().trim();
-      matchingColumns =
-          flattenedColumns.stream()
-              .filter(
-                  column -> {
-                    if (column.getName() != null
-                        && column.getName().toLowerCase().contains(searchTerm)) {
-                      return true;
-                    }
-                    if (column.getDisplayName() != null
-                        && column.getDisplayName().toLowerCase().contains(searchTerm)) {
-                      return true;
-                    }
-                    return column.getDescription() != null
-                        && column.getDescription().toLowerCase().contains(searchTerm);
-                  })
-              .toList();
-    }
+    List<Column> matchingTree =
+        ColumnSearchUtil.pruneColumnsToMatches(allColumns, searchTerm, columnTagFilter, tagsByHash);
+    matchingTree.sort(ColumnSearchUtil.columnComparator(sortBy, sortOrder));
 
-    int total = matchingColumns.size();
+    int total = matchingTree.size();
     int startIndex = Math.min(offset, total);
     int endIndex = Math.min(offset + limit, total);
+    List<Column> paginatedRoots =
+        startIndex < total
+            ? new ArrayList<>(matchingTree.subList(startIndex, endIndex))
+            : List.of();
 
-    List<Column> paginatedResults =
-        startIndex < total ? matchingColumns.subList(startIndex, endIndex) : List.of();
-
+    List<Column> paginatedColumns = ColumnSearchUtil.flattenColumns(paginatedRoots);
     Fields fields = getFields(fieldsParam);
     if (fields.contains("tags") || fields.contains("*")) {
       populateEntityFieldTags(
-          entityType, paginatedResults, dataModel.getFullyQualifiedName(), true);
+          entityType, paginatedColumns, dataModel.getFullyQualifiedName(), true);
     }
 
     String before = offset > 0 ? String.valueOf(Math.max(0, offset - limit)) : null;
     String after = endIndex < total ? String.valueOf(endIndex) : null;
-    return new ResultList<>(paginatedResults, before, after, total);
-  }
-
-  private List<Column> flattenColumns(List<Column> columns) {
-    List<Column> flattened = new ArrayList<>();
-    for (Column column : columns) {
-      flattened.add(column);
-      if (column.getChildren() != null && !column.getChildren().isEmpty()) {
-        flattened.addAll(flattenColumns(column.getChildren()));
-      }
-    }
-    return flattened;
+    return new ResultList<>(paginatedRoots, before, after, total);
   }
 }
