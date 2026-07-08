@@ -12,6 +12,7 @@
  */
 
 import { ComponentType, FC, lazy, LazyExoticComponent, Suspense } from 'react';
+import Loader from '../components/common/Loader/Loader';
 import { EntityType } from '../enums/entity.enum';
 
 const lazyComponentMap: Partial<
@@ -90,7 +91,7 @@ export function getEntityDetailComponent(entityType: string): FC | null {
   }
 
   const WrappedComponent: FC<any> = (props) => (
-    <Suspense fallback={null}>
+    <Suspense fallback={<Loader fullScreen />}>
       <LazyComponent {...props} />
     </Suspense>
   );

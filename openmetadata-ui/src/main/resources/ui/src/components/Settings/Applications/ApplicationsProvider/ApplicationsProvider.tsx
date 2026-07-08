@@ -35,6 +35,7 @@ export const ApplicationsContext = createContext({} as ApplicationsContextType);
 export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
   const [applications, setApplications] = useState<EntityReference[]>([]);
   const [loading, setLoading] = useState(true);
+  const [mcpChatEnabled, setMcpChatEnabled] = useState(false);
   const { permissions } = usePermissionProvider();
   const { setApplicationsName } = useApplicationStore();
 
@@ -101,7 +102,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <ApplicationsContext.Provider value={appContext}>
-      {loading ? <Loader /> : children}
+      {loading ? <Loader fullScreen /> : children}
     </ApplicationsContext.Provider>
   );
 };

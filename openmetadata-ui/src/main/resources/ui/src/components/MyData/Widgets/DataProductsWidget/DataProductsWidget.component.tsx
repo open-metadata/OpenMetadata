@@ -218,7 +218,7 @@ const DataProductsWidget = ({
         </div>
       </div>
     ),
-    [dataProducts, isFullSize]
+    [assetsCounts, dataProducts, handleDataProductClick, isFullSize]
   );
 
   const showWidgetFooterMoreButton = useMemo(

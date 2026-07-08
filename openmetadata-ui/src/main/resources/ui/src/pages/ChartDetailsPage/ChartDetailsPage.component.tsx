@@ -19,7 +19,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import ChartDetails from '../../components/Chart/ChartDetails/ChartDetails.component';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import { ROUTES } from '../../constants/constants';
@@ -253,7 +253,7 @@ const ChartDetailsPage = () => {
   }, [chartFQN]);
 
   if (isLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
   if (isError) {
     return (

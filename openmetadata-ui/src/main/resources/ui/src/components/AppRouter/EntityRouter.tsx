@@ -20,9 +20,9 @@ import { EntityType } from '../../enums/entity.enum';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import EntityImportRouter from './EntityImportRouter';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const EntityVersionPage = withSuspenseFallback(
+const EntityVersionPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/EntityVersionPage/EntityVersionPage.component')
   )

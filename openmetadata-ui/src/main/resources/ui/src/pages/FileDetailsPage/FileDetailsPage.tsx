@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../components/Database/TableQueries/TableQueries.interface';
 import FileDetails from '../../components/DriveService/File/FileDetails';
@@ -260,7 +260,7 @@ function FileDetailsPage() {
   }, [filePermissions, fileFQN]);
 
   if (isLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
   if (isError) {
     return (

@@ -28,7 +28,7 @@ import { BetaBadge } from '../../../components/common/Badge/Badge.component';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
-import Loader from '../../../components/common/Loader/Loader';
+import { PageLoader } from '../../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
@@ -412,7 +412,7 @@ const IncidentManagerDetailPage = ({
   }, [t, hasEditPermission, isVersionPage, testCase?.entityLink]);
 
   if (isLoading || isPermissionLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!hasViewPermission) {

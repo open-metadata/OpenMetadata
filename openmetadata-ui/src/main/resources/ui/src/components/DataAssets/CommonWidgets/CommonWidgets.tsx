@@ -51,7 +51,9 @@ import {
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../../AppRouter/withSuspenseFallback';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -65,12 +67,14 @@ import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
+
 const GlossaryUpdateConfirmationModal = withSuspenseFallback(
   lazy(() =>
     import(
       '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal'
     ).then((m) => ({ default: m.GlossaryUpdateConfirmationModal }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 interface GenericEntity
