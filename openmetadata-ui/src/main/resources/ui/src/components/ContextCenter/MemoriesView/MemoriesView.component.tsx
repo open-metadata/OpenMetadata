@@ -173,9 +173,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
       data-testid={`memory-row-${memory.id}`}
       gap={3}
       onClick={() => onViewMemory?.(memory)}>
-      {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
+      {(memory?.updatedBy) && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={getEntityName(memory.owners?.[0])} />
+          <ProfilePicture name={memory.updatedBy} />
         </div>
       )}
       <Box
@@ -188,13 +188,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
           direction="col"
           gap={1}>
           <Box align="center" gap={2} wrap="wrap">
-            {(memory.owners?.[0]?.displayName ??
-              memory.owners?.[0]?.name ??
-              memory.updatedBy) && (
+            {memory?.updatedBy && (
               <Typography className="tw:text-secondary" size="text-sm">
-                {memory.owners?.[0]?.displayName ??
-                  memory.owners?.[0]?.name ??
-                  memory.updatedBy}
+                {memory.updatedBy}
               </Typography>
             )}
             {memory.updatedAt !== undefined && (
