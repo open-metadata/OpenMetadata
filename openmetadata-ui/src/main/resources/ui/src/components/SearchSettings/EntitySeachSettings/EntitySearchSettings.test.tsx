@@ -127,7 +127,9 @@ describe('EntitySearchSettings', () => {
       screen.getByTestId('entity-search-settings-header')
     ).toBeInTheDocument();
     expect(screen.getByTestId('search-preview')).toBeInTheDocument();
-    expect(screen.getByTestId('field-configurations')).toBeInTheDocument();
+    expect(screen.getByText('label.ranking-detail-plural')).toBeInTheDocument();
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    expect(screen.getByTestId('add-field-btn')).toBeInTheDocument();
   });
 
   it('Should not override preview config with undefined searchFields before entity config loads', async () => {
