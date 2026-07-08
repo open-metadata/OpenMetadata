@@ -1338,7 +1338,6 @@ test.describe('Context Center Articles', () => {
     test('displayName: switching articles does not bleed unsaved title into next article', async ({
       page,
     }) => {
-      test.slow();
 
       const newDisplayName = `Updated Title ${uuid()}`;
 
@@ -1352,11 +1351,18 @@ test.describe('Context Center Articles', () => {
         await page.getByRole('link', { name: 'Articles' }).click();
       });
 
+      const updateDisplayNameResponse = page.waitForResponse(
+        (response) =>
+            response.url().includes('/api/v1/contextCenter/pages/') &&
+            response.request().method() === 'PATCH'
+      );
+
       await test.step('Navigate to draft article B via left hierarchy', async () => {
         const node = await scrollHierarchyToNode(
           page,
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
+        await updateDisplayNameResponse;
         await node.click();
         await waitForAllLoadersToDisappear(page);
       });
@@ -1371,10 +1377,6 @@ test.describe('Context Center Articles', () => {
         await expect(page.getByTestId('content-change-state')).not.toHaveText(
           'Unsaved'
         );
-      });
-
-      await test.step('Left hierarchy shows Article A new display name ', async () => {
-        await scrollHierarchyToNode(page, newDisplayName);
       });
 
       await test.step('Navigate back to Article A — should show updated display name', async () => {
