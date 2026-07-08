@@ -165,6 +165,8 @@ export enum Type {
 
 /**
  * How the function score is combined with the main query score.
+ *
+ * How metadata signals combine with the lexical score.
  */
 export enum BoostMode {
     Avg = "avg",
@@ -261,8 +263,8 @@ export interface RankingConfiguration {
      */
     disMaxTieBreaker?: number;
     /**
-     * Whether to use staged ranking for this asset. When disabled, legacy searchFields scoring is
-     * used.
+     * Whether to use staged ranking for this asset. When disabled, legacy searchFields scoring
+     * is used.
      */
     enabled?: boolean;
     /**
@@ -270,7 +272,8 @@ export interface RankingConfiguration {
      */
     signals?: RankingSignals;
     /**
-     * Ordered lexical ranking stages. Earlier stages should represent stronger relevance signals.
+     * Ordered lexical ranking stages. Earlier stages should represent stronger relevance
+     * signals.
      */
     stages?: RankingStage[];
     /**
@@ -280,12 +283,15 @@ export interface RankingConfiguration {
     stopWords?: string[];
     /**
      * Language-keyed query words ignored by token-coverage ranking stages. Keys should match
-     * search index mapping languages such as en, ru, zh, jp, or ja. Values are whole query tokens
-     * only; language analyzers still perform the actual index/query tokenization.
+     * search index mapping languages such as en, ru, zh, jp, or ja. Values are whole query
+     * tokens only; language analyzers still perform the actual index/query tokenization.
      */
     stopWordsByLanguage?: { [key: string]: string[] };
 }
 
+/**
+ * Bounded metadata signals used after lexical relevance.
+ */
 export interface RankingSignals {
     /**
      * How metadata signals combine with the lexical score.
@@ -309,6 +315,20 @@ export interface RankingSignals {
     scoreMode?: ScoreMode;
 }
 
+/**
+ * How to combine metadata signal functions.
+ *
+ * How to combine function scores if multiple boosts are applied.
+ */
+export enum ScoreMode {
+    Avg = "avg",
+    First = "first",
+    Max = "max",
+    Min = "min",
+    Multiply = "multiply",
+    Sum = "sum",
+}
+
 export interface RankingStage {
     /**
      * Fields queried by this stage.
@@ -317,7 +337,7 @@ export interface RankingStage {
     /**
      * Query strategy for this ranking stage.
      */
-    matchType?: RankingStageMatchType;
+    matchType?: StageMatchType;
     /**
      * Minimum significant-token coverage for tokenCoverage or fuzzy stages.
      */
@@ -331,7 +351,8 @@ export interface RankingStage {
      */
     purpose?: string;
     /**
-     * Stage-level score band. Higher stages should use materially higher weights than later stages.
+     * Stage-level score band. Higher stages should use materially higher weights than later
+     * stages.
      */
     weight?: number;
 }
@@ -339,24 +360,12 @@ export interface RankingStage {
 /**
  * Query strategy for this ranking stage.
  */
-export enum RankingStageMatchType {
+export enum StageMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
     Standard = "standard",
     TokenCoverage = "tokenCoverage",
-}
-
-/**
- * How to combine function scores if multiple boosts are applied.
- */
-export enum ScoreMode {
-    Avg = "avg",
-    First = "first",
-    Max = "max",
-    Min = "min",
-    Multiply = "multiply",
-    Sum = "sum",
 }
 
 export interface FieldBoost {
@@ -373,7 +382,7 @@ export interface FieldBoost {
      * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
      * behavior.
      */
-    matchType?: MatchType;
+    matchType?: SearchFieldMatchType;
 }
 
 /**
@@ -381,7 +390,7 @@ export interface FieldBoost {
  * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
  * behavior.
  */
-export enum MatchType {
+export enum SearchFieldMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
