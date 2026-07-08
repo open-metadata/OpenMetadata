@@ -64,7 +64,7 @@ import { IMAGE_URL_PATTERN } from '../constants/regex.constants';
  * @returns true if the string is a valid image URL
  */
 export const isImageUrl = (str: string): boolean => {
-  return IMAGE_URL_PATTERN.test(str) && !str.includes('..');
+  return IMAGE_URL_PATTERN.test(str);
 };
 
 /**
