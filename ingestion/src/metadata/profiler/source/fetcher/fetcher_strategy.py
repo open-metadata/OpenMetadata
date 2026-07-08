@@ -449,7 +449,10 @@ class StorageFetcherStrategy(FetcherStrategy):
                 self.global_profiler_config,
             )
 
-            for container in self._get_container_entities():
+            containers = list(self._get_container_entities())
+            self.progress.set_total(Container.__name__, len(containers))
+            for container in containers:
+                self.progress.track(Container.__name__)
                 yield Either(
                     left=None,
                     right=ProfilerSourceAndEntity(

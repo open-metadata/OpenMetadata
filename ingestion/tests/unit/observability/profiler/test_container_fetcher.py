@@ -14,6 +14,7 @@ Validate Container entity fetcher filtering strategies
 """
 
 import uuid
+from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.entity.data.container import (
     Container,
@@ -38,6 +39,7 @@ from metadata.ingestion.api.status import Status
 from metadata.ingestion.progress.modes import ManualProgress
 from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.profiler.source.fetcher.fetcher_strategy import StorageFetcherStrategy
+from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 
 # Test containers with different characteristics
 STRUCTURED_CONTAINER = Container(
@@ -200,3 +202,25 @@ def test_combined_filters():
     assert UNSTRUCTURED_CONTAINER not in filtered
     assert TAGGED_CONTAINER not in filtered
     assert len(filtered) == 1
+
+
+class TestStorageFetcherProgress:
+    def test_sets_exact_total_and_tracks_each_container(self):
+        registry = ProgressRegistry()
+        progress = ManualProgress(registry)
+
+        strategy = StorageFetcherStrategy.__new__(StorageFetcherStrategy)
+        strategy.progress = progress
+        strategy.config = MagicMock()
+        strategy.metadata = MagicMock()
+        strategy.global_profiler_config = None
+        strategy._get_container_entities = lambda: [MagicMock(), MagicMock(), MagicMock()]
+
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            records = list(strategy.fetch())
+
+        assert len(records) == 3
+        assert registry.global_counters() == [("Container", 3, 3)]
