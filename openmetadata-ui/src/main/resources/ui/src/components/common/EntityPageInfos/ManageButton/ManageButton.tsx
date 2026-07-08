@@ -32,7 +32,7 @@ import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
 import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
-import DeleteWidgetModal from '../../DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../DeleteWidget/DeleteEntityModal';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
@@ -305,7 +305,7 @@ const ManageButton: FC<ManageButtonProps> = ({
     <>
       {items.length ? renderDropdownTrigger() : null}
       {isDelete && (
-        <DeleteWidgetModal
+        <DeleteEntityModal
           afterDeleteAction={afterDeleteAction}
           allowSoftDelete={allowSoftDelete}
           deleteMessage={deleteMessage}

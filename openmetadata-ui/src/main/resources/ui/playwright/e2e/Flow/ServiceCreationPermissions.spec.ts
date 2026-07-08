@@ -335,7 +335,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
       await page.getByTestId('confirm-button').click();
 
       await toastNotification(
@@ -519,7 +518,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteResponse = page.waitForResponse(
         (response) =>
