@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -1190,7 +1190,7 @@ test.describe('Context Center Permissions', () => {
       const row = page.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await row.locator('button[aria-label="Open menu"]').click();
+      await row.getByTestId('manage-button').click();
     };
 
     test('user with view-only permission cannot see upload, folder, or row actions', async ({
@@ -1209,7 +1209,7 @@ test.describe('Context Center Permissions', () => {
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(
-        row.locator('button[aria-label="Open menu"]')
+        row.getByTestId('manage-button')
       ).not.toBeVisible();
 
       await test.step('selecting a document shows only download in bulk bar (no move or delete)', async () => {
@@ -1244,7 +1244,7 @@ test.describe('Context Center Permissions', () => {
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(
-        row.locator('button[aria-label="Open menu"]')
+        row.getByTestId('manage-button')
       ).not.toBeVisible();
 
       await test.step('can create a folder', async () => {
@@ -1370,7 +1370,7 @@ test.describe('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await editAllPage.getByTestId('move-btn').click();
 
         const moveResPromise = editAllPage.waitForResponse(
@@ -1453,7 +1453,7 @@ test.describe('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await deleteAllPage.getByTestId('delete-btn').click();
 
         const deleteResPromise = deleteAllPage.waitForResponse(
