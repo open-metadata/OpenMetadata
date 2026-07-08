@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { CloseOutlined, PlusOutlined } from '@ant-design/icons';
 import type { RenderSettings } from '@react-awesome-query-builder/ui';
-import { Button } from 'antd';
+import { Button } from '@openmetadata/ui-core-components';
+import { Plus, X } from '@untitledui/icons';
 import { t } from './i18next/LocalUtil';
 
 export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
@@ -22,32 +22,34 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
 
   if (type === 'delRule') {
     return (
-      <Button
-        className="action action--DELETE"
+      <X
+        className="action action--DELETE tw:size-4 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
         data-testid="delete-condition-button"
-        icon={<CloseOutlined />}
         onClick={props?.onClick}
       />
     );
-  } else if (type === 'delRuleGroup') {
+  }
+
+  if (type === 'delRuleGroup') {
     return (
-      <Button
-        className="action action--DELETE-GROUP"
+      <X
+        className="action action--DELETE-GROUP tw:size-4 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
         data-testid="delete-group-condition-button"
-        icon={<CloseOutlined />}
         onClick={props?.onClick}
       />
     );
-  } else if (type === 'addRule') {
+  }
+
+  if (type === 'addRule') {
     return (
       <Button
         className="action action--ADD-RULE"
+        color="secondary"
         data-testid="add-condition-button"
-        type="primary"
-        onClick={props?.onClick}>
-        {t('label.add-entity', {
-          entity: t('label.condition'),
-        })}
+        iconLeading={Plus}
+        size="sm"
+        onPress={() => props?.onClick?.()}>
+        {t('label.add-entity', { entity: t('label.condition') })}
       </Button>
     );
   }
@@ -61,30 +63,33 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
 
     if (type === 'delRule') {
       return (
-        <Button
-          className="action action--DELETE ant-btn-sm"
+        <X
+          className="action action--DELETE tw:size-3.5 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
           data-testid="delete-condition-button"
-          icon={<CloseOutlined width={14} />}
           onClick={props?.onClick}
         />
       );
-    } else if (type === 'delRuleGroup') {
+    }
+
+    if (type === 'delRuleGroup') {
       return (
-        <Button
-          className="action action--DELETE-GROUP ant-btn-sm"
+        <X
+          className="action action--DELETE-GROUP tw:size-3.5 tw:cursor-pointer tw:text-fg-quaternary tw:hover:text-fg-error-primary"
           data-testid="delete-group-condition-button"
-          icon={<CloseOutlined width={14} />}
           onClick={props?.onClick}
         />
       );
-    } else if (type === 'addRule') {
+    }
+
+    if (type === 'addRule') {
       return (
         <Button
-          className="action action--ADD-RULE ant-btn-sm"
+          className="action action--ADD-RULE"
+          color="secondary"
           data-testid="add-condition-button"
-          icon={<PlusOutlined width={14} />}
-          type="primary"
-          onClick={props?.onClick}
+          iconLeading={Plus}
+          size="sm"
+          onPress={() => props?.onClick?.()}
         />
       );
     }

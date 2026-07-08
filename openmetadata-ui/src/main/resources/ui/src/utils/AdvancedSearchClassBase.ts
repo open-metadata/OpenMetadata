@@ -12,14 +12,15 @@
  */
 
 import {
-  BasicConfig,
   type AsyncFetchListValuesResult,
+  type BasicConfig,
   type Field,
   type Fields,
   type ListItem,
   type ListValues,
   type SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
+import { OMConfig } from './QueryBuilderOMConfig';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
   SearchOutputType,
@@ -57,7 +58,7 @@ const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
 class AdvancedSearchClassBase {
-  baseConfig = BasicConfig;
+  baseConfig = OMConfig;
   configTypes: BasicConfig['types'] = {
     ...this.baseConfig.types,
     multiselect: {
