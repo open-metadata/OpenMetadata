@@ -15,6 +15,7 @@ import test, {
   expect,
   type APIRequestContext,
   type Page,
+  type Response,
 } from '@playwright/test';
 import { SidebarItem } from '../../constant/sidebar';
 import { getApiContext, redirectToHomePage } from '../../utils/common';
@@ -90,23 +91,51 @@ interface SearchResponse {
   };
 }
 
+interface SearchPreviewRequest {
+  explain?: boolean;
+}
+
+const isSearchPreviewResponse = (response: Response, explain?: boolean) => {
+  if (
+    !response.url().includes('/api/v1/search/preview') ||
+    response.status() !== 200
+  ) {
+    return false;
+  }
+
+  const postData = response.request().postData();
+
+  if (!postData) {
+    return false;
+  }
+
+  const payload = JSON.parse(postData) as SearchPreviewRequest;
+
+  return explain === undefined || Boolean(payload.explain) === explain;
+};
+
 const getSearchHits = async (
   apiContext: APIRequestContext,
   index: string,
   query: string,
   options?: { explain?: boolean; size?: number }
 ) => {
+  const params: Record<string, boolean | number | string> = {
+    deleted: false,
+    from: 0,
+    index,
+    q: query,
+    size: options?.size ?? 20,
+    sort_field: '_score',
+    sort_order: 'desc',
+  };
+
+  if (options?.explain !== undefined) {
+    params.explain = options.explain;
+  }
+
   const response = await apiContext.get('/api/v1/search/query', {
-    params: {
-      deleted: false,
-      explain: options?.explain ?? false,
-      from: 0,
-      index,
-      q: query,
-      size: options?.size ?? 20,
-      sort_field: '_score',
-      sort_order: 'desc',
-    },
+    params,
   });
 
   if (!response.ok()) {
@@ -212,6 +241,11 @@ const searchForExactTableWithRankingDetails = async (page: Page) => {
   });
 };
 
+const openTableSearchSettings = async (page: Page) => {
+  await page.goto('/settings/preferences/search-settings/tables');
+  await expect(page.getByTestId('entity-search-settings-header')).toBeVisible();
+};
+
 test.describe(
   'Search relevance sample data',
   { tag: ['@search-nightly'] },
@@ -311,7 +345,49 @@ test.describe(
       );
     });
 
-    test('returns ranking stage matched queries when explain is enabled', async ({
+    test('shows configurable ranking stages in table search settings', async ({
+      page,
+    }) => {
+      await openTableSearchSettings(page);
+
+      await expect(page.getByTestId('ranking-settings')).toBeVisible();
+      await expect(page.getByTestId('ranking-stage-exactName')).toContainText(
+        'Exact Name'
+      );
+      await expect(page.getByTestId('ranking-stage-closeName')).toContainText(
+        'Close Name'
+      );
+      await expect(page.getByTestId('ranking-signals')).toContainText(
+        /Tier|usage|votes/i
+      );
+    });
+
+    test('toggles ranking details in search settings preview', async ({
+      page,
+    }) => {
+      await openTableSearchSettings(page);
+
+      const previewResponse = page.waitForResponse((response) =>
+        isSearchPreviewResponse(response, false)
+      );
+
+      await page.getByTestId('searchbar').fill(STOPWORD_RELEVANCE_QUERY);
+      await previewResponse;
+      await expect(page.getByTestId('ranking-details')).toHaveCount(0);
+
+      const rankingDetailsResponse = page.waitForResponse((response) =>
+        isSearchPreviewResponse(response, true)
+      );
+
+      await page.getByTestId('ranking-details-switch').click();
+      await rankingDetailsResponse;
+      await expect(page.getByTestId('ranking-details').first()).toBeVisible();
+      await expect(page.getByTestId('ranking-details').first()).toContainText(
+        /Exact name|Close name|Structural context|Score/i
+      );
+    });
+
+    test('returns ranking stage matched queries without explain', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -323,8 +399,7 @@ test.describe(
               const hits = await getSearchHits(
                 apiContext,
                 'table',
-                'provider_address_texas',
-                { explain: true }
+                'provider_address_texas'
               );
               const exactTable = hits.find(
                 (hit) => fqnOf(hit) === EXACT_TABLE_FQN

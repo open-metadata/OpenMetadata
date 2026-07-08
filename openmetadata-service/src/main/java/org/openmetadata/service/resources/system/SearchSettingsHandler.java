@@ -94,10 +94,9 @@ public class SearchSettingsHandler {
     validateStopWordsByLanguage(ranking, assetType);
     if (ranking.getSignals() != null
         && ranking.getSignals().getMaxBoost() != null
-        && ranking.getSignals().getMaxBoost() < 0.0) {
+        && ranking.getSignals().getMaxBoost() <= 0.0) {
       throw new SystemSettingsException(
-          String.format(
-              "Ranking signal maxBoost cannot be negative for asset type: %s", assetType));
+          String.format("Ranking signal maxBoost must be positive for asset type: %s", assetType));
     }
   }
 

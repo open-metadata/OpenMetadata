@@ -44,7 +44,14 @@ const SearchedData: React.FC<SearchedDataProps> = ({
 }) => {
   const searchResultCards = useMemo(() => {
     return data.map(
-      ({ _source: table, highlight, _id, _score, matched_queries }) => {
+      ({
+        _source: table,
+        highlight,
+        _id,
+        _score,
+        _explanation,
+        matched_queries,
+      }) => {
         const matches = highlight
           ? Object.entries(highlight)
               .filter(([key]) => !key.includes('.ngram'))
@@ -67,6 +74,7 @@ const SearchedData: React.FC<SearchedDataProps> = ({
             matchedQueries={showRankingDetails ? matched_queries : undefined}
             matches={matches}
             score={showRankingDetails ? _score : undefined}
+            scoreExplanation={showRankingDetails ? _explanation : undefined}
             showTags={false}
             source={table}
           />

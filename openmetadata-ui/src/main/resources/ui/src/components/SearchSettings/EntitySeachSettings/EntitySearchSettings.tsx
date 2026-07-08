@@ -11,9 +11,18 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { Col, Collapse, Row, Select, Typography } from 'antd';
+import {
+  Col,
+  Collapse,
+  InputNumber,
+  Row,
+  Select,
+  Switch,
+  Tag,
+  Typography,
+} from 'antd';
 import { AxiosError } from 'axios';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty, omit, startCase } from 'lodash';
 import type { MenuInfo } from 'rc-menu/lib/interface';
 import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -31,16 +40,15 @@ import {
   BoostMode,
   FieldBoost,
   FieldValueBoost,
+  RankingConfiguration,
+  RankingStage,
   ScoreMode,
+  SearchFieldMatchType as MatchType,
   SearchSettings,
   TermBoost,
 } from '../../../generated/configuration/searchSettings';
 import { CustomProperty } from '../../../generated/entity/type';
-import {
-  MatchType,
-  Settings,
-  SettingType,
-} from '../../../generated/settings/settings';
+import { Settings, SettingType } from '../../../generated/settings/settings';
 import { useAuth } from '../../../hooks/authHooks';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
@@ -53,6 +61,7 @@ import {
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
   boostModeOptions,
+  getEffectiveRankingConfiguration,
   getEntitySearchConfig,
   getSearchSettingCategories,
   scoreModeOptions,
@@ -106,7 +115,7 @@ const EntitySearchSettings = () => {
   const [customProperties, setCustomProperties] = useState<AllowedFieldField[]>(
     []
   );
-  const [activeKey, setActiveKey] = useState<string>('1');
+  const [activeKey, setActiveKey] = useState<string>('ranking');
   const [lastAddedSearchField, setLastAddedSearchField] = useState<
     string | null
   >(null);
@@ -116,6 +125,12 @@ const EntitySearchSettings = () => {
   const getEntityConfiguration = useMemo(() => {
     return getEntitySearchConfig(searchConfig, entityType);
   }, [searchConfig, entityType]);
+
+  const rankingConfiguration = useMemo(
+    () =>
+      getEffectiveRankingConfiguration(searchConfig, getEntityConfiguration),
+    [searchConfig, getEntityConfiguration]
+  );
 
   const entityData = useMemo(() => {
     const settingCategories = getSearchSettingCategories(
@@ -308,6 +323,7 @@ const EntitySearchSettings = () => {
       fieldValueBoosts: searchSettings.fieldValueBoosts,
       scoreMode: searchSettings.scoreMode,
       boostMode: searchSettings.boostMode,
+      ranking: searchSettings.ranking,
     };
 
     updateSearchConfig(updates);
@@ -330,6 +346,68 @@ const EntitySearchSettings = () => {
         isUpdated: true,
       }));
     }
+  };
+
+  const updateRankingSettings = (
+    update: (ranking: RankingConfiguration) => RankingConfiguration
+  ) => {
+    setSearchSettings((prev) => ({
+      ...prev,
+      ranking: update(prev.ranking ?? {}),
+      isUpdated: true,
+    }));
+  };
+
+  const handleRankingEnabledChange = (enabled: boolean) => {
+    updateRankingSettings((ranking) => ({
+      ...ranking,
+      enabled,
+    }));
+  };
+
+  const handleRankingStageWeightChange = (
+    stageName: string,
+    weight: number | null
+  ) => {
+    updateRankingSettings((ranking) => ({
+      ...ranking,
+      stages: (ranking.stages ?? []).map((stage) =>
+        stage.name === stageName ? { ...stage, weight: weight ?? 0 } : stage
+      ),
+    }));
+  };
+
+  const handleRankingSignalBoostModeChange = (boostMode: BoostMode) => {
+    updateRankingSettings((ranking) => ({
+      ...ranking,
+      signals: {
+        ...(ranking.signals ?? {}),
+        boostMode,
+      },
+    }));
+  };
+
+  const handleRankingSignalScoreModeChange = (scoreMode: ScoreMode) => {
+    updateRankingSettings((ranking) => ({
+      ...ranking,
+      signals: {
+        ...(ranking.signals ?? {}),
+        scoreMode,
+      },
+    }));
+  };
+
+  const handleRankingSignalMaxBoostChange = (maxBoost: number | null) => {
+    updateRankingSettings((ranking) => ({
+      ...ranking,
+      signals:
+        maxBoost === null
+          ? omit(ranking.signals ?? {}, 'maxBoost')
+          : {
+              ...(ranking.signals ?? {}),
+              maxBoost,
+            },
+    }));
   };
 
   const handleFieldWeightChange = (fieldName: string, value: number) => {
@@ -557,10 +635,11 @@ const EntitySearchSettings = () => {
         highlightFields: getEntityConfiguration?.highlightFields,
         fieldValueBoosts: getEntityConfiguration?.fieldValueBoosts,
         termBoosts: getEntityConfiguration?.termBoosts,
+        ranking: rankingConfiguration,
         isUpdated: false,
       });
     }
-  }, [getEntityConfiguration]);
+  }, [getEntityConfiguration, rankingConfiguration]);
 
   // Update preview config whenever searchSettings change
   useEffect(() => {
@@ -582,6 +661,7 @@ const EntitySearchSettings = () => {
                 fieldValueBoosts: searchSettings.fieldValueBoosts,
                 scoreMode: searchSettings.scoreMode,
                 boostMode: searchSettings.boostMode,
+                ranking: searchSettings.ranking,
               }
             : config
       ),
@@ -595,6 +675,180 @@ const EntitySearchSettings = () => {
       );
     }
   }, [searchSettings, searchConfig, entityType]);
+
+  const renderRankingFields = (fields: string[] = []) => (
+    <div className="ranking-field-list">
+      {fields.map((field) => (
+        <Tag className="ranking-field-tag" key={field}>
+          {field}
+        </Tag>
+      ))}
+    </div>
+  );
+
+  const renderRankingStage = (stage: RankingStage) => {
+    const matchType = stage.matchType
+      ? `${startCase(stage.matchType)}${
+          stage.minimumShouldMatch ? ` (${stage.minimumShouldMatch})` : ''
+        }`
+      : t('label.no-data');
+
+    return (
+      <div
+        className="ranking-settings-card"
+        data-testid={`ranking-stage-${stage.name}`}
+        key={stage.name}>
+        <Row align="middle" className="m-b-xs" gutter={[12, 12]}>
+          <Col flex="auto">
+            <Typography.Text className="ranking-stage-title">
+              {startCase(stage.name)}
+            </Typography.Text>
+          </Col>
+          <Col className="ranking-number-control">
+            <Typography.Text className="text-grey-muted text-xs font-normal">
+              {t('label.weight')}
+            </Typography.Text>
+            <InputNumber
+              min={0}
+              value={stage.weight ?? 0}
+              onChange={(value) =>
+                handleRankingStageWeightChange(
+                  stage.name,
+                  typeof value === 'number' ? value : null
+                )
+              }
+            />
+          </Col>
+        </Row>
+        {stage.purpose && (
+          <Typography.Paragraph className="ranking-stage-purpose">
+            {stage.purpose}
+          </Typography.Paragraph>
+        )}
+        <Row className="ranking-stage-meta" gutter={[12, 12]}>
+          <Col span={12}>
+            <Typography.Text className="text-grey-muted text-xs font-normal">
+              {t('label.match-type')}
+            </Typography.Text>
+            <Typography.Paragraph className="ranking-stage-value">
+              {matchType}
+            </Typography.Paragraph>
+          </Col>
+          <Col span={12}>
+            <Typography.Text className="text-grey-muted text-xs font-normal">
+              {t('label.field-plural')}
+            </Typography.Text>
+            {renderRankingFields(stage.fields)}
+          </Col>
+        </Row>
+      </div>
+    );
+  };
+
+  const renderRankingSettings = () => {
+    const ranking = searchSettings.ranking;
+
+    if (!ranking) {
+      return (
+        <Typography.Text className="text-grey-muted">
+          {t('message.no-data-available')}
+        </Typography.Text>
+      );
+    }
+
+    const signals = ranking.signals;
+
+    return (
+      <div className="ranking-configuration" data-testid="ranking-settings">
+        <div className="ranking-settings-card">
+          <Row align="middle" gutter={[12, 12]}>
+            <Col span={16}>
+              <Typography.Text className="text-grey-muted text-xs font-normal">
+                {t('label.algorithm')}
+              </Typography.Text>
+              <Typography.Paragraph className="m-0">
+                {ranking.algorithm
+                  ? startCase(ranking.algorithm)
+                  : t('label.no-data')}
+              </Typography.Paragraph>
+            </Col>
+            <Col className="ranking-enabled-control" span={8}>
+              <Typography.Text className="text-grey-muted text-xs font-normal">
+                {t('label.enabled')}
+              </Typography.Text>
+              <Switch
+                checked={ranking.enabled ?? false}
+                data-testid="ranking-enabled-switch"
+                onChange={handleRankingEnabledChange}
+              />
+            </Col>
+          </Row>
+        </div>
+
+        {(ranking.stages ?? []).map(renderRankingStage)}
+
+        {signals && (
+          <div className="ranking-settings-card" data-testid="ranking-signals">
+            {signals.purpose && (
+              <Typography.Paragraph className="text-grey-muted m-b-xs">
+                {signals.purpose}
+              </Typography.Paragraph>
+            )}
+            <Typography.Paragraph className="text-grey-muted m-b-sm">
+              {t('message.search-ranking-signals-explanation')}
+            </Typography.Paragraph>
+            <Row gutter={[12, 12]}>
+              <Col span={12}>
+                <Typography.Text className="text-grey-muted text-xs font-normal">
+                  {t('label.boost-mode')}
+                </Typography.Text>
+                <Select
+                  bordered={false}
+                  className="w-full border-none custom-select"
+                  options={boostModeOptions}
+                  value={signals.boostMode}
+                  onChange={handleRankingSignalBoostModeChange}
+                />
+              </Col>
+              <Col span={12}>
+                <Typography.Text className="text-grey-muted text-xs font-normal">
+                  {t('label.score-mode')}
+                </Typography.Text>
+                <Select
+                  bordered={false}
+                  className="w-full border-none custom-select"
+                  options={scoreModeOptions}
+                  value={signals.scoreMode}
+                  onChange={handleRankingSignalScoreModeChange}
+                />
+              </Col>
+              <Col className="ranking-number-control" span={12}>
+                <Typography.Text className="text-grey-muted text-xs font-normal">
+                  {t('label.max')}
+                </Typography.Text>
+                <InputNumber
+                  min={0.1}
+                  step={0.1}
+                  value={signals.maxBoost}
+                  onChange={(value) =>
+                    handleRankingSignalMaxBoostChange(
+                      typeof value === 'number' ? value : null
+                    )
+                  }
+                />
+              </Col>
+              <Col span={12}>
+                <Typography.Text className="text-grey-muted text-xs font-normal">
+                  {t('label.field-plural')}
+                </Typography.Text>
+                {renderRankingFields(signals.fields)}
+              </Col>
+            </Row>
+          </div>
+        )}
+      </div>
+    );
+  };
 
   return (
     <PageLayoutV1
@@ -637,6 +891,17 @@ const EntitySearchSettings = () => {
             bordered={false}
             className="w-full entity-collapse-container"
             onChange={handleCollapseChange}>
+            <Collapse.Panel
+              header={
+                <Typography.Text className="text-md font-semibold">
+                  {t('label.ranking-detail-plural')}
+                </Typography.Text>
+              }
+              key="ranking">
+              <div className="bg-white border-radius-card p-box configuration-container ranking-configuration-container">
+                {renderRankingSettings()}
+              </div>
+            </Collapse.Panel>
             <Collapse.Panel
               header={
                 <CollapseHeader

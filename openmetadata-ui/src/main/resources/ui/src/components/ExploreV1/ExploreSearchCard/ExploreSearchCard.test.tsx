@@ -229,7 +229,7 @@ describe('ExploreSearchCard - Card container', () => {
     expect(card).toHaveClass('highlight-card');
   });
 
-  it('renders human-readable ranking explanations from matched query names', () => {
+  it('renders human-readable ranking explanations from matched query names and score explanation', () => {
     renderCard(
       { fullyQualifiedName: 'svc.db.schema.users' },
       {
@@ -237,6 +237,37 @@ describe('ExploreSearchCard - Card container', () => {
           'ranking:closeName:text',
           'ranking:descriptionContext:text',
         ],
+        score: 42.125,
+        scoreExplanation: {
+          description: 'sum of:',
+          value: 42.125,
+          details: [
+            {
+              description: 'avgdl, average length of field',
+              value: 509.8754,
+            },
+            {
+              description:
+                'ConstantScore(displayName.keyword:provider_address_texas)^30.000002',
+              value: 60,
+            },
+            {
+              description:
+                'weight(displayName:provider_address_texas in 123) [PerFieldSimilarity], result of:',
+              value: 40,
+            },
+            {
+              description: 'max of:',
+              value: 2.125,
+              details: [
+                {
+                  description: 'weight(description:texas in 123)',
+                  value: 2.125,
+                },
+              ],
+            },
+          ],
+        },
       }
     );
 
@@ -255,6 +286,18 @@ describe('ExploreSearchCard - Card container', () => {
     expect(screen.getByTestId('ranking-details')).toHaveTextContent(
       'message.search-ranking-signals-explanation'
     );
+    expect(screen.getByTestId('ranking-score')).toHaveTextContent(
+      'label.score'
+    );
+    expect(screen.getByTestId('ranking-score-explanation')).toHaveTextContent(
+      'label.reason'
+    );
+    expect(
+      screen.getAllByTestId('ranking-score-contributor')[0]
+    ).toHaveTextContent('displayName: provider_address_texas');
+    expect(
+      screen.getByTestId('ranking-score-explanation')
+    ).not.toHaveTextContent('avgdl');
   });
 });
 

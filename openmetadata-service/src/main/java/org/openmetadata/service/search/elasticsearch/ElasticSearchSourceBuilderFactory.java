@@ -25,7 +25,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 import java.util.stream.Collectors;
 import org.openmetadata.schema.api.search.Aggregation;
@@ -654,7 +653,7 @@ public class ElasticSearchSourceBuilderFactory
     RankingStage.MatchType matchType =
         stage.getMatchType() == null ? RankingStage.MatchType.STANDARD : stage.getMatchType();
     return switch (matchType) {
-      case EXACT -> buildExactRankingStageQueryV2(originalQuery, stage);
+      case EXACT -> buildExactRankingStageQueryV2(significantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
       case FUZZY -> buildTextRankingStageQueryV2(
           significantQuery, stage, getFuzziness(significantQuery));
@@ -663,12 +662,22 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   private Query buildExactRankingStageQueryV2(String query, RankingStage stage) {
+    List<String> exactTexts = SearchRankingHelper.exactMatchTexts(query);
+    if (exactTexts.isEmpty()) {
+      return null;
+    }
+
     ElasticQueryBuilder.BoolQueryBuilder exactQuery = ElasticQueryBuilder.boolQuery();
     float weight = SearchRankingHelper.stageWeight(stage);
     for (String field : stage.getFields()) {
-      exactQuery.should(
-          ElasticQueryBuilder.termQuery(
-              field, query.toLowerCase(Locale.ROOT), weight, rankingQueryName(stage, field)));
+      for (int index = 0; index < exactTexts.size(); index++) {
+        exactQuery.should(
+            ElasticQueryBuilder.termQuery(
+                field,
+                exactTexts.get(index),
+                weight,
+                rankingQueryName(stage, field, String.valueOf(index))));
+      }
     }
     exactQuery.minimumShouldMatch(1);
     return exactQuery.build();
@@ -703,6 +712,10 @@ public class ElasticSearchSourceBuilderFactory
 
   private String rankingQueryName(RankingStage stage, String field) {
     return RANKING_QUERY_PREFIX + stage.getName() + ":" + field;
+  }
+
+  private String rankingQueryName(RankingStage stage, String field, String suffix) {
+    return rankingQueryName(stage, field) + ":" + suffix;
   }
 
   /**

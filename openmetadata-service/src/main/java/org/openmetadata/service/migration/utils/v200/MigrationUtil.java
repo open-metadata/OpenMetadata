@@ -105,43 +105,36 @@ public class MigrationUtil {
   private MigrationUtil() {}
 
   public static void backfillSearchRankingSettings() {
-    try {
-      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
-      if (searchSettings == null) {
-        LOG.warn(
-            "Search settings not found in database. "
-                + "Default settings will be loaded on next startup with ranking settings.");
-        return;
-      }
-
+    Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+    if (searchSettings == null) {
+      LOG.warn(
+          "Search settings not found in database. "
+              + "Default settings will be loaded on next startup with ranking settings.");
+    } else {
       SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
       SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
       AssetTypeConfiguration defaultConfiguration =
           defaultSettings != null ? defaultSettings.getDefaultConfiguration() : null;
 
-      if (defaultConfiguration == null || defaultConfiguration.getRanking() == null) {
+      if (currentSettings == null) {
+        LOG.warn("Stored searchSettings could not be loaded; skipping ranking settings backfill");
+      } else if (defaultConfiguration == null || defaultConfiguration.getRanking() == null) {
         LOG.warn("Default ranking settings not found in packaged searchSettings.json");
-        return;
-      }
-
-      AssetTypeConfiguration currentDefaultConfiguration =
-          currentSettings.getDefaultConfiguration();
-      if (currentDefaultConfiguration == null) {
-        currentSettings.setDefaultConfiguration(defaultConfiguration);
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info("Backfilled default search configuration with ranking settings");
-        return;
-      }
-
-      if (currentDefaultConfiguration.getRanking() == null) {
-        currentDefaultConfiguration.setRanking(defaultConfiguration.getRanking());
-        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
-        LOG.info("Backfilled search ranking settings into stored searchSettings");
       } else {
-        LOG.info("Search ranking settings already exist in stored searchSettings");
+        AssetTypeConfiguration currentDefaultConfiguration =
+            currentSettings.getDefaultConfiguration();
+        if (currentDefaultConfiguration == null) {
+          currentSettings.setDefaultConfiguration(defaultConfiguration);
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled default search configuration with ranking settings");
+        } else if (currentDefaultConfiguration.getRanking() == null) {
+          currentDefaultConfiguration.setRanking(defaultConfiguration.getRanking());
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled search ranking settings into stored searchSettings");
+        } else {
+          LOG.info("Search ranking settings already exist in stored searchSettings");
+        }
       }
-    } catch (Exception e) {
-      LOG.error("Error backfilling search ranking settings", e);
     }
   }
 

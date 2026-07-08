@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
@@ -39,6 +40,27 @@ public final class SearchRankingHelper {
   public static String significantQueryText(String query, RankingConfiguration ranking) {
     List<String> tokens = significantTokens(query, ranking);
     return tokens.isEmpty() ? (query == null ? "" : query.trim()) : String.join(" ", tokens);
+  }
+
+  public static List<String> exactMatchTexts(String query) {
+    if (query == null || query.trim().isEmpty()) {
+      return List.of();
+    }
+
+    String normalized = query.trim().toLowerCase(Locale.ROOT);
+    LinkedHashSet<String> values = new LinkedHashSet<>();
+    values.add(normalized);
+
+    List<String> tokens =
+        TOKEN_SPLITTER.splitAsStream(normalized).filter(token -> !token.isBlank()).toList();
+    if (tokens.size() > 1) {
+      values.add(String.join(" ", tokens));
+      values.add(String.join("_", tokens));
+      values.add(String.join("-", tokens));
+      values.add(String.join(".", tokens));
+      values.add(String.join("", tokens));
+    }
+    return new ArrayList<>(values);
   }
 
   public static List<String> significantTokens(String query, RankingConfiguration ranking) {
@@ -112,13 +134,14 @@ public final class SearchRankingHelper {
 
     List<String> configuredFields = configuredFields(assetConfig);
     List<RankingStage> stages = new ArrayList<>();
-    for (RankingStage stage : defaultRanking.getStages()) {
+    List<RankingStage> defaultStages = listOrEmpty(defaultRanking.getStages());
+    for (RankingStage stage : defaultStages) {
       List<String> fields = deriveFieldsForStage(stage, configuredFields);
       if (!fields.isEmpty()) {
         stages.add(copyStage(stage, fields));
       }
     }
-    ranking.setStages(stages.isEmpty() ? defaultRanking.getStages() : stages);
+    ranking.setStages(stages.isEmpty() ? defaultStages : stages);
     return ranking;
   }
 

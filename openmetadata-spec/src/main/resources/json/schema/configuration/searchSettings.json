@@ -386,6 +386,7 @@
         "maxBoost": {
           "type": "number",
           "description": "Maximum signal score added to lexical relevance. Keeps Tier and Usage as tie-breakers.",
+          "exclusiveMinimum": 0.0,
           "default": 2.0
         }
       },

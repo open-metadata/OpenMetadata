@@ -65,6 +65,47 @@ const RANKING_STAGE_DESCRIPTION_KEYS: Record<string, string> = {
   descriptionContext: 'message.search-ranking-description-context-explanation',
 };
 
+const MAX_RANKING_REASONS = 4;
+const IGNORED_EXPLANATION_FIELDS = new Set(['deleted']);
+
+const formatScoreValue = (value: number) => value.toFixed(value >= 10 ? 2 : 4);
+
+const formatExplanationFieldMatch = (fieldValue: string) => {
+  const fieldMatch = fieldValue.match(/^([^:]+):(.+?)(?: in \d+)?$/);
+
+  if (!fieldMatch?.[1] || !fieldMatch?.[2]) {
+    return;
+  }
+
+  const field = fieldMatch[1].replace(/\.keyword$/, '');
+
+  return IGNORED_EXPLANATION_FIELDS.has(field)
+    ? undefined
+    : `${field}: ${fieldMatch[2]}`;
+};
+
+const getReadableExplanation = (description: string) => {
+  const normalizedDescription = description.replace(/\s+/g, ' ').trim();
+  const weightMatch = normalizedDescription.match(/^weight\(([^)]+)\)/i);
+  if (weightMatch?.[1]) {
+    return formatExplanationFieldMatch(weightMatch[1]);
+  }
+
+  const exactMatch = normalizedDescription.match(/^ConstantScore\(([^)]+)\)/i);
+  if (exactMatch?.[1]) {
+    return formatExplanationFieldMatch(exactMatch[1]);
+  }
+
+  const signalMatch = normalizedDescription.match(
+    /^field value function: .*doc\['([^']+)'\]/i
+  );
+  if (signalMatch?.[1]) {
+    return signalMatch[1];
+  }
+
+  return;
+};
+
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
   ExploreSearchCardProps
@@ -85,6 +126,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       checked = false,
       onCheckboxChange,
       score,
+      scoreExplanation,
       matchedQueries,
       highlight,
       classNameForBreadcrumb,
@@ -122,6 +164,47 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         name: stageName,
       }));
     }, [matchedQueries, t]);
+
+    const scoreReasons = useMemo(() => {
+      const reasons: { description: string; value: number }[] = [];
+      const visitExplanation = (
+        explanation: typeof scoreExplanation,
+        depth = 0
+      ) => {
+        if (!explanation || depth > 8) {
+          return;
+        }
+
+        const description = getReadableExplanation(explanation.description);
+
+        if (explanation.value > 0 && description) {
+          reasons.push({
+            description,
+            value: explanation.value,
+          });
+        }
+
+        explanation.details?.forEach((detail) =>
+          visitExplanation(detail, depth + 1)
+        );
+      };
+
+      visitExplanation(scoreExplanation);
+
+      const seenDescriptions = new Set<string>();
+
+      return reasons
+        .sort((left, right) => right.value - left.value)
+        .filter(({ description }) => {
+          if (seenDescriptions.has(description)) {
+            return false;
+          }
+          seenDescriptions.add(description);
+
+          return true;
+        })
+        .slice(0, MAX_RANKING_REASONS);
+    }, [scoreExplanation]);
 
     // Hover/focus on an entity card warms the React Query cache so the click that follows
     // hits an already-populated slot. Dispatched on entityType because each detail page reads
@@ -477,9 +560,18 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           <div
             className="ranking-details-container"
             data-testid="ranking-details">
-            <Typography.Text className="text-xs font-medium">
-              {t('label.ranking-detail-plural')}
-            </Typography.Text>
+            <div className="ranking-details-header">
+              <Typography.Text className="ranking-details-title">
+                {t('label.ranking-detail-plural')}
+              </Typography.Text>
+              {score !== undefined && (
+                <Typography.Text
+                  className="ranking-details-score"
+                  data-testid="ranking-score">
+                  {t('label.score')}: {formatScoreValue(score)}
+                </Typography.Text>
+              )}
+            </div>
             {rankingStages.length > 0 ? (
               <div className="ranking-stage-list">
                 {rankingStages.map(({ description, label, name }) => (
@@ -489,6 +581,28 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                     key={name}>
                     <Typography.Text className="text-xs font-medium">
                       {label}
+                    </Typography.Text>
+                    <Typography.Text className="text-xs text-grey-muted">
+                      {description}
+                    </Typography.Text>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {scoreReasons.length > 0 ? (
+              <div
+                className="ranking-score-explanation"
+                data-testid="ranking-score-explanation">
+                <Typography.Text className="text-xs font-medium">
+                  {t('label.reason')}
+                </Typography.Text>
+                {scoreReasons.map(({ description, value }) => (
+                  <div
+                    className="ranking-score-contributor"
+                    data-testid="ranking-score-contributor"
+                    key={`${description}-${value}`}>
+                    <Typography.Text className="text-xs font-medium">
+                      {formatScoreValue(value)}
                     </Typography.Text>
                     <Typography.Text className="text-xs text-grey-muted">
                       {description}

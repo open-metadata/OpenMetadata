@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
-import { Button, Col, Input, Row, Switch, Typography } from 'antd';
+import { Toggle } from '@openmetadata/ui-core-components';
+import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -122,7 +123,14 @@ const SearchPreview = ({
     return (
       <>
         {data.map(
-          ({ _score, _source, _id = '', highlight, matched_queries }) => (
+          ({
+            _score,
+            _source,
+            _id = '',
+            highlight,
+            _explanation,
+            matched_queries,
+          }) => (
             <ExploreSearchCard
               showEntityIcon
               className="search-card"
@@ -132,7 +140,8 @@ const SearchPreview = ({
               id={_id}
               key={_source.fullyQualifiedName}
               matchedQueries={showRankingDetails ? matched_queries : undefined}
-              score={_score}
+              score={showRankingDetails ? _score : undefined}
+              scoreExplanation={showRankingDetails ? _explanation : undefined}
               showTags={false}
               source={_source}
             />
@@ -197,10 +206,11 @@ const SearchPreview = ({
           <Typography.Text className="m-r-xs">
             {t('label.ranking-detail-plural')}
           </Typography.Text>
-          <Switch
-            checked={showRankingDetails}
+          <Toggle
+            aria-label={t('label.ranking-detail-plural')}
             className="m-r-md"
             data-testid="ranking-details-switch"
+            isSelected={showRankingDetails}
             onChange={setShowRankingDetails}
           />
           <Button
