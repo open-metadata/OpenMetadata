@@ -52,6 +52,9 @@ export interface TestCaseFormDrawerProps {
   headerActions?: ReactNode;
   width?: number | string;
   showDocPanel?: boolean;
+  testCase?: TestCase;
+  showOnlyParameter?: boolean;
+  onUpdate?: (testCase: TestCase) => void;
 }
 
 export interface TestCaseFormContext {

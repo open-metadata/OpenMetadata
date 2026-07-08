@@ -40,7 +40,13 @@ import {
   addIngestionPipeline,
   deployIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
-import { createTestCase } from '../../../../rest/testAPI';
+import {
+  createTestCase,
+  getTestDefinitionById,
+  updateTestCaseById,
+} from '../../../../rest/testAPI';
+import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
@@ -48,6 +54,7 @@ import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
+import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import TestCaseFormBody from './TestCaseFormBody';
 import {
   FormValues,
@@ -57,6 +64,7 @@ import {
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
 import {
+  buildEditDefaults,
   buildTestSuitePipelinePayload,
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
@@ -74,12 +82,17 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   headerActions,
   width = '80vw',
   showDocPanel = variant === 'drawer',
+  testCase,
+  showOnlyParameter = false,
+  onUpdate,
 }: TestCaseFormDrawerProps) => {
   const { t } = useTranslation();
   const { getResourceLimit } = useLimitStore();
   const { isAirflowAvailable } = useAirflowStatus();
   const { permissions } = usePermissionProvider();
   const { ingestionPipeline } = permissions;
+
+  const isEditMode = !!testCase;
 
   const form = useForm<FormValues>({
     // Legacy antd validated fields on change (name regex/uniqueness errors
@@ -103,6 +116,21 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const [showHint, setShowHint] = useState<boolean>(true);
 
   const handleErrorDismiss = useCallback(() => setErrorMessage(''), []);
+
+  useEffect(() => {
+    if (!testCase || !open) {
+      return;
+    }
+    (async () => {
+      const definition = await getTestDefinitionById(
+        testCase.testDefinition?.id ?? ''
+      );
+      form.reset({
+        ...form.getValues(),
+        ...buildEditDefaults(testCase, definition),
+      } as FormValues);
+    })();
+  }, [testCase, open, form]);
 
   const handleActiveFieldChange = useCallback(
     (fieldId: string) => {
@@ -135,37 +163,59 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     [formContext, testSuite, table, isAirflowAvailable, ingestionPipeline]
   );
 
-  const handleSubmit = useCallback(
+  const handleEditSubmit = useCallback(
     async (values: FormValues) => {
-      setErrorMessage('');
-      try {
-        const testCaseObj = transformTestCaseFormData(values, {
-          selectedDefinition: formContext?.selectedDefinition,
-          selectedTableData: formContext?.selectedTableData,
-          selectedColumn: formContext?.selectedColumn,
-          selectedTestLevel: formContext?.selectedTestLevel ?? TestLevel.TABLE,
-          table,
-          selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
-          generateName: formContext?.generateName ?? (() => ''),
-        });
+      const isComputeRowCountFieldVisible =
+        formContext?.selectedDefinition?.supportsRowLevelPassedFailed ?? false;
+      const formValue = values as unknown as TestCaseFormType;
+      const jsonPatch = createUpdatedTestCasePatch({
+        testCase: testCase as TestCase,
+        value: formValue,
+        createTestCaseObject: testCaseClassBase.getCreateTestCaseObject(
+          formValue,
+          formContext?.selectedDefinition
+        ),
+        showOnlyParameter,
+        isComputeRowCountFieldVisible,
+      });
 
-        const created = await createTestCase(testCaseObj);
-        await getResourceLimit('dataQuality', true, true);
-        await createTestCasePipeline(values, created);
-
-        showSuccessToast(
-          t('server.create-entity-success', { entity: t('label.test-case') })
-        );
-
-        onFormSubmit?.(created);
-      } catch (error) {
-        const errorMsg =
-          (error as AxiosError<{ message: string }>)?.response?.data?.message ||
-          t('server.create-entity-error', { entity: t('label.test-case') });
-        setErrorMessage(errorMsg);
-
-        throw error;
+      if (!jsonPatch.length) {
+        return;
       }
+
+      const updated = await updateTestCaseById(
+        (testCase as TestCase).id ?? '',
+        jsonPatch
+      );
+      showSuccessToast(
+        t('server.update-entity-success', { entity: t('label.test-case') })
+      );
+      onUpdate?.(updated);
+    },
+    [testCase, formContext, showOnlyParameter, onUpdate, t]
+  );
+
+  const handleCreateSubmit = useCallback(
+    async (values: FormValues) => {
+      const testCaseObj = transformTestCaseFormData(values, {
+        selectedDefinition: formContext?.selectedDefinition,
+        selectedTableData: formContext?.selectedTableData,
+        selectedColumn: formContext?.selectedColumn,
+        selectedTestLevel: formContext?.selectedTestLevel ?? TestLevel.TABLE,
+        table,
+        selectedTable: formContext?.selectedTableData?.fullyQualifiedName,
+        generateName: formContext?.generateName ?? (() => ''),
+      });
+
+      const created = await createTestCase(testCaseObj);
+      await getResourceLimit('dataQuality', true, true);
+      await createTestCasePipeline(values, created);
+
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.test-case') })
+      );
+
+      onFormSubmit?.(created);
     },
     [
       formContext,
@@ -175,6 +225,32 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       onFormSubmit,
       t,
     ]
+  );
+
+  const handleSubmit = useCallback(
+    async (values: FormValues) => {
+      setErrorMessage('');
+      try {
+        if (isEditMode) {
+          await handleEditSubmit(values);
+        } else {
+          await handleCreateSubmit(values);
+        }
+      } catch (error) {
+        const errorMsg =
+          (error as AxiosError<{ message: string }>)?.response?.data?.message ||
+          t(
+            isEditMode
+              ? 'server.update-entity-error'
+              : 'server.create-entity-error',
+            { entity: t('label.test-case') }
+          );
+        setErrorMessage(errorMsg);
+
+        throw error;
+      }
+    },
+    [isEditMode, handleEditSubmit, handleCreateSubmit, t]
   );
 
   const serviceDocPanel = (
@@ -197,6 +273,8 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     <TestCaseFormBody
       errorMessage={errorMessage}
       form={form}
+      isEditMode={isEditMode}
+      showOnlyParameter={showOnlyParameter}
       table={table}
       testSuite={testSuite}
       onActiveFieldChange={handleActiveFieldChange}
@@ -247,15 +325,19 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     onClose();
   }, [form, onClose]);
 
+  const defaultTitle = isEditMode
+    ? t('label.edit-entity', { entity: getEntityName(testCase) })
+    : t('label.add-entity', { entity: t('label.test-case') });
+
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<FormValues>({
       className: 'test-case-form-drawer',
-      title: title ?? t('label.add-entity', { entity: t('label.test-case') }),
+      title: title ?? defaultTitle,
       hookForm: form,
       form: formBody,
       headerActions,
       width,
-      submitLabel: t('label.create'),
+      submitLabel: isEditMode ? t('label.update') : t('label.create'),
       submitTestId: 'create-btn',
       submitLoading: formContext?.isCheckingPermissions ?? false,
       onClose: handleDrawerDismiss,
@@ -300,8 +382,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         }
         open={open}
         reserveHintSpace={showHint}
+        submitLabel={isEditMode ? t('label.update') : undefined}
         subtitle={t('message.page-sub-header-for-data-quality')}
-        title={title ?? t('label.add-entity', { entity: t('label.test-case') })}
+        title={title ?? defaultTitle}
         onClose={handleDrawerDismiss}
         onSubmit={form.handleSubmit(
           (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),

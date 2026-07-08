@@ -30,7 +30,6 @@ import { TagLabel } from '../../../../generated/type/tagLabel';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
-import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import {
   normalizeParamsForPayload,
   unwrapSelectValue,
@@ -195,14 +194,12 @@ export const buildTestSuitePipelinePayload = (
 };
 
 /**
- * `FormValues.params`/`name`/`displayName` are typed too narrowly for edit
- * prefill (no `boolean` param values, no `name`/`displayName` scalar
- * fields). This widens just the fields `buildEditDefaults` needs without
- * touching the shared `FormValues` interface, which other, later tasks own.
+ * `FormValues.params` is typed too narrowly for edit prefill (no `boolean`
+ * param values). This widens just the field `buildEditDefaults` needs
+ * without touching the shared `FormValues` interface, which other, later
+ * tasks own.
  */
 type EditFormValues = Omit<Partial<FormValues>, 'params'> & {
-  name?: string;
-  displayName?: string;
   params?: Record<string, string | { value: string }[] | boolean>;
 };
 
@@ -287,7 +284,6 @@ export const buildEditDefaults = (
 
   const scalarFields: Pick<
     EditFormValues,
-    | 'name'
     | 'displayName'
     | 'description'
     | 'computePassedFailedRowCount'
@@ -295,7 +291,6 @@ export const buildEditDefaults = (
     | 'dimensionColumns'
     | 'topDimensions'
   > = pick(testCase, [
-    'name',
     'displayName',
     'description',
     'computePassedFailedRowCount',
@@ -306,7 +301,8 @@ export const buildEditDefaults = (
 
   return {
     testLevel: buildEditTestLevel(testCase),
-    selectedTable: getNameFromFQN(tableFqn),
+    testName: testCase.name,
+    selectedTable: { id: tableFqn, label: tableFqn } as never,
     selectedColumn: selectedColumn || undefined,
     testTypeId: {
       id: testCase.testDefinition?.fullyQualifiedName ?? '',

@@ -37,6 +37,8 @@ export interface AiFormModalProps {
   /** Footer button test ids, defaulted to match the classic test case drawer. */
   submitTestId?: string;
   cancelTestId?: string;
+  /** Footer submit button label, defaults to the create label. */
+  submitLabel?: ReactNode;
   /**
    * When true, reserve room to the right of the modal for the floating Form Hint
    * popover so the modal+hint read as one centered group (using the full width).
@@ -70,6 +72,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   submitTestId = 'create-btn',
   cancelTestId = 'cancel-btn',
   reserveHintSpace = false,
+  submitLabel,
 }) => {
   const { t } = useTranslation();
 
@@ -172,7 +175,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 data-testid={submitTestId}
                 isLoading={isSubmitting}
                 onClick={handleSubmit}>
-                {t('label.create')}
+                {submitLabel ?? t('label.create')}
               </Button>
             </Dialog.Footer>
           </Dialog>

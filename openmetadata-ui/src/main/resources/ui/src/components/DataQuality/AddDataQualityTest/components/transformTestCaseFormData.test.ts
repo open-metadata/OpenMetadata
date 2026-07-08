@@ -256,14 +256,17 @@ describe('buildEditDefaults', () => {
     const result = buildEditDefaults(testCase, tableLevelDefinition);
 
     expect(result.testLevel).toBe(TestLevel.TABLE);
-    expect(result.selectedTable).toBe('t');
+    expect(result.selectedTable).toEqual({
+      id: 'svc.db.sch.t',
+      label: 'svc.db.sch.t',
+    });
     expect(result.selectedColumn).toBeUndefined();
     expect(result.testTypeId).toEqual({
       id: 'tableRowCountToEqual',
       label: 'tableRowCountToEqual',
     });
     expect(result.params).toEqual({ value: '10' });
-    expect(result.name).toBe('my_test');
+    expect(result.testName).toBe('my_test');
     expect(result.displayName).toBe('My Test');
     expect(result.description).toBe('a description');
     expect(result.computePassedFailedRowCount).toBe(true);
@@ -295,7 +298,10 @@ describe('buildEditDefaults', () => {
     const result = buildEditDefaults(testCase, definition);
 
     expect(result.testLevel).toBe(TestLevel.COLUMN);
-    expect(result.selectedTable).toBe('t');
+    expect(result.selectedTable).toEqual({
+      id: 'svc.db.sch.t',
+      label: 'svc.db.sch.t',
+    });
     expect(result.selectedColumn).toBe('email');
   });
 

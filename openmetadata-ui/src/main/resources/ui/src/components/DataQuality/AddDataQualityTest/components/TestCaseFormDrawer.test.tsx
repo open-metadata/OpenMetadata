@@ -24,11 +24,18 @@ import {
 } from '@testing-library/react';
 import { useState } from 'react';
 import { Table } from '../../../../generated/entity/data/table';
+import { TestCase } from '../../../../generated/tests/testCase';
+import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import {
   addIngestionPipeline,
   deployIngestionPipelineById,
 } from '../../../../rest/ingestionPipelineAPI';
-import { createTestCase } from '../../../../rest/testAPI';
+import {
+  createTestCase,
+  getTestDefinitionById,
+  updateTestCaseById,
+} from '../../../../rest/testAPI';
+import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import TestCaseFormDrawer from './TestCaseFormDrawer';
 import {
   TestCaseFormContext,
@@ -46,6 +53,13 @@ const TEST_TYPE_DOC =
 
 jest.mock('../../../../rest/testAPI', () => ({
   createTestCase: jest.fn(),
+  getTestDefinitionById: jest.fn(),
+  updateTestCaseById: jest.fn(),
+}));
+
+jest.mock('../../../../utils/DataQuality/DataQualityPureUtils', () => ({
+  ...jest.requireActual('../../../../utils/DataQuality/DataQualityPureUtils'),
+  createUpdatedTestCasePatch: jest.fn(),
 }));
 
 jest.mock('../../../../rest/ingestionPipelineAPI', () => ({
@@ -85,6 +99,11 @@ jest.mock('./transformTestCaseFormData', () => ({
   buildTestSuitePipelinePayload: jest
     .fn()
     .mockReturnValue({ name: 'pipeline-payload' }),
+  buildEditDefaults: jest.fn().mockReturnValue({
+    testName: 'existing-test-case',
+    displayName: 'Existing Test Case',
+    params: { value: '10' },
+  }),
 }));
 
 const mockContext: TestCaseFormContext = {
@@ -112,55 +131,86 @@ const mockContextWithPipeline: TestCaseFormContext = {
 let emitContextFn: ((ctx: TestCaseFormContext) => void) | undefined;
 let emitActiveFieldFn: ((fieldId: string) => void) | undefined;
 
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+let lastFormBodyProps: Record<string, any> | undefined;
+
 jest.mock('./TestCaseFormBody', () =>
-  jest
-    .fn()
-    .mockImplementation(
-      ({
-        onContextChange,
-        onActiveFieldChange,
-        errorMessage,
-      }: {
-        onContextChange?: (ctx: TestCaseFormContext) => void;
-        onActiveFieldChange?: (fieldId: string) => void;
-        errorMessage?: string;
-      }) => {
-        emitContextFn = onContextChange;
-        emitActiveFieldFn = onActiveFieldChange;
+  jest.fn().mockImplementation(
+    ({
+      form,
+      onContextChange,
+      onActiveFieldChange,
+      errorMessage,
+      isEditMode,
+      showOnlyParameter,
+    }: // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    any) => {
+      emitContextFn = onContextChange;
+      emitActiveFieldFn = onActiveFieldChange;
+      lastFormBodyProps = { isEditMode, showOnlyParameter };
 
-        const testTypeField: FieldProp = {
-          name: 'testTypeId',
-          label: 'Test Type',
-          type: FieldTypes.TEXT,
-          required: false,
-          id: 'root/testType',
-          doc: TEST_TYPE_DOC,
-          props: { 'data-testid': 'test-type' },
-        };
+      const testTypeField: FieldProp = {
+        name: 'testTypeId',
+        label: 'Test Type',
+        type: FieldTypes.TEXT,
+        required: false,
+        id: 'root/testType',
+        doc: TEST_TYPE_DOC,
+        props: { 'data-testid': 'test-type' },
+      };
 
-        return (
-          <div data-testid="test-case-form-body">
+      const testNameValue = form?.watch ? form.watch('testName') : undefined;
+      const displayNameValue = form?.watch
+        ? form.watch('displayName')
+        : undefined;
+      const paramsValue = form?.watch ? form.watch('params') : undefined;
+
+      return (
+        <div data-testid="test-case-form-body">
+          {!showOnlyParameter && (
+            <input
+              data-testid="test-case-name"
+              disabled={Boolean(isEditMode)}
+              value={testNameValue ?? ''}
+              onChange={() => undefined}
+            />
+          )}
+          {!showOnlyParameter && isEditMode && (
+            <input
+              data-testid="display-name"
+              value={displayNameValue ?? ''}
+              onChange={() => undefined}
+            />
+          )}
+          {!showOnlyParameter && (
+            <div data-testid="select-table-card">select-table-card</div>
+          )}
+          <div data-testid="test-type-card">
             {getField(testTypeField)}
-            {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
-            <button
-              data-testid="emit-context"
-              onClick={() => onContextChange?.(mockContext)}>
-              emit
-            </button>
-            <button
-              data-testid="emit-context-pipeline"
-              onClick={() => onContextChange?.(mockContextWithPipeline)}>
-              emit-pipeline
-            </button>
-            <button
-              data-testid="emit-active-field"
-              onClick={() => onActiveFieldChange?.('testName')}>
-              emit-field
-            </button>
+            <div data-testid="params-value">
+              {paramsValue ? JSON.stringify(paramsValue) : ''}
+            </div>
           </div>
-        );
-      }
-    )
+          {errorMessage && <div data-testid="form-error">{errorMessage}</div>}
+          <button
+            data-testid="emit-context"
+            onClick={() => onContextChange?.(mockContext)}>
+            emit
+          </button>
+          <button
+            data-testid="emit-context-pipeline"
+            onClick={() => onContextChange?.(mockContextWithPipeline)}>
+            emit-pipeline
+          </button>
+          <button
+            data-testid="emit-active-field"
+            onClick={() => onActiveFieldChange?.('testName')}>
+            emit-field
+          </button>
+        </div>
+      );
+    }
+  )
 );
 
 jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
@@ -573,5 +623,139 @@ describe('TestCaseFormDrawer', () => {
     expect(
       screen.queryByText(/kind of validation to run/i)
     ).not.toBeInTheDocument();
+  });
+
+  describe('edit mode', () => {
+    const mockTestDefinition = {
+      id: 'def-1',
+      name: 'tableRowCountToEqual',
+      fullyQualifiedName: 'tableRowCountToEqual',
+      supportsRowLevelPassedFailed: false,
+    } as TestDefinition;
+
+    const mockTestCase = {
+      id: 'test-case-id',
+      name: 'existing-test-case',
+      displayName: 'Existing Test Case',
+      entityLink: '<#E::table::service.db.schema.table>',
+      testDefinition: {
+        id: 'def-1',
+        fullyQualifiedName: 'tableRowCountToEqual',
+      },
+      parameterValues: [{ name: 'value', value: '10' }],
+      tags: [],
+    } as unknown as TestCase;
+
+    const mockGetTestDefinitionById = getTestDefinitionById as jest.Mock;
+    const mockUpdateTestCaseById = updateTestCaseById as jest.Mock;
+    const mockCreateUpdatedTestCasePatch =
+      createUpdatedTestCasePatch as jest.Mock;
+
+    beforeEach(() => {
+      mockGetTestDefinitionById.mockResolvedValue(mockTestDefinition);
+      mockUpdateTestCaseById.mockResolvedValue(mockTestCase);
+      mockCreateUpdatedTestCasePatch.mockReturnValue([
+        { op: 'replace', path: '/displayName', value: 'Updated Name' },
+      ]);
+    });
+
+    it('prefills the form with the test case name (disabled) and display name', async () => {
+      renderDrawer({ testCase: mockTestCase });
+
+      await waitFor(() => {
+        expect(mockGetTestDefinitionById).toHaveBeenCalledWith('def-1');
+      });
+
+      const nameInput = await screen.findByTestId('test-case-name');
+      const displayNameInput = await screen.findByTestId('display-name');
+
+      await waitFor(() => {
+        expect(nameInput).toHaveValue('existing-test-case');
+      });
+
+      expect(nameInput).toBeDisabled();
+      expect(displayNameInput).toBeInTheDocument();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('params-value')).toHaveTextContent('value');
+      });
+    });
+
+    it('submits an update patch via updateTestCaseById and fires onUpdate', async () => {
+      const onUpdate = jest.fn();
+      const onClose = jest.fn();
+      renderDrawer({ testCase: mockTestCase, onUpdate, onClose });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-name')).toHaveValue(
+          'existing-test-case'
+        );
+      });
+
+      const submitBtn = await screen.findByTestId('create-btn');
+
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+
+      await waitFor(() => {
+        expect(mockUpdateTestCaseById).toHaveBeenCalledWith('test-case-id', [
+          { op: 'replace', path: '/displayName', value: 'Updated Name' },
+        ]);
+      });
+
+      await waitFor(() => {
+        expect(onUpdate).toHaveBeenCalledWith(mockTestCase);
+      });
+
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalled();
+      });
+    });
+
+    it('does not call updateTestCaseById and closes the drawer when the patch is empty', async () => {
+      mockCreateUpdatedTestCasePatch.mockReturnValue([]);
+      const onClose = jest.fn();
+      const onUpdate = jest.fn();
+      renderDrawer({ testCase: mockTestCase, onClose, onUpdate });
+
+      await waitFor(() => {
+        expect(screen.getByTestId('test-case-name')).toHaveValue(
+          'existing-test-case'
+        );
+      });
+
+      const submitBtn = await screen.findByTestId('create-btn');
+
+      await act(async () => {
+        fireEvent.click(submitBtn);
+      });
+
+      await waitFor(() => {
+        expect(onClose).toHaveBeenCalled();
+      });
+
+      expect(mockUpdateTestCaseById).not.toHaveBeenCalled();
+      expect(onUpdate).not.toHaveBeenCalled();
+    });
+
+    it('renders only the params card when showOnlyParameter is true', async () => {
+      renderDrawer({ testCase: mockTestCase, showOnlyParameter: true });
+
+      await waitFor(() => {
+        expect(mockGetTestDefinitionById).toHaveBeenCalled();
+      });
+
+      expect(await screen.findByTestId('test-type-card')).toBeInTheDocument();
+      expect(screen.queryByTestId('select-table-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('test-case-name')).not.toBeInTheDocument();
+      expect(lastFormBodyProps?.showOnlyParameter).toBe(true);
+    });
+
+    it('renders the edit title with the test case name', async () => {
+      renderDrawer({ testCase: mockTestCase });
+
+      expect(await screen.findByText('label.edit-entity')).toBeInTheDocument();
+    });
   });
 });
