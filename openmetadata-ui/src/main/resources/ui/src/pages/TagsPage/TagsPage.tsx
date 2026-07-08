@@ -23,11 +23,11 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -53,10 +53,7 @@ import {
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
-import {
-  getCountBadge,
-  getEntityDeleteMessage,
-} from '../../utils/EntityDisplayUtils';
+import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   checkPermission,
@@ -786,16 +783,14 @@ const TagsPage = () => {
                 ref={classificationDetailsRef}
               />
 
-              <EntityDeleteModal
-                bodyText={getEntityDeleteMessage(
-                  deleteTags.data?.name ?? '',
-                  ''
-                )}
-                entityName={deleteTags.data?.name ?? ''}
-                entityType={t('label.classification')}
-                visible={deleteTags.state}
+              <DeleteModal
+                entityTitle={deleteTags.data?.name ?? ''}
+                message={t('message.delete-entity-message', {
+                  entity: deleteTags.data?.name ?? '',
+                })}
+                open={deleteTags.state}
                 onCancel={handleCancelClassificationDelete}
-                onConfirm={handleConfirmClick}
+                onDelete={handleConfirmClick}
               />
             </>
           ),

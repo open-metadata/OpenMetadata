@@ -16,7 +16,7 @@ import { ProcessingStatus } from '../../../generated/entity/data/contextFile';
 import DocumentStatusBadge from './DocumentStatusBadge.component';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
-  Badge: jest.fn(
+  BadgeWithDot: jest.fn(
     ({ children, color }: { children: React.ReactNode; color: string }) => (
       <span data-color={color}>{children}</span>
     )

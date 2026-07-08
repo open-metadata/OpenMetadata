@@ -13,7 +13,6 @@
 
 import { Avatar, Button, Typography } from '@openmetadata/ui-core-components';
 import { isEmpty, noop } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -54,7 +53,6 @@ const MarketplaceDomainsWidget = ({
   const navigate = useNavigate();
   const { domainBasePath } = useMarketplaceStore();
   const { permissions } = usePermissionProvider();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
   });
@@ -112,15 +110,13 @@ const MarketplaceDomainsWidget = ({
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsFormLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const { formDrawer, openDrawer, closeDrawer } =

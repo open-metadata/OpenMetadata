@@ -14,6 +14,7 @@
 import { Archive, Cube01, File06, Lightbulb03 } from '@untitledui/icons';
 import { ReactComponent as GovernIcon } from '../assets/svg/bank.svg';
 import { ReactComponent as ClassificationIcon } from '../assets/svg/classification.svg';
+import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
@@ -26,7 +27,6 @@ import { ReactComponent as FolderIcon } from '../assets/svg/ic-folder-new.svg';
 import { ReactComponent as GridIcon } from '../assets/svg/ic-grid-new.svg';
 import { ReactComponent as HomeIcon } from '../assets/svg/ic-home.svg';
 import { ReactComponent as IncidentMangerIcon } from '../assets/svg/ic-incident-manager.svg';
-import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/ic-knowledge-center.svg';
 import { ReactComponent as LineageIcon } from '../assets/svg/ic-lineage.svg';
 import { ReactComponent as ObservabilityIcon } from '../assets/svg/ic-observability.svg';
 import { ReactComponent as OverviewIcon } from '../assets/svg/ic-overview.svg';

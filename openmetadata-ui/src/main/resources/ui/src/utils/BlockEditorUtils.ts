@@ -20,14 +20,12 @@ import { ReactComponent as IconFormatAudio } from '../assets/svg/ic-format-audio
 import { ReactComponent as IconFormatImage } from '../assets/svg/ic-format-image.svg';
 import { ReactComponent as IconFormatVideo } from '../assets/svg/ic-format-video.svg';
 import { FileType } from '../components/BlockEditor/BlockEditor.interface';
-import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
-import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import {
-  getEntityDetail,
-  getHashTagList,
-  getMentionList,
-} from './FeedUtilsPure';
+  convertMarkdownFormatToHtmlString,
+  isHTMLString,
+} from './BlockEditorPureUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getSanitizeContent } from './sanitize.utils';
 
 export const getSelectedText = (state: EditorState) => {
@@ -49,47 +47,6 @@ export const isInViewport = (ele: HTMLElement, container: HTMLElement) => {
   return eleTop >= containerTop && eleBottom <= containerBottom;
 };
 
-const _convertMarkdownFormatToHtmlString = (markdown: string) => {
-  let updatedMessage = markdown;
-  const urlEntries = Object.entries(ENTITY_URL_MAP);
-
-  const mentionList = getMentionList(markdown) ?? [];
-  const hashTagList = getHashTagList(markdown) ?? [];
-
-  const mentionMap = new Map<string, RegExpMatchArray | null>(
-    mentionList.map((mention) => [mention, getEntityDetail(mention)])
-  );
-
-  const hashTagMap = new Map<string, RegExpMatchArray | null>(
-    hashTagList.map((hashTag) => [hashTag, getEntityDetail(hashTag)])
-  );
-
-  mentionMap.forEach((value, key) => {
-    if (value) {
-      const [, href, rawEntityType, fqn] = value;
-      const entityType = urlEntries.find((e) => e[1] === rawEntityType)?.[0];
-
-      if (entityType) {
-        const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="mention" data-entityType="${entityType}" data-fqn="${fqn}" data-label="${fqn}">@${fqn}</a>`;
-        updatedMessage = updatedMessage.replaceAll(key, entityLink);
-      }
-    }
-  });
-
-  hashTagMap.forEach((value, key) => {
-    if (value) {
-      const [, href, rawEntityType, fqn] = value;
-
-      const entityLink = `<a href="${href}/${rawEntityType}/${fqn}" data-type="hashtag" data-entityType="${rawEntityType}" data-fqn="${fqn}" data-label="${fqn}">#${fqn}</a>`;
-      updatedMessage = updatedMessage.replaceAll(key, entityLink);
-    }
-  });
-
-  return updatedMessage;
-};
-
-export type FormatContentFor = 'server' | 'client';
-
 // Unique marker prefix used to temporarily replace entity links during HTML serialization
 // This avoids HTML encoding of < and > characters in entity links
 const ENTITY_LINK_MARKER_PREFIX = '__ENTITY_LINK_MARKER_';
@@ -100,61 +57,14 @@ const escapeMarkdownLinkText = (text: string): string =>
 const sanitizeEntityLinkField = (value: string): string =>
   value.replace(/[<>|]/g, '');
 
-export const isHTMLString = (content: string) => {
-  // Quick check for common HTML tags
-  const commonHtmlTags =
-    /<(p|div|span|a|ul|ol|li|h[1-6]|br|strong|em|code|pre)[>\s]/i;
-
-  // If content doesn't have any HTML-like structure, return false early
-  if (!commonHtmlTags.test(content)) {
-    return false;
-  }
-
-  try {
-    const parser = new DOMParser();
-    const parsedDocument = parser.parseFromString(content, 'text/html');
-
-    // Check if there are any actual HTML elements (not just text nodes)
-    const hasHtmlElements = Array.from(parsedDocument.body.childNodes).some(
-      (node) => node.nodeType === Node.ELEMENT_NODE
-    );
-
-    // Check if the content has markdown-specific patterns
-    const markdownPatterns = [
-      /^#{1,6}\s/, // Headers
-      /^\s*[-*+]\s/, // Lists
-      /^\s*\d+\.\s/, // Numbered lists
-      /^\s*>{1,}\s/, // Blockquotes
-      /^---|\*\*\*|___/, // Horizontal rules
-      /`{1,3}[^`]+`{1,3}/, // Code blocks
-      /(\*\*)[^*]+(\*\*)|(__)[^_]+(__)/, // Bold/Strong text
-    ];
-
-    const hasMarkdownSyntax = markdownPatterns.some((pattern) =>
-      pattern.test(content)
-    );
-
-    // If it has markdown syntax but also parsed as HTML, prefer markdown interpretation
-    return hasHtmlElements && !hasMarkdownSyntax;
-  } catch (e) {
-    // eslint-disable-next-line no-console
-    console.warn('Error parsing content to check HTML string:', e);
-
-    return false;
-  }
-};
-
-export const formatContent = (
-  htmlString: string,
-  formatFor: FormatContentFor
-) => {
+export const formatServerContent = (htmlString: string) => {
   // Create a new DOMParser
   const parser = new DOMParser();
 
   // Only convert markdown to HTML if the content is not already HTML
   const processedContent = isHTMLString(htmlString)
     ? htmlString
-    : _convertMarkdownFormatToHtmlString(htmlString);
+    : convertMarkdownFormatToHtmlString(htmlString);
 
   const doc = parser.parseFromString(processedContent, 'text/html');
 
@@ -166,60 +76,45 @@ export const formatContent = (
   // Store entity links with markers to avoid HTML encoding during serialization
   const entityLinkMap = new Map<string, string>();
 
-  if (formatFor === 'server') {
-    anchorTags.forEach((tag, index) => {
-      const rawHref = tag.getAttribute('href');
-      const text = tag.textContent;
-      const fqn = tag.getAttribute('data-fqn');
-      const entityType = tag.getAttribute('data-entityType');
+  anchorTags.forEach((tag, index) => {
+    const rawHref = tag.getAttribute('href');
+    const text = tag.textContent;
+    const fqn = tag.getAttribute('data-fqn');
+    const entityType = tag.getAttribute('data-entityType');
 
-      // Validate href to only allow safe protocols before embedding into entity link string.
-      // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
-      const href =
-        rawHref &&
-        (rawHref.startsWith('http://') ||
-          rawHref.startsWith('https://') ||
-          rawHref.startsWith('/') ||
-          rawHref.startsWith('#'))
-          ? rawHref
-          : '';
+    // Validate href to only allow safe protocols before embedding into entity link string.
+    // This prevents unsafe URLs from bypassing DOMPurify via the post-sanitization replacement.
+    const href =
+      rawHref &&
+      (rawHref.startsWith('http://') ||
+        rawHref.startsWith('https://') ||
+        rawHref.startsWith('/') ||
+        rawHref.startsWith('#'))
+        ? rawHref
+        : '';
 
-      const safeEntityType = sanitizeEntityLinkField(entityType ?? '');
-      const safeFqn = sanitizeEntityLinkField(fqn ?? '');
-      const safeText = escapeMarkdownLinkText(text ?? '');
-      const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${safeEntityType}${ENTITY_LINK_SEPARATOR}${safeFqn}|[${safeText}](${href})>`;
-      const marker = `${ENTITY_LINK_MARKER_PREFIX}${index}__`;
+    const safeEntityType = sanitizeEntityLinkField(entityType ?? '');
+    const safeFqn = sanitizeEntityLinkField(fqn ?? '');
+    const safeText = escapeMarkdownLinkText(text ?? '');
+    const entityLink = `<#E${ENTITY_LINK_SEPARATOR}${safeEntityType}${ENTITY_LINK_SEPARATOR}${safeFqn}|[${safeText}](${href})>`;
+    const marker = `${ENTITY_LINK_MARKER_PREFIX}${index}__`;
 
-      entityLinkMap.set(marker, entityLink);
-      tag.textContent = marker;
-    });
-  } else {
-    anchorTags.forEach((tag) => {
-      const label = tag.getAttribute('data-label');
-      const type = tag.getAttribute('data-type');
-      const prefix = type === 'mention' ? '@' : '#';
-
-      tag.textContent = `${prefix}${label}`;
-    });
-  }
+    entityLinkMap.set(marker, entityLink);
+    tag.textContent = marker;
+  });
 
   let modifiedHtmlString = doc.body.innerHTML;
 
-  // Apply additional transformations based on format
-  if (formatFor === 'server') {
-    modifiedHtmlString = getSanitizeContent(
-      blockEditorExtensionsClassBase.serializeContentForBackend(
-        modifiedHtmlString
-      )
-    );
+  modifiedHtmlString = getSanitizeContent(
+    blockEditorExtensionsClassBase.serializeContentForBackend(
+      modifiedHtmlString
+    )
+  );
 
-    // Replace markers with actual entity links
-    entityLinkMap.forEach((entityLink, marker) => {
-      modifiedHtmlString = modifiedHtmlString.replace(marker, entityLink);
-    });
-  } else {
-    modifiedHtmlString = getSanitizeContent(modifiedHtmlString);
-  }
+  // Replace markers with actual entity links
+  entityLinkMap.forEach((entityLink, marker) => {
+    modifiedHtmlString = modifiedHtmlString.replace(marker, entityLink);
+  });
 
   return modifiedHtmlString;
 };

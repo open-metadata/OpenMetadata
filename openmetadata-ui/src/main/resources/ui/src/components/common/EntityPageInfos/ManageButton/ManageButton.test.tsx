@@ -19,8 +19,8 @@ jest.mock('../../../../utils/AnnouncementsUtils', () => ({
   ANNOUNCEMENT_ENTITIES: ['table', 'topic', 'dashboard', 'pipeline'],
 }));
 
-jest.mock('../../DeleteWidget/DeleteWidgetModal', () => {
-  return jest.fn().mockReturnValue(<div>DeleteWidgetModal</div>);
+jest.mock('../../DeleteWidget/DeleteEntityModal', () => {
+  return jest.fn().mockReturnValue(<div>DeleteEntityModal</div>);
 });
 
 const mockAnnouncementClick = jest.fn();
@@ -79,7 +79,7 @@ describe('Test manage button component', () => {
 
     fireEvent.click(deleteOption);
 
-    expect(await screen.findByText('DeleteWidgetModal')).toBeInTheDocument();
+    expect(await screen.findByText('DeleteEntityModal')).toBeInTheDocument();
   });
 
   it('Should call announcement callback on click of announcement option', async () => {

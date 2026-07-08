@@ -96,7 +96,7 @@ function useClipboardHandlers(
   getFinalSelectedRange: () => Range | null,
   dataSource: Record<string, string>[],
   setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>,
-  columns: Column<Record<string, string>[]>[],
+  columns: Column<Record<string, string>>[],
   pushToUndoStack: (rowsToPush?: Record<string, string>[]) => void
 ) {
   const handleCopy = useCallback(() => {
@@ -124,6 +124,8 @@ function useClipboardHandlers(
       }
       if (navigator.clipboard && window.isSecureContext) {
         navigator.clipboard.writeText(tsv.join('\n'));
+
+        return undefined;
       } else {
         const textarea = document.createElement('textarea');
         textarea.value = tsv.join('\n');
@@ -135,6 +137,8 @@ function useClipboardHandlers(
         return success;
       }
     }
+
+    return undefined;
   }, [selectedRange, dataSource, columns, getFinalSelectedRange]);
 
   const handlePaste = useCallback(() => {
@@ -193,7 +197,7 @@ export function useGridEditController({
 }: {
   dataSource: Record<string, string>[];
   setDataSource: React.Dispatch<React.SetStateAction<Record<string, string>[]>>;
-  columns: Column<Record<string, string>[]>[];
+  columns: Column<Record<string, string>>[];
 }) {
   const [gridContainer, setGridContainer] = useState<HTMLElement | null>(null);
   const [isSelecting, setIsSelecting] = useState(false);

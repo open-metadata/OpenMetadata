@@ -1754,12 +1754,20 @@ version: "1.0.0"`;
       // Add refresh frequency
       await page.getByTestId('refresh-frequency-interval-input').fill('24');
       await page.getByTestId('refresh-frequency-unit-select').click();
-      await page.locator('.refresh-frequency-unit-select [title=Hour]').click();
+      await expect(
+        page.locator(".refresh-frequency-unit-select [title*='Hour']")
+      ).toBeVisible();
+      await page
+        .locator(".refresh-frequency-unit-select [title*='Hour']")
+        .click();
 
       // Add max latency
       await page.getByTestId('max-latency-value-input').fill('2');
       await page.getByTestId('max-latency-unit-select').click();
-      await page.locator('.max-latency-unit-select [title=Hour]').click();
+      await expect(
+        page.locator(".max-latency-unit-select [title*='Hour']")
+      ).toBeVisible();
+      await page.locator(".max-latency-unit-select [title*='Hour']").click();
 
       // Save the contract
       const saveContractResponse = page.waitForResponse(
@@ -1986,13 +1994,19 @@ version: "1.0.0"`;
 
         await page.getByTestId('refresh-frequency-interval-input').fill('12');
         await page.getByTestId('refresh-frequency-unit-select').click();
+        await expect(
+          page.locator(".refresh-frequency-unit-select [title*='Hour']")
+        ).toBeVisible();
         await page
-          .locator('.refresh-frequency-unit-select [title=Hour]')
+          .locator(".refresh-frequency-unit-select [title*='Hour']")
           .click();
 
         await page.getByTestId('max-latency-value-input').fill('3');
         await page.getByTestId('max-latency-unit-select').click();
-        await page.locator('.max-latency-unit-select [title=Hour]').click();
+        await expect(
+          page.locator(".max-latency-unit-select [title*='Hour']")
+        ).toBeVisible();
+        await page.locator(".max-latency-unit-select [title*='Hour']").click();
 
         const saveContractResponse = page.waitForResponse(
           '/api/v1/dataContracts*'

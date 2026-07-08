@@ -26,6 +26,7 @@ import {
   setUserDefaultPersona,
   verifyDataProductCountInDataProductWidget,
   verifyDomainCountInDomainWidget,
+  verifyWidgetCountOnCurrentPage,
 } from '../../../utils/customizeLandingPage';
 import {
   addAssetsToDataProduct,
@@ -35,6 +36,7 @@ import {
   selectDomain,
 } from '../../../utils/domain';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { waitForEntitySearchable } from '../../../utils/search';
 import { sidebarClick } from '../../../utils/sidebar';
 
 const adminUser = new UserClass();
@@ -63,111 +65,6 @@ const test = base.extend<{ page: Page }>({
     await page.close();
   },
 });
-
-const waitForEntitySearchable = async (
-  page: Page,
-  index: string,
-  query: string,
-  expectedId: string
-) => {
-  const browser = page.context().browser();
-  if (!browser) {
-    throw new Error('Browser instance is not available for admin API search');
-  }
-
-  const { apiContext, afterAction } = await performAdminLogin(browser);
-
-  try {
-    await expect
-      .poll(
-        async () => {
-          const response = await apiContext.get(
-            `/api/v1/search/query?q=${encodeURIComponent(query)}`,
-            {
-              params: {
-                index,
-                from: 0,
-                size: 10,
-                deleted: false,
-              },
-            }
-          );
-
-          if (!response.ok()) {
-            return false;
-          }
-
-          const payload = await response.json();
-
-          return (
-            payload?.hits?.hits?.some(
-              (hit: { _source?: { id?: string } }) =>
-                hit._source?.id === expectedId
-            ) ?? false
-          );
-        },
-        {
-          timeout: 60_000,
-          intervals: [1_000, 2_000, 5_000],
-        }
-      )
-      .toBe(true);
-  } finally {
-    await afterAction();
-  }
-};
-
-const setWidgetSortOnCurrentPage = async (
-  page: Page,
-  widgetKey: string,
-  label: string
-) => {
-  const widget = page.getByTestId(widgetKey);
-  await expect(widget).toBeVisible();
-  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
-
-  const dropdown = widget.getByTestId('widget-sort-by-dropdown');
-  await expect(dropdown).toBeVisible();
-
-  if (((await dropdown.textContent()) ?? '').includes(label)) {
-    return;
-  }
-
-  await dropdown.click();
-  const option = widget.locator('.widget-sort-filter-menu').getByText(label, {
-    exact: true,
-  });
-  await expect(option).toBeVisible();
-  await option.click();
-  await expect(dropdown).toContainText(label);
-};
-
-const verifyWidgetCountOnCurrentPage = async (
-  page: Page,
-  widgetKey: string,
-  selector: string,
-  expectedCount: number
-) => {
-  const widget = page.getByTestId(widgetKey);
-  await expect(widget).toBeVisible();
-  await widget.scrollIntoViewIfNeeded().catch(() => undefined);
-
-  await expect
-    .poll(
-      async () => {
-        const element = widget.locator(selector).first();
-        const isVisible = await element.isVisible().catch(() => false);
-
-        if (!isVisible) {
-          return null;
-        }
-
-        return (await element.textContent())?.trim() ?? null;
-      },
-      { timeout: 60_000, intervals: [1_000, 2_000, 5_000] }
-    )
-    .toContain(expectedCount.toString());
-};
 
 base.beforeAll('Setup pre-requests', async ({ browser }) => {
   const { afterAction, apiContext } = await performAdminLogin(browser);

@@ -63,6 +63,7 @@ const TierCard = ({
       const { data } = await getTags({
         parent: 'Tier',
         limit: 50,
+        disabled: false,
       });
 
       if (data) {

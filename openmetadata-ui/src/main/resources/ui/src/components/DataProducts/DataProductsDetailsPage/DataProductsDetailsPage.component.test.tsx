@@ -29,8 +29,11 @@ jest.mock('react-router-dom', () => ({
     .fn()
     .mockReturnValue({ state: null, pathname: '/data-product/test' }),
 }));
-jest.mock('notistack', () => ({
-  useSnackbar: jest.fn().mockReturnValue({ enqueueSnackbar: jest.fn() }),
+jest.mock('../../../utils/NotistackUtils', () => ({
+  showNotistackError: jest.fn(),
+  showNotistackSuccess: jest.fn(),
+  showNotistackInfo: jest.fn(),
+  showNotistackWarning: jest.fn(),
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({

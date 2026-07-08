@@ -34,12 +34,14 @@ const LinkPopup: FC<LinkPopupProps> = ({
     <Space className="link-popup">
       <Button
         className="p-0"
+        data-testid="link-popup-edit"
         icon={<EditIcon width={iconSize} />}
         type="text"
         onClick={handleLinkToggle}
       />
       <Button
         className="p-0"
+        data-testid="link-popup-open"
         href={href}
         icon={<ExternalLinkIcon width={iconSize + 2} />}
         target="_blank"
@@ -47,6 +49,7 @@ const LinkPopup: FC<LinkPopupProps> = ({
       />
       <Button
         className="p-0"
+        data-testid="link-popup-unlink"
         icon={<UnlinkIcon width={iconSize} />}
         type="text"
         onClick={handleUnlink}

@@ -94,7 +94,7 @@ describe('CopyLinkButton', () => {
     renderComponent();
 
     expect(screen.getByTestId('copy-link-btn').className).toContain(
-      'tw:bg-success-600'
+      'tw:bg-success-solid'
     );
   });
 
@@ -102,7 +102,7 @@ describe('CopyLinkButton', () => {
     renderComponent();
 
     expect(screen.getByTestId('copy-link-btn').className).toContain(
-      'tw:rounded-full'
+      'tw:rounded-md'
     );
   });
 

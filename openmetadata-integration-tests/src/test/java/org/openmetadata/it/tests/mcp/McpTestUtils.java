@@ -78,6 +78,22 @@ public class McpTestUtils {
     return createToolCallRequest("get_entity_details", arguments);
   }
 
+  public static Map<String, Object> createGetEntityToolCall(
+      String entityType, String fqn, Integer columnOffset, Integer columnLimit) {
+    Map<String, Object> arguments = new HashMap<>();
+    arguments.put("entityType", entityType);
+    arguments.put("fqn", fqn);
+    if (columnOffset != null) {
+      arguments.put("columnOffset", columnOffset);
+    }
+    if (columnLimit != null) {
+      arguments.put("columnLimit", columnLimit);
+    }
+    arguments.put("Authorization", createAuthorizationHeader("test-token"));
+
+    return createToolCallRequest("get_entity_details", arguments);
+  }
+
   public static Map<String, Object> createGlossaryToolCall(String name, String description) {
     Map<String, Object> arguments = new HashMap<>();
     arguments.put("name", name);

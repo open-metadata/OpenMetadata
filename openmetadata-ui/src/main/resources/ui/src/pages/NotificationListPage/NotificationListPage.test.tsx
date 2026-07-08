@@ -22,6 +22,13 @@ import { descriptionTableObject } from '../../utils/TableColumn.util';
 import NotificationListPage from './NotificationListPage';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+  Popover: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  PopoverTrigger: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
   Button: jest
     .fn()
     .mockImplementation(({ children, onClick }) => (
@@ -126,11 +133,11 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
+jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
   return jest
     .fn()
     .mockImplementation(({ visible }) =>
-      visible ? <p>DeleteWidgetModal</p> : null
+      visible ? <p>DeleteEntityModal</p> : null
     );
 });
 
@@ -266,7 +273,7 @@ describe('Notification Alerts Page Tests', () => {
       userEvent.click(deleteButton);
     });
 
-    const deleteModal = await screen.findByText('DeleteWidgetModal');
+    const deleteModal = await screen.findByText('DeleteEntityModal');
 
     expect(deleteModal).toBeInTheDocument();
   });

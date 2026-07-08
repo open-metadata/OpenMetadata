@@ -10,12 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons';
+import { Breadcrumbs, Card } from '@openmetadata/ui-core-components';
 import { useQueryClient } from '@tanstack/react-query';
 import { Button, Checkbox, Col, Row, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, isObject, isString, startCase, uniqueId } from 'lodash';
-import { ExtraInfo } from 'Models';
+import type { ExtraInfo } from 'Models';
 import { forwardRef, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
@@ -29,7 +29,6 @@ import {
 } from '../../../generated/entity/data/glossaryTerm';
 import { Table } from '../../../generated/entity/data/table';
 import { EntityReference } from '../../../generated/entity/type';
-import { TagLabel } from '../../../generated/tests/testCase';
 import { AssetCertification } from '../../../generated/type/assetCertification';
 import { TableColumnSearchSource } from '../../../interface/search.interface';
 import { prefetchDashboard } from '../../../rest/queries/dashboardQuery';
@@ -45,13 +44,13 @@ import { useRequiredParams } from '../../../utils/useRequiredParams';
 import CertificationTag from '../../common/CertificationTag/CertificationTag';
 import { DomainDisplay } from '../../common/DomainDisplay/DomainDisplay.component';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
-import TitleBreadcrumb from '../../common/TitleBreadcrumb/TitleBreadcrumb.component';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityStatusBadge } from '../../Entity/EntityStatusBadge/EntityStatusBadge.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
 import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
+import { getTypeBadge, TYPE_BADGE_KEY } from './ExploreSearchCard.utils';
 
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
@@ -128,11 +127,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
 
         if (columnSource.dataType) {
           columnDetails.push({
-            key: t('label.type'),
-            value: (
-              <Typography.Text className="font-medium">
-                {columnSource.dataTypeDisplay ?? columnSource.dataType}
-              </Typography.Text>
+            key: TYPE_BADGE_KEY,
+            value: getTypeBadge(
+              columnSource.dataTypeDisplay ?? columnSource.dataType,
+              true
             ),
           });
         }
@@ -171,7 +169,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <OwnerLabel
               avatarSize={18}
               isCompactView={false}
-              owners={(columnSource?.owners as EntityReference[]) ?? []}
+              owners={columnSource?.owners ?? []}
               showLabel={false}
             />
           ),
@@ -183,10 +181,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       const tierValue = isString(source.tier)
         ? source.tier
         : source.tier && (
-            <TagsV1
-              startWith={TAG_START_WITH.SOURCE_ICON}
-              tag={source.tier as TagLabel}
-            />
+            <TagsV1 startWith={TAG_START_WITH.SOURCE_ICON} tag={source.tier} />
           );
 
       const shouldShowDomainField = !searchClassBase
@@ -258,14 +253,14 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         searchClassBase.getEntityBreadcrumbs(
           source,
           source.entityType as EntityType,
-          true
+          false
         ),
       [source]
     );
 
     const entityIcon = useMemo(() => {
       if (showEntityIcon) {
-        if (source.entityType === 'glossaryTerm') {
+        if (source.entityType === EntityType.GLOSSARY_TERM) {
           if (source.style?.iconURL) {
             return (
               <img
@@ -295,9 +290,10 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       return null;
     }, [source, showEntityIcon]);
 
-    const serviceIcon = useMemo(() => {
-      return searchClassBase.getServiceIcon(source);
-    }, [source]);
+    const breadcrumbItems = useMemo(
+      () => searchClassBase.getEntityBreadcrumbItems(source),
+      [source]
+    );
 
     const entityLink = useMemo(
       () => searchClassBase.getEntityLink(source),
@@ -310,7 +306,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         (source as GlossaryTerm).entityStatus !== EntityStatus.Approved;
 
       return (
-        <Row gutter={[8, 8]}>
+        <Row gutter={[4, 8]}>
           {showCheckboxes && (
             <Col flex="25px">
               <Checkbox
@@ -326,19 +322,18 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
           )}
           {!hideBreadcrumbs && (
             <Col className="d-flex justify-between items-center" flex="auto">
-              <div className="d-flex gap-2 items-center">
-                {breadcrumbs.length > 0 && serviceIcon}
-                <div className="entity-breadcrumb" data-testid="category-name">
-                  <TitleBreadcrumb
-                    className={classNameForBreadcrumb}
-                    titleLinks={breadcrumbs}
-                    widthDeductions={780}
-                  />
-                </div>
-              </div>
+              <Breadcrumbs
+                autoCollapse
+                className={classNames(
+                  'explore-search-card-breadcrumbs tw:min-w-0',
+                  classNameForBreadcrumb
+                )}
+                items={breadcrumbItems}
+              />
               {score && (
                 <div className="flex items-center gap-1 score-container">
-                  <Icon className="text-xs" component={ScoreIcon} />
+                  <ScoreIcon />
+
                   <Typography.Text className="text-xs score">
                     <span className="font-normal">
                       {t('label.score-label').toUpperCase()}
@@ -414,6 +409,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       );
     }, [
       breadcrumbs,
+      breadcrumbItems,
       source,
       hideBreadcrumbs,
       showCheckboxes,
@@ -422,7 +418,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
     ]);
 
     return (
-      <div
+      <Card
         className={classNames('explore-search-card', className)}
         data-testid={'table-data-card_' + (source.fullyQualifiedName ?? '')}
         id={id}
@@ -455,7 +451,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         {actionPopoverContent && (
           <Space className="explore-card-actions">{actionPopoverContent}</Space>
         )}
-      </div>
+      </Card>
     );
   }
 );

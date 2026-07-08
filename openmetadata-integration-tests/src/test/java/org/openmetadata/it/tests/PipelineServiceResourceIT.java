@@ -13,6 +13,7 @@ import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.services.CreatePipelineService;
 import org.openmetadata.schema.api.services.CreatePipelineService.PipelineServiceType;
 import org.openmetadata.schema.entity.services.PipelineService;
@@ -33,6 +34,22 @@ public class PipelineServiceResourceIT
 
   {
     supportsListHistoryByTimestamp = true;
+  }
+
+  @Override
+  protected DeletableSubtree createDeletableSubtree(TestNamespace ns) {
+    var service = createEntity(createMinimalRequest(ns));
+    var child =
+        SdkClients.adminClient()
+            .pipelines()
+            .create(
+                new CreatePipeline()
+                    .withName(ns.prefix("del_child"))
+                    .withService(service.getFullyQualifiedName()));
+    return new DeletableSubtree(
+        service.getId().toString(),
+        java.util.List.of(child.getId().toString()),
+        java.util.List.of(new SearchDoc("pipeline_search_index", child.getId().toString())));
   }
 
   @Override

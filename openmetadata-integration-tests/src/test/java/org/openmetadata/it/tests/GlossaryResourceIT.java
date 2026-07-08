@@ -19,6 +19,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assertions.fail;
+import static org.openmetadata.csv.EntityCsv.IMPORT_FAILED;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -61,7 +62,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       org.slf4j.LoggerFactory.getLogger(GlossaryResourceIT.class);
 
   private static final String GLOSSARY_TERM_CSV_HEADER =
-      "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,extension\n";
+      "parent,name*,displayName,description,synonyms,relatedTerms,references,tags,reviewers,owner,glossaryStatus,color,iconURL,domains,extension\n";
 
   {
     supportsImportExport = true;
@@ -1105,9 +1106,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
    * Helper method to create CSV content for glossary terms import.
    * Returns CSV with header and 3 glossary terms with all required columns.
    *
-   * CSV Format (14 columns):
+   * CSV Format (15 columns):
    * parent,name*,displayName,description,synonyms,relatedTerms,references,tags,
-   * reviewers,owner,glossaryStatus,color,iconURL,extension
+   * reviewers,owner,glossaryStatus,color,iconURL,domains,extension
    *
    * Note: parent column is for PARENT GLOSSARY TERM, not glossary.
    * For top-level terms, leave parent EMPTY.
@@ -1118,24 +1119,24 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
    */
   private String buildGlossaryTermsCsv(String glossaryFqn, TestNamespace ns) {
     StringBuilder csv = new StringBuilder();
-    // CSV header with all 14 columns as expected by GlossaryCsv.addRecord()
+    // CSV header with all 15 columns as expected by GlossaryCsv.addRecord()
     // Note: 'owner' (singular) NOT 'owners', and 'glossaryStatus' NOT 'status'
     csv.append(GLOSSARY_TERM_CSV_HEADER);
 
     // Add 3 top-level glossary terms with EMPTY parent column
     // Columns: parent, name, displayName, description, synonyms, relatedTerms, references,
-    //          tags, reviewers, owner, glossaryStatus, color, iconURL, extension
+    //          tags, reviewers, owner, glossaryStatus, color, iconURL, domains, extension
     csv.append(
         String.format(
-            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 1\",\"First test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm1")));
     csv.append(
         String.format(
-            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 2\",\"Second test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm2")));
     csv.append(
         String.format(
-            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,\n",
+            ",\"%s\",\"Term 3\",\"Third test term for bulk import\",,,,,,,,,,,\n",
             ns.prefix("bulkTerm3")));
 
     return csv.toString();
@@ -1341,7 +1342,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + ns.prefix("newTerm")
             + ",New Term,Test Term,,\""
             + inReviewTerm.getFullyQualifiedName()
-            + "\",,,,,,,,";
+            + "\",,,,,,,,,";
     log.info("TEST: Attempting CSV import for glossary: {}", glossary.getName());
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
 
@@ -1394,7 +1395,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
             + ns.prefix("newTermWithApproved")
             + ",New Term With Approved,Test Term,,\""
             + approvedTerm.getFullyQualifiedName()
-            + "\",,,,,,,,";
+            + "\",,,,,,,,,";
 
     String resultCsv = client.glossaries().importCsv(glossary.getName(), csv, false);
 
@@ -1424,6 +1425,100 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     }
   }
 
+  /**
+   * Regression test: glossary terms must keep their assigned domains through a CSV export/import
+   * round-trip (the UI "bulk edit" flow). Domains were silently dropped because the glossary CSV
+   * had no domains column.
+   */
+  @Test
+  void test_importExportCsv_preservesDomains(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("termWithDomain"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that must keep its domain through CSV import");
+    GlossaryTerm term = client.glossaryTerms().create(createTerm);
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+    term.setDomains(List.of(testDomain().getEntityReference()));
+    client.glossaryTerms().update(term.getId(), term);
+
+    String exportedCsv = client.glossaries().exportCsv(glossary.getName());
+    assertTrue(
+        exportedCsv.contains(domainFqn),
+        "Exported glossary CSV should contain the term's domain. CSV:\n" + exportedCsv);
+
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), exportedCsv, false);
+    assertImportSucceeded(resultCsv);
+
+    GlossaryTerm reimported =
+        client.glossaryTerms().getByName(term.getFullyQualifiedName(), "domains");
+    assertNotNull(reimported.getDomains(), "Domain must be preserved after CSV re-import");
+    assertEquals(1, reimported.getDomains().size());
+    assertEquals(domainFqn, reimported.getDomains().getFirst().getFullyQualifiedName());
+  }
+
+  /**
+   * A term that only <b>inherits</b> its domain from the parent glossary must not have that domain
+   * materialized as a direct domain through a CSV export/import round-trip. Inherited domains are
+   * excluded from the exported domains column, so re-import leaves the term inheriting (not owning)
+   * the domain.
+   */
+  @Test
+  void test_importExportCsv_doesNotMaterializeInheritedDomains(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    Glossary glossary = createEntity(createMinimalRequest(ns));
+    String domainFqn = testDomain().getFullyQualifiedName();
+    glossary.setDomains(List.of(testDomain().getEntityReference()));
+    patchEntity(glossary.getId().toString(), glossary);
+
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(ns.prefix("inheritingTerm"))
+            .withGlossary(glossary.getFullyQualifiedName())
+            .withDescription("Term that only inherits the glossary's domain");
+    GlossaryTerm term = client.glossaryTerms().create(createTerm);
+
+    String exportedCsv = client.glossaries().exportCsv(glossary.getName());
+    String termRow =
+        exportedCsv.lines().filter(line -> line.contains(term.getName())).findFirst().orElseThrow();
+    assertFalse(
+        termRow.contains(domainFqn),
+        "Inherited domain must not be written to the exported CSV. Row: " + termRow);
+
+    String resultCsv = client.glossaries().importCsv(glossary.getName(), exportedCsv, false);
+    assertImportSucceeded(resultCsv);
+
+    GlossaryTerm reimported =
+        client.glossaryTerms().getByName(term.getFullyQualifiedName(), "domains");
+    boolean hasDirectDomain =
+        reimported.getDomains() != null
+            && reimported.getDomains().stream()
+                .anyMatch(domain -> !Boolean.TRUE.equals(domain.getInherited()));
+    assertFalse(
+        hasDirectDomain,
+        "Inherited domain must not be materialized as a direct domain after CSV round-trip");
+
+    boolean stillInherits =
+        reimported.getDomains() != null
+            && reimported.getDomains().stream()
+                .anyMatch(
+                    domain ->
+                        domainFqn.equals(domain.getFullyQualifiedName())
+                            && Boolean.TRUE.equals(domain.getInherited()));
+    assertTrue(stillInherits, "Inherited domain must still be present after CSV round-trip");
+  }
+
+  private static void assertImportSucceeded(String resultCsv) {
+    boolean anyRowFailed = resultCsv.lines().anyMatch(line -> line.startsWith(IMPORT_FAILED + ","));
+    assertFalse(anyRowFailed, "CSV import reported a failure row:\n" + resultCsv);
+  }
+
   // ===================================================================
   // CSV IMPORT/EXPORT SUPPORT
   // ===================================================================
@@ -1451,6 +1546,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
       csv.append(escapeCSVValue("Approved")).append(","); // glossaryStatus
       csv.append(escapeCSVValue("#FF5733")).append(","); // color
       csv.append(escapeCSVValue("")).append(","); // iconURL
+      csv.append(escapeCSVValue("")).append(","); // domains
       csv.append(escapeCSVValue(formatExtensionForCsv(null))); // extension
       csv.append("\n");
     }
@@ -1462,9 +1558,9 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     StringBuilder csv = new StringBuilder();
     csv.append(GLOSSARY_TERM_CSV_HEADER);
     // Missing required name field
-    csv.append(",,Term,Description,,,,,,,,,\n");
+    csv.append(",,Term,Description,,,,,,,,,,\n");
     // Invalid glossary status
-    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,\n");
+    csv.append(",invalid_term,,,,,,,,INVALID_STATUS,,,,\n");
     return csv.toString();
   }
 
@@ -1487,6 +1583,7 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
         "glossaryStatus",
         "color",
         "iconURL",
+        "domains",
         "extension");
   }
 

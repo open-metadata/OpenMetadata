@@ -121,7 +121,6 @@ These are externalized in the build and must be provided by the consuming app:
 - `@mui/material`, `@mui/system`, `@mui/material/styles`, `@mui/material/Chip`, `@mui/icons-material`, `@mui/x-date-pickers`
 - `@emotion/react`, `@emotion/styled`
 - `@material/material-color-utilities`
-- `notistack`
 - `@untitledui/icons`
 - `react-aria`, `react-aria-components`, `react-stately`
 - `react-hook-form`

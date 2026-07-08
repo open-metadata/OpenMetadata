@@ -152,7 +152,7 @@ const Header = ({
       )}>
       {children}
       <CloseButton
-        className="tw:absolute tw:top-3 tw:right-3 tw:shrink-0"
+        className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
         size="md"
         onClick={onClose}
       />
