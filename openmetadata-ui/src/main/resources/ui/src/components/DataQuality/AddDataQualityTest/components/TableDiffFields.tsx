@@ -19,7 +19,7 @@ import {
   getField,
   HelperTextType,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@untitledui/icons';
 import { debounce } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useFieldArray, UseFormReturn, useWatch } from 'react-hook-form';
@@ -138,12 +138,13 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
       <div className="tw:flex tw:items-center tw:gap-2 tw:mb-1">
         <span>{label}</span>
         <Button
+          aria-label={t('label.add-entity', { entity: label })}
           data-testid={`add-${data.name}`}
           disabled={disabled}
+          iconLeading={Plus}
           size="xs"
-          onClick={() => append({ value: undefined } as never)}>
-          {t('label.add-entity', { entity: label })}
-        </Button>
+          onClick={() => append({ value: undefined } as never)}
+        />
       </div>
       {fields.map((field, index) => (
         <div
@@ -341,6 +342,7 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
           type: FieldTypes.ASYNC_SELECT,
           required: data.required,
           helperText: data.description,
+          helperTextType: HelperTextType.TOOLTIP,
           placeholder: t('label.table'),
           id: `testCaseFormV1_params_${TABLE2}`,
           props: {
