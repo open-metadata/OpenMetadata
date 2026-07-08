@@ -3697,7 +3697,7 @@ test.describe('Custom property name validation', () => {
     await page.click('[data-testid="add-field-button"]');
   });
 
-  const nameInput = '[data-testid="name"] input';
+  const nameInput = '[data-testid="name"]';
   const nameError = '#name_help';
 
   test('should show error when name starts with a non-alphanumeric character', async ({

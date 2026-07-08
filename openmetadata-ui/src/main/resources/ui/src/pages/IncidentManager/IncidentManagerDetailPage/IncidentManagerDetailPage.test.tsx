@@ -12,7 +12,8 @@
  */
 import { createTheme, ThemeProvider } from '@mui/material/styles';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
+import { act } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { TestCase } from '../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../mocks/Glossary.mock';
@@ -145,12 +146,8 @@ jest.mock(
       .mockImplementation(({ type }) => <div>ErrorPlaceHolder {type}</div>)
 );
 jest.mock(
-  '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
-  () => jest.fn().mockImplementation(() => <div>TitleBreadcrumb</div>)
-);
-jest.mock(
-  '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
-  () => jest.fn().mockImplementation(() => <div>EntityHeaderTitle</div>)
+  '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
+  () => jest.fn().mockImplementation(() => <div>HeaderBreadcrumb</div>)
 );
 jest.mock(
   '../../../components/DataQuality/IncidentManager/TestCaseResultTab/TestCaseResultTab.component',
@@ -212,8 +209,10 @@ describe('IncidentManagerDetailPage', () => {
       await screen.findByTestId('incident-manager-details-page-container')
     ).toBeInTheDocument();
     expect(await screen.findByTestId('tabs')).toBeInTheDocument();
-    expect(await screen.findByText('TitleBreadcrumb')).toBeInTheDocument();
-    expect(await screen.findByText('EntityHeaderTitle')).toBeInTheDocument();
+    expect(await screen.findByText('HeaderBreadcrumb')).toBeInTheDocument();
+    expect(
+      await screen.findByTestId('entity-header-title')
+    ).toBeInTheDocument();
     expect(
       await screen.findByText('IncidentManagerPageHeader')
     ).toBeInTheDocument();

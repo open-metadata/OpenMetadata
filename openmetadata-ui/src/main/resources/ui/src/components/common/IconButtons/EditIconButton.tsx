@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import Icon, { PlusOutlined } from '@ant-design/icons';
-import { Button, ButtonProps, Tooltip } from 'antd';
+import type { ButtonProps } from 'antd';
+import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { ReactComponent as CommentIcon } from '../../../assets/svg/comment.svg';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
@@ -20,7 +21,7 @@ import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg'
 import { ReactComponent as ExpandIcon } from '../../../assets/svg/ic-expand-right.svg';
 import { ReactComponent as RequestIcon } from '../../../assets/svg/request-icon.svg';
 
-type IconButtonPropsInternal = ButtonProps & {
+export type IconButtonProps = ButtonProps & {
   newLook?: boolean;
 };
 
@@ -30,7 +31,7 @@ export const EditIconButton = ({
   size,
   newLook,
   ...props
-}: IconButtonPropsInternal) => {
+}: IconButtonProps) => {
   return (
     <Tooltip title={title}>
       {newLook ? (
@@ -59,7 +60,7 @@ export const RequestIconButton = ({
   newLook,
   size,
   ...props
-}: IconButtonPropsInternal) => {
+}: IconButtonProps) => {
   return (
     <Tooltip title={title}>
       {newLook ? (
@@ -86,7 +87,7 @@ export const CommentIconButton = ({
   newLook,
   size,
   ...props
-}: IconButtonPropsInternal) => {
+}: IconButtonProps) => {
   return (
     <Tooltip title={title}>
       {newLook ? (
@@ -112,7 +113,7 @@ export const AlignRightIconButton = ({
   className,
   size,
   ...props
-}: IconButtonPropsInternal) => {
+}: IconButtonProps) => {
   return (
     <Tooltip title={title}>
       <Button
@@ -132,7 +133,7 @@ export const CardExpandCollapseIconButton = ({
   className,
   disabled,
   ...props
-}: IconButtonPropsInternal) => {
+}: IconButtonProps) => {
   const button = (
     <Button
       className={classNames('bordered', className)}
@@ -158,7 +159,7 @@ export const PlusIconButton = ({
   className,
   size,
   ...props
-}: IconButtonPropsInternal) => {
+}: IconButtonProps) => {
   return (
     <Tooltip title={title}>
       <Button
@@ -176,7 +177,7 @@ export const DeleteIconButton = ({
   className,
   size,
   ...props
-}: IconButtonPropsInternal) => {
+}: IconButtonProps) => {
   return (
     <Tooltip title={title}>
       <Button

@@ -13,7 +13,7 @@
 import type { AxiosError } from 'axios';
 import { get, isEmpty, isString, isUndefined } from 'lodash';
 import type { Bucket } from 'Models';
-import Qs from 'qs';
+import Qs, { ParsedQs } from 'qs';
 import type { Key } from 'react';
 import type {
   ExploreQuickFilterField,
@@ -355,6 +355,300 @@ export const updateTreeDataWithCounts = (
   });
 };
 
+/**
+ * Refresh the category-level counts on the given tree without discarding the
+ * lazily-loaded children the user has expanded. A filter or browse change
+ * re-scopes only the root counts and the static governance/domain leaves (whose
+ * key is an entity type); the lazily-loaded hierarchical nodes are recognised by
+ * their `filterField` and left untouched, so they keep their own counts, keys,
+ * and expansion. Rebuilding from the static tree instead would collapse the tree
+ * and drop the current selection — see ExploreTree's count refresh.
+ *
+ * Returns new root-level objects (shallow copies) rather than mutating the input
+ * — "no full rebuild", not "in-place mutation".
+ */
+export const refreshRootCounts = (
+  nodes: ExploreTreeNode[],
+  entityCounts: Bucket[]
+): ExploreTreeNode[] =>
+  nodes.map((node) => {
+    const updatedNode: ExploreTreeNode = { ...node };
+    const childEntities = node.data?.childEntities ?? [];
+    if (!isEmpty(childEntities)) {
+      updatedNode.totalCount = childEntities.reduce(
+        (total, child) =>
+          total +
+          (entityCounts.find((count) => count.key === child)?.doc_count ?? 0),
+        0
+      );
+    }
+    if (node.children) {
+      updatedNode.children = node.children.map((child) =>
+        child.data?.filterField
+          ? child
+          : {
+              ...child,
+              count:
+                entityCounts.find((count) => count.key === child.key)
+                  ?.doc_count ?? 0,
+            }
+      );
+    }
+
+    return updatedNode;
+  });
+
+/**
+ * Reconcile the root categories after a count refresh: keep the live (expanded)
+ * root node when it still exists so its loaded children and the current
+ * selection survive, and fall back to the static node for a root that re-enters
+ * the presence set. Seeding from the freshly computed present roots — rather
+ * than the live tree alone — is what lets a category that an earlier text query
+ * dropped to zero reappear instead of staying gone until a full reload.
+ */
+export const reconcilePresentRoots = (
+  presentRoots: ExploreTreeNode[],
+  liveRoots: ExploreTreeNode[]
+): ExploreTreeNode[] => {
+  const liveRootByKey = new Map(liveRoots.map((node) => [node.key, node]));
+
+  return presentRoots.map((node) => liveRootByKey.get(node.key) ?? node);
+};
+
+/**
+ * Given the explore tree root nodes and the entity types selected in the Data
+ * Assets filter, return the set of root keys whose service category contains
+ * none of the selected entity types. Those roots are grayed out so the user
+ * cannot browse into services that can't hold the selected asset type — e.g.
+ * selecting "Table" disables every non-Database service, since a table only
+ * belongs to a Database Service. An empty selection disables nothing.
+ */
+export const getDisabledExploreTreeKeys = (
+  treeNodes: ExploreTreeNode[],
+  selectedEntityTypes: string[],
+  options?: { disableEmptyRoots?: boolean }
+): Set<string> => {
+  const disabledKeys = new Set<string>();
+  const disableEmptyRoots = options?.disableEmptyRoots ?? false;
+  const hasSelectedEntityTypes = !isEmpty(selectedEntityTypes);
+  if (hasSelectedEntityTypes || disableEmptyRoots) {
+    // Compare case-insensitively: a few entity types are aggregated in a
+    // different case than their EntityType enum value (e.g. tableColumn), and
+    // no two entity types differ only by case, so this is safe.
+    const selected = new Set(
+      selectedEntityTypes.map((entityType) => entityType.toLowerCase())
+    );
+    treeNodes.forEach((node) => {
+      const childEntities = node.data?.childEntities ?? [];
+      const containsSelectedType = childEntities.some((entityType) =>
+        selected.has(entityType.toLowerCase())
+      );
+      const hasNoDrillDownMatches =
+        disableEmptyRoots &&
+        typeof node.totalCount === 'number' &&
+        node.totalCount <= 0;
+
+      if (
+        (hasSelectedEntityTypes && !containsSelectedType) ||
+        hasNoDrillDownMatches
+      ) {
+        disabledKeys.add(node.key);
+      }
+    });
+  }
+
+  return disabledKeys;
+};
+
+/**
+ * Whether an entity-type leaf bucket should appear in the explore tree given
+ * the Data Assets selection. With no selection every type shows; otherwise
+ * only the selected types do (Table-only must not surface Columns). Compared
+ * case-insensitively because leaf buckets are camelCase (tableColumn) while
+ * the quick-filter values are lowercased (tablecolumn).
+ */
+export const isEntityTypeBucketSelected = (
+  bucketKey: string,
+  selectedEntityTypes: string[]
+): boolean =>
+  isEmpty(selectedEntityTypes) ||
+  selectedEntityTypes.some(
+    (entityType) => entityType.toLowerCase() === bucketKey.toLowerCase()
+  );
+
+const isBrowsePathOption = (option: unknown): boolean =>
+  typeof option === 'object' &&
+  option !== null &&
+  typeof (option as Record<string, unknown>).key === 'string';
+
+const isBrowsePathField = (
+  field: unknown
+): field is ExploreQuickFilterField => {
+  const record =
+    field && typeof field === 'object'
+      ? (field as Record<string, unknown>)
+      : undefined;
+  const value = record?.value;
+  const hasValidValue =
+    value === undefined ||
+    (Array.isArray(value) && value.every(isBrowsePathOption));
+
+  return typeof record?.key === 'string' && hasValidValue;
+};
+
+/**
+ * The browse location selected in the explore tree, kept in its own
+ * `browsePath` URL param (ordered ExploreQuickFilterField[] — category,
+ * serviceType, service, database, schema). It ANDs with the dropdown
+ * `quickFilter`, so browsing never clears filters and vice versa.
+ * The param is untrusted URL input — malformed elements are dropped so
+ * crafted/legacy deep links degrade to an empty browse path.
+ */
+export const parseBrowsePathFields = (
+  browsePath?: unknown
+): ExploreQuickFilterField[] => {
+  let result: ExploreQuickFilterField[] = [];
+  if (isString(browsePath) && !isEmpty(browsePath)) {
+    try {
+      const parsed: unknown = JSON.parse(browsePath);
+      if (Array.isArray(parsed)) {
+        result = parsed.filter(isBrowsePathField);
+      }
+    } catch {
+      result = [];
+    }
+  }
+
+  return result;
+};
+
+/**
+ * Extract a query_filter object's `must` clauses as an array.
+ */
+export const getQueryFilterMust = (
+  queryFilter?: unknown
+): QueryFieldInterface[] => {
+  const parsedMust = get(queryFilter, 'query.bool.must');
+
+  return Array.isArray(parsedMust)
+    ? parsedMust
+    : parsedMust
+    ? [parsedMust]
+    : [];
+};
+
+/**
+ * Parse the active quick-filter URL param into its `must` clauses so the
+ * explore tree counts can reflect the same filters the result list does
+ * (entity type, tier, owner, …). Returns [] for an absent/invalid param.
+ */
+export const getQuickFilterMust = (
+  quickFilter?: unknown
+): QueryFieldInterface[] => {
+  if (isString(quickFilter) && !isEmpty(quickFilter)) {
+    try {
+      return getQueryFilterMust(JSON.parse(quickFilter));
+    } catch {
+      return [];
+    }
+  }
+
+  return [];
+};
+
+const SERVICE_DRILL_DOWN_KEYS: ReadonlySet<string> = new Set([
+  EntityFields.SERVICE_TYPE,
+  EntityFields.SERVICE,
+]);
+
+const getTermKeysFromQuery = (query: unknown): string[] => {
+  if (Array.isArray(query)) {
+    return query.flatMap(getTermKeysFromQuery);
+  }
+
+  if (typeof query !== 'object' || query === null) {
+    return [];
+  }
+
+  const record = query as Record<string, unknown>;
+  const term = record.term;
+  const termKeys =
+    typeof term === 'object' && term !== null ? Object.keys(term) : [];
+
+  return [
+    ...termKeys,
+    ...Object.entries(record)
+      .filter(([key]) => key !== 'term')
+      .flatMap(([, value]) => getTermKeysFromQuery(value)),
+  ];
+};
+
+export const hasServiceDrillDownFilter = (
+  quickFilter?: unknown,
+  browsePath?: unknown,
+  queryFilter?: unknown
+): boolean => {
+  const quickFilterKeys = getTermKeysFromQuery(getQuickFilterMust(quickFilter));
+  const queryFilterKeys = getTermKeysFromQuery(getQueryFilterMust(queryFilter));
+  const browsePathKeys = parseBrowsePathFields(browsePath).map(
+    (field) => field.key
+  );
+
+  return [...quickFilterKeys, ...queryFilterKeys, ...browsePathKeys].some(
+    (key) => SERVICE_DRILL_DOWN_KEYS.has(key)
+  );
+};
+
+/**
+ * Build the explore-tree count query. Every level aggregates over the
+ * dataAsset index so a node's count is the total matching objects in its
+ * subtree (parent >= child), not the immediate children of a per-entity index.
+ * It ANDs: the node's browse hierarchy, the active quick filters, and — at a
+ * category root — the category's own entity types so e.g. Databases stays
+ * scoped to its family.
+ */
+export const buildTreeCountQueryFilter = ({
+  baseQueryFilter,
+  isRoot,
+  childEntities,
+  activeQuickFilter,
+  activeBrowsePath,
+  activeQueryFilter,
+}: {
+  baseQueryFilter: { query: { bool: EsBoolQuery } };
+  isRoot: boolean;
+  childEntities: string[];
+  activeQuickFilter?: unknown;
+  activeBrowsePath?: unknown;
+  activeQueryFilter?: unknown;
+}): { query: { bool: { must: QueryFieldInterface[] } } } => {
+  const must: QueryFieldInterface[] = [];
+  const baseMust = baseQueryFilter?.query?.bool?.must;
+  if (baseMust) {
+    must.push(
+      ...((Array.isArray(baseMust)
+        ? baseMust
+        : [baseMust]) as QueryFieldInterface[])
+    );
+  }
+  if (isRoot && !isEmpty(childEntities)) {
+    must.push({
+      bool: {
+        should: childEntities.map((entityType) => ({
+          term: { 'entityType.keyword': entityType.toLowerCase() },
+        })),
+      },
+    });
+  }
+  must.push(...getQuickFilterMust(activeQuickFilter));
+  must.push(...getQueryFilterMust(activeQueryFilter));
+  must.push(
+    ...getExploreQueryFilterMust(parseBrowsePathFields(activeBrowsePath))
+  );
+
+  return { query: { bool: { must } } };
+};
+
 export const isElasticsearchError = (error: unknown): boolean => {
   if (!error) {
     return false;
@@ -375,9 +669,193 @@ export const isElasticsearchError = (error: unknown): boolean => {
   );
 };
 
+export const getBrowsePathQueryFilter = (
+  browseFields: ExploreQuickFilterField[]
+): QueryFilterInterface | undefined => {
+  const must = getExploreQueryFilterMust(browseFields);
+
+  return isEmpty(must)
+    ? undefined
+    : ({ query: { bool: { must } } } as QueryFilterInterface);
+};
+
+/**
+ * Removing a browse chip truncates the path from that level down — removing
+ * "Service" also drops the database and schema picked beneath it.
+ */
+export const truncateBrowsePath = (
+  browseFields: ExploreQuickFilterField[],
+  levelKey: string
+): ExploreQuickFilterField[] => {
+  const levelIndex = browseFields.findIndex((field) => field.key === levelKey);
+
+  return levelIndex < 0 ? browseFields : browseFields.slice(0, levelIndex);
+};
+
+const CANONICAL_ENTITY_TYPES = new Map(
+  Object.values(EntityType).map((value) => [value.toLowerCase(), value])
+);
+
+/**
+ * Search aggregations return entityType values in lowercase ("tablecolumn")
+ * while the EntityType enum and display-label maps use camelCase
+ * ("tableColumn"). Resolve any casing to the canonical enum value so labels
+ * and icons keep working regardless of which layer produced the key.
+ */
+export const getCanonicalEntityType = (entityTypeKey: string): string =>
+  CANONICAL_ENTITY_TYPES.get(entityTypeKey.toLowerCase()) ?? entityTypeKey;
+
+const getBrowsePathSignature = (fields: ExploreQuickFilterField[]): string =>
+  fields
+    .map(
+      (field) =>
+        `${field.key}=${(field.value ?? [])
+          .map((option) => option.key.toLowerCase())
+          .sort()
+          .join(',')}`
+    )
+    .join('|');
+
+/**
+ * A browse path that selects a whole category root (e.g. clicking "Databases")
+ * is a single entity-type field carrying that category's entity types.
+ */
+const isCategoryBrowsePath = (
+  browseFields: ExploreQuickFilterField[]
+): boolean =>
+  browseFields.length === 1 && browseFields[0].key === EntityFields.ENTITY_TYPE;
+
+/**
+ * Whether a category root node owns exactly the entity types of a category
+ * browse field — the root carries no `filterField`, so it is matched on its
+ * `childEntities` set instead.
+ */
+const categoryRootMatchesPath = (
+  node: ExploreTreeNode,
+  categoryField: ExploreQuickFilterField
+): boolean => {
+  const childEntities = (node.data?.childEntities ?? [])
+    .map((entityType) => entityType.toLowerCase())
+    .sort()
+    .join(',');
+  const targetEntities = (categoryField.value ?? [])
+    .map((option) => option.key.toLowerCase())
+    .sort()
+    .join(',');
+
+  return Boolean(node.data?.isRoot) && childEntities === targetEntities;
+};
+
+/**
+ * Find the loaded tree node that corresponds to a browse path, so the tree
+ * highlight can follow chip removals — dropping the Service chip moves the
+ * selection back up to the category root.
+ */
+export const findTreeNodeKeyByBrowsePath = (
+  treeNodes: ExploreTreeNode[],
+  browseFields: ExploreQuickFilterField[]
+): string | null => {
+  let result: string | null = null;
+  if (!isEmpty(browseFields)) {
+    const targetSignature = getBrowsePathSignature(browseFields);
+    const isCategoryPath = isCategoryBrowsePath(browseFields);
+
+    const visit = (nodes: ExploreTreeNode[]) => {
+      nodes.forEach((node) => {
+        if (result) {
+          return;
+        }
+        if (isCategoryPath && categoryRootMatchesPath(node, browseFields[0])) {
+          result = node.key;
+
+          return;
+        }
+        if (
+          node.data?.filterField &&
+          getBrowsePathSignature(node.data.filterField) === targetSignature
+        ) {
+          result = node.key;
+
+          return;
+        }
+        if (node.children) {
+          visit(node.children);
+        }
+      });
+    };
+    visit(treeNodes);
+
+    // Deep links and reloads start with only the shallow levels loaded —
+    // fall back to the deepest loaded ancestor of the path so the tree still
+    // shows where the user is browsing.
+    if (!result && browseFields.length > 1) {
+      result = findTreeNodeKeyByBrowsePath(
+        treeNodes,
+        browseFields.slice(0, -1)
+      );
+    }
+  }
+
+  return result;
+};
+
+const findTreeNodeByKey = (
+  treeNodes: ExploreTreeNode[],
+  key: string
+): ExploreTreeNode | undefined => {
+  let result: ExploreTreeNode | undefined;
+  treeNodes.forEach((node) => {
+    if (result) {
+      return;
+    }
+    if (node.key === key) {
+      result = node;
+    } else if (node.children) {
+      result = findTreeNodeByKey(node.children, key);
+    }
+  });
+
+  return result;
+};
+
+/**
+ * Whether the currently highlighted node already corresponds to the active
+ * browse path — the browsed node itself, an entity-type leaf (Tables/Columns)
+ * whose parent levels are that path, or a category root selected via a category
+ * path. The browse-path sync uses this to leave such a selection alone: a leaf
+ * click stores only the parent levels in browsePath (the type lands in
+ * quickFilter), so re-deriving the highlight from browsePath would otherwise
+ * snap the leaf back up to its schema; matching the root avoids a redundant
+ * re-select on every refresh while a category is highlighted.
+ */
+export const isSelectionWithinBrowsePath = (
+  treeNodes: ExploreTreeNode[],
+  selectedKeys: string[],
+  browseFields: ExploreQuickFilterField[]
+): boolean => {
+  let result = false;
+  const selectedKey = selectedKeys[0];
+  if (selectedKey && !isEmpty(browseFields)) {
+    const node = findTreeNodeByKey(treeNodes, selectedKey);
+    const filterField = node?.data?.filterField;
+    if (filterField) {
+      const targetSignature = getBrowsePathSignature(browseFields);
+      const leafParentSignature = node?.isLeaf
+        ? getBrowsePathSignature(filterField.slice(0, -1))
+        : undefined;
+      result =
+        getBrowsePathSignature(filterField) === targetSignature ||
+        leafParentSignature === targetSignature;
+    } else if (node && isCategoryBrowsePath(browseFields)) {
+      result = categoryRootMatchesPath(node, browseFields[0]);
+    }
+  }
+
+  return result;
+};
+
 export const parseSearchParams = (
   search: string,
-  globalPageSize: number,
   queryFilter?: Record<string, unknown>
 ) => {
   const parsedSearch = Qs.parse(
@@ -388,6 +866,8 @@ export const parseSearchParams = (
     ? parsedSearch.search
     : '';
 
+  const browseFields = parseBrowsePathFields(parsedSearch.browsePath);
+
   const sortValue = isString(parsedSearch.sort)
     ? parsedSearch.sort
     : INITIAL_SORT_FIELD;
@@ -395,16 +875,6 @@ export const parseSearchParams = (
   const sortOrder = isString(parsedSearch.sortOrder)
     ? parsedSearch.sortOrder
     : SORT_ORDER.DESC;
-
-  const page =
-    isString(parsedSearch.page) && !isNaN(Number.parseInt(parsedSearch.page))
-      ? Number.parseInt(parsedSearch.page)
-      : 1;
-
-  const size =
-    isString(parsedSearch.size) && !isNaN(Number.parseInt(parsedSearch.size))
-      ? Number.parseInt(parsedSearch.size)
-      : globalPageSize;
 
   const stringifiedQueryFilter = isEmpty(queryFilter)
     ? ''
@@ -419,10 +889,29 @@ export const parseSearchParams = (
   return {
     parsedSearch,
     searchQueryParam,
+    browseFields,
     sortValue,
     sortOrder,
-    page,
-    size,
     showDeleted,
   };
 };
+
+export const getExploreResetFiltersSearchParams = (parsedSearch: ParsedQs) =>
+  Qs.stringify({
+    ...parsedSearch,
+    browsePath: undefined,
+    currentPage: '1',
+    quickFilter: undefined,
+    queryFilter: undefined,
+    showDeleted: undefined,
+  });
+
+export const getExploreClearQueryFilterSearchParams = (
+  parsedSearch: ParsedQs,
+  tree?: unknown
+) =>
+  Qs.stringify({
+    ...parsedSearch,
+    currentPage: '1',
+    queryFilter: tree ? JSON.stringify(tree) : undefined,
+  });

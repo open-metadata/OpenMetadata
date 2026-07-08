@@ -213,7 +213,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
 
   return (
     <Card
-      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
+      className="tw:flex tw:flex-col tw:cursor-pointer tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px"
       data-testid={`knowledge-card-${displayName || name}`}>
       <Link
         className="tw:flex tw:flex-col tw:gap-2.5 tw:px-5 tw:py-4.5"
@@ -228,13 +228,13 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             <Typography
               ellipsis
               data-testid="knowledge-card-title"
-              weight="medium">
+              weight="semibold">
               {getKnowledgePageName(knowledgePage, t)}
             </Typography>
             {isQuickLink && !readonly && quickLinkActions}
           </Box>
           <Typography
-            className="tw:text-gray-500"
+            className="tw:text-quaternary"
             data-testid="updated-at"
             size="text-xs">
             {t('label.last-edited-time', {
@@ -253,7 +253,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           </Typography>
         ) : (
           <Typography
-            className="tw:text-gray-400"
+            className="tw:text-utility-gray-400"
             data-testid="no-description"
             size="text-sm">
             {t('label.no-description')}
@@ -276,7 +276,7 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             />
           ) : (
             <Typography
-              className="tw:text-gray-400"
+              className="tw:text-utility-gray-400"
               data-testid="owner-name"
               size="text-xs"
               weight="medium">
@@ -284,13 +284,16 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
             </Typography>
           )}
 
-          <Dot className="tw:text-gray-400" size="micro" />
-          <div className="tw:max-w-40">
+          <Dot className="tw:text-fg-quaternary" size="micro" />
+          <div className="tw:max-w-40 tw:mb-0.5">
             <Typography
               ellipsis
-              className={firstDomain ? 'tw:text-gray-500' : 'tw:text-gray-400'}
+              className={
+                firstDomain ? 'tw:text-quaternary' : 'tw:text-utility-gray-400'
+              }
               data-testid="domain-name"
-              size="text-xs">
+              size="text-xs"
+              weight="medium">
               {firstDomain?.displayName ??
                 firstDomain?.name ??
                 t('label.no-entity', { entity: t('label.domain') })}
@@ -298,30 +301,29 @@ const KnowledgeCard: FC<KnowledgeCardProps> = ({
           </div>
 
           <span className="tw:flex-1" />
-
-          {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
-            <Badge
-              className="tw:max-w-30"
-              key={String(tag.tagFQN ?? '')}
-              size="md"
-              type="modern">
-              <Typography
-                ellipsis
-                className="tw:font-mono tw:text-secondary"
-                size="text-xs">
-                {getEntityName(tag)}
-              </Typography>
-            </Badge>
-          ))}
-          {(knowledgePage.tags ?? []).length > 2 && (
-            <Badge size="md" type="modern">
-              <Typography
-                className="tw:font-mono tw:text-secondary"
-                size="text-xs">
-                +{(knowledgePage.tags ?? []).length - 2}
-              </Typography>
-            </Badge>
-          )}
+          <Box align="center" className="tw:gap-1.5">
+            {(knowledgePage.tags ?? []).slice(0, 2).map((tag) => (
+              <Badge
+                className="tw:max-w-30"
+                key={String(tag.tagFQN ?? '')}
+                size="md"
+                type="modern">
+                <Typography
+                  ellipsis
+                  className="tw:text-secondary"
+                  size="text-xs">
+                  {getEntityName(tag)}
+                </Typography>
+              </Badge>
+            ))}
+            {(knowledgePage.tags ?? []).length > 2 && (
+              <Badge size="md" type="modern">
+                <Typography className="tw:text-secondary" size="text-xs">
+                  +{(knowledgePage.tags ?? []).length - 2}
+                </Typography>
+              </Badge>
+            )}
+          </Box>
         </Box>
       </Link>
 

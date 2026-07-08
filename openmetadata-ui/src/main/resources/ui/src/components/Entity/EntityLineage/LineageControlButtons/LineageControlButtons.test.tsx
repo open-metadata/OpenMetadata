@@ -103,7 +103,7 @@ describe('LineageControlButtons', () => {
 
       const miniMapButton = screen.getByTestId('toggle-mind-map');
 
-      expect(miniMapButton).toHaveClass('Mui-selected');
+      expect(miniMapButton).toHaveAttribute('data-selected', 'true');
     });
   });
 

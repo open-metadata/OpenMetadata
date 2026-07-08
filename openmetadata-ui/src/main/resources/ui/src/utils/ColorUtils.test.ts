@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { getFirstAlphanumeric, isLinearGradient } from './ColorUtils';
+import {
+  getAvatarColorClass,
+  getFirstAlphanumeric,
+  isLinearGradient,
+} from './ColorUtils';
 
 describe('ColorUtils', () => {
   describe('isLinearGradient', () => {
@@ -93,6 +97,42 @@ describe('ColorUtils', () => {
       firstAlphabet = getFirstAlphanumeric('ño');
 
       expect(firstAlphabet).toBe('ñ');
+    });
+  });
+
+  describe('getAvatarColorClass', () => {
+    it('should return a solid utility-color class set for solid avatars', () => {
+      const result = getAvatarColorClass('John Doe', true);
+
+      expect(result.text).toBe('tw:text-fg-white');
+      expect(result.container).toMatch(/tw:bg-utility-[a-z]+-500/);
+    });
+
+    it('should return an outlined utility-color class set for non-solid avatars', () => {
+      const result = getAvatarColorClass('John Doe', false);
+
+      expect(result.container).toMatch(/tw:bg-utility-[a-z]+-50\b/);
+      expect(result.container).toMatch(/tw:border-utility-[a-z]+-200/);
+      expect(result.text).toMatch(/tw:text-utility-[a-z]+-700/);
+    });
+
+    it('should be deterministic for the same name', () => {
+      expect(getAvatarColorClass('Harsh Vador', true)).toEqual(
+        getAvatarColorClass('Harsh Vador', true)
+      );
+    });
+
+    it('should map the same name to the same color family across variants', () => {
+      const solid = getAvatarColorClass('Jane Doe', true);
+      const outlined = getAvatarColorClass('Jane Doe', false);
+      const family = solid.container.match(/tw:bg-utility-([a-z]+)-500/)?.[1];
+
+      expect(family).toBeDefined();
+      expect(outlined.container).toContain(`tw:bg-utility-${family}-50`);
+    });
+
+    it('should not throw for an empty name', () => {
+      expect(() => getAvatarColorClass('', true)).not.toThrow();
     });
   });
 });

@@ -44,7 +44,7 @@ import {
   pipelineQueryFn,
   pipelineQueryKey,
 } from '../../rest/queries/pipelineQuery';
-import { getEntityMissingError } from '../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

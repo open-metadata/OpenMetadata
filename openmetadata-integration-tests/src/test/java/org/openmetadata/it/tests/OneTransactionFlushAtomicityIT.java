@@ -542,6 +542,10 @@ public class OneTransactionFlushAtomicityIT {
     private int storeAttempts;
     private int updateStoreAttempts;
 
+    private FaultyChartRepository() {
+      super(false);
+    }
+
     @Override
     public void storeRelationships(Chart chart) {
       storeAttempts++;
@@ -581,6 +585,10 @@ public class OneTransactionFlushAtomicityIT {
     private boolean deadlockOnFirstUpdateStore;
     private int updateStoreAttempts;
 
+    private FaultyGlossaryTermRepository() {
+      super(false);
+    }
+
     @Override
     public void storeEntity(GlossaryTerm entity, boolean update) {
       if (update) {
@@ -603,6 +611,10 @@ public class OneTransactionFlushAtomicityIT {
   private static class FaultyDataProductRepository extends DataProductRepository {
     private boolean deadlockOnFirstUpdateStore;
     private int updateStoreAttempts;
+
+    private FaultyDataProductRepository() {
+      super(false);
+    }
 
     @Override
     public void storeEntity(DataProduct entity, boolean update) {

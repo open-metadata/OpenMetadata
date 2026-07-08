@@ -38,13 +38,17 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Button: ({
       children,
       onPress,
+      onClick,
+      iconLeading: _iconLeading,
       ...props
     }: {
-      children: React.ReactNode;
+      children?: React.ReactNode;
       onPress?: () => void;
+      onClick?: () => void;
+      iconLeading?: unknown;
       [key: string]: unknown;
     }) => (
-      <button type="button" onClick={onPress} {...props}>
+      <button type="button" onClick={onPress ?? onClick} {...props}>
         {children}
       </button>
     ),
@@ -150,80 +154,66 @@ jest.mock('@openmetadata/ui-core-components', () => {
       const TabsRoot = ({
         children,
         onSelectionChange,
-        selectedKey,
+        selectedKey: _selectedKey,
         ...props
       }: {
         children: React.ReactNode;
         onSelectionChange?: (key: React.Key) => void;
         selectedKey?: React.Key;
         [key: string]: unknown;
-      }) => {
-        const childArray = React.Children.toArray(children);
-        const list = childArray.find(
-          (c): c is React.ReactElement =>
-            React.isValidElement(c) && 'items' in (c.props ?? {})
-        );
-        const panels = childArray.filter(
-          (c): c is React.ReactElement =>
-            React.isValidElement(c) &&
-            'id' in (c.props ?? {}) &&
-            !('items' in (c.props ?? {}))
-        );
-        const activeKey = selectedKey ?? panels[0]?.props?.id;
-        const activePanel = activeKey
-          ? panels.find((p) => p.props.id === activeKey)
-          : panels[0];
-        const listWithCallback =
-          React.isValidElement(list) && onSelectionChange
-            ? React.cloneElement(list, {
-                onSelectionChange,
-              } as Record<string, unknown>)
-            : list;
-
-        return (
-          <div data-testid="tabs-root" {...props}>
-            {listWithCallback}
-            {activePanel}
-          </div>
-        );
-      };
+      }) => (
+        <div data-testid={props['data-testid'] as string}>
+          {React.Children.map(children, (child) =>
+            React.isValidElement(child)
+              ? React.cloneElement(child, {
+                  onSelectionChange,
+                } as Record<string, unknown>)
+              : child
+          )}
+        </div>
+      );
       const TabsList = ({
-        items,
+        children,
         onSelectionChange,
-        ...listProps
       }: {
-        items?: Array<{ id: string; label: React.ReactNode }>;
+        children: React.ReactNode;
         onSelectionChange?: (key: React.Key) => void;
         [key: string]: unknown;
       }) => (
-        <div data-testid="tabs-list" role="tablist" {...listProps}>
-          {items?.map((item) => (
-            <button
-              data-testid={`tab-${item.id}`}
-              key={item.id}
-              role="tab"
-              type="button"
-              onClick={() => onSelectionChange?.(item.id)}>
-              {item.label}
-            </button>
-          ))}
+        <div data-testid="tabs-list" role="tablist">
+          {React.Children.map(children, (child) =>
+            React.isValidElement(child)
+              ? React.cloneElement(child, {
+                  onSelectionChange,
+                } as Record<string, unknown>)
+              : child
+          )}
         </div>
       );
-      const TabsPanel = ({
-        children,
+      const TabsItem = ({
         id,
-        ...panelProps
+        label,
+        badge,
+        onSelectionChange,
+        ...itemProps
       }: {
-        children: React.ReactNode;
         id: string;
+        label: React.ReactNode;
+        badge?: string;
+        onSelectionChange?: (key: React.Key) => void;
         [key: string]: unknown;
       }) => (
-        <div data-testid={`tab-panel-${id}`} role="tabpanel" {...panelProps}>
-          {children}
-        </div>
+        <button
+          data-testid={itemProps['data-testid'] as string}
+          role="tab"
+          type="button"
+          onClick={() => onSelectionChange?.(id)}>
+          {label}
+          {badge}
+        </button>
       );
 
-      return Object.assign(TabsRoot, { List: TabsList, Panel: TabsPanel });
+      return Object.assign(TabsRoot, { List: TabsList, Item: TabsItem });
     })(),
   };
 });
@@ -265,11 +255,11 @@ jest.mock('../../components/common/Loader/Loader', () => {
   return jest.fn().mockImplementation(() => <div>Loader.component</div>);
 });
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => {
     return jest
       .fn()
-      .mockImplementation(() => <div>TitleBreadcrumb.component</div>);
+      .mockImplementation(() => <div>HeaderBreadcrumb.component</div>);
   }
 );
 jest.mock(
@@ -346,6 +336,13 @@ jest.mock('react-router-dom', () => {
   };
 });
 
+jest.mock('../../hooks/useChangeSummary', () => ({
+  useChangeSummary: () => ({
+    changeSummary: {},
+    refetch: jest.fn(),
+  }),
+}));
+
 jest.mock('../../hooks/useFqn', () => ({
   useFqn: jest.fn(() => ({ fqn: 'testSuiteFQN' })),
 }));
@@ -359,24 +356,6 @@ jest.mock('../../hooks/useCustomLocation/useCustomLocation', () => ({
 
 jest.mock('../../rest/testAPI');
 jest.mock('../../context/PermissionProvider/PermissionProvider');
-jest.mock(
-  '../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component',
-  () => {
-    return jest
-      .fn()
-      .mockImplementation(({ displayName, onEditDisplayName }) => (
-        <div>
-          EntityHeaderTitle.component
-          <span data-testid="entity-display-name">{displayName}</span>
-          <button
-            data-testid="edit-display-name-btn"
-            onClick={() => onEditDisplayName?.({ displayName: 'New Name' })}>
-            Edit Name
-          </button>
-        </div>
-      ));
-  }
-);
 jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => {
   return {
     DomainLabel: jest.fn().mockImplementation(({ onUpdate }) => (
@@ -576,7 +555,7 @@ describe('TestSuiteDetailsPage component', () => {
       render(<TestSuiteDetailsPage />);
 
       expect(
-        await screen.findByText('TitleBreadcrumb.component')
+        await screen.findByText('HeaderBreadcrumb.component')
       ).toBeInTheDocument();
     });
 
@@ -584,10 +563,10 @@ describe('TestSuiteDetailsPage component', () => {
       render(<TestSuiteDetailsPage />);
 
       expect(
-        await screen.findByText('TitleBreadcrumb.component')
+        await screen.findByText('HeaderBreadcrumb.component')
       ).toBeInTheDocument();
       expect(
-        await screen.findByText('EntityHeaderTitle.component')
+        await screen.findByTestId('entity-header-name')
       ).toBeInTheDocument();
       expect(
         await screen.findByText('DomainLabel.component')
@@ -1005,9 +984,9 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       await waitFor(() => {
-        expect(screen.getByTestId('entity-display-name')).toHaveTextContent(
-          'Custom Test Suite'
-        );
+        expect(
+          screen.getByTestId('entity-header-display-name')
+        ).toHaveTextContent('Custom Test Suite');
       });
     });
   });
@@ -1102,7 +1081,9 @@ describe('TestSuiteDetailsPage component', () => {
       });
 
       // Component should still render without crashing
-      expect(screen.getByText('TitleBreadcrumb.component')).toBeInTheDocument();
+      expect(
+        screen.getByText('HeaderBreadcrumb.component')
+      ).toBeInTheDocument();
     });
 
     it('should handle empty test cases list', async () => {

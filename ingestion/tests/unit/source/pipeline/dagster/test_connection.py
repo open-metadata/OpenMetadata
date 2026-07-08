@@ -14,8 +14,14 @@ from unittest.mock import MagicMock, patch
 
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.pipeline.dagster.connection import DagsterConnection
+from metadata.ingestion.source.pipeline.dagster.queries import TEST_QUERY_GRAPHQL
 
 CONNECTION_MODULE = "metadata.ingestion.source.pipeline.dagster.connection"
+
+
+def test_test_query_uses_dagster_1x_runs_type():
+    assert "... on Runs" in TEST_QUERY_GRAPHQL
+    assert "PipelineRuns" not in TEST_QUERY_GRAPHQL
 
 
 def test_dagster_connection_is_base_connection():

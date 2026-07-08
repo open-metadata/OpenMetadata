@@ -15,6 +15,7 @@ package org.openmetadata.service;
 
 import static org.openmetadata.service.util.jdbi.JdbiUtils.createAndSetupJDBI;
 
+import com.fasterxml.jackson.databind.SerializationFeature;
 import io.dropwizard.configuration.EnvironmentVariableSubstitutor;
 import io.dropwizard.configuration.SubstitutingSourceProvider;
 import io.dropwizard.core.Application;
@@ -86,6 +87,7 @@ import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
@@ -98,6 +100,8 @@ import org.openmetadata.service.clients.llm.LlmConfigHolder;
 import org.openmetadata.service.config.CacheConfiguration;
 import org.openmetadata.service.config.OMWebBundle;
 import org.openmetadata.service.config.OMWebConfiguration;
+import org.openmetadata.service.csv.CsvAsyncJobManager;
+import org.openmetadata.service.csv.CsvImportExportJobHandler;
 import org.openmetadata.service.events.EventFilter;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.events.scheduled.EventSubscriptionScheduler;
@@ -110,6 +114,7 @@ import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.BulkExecutor;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.EntityCacheRepair;
 import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.MigrationDAO;
@@ -135,6 +140,8 @@ import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
 import org.openmetadata.service.resources.audit.AuditLogResource;
+import org.openmetadata.service.resources.csv.CsvAsyncJobResource;
+import org.openmetadata.service.resources.csv.CsvDocumentationResource;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.filters.ETagRequestFilter;
 import org.openmetadata.service.resources.filters.ETagResponseFilter;
@@ -279,6 +286,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     Entity.setSystemRepository(new SystemRepository());
     Entity.setJobDAO(jdbi.onDemand(JobDAO.class));
     Entity.setJdbi(jdbi);
+    CsvAsyncJobManager.initialize(jdbi.onDemand(JobDAO.class));
 
     // Initialize bulk operation executor
     BulkExecutor.initialize(catalogConfig.getBulkOperationConfiguration());
@@ -462,7 +470,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   private boolean isMcpServerEnabled() {
     MCPConfiguration mcpConfig =
         SettingsCache.getSettingOrDefault(
-            SettingsType.MCP_CONFIGURATION, null, MCPConfiguration.class);
+            SettingsType.MCP_CONFIGURATION, new MCPConfiguration(), MCPConfiguration.class);
     return mcpConfig != null && Boolean.TRUE.equals(mcpConfig.getEnabled());
   }
 
@@ -476,6 +484,9 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
     JobHandlerRegistry registry = new JobHandlerRegistry();
     registry.register("EnumCleanupHandler", new EnumCleanupHandler(getDao(jdbi)));
+    registry.register(
+        CsvAsyncJobManager.CSV_JOB_HANDLER_NAME,
+        new CsvImportExportJobHandler(CsvAsyncJobManager.getInstance()));
     return registry;
   }
 
@@ -789,6 +800,11 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
             org.openmetadata.service.events.AuditExcludeFilterFactory.class,
             SwitchableEventLayoutFactory.class,
             SwitchableAccessLayoutFactory.class);
+    bootstrap
+        .getObjectMapper()
+        .disable(SerializationFeature.WRITE_DATES_AS_TIMESTAMPS)
+        .setDateFormat(JsonUtils.DATE_TIME_FORMAT)
+        .registerModule(JsonUtils.lenientDateModule());
 
     bootstrap.addBundle(
         new SwaggerBundle<>() {
@@ -1103,6 +1119,8 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     environment.jersey().register(new AuditLogResource(authorizer, auditLogRepository));
     environment.jersey().register(new DiagnosticsResource(authorizer));
+    environment.jersey().register(new CsvAsyncJobResource());
+    environment.jersey().register(new CsvDocumentationResource());
     environment.jersey().register(new JsonPatchProvider());
     environment.jersey().register(new JsonPatchMessageBodyReader());
 
@@ -1224,6 +1242,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     @Override
     public void start() {
+      EntityCacheRepair.start();
       LOG.info("Starting the application");
     }
 
@@ -1231,6 +1250,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     public void stop() throws InterruptedException, SchedulerException {
       LOG.info("Cache with Id Stats {}", EntityRepository.CACHE_WITH_ID.stats());
       LOG.info("Cache with name Stats {}", EntityRepository.CACHE_WITH_NAME.stats());
+      EntityCacheRepair.shutdown();
       EventSubscriptionScheduler.shutDown();
       AsyncService.getInstance().shutdown();
       EntityLifecycleEventDispatcher.getInstance().shutdown();

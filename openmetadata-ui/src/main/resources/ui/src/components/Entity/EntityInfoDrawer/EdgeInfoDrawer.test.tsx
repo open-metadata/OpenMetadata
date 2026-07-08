@@ -68,7 +68,11 @@ jest.mock('../../common/Loader/Loader', () =>
 );
 
 jest.mock('../../Database/SchemaEditor/SchemaEditor', () => {
-  return jest.fn().mockImplementation(() => <div>SchemaEditor.component</div>);
+  return jest.fn().mockImplementation(({ value }: { value?: string }) => (
+    <div data-testid="sql-editor" data-value={value}>
+      SchemaEditor.component
+    </div>
+  ));
 });
 
 jest.mock('../../Modals/ModalWithQueryEditor/ModalWithQueryEditor', () => {
@@ -264,6 +268,106 @@ describe('EdgeInfoDrawer Component', () => {
     });
 
     expect(props?.componentType).toBe('');
+  });
+
+  it('should resolve sqlQuery from target node lineageSqlQueries when edge only has sqlQueryKey', async () => {
+    const nodes = createMockNodes();
+    (
+      nodes[1].data.node as { lineageSqlQueries?: Record<string, string> }
+    ).lineageSqlQueries = {
+      '1': 'CREATE TABLE customers AS SELECT * FROM stg_orders',
+    };
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                sqlQuery: null,
+                sqlQueryKey: '1',
+              },
+            },
+          } as Edge
+        }
+        nodes={nodes}
+      />
+    );
+
+    expect(await screen.findByTestId('sql-editor')).toHaveAttribute(
+      'data-value',
+      'CREATE TABLE customers AS SELECT * FROM stg_orders'
+    );
+    expect(
+      screen.queryByText('server.no-query-available')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should prefer the inline sqlQuery over the target node lineageSqlQueries map', async () => {
+    const nodes = createMockNodes();
+    (
+      nodes[1].data.node as { lineageSqlQueries?: Record<string, string> }
+    ).lineageSqlQueries = { '1': 'SELECT * FROM keyed_map' };
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                sqlQuery: 'SELECT * FROM inline_edge',
+                sqlQueryKey: '1',
+              },
+            },
+          } as Edge
+        }
+        nodes={nodes}
+      />
+    );
+
+    expect(await screen.findByTestId('sql-editor')).toHaveAttribute(
+      'data-value',
+      'SELECT * FROM inline_edge'
+    );
+  });
+
+  it('should show no query when the sqlQueryKey is not in the target node map', async () => {
+    const nodes = createMockNodes();
+    (
+      nodes[1].data.node as { lineageSqlQueries?: Record<string, string> }
+    ).lineageSqlQueries = { '1': 'SELECT * FROM keyed_map' };
+
+    render(
+      <EdgeInfoDrawer
+        {...mockEdgeInfoDrawer}
+        edge={
+          {
+            ...mockEdgeInfoDrawer.edge,
+            data: {
+              ...mockEdgeInfoDrawer.edge.data,
+              edge: {
+                ...mockEdgeInfoDrawer.edge.data?.edge,
+                sqlQuery: null,
+                sqlQueryKey: '99',
+              },
+            },
+          } as Edge
+        }
+        nodes={nodes}
+      />
+    );
+
+    expect(
+      await screen.findByText('server.no-query-available')
+    ).toBeInTheDocument();
   });
 
   it('should format edge audit values from non-empty user and time parts', async () => {

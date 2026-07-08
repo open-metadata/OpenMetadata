@@ -48,7 +48,7 @@ import {
   metricQueryKey,
   METRIC_DEFAULT_FIELDS,
 } from '../../../rest/queries/metricQuery';
-import { getEntityMissingError } from '../../../utils/EntityDisplayUtils';
+import { getEntityMissingError } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,

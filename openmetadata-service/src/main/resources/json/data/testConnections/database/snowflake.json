@@ -7,8 +7,9 @@
         "name": "CheckAccess",
         "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
         "errorMessage": "Failed to connect to snowflake, please validate the credentials",
+        "mandatory": true,
         "shortCircuit": true,
-        "mandatory": true
+        "category": "ConnectionGate"
       },
       {
         "name": "GetDatabases",

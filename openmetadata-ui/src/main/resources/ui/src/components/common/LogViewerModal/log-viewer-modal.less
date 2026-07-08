@@ -1,0 +1,331 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+// This is a bespoke terminal surface (like a code editor / log console). The
+// app's Tailwind utilities (`bg-primary` etc.) do not flip under `.dark-mode`
+// in the consuming build, so the surface is themed from a local palette of CSS
+// custom properties instead. Dark is the default per the design mock; light is
+// a lighter terminal variant.
+.log-viewer-modal {
+  --lvm-font: 'Geist Mono', 'Menlo', ui-monospace, 'SFMono-Regular', monospace;
+
+  font-family: var(--lvm-font);
+
+  &.theme-dark {
+    --lvm-bg: #0c1118;
+    --lvm-surface-2: #11171f;
+    --lvm-footer-bg: #0f151d;
+    --lvm-border: #1b2430;
+    --lvm-border-strong: #232e3b;
+    --lvm-text: #d6dee7;
+    --lvm-text-muted: #5e7388;
+    --lvm-log-text: #c7d2de;
+    --lvm-line-number: #46586b;
+    --lvm-line-hover: #121a23;
+    --lvm-chip-bg: #161e28;
+    --lvm-chip-text: #a9b6c4;
+    --lvm-level-info: #8aa0b8;
+    --lvm-level-warn: #fdb022;
+    --lvm-level-error: #f97066;
+    --lvm-level-debug: #5e7388;
+    --lvm-level-ok: #5cd68a;
+    --lvm-level-ai: #7cc4ff;
+  }
+
+  &.theme-light {
+    --lvm-bg: #ffffff;
+    --lvm-surface-2: #f7f8fa;
+    --lvm-footer-bg: #fafafa;
+    --lvm-border: #e9eaeb;
+    --lvm-border-strong: #d6dee7;
+    --lvm-text: #181d27;
+    --lvm-text-muted: #6b7280;
+    --lvm-log-text: #181d27;
+    --lvm-line-number: #98a2b3;
+    --lvm-line-hover: #f2f4f7;
+    --lvm-chip-bg: #ffffff;
+    --lvm-chip-text: #414651;
+    --lvm-level-info: #5a6b85;
+    --lvm-level-warn: #b54708;
+    --lvm-level-error: #d92d20;
+    --lvm-level-debug: #6b7280;
+    --lvm-level-ok: #067647;
+    --lvm-level-ai: #1570ef;
+  }
+
+  .lvm-surface {
+    background-color: var(--lvm-bg);
+    color: var(--lvm-text);
+  }
+
+  .lvm-header {
+    border-bottom: 1px solid var(--lvm-border);
+  }
+
+  .lvm-title {
+    color: var(--lvm-text);
+    font-size: 13px;
+    font-weight: 600;
+  }
+
+  .lvm-dots {
+    display: inline-flex;
+    flex-shrink: 0;
+    gap: 6px;
+  }
+
+  .lvm-dot {
+    display: inline-block;
+    width: 11px;
+    height: 11px;
+    border-radius: 9999px;
+
+    &--red {
+      background-color: #ff5f56;
+    }
+
+    &--amber {
+      background-color: #ffbd2e;
+    }
+
+    &--green {
+      background-color: #27c93f;
+    }
+
+    &--live {
+      background-color: var(--lvm-level-ok);
+      animation: lvm-pulse 1.2s ease-in-out infinite;
+    }
+
+    &--done {
+      background-color: var(--lvm-text-muted);
+    }
+  }
+
+  @keyframes lvm-pulse {
+    0%,
+    100% {
+      opacity: 1;
+    }
+
+    50% {
+      opacity: 0.3;
+    }
+  }
+
+  .lvm-file-icon {
+    flex-shrink: 0;
+    width: 16px;
+    height: 16px;
+    color: var(--lvm-text-muted);
+  }
+
+  .lvm-search {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 10px;
+    border: 1px solid var(--lvm-border-strong);
+    border-radius: 8px;
+    background-color: var(--lvm-surface-2);
+  }
+
+  .lvm-search-icon {
+    flex-shrink: 0;
+    width: 15px;
+    height: 15px;
+    color: var(--lvm-text-muted);
+  }
+
+  .lvm-search-input {
+    width: 180px;
+    border: none;
+    outline: none;
+    background: transparent;
+    color: var(--lvm-text);
+    font-family: inherit;
+    font-size: 12.5px;
+
+    &::placeholder {
+      color: var(--lvm-text-muted);
+    }
+  }
+
+  .lvm-match-count {
+    color: var(--lvm-text-muted);
+    font-size: 12.5px;
+    white-space: nowrap;
+  }
+
+  .lvm-copy-button {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    height: 32px;
+    padding: 0 12px;
+    border: 1px solid var(--lvm-border-strong);
+    border-radius: 8px;
+    background-color: var(--lvm-chip-bg);
+    color: var(--lvm-chip-text);
+    font-family: inherit;
+    font-size: 12.5px;
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--lvm-surface-2);
+    }
+  }
+
+  .lvm-copy-icon {
+    width: 15px;
+    height: 15px;
+  }
+
+  .lvm-icon-button {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border: none;
+    border-radius: 8px;
+    background: transparent;
+    color: var(--lvm-text-muted);
+    cursor: pointer;
+
+    &:hover {
+      background-color: var(--lvm-surface-2);
+      color: var(--lvm-text);
+    }
+  }
+
+  .lvm-icon {
+    width: 16px;
+    height: 16px;
+  }
+
+  .lvm-empty {
+    color: var(--lvm-text-muted);
+    font-size: 13px;
+  }
+
+  .lvm-footer {
+    background-color: var(--lvm-footer-bg);
+    border-top: 1px solid var(--lvm-border);
+    color: var(--lvm-text-muted);
+    font-size: 12px;
+  }
+
+  .lvm-footer-left,
+  .lvm-footer-right {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+
+    // "·" separator between footer items (kept in CSS, not the markup).
+    > :not(:first-child)::before {
+      content: '·';
+      margin: 0 7px;
+      color: var(--lvm-text-muted);
+    }
+  }
+
+  .lvm-status {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+
+    &--success {
+      color: var(--lvm-level-ok);
+    }
+
+    &--error {
+      color: var(--lvm-level-error);
+    }
+
+    &--warning {
+      color: var(--lvm-level-warn);
+    }
+
+    &--muted {
+      color: var(--lvm-text-muted);
+    }
+  }
+
+  .lvm-status-dot {
+    width: 7px;
+    height: 7px;
+    border-radius: 9999px;
+    background-color: currentColor;
+  }
+
+  // LazyLog measures the nearest sized container; force it to fill the body and
+  // adopt the terminal palette (ANSI colors in the log text render on top).
+  // LazyLog forces `font-family: "Monaco"` and `font-size: 12px` on its own
+  // container, overriding the inherited modal font — restate them here.
+  .react-lazylog {
+    height: 100% !important;
+    border-radius: 0;
+    background-color: var(--lvm-bg);
+    color: var(--lvm-log-text);
+    font-family: var(--lvm-font);
+    font-size: 12px;
+
+    // LazyLog renders the gutter digit via `.log-number::before { content: attr(id) }`.
+    .log-number,
+    .log-number::before {
+      color: var(--lvm-line-number);
+    }
+
+    // Override LazyLog's bright default line hover (#444) with the mock's
+    // subtle lift. `.log-line` is the stable class on the row.
+    .log-line:hover {
+      background-color: var(--lvm-line-hover);
+    }
+  }
+
+  // Per-level colouring for parsed log lines (see LogViewerModal.utils).
+  .lvm-log-ts,
+  .lvm-log-logger {
+    color: var(--lvm-text-muted);
+  }
+
+  .lvm-log-level {
+    font-weight: 600;
+
+    &--info {
+      color: var(--lvm-level-info);
+    }
+
+    &--warn {
+      color: var(--lvm-level-warn);
+    }
+
+    &--error {
+      color: var(--lvm-level-error);
+    }
+
+    &--debug {
+      color: var(--lvm-level-debug);
+    }
+
+    &--ok {
+      color: var(--lvm-level-ok);
+    }
+
+    &--ai {
+      color: var(--lvm-level-ai);
+    }
+  }
+}

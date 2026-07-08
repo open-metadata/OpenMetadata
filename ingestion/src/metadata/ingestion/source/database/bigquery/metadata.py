@@ -75,6 +75,7 @@ from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.bigquery.helper import (
     clear_constraint_cache,
     clear_constraint_cache_for_schema,
+    clone_connection_for_project,
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
@@ -346,11 +347,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def _test_connection(self) -> None:
         for project_id in self.project_ids:
-            inspector_details = get_inspector_details(
+            project_connection = clone_connection_for_project(
                 database_name=project_id, service_connection=self.service_connection
             )
-            test_connection_fn = get_test_connection_fn(self.service_connection)
-            test_connection_fn(self.metadata, inspector_details.engine, self.service_connection)
+            test_connection_fn = get_test_connection_fn(project_connection)
+            test_connection_fn(self.metadata)
             # GOOGLE_CREDENTIALS may not have been set,
             # to avoid key error, we use `get` for dict
             if os.environ.get(GOOGLE_CREDENTIALS):

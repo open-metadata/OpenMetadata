@@ -28,8 +28,8 @@ jest.mock('../../BlockEditor/BlockEditor', () => {
     ));
 });
 
-jest.mock('../../../utils/BlockEditorUtils', () => ({
-  formatContent: jest.fn((content) => content),
+jest.mock('../../../utils/BlockEditorPureUtils', () => ({
+  formatClientContent: jest.fn((content) => content),
   isDescriptionContentEmpty: jest.fn((content) => !content || content === ''),
 }));
 

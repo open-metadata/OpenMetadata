@@ -62,12 +62,17 @@ class MlFlowIngestionClass extends ServiceBaseClass {
   }
 
   async fillIngestionDetails(page: Page) {
+    await page.getByTestId('mlModelFilterPattern-only-specific-button').click();
     await page
-      .locator('#root\\/mlModelFilterPattern\\/includes')
+      .getByTestId('filter-section-mlModelFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.entityName);
 
     await page
-      .locator('#root\\/mlModelFilterPattern\\/includes')
+      .getByTestId('filter-section-mlModelFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

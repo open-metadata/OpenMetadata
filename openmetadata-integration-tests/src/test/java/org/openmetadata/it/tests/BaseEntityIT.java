@@ -460,6 +460,33 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
   }
 
   /**
+   * Test: The per-entity AI Context endpoint (inherited from EntityResource) returns an OKF-style
+   * markdown document for this entity type, exercised through the SDK's getContext/getContextByName
+   * (which manage their own connection pool). Runs for every entity type whose IT wires the SDK
+   * service via getEntityService().
+   */
+  @Test
+  void get_entityAiContext_200_OK(TestNamespace ns) throws Exception {
+    org.openmetadata.sdk.services.EntityServiceBase<T> service = getEntityService();
+    Assumptions.assumeTrue(
+        service != null, getEntityType() + " has no SDK service wired via getEntityService()");
+    T created = createEntity(createMinimalRequest(ns));
+
+    String byId = service.getContext(created.getId().toString());
+    assertTrue(
+        byId.startsWith("---"),
+        "AI context by id must be an OKF markdown document (YAML frontmatter) for "
+            + getEntityType());
+    assertTrue(
+        byId.contains("type:"), "AI context frontmatter must carry a type for " + getEntityType());
+
+    String byName = service.getContextByName(created.getFullyQualifiedName());
+    assertTrue(
+        byName.startsWith("---"),
+        "AI context by name must be an OKF markdown document for " + getEntityType());
+  }
+
+  /**
    * Test: Get non-existent entity should fail
    * Equivalent to: get_entityNotFound_404 in EntityResourceTest
    */
@@ -4476,6 +4503,37 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
 
     BulkOperationResult result = JsonUtils.readValue(response.body(), BulkOperationResult.class);
     assertNotNull(result.getNumberOfRowsProcessed());
+
+    // Block until the async bulk worker commits the new entity. Without this, TestNamespace
+    // cleanup races the worker: the service's recursive hardDelete may scan its children before
+    // the worker establishes the parent→child relationship, leaving an orphan whose parent
+    // service no longer exists. That orphan trips unfiltered list calls in concurrent test
+    // classes. The 202 body carries each queued entity's FQN in successRequest; await the row
+    // via getEntityByName so cascade cleanup can find it. Applies to every entity that supports
+    // bulk, independent of search-index support.
+    awaitAsyncBulkEntitiesPersisted(result);
+  }
+
+  private void awaitAsyncBulkEntitiesPersisted(BulkOperationResult result) {
+    if (result.getSuccessRequest() == null || result.getSuccessRequest().isEmpty()) {
+      return;
+    }
+    for (BulkResponse accepted : result.getSuccessRequest()) {
+      Object request = accepted.getRequest();
+      if (!(request instanceof String fqn) || fqn.isEmpty()) {
+        continue;
+      }
+      Awaitility.await("Async bulk-created entity " + fqn + " visible by name")
+          .pollDelay(Duration.ofMillis(200))
+          .pollInterval(Duration.ofMillis(500))
+          .atMost(Duration.ofSeconds(60))
+          .ignoreExceptions()
+          .until(
+              () -> {
+                getEntityByName(fqn);
+                return true;
+              });
+    }
   }
 
   /**
