@@ -336,7 +336,7 @@ const DomainDetails = ({
     refreshDomains?.();
   };
 
-  const handleDomainDelete = async () => {
+  const handleDomainDelete = useCallback(async () => {
     setIsDeleting(true);
     const isSuccess = await hardDeleteEntity(
       getEntityName(domain),
@@ -348,7 +348,7 @@ const DomainDetails = ({
     }
     setIsDelete(false);
     setIsDeleting(false);
-  };
+  }, [domain, onDelete]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);

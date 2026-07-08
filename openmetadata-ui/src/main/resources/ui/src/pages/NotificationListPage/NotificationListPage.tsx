@@ -206,7 +206,7 @@ const NotificationListPage = () => {
     }
   }, [fetchAlerts]);
 
-  const handleAlertHardDelete = async () => {
+  const handleAlertHardDelete = useCallback(async () => {
     setIsDeleting(true);
     const isSuccess = await hardDeleteEntity(
       getEntityName(selectedAlert),
@@ -219,7 +219,7 @@ const NotificationListPage = () => {
       setSelectedAlert(undefined);
     }
     setIsDeleting(false);
-  };
+  }, [selectedAlert, handleAlertDelete]);
 
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {

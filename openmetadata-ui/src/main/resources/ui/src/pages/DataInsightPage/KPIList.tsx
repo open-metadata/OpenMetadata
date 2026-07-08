@@ -205,7 +205,7 @@ const KPIList = () => {
     fetchKpiList();
   }, [fetchKpiList]);
 
-  const handleKpiDelete = async () => {
+  const handleKpiDelete = useCallback(async () => {
     setIsDeleting(true);
     const isSuccess = await hardDeleteEntity(
       getEntityName(selectedKpi),
@@ -217,7 +217,7 @@ const KPIList = () => {
     }
     setSelectedKpi(undefined);
     setIsDeleting(false);
-  };
+  }, [selectedKpi, handleAfterDeleteAction]);
 
   const noDataPlaceHolder = useMemo(
     () =>
@@ -263,8 +263,8 @@ const KPIList = () => {
         <DeleteModal
           entityTitle={getEntityName(selectedKpi)}
           isDeleting={isDeleting}
-          message={t('message.are-you-sure-delete-entity', {
-            entity: getEntityName(selectedKpi),
+          message={t('message.permanently-delete-common-message', {
+            entity: getEntityName(selectedKpi)?.toLowerCase?.() ?? '',
           })}
           open={!isUndefined(selectedKpi)}
           onCancel={() => setSelectedKpi(undefined)}

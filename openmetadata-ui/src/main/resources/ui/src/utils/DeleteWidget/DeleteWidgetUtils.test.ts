@@ -27,7 +27,8 @@ jest.mock('../ToastUtils', () => ({
 }));
 
 jest.mock('../i18next/LocalUtil', () => ({
-  t: (key: string) => key,
+  __esModule: true,
+  default: { t: (key: string) => key },
 }));
 
 const mockDeleteEntity = deleteEntity as jest.Mock;

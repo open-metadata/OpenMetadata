@@ -242,7 +242,7 @@ const RolesListPage = () => {
     fetchRoles();
   }, [fetchRoles]);
 
-  const handleRoleDelete = async () => {
+  const handleRoleDelete = useCallback(async () => {
     setIsDeleting(true);
     const isSuccess = await hardDeleteEntity(
       getEntityName(selectedRole).toString(),
@@ -254,7 +254,7 @@ const RolesListPage = () => {
     }
     setSelectedRole(undefined);
     setIsDeleting(false);
-  };
+  }, [selectedRole, handleAfterDeleteAction]);
 
   const handleAddRole = () => {
     navigate(ROUTES.ADD_ROLE);
@@ -352,8 +352,8 @@ const RolesListPage = () => {
             <DeleteModal
               entityTitle={getEntityName(selectedRole).toString()}
               isDeleting={isDeleting}
-              message={t('message.are-you-sure-delete-entity', {
-                entity: getEntityName(selectedRole).toString(),
+              message={t('message.permanently-delete-common-message', {
+                entity: getEntityName(selectedRole).toString().toLowerCase(),
               })}
               open={!isUndefined(selectedRole)}
               onCancel={() => setSelectedRole(undefined)}

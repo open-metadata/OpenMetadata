@@ -13,7 +13,7 @@
 
 import { SyncOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
@@ -55,7 +55,7 @@ function AlertDetailsContent({
   const { t } = useTranslation();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleAlertHardDelete = async () => {
+  const handleAlertHardDelete = useCallback(async () => {
     setIsDeleting(true);
     const isSuccess = await hardDeleteEntity(
       getEntityName(alertDetails),
@@ -67,7 +67,7 @@ function AlertDetailsContent({
     }
     hideDeleteModal();
     setIsDeleting(false);
-  };
+  }, [alertDetails, handleAlertDelete, hideDeleteModal]);
 
   return (
     <Card

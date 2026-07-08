@@ -244,7 +244,7 @@ const PoliciesListPage = () => {
     fetchPolicies();
   }, [fetchPolicies]);
 
-  const handlePolicyDelete = async () => {
+  const handlePolicyDelete = useCallback(async () => {
     setIsDeleting(true);
     const isSuccess = await hardDeleteEntity(
       getEntityName(selectedPolicy),
@@ -256,7 +256,7 @@ const PoliciesListPage = () => {
     }
     setSelectedPolicy(undefined);
     setIsDeleting(false);
-  };
+  }, [selectedPolicy, handleAfterDeleteAction]);
 
   const handleAddPolicy = () => {
     navigate(ROUTES.ADD_POLICY);
@@ -354,8 +354,8 @@ const PoliciesListPage = () => {
             <DeleteModal
               entityTitle={getEntityName(selectedPolicy)}
               isDeleting={isDeleting}
-              message={t('message.are-you-sure-delete-entity', {
-                entity: getEntityName(selectedPolicy),
+              message={t('message.permanently-delete-common-message', {
+                entity: getEntityName(selectedPolicy)?.toLowerCase?.() ?? '',
               })}
               open={!isUndefined(selectedPolicy)}
               onCancel={() => setSelectedPolicy(undefined)}

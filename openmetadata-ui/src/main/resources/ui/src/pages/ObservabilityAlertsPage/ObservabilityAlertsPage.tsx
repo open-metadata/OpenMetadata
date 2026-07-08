@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -46,7 +46,7 @@ const ObservabilityAlertsPage = () => {
   } = useObservabilityAlerts();
   const [isDeleting, setIsDeleting] = useState(false);
 
-  const handleAlertHardDelete = async () => {
+  const handleAlertHardDelete = useCallback(async () => {
     setIsDeleting(true);
     const isSuccess = await hardDeleteEntity(
       getEntityName(selectedAlert),
@@ -59,7 +59,7 @@ const ObservabilityAlertsPage = () => {
       handleSelectAlert(undefined);
     }
     setIsDeleting(false);
-  };
+  }, [selectedAlert, handleAlertDelete, handleSelectAlert]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.observability-alert')}>
