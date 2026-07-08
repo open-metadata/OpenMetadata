@@ -31,12 +31,12 @@ from metadata.ingestion.source.database.database_service import (
 class TestRunnerProgressSurface:
     def test_progress_is_lazy_per_instance(self):
         runner = TopologyRunnerMixin()
-        registry = runner.progress
+        registry = runner.progress_tracking.registry
         assert isinstance(registry, ProgressRegistry)
-        assert runner.progress is registry
+        assert runner.progress_tracking.registry is registry
 
     def test_distinct_instances_distinct_registries(self):
-        assert TopologyRunnerMixin().progress is not TopologyRunnerMixin().progress
+        assert TopologyRunnerMixin().progress_tracking.registry is not TopologyRunnerMixin().progress_tracking.registry
 
     def test_current_progress_path_default_is_empty(self):
         assert TopologyRunnerMixin().progress_tracker.current_path() == []
@@ -97,19 +97,19 @@ def _drive_container(runner):
 def test_disabled_walk_creates_no_registry():
     runner = _WalkRunner(mode=ProgressMode.OFF)
     _drive_leaf(runner)
-    assert "_progress_registry" not in runner.__dict__
+    assert "_progress_tracking" not in runner.__dict__
 
 
 def test_manual_walk_creates_no_registry():
     runner = _WalkRunner(mode=ProgressMode.MANUAL)
     _drive_leaf(runner)
-    assert "_progress_registry" not in runner.__dict__
+    assert "_progress_tracking" not in runner.__dict__
 
 
 def test_enabled_walk_records_into_registry():
     runner = _WalkRunner()
     _drive_leaf(runner)
-    snapshot = runner.progress.snapshot()
+    snapshot = runner.progress_tracking.registry.snapshot()
     assert snapshot.child_type == "Table"
     assert snapshot.processed == 2
 
@@ -117,7 +117,7 @@ def test_enabled_walk_records_into_registry():
 def test_plain_connector_gets_progress_by_default():
     runner = _WalkRunner()
     _drive_leaf(runner)
-    assert runner.progress.snapshot().processed == 2
+    assert runner.progress_tracking.registry.snapshot().processed == 2
 
 
 def test_container_open_none_through_runner():
@@ -127,7 +127,7 @@ def test_container_open_none_through_runner():
     the Database level."""
     runner = _WalkRunner()
     _drive_container(runner)
-    snapshot = runner.progress.snapshot()
+    snapshot = runner.progress_tracking.registry.snapshot()
     assert snapshot is not None
     assert snapshot.child_type == "Database"
     assert snapshot.expected_by_type.get("Database") is None
@@ -141,8 +141,8 @@ def progress_runner():
 
 def test_container_without_push_is_unknown(progress_runner):
     # progress_runner: a TopologyRunnerMixin test double with progress_mode=AUTO
-    progress_runner.progress.open(["db1"], "DatabaseSchema", None)
-    snap = progress_runner.progress.snapshot()
+    progress_runner.progress_tracking.registry.open(["db1"], "DatabaseSchema", None)
+    snap = progress_runner.progress_tracking.registry.snapshot()
     assert snap.children[0].expected is None
 
 
@@ -181,7 +181,7 @@ def test_scope_path_for_node_is_none_without_context_value():
 def test_completed_container_is_closed_through_runner():
     runner = _CtxWalkRunner()
     closed: list = []
-    runner.progress.close = lambda path: closed.append(list(path))
+    runner.progress_tracking.registry.close = lambda path: closed.append(list(path))
     container = get_topology_node("database", runner.topology)
     list(runner._process_node(container))
     # producer yields "a","b"; each database entity is closed at its own path
@@ -232,7 +232,7 @@ def test_leaf_is_lazy_when_progress_on_preserving_per_yield_state():
     runner = _StatefulLeafRunner()
     list(runner._process_node(get_topology_node("table", runner.topology)))
     assert runner.state_live_at_stage == ["a", "b"]
-    assert runner.progress.snapshot().processed == 2
+    assert runner.progress_tracking.registry.snapshot().processed == 2
 
 
 class _CtxReadingLeafRunner(TopologyRunnerMixin):
@@ -272,21 +272,21 @@ def test_leaf_producer_reads_context_written_by_prior_yield_stage():
 
 def test_closing_container_tracks_global_done():
     runner = _CtxWalkRunner()
-    runner.progress.set_total("Database", 5)
-    runner.progress.set_total("DatabaseSchema", 9)
+    runner.progress_tracking.registry.set_total("Database", 5)
+    runner.progress_tracking.registry.set_total("DatabaseSchema", 9)
     list(runner._process_node(get_topology_node("database", runner.topology)))
-    counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
+    counters = {t: (d, total) for t, d, total in runner.progress_tracking.registry.global_counters()}
     assert counters["Database"][0] == 2  # 2 databases ("a","b") closed
     assert counters["DatabaseSchema"][0] == 4  # 2 schemas per database closed
 
 
 def test_reconcilable_container_reconciles_total():
     runner = _CtxWalkRunner()
-    runner.progress.seed_scope_total("DatabaseSchema", "a", 1)
-    runner.progress.seed_scope_total("DatabaseSchema", "b", 1)
+    runner.progress_tracking.registry.seed_scope_total("DatabaseSchema", "a", 1)
+    runner.progress_tracking.registry.seed_scope_total("DatabaseSchema", "b", 1)
     # upfront total = 2 (1 seeded per declared database)
     list(runner._process_node(get_topology_node("database", runner.topology)))
-    counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
+    counters = {t: (d, total) for t, d, total in runner.progress_tracking.registry.global_counters()}
     # each database actually walks 2 schemas -> reconciled total 2*2=4; done=4
     assert counters["DatabaseSchema"] == (4, 4)
 
@@ -312,13 +312,13 @@ def test_multithread_schema_node_reconciles_and_tracks_done():
     single-thread reconcile test: seed 1 per declared db, observe 2 per db,
     final counters show (done=4, total=4)."""
     runner = _MultiThreadCtxWalkRunner()
-    runner.progress.seed_scope_total("DatabaseSchema", "a", 1)
-    runner.progress.seed_scope_total("DatabaseSchema", "b", 1)
+    runner.progress_tracking.registry.seed_scope_total("DatabaseSchema", "a", 1)
+    runner.progress_tracking.registry.seed_scope_total("DatabaseSchema", "b", 1)
     # upfront total = 2; driving _process_node(database) recurses into
     # process_nodes([databaseSchema]) which routes to _multithread_process_node
     # because databaseSchema.threads=True and context.threads=2
     list(runner._process_node(get_topology_node("database", runner.topology)))
-    counters = {t: (d, total) for t, d, total in runner.progress.global_counters()}
+    counters = {t: (d, total) for t, d, total in runner.progress_tracking.registry.global_counters()}
     # each database actually walks 2 schemas -> reconciled total 2*2=4; done=4
     assert counters["DatabaseSchema"] == (4, 4)
 
@@ -338,4 +338,4 @@ def test_declare_progress_totals_called_once_per_walk():
     _drive_leaf(runner)
     _drive_leaf(runner)
     assert runner.declared == 1
-    assert ("Table", 0, 99) in runner.progress.global_counters()
+    assert ("Table", 0, 99) in runner.progress_tracking.registry.global_counters()

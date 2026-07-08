@@ -52,7 +52,7 @@ def test_for_node_returns_noop_when_mode_is_not_auto():
         source = _FakeSource(mode)
         tracker = TopologyProgressTracker(source)
         assert tracker.for_node(_table_node(source), is_leaf=True) is NO_OP_NODE_PROGRESS
-        assert "_progress_registry" not in source.__dict__
+        assert "_progress_tracking" not in source.__dict__
 
 
 def test_for_node_returns_noop_for_root_node():
@@ -82,7 +82,7 @@ def test_totals_hook_called_exactly_once_and_only_for_real_nodes():
     tracker.for_node(_database_node(source), is_leaf=False)
     tracker.for_node(_table_node(source), is_leaf=True)
     assert source.declared == 1
-    assert ("Database", 0, 7) in source.progress.global_counters()
+    assert ("Database", 0, 7) in source.progress_tracking.registry.global_counters()
 
 
 def test_leaf_handle_counts_open_and_advance():
@@ -92,7 +92,7 @@ def test_leaf_handle_counts_open_and_advance():
     handle.open(2)
     handle.advance_leaf()
     handle.advance_leaf()
-    snapshot = source.progress.snapshot()
+    snapshot = source.progress_tracking.registry.snapshot()
     assert snapshot.child_type == "Table"
     assert snapshot.processed == 2
 
@@ -103,12 +103,12 @@ def test_container_handle_is_lazy_without_reconcilable_counter():
     handle = tracker.for_node(_database_node(source), is_leaf=False)
     assert handle.wants_eager_count is False
     handle.open(None)
-    assert source.progress.snapshot().expected_by_type.get("Database") is None
+    assert source.progress_tracking.registry.snapshot().expected_by_type.get("Database") is None
 
 
 def test_container_handle_reconciles_when_counter_is_reconcilable():
     source = _FakeSource()
-    source.progress.seed_scope_total("DatabaseSchema", "salesdb", 1)
+    source.progress_tracking.registry.seed_scope_total("DatabaseSchema", "salesdb", 1)
     tracker = TopologyProgressTracker(source)
     key = source._node_primary_stage(_database_node(source)).context
     setattr(source.context.get(), key, "salesdb")
@@ -116,41 +116,41 @@ def test_container_handle_reconciles_when_counter_is_reconcilable():
     handle = tracker.for_node(schema_node, is_leaf=False)
     assert handle.wants_eager_count is True
     handle.open(3)
-    counters = {t: (done, total) for t, done, total in source.progress.global_counters()}
+    counters = {t: (done, total) for t, done, total in source.progress_tracking.registry.global_counters()}
     assert counters["DatabaseSchema"] == (0, 3)
 
 
 def test_enter_scope_closes_and_tracks_on_exit():
     source = _FakeSource()
-    source.progress.set_total("Database", 7)
+    source.progress_tracking.registry.set_total("Database", 7)
     tracker = TopologyProgressTracker(source)
     node = _database_node(source)
     handle = tracker.for_node(node, is_leaf=False)
     key = source._node_primary_stage(node).context
     setattr(source.context.get(), key, "salesdb")
     closed = []
-    source.progress.close = lambda path: closed.append(list(path))
+    source.progress_tracking.registry.close = lambda path: closed.append(list(path))
     with handle.enter_scope():
         pass
     assert closed == [["salesdb"]]
-    counters = {t: (done, total) for t, done, total in source.progress.global_counters()}
+    counters = {t: (done, total) for t, done, total in source.progress_tracking.registry.global_counters()}
     assert counters["Database"][0] == 1
 
 
 def test_enter_scope_prunes_without_counting_on_failure():
     source = _FakeSource()
-    source.progress.set_total("Database", 7)
+    source.progress_tracking.registry.set_total("Database", 7)
     tracker = TopologyProgressTracker(source)
     node = _database_node(source)
     handle = tracker.for_node(node, is_leaf=False)
     key = source._node_primary_stage(node).context
     setattr(source.context.get(), key, "salesdb")
     closed = []
-    source.progress.close = lambda path: closed.append(list(path))
+    source.progress_tracking.registry.close = lambda path: closed.append(list(path))
     with pytest.raises(RuntimeError), handle.enter_scope():
         raise RuntimeError("boom")
     assert closed == [["salesdb"]]
-    counters = {t: (done, total) for t, done, total in source.progress.global_counters()}
+    counters = {t: (done, total) for t, done, total in source.progress_tracking.registry.global_counters()}
     assert counters["Database"][0] == 0
 
 
@@ -160,7 +160,7 @@ def test_enter_scope_is_noop_without_context_value():
     handle = tracker.for_node(_database_node(source), is_leaf=False)
     with handle.enter_scope():
         pass
-    assert source.progress.snapshot() is None  # nothing opened, nothing closed
+    assert source.progress_tracking.registry.snapshot() is None  # nothing opened, nothing closed
 
 
 def test_current_path_resolves_ancestor_context():

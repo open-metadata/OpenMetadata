@@ -179,9 +179,9 @@ class WorkflowStatusMixin:
         never tracked progress."""
         result = None
         for step in self.workflow_steps():  # pyright: ignore[reportAttributeAccessIssue]
-            registry = getattr(step, "_progress_registry", None)
-            if registry is not None:
-                result = registry
+            tracking = getattr(step, "_progress_tracking", None)
+            if tracking is not None:
+                result = tracking.registry
                 break
         return result
 

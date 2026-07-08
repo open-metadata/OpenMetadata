@@ -22,7 +22,7 @@ from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 class _FakeStep:
     def __init__(self, registry: ProgressRegistry) -> None:
-        self._progress_registry = registry
+        self._progress_tracking = SimpleNamespace(registry=registry)
 
 
 class _Harness(WorkflowStatusMixin):

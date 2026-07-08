@@ -43,7 +43,10 @@ from metadata.ingestion.progress.runner_tracker import (
     NodeProgress,
     TopologyProgressTracker,
 )
-from metadata.ingestion.progress.tracking import ProgressTrackingMixin
+from metadata.ingestion.progress.tracking import (
+    ProgressTracking,
+    attach_progress_tracking,
+)
 
 __all__ = [
     "DEFAULT_ACTIVE_LEAF_CAP",
@@ -56,9 +59,10 @@ __all__ = [
     "ProgressNode",
     "ProgressNodeSnapshot",
     "ProgressRegistry",
-    "ProgressTrackingMixin",
+    "ProgressTracking",
     "TopologyProgressTracker",
     "TotalsDeclarer",
+    "attach_progress_tracking",
     "format_eta",
     "render_progress_tree",
     "snapshot_to_progress_payload",

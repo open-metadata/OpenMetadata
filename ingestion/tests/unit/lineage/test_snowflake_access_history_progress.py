@@ -27,5 +27,5 @@ class TestAccessHistoryProgress:
         results = list(SnowflakeLineageSource._yield_access_history_lineage(source))
 
         assert len(results) == 4
-        assert source.progress.global_counters() == [("LineageRecords", 4, None)]
-        assert source.progress.eta_seconds() is None
+        assert source.progress_tracking.registry.global_counters() == [("LineageRecords", 4, None)]
+        assert source.progress_tracking.registry.eta_seconds() is None

@@ -19,44 +19,28 @@ from metadata.ingestion.progress.modes import (
     TotalsDeclarer,
 )
 from metadata.ingestion.progress.registry import ProgressRegistry
-from metadata.ingestion.progress.tracking import ProgressTrackingMixin
+from metadata.ingestion.progress.tracking import ProgressTracking
 
 
-class _AutoSource(ProgressTrackingMixin):
-    pass
-
-
-class _ManualSource(ProgressTrackingMixin):
-    progress_mode = ProgressMode.MANUAL
-
-
-class _OffSource(ProgressTrackingMixin):
-    progress_mode = ProgressMode.OFF
-
-
-def test_default_mode_is_auto():
-    assert _AutoSource().progress_mode is ProgressMode.AUTO
-
-
-def test_manual_progress_raises_in_auto_mode():
+def test_manual_raises_in_auto_mode():
     with pytest.raises(ProgressModeError):
-        _ = _AutoSource().manual_progress
+        _ = ProgressTracking(ProgressMode.AUTO, "AutoSource").manual
 
 
-def test_manual_progress_raises_in_off_mode():
+def test_manual_raises_in_off_mode():
     with pytest.raises(ProgressModeError):
-        _ = _OffSource().manual_progress
+        _ = ProgressTracking(ProgressMode.OFF, "OffSource").manual
 
 
-def test_manual_progress_is_cached_per_instance():
-    source = _ManualSource()
-    assert source.manual_progress is source.manual_progress
+def test_manual_is_cached_per_tracking():
+    tracking = ProgressTracking(ProgressMode.MANUAL, "ManualSource")
+    assert tracking.manual is tracking.manual
 
 
-def test_manual_progress_wraps_the_source_registry():
-    source = _ManualSource()
-    source.manual_progress.set_total("Workspaces", 3)
-    assert ("Workspaces", 0, 3) in source.progress.global_counters()
+def test_manual_wraps_the_tracking_registry():
+    tracking = ProgressTracking(ProgressMode.MANUAL, "ManualSource")
+    tracking.manual.set_total("Workspaces", 3)
+    assert ("Workspaces", 0, 3) in tracking.registry.global_counters()
 
 
 def test_totals_declarer_exposes_no_counting_methods():
@@ -79,8 +63,13 @@ def test_totals_declarer_sets_denominators():
 
 
 def test_declare_progress_totals_default_is_noop():
+    from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+
+    class _Plain(TopologyRunnerMixin):
+        pass
+
     registry = ProgressRegistry()
-    _AutoSource().declare_progress_totals(TotalsDeclarer(registry))
+    _Plain().declare_progress_totals(TotalsDeclarer(registry))
     assert registry.global_counters() == []
 
 

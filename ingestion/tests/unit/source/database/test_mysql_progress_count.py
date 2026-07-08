@@ -15,15 +15,15 @@ from types import SimpleNamespace
 
 import pytest
 
-from metadata.ingestion.progress.modes import TotalsDeclarer
-from metadata.ingestion.progress.registry import ProgressRegistry
+from metadata.ingestion.progress.modes import ProgressMode, TotalsDeclarer
+from metadata.ingestion.progress.tracking import ProgressTracking
 from metadata.ingestion.source.database.mysql.metadata import MysqlSource
 
 
 def _source(service_connection):
     source = object.__new__(MysqlSource)
     source.service_connection = service_connection
-    source.__dict__["_progress_registry"] = ProgressRegistry()
+    source.__dict__["_progress_tracking"] = ProgressTracking(ProgressMode.AUTO, "Test")
     return source
 
 
@@ -33,20 +33,20 @@ def mysql_source():
 
 
 def test_declare_progress_totals_seeds_single_database(mysql_source):
-    mysql_source.declare_progress_totals(TotalsDeclarer(mysql_source.progress))
-    counters = {t: (done, total) for t, done, total in mysql_source.progress.global_counters()}
+    mysql_source.declare_progress_totals(TotalsDeclarer(mysql_source.progress_tracking.registry))
+    counters = {t: (done, total) for t, done, total in mysql_source.progress_tracking.registry.global_counters()}
     assert counters["Database"] == (0, 1)
 
 
 def test_declare_progress_totals_marks_schema_reconcilable(mysql_source):
-    mysql_source.declare_progress_totals(TotalsDeclarer(mysql_source.progress))
-    assert mysql_source.progress.is_reconcilable("DatabaseSchema") is True
-    counters = {t: (done, total) for t, done, total in mysql_source.progress.global_counters()}
+    mysql_source.declare_progress_totals(TotalsDeclarer(mysql_source.progress_tracking.registry))
+    assert mysql_source.progress_tracking.registry.is_reconcilable("DatabaseSchema") is True
+    counters = {t: (done, total) for t, done, total in mysql_source.progress_tracking.registry.global_counters()}
     assert counters["DatabaseSchema"] == (0, None)
 
 
 def test_declare_progress_totals_defaults_database_name_when_unset(mysql_source):
     source = _source(SimpleNamespace(databaseName=None, database=None))
-    source.declare_progress_totals(TotalsDeclarer(source.progress))
-    counters = {t: (done, total) for t, done, total in source.progress.global_counters()}
+    source.declare_progress_totals(TotalsDeclarer(source.progress_tracking.registry))
+    counters = {t: (done, total) for t, done, total in source.progress_tracking.registry.global_counters()}
     assert counters["Database"] == (0, 1)

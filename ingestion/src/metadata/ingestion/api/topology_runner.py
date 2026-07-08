@@ -42,8 +42,12 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
+from metadata.ingestion.progress.modes import ProgressMode, TotalsDeclarer
 from metadata.ingestion.progress.runner_tracker import TopologyProgressTracker
-from metadata.ingestion.progress.tracking import ProgressTrackingMixin
+from metadata.ingestion.progress.tracking import (
+    ProgressTracking,
+    attach_progress_tracking,
+)
 from metadata.utils.custom_thread_pool import CustomThreadPoolExecutor
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.operation_metrics import OperationMetricsState
@@ -61,7 +65,7 @@ class MissingExpectedEntityAckException(Exception):  # noqa: N818
     """
 
 
-class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
+class TopologyRunnerMixin(Generic[C]):
     """
     Prepares the _run function
     dynamically based on the source topology
@@ -73,11 +77,27 @@ class TopologyRunnerMixin(ProgressTrackingMixin, Generic[C]):
 
     queue = Queue()
 
+    progress_mode: ClassVar[ProgressMode] = ProgressMode.AUTO
+    """AUTO (default): the topology runner counts processed entities.
+    MANUAL: the runner makes zero progress calls; the source drives
+    ``progress_tracking.manual`` itself. OFF: no progress at all."""
+
     _SIDE_OUTPUT_STAGE_TYPES: ClassVar[set[str]] = {
         "OMetaTagAndClassification",
         "OMetaLifeCycleData",
         "AddLineageRequest",
     }
+
+    @property
+    def progress_tracking(self) -> ProgressTracking:
+        """Composed per-source progress state (registry, mode, manual facade).
+        Lazy: a source that never tracks progress never builds a registry."""
+        return attach_progress_tracking(self)
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Optional connector hook: declare denominators (totals) so the run
+        renders % and ETA. Called exactly once by the topology runner, just
+        before the first non-root node is processed. Default: no totals."""
 
     def _node_primary_stage(self, node: TopologyNode) -> Optional[NodeStage]:  # noqa: UP045
         """The node's primary, non-side-output stage — the stage whose entity is

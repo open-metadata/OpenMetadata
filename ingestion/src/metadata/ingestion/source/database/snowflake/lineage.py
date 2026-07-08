@@ -245,17 +245,17 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
         The two phases are isolated: a catastrophic failure in the combined
         ACCESS_HISTORY phase must not stop the COPY_HISTORY phase, and vice versa.
         """
-        self.manual_progress.set_total("LineageRecords", None)
+        self.progress_tracking.manual.set_total("LineageRecords", None)
         try:
             for either in self._yield_combined_access_history():
-                self.manual_progress.track("LineageRecords")
+                self.progress_tracking.manual.track("LineageRecords")
                 yield either
         except Exception as exc:
             logger.warning("ACCESS_HISTORY combined lineage phase failed: %s", exc)
             logger.debug(traceback.format_exc())
         try:
             for either in self._yield_copy_history_lineage():
-                self.manual_progress.track("LineageRecords")
+                self.progress_tracking.manual.track("LineageRecords")
                 yield either
         except Exception as exc:
             logger.warning("COPY_HISTORY lineage phase failed: %s", exc)

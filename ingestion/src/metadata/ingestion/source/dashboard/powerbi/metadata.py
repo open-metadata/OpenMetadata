@@ -170,7 +170,7 @@ class PowerbiSource(DashboardServiceSource):
             workspaces = self.client.api_client.fetch_all_workspaces(filter_pattern)
             if workspaces:
                 workspace_total += len(workspaces)
-                self.manual_progress.set_total("Workspaces", workspace_total)
+                self.progress_tracking.manual.set_total("Workspaces", workspace_total)
                 for workspace in workspaces:
                     # add the dashboards to the workspace
                     workspace.dashboards.extend(
@@ -310,7 +310,7 @@ class PowerbiSource(DashboardServiceSource):
                             missing_workspaces,
                         )
                     active_workspace_total += len(active_workspaces)
-                    self.manual_progress.set_total("Workspaces", active_workspace_total)
+                    self.progress_tracking.manual.set_total("Workspaces", active_workspace_total)
                     yield from active_workspaces
                     count += 1
             else:

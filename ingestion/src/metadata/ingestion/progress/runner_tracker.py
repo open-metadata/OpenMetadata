@@ -157,7 +157,7 @@ class TopologyProgressTracker:
 
     @property
     def registry(self) -> "ProgressRegistry":
-        return self._source.progress
+        return self._source.progress_tracking.registry
 
     def on_walk_start(self, root_nodes) -> None:
         self._root_node_ids = {id(node) for node in root_nodes}
