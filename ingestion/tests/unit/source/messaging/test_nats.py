@@ -23,7 +23,12 @@ from metadata.ingestion.source.messaging.messaging_service import (
     BrokerTopicDetails,
     MessagingServiceSource,
 )
-from metadata.ingestion.source.messaging.nats.connection import _build_connect_opts
+from metadata.ingestion.source.messaging.nats.connection import (
+    NatsClient,
+    _build_connect_opts,
+    _check_schema_kv_bucket,
+    _get_streams,
+)
 from metadata.ingestion.source.messaging.nats.metadata import (
     _NS_TO_MS,
     NatsSource,
@@ -529,3 +534,50 @@ class TestNatsClose:
         nats_source.nats_client = None
         with patch.object(MessagingServiceSource, "close", return_value=None):
             nats_source.close()
+
+
+class TestNatsTestConnection:
+    def _make_client(self, jetstream_enabled: bool) -> MagicMock:
+        client = MagicMock(spec=NatsClient)
+        client.is_jetstream_enabled = jetstream_enabled
+        return client
+
+    def test_get_streams_pings_when_jetstream_disabled(self):
+        client = self._make_client(jetstream_enabled=False)
+        _get_streams(client)
+        client.ping.assert_called_once()
+        client.request.assert_not_called()
+
+    def test_get_streams_does_not_ping_when_jetstream_enabled(self):
+        client = self._make_client(jetstream_enabled=True)
+        client.request.return_value = {"streams": []}
+        _get_streams(client)
+        client.ping.assert_not_called()
+
+    def test_get_streams_raises_on_api_error_when_jetstream_enabled(self):
+        client = self._make_client(jetstream_enabled=True)
+        client.request.return_value = {"error": {"description": "no JetStream found"}}
+        with pytest.raises(ConnectionError, match="JetStream API error"):
+            _get_streams(client)
+
+    def test_check_schema_kv_bucket_skips_when_not_configured(self):
+        client = self._make_client(jetstream_enabled=True)
+        conn = MagicMock()
+        conn.schemaKvBucket = None
+        _check_schema_kv_bucket(client, conn)
+        client.request.assert_not_called()
+
+    def test_check_schema_kv_bucket_succeeds_when_bucket_found(self):
+        client = self._make_client(jetstream_enabled=True)
+        client.request.return_value = {"config": {"name": "KV_my-bucket"}}
+        conn = MagicMock()
+        conn.schemaKvBucket = "my-bucket"
+        _check_schema_kv_bucket(client, conn)
+
+    def test_check_schema_kv_bucket_raises_when_bucket_not_found(self):
+        client = self._make_client(jetstream_enabled=True)
+        client.request.return_value = {"error": {"description": "stream not found"}}
+        conn = MagicMock()
+        conn.schemaKvBucket = "missing-bucket"
+        with pytest.raises(ConnectionError, match="missing-bucket"):
+            _check_schema_kv_bucket(client, conn)

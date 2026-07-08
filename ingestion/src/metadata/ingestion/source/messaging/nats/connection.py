@@ -76,6 +76,12 @@ class NatsClient:
 
         return self._loop.run_until_complete(_req())
 
+    def ping(self) -> None:
+        async def _flush() -> None:
+            await self.nc.flush()
+
+        self._loop.run_until_complete(_flush())
+
     def close(self) -> None:
         async def _drain() -> None:
             await self.nc.drain()
@@ -145,6 +151,26 @@ def get_connection(connection: NatsConnection) -> NatsClient:
     )
 
 
+def _get_streams(client: NatsClient) -> None:
+    if not client.is_jetstream_enabled:
+        client.ping()
+        return
+    resp = client.request(_JS_STREAM_NAMES)
+    if "error" in resp:
+        raise ConnectionError(f"JetStream API error: {resp['error'].get('description', resp['error'])}")
+
+
+def _check_schema_kv_bucket(client: NatsClient, service_connection: NatsConnection) -> None:
+    bucket = service_connection.schemaKvBucket
+    if not bucket:
+        return
+    resp = client.request(f"$JS.API.STREAM.INFO.KV_{bucket}")
+    if "error" in resp:
+        raise ConnectionError(
+            f"Schema KV bucket '{bucket}' not found: {resp['error'].get('description', resp['error'])}"
+        )
+
+
 def test_connection(
     metadata: OpenMetadata,
     client: NatsClient,
@@ -152,29 +178,9 @@ def test_connection(
     automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
     timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
-    def get_streams() -> None:
-        if not client.is_jetstream_enabled:
-            raise ConnectionError(
-                "JetStream is disabled. Enable JetStream on the NATS server "
-                "and set jetStreamEnabled=true to ingest streams as topics."
-            )
-        resp = client.request(_JS_STREAM_NAMES)
-        if "error" in resp:
-            raise ConnectionError(f"JetStream API error: {resp['error'].get('description', resp['error'])}")
-
-    def check_schema_kv_bucket() -> None:
-        bucket = service_connection.schemaKvBucket
-        if not bucket:
-            raise ConnectionError("Schema KV bucket not configured. Provide schemaKvBucket to enable schema ingestion.")
-        resp = client.request(f"$JS.API.STREAM.INFO.KV_{bucket}")
-        if "error" in resp:
-            raise ConnectionError(
-                f"Schema KV bucket '{bucket}' not found: {resp['error'].get('description', resp['error'])}"
-            )
-
     test_fn = {
-        "GetTopics": get_streams,
-        "CheckSchemaKvBucket": check_schema_kv_bucket,
+        "GetTopics": lambda: _get_streams(client),
+        "CheckSchemaKvBucket": lambda: _check_schema_kv_bucket(client, service_connection),
     }
 
     return test_connection_steps(
