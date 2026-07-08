@@ -80,7 +80,8 @@ export const getBreadcrumbForDatabase = (
         ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
       ),
       iconType:
-        ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE,
+        ((entity as SourceType).entityType as EntityType) ??
+        EntityType.DATABASE,
     });
   }
 
