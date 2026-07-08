@@ -12,18 +12,32 @@
  */
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useIsAiMode } from '../../context/AiModeProvider/AiModeProvider';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+
+  const breadcrumb = (
+    <HeaderBreadcrumb items={[{ label: t('label.column-bulk-operations') }]} />
+  );
 
   return (
     <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
       <div>
-        <HeaderBreadcrumb
-          items={[{ label: t('label.column-bulk-operations') }]}
-        />
+        {isAiMode ? (
+          <HeaderShell
+            breadcrumb={breadcrumb}
+            className="tw:mb-4"
+            title={t('label.column-bulk-operations')}
+            variant="gradient"
+          />
+        ) : (
+          breadcrumb
+        )}
         <ColumnGrid />
       </div>
     </PageLayoutV1>

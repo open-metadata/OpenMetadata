@@ -25,6 +25,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -32,6 +34,7 @@ import PaginationComponent from '../../../components/PaginationComponent/Paginat
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { useIsAiMode } from '../../../context/AiModeProvider/AiModeProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
@@ -53,6 +56,7 @@ import { WorkflowDetailsTabs } from '../WorkflowDetails/workflow-details.interfa
 
 const WorkflowsPage = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [loading, setLoading] = useState(true);
   const [workflows, setWorkflows] = useState<SettingMenuItem[]>([]);
   const [paging, setPaging] = useState<Paging>({
@@ -233,6 +237,16 @@ const WorkflowsPage = () => {
     getWorkflows,
   ]);
 
+  const createWorkflowButton = allowCreateWorkflow ? (
+    <Button
+      data-testid="create-workflow-button"
+      iconLeading={Plus}
+      size="sm"
+      onPress={handleNewWorkflowClick}>
+      {t('label.new-workflow')}
+    </Button>
+  ) : null;
+
   if (loading) {
     return <Loader />;
   }
@@ -252,27 +266,34 @@ const WorkflowsPage = () => {
       pageContainerStyle={{ paddingLeft: 0, paddingRight: 0 }}
       pageTitle={t('label.workflow-plural')}>
       <div className="tw:flex tw:flex-col tw:overflow-hidden tw:mx-6 tw:my-4">
-        <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:mb-4">
-          <div className="tw:flex tw:items-center tw:justify-between">
-            <PageHeader
-              data={{
-                header: t('label.workflow-plural'),
-                subHeader: t('message.workflow-subtitle'),
-              }}
-              learningPageId={LEARNING_PAGE_IDS.WORKFLOWS}
-              title={t('label.workflow-plural')}
-            />
-            {allowCreateWorkflow && (
-              <Button
-                data-testid="create-workflow-button"
-                iconLeading={Plus}
-                size="sm"
-                onPress={handleNewWorkflowClick}>
-                {t('label.new-workflow')}
-              </Button>
-            )}
+        {isAiMode ? (
+          <HeaderShell
+            actions={createWorkflowButton}
+            breadcrumb={
+              <HeaderBreadcrumb
+                items={[{ label: t('label.workflow-plural') }]}
+              />
+            }
+            className="tw:mb-4"
+            subtitle={t('message.workflow-subtitle')}
+            title={t('label.workflow-plural')}
+            variant="gradient"
+          />
+        ) : (
+          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:mb-4">
+            <div className="tw:flex tw:items-center tw:justify-between">
+              <PageHeader
+                data={{
+                  header: t('label.workflow-plural'),
+                  subHeader: t('message.workflow-subtitle'),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.WORKFLOWS}
+                title={t('label.workflow-plural')}
+              />
+              {createWorkflowButton}
+            </div>
           </div>
-        </div>
+        )}
 
         <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:justify-between">
           <div className="tw:mb-4">

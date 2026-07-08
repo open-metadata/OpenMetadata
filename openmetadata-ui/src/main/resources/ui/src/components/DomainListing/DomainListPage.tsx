@@ -12,6 +12,7 @@
  */
 
 import { Box, Card } from '@openmetadata/ui-core-components';
+import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -19,6 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
+import { useIsAiMode } from '../../context/AiModeProvider/AiModeProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
@@ -58,6 +60,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -155,6 +158,8 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
+    variant: isAiMode ? 'search' : undefined,
+    icon: Globe01,
   });
 
   const { titleAndCount } = useTitleAndCount({
