@@ -14,6 +14,7 @@ Validate entity fetcher filtering strategies
 """
 
 import uuid
+from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
 import pytest
@@ -40,6 +41,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.progress.modes import ManualProgress
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.profiler.source.fetcher.fetcher_strategy import DatabaseFetcherStrategy
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
 
@@ -79,6 +82,7 @@ def get_db_fetcher(source_config):
         metadata=...,
         global_profiler_config=...,
         status=Status(),
+        progress=ManualProgress(ProgressRegistry()),
     )
 
 
@@ -289,11 +293,13 @@ def _make_fetcher(source_config_overrides=None):
         cfg["source"]["sourceConfig"]["config"].update(source_config_overrides)
     workflow_config = OpenMetadataWorkflowConfig(**cfg)
     mock_metadata = MagicMock()
+    mock_metadata.list_entities.return_value = SimpleNamespace(total=0)
     return DatabaseFetcherStrategy(
         config=workflow_config,
         metadata=mock_metadata,
         global_profiler_config=None,
         status=Status(),
+        progress=ManualProgress(ProgressRegistry()),
     )
 
 
@@ -733,3 +739,69 @@ class TestFetch:
         assert "connection failed for prod" in results[0].left.error
         assert results[1].right is not None
         assert results[1].right.entity == ORDERS_TABLE
+
+
+def _db_strategy_with_progress(tables, server_total, capture=None):
+    """DatabaseFetcherStrategy wired with a real ProgressRegistry, with its
+    database/table enumeration and profiler_source stubbed so fetch() runs in
+    isolation. `server_total` is what the seed count call reports."""
+    registry = ProgressRegistry()
+    progress = ManualProgress(registry)
+
+    strategy = DatabaseFetcherStrategy.__new__(DatabaseFetcherStrategy)
+    strategy.progress = progress
+    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql"))
+    strategy.global_profiler_config = None
+    strategy.metadata = MagicMock()
+    strategy.metadata.list_entities.return_value = SimpleNamespace(total=server_total)
+
+    database = SimpleNamespace(fullyQualifiedName=SimpleNamespace(root="svc.db"))
+    strategy._get_database_entities = lambda: iter([database])
+    strategy._build_table_params = lambda db: {}
+
+    def _tables(_db):
+        first = True
+        for table in tables:
+            if capture is not None and first:
+                capture["mid"] = registry.global_counters()
+                first = False
+            yield table
+
+    strategy._get_table_entities = _tables
+    return strategy, registry, progress
+
+
+class TestDatabaseFetcherProgress:
+    def test_seeds_server_total_then_reconciles_to_observed(self):
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, registry, _ = _db_strategy_with_progress(tables=[TABLE, TABLE], server_total=5)
+            records = list(strategy.fetch())
+
+        assert len(records) == 2
+        assert registry.global_counters() == [("Table", 2, 2)]
+
+    def test_seed_visible_before_reconcile(self):
+        capture = {}
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, _, _ = _db_strategy_with_progress(tables=[TABLE, TABLE], server_total=5, capture=capture)
+            list(strategy.fetch())
+
+        assert capture["mid"] == [("Table", 0, 5)]
+
+    def test_seed_failure_falls_back_to_reconcile(self):
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, registry, _ = _db_strategy_with_progress(tables=[TABLE], server_total=0)
+            strategy.metadata.list_entities.side_effect = RuntimeError("boom")
+            records = list(strategy.fetch())
+
+        assert len(records) == 1
+        assert registry.global_counters() == [("Table", 1, 1)]
