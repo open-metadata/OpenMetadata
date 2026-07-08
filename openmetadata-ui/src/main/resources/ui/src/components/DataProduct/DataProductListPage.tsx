@@ -17,7 +17,7 @@ import {
   Card,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01, Grid01 } from '@untitledui/icons';
+import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -190,7 +190,6 @@ const DataProductListPage = ({
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
     variant: isAiMode ? 'search' : undefined,
-    icon: Grid01,
     breadcrumb: headerBreadcrumb,
   });
 

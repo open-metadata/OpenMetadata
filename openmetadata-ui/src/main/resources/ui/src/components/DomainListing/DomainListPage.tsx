@@ -12,7 +12,6 @@
  */
 
 import { Box, Card } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -178,7 +177,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
     variant: isAiMode ? 'search' : undefined,
-    icon: Globe01,
     breadcrumb: headerBreadcrumb,
   });
 
