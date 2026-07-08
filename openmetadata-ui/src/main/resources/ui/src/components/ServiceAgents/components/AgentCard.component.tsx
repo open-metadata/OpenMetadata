@@ -12,21 +12,24 @@
  */
 
 import { Box, Button, Card } from '@openmetadata/ui-core-components';
+import {
+  AlertCircle,
+  AlertTriangle,
+  AlignLeft,
+  Clock,
+  Database01,
+  Terminal,
+} from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AlertCircleIcon } from '../../../assets/svg/agents/alert-circle.svg';
-import { ReactComponent as AlertTriangleIcon } from '../../../assets/svg/agents/alert-triangle.svg';
-import { ReactComponent as AssetIcon } from '../../../assets/svg/agents/asset.svg';
-import { ReactComponent as ClockIcon } from '../../../assets/svg/agents/clock.svg';
-import { ReactComponent as LogsIcon } from '../../../assets/svg/agents/logs.svg';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
-import { ReactComponent as TerminalIcon } from '../../../assets/svg/agents/terminal.svg';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
   fmtNum,
   formatEtaLong,
+  getAgentTypeLabelKey,
   getEtaInfo,
   getUnitLabelKey,
   getUnitVerbLabelKey,
@@ -73,9 +76,9 @@ const AgentCard: FC<AgentCardProps> = ({
   const etaLabel = formatEtaLong(getEtaInfo(agent.eta), t);
   const unitIcon =
     agent.unit === 'queries' ? (
-      <TerminalIcon height={15} width={15} />
+      <Terminal size={15} />
     ) : (
-      <AssetIcon height={15} width={15} />
+      <Database01 size={15} />
     );
 
   return (
@@ -106,7 +109,7 @@ const AgentCard: FC<AgentCardProps> = ({
             <div
               className="tw:mt-px tw:text-xs tw:text-quaternary"
               data-testid="pipeline-type">
-              {agent.type}
+              {t(getAgentTypeLabelKey(agent.type))}
             </div>
           </div>
         </Box>
@@ -128,7 +131,7 @@ const AgentCard: FC<AgentCardProps> = ({
             {isRunning && (
               <Metric
                 dataTestId="agent-eta-metric"
-                icon={<ClockIcon height={15} width={15} />}
+                icon={<Clock size={15} />}
                 value={etaLabel}
               />
             )}
@@ -149,7 +152,7 @@ const AgentCard: FC<AgentCardProps> = ({
             )}
             {isFailed && agent.failStep && (
               <Metric
-                icon={<AlertCircleIcon height={15} width={15} />}
+                icon={<AlertCircle size={15} />}
                 label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
                   'label.before-error'
                 )}`}
@@ -161,7 +164,7 @@ const AgentCard: FC<AgentCardProps> = ({
             {agent.errors > 0 && (
               <Metric
                 dataTestId="agent-errors-metric"
-                icon={<AlertCircleIcon height={15} width={15} />}
+                icon={<AlertCircle size={15} />}
                 label={t('label.error-plural-lowercase')}
                 tone="error"
                 value={agent.errors}
@@ -170,7 +173,7 @@ const AgentCard: FC<AgentCardProps> = ({
             {agent.warnings > 0 && (
               <Metric
                 dataTestId="agent-warnings-metric"
-                icon={<AlertTriangleIcon height={15} width={15} />}
+                icon={<AlertTriangle size={15} />}
                 label={t('label.warning-plural-lowercase')}
                 tone="warn"
                 value={agent.warnings}
@@ -222,7 +225,7 @@ const AgentCard: FC<AgentCardProps> = ({
               className="tw:font-semibold"
               color="primary"
               data-testid="diagnose-button"
-              iconLeading={<AlertTriangleIcon height={15} width={15} />}
+              iconLeading={<AlertTriangle size={15} />}
               size="sm"
               onClick={() => onRunDetails(agent)}>
               {t('label.diagnose')}
@@ -232,7 +235,7 @@ const AgentCard: FC<AgentCardProps> = ({
               className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
               color="secondary"
               data-testid="logs-button"
-              iconLeading={<LogsIcon height={15} width={15} />}
+              iconLeading={<AlignLeft size={15} />}
               size="sm"
               onClick={() => onLogs(agent)}>
               {t('label.log-plural')}

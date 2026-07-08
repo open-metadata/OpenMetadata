@@ -38,7 +38,8 @@ const Metric: FC<MetricProps> = ({ dataTestId, icon, label, tone, value }) => {
 
   return (
     <Box align="center" className="tw:gap-1.5" data-testid={dataTestId}>
-      <span className={`tw:grid tw:place-items-center ${iconClass}`}>
+      <span
+        className={`tw:flex tw:items-center tw:justify-center ${iconClass}`}>
         {icon}
       </span>
       <span

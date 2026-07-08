@@ -40,6 +40,8 @@ import {
 
 const RUN_STARTED_AT_FORMAT = 'MMM dd, yyyy · HH:mm';
 
+// Stable machine keys (icon lookup via AGENT_TYPE_ICON); display strings are
+// localized separately through getAgentTypeLabelKey in agents.utils.ts.
 const PIPELINE_TYPE_TO_AGENT_TYPE: Record<PipelineType, string> = {
   [PipelineType.Metadata]: 'Metadata',
   [PipelineType.Usage]: 'Usage',

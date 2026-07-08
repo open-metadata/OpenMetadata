@@ -11,16 +11,18 @@
  *  limitations under the License.
  */
 
+import {
+  BookClosed,
+  Code01,
+  Database01,
+  Grid01,
+  LayersThree01,
+  Shield01,
+  Zap,
+} from '@untitledui/icons';
 import { TFunction } from 'i18next';
-import { ReactComponent as BookIcon } from '../../../assets/svg/agents/book.svg';
-import { ReactComponent as CodeIcon } from '../../../assets/svg/agents/code.svg';
-import { ReactComponent as DatabaseIcon } from '../../../assets/svg/agents/database.svg';
-import { ReactComponent as GridIcon } from '../../../assets/svg/agents/grid.svg';
-import { ReactComponent as LayersIcon } from '../../../assets/svg/agents/layers.svg';
 import { ReactComponent as LineageIcon } from '../../../assets/svg/agents/lineage.svg';
-import { ReactComponent as ShieldIcon } from '../../../assets/svg/agents/shield.svg';
 import { ReactComponent as SparkleIcon } from '../../../assets/svg/agents/sparkle.svg';
-import { ReactComponent as ZapIcon } from '../../../assets/svg/agents/zap.svg';
 import {
   AgentActionPermissions,
   AgentStatus,
@@ -110,16 +112,31 @@ export const formatEtaShort = (info: EtaInfo, t: TFunction): string => {
 };
 
 export const AGENT_TYPE_ICON: Record<string, SvgComponent> = {
-  Metadata: DatabaseIcon,
-  Usage: ZapIcon,
-  Profiler: GridIcon,
+  Metadata: Database01,
+  Usage: Zap,
+  Profiler: Grid01,
   Lineage: LineageIcon,
   'Auto Classification': SparkleIcon,
-  dbt: CodeIcon,
-  Tier: LayersIcon,
-  Documentation: BookIcon,
-  'Data Quality': ShieldIcon,
+  dbt: Code01,
+  Tier: LayersThree01,
+  Documentation: BookClosed,
+  'Data Quality': Shield01,
 };
+
+export const AGENT_TYPE_LABEL_KEY: Record<string, string> = {
+  Metadata: 'label.metadata',
+  Usage: 'label.usage',
+  Profiler: 'label.profiler',
+  Lineage: 'label.lineage',
+  'Auto Classification': 'label.auto-classification',
+  dbt: 'label.dbt-lowercase',
+  Tier: 'label.tier',
+  Documentation: 'label.documentation',
+  'Data Quality': 'label.data-quality',
+};
+
+export const getAgentTypeLabelKey = (type: string): string =>
+  AGENT_TYPE_LABEL_KEY[type] ?? 'label.metadata';
 
 export type AgentBadgeColor =
   | 'brand'

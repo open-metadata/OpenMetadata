@@ -11,11 +11,11 @@
  *  limitations under the License.
  */
 
+import { Code01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as CodeIcon } from '../../../assets/svg/agents/code.svg';
 import { DISABLED } from '../../../constants/constants';
 import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
@@ -27,10 +27,11 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { ServicesType } from '../../../interface/service.interface';
 import { deleteIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { getErrorPlaceHolder } from '../../../utils/IngestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
-import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
 import AddIngestionButton from '../../Settings/Services/Ingestion/AddIngestionButton.component';
 import '../agents-preview.css';
 import { Agent } from '../AgentsPage.interface';
@@ -165,16 +166,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       return;
     }
     try {
-      const blob = new Blob([rawText], { type: 'text/plain' });
-      const objectUrl = URL.createObjectURL(blob);
-      const anchor = document.createElement('a');
-      anchor.href = objectUrl;
-      anchor.download = `${logsFor.name.replace(/\s+/g, '_')}_logs.txt`;
-      anchor.style.display = 'none';
-      document.body.appendChild(anchor);
-      anchor.click();
-      anchor.remove();
-      setTimeout(() => URL.revokeObjectURL(objectUrl), 100);
+      downloadFile(rawText, `${logsFor.name.replace(/\s+/g, '_')}_logs.txt`);
     } catch (err) {
       showErrorToast(err as AxiosError);
     }
@@ -217,7 +209,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         dataTestId="metadata-agent-group"
         descKey="message.metadata-agents-description"
         emptyPlaceholder={emptyPlaceholder}
-        icon={<CodeIcon height={18} width={18} />}
+        icon={<Code01 size={18} />}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}
         onLogs={onLogs}
@@ -248,17 +240,15 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         />
       )}
       {deleteTarget && (
-        <ConfirmationModal
-          visible
-          bodyText={t('message.are-you-sure-want-to-text', {
-            text: `${t('label.delete').toLowerCase()} ${deleteTarget.name}`,
+        <DeleteModal
+          open
+          entityTitle={t('label.delete-agent')}
+          isDeleting={isDeleting}
+          message={t('message.delete-entity-permanently', {
+            entityType: deleteTarget.name,
           })}
-          cancelText={t('label.cancel')}
-          confirmText={t('label.delete')}
-          header={t('label.delete-agent')}
-          isLoading={isDeleting}
           onCancel={() => setDeleteTarget(null)}
-          onConfirm={() => void confirmDelete()}
+          onDelete={() => void confirmDelete()}
         />
       )}
     </div>

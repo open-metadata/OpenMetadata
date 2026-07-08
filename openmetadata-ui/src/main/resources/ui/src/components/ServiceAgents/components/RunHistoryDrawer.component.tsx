@@ -18,9 +18,9 @@ import {
   Card,
   SlideoutMenu,
 } from '@openmetadata/ui-core-components';
+import { AlignLeft } from '@untitledui/icons';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as LogsIcon } from '../../../assets/svg/agents/logs.svg';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
 import { getUtcOffsetLabel } from '../../../utils/date-time/DateTimeUtils';
 import { Agent, AgentRun, RunStatus } from '../AgentsPage.interface';
@@ -187,7 +187,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
             className="tw:font-semibold tw:ring-secondary"
             color="secondary"
             data-testid="raw-logs-button"
-            iconLeading={<LogsIcon height={15} width={15} />}
+            iconLeading={<AlignLeft size={15} />}
             size="sm"
             onClick={() => onOpenLogs(agent)}>
             {t('label.raw-logs')}

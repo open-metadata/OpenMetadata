@@ -12,10 +12,10 @@
  */
 
 import { Dropdown } from '@openmetadata/ui-core-components';
+import { DotsVertical } from '@untitledui/icons';
 import { FC } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as MoreVerticalIcon } from '../../../assets/svg/agents/more-vertical.svg';
 import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
 import { NO_AGENT_PERMISSIONS } from '../utils/agents.utils';
 
@@ -101,7 +101,7 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
           ' tw:bg-primary tw:text-fg-tertiary tw:shadow-xs tw:outline-none'
         }
         data-testid="more-actions">
-        <MoreVerticalIcon height={18} width={18} />
+        <DotsVertical size={18} />
       </AriaButton>
       <Dropdown.Popover data-testid="actions-dropdown">
         <Dropdown.Menu onAction={(key) => onAction(String(key))}>

@@ -12,9 +12,9 @@
  */
 
 import { Box, ProgressBarBase } from '@openmetadata/ui-core-components';
+import { Check } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as CheckIcon } from '../../../assets/svg/agents/check.svg';
 import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
 import { Agent } from '../AgentsPage.interface';
 import { fmtNum, formatEtaShort, getEtaInfo } from '../utils/agents.utils';
@@ -108,7 +108,7 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
             allDone ? 'tw:bg-utility-success-500' : 'tw:bg-brand-solid'
           }`}>
           {allDone ? (
-            <CheckIcon height={22} width={22} />
+            <Check size={22} />
           ) : (
             <RunRunningIcon
               className="tw:animate-spin tw:text-fg-white"

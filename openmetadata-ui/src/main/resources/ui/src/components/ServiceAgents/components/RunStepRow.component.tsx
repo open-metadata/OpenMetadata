@@ -12,12 +12,14 @@
  */
 
 import { Badge, Box } from '@openmetadata/ui-core-components';
+import {
+  AlertTriangle,
+  ChevronRight,
+  Copy01,
+  Lightbulb03,
+} from '@untitledui/icons';
 import { FC, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as AlertTriangleIcon } from '../../../assets/svg/agents/alert-triangle.svg';
-import { ReactComponent as BulbIcon } from '../../../assets/svg/agents/bulb.svg';
-import { ReactComponent as ChevronRightIcon } from '../../../assets/svg/agents/chevron-right.svg';
-import { ReactComponent as CopyIcon } from '../../../assets/svg/agents/copy.svg';
 import { RunAttention, RunStep } from '../AgentsPage.interface';
 import { fmtNum } from '../utils/agents.utils';
 import RunGlyph from './RunGlyph.component';
@@ -66,7 +68,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
       <Box
         align="center"
         className={`tw:gap-2 tw:border-b tw:px-3 tw:py-2.5 ${dividerClass}`}>
-        <AlertTriangleIcon className={accentIconClass} height={15} width={15} />
+        <AlertTriangle className={accentIconClass} size={15} />
         <span className="tw:text-xs tw:font-semibold tw:text-primary">
           {att.title}
         </span>
@@ -79,7 +81,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
           className="tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:text-xs tw:font-medium tw:text-tertiary"
           type="button"
           onClick={handleCopy}>
-          <CopyIcon height={13} width={13} />
+          <Copy01 size={13} />
           {copied ? t('label.copied') : t('label.copy')}
         </button>
       </Box>
@@ -89,7 +91,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
         </div>
         {att.hint && (
           <Box className="tw:mt-2.5 tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-2">
-            <BulbIcon
+            <Lightbulb03
               className="tw:mt-px tw:shrink-0 tw:text-fg-brand-primary"
               height={14}
               width={14}
@@ -108,7 +110,7 @@ const AttentionCard: FC<AttentionCardProps> = ({ att }) => {
               className="tw:mt-2.5 tw:inline-flex tw:cursor-pointer tw:items-center tw:gap-1 tw:border-0 tw:bg-transparent tw:p-0 tw:text-xs tw:font-semibold tw:text-brand-tertiary"
               type="button"
               onClick={toggleLog}>
-              <ChevronRightIcon
+              <ChevronRight
                 className={`tw:transition-transform ${
                   showLog ? 'tw:rotate-90' : ''
                 }`}

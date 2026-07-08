@@ -12,10 +12,9 @@
  */
 
 import { Badge, Box, Button, Card } from '@openmetadata/ui-core-components';
+import { ChevronDown, Plus } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ChevronDownIcon } from '../../../assets/svg/agents/chevron-down.svg';
-import { ReactComponent as PlusIcon } from '../../../assets/svg/agents/plus.svg';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
@@ -85,8 +84,8 @@ const AgentGroup: FC<AgentGroupProps> = ({
           (canCreateAgent && (
             <Button
               color="secondary"
-              iconLeading={<PlusIcon height={18} width={18} />}
-              iconTrailing={<ChevronDownIcon height={18} width={18} />}
+              iconLeading={<Plus size={18} />}
+              iconTrailing={<ChevronDown size={18} />}
               size="sm">
               {t('label.add-entity', { entity: t('label.agent') })}
             </Button>
