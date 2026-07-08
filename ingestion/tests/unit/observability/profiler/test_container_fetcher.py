@@ -35,6 +35,8 @@ from metadata.generated.schema.type.basic import FullyQualifiedEntityName, Uuid
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.status import Status
+from metadata.ingestion.progress.modes import ManualProgress
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.profiler.source.fetcher.fetcher_strategy import StorageFetcherStrategy
 
 # Test containers with different characteristics
@@ -108,6 +110,7 @@ def get_storage_fetcher(source_config):
         metadata=...,
         global_profiler_config=...,
         status=Status(),
+        progress=ManualProgress(ProgressRegistry()),
     )
 
 
