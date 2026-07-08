@@ -70,12 +70,12 @@ import { addDomains, patchDomains } from '../../../rest/domainAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getIsErrorMatch } from '../../../utils/APIUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
-import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import {
   getQueryFilterForDataProducts,

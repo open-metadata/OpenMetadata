@@ -54,12 +54,22 @@ describe('hardDeleteEntity', () => {
   it('should pass recursive flag and use a custom success message', async () => {
     mockDeleteEntity.mockResolvedValue({ status: 200, data: {} });
 
-    const result = await hardDeleteEntity('Domain 1', 'id-2', EntityType.DOMAIN, {
-      isRecursiveDelete: true,
-      successMessage: 'custom-success',
-    });
+    const result = await hardDeleteEntity(
+      'Domain 1',
+      'id-2',
+      EntityType.DOMAIN,
+      {
+        isRecursiveDelete: true,
+        successMessage: 'custom-success',
+      }
+    );
 
-    expect(mockDeleteEntity).toHaveBeenCalledWith('domains', 'id-2', true, true);
+    expect(mockDeleteEntity).toHaveBeenCalledWith(
+      'domains',
+      'id-2',
+      true,
+      true
+    );
     expect(showSuccessToast).toHaveBeenCalledWith('custom-success');
     expect(result).toBe(true);
   });
