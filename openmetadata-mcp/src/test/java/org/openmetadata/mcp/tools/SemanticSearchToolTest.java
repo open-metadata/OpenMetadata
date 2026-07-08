@@ -304,7 +304,7 @@ class SemanticSearchToolTest {
       hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
     }
 
-    VectorSearchResponse response = new VectorSearchResponse(10L, hits);
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, true);
 
     try (MockedStatic<OpenSearchVectorService> vectorMock =
         mockStatic(OpenSearchVectorService.class)) {
@@ -428,7 +428,7 @@ class SemanticSearchToolTest {
     for (int i = 0; i < 3; i++) {
       hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
     }
-    VectorSearchResponse response = new VectorSearchResponse(10L, hits);
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, true);
 
     try (MockedStatic<OpenSearchVectorService> vectorMock =
         mockStatic(OpenSearchVectorService.class)) {
@@ -525,6 +525,62 @@ class SemanticSearchToolTest {
 
       assertNull(result.get("hasMore"));
       assertNull(result.get("nextCursor"));
+    }
+  }
+
+  @Test
+  void fullPageWithNoSignalDoesNotAdvertisePhantomPage() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 3; i++) {
+      hits.add(createHit("table", "db.schema.t" + i, "Table " + i, 0.9 - i * 0.1));
+    }
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, null);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 3);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      assertNull(result.get("hasMore"));
+      assertNull(result.get("nextCursor"));
+    }
+  }
+
+  @Test
+  void zeroReturnedAfterBudgetTrimDoesNotSelfLoop() throws Exception {
+    when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+    List<Map<String, Object>> hits = new ArrayList<>();
+    Map<String, Object> huge = createHit("table", "db.schema.huge", "Huge", 0.99);
+    huge.put("description", "x".repeat(200_000));
+    hits.add(huge);
+    VectorSearchResponse response = new VectorSearchResponse(10L, hits, null, true);
+
+    try (MockedStatic<OpenSearchVectorService> vectorMock =
+        mockStatic(OpenSearchVectorService.class)) {
+      vectorMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      when(vectorService.search(anyString(), anyMap(), anyInt(), anyInt(), anyInt(), anyDouble()))
+          .thenReturn(response);
+
+      Map<String, Object> params = new HashMap<>();
+      params.put("query", "test");
+      params.put("size", 1);
+
+      Map<String, Object> result = semanticSearchTool.execute(authorizer, securityContext, params);
+
+      int returned = result.get("returnedCount") instanceof Number n ? n.intValue() : -1;
+      if (returned == 0) {
+        assertNull(result.get("nextCursor"), "cursor must not point back to the same page");
+      }
     }
   }
 

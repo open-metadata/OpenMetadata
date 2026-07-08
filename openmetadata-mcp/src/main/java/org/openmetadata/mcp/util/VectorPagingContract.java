@@ -19,8 +19,9 @@ public final class VectorPagingContract {
         result.get("returnedCount") instanceof Number number ? number.intValue() : rawCount;
     boolean budgetTrimmed = returned < rawCount;
     boolean fullPage = rawCount >= requestedSize;
-    boolean moreInIndex = hasMoreInIndex(response, from, rawCount, fullPage);
-    if (budgetTrimmed || (fullPage && moreInIndex)) {
+    boolean moreInIndex = hasMoreInIndex(response, from, rawCount);
+    boolean canAdvance = returned > 0;
+    if (canAdvance && (budgetTrimmed || (fullPage && moreInIndex))) {
       result.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
       result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
     }
@@ -39,14 +40,14 @@ public final class VectorPagingContract {
     return from;
   }
 
-  static boolean hasMoreInIndex(
-      VectorSearchResponse response, int from, int rawCount, boolean fullPage) {
+  static boolean hasMoreInIndex(VectorSearchResponse response, int from, int rawCount) {
     if (response.getTotalHits() != null) {
       return (long) from + rawCount < response.getTotalHits();
     }
     if (response.getHasMore() != null) {
       return response.getHasMore();
     }
-    return fullPage;
+    // No authoritative signal; assume no more rather than risk advertising a phantom page.
+    return false;
   }
 }
