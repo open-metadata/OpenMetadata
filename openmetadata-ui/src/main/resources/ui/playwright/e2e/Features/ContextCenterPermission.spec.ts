@@ -2192,7 +2192,7 @@ test.describe('Context Center Permissions', () => {
   });
   // ─── Memories Sort Options ────────────────────────────────────────────
 
-  test.describe.skip('Memories Sort Options', () => {
+  test.describe('Memories Sort Options', () => {
     test('selecting "Updated By" actually reorders rows by updatedBy', async ({
       browser,
     }) => {
