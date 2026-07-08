@@ -34,6 +34,7 @@ import DataProductsContainer from '../../../DataProducts/DataProductsContainer/D
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import TestCaseFormDrawer from '../../AddDataQualityTest/components/TestCaseFormDrawer';
+import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import {
@@ -64,7 +65,7 @@ function ParameterTooltipText({
 
 const TestCaseResultTab = ({
   showSidePanel,
-  editVariant = 'drawer',
+  editVariant = getDefaultTestCaseFormVariant(),
 }: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {

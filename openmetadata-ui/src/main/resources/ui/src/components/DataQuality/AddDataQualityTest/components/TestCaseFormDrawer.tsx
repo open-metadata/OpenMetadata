@@ -49,6 +49,7 @@ import {
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
+import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
@@ -79,7 +80,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   table,
   testSuite,
   testLevel,
-  variant = 'drawer',
+  variant = getDefaultTestCaseFormVariant(),
   title,
   headerActions,
   width,
