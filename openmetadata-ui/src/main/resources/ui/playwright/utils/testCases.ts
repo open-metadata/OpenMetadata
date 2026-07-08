@@ -91,9 +91,7 @@ export const setupTestCaseWithFailedRows = async (
 export const deleteTestCase = async (page: Page, testCaseName: string) => {
   await page.getByTestId(`action-dropdown-${testCaseName}`).click();
   await page.getByTestId(`delete-${testCaseName}`).click();
-  await page.fill('#deleteTextInput', 'DELETE');
-
-  await expect(page.getByTestId('confirm-button')).toBeEnabled();
+  await page.getByTestId('confirm-button').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/dataQuality/testCases/*?hardDelete=true&recursive=true'
@@ -186,10 +184,10 @@ export const waitForTestSuiteIngestionPipelinesListResponse = (page: Page) =>
   });
 
 export const confirmIngestionPipelineHardDelete = async (page: Page) => {
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
   const deleteResponse = page.waitForResponse(
     '/api/v1/services/ingestionPipelines/*?hardDelete=true'
   );
+  await page.getByTestId('confirmation-text-input').fill('DELETE');
   await page.getByTestId('confirm-button').click();
   await deleteResponse;
 };

@@ -16,7 +16,7 @@ import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../../components/common/DeleteWidget/DeleteEntityModal';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -164,7 +164,7 @@ function AlertDetailsContent({
           />
         </Col>
       </Row>
-      <DeleteWidgetModal
+      <DeleteEntityModal
         afterDeleteAction={handleAlertDelete}
         allowSoftDelete={false}
         entityId={alertDetails?.id ?? ''}
