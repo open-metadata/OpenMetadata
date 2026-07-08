@@ -255,9 +255,9 @@ test.describe(
           .click();
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${NEW_TABLE_TEST_CASE.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${NEW_TABLE_TEST_CASE.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_columnName').clear();
         await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
@@ -307,7 +307,7 @@ test.describe(
           '/api/v1/dataQuality/testCases/*'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
         await toastNotification(page, 'Test case updated successfully.');
         await page.getByTestId('alert-bar').waitFor({
@@ -512,7 +512,7 @@ test.describe(
           '/api/v1/dataQuality/testCases/*'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
         await toastNotification(page, 'Test case updated successfully.');
 
@@ -611,7 +611,7 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse1 = await updateTestCaseResponse;
         const body1 = await updateResponse1.request().postData();
 
@@ -643,7 +643,7 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse2 = await updateTestCaseResponse2;
         const body2 = await updateResponse2.request().postData();
 
@@ -675,7 +675,7 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse3 = await updateTestCaseResponse3;
         const body3 = await updateResponse3.request().postData();
 
@@ -711,9 +711,7 @@ test.describe(
 
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toBeVisible();
+        await expect(page.getByTestId('form-heading')).toBeVisible();
 
         await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'
@@ -722,7 +720,7 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', 'Updated display name');
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
 
         await expect(
@@ -1307,7 +1305,7 @@ test.describe(
             response.url().includes('/api/v1/dataQuality/testCases/') &&
             response.request().method() === 'PATCH'
         );
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const patchRequest = await updateResponse;
         const patchBody = JSON.parse(
           (await patchRequest.request().postData()) ?? '[]'

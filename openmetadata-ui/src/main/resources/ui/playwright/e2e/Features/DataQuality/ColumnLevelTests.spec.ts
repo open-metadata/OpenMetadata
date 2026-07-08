@@ -120,9 +120,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
         await expect(page.locator('[id="root/name"]')).toHaveValue(
           testCase.name
         );
@@ -217,9 +217,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_minValue').clear();
         await page.locator('#testCaseFormV1_params_minValue').fill('10');
@@ -307,9 +307,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('[id="root/displayName"]').clear();
         await page.fill('[id="root/displayName"]', testCase.displayName);
@@ -412,9 +412,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.getByRole('button', { name: 'plus' }).click();
         await page.fill('#testCaseFormV1_params_allowedValues_2_value', 'open');
@@ -520,9 +520,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.getByRole('button', { name: 'plus' }).click();
         await page.fill(
@@ -613,9 +613,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_regex').clear();
         await page.locator('#testCaseFormV1_params_regex').fill('^[0-9]{1,5}$');
@@ -706,9 +706,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_forbiddenRegex').clear();
         await page
@@ -808,9 +808,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
           .locator('#testCaseFormV1_params_minValueForMaxInCol')
@@ -916,9 +916,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
           .locator('#testCaseFormV1_params_minValueForMinInCol')
@@ -1024,9 +1024,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
           .locator('#testCaseFormV1_params_minValueForMeanInCol')
@@ -1132,9 +1132,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
           .locator('#testCaseFormV1_params_minValueForMedianInCol')
@@ -1240,9 +1240,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page
           .locator('#testCaseFormV1_params_minValueForStdDevInCol')
@@ -1349,9 +1349,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_minValueForColSum').clear();
         await page
@@ -1447,9 +1447,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_minLength').clear();
         await page.locator('#testCaseFormV1_params_minLength').fill('5');
@@ -1542,9 +1542,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_missingCountValue').clear();
         await page
@@ -1652,9 +1652,9 @@ test.describe(
       await test.step('Edit', async () => {
         await clickEditTestCaseButton(page, testCase.name);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.fill('#testCaseFormV1_params_longitudeColumnName', 'Edit');
         await page.fill('#testCaseFormV1_params_latitudeColumnName', 'Edit');

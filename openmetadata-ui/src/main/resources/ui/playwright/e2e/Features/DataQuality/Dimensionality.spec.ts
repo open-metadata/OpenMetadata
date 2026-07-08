@@ -153,7 +153,7 @@ test(
         .getByTestId(`edit-${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`)
         .click();
 
-      await expect(page.getByTestId('edit-test-case-drawer-title')).toHaveText(
+      await expect(page.getByTestId('form-heading')).toHaveText(
         `Edit ${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.name}`
       );
 

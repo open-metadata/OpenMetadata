@@ -162,9 +162,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_minValue').clear();
         await page.fill('#testCaseFormV1_params_minValue', '20');
@@ -259,9 +259,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_value').clear();
         await page.locator('#testCaseFormV1_params_value').fill('200');
@@ -362,9 +362,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_minColValue').clear();
         await page.locator('#testCaseFormV1_params_minColValue').fill('5');
@@ -462,9 +462,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_columnCount').clear();
         await page.locator('#testCaseFormV1_params_columnCount').fill('5');
@@ -560,9 +560,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_columnName').clear();
         await page
@@ -659,9 +659,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.fill(
           '#testCaseFormV1_params_columnNames',
@@ -825,9 +825,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await expect(page.getByTestId('edit-test-form')).toBeVisible();
 
@@ -988,9 +988,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
         await expect(page.locator('[id="root\\/name"]')).toHaveValue(
           testCase.name
         );
@@ -1127,9 +1127,9 @@ test.describe(
         await testCaseDoc;
         await testDefinitionResponse;
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${testCase.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${testCase.name}`
+        );
 
         await page.locator('#testCaseFormV1_params_min').clear();
         await page.fill('#testCaseFormV1_params_min', '10');
