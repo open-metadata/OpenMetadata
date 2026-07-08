@@ -1,0 +1,126 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import { useMemo, useState } from 'react';
+import type { Key } from 'react-aria-components';
+import HeaderShell from '../HeaderShell/HeaderShell.component';
+import { EntityDetailHeaderProps } from './EntityDetailHeader.interface';
+
+const EntityDetailHeader = ({
+  breadcrumb,
+  serviceLogoUrl,
+  icon,
+  title,
+  subtitle,
+  badge,
+  meta,
+  primaryAction,
+  secondaryActions,
+  tabs,
+  tabListType = 'underline',
+  defaultActiveKey,
+  activeKey,
+  onTabChange,
+  renderPanels = true,
+  variant = 'gradient',
+  className,
+  'data-testid': dataTestId = 'entity-detail-header',
+}: EntityDetailHeaderProps) => {
+  const visibleTabs = useMemo(
+    () => tabs.filter((tab) => !tab.isHidden),
+    [tabs]
+  );
+
+  const [internalKey, setInternalKey] = useState(
+    defaultActiveKey ?? visibleTabs[0]?.key
+  );
+
+  const isControlled = activeKey !== undefined;
+  const selectedKey = isControlled ? activeKey : internalKey;
+
+  const handleSelectionChange = (key: Key) => {
+    if (!isControlled) {
+      setInternalKey(String(key));
+    }
+    onTabChange?.(String(key));
+  };
+
+  const leading = serviceLogoUrl ? (
+    <div className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:p-1.5">
+      <img
+        alt=""
+        className="tw:size-full tw:object-contain"
+        src={serviceLogoUrl}
+      />
+    </div>
+  ) : icon ? (
+    <FeaturedIcon
+      color="brand"
+      icon={icon}
+      shape="square"
+      size="md"
+      theme="gradient"
+    />
+  ) : undefined;
+
+  const actions =
+    primaryAction || secondaryActions ? (
+      <>
+        {primaryAction}
+        {secondaryActions}
+      </>
+    ) : undefined;
+
+  const footer = (
+    <Tabs
+      className="tw:mt-1"
+      selectedKey={selectedKey}
+      onSelectionChange={handleSelectionChange}>
+      <Tabs.List type={tabListType}>
+        {visibleTabs.map((tab) => (
+          <Tabs.Item
+            badge={tab.count}
+            id={tab.key}
+            key={tab.key}
+            label={tab.label}
+          />
+        ))}
+      </Tabs.List>
+      {renderPanels &&
+        visibleTabs.map((tab) => (
+          <Tabs.Panel id={tab.key} key={tab.key}>
+            {tab.panel}
+          </Tabs.Panel>
+        ))}
+    </Tabs>
+  );
+
+  return (
+    <HeaderShell
+      actions={actions}
+      badge={badge}
+      breadcrumb={breadcrumb}
+      className={className}
+      data-testid={dataTestId}
+      footer={footer}
+      leading={leading}
+      meta={meta}
+      subtitle={subtitle}
+      title={title}
+      variant={variant}
+    />
+  );
+};
+
+export default EntityDetailHeader;

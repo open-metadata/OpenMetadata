@@ -65,9 +65,12 @@ import AddDomainForm, {
 } from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
+import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
-const DataProductListPage = () => {
+const DataProductListPage = ({
+  renderPageHeader,
+}: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
@@ -370,20 +373,31 @@ const DataProductListPage = () => {
 
   return (
     <>
-      <HeaderBreadcrumb
-        items={[
-          ...(isMarketplace
-            ? [
-                {
-                  label: t('label.data-marketplace'),
-                  href: ROUTES.DATA_MARKETPLACE,
-                },
-              ]
-            : []),
-          { label: t('label.data-product-plural'), href: dataProductBasePath },
-        ]}
-      />
-      {pageHeader}
+      {!renderPageHeader && (
+        <HeaderBreadcrumb
+          items={[
+            ...(isMarketplace
+              ? [
+                  {
+                    label: t('label.data-marketplace'),
+                    href: ROUTES.DATA_MARKETPLACE,
+                  },
+                ]
+              : []),
+            {
+              label: t('label.data-product-plural'),
+              href: dataProductBasePath,
+            },
+          ]}
+        />
+      )}
+      {renderPageHeader
+        ? renderPageHeader({
+            onAddClick: openDrawer,
+            createPermission: permissions.dataProduct?.Create || false,
+            count: dataProductListing.totalEntities,
+          })
+        : pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
