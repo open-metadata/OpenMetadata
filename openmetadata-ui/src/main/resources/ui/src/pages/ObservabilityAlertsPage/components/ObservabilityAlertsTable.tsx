@@ -39,6 +39,7 @@ function ObservabilityAlertsTable({
   loading,
   loadingCount,
   onAddAlert,
+  onEditAlert,
   onPageChange,
   onPageSizeChange,
   onSelectAlert,
@@ -97,6 +98,7 @@ function ObservabilityAlertsTable({
               alertPermission={alertPermission}
               loading={loadingCount > 0}
               record={record}
+              onEditAlert={onEditAlert}
               onSelectAlert={onSelectAlert}
             />
           </div>

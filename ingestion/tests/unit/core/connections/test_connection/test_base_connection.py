@@ -11,15 +11,19 @@
 """BaseConnection.test_connection wires the runner through checks()."""
 
 from types import SimpleNamespace
+from unittest.mock import patch
 
 import pytest
 
 from metadata.core.connections.test_connection.check import check
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.generated.schema.entity.services.connections.testConnectionDefinition import (
     Category,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+
+_MODULE = "metadata.ingestion.connections.connection"
 
 
 class _Step:
@@ -164,3 +168,28 @@ def test_registered_teardowns_run_in_lifo_order():
     connection._on_close(lambda: order.append("second"))
     connection.close()
     assert order == ["second", "first"]
+
+
+class _SlowConnection(_MigratedConnection):
+    step_timeout_seconds = 999
+
+
+def test_step_timeout_defaults_to_class_attribute():
+    connection = _MigratedConnection(_service_connection())
+    with patch(f"{_MODULE}.TestConnectionRunner") as runner:
+        connection.test_connection(_Metadata())
+    assert runner.call_args.args[2] == STEP_TIMEOUT_SECONDS
+
+
+def test_connector_raises_step_timeout_without_overriding_test_connection():
+    connection = _SlowConnection(_service_connection())
+    with patch(f"{_MODULE}.TestConnectionRunner") as runner:
+        connection.test_connection(_Metadata())
+    assert runner.call_args.args[2] == 999
+
+
+def test_explicit_timeout_wins_over_class_attribute():
+    connection = _SlowConnection(_service_connection())
+    with patch(f"{_MODULE}.TestConnectionRunner") as runner:
+        connection.test_connection(_Metadata(), timeout_seconds=5)
+    assert runner.call_args.args[2] == 5
