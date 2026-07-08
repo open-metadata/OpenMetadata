@@ -17,12 +17,7 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  ChevronDown,
-  File06,
-  Sun,
-  UploadCloud02
-} from '@untitledui/icons';
+import { ChevronDown, File06, Sun, UploadCloud02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -443,49 +438,52 @@ const ContextCenterDashboardPage: FC = () => {
             icon={File06}
             isEmpty={recentlyViewedItems.length === 0}
             title={t('label.recently-viewed')}>
-            <Box className='tw:p-5 tw:pt-0' direction="col">
+            <Box className="tw:p-5 tw:pt-0" direction="col">
               {recentlyViewedItems.map((item) => (
-                   <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                     {item.pageType === PageType.QUICK_LINK ? (
-                        <QuickLinkIcon
-                          className="tw:text-quaternary tw:shrink-0"
-                          height={13}
-                          width={13}
-                        />
-                      ) : (
-                        <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
-                      )}
-                            
-                      <Box
-                        align="center"
-                        className="tw:min-w-0 tw:flex-1"
-                        gap={4}
-                        justify="between">
-                        <div className="tw:min-w-40">
-                          <Typography
-                            ellipsis
-                            className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-                            size="text-xs"
-                            weight="medium">
-                            {item.title}
-                          </Typography>
-                        </div>
+                <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
+                  {item.pageType === PageType.QUICK_LINK ? (
+                    <QuickLinkIcon
+                      className="tw:text-quaternary tw:shrink-0"
+                      height={13}
+                      width={13}
+                    />
+                  ) : (
+                    <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                  )}
 
-                        <div className="tw:max-w-20">
-                          <Typography
-                            ellipsis
-                            className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-                            size="text-xs">
-                            {item.time}
-                          </Typography>
-                        </div>
-                      </Box>
-                    </Box>  
-            ))}
+                  <Box
+                    align="center"
+                    className="tw:min-w-0 tw:flex-1"
+                    gap={4}
+                    justify="between">
+                    <div className="tw:min-w-40">
+                      <Typography
+                        ellipsis
+                        className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+                        size="text-xs"
+                        weight="medium">
+                        {item.title}
+                      </Typography>
+                    </div>
+
+                    <div className="tw:max-w-20">
+                      <Typography
+                        ellipsis
+                        className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                        size="text-xs">
+                        {item.time}
+                      </Typography>
+                    </div>
+                  </Box>
+                </Box>
+              ))}
             </Box>
           </ContextSimplePillarCard>
 
-          <DashboardFoldersCard folders={folders} isLoading={isFoldersLoading} />
+          <DashboardFoldersCard
+            folders={folders}
+            isLoading={isFoldersLoading}
+          />
 
           <ContextSimplePillarCard
             dataTestId="most-cited-memories-card"
@@ -496,34 +494,34 @@ const ContextCenterDashboardPage: FC = () => {
             isEmpty={mostCitedItems.length === 0}
             isLoading={isMostCitedLoading}
             title={t('label.most-cited')}>
-            <Box className='tw:p-5 tw:pt-0'  direction="col">
+            <Box className="tw:p-5 tw:pt-0" direction="col">
               {mostCitedItems.map((item) => (
                 <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                      <Sun className="tw:size-3 tw:text-quaternary tw:shrink-0" />
-                      <Box
-                        align="center"
-                        className="tw:min-w-0 tw:flex-1"
-                        gap={4}
-                        justify="between">
-                        <div className="tw:min-w-40">
-                          <Typography
-                            ellipsis
-                            className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-                            size="text-xs"
-                            weight="medium">
-                            {item.title}
-                          </Typography>
-                        </div>
-                        <div>
-                          <Typography
-                            ellipsis
-                            className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-                            size="text-xs">
-                            {t('label.cited-n-times', { count: item.citedCount })}
-                          </Typography>
-                        </div>
-                      </Box>
-                    </Box>  
+                  <Sun className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                  <Box
+                    align="center"
+                    className="tw:min-w-0 tw:flex-1"
+                    gap={4}
+                    justify="between">
+                    <div className="tw:min-w-40">
+                      <Typography
+                        ellipsis
+                        className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+                        size="text-xs"
+                        weight="medium">
+                        {item.title}
+                      </Typography>
+                    </div>
+                    <div>
+                      <Typography
+                        ellipsis
+                        className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                        size="text-xs">
+                        {t('label.cited-n-times', { count: item.citedCount })}
+                      </Typography>
+                    </div>
+                  </Box>
+                </Box>
               ))}
             </Box>
           </ContextSimplePillarCard>

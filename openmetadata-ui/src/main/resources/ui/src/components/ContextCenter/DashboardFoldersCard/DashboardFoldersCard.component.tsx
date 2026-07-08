@@ -50,9 +50,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
           folderId,
           limit: FOLDER_CARD_CHILDREN_LIMIT,
         });
-        setFolderChildren((prev) =>
-          new Map(prev).set(folderId, response.data)
-        );
+        setFolderChildren((prev) => new Map(prev).set(folderId, response.data));
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
@@ -99,36 +97,37 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
               <Tree.ItemContent
                 hasChildItems={hasChildItems}
                 showExpandIcon={false}>
-                <Box align='center' className="tw:flex-1 tw:min-w-0" gap={2} justify='between'>
-                <Box align='center' gap={2}>
-
-                  <FolderIcon
-                    className="tw:size-3 tw:shrink-0 tw:text-quaternary"
-                    height={16}
-                    width={16}
-                  />
-                  <div className='tw:max-w-80'>
-                    <Typography
-                      ellipsis
-                      className="tw:flex-1 tw:min-w-0 tw:text-secondary"
-                      size="text-xs"
-                      weight="medium">
-                      {getEntityName(folder)}
-                    </Typography>
-                  </div>
-                 
+                <Box
+                  align="center"
+                  className="tw:flex-1 tw:min-w-0"
+                  gap={2}
+                  justify="between">
+                  <Box align="center" gap={2}>
+                    <FolderIcon
+                      className="tw:size-3 tw:shrink-0 tw:text-quaternary"
+                      height={16}
+                      width={16}
+                    />
+                    <div className="tw:max-w-80">
+                      <Typography
+                        ellipsis
+                        className="tw:flex-1 tw:min-w-0 tw:text-secondary"
+                        size="text-xs"
+                        weight="medium">
+                        {getEntityName(folder)}
+                      </Typography>
+                    </div>
                   </Box>
-                  <Box align='center' gap={2}>
-             <Badge size="xs" type="color">
-                    {folder.childrenCount ?? 0}
-                  </Badge>
-                  <Tree.ExpandButton
-                    className={classNames(
-                      !hasChildItems && 'tw:invisible tw:pointer-events-none'
-                    )}
-                  />
+                  <Box align="center" gap={2}>
+                    <Badge size="xs" type="color">
+                      {folder.childrenCount ?? 0}
+                    </Badge>
+                    <Tree.ExpandButton
+                      className={classNames(
+                        !hasChildItems && 'tw:invisible tw:pointer-events-none'
+                      )}
+                    />
                   </Box>
-                  
                 </Box>
               </Tree.ItemContent>
 
@@ -137,9 +136,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                   id={file.id}
                   key={file.id}
                   textValue={getEntityName(file)}>
-                  <Tree.ItemContent
-                    className="tw:ml-7!"
-                    showExpandIcon={false}>
+                  <Tree.ItemContent className="tw:ml-7!" showExpandIcon={false}>
                     <FileIcon
                       className="tw:size-4 tw:shrink-0"
                       theme="light"

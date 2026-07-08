@@ -30,27 +30,25 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
   icon: Icon,
 }) => {
   return (
-    <Card
-      className="tw:h-full tw:flex tw:flex-col"
-      data-testid={dataTestId}>
-         <Box align="center" className="tw:mb-3.5 tw:p-5 tw:pb-0" gap={3}>
-                <FeaturedIcon
-                  className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
-                  color="brand"
-                  icon={Icon}
-                  size="sm"
-                  theme="light"
-                />
-          <div className="tw:flex-1 tw:min-w-0">
-            <Typography
-              as="div"
-              className="tw:text-primary"
-              size="text-sm"
-              weight="semibold">
-              {title}
-            </Typography>
-          </div>
-        </Box>
+    <Card className="tw:h-full tw:flex tw:flex-col" data-testid={dataTestId}>
+      <Box align="center" className="tw:mb-3.5 tw:p-5 tw:pb-0" gap={3}>
+        <FeaturedIcon
+          className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
+          color="brand"
+          icon={Icon}
+          size="sm"
+          theme="light"
+        />
+        <div className="tw:flex-1 tw:min-w-0">
+          <Typography
+            as="div"
+            className="tw:text-primary"
+            size="text-sm"
+            weight="semibold">
+            {title}
+          </Typography>
+        </div>
+      </Box>
 
       <div className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
         {isLoading ? (
