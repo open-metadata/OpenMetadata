@@ -57,7 +57,7 @@ const HeaderShell = ({
       )}
       data-testid={dataTestId}
       variant="elevated">
-      <Box direction="col" gap={4}>
+      <Box direction="col" gap={2}>
         {breadcrumb}
         <Box align="center" direction="row" gap={4}>
           {leading}

@@ -48,6 +48,8 @@ interface PageHeaderConfig {
   iconColor?: 'brand' | 'gray' | 'success' | 'warning' | 'error';
   /** Inline search node (usually from useSearch) rendered in search/beta variants. */
   search?: ReactNode;
+  /** Breadcrumb row rendered above the title in HeaderShell variants. */
+  breadcrumb?: ReactNode;
   /** i18n key for the greeting title. Defaults to 'label.hey-comma-name'. */
   greetingNameKey?: string;
   /** i18n key for the beta badge label. Defaults to 'label.beta'. */
@@ -146,6 +148,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       <HeaderShell
         actions={actions}
         badge={badge}
+        breadcrumb={config.breadcrumb}
         data-testid="page-header-container"
         leading={leading}
         subtitle={displayDescription}

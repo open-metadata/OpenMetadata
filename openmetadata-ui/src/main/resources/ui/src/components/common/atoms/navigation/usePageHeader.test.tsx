@@ -84,6 +84,7 @@ describe('usePageHeader', () => {
         {...baseConfig}
         createPermission
         addButtonLabelKey="label.add-data-product"
+        breadcrumb={<nav data-testid="breadcrumb" />}
         search={<input data-testid="header-search" />}
         variant="search"
         onAddClick={jest.fn()}
@@ -92,6 +93,7 @@ describe('usePageHeader', () => {
 
     expect(screen.getByTestId('header-search')).toBeInTheDocument();
     expect(screen.getByTestId('add-entity-button')).toBeInTheDocument();
+    expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
   });
 
   it('renders the beta badge in the beta variant', () => {

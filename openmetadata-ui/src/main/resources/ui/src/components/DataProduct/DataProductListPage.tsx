@@ -160,6 +160,28 @@ const DataProductListPage = ({
       loading: isLoading,
     });
 
+  const breadcrumbItems = useMemo(
+    () => [
+      ...(isMarketplace
+        ? [
+            {
+              label: t('label.data-marketplace'),
+              href: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      {
+        label: t('label.data-product-plural'),
+        href: dataProductBasePath,
+      },
+    ],
+    [dataProductBasePath, isMarketplace, t]
+  );
+
+  const headerBreadcrumb = (
+    <HeaderBreadcrumb className="tw:!mb-0" items={breadcrumbItems} />
+  );
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
@@ -169,6 +191,7 @@ const DataProductListPage = ({
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
     variant: isAiMode ? 'search' : undefined,
     icon: Grid01,
+    breadcrumb: headerBreadcrumb,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -377,29 +400,15 @@ const DataProductListPage = ({
 
   return (
     <>
-      {!renderPageHeader && (
-        <HeaderBreadcrumb
-          items={[
-            ...(isMarketplace
-              ? [
-                  {
-                    label: t('label.data-marketplace'),
-                    href: ROUTES.DATA_MARKETPLACE,
-                  },
-                ]
-              : []),
-            {
-              label: t('label.data-product-plural'),
-              href: dataProductBasePath,
-            },
-          ]}
-        />
+      {!renderPageHeader && !isAiMode && (
+        <HeaderBreadcrumb items={breadcrumbItems} />
       )}
       {renderPageHeader
         ? renderPageHeader({
             onAddClick: openDrawer,
             createPermission: permissions.dataProduct?.Create || false,
             count: dataProductListing.totalEntities,
+            breadcrumb: headerBreadcrumb,
           })
         : pageHeader}
 

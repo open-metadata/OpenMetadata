@@ -17,6 +17,7 @@ export interface PageHeaderRenderProps {
   onAddClick: () => void;
   createPermission: boolean;
   count: number;
+  breadcrumb?: ReactNode;
 }
 
 export type PageHeaderRenderer = (props: PageHeaderRenderProps) => ReactNode;

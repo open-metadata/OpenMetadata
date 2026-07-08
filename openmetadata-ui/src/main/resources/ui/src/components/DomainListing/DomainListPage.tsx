@@ -150,6 +150,25 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       loading: isLoading,
     });
 
+  const breadcrumbItems = useMemo(
+    () => [
+      ...(isMarketplace
+        ? [
+            {
+              label: t('label.data-marketplace'),
+              href: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      { label: t('label.domain-plural'), href: domainBasePath },
+    ],
+    [domainBasePath, isMarketplace, t]
+  );
+
+  const headerBreadcrumb = (
+    <HeaderBreadcrumb className="tw:!mb-0" items={breadcrumbItems} />
+  );
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
@@ -160,6 +179,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
     variant: isAiMode ? 'search' : undefined,
     icon: Globe01,
+    breadcrumb: headerBreadcrumb,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -316,26 +336,15 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     <Box
       direction="col"
       style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
-      {!renderPageHeader && (
-        <HeaderBreadcrumb
-          items={[
-            ...(isMarketplace
-              ? [
-                  {
-                    label: t('label.data-marketplace'),
-                    href: ROUTES.DATA_MARKETPLACE,
-                  },
-                ]
-              : []),
-            { label: t('label.domain-plural'), href: domainBasePath },
-          ]}
-        />
+      {!renderPageHeader && !isAiMode && (
+        <HeaderBreadcrumb items={breadcrumbItems} />
       )}
       {renderPageHeader
         ? renderPageHeader({
             onAddClick: openDrawer,
             createPermission: permissions.domain?.Create || false,
             count: domainListing.totalEntities,
+            breadcrumb: headerBreadcrumb,
           })
         : pageHeader}
 
