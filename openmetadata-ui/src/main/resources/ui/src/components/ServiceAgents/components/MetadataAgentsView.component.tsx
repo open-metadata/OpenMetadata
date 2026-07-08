@@ -27,8 +27,12 @@ import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { ServicesType } from '../../../interface/service.interface';
 import { deleteIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
-import { getErrorPlaceHolder } from '../../../utils/IngestionUtils';
+import {
+  getErrorPlaceHolder,
+  getLogViewerStatusFromAgentStatus,
+} from '../../../utils/IngestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
@@ -232,9 +236,13 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       {logsFor && (
         <LogViewerModal
           open
+          lastRun={logsFor.finishedAt}
           loading={isLogsLoading}
           logs={rawText}
+          runId={getEntityName(logsFor)}
+          status={getLogViewerStatusFromAgentStatus(logsFor.status)}
           title={`${logsFor.name} · ${t('label.log-plural')}`}
+          totalLines={rawText.split('\n').length}
           onClose={() => setLogsFor(null)}
           onDownload={handleDownloadLogs}
         />
@@ -242,7 +250,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
       {deleteTarget && (
         <DeleteModal
           open
-          entityTitle={t('label.delete-agent')}
+          entityTitle={t('label.agent')}
           isDeleting={isDeleting}
           message={t('message.delete-entity-permanently', {
             entityType: deleteTarget.name,
