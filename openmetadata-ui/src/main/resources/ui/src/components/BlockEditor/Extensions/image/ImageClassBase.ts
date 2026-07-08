@@ -13,6 +13,7 @@
 import i18n from '../../../../utils/i18next/LocalUtil';
 import { BlockEditorAttachmentProps } from '../../BlockEditor.interface';
 import EmbedLinkElement from './EmbedLinkElement/EmbedLinkElement';
+import UploadFileTab from './UploadFile/UploadFileTab';
 
 export type AuthenticatedImageUrl = (src: string) => {
   imageSrc: string;
@@ -31,6 +32,11 @@ class ImageClassBase {
         label: i18n.t('label.link'),
         key: 'embed',
         children: EmbedLinkElement,
+      },
+       {
+        label: 'Upload',
+        key: 'upload',
+        children: UploadFileTab,
       },
     ];
   }
