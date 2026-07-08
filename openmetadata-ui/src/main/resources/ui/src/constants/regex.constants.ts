@@ -96,7 +96,7 @@ export const LOCALE_CODE_REGEX = /^[a-z]{2}(-[A-Z]{2})?$/;
 // relative paths with image extensions, or bare filenames with image extensions.
 // Filenames restricted to alphanumeric, hyphens, underscores, dots, and slashes.
 export const IMAGE_URL_PATTERN =
-  /^(https?:\/\/.+|\/[^\s]+|data:image\/.+)|^[\w\-./]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
+   /^(https?:\/\/.+|\/(?!.*\.\.)[^\s]+|data:image\/.+)|^(?!.*\.\.)[\w\-./]+\.(png|jpg|jpeg|gif|svg|webp|bmp|ico)$/i;
 
 export const SECTION_BLOCK_REGEX = /\$\$section\n([\s\S]*?)\n\$\$/g;
 
