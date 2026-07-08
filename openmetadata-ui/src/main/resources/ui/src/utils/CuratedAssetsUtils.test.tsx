@@ -40,7 +40,7 @@ jest.mock('./RouterUtils', () => ({
   getExplorePath: jest.fn().mockReturnValue('/explore'),
 }));
 
-jest.mock('@react-awesome-query-builder/antd', () => ({
+jest.mock('@react-awesome-query-builder/ui', () => ({
   Utils: {
     checkTree: jest.fn().mockReturnValue({}),
     loadTree: jest.fn().mockReturnValue({}),

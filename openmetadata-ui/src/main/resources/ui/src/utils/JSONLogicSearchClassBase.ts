@@ -11,8 +11,8 @@
  *  limitations under the License.
  */
 import {
-  BasicConfig,
   AsyncFetchListValuesResult,
+  BasicConfig,
   Config,
   FieldOrGroup,
   Fields,
