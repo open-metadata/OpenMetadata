@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
-import DeleteWidgetModal from '../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
@@ -387,7 +387,7 @@ const NotificationListPage = () => {
           />
         </Col>
         <Col span={24}>
-          <DeleteWidgetModal
+          <DeleteEntityModal
             afterDeleteAction={handleAlertDelete}
             allowSoftDelete={false}
             entityId={selectedAlert?.id ?? ''}

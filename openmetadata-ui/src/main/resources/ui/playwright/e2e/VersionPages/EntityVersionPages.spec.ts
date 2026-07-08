@@ -346,11 +346,10 @@ test.describe('Entity Version pages', () => {
         await page.click('[data-testid="manage-button"]');
         await page.click('[data-testid="delete-button"]');
 
-        await page.locator('[role="dialog"].ant-modal').waitFor();
+        await page.getByTestId('delete-modal').waitFor();
 
-        await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
-        await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
         const deleteResponse = page.waitForResponse(
           `/api/v1/${entity.endpoint}/async/*?hardDelete=false&recursive=true`
         );
