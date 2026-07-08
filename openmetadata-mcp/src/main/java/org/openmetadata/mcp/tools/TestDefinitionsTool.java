@@ -1,9 +1,12 @@
 package org.openmetadata.mcp.tools;
 
+import com.google.common.annotations.VisibleForTesting;
 import java.util.Map;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.tests.TestPlatform;
 import org.openmetadata.schema.type.Include;
@@ -37,13 +40,45 @@ public class TestDefinitionsTool implements McpTool {
     int limit = resolveLimit(params);
     String entityType = stringParam(params, "entityType", DEFAULT_ENTITY_TYPE);
     String testPlatform = stringParam(params, "testPlatform", TestPlatform.OPEN_METADATA.value());
-    String after = stringParam(params, "after", null);
+    String after = keysetCursorOrAfter(params);
     LOG.info(
         "Listing test definitions for entityType: {}, testPlatform: {}, limit: {}",
         entityType,
         testPlatform,
         limit);
-    return listWithinBudget(buildFilter(entityType, testPlatform), limit, after);
+    Map<String, Object> page =
+        listWithinBudget(buildFilter(entityType, testPlatform), limit, after);
+    attachPagingContract(page);
+    return page;
+  }
+
+  private static String keysetCursorOrAfter(Map<String, Object> params) {
+    String after = stringParam(params, "after", null);
+    Optional<PageCursor.Cursor> cursor = PageCursor.decode(stringParam(params, "cursor", null));
+    if (cursor.isPresent() && !cursor.get().isOffset()) {
+      after = cursor.get().after();
+    }
+    return after;
+  }
+
+  /**
+   * Surfaces the repository's native keyset cursor as the unified {@code nextCursor}/{@code hasMore}/
+   * {@code total} markers. {@code listAfter} sets {@code paging.after} to the token for the next page
+   * (null on the last page); wrapping it in {@link PageCursor} keeps the wire contract identical to
+   * the offset-based tools while preserving keyset write-stability underneath.
+   */
+  @VisibleForTesting
+  static void attachPagingContract(Map<String, Object> page) {
+    if (page.get("paging") instanceof Map<?, ?> paging) {
+      Object total = paging.get("total");
+      if (total != null) {
+        page.put(McpResponseTrim.TOTAL_KEY, total);
+      }
+      if (paging.get("after") instanceof String nativeAfter && !nativeAfter.isBlank()) {
+        page.put(McpResponseTrim.HAS_MORE_KEY, Boolean.TRUE);
+        page.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeKeyset(nativeAfter));
+      }
+    }
   }
 
   private static int resolveLimit(Map<String, Object> params) {
