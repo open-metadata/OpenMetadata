@@ -30,7 +30,6 @@ const OMConjs: FC<ConjsProps> = ({
         selectedConjunction ? new Set([selectedConjunction]) : new Set<Key>()
       }
       selectionMode="single"
-      size="sm"
       onSelectionChange={(keys: Set<Key>) => {
         const key = keys.values().next().value;
         if (key !== undefined) {

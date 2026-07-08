@@ -13,6 +13,9 @@
 import type { DateTimeWidgetProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 
+// DateInput from @openmetadata/ui-core-components is not publicly exported and requires
+// @internationalized/date CalendarDate objects, which are incompatible with the query
+// builder's string-based date values. Native <input> is used instead.
 const classNameValue =
   'tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary ' +
   'tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset tw:outline-hidden ' +
