@@ -11,25 +11,14 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Box,
-  Button,
-  Dialog,
-  DialogActions,
-  DialogContent,
-  DialogTitle,
-  IconButton,
-  Typography,
-  useTheme,
-} from '@mui/material';
+import { Badge, ButtonUtility } from '@openmetadata/ui-core-components';
 import { Trash01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
-import Loader from '../../Loader/Loader';
+import { DeleteModal } from '../../DeleteModal/DeleteModal';
 
 interface UseDeleteConfig<
   T extends { id: string; name?: string; displayName?: string }
@@ -42,7 +31,7 @@ interface UseDeleteConfig<
 }
 
 /**
- * Generic delete hook for handling entity deletion with MUI components
+ * Generic delete hook for handling entity deletion with core-components
  *
  * @description
  * Provides a reusable delete functionality for any entity type with:
@@ -76,7 +65,6 @@ export const useDelete = <
   onDeleteComplete,
   onCancel,
 }: UseDeleteConfig<T>) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [isOpen, setIsOpen] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
@@ -114,22 +102,22 @@ export const useDelete = <
     }`;
   }, [selectedEntities, entityLabel]);
 
-  const getDeleteMessage = useCallback(() => {
-    if (selectedEntities.length === 0) {
-      return '';
+  const deleteConfirmationMessage = useMemo(() => {
+    if (selectedEntities.length > 1) {
+      return t('message.are-you-sure-you-want-to-delete-these-entities', {
+        count: selectedEntities.length,
+        entity: entityLabel?.toLowerCase() || 'items',
+      });
     }
 
     if (selectedEntities.length === 1) {
-      const name = getEntityName(selectedEntities[0]);
-
-      return name ? `"${name}"` : `this ${entityLabel || 'item'}`;
+      return t('message.are-you-sure-you-want-to-delete-this-entity', {
+        entity: entityLabel?.toLowerCase() || 'item',
+      });
     }
 
-    // For multiple, show count with entity type
-    return `these ${selectedEntities.length} ${entityLabel || 'item'}${
-      selectedEntities.length > 1 ? 's' : ''
-    }`;
-  }, [selectedEntities, entityLabel]);
+    return '';
+  }, [selectedEntities.length, entityLabel, t]);
 
   const handleDelete = useCallback(async () => {
     setIsDeleting(true);
@@ -170,166 +158,52 @@ export const useDelete = <
 
     setIsDeleting(false);
     setIsOpen(false);
-  }, [selectedEntities, entityType, entityLabel, onDeleteComplete]);
+  }, [selectedEntities, entityType, entityLabel, onDeleteComplete, t]);
 
   const deleteIconButton = useMemo(
-    () =>
-      selectedEntities.length > 1 ? (
-        <Badge
-          badgeContent={selectedEntities.length}
-          color="error"
-          sx={{
-            '& .MuiBadge-badge': {
-              backgroundColor: theme.palette.allShades?.error?.[600],
-            },
-          }}>
-          <IconButton
-            color="primary"
-            disabled={selectedEntities.length === 0}
-            size="small"
-            sx={{
-              color: theme.palette.allShades?.gray?.[600],
-            }}
-            onClick={openModal}>
-            <Trash01 size={20} />
-          </IconButton>
-        </Badge>
-      ) : (
-        <IconButton
-          color="primary"
-          disabled={selectedEntities.length === 0}
-          size="small"
-          sx={{
-            color: theme.palette.allShades?.gray?.[600],
-          }}
-          onClick={openModal}>
-          <Trash01 size={20} />
-        </IconButton>
-      ),
-    [selectedEntities.length, openModal, theme.palette.allShades]
+    () => (
+      <div className="tw:relative tw:inline-flex">
+        <ButtonUtility
+          color="tertiary"
+          data-testid="delete-selected"
+          icon={Trash01}
+          isDisabled={selectedEntities.length === 0}
+          size="sm"
+          tooltip={t('label.delete')}
+          onClick={openModal}
+        />
+        {selectedEntities.length > 1 && (
+          <Badge
+            className="tw:pointer-events-none tw:absolute tw:-right-1 tw:-top-1"
+            color="error"
+            size="xs"
+            type="pill-color">
+            {selectedEntities.length}
+          </Badge>
+        )}
+      </div>
+    ),
+    [selectedEntities.length, openModal, t]
   );
 
   const deleteModal = useMemo(
     () => (
-      <Dialog
+      <DeleteModal
+        entityTitle={getEntityTitle()}
+        isDeleting={isDeleting}
+        message={deleteConfirmationMessage}
         open={isOpen}
-        slotProps={{
-          paper: {
-            sx: {
-              borderRadius: 2,
-              width: 400,
-              maxWidth: '100%',
-            },
-          },
-        }}
-        onClose={handleCancel}>
-        <Box sx={{ p: 6 }}>
-          <Box
-            sx={{
-              alignItems: 'center',
-              backgroundColor: theme.palette.allShades?.error?.[50],
-              borderRadius: '50%',
-              display: 'flex',
-              height: 48,
-              justifyContent: 'center',
-              mb: 4,
-              width: 48,
-            }}>
-            <Trash01 color={theme.palette.allShades?.error?.[600]} size={24} />
-          </Box>
-
-          <DialogTitle
-            sx={{
-              mb: 0.5,
-              p: 0,
-              fontWeight: 600,
-              fontSize: '16px',
-              lineHeight: 1.5,
-              '&.MuiDialogTitle-root': {
-                padding: 0,
-                fontWeight: 600,
-                fontSize: '16px',
-                lineHeight: 1.5,
-              },
-            }}>
-            {t('label.delete')} {getEntityTitle()}
-          </DialogTitle>
-
-          <DialogContent
-            sx={{
-              mb: 8,
-              p: 0,
-              '&.MuiDialogContent-root': { padding: 0 },
-            }}>
-            <Typography
-              color="text.secondary"
-              sx={{
-                fontWeight: 400,
-                fontSize: '14px',
-                lineHeight: 1.43,
-              }}>
-              {selectedEntities.length > 1
-                ? t('message.are-you-sure-you-want-to-delete-these-entities', {
-                    count: selectedEntities.length,
-                    entity: entityLabel?.toLowerCase() || 'items',
-                  })
-                : selectedEntities.length === 1
-                ? t('message.are-you-sure-you-want-to-delete-this-entity', {
-                    entity: entityLabel?.toLowerCase() || 'item',
-                  })
-                : ''}
-            </Typography>
-          </DialogContent>
-
-          <DialogActions
-            sx={{
-              display: 'flex',
-              gap: 1,
-              p: 0,
-              '&.MuiDialogActions-root': {
-                padding: 0,
-              },
-            }}>
-            <Button
-              disabled={isDeleting}
-              size="large"
-              sx={{
-                flex: 1,
-                textTransform: 'none',
-              }}
-              variant="outlined"
-              onClick={handleCancel}>
-              {t('label.cancel')}
-            </Button>
-            <Button
-              color="error"
-              disabled={isDeleting}
-              size="large"
-              sx={{
-                flex: 1,
-                textTransform: 'none',
-              }}
-              variant="contained"
-              onClick={handleDelete}>
-              {isDeleting ? (
-                <Loader size="small" type="white" />
-              ) : (
-                t('label.delete')
-              )}
-            </Button>
-          </DialogActions>
-        </Box>
-      </Dialog>
+        onCancel={handleCancel}
+        onDelete={handleDelete}
+      />
     ),
     [
-      getDeleteMessage,
       getEntityTitle,
+      deleteConfirmationMessage,
       handleCancel,
       handleDelete,
       isDeleting,
       isOpen,
-      selectedEntities.length,
-      theme.palette.allShades,
     ]
   );
 
