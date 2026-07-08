@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { isEmpty } from 'lodash';
+import { isArray, isEmpty, pick } from 'lodash';
 import {
   CreateIngestionPipeline,
   FluffyType as ConfigType,
@@ -20,10 +20,17 @@ import {
 import { CreateTestCase } from '../../../../generated/api/tests/createTestCase';
 import { Table } from '../../../../generated/entity/data/table';
 import { LogLevels } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import { TestCase } from '../../../../generated/tests/testCase';
+import {
+  TestDataType,
+  TestDefinition,
+} from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
+import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
+import { getNameFromFQN } from '../../../../utils/FqnUtils';
 import {
   normalizeParamsForPayload,
   unwrapSelectValue,
@@ -32,9 +39,14 @@ import {
 import { getIngestionName } from '../../../../utils/ServicePureUtils';
 import {
   generateUUID,
+  isValidJSONString,
   replaceAllSpacialCharWith_,
 } from '../../../../utils/StringUtils';
-import { generateEntityLink } from '../../../../utils/TablePureUtils';
+import {
+  generateEntityLink,
+  getTagsWithoutTier,
+} from '../../../../utils/TablePureUtils';
+import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
 import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
 import { FormValues, TestLevel } from './TestCaseFormV1.interface';
@@ -179,5 +191,129 @@ export const buildTestSuitePipelinePayload = (
             : undefined,
       },
     },
+  };
+};
+
+/**
+ * `FormValues.params`/`name`/`displayName` are typed too narrowly for edit
+ * prefill (no `boolean` param values, no `name`/`displayName` scalar
+ * fields). This widens just the fields `buildEditDefaults` needs without
+ * touching the shared `FormValues` interface, which other, later tasks own.
+ */
+type EditFormValues = Omit<Partial<FormValues>, 'params'> & {
+  name?: string;
+  displayName?: string;
+  params?: Record<string, string | { value: string }[] | boolean>;
+};
+
+/**
+ * Builds the `params` RHF value from a TestCase's `parameterValues`, keyed by
+ * param name. Mirrors the legacy `EditTestCaseModalV1.getParamsValue`: Array
+ * params with a JSON-array value become `[{ value }, …]`; Boolean params
+ * become an actual boolean; everything else stays a raw string.
+ */
+const buildEditParams = (
+  testCase: TestCase,
+  definition: TestDefinition
+): Record<string, string | { value: string }[] | boolean> => {
+  const result: Record<string, string | { value: string }[] | boolean> = {};
+  (testCase.parameterValues ?? []).forEach((curr) => {
+    const param = definition.parameterDefinition?.find(
+      (paramDefinition) => paramDefinition.name === curr.name
+    );
+    const key = curr.name || '';
+
+    if (
+      param?.dataType === TestDataType.Array &&
+      isValidJSONString(curr.value)
+    ) {
+      const value = JSON.parse(curr.value || '[]');
+      result[key] = isArray(value)
+        ? value.map((val) => ({ value: val }))
+        : value;
+    } else if (param?.dataType === TestDataType.Boolean) {
+      result[key] = curr.value === 'true';
+    } else {
+      result[key] = curr.value ?? '';
+    }
+  });
+
+  return result;
+};
+
+/**
+ * Splits a TestCase's tags into `tags` (Classification) and `glossaryTerms`
+ * (Glossary), excluding the Tier tag — mirrors the legacy
+ * `EditTestCaseModalV1` tags/glossaryTerms memo.
+ */
+const buildEditTagFields = (
+  testCase: TestCase
+): Pick<FormValues, 'tags' | 'glossaryTerms'> => {
+  if (isEmpty(testCase.tags)) {
+    return { tags: [], glossaryTerms: [] };
+  }
+
+  const tagsWithoutTier = getTagsWithoutTier(testCase.tags as TagLabel[]);
+  const filteredTags = getFilterTags(tagsWithoutTier);
+
+  return {
+    tags: filteredTags.Classification,
+    glossaryTerms: filteredTags.Glossary,
+  };
+};
+
+const buildEditTestLevel = (testCase: TestCase): TestLevel => {
+  const isColumnLevel = Boolean(testCase.entityLink?.includes('::columns::'));
+  let result = TestLevel.TABLE;
+  if (isColumnLevel) {
+    result = isEmpty(testCase.dimensionColumns)
+      ? TestLevel.COLUMN
+      : TestLevel.COLUMN_DIMENSION;
+  }
+
+  return result;
+};
+
+/**
+ * Builds react-hook-form default values from an existing `TestCase`, for
+ * prefilling the shared test-case form in edit mode.
+ */
+export const buildEditDefaults = (
+  testCase: TestCase,
+  definition: TestDefinition
+): EditFormValues => {
+  const tableFqn = getEntityFQN(testCase.entityLink ?? '');
+  const selectedColumn = getColumnNameFromEntityLink(testCase.entityLink ?? '');
+
+  const scalarFields: Pick<
+    EditFormValues,
+    | 'name'
+    | 'displayName'
+    | 'description'
+    | 'computePassedFailedRowCount'
+    | 'useDynamicAssertion'
+    | 'dimensionColumns'
+    | 'topDimensions'
+  > = pick(testCase, [
+    'name',
+    'displayName',
+    'description',
+    'computePassedFailedRowCount',
+    'useDynamicAssertion',
+    'dimensionColumns',
+    'topDimensions',
+  ]);
+
+  return {
+    testLevel: buildEditTestLevel(testCase),
+    selectedTable: getNameFromFQN(tableFqn),
+    selectedColumn: selectedColumn || undefined,
+    testTypeId: {
+      id: testCase.testDefinition?.fullyQualifiedName ?? '',
+      label: testCase.testDefinition?.fullyQualifiedName ?? '',
+    } as never,
+    params: buildEditParams(testCase, definition),
+    ...buildEditTagFields(testCase),
+    ...scalarFields,
   };
 };

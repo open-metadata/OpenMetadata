@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
+import { TestCase } from '../../../../generated/tests/testCase';
+import {
+  TestDataType,
+  TestDefinition,
+} from '../../../../generated/tests/testDefinition';
 import { TestLevel } from './TestCaseFormV1.interface';
 import {
+  buildEditDefaults,
   buildTestSuitePipelinePayload,
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
@@ -219,5 +225,186 @@ describe('buildTestSuitePipelinePayload', () => {
     );
 
     expect(payload.sourceConfig.config!.testCases).toBeUndefined();
+  });
+});
+
+describe('buildEditDefaults', () => {
+  const tableLevelDefinition = {
+    id: 'def-1',
+    name: 'tableRowCountToEqual',
+    fullyQualifiedName: 'tableRowCountToEqual',
+    parameterDefinition: [{ name: 'value', dataType: TestDataType.String }],
+  } as unknown as TestDefinition;
+
+  it('builds table-level scalar defaults from a TestCase', () => {
+    const testCase = {
+      name: 'my_test',
+      displayName: 'My Test',
+      description: 'a description',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-1',
+        name: 'tableRowCountToEqual',
+        fullyQualifiedName: 'tableRowCountToEqual',
+      },
+      parameterValues: [{ name: 'value', value: '10' }],
+      computePassedFailedRowCount: true,
+      useDynamicAssertion: false,
+      tags: [],
+    } as unknown as TestCase;
+
+    const result = buildEditDefaults(testCase, tableLevelDefinition);
+
+    expect(result.testLevel).toBe(TestLevel.TABLE);
+    expect(result.selectedTable).toBe('t');
+    expect(result.selectedColumn).toBeUndefined();
+    expect(result.testTypeId).toEqual({
+      id: 'tableRowCountToEqual',
+      label: 'tableRowCountToEqual',
+    });
+    expect(result.params).toEqual({ value: '10' });
+    expect(result.name).toBe('my_test');
+    expect(result.displayName).toBe('My Test');
+    expect(result.description).toBe('a description');
+    expect(result.computePassedFailedRowCount).toBe(true);
+    expect(result.useDynamicAssertion).toBe(false);
+    expect(result.tags).toEqual([]);
+    expect(result.glossaryTerms).toEqual([]);
+  });
+
+  it('sets selectedColumn and COLUMN testLevel for a column-level entityLink', () => {
+    const testCase = {
+      name: 'col_test',
+      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      testDefinition: {
+        id: 'def-2',
+        name: 'columnValuesToBeNotNull',
+        fullyQualifiedName: 'columnValuesToBeNotNull',
+      },
+      parameterValues: [],
+      tags: [],
+    } as unknown as TestCase;
+
+    const definition = {
+      id: 'def-2',
+      name: 'columnValuesToBeNotNull',
+      fullyQualifiedName: 'columnValuesToBeNotNull',
+      parameterDefinition: [],
+    } as unknown as TestDefinition;
+
+    const result = buildEditDefaults(testCase, definition);
+
+    expect(result.testLevel).toBe(TestLevel.COLUMN);
+    expect(result.selectedTable).toBe('t');
+    expect(result.selectedColumn).toBe('email');
+  });
+
+  it('derives COLUMN_DIMENSION testLevel when dimensionColumns are present', () => {
+    const testCase = {
+      name: 'dim_test',
+      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      testDefinition: {
+        id: 'def-2',
+        name: 'columnValuesToBeNotNull',
+        fullyQualifiedName: 'columnValuesToBeNotNull',
+      },
+      parameterValues: [],
+      dimensionColumns: ['country'],
+      topDimensions: 5,
+      tags: [],
+    } as unknown as TestCase;
+
+    const definition = {
+      id: 'def-2',
+      name: 'columnValuesToBeNotNull',
+      fullyQualifiedName: 'columnValuesToBeNotNull',
+      parameterDefinition: [],
+    } as unknown as TestDefinition;
+
+    const result = buildEditDefaults(testCase, definition);
+
+    expect(result.testLevel).toBe(TestLevel.COLUMN_DIMENSION);
+    expect(result.dimensionColumns).toEqual(['country']);
+    expect(result.topDimensions).toBe(5);
+  });
+
+  it('parses an Array param JSON value into [{ value }] entries', () => {
+    const testCase = {
+      name: 'array_param_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-3',
+        name: 'columnValuesToBeInSet',
+        fullyQualifiedName: 'columnValuesToBeInSet',
+      },
+      parameterValues: [{ name: 'allowedValues', value: '["a","b","c"]' }],
+      tags: [],
+    } as unknown as TestCase;
+
+    const definition = {
+      id: 'def-3',
+      name: 'columnValuesToBeInSet',
+      fullyQualifiedName: 'columnValuesToBeInSet',
+      parameterDefinition: [
+        { name: 'allowedValues', dataType: TestDataType.Array },
+      ],
+    } as unknown as TestDefinition;
+
+    const result = buildEditDefaults(testCase, definition);
+
+    expect(result.params).toEqual({
+      allowedValues: [{ value: 'a' }, { value: 'b' }, { value: 'c' }],
+    });
+  });
+
+  it('parses a Boolean param "true" string into a boolean', () => {
+    const testCase = {
+      name: 'bool_param_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-4',
+        name: 'someBooleanTest',
+        fullyQualifiedName: 'someBooleanTest',
+      },
+      parameterValues: [{ name: 'strict', value: 'true' }],
+      tags: [],
+    } as unknown as TestCase;
+
+    const definition = {
+      id: 'def-4',
+      name: 'someBooleanTest',
+      fullyQualifiedName: 'someBooleanTest',
+      parameterDefinition: [{ name: 'strict', dataType: TestDataType.Boolean }],
+    } as unknown as TestDefinition;
+
+    const result = buildEditDefaults(testCase, definition);
+
+    expect(result.params).toEqual({ strict: true });
+  });
+
+  it('splits tags into tags/glossaryTerms and filters out the tier tag', () => {
+    const testCase = {
+      name: 'tag_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-1',
+        name: 'tableRowCountToEqual',
+        fullyQualifiedName: 'tableRowCountToEqual',
+      },
+      parameterValues: [],
+      tags: [
+        { tagFQN: 'Tier.Tier1', source: 'Classification' },
+        { tagFQN: 'PII.Sensitive', source: 'Classification' },
+        { tagFQN: 'GlossaryTerm.example', source: 'Glossary' },
+      ],
+    } as unknown as TestCase;
+
+    const result = buildEditDefaults(testCase, tableLevelDefinition);
+
+    expect(result.tags).toHaveLength(1);
+    expect(result.tags?.[0].tagFQN).toBe('PII.Sensitive');
+    expect(result.glossaryTerms).toHaveLength(1);
+    expect(result.glossaryTerms?.[0].tagFQN).toBe('GlossaryTerm.example');
+    expect(result.tags?.some((tag) => tag.tagFQN === 'Tier.Tier1')).toBe(false);
   });
 });
