@@ -51,4 +51,69 @@ describe('TestDefinitionFormModal', () => {
 
     expect(onClose).toHaveBeenCalled();
   });
+
+  it('does not render the dialog content when closed', () => {
+    render(
+      <TestDefinitionFormModal
+        open={false}
+        title="Add"
+        onClose={onClose}
+        onSubmit={onSubmit}>
+        <div data-testid="modal-child" />
+      </TestDefinitionFormModal>
+    );
+
+    expect(screen.queryByTestId('modal-child')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('create-btn')).not.toBeInTheDocument();
+  });
+
+  it('renders the subtitle when provided', () => {
+    render(
+      <TestDefinitionFormModal
+        open
+        subtitle="Configure your test definition"
+        title="Add"
+        onClose={onClose}
+        onSubmit={onSubmit}>
+        <div />
+      </TestDefinitionFormModal>
+    );
+
+    expect(
+      screen.getByText('Configure your test definition')
+    ).toBeInTheDocument();
+  });
+
+  it('uses a custom submit label when provided', () => {
+    render(
+      <TestDefinitionFormModal
+        open
+        submitLabel="Update"
+        title="Edit"
+        onClose={onClose}
+        onSubmit={onSubmit}>
+        <div />
+      </TestDefinitionFormModal>
+    );
+
+    expect(screen.getByTestId('create-btn')).toHaveTextContent('Update');
+  });
+
+  it('shows a loading state on the submit button while submitting', () => {
+    render(
+      <TestDefinitionFormModal
+        isSubmitting
+        open
+        title="Add"
+        onClose={onClose}
+        onSubmit={onSubmit}>
+        <div />
+      </TestDefinitionFormModal>
+    );
+
+    expect(screen.getByTestId('create-btn')).toHaveAttribute(
+      'data-loading',
+      'true'
+    );
+  });
 });

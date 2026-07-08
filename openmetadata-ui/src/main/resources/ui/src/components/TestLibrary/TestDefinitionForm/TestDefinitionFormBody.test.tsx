@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 import { HookForm } from '@openmetadata/ui-core-components';
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { FC } from 'react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { TestPlatform } from '../../../generated/tests/testDefinition';
@@ -29,7 +35,17 @@ const Harness: FC<{
   isEditMode?: boolean;
   isReadOnlyField?: boolean;
   defaultValues?: Partial<TestDefinitionFormValues>;
-}> = ({ isEditMode = false, isReadOnlyField = false, defaultValues }) => {
+  errorMessage?: string;
+  onErrorDismiss?: () => void;
+  onActiveFieldChange?: (fieldId: string) => void;
+}> = ({
+  isEditMode = false,
+  isReadOnlyField = false,
+  defaultValues,
+  errorMessage,
+  onErrorDismiss,
+  onActiveFieldChange,
+}) => {
   const form = useForm<TestDefinitionFormValues>({
     mode: 'onChange',
     defaultValues: defaultValues as TestDefinitionFormValues,
@@ -39,9 +55,12 @@ const Harness: FC<{
   return (
     <HookForm form={form} onSubmit={jest.fn()}>
       <TestDefinitionFormBody
+        errorMessage={errorMessage}
         form={form}
         isEditMode={isEditMode}
         isReadOnlyField={isReadOnlyField}
+        onActiveFieldChange={onActiveFieldChange}
+        onErrorDismiss={onErrorDismiss}
       />
     </HookForm>
   );
@@ -102,6 +121,34 @@ describe('TestDefinitionFormBody', () => {
       screen.queryByTestId('add-parameter-button')
     ).not.toBeInTheDocument();
     expect(screen.queryByTestId('remove-parameter-0')).not.toBeInTheDocument();
+  });
+
+  it('disables the display name and description inputs when read-only', () => {
+    render(<Harness isReadOnlyField />);
+
+    expect(
+      screen.getByTestId('display-name').querySelector('input')
+    ).toBeDisabled();
+    expect(
+      screen.getByTestId('description').querySelector('textarea')
+    ).toBeDisabled();
+  });
+
+  it('adds a parameter row when the Add Parameter control is clicked', () => {
+    render(<Harness />);
+
+    expect(screen.queryByTestId('parameter-name-0')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('add-parameter-button'));
+
+    expect(screen.getByTestId('parameter-name-0')).toBeInTheDocument();
+    expect(screen.getByTestId('remove-parameter-0')).toBeInTheDocument();
+  });
+
+  it('renders the inline error alert when an error message is provided', () => {
+    render(<Harness errorMessage="Something went wrong" />);
+
+    expect(screen.getByText('Something went wrong')).toBeInTheDocument();
   });
 
   describe('supportedDataTypes conditional required', () => {

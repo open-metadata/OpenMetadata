@@ -216,4 +216,26 @@ describe('TestDefinitionForm wrapper', () => {
 
     expect(patchTestDefinition).not.toHaveBeenCalled();
   });
+
+  it('keeps the form open (no onSuccess/onCancel) when create fails', async () => {
+    (createTestDefinition as jest.Mock).mockRejectedValueOnce(
+      new Error('boom')
+    );
+
+    render(
+      <TestDefinitionForm
+        open
+        variant="modal"
+        onCancel={mockOnCancel}
+        onSuccess={mockOnSuccess}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('create-btn'));
+
+    await waitFor(() => expect(createTestDefinition).toHaveBeenCalled());
+
+    expect(mockOnSuccess).not.toHaveBeenCalled();
+    expect(mockOnCancel).not.toHaveBeenCalled();
+  });
 });
