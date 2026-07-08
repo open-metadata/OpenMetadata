@@ -12,7 +12,6 @@
  */
 package org.openmetadata.service.resources.ai;
 
-import jakarta.json.JsonPatch;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.ArrayList;
@@ -22,8 +21,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.util.function.Consumer;
-import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.AuditReport;
@@ -122,26 +119,10 @@ public final class AuditPackGenerator {
       manifest.setControlCount(payload.controlCount);
       manifest.setComplianceRecordCount(payload.complianceRecordCount);
 
-      updateReport(
-          reportId,
-          AuditPackGenerator::isRunningOnCurrentServer,
-          current -> {
-            current.setStatus(AuditReportStatus.Completed);
-            current.setCompletedAt(System.currentTimeMillis());
-            current.setArtifacts(artifacts);
-            current.setManifest(manifest);
-          });
+      completeRunning(reportId, artifacts, manifest);
     } catch (Exception failure) {
       LOG.warn("Audit pack generation failed for {}", reportId, failure);
-      String message = failure.getMessage();
-      updateReport(
-          reportId,
-          AuditPackGenerator::isRunningOnCurrentServer,
-          current -> {
-            current.setStatus(AuditReportStatus.Failed);
-            current.setCompletedAt(System.currentTimeMillis());
-            current.setFailureReason(message);
-          });
+      failRunning(reportId, failureMessage(failure));
     }
   }
 
@@ -230,17 +211,12 @@ public final class AuditPackGenerator {
 
   private static void requeueAndSubmit(AuditReport report, long now) {
     if (report.getStatus() == AuditReportStatus.Running) {
-      boolean requeued =
-          updateReport(
-              report.getId(),
-              current ->
-                  current.getStatus() == AuditReportStatus.Running && isInterrupted(current, now),
-              current -> {
-                current.setStatus(AuditReportStatus.Queued);
-                current.setRunningOn(null);
-                current.setStartedAt(null);
-              });
-      if (!requeued) {
+      int requeued =
+          Entity.getCollectionDAO()
+              .auditReportDAO()
+              .requeueStaleRunning(
+                  report.getId().toString(), now - STALE_RUNNING_MILLIS, now, ADMIN_USER);
+      if (requeued == 0) {
         return;
       }
     }
@@ -275,43 +251,33 @@ public final class AuditPackGenerator {
     return (AuditReportRepository) Entity.getEntityRepository(Entity.AUDIT_REPORT);
   }
 
-  private static boolean updateReport(UUID reportId, Consumer<AuditReport> mutation) {
-    return updateReport(reportId, current -> true, mutation);
+  private static void completeRunning(
+      UUID reportId, List<AuditReportArtifact> artifacts, AuditReportManifest manifest) {
+    Entity.getCollectionDAO()
+        .auditReportDAO()
+        .completeRunning(
+            reportId.toString(),
+            currentServerId(),
+            System.currentTimeMillis(),
+            JsonUtils.pojoToJson(artifacts),
+            JsonUtils.pojoToJson(manifest),
+            ADMIN_USER);
   }
 
-  private static boolean updateReport(
-      UUID reportId, Predicate<AuditReport> precondition, Consumer<AuditReport> mutation) {
-    AuditReportRepository repository = auditReportRepository();
-    try {
-      AuditReport current =
-          repository.get(
-              null,
-              reportId,
-              repository.getFields("id,name,status,runningOn,startedAt,artifacts,manifest"));
-      if (isTerminal(current.getStatus()) || !precondition.test(current)) {
-        return false;
-      }
-      String originalJson = JsonUtils.pojoToJson(current);
-      mutation.accept(current);
-      String updatedJson = JsonUtils.pojoToJson(current);
-      JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-      repository.patch(null, reportId, ADMIN_USER, patch);
-      return true;
-    } catch (Exception updateError) {
-      LOG.warn("Failed to update audit report {}: {}", reportId, updateError.getMessage());
-      return false;
-    }
+  private static void failRunning(UUID reportId, String failureReason) {
+    Entity.getCollectionDAO()
+        .auditReportDAO()
+        .failRunning(
+            reportId.toString(),
+            currentServerId(),
+            System.currentTimeMillis(),
+            failureReason,
+            ADMIN_USER);
   }
 
-  private static boolean isRunningOnCurrentServer(AuditReport report) {
-    return report.getStatus() == AuditReportStatus.Running
-        && currentServerId().equals(report.getRunningOn());
-  }
-
-  private static boolean isTerminal(AuditReportStatus status) {
-    return status == AuditReportStatus.Cancelled
-        || status == AuditReportStatus.Completed
-        || status == AuditReportStatus.Failed;
+  private static String failureMessage(Exception failure) {
+    String message = failure.getMessage();
+    return message == null ? failure.getClass().getSimpleName() : message;
   }
 
   private static AuditPackPayload assemble(AuditReport report) {
