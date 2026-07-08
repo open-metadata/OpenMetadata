@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { ReactNode } from 'react';
+import { FC, ReactNode } from 'react';
 
 export interface ContextSimplePillarCardProps {
   title: string;
@@ -19,4 +19,5 @@ export interface ContextSimplePillarCardProps {
   emptyMessage?: string;
   dataTestId?: string;
   children: ReactNode;
+  icon: FC;
 }

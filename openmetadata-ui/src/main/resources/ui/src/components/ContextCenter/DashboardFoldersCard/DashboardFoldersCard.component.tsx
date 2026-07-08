@@ -84,7 +84,7 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
       title={t('label.folder-plural')}>
       <Tree
         aria-label={t('label.folder-plural')}
-        className="tw:w-full"
+        className="tw:w-full tw:gap-0 tw:p-5 tw:pt-0"
         expandedKeys={expandedKeys}
         onExpandedChange={handleExpandedChange}>
         {folders.map((folder) => {
@@ -107,13 +107,15 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                     height={16}
                     width={16}
                   />
-                  <Typography
-                    ellipsis
-                    className="tw:flex-1 tw:min-w-0 tw:text-secondary"
-                    size="text-xs"
-                    weight="medium">
-                    {getEntityName(folder)}
-                  </Typography>
+                  <div className='tw:max-w-80'>
+                    <Typography
+                      ellipsis
+                      className="tw:flex-1 tw:min-w-0 tw:text-secondary"
+                      size="text-xs"
+                      weight="medium">
+                      {getEntityName(folder)}
+                    </Typography>
+                  </div>
                  
                   </Box>
                   <Box align='center' gap={2}>

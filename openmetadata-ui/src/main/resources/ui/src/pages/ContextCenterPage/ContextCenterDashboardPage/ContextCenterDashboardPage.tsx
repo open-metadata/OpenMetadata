@@ -312,6 +312,7 @@ const ContextCenterDashboardPage: FC = () => {
     return recentlyViewed.map((page) => ({
       id: page.id,
       title: getEntityName(page),
+      pageType: page.pageType,
       time: page.timestamp ? getShortRelativeTime(page.timestamp) : '',
     }));
   }, [recentlyViewedQuickLinks]);
@@ -442,10 +443,19 @@ const ContextCenterDashboardPage: FC = () => {
             icon={File06}
             isEmpty={recentlyViewedItems.length === 0}
             title={t('label.recently-viewed')}>
-            <Box direction="col">
+            <Box className='tw:p-5 tw:pt-0' direction="col">
               {recentlyViewedItems.map((item) => (
                    <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                      <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                     {item.pageType === PageType.QUICK_LINK ? (
+                        <QuickLinkIcon
+                          className="tw:text-quaternary tw:shrink-0"
+                          height={13}
+                          width={13}
+                        />
+                      ) : (
+                        <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                      )}
+                            
                       <Box
                         align="center"
                         className="tw:min-w-0 tw:flex-1"
@@ -486,7 +496,7 @@ const ContextCenterDashboardPage: FC = () => {
             isEmpty={mostCitedItems.length === 0}
             isLoading={isMostCitedLoading}
             title={t('label.most-cited')}>
-            <Box direction="col">
+            <Box className='tw:p-5 tw:pt-0'  direction="col">
               {mostCitedItems.map((item) => (
                 <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
                       <Sun className="tw:size-3 tw:text-quaternary tw:shrink-0" />
@@ -504,8 +514,7 @@ const ContextCenterDashboardPage: FC = () => {
                             {item.title}
                           </Typography>
                         </div>
-
-                        <div className="tw:max-w-20">
+                        <div>
                           <Typography
                             ellipsis
                             className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"

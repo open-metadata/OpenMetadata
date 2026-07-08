@@ -31,9 +31,9 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
 }) => {
   return (
     <Card
-      className="tw:h-full tw:flex tw:flex-col tw:p-5"
+      className="tw:h-full tw:flex tw:flex-col"
       data-testid={dataTestId}>
-         <Box align="center" className="tw:mb-3.5" gap={3}>
+         <Box align="center" className="tw:mb-3.5 tw:p-5 tw:pb-0" gap={3}>
                 <FeaturedIcon
                   className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
                   color="brand"
