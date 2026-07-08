@@ -62,7 +62,10 @@ function ParameterTooltipText({
   );
 }
 
-const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
+const TestCaseResultTab = ({
+  showSidePanel,
+  editVariant = 'drawer',
+}: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
@@ -322,7 +325,7 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
               open={isParameterEdit}
               showDocPanel={false}
               testCase={testCaseData}
-              variant="drawer"
+              variant={editVariant}
               onClose={handleCancelParameter}
               onUpdate={setTestCase}
             />
