@@ -85,6 +85,21 @@ def test_totals_hook_called_exactly_once_and_only_for_real_nodes():
     assert ("Database", 0, 7) in source.progress_tracking.registry.global_counters()
 
 
+class _RaisingTotalsSource(_FakeSource):
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        self.declared += 1
+        raise RuntimeError("totals query blew up")
+
+
+def test_totals_hook_failure_does_not_abort_the_walk():
+    source = _RaisingTotalsSource()
+    tracker = TopologyProgressTracker(source)
+    handle = tracker.for_node(_database_node(source), is_leaf=False)
+    assert isinstance(handle, NodeProgress)  # walk continues, no exception propagates
+    tracker.for_node(_table_node(source), is_leaf=True)
+    assert source.declared == 1  # marked declared up front, so it is not retried per node
+
+
 def test_leaf_handle_counts_open_and_advance():
     source = _FakeSource()
     tracker = TopologyProgressTracker(source)

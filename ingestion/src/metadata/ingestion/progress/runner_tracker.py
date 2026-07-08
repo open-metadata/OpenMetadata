@@ -16,6 +16,7 @@ structural service root, or the node has no typed stage, the handle is a
 shared no-op — the walk code carries zero progress conditionals.
 """
 
+import traceback
 from typing import TYPE_CHECKING, Any, Dict, List, Optional, Set  # noqa: UP035
 
 from metadata.ingestion.models.topology import (
@@ -26,6 +27,9 @@ from metadata.ingestion.models.topology import (
 )
 from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.progress.modes import ProgressMode, TotalsDeclarer
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 if TYPE_CHECKING:
     from metadata.ingestion.progress.registry import ProgressRegistry
@@ -183,9 +187,17 @@ class TopologyProgressTracker:
         return result
 
     def _declare_totals_once(self) -> None:
+        """Run the connector's totals hook once. Totals are a progress-only
+        enhancement (they drive % and ETA), so a failure here — e.g. a totals
+        query raising — must not abort the ingestion walk: warn and continue
+        with denominator-less progress."""
         if not self._totals_declared:
             self._totals_declared = True
-            self._source.declare_progress_totals(TotalsDeclarer(self.registry))
+            try:
+                self._source.declare_progress_totals(TotalsDeclarer(self.registry))
+            except Exception as exc:
+                logger.warning("Progress totals declaration failed; continuing without totals: %s", exc)
+                logger.debug(traceback.format_exc())
 
     def current_path(self, entity_type_name: Optional[str] = None) -> List[str]:  # noqa: UP006,UP045
         """Ancestor container labels from the node's primary-stage ``consumer``
