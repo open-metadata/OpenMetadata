@@ -17,6 +17,7 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,6 +25,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.openmetadata.mcp.util.PageCursor;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -378,7 +380,7 @@ class SearchMetadataToolTest {
   }
 
   @Test
-  void trimMessageUsesAbsoluteNextOffsetWhenPaging() {
+  void trimMessageMentionsNextCursorWhenPaging() {
     List<Map<String, Object>> hits = new ArrayList<>();
     for (int i = 0; i < 5000; i++) {
       hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
@@ -399,8 +401,33 @@ class SearchMetadataToolTest {
     assertEquals(true, result.get("hasMore"));
     String message = (String) result.get("message");
     assertTrue(
-        message.contains("'from'=" + (from + returnedCount)),
-        "next-page hint must be absolute (from + returnedCount): " + message);
+        message.contains("nextCursor"), "trim message should reference nextCursor: " + message);
+  }
+
+  @Test
+  void nextCursorEncodesAbsoluteOffsetAfterBudgetTrim() {
+    List<Map<String, Object>> hits = new ArrayList<>();
+    for (int i = 0; i < 5000; i++) {
+      hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
+    }
+    Map<String, Object> hitsContainer = new HashMap<>();
+    hitsContainer.put("hits", hits);
+    hitsContainer.put("total", Map.of("value", hits.size()));
+    Map<String, Object> searchResponse = new HashMap<>();
+    searchResponse.put("hits", hitsContainer);
+
+    int from = 20;
+    Map<String, Object> result =
+        SearchMetadataTool.buildEnhancedSearchResponse(
+            searchResponse, "tables", 5000, from, List.of(), false, 0);
+
+    int returnedCount = (int) result.get("returnedCount");
+    assertEquals(true, result.get("hasMore"));
+    assertEquals(5000, ((Number) result.get("total")).intValue());
+    Optional<PageCursor.Cursor> decoded = PageCursor.decode((String) result.get("nextCursor"));
+    assertTrue(decoded.isPresent());
+    assertTrue(decoded.get().isOffset());
+    assertEquals(from + returnedCount, decoded.get().offset());
   }
 
   private Map<String, Object> buildHit(double score, String fqn) {
