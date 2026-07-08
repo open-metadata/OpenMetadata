@@ -67,6 +67,7 @@ import './TestCaseFormV1.less';
 import {
   buildEditDefaults,
   buildTestSuitePipelinePayload,
+  normalizeFormValuesForPayload,
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
 
@@ -180,7 +181,17 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         editDefinition ?? formContext?.selectedDefinition;
       const isComputeRowCountFieldVisible =
         resolvedDefinition?.supportsRowLevelPassedFailed ?? false;
-      const formValue = values as unknown as TestCaseFormType;
+      // Edit prefill (`buildEditDefaults`) stores select-type params and
+      // `dimensionColumns` as `FormSelectItem` shapes so the fields display
+      // correctly, exactly like the create path's raw RHF values. Both
+      // submit paths MUST run through the same normalizer before building
+      // their payload/patch, or this one emits objects/dotted keys instead
+      // of ids/paths — see `transformTestCaseFormData` (create).
+      const normalizedValues = normalizeFormValuesForPayload(
+        values,
+        resolvedDefinition
+      );
+      const formValue = normalizedValues as unknown as TestCaseFormType;
       const jsonPatch = createUpdatedTestCasePatch({
         testCase: testCase as TestCase,
         value: formValue,

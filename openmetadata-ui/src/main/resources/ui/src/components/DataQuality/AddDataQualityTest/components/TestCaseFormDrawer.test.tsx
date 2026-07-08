@@ -22,6 +22,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
+import { applyPatch, type Operation } from 'fast-json-patch';
 import { useState } from 'react';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestCase } from '../../../../generated/tests/testCase';
@@ -97,6 +98,11 @@ jest.mock('../../../../utils/ToastUtils', () => ({
 }));
 
 jest.mock('./transformTestCaseFormData', () => ({
+  // `normalizeFormValuesForPayload` is the shared normalizer `handleEditSubmit`
+  // (the code under test in the regression suite below) calls directly; it
+  // must stay real so the edit-submit patch reflects genuine normalization,
+  // not a stub.
+  ...jest.requireActual('./transformTestCaseFormData'),
   transformTestCaseFormData: jest
     .fn()
     .mockReturnValue({ name: 'transformed-test-case' }),
@@ -870,6 +876,139 @@ describe('edit submit uses the directly-fetched definition (Finding 1 regression
     // `{ value: string }[]` form-field shape.
     expect(typeof paramsValueOp?.value).toBe('string');
     expect(JSON.parse(paramsValueOp?.value as string)).toEqual(['c', 'd']);
+  });
+});
+
+describe('edit submit normalizes FormSelectItem-shaped prefill values (patch corruption regression)', () => {
+  // createUpdatedTestCasePatch is mocked module-wide above; pull the real
+  // implementation so the patch actually reflects whatever shape
+  // handleEditSubmit hands it — a raw FormSelectItem/dotted-key/object-array
+  // would otherwise be masked by the jest.fn() mock.
+  const { createUpdatedTestCasePatch: realCreateUpdatedTestCasePatch } =
+    jest.requireActual('../../../../utils/DataQuality/DataQualityPureUtils');
+
+  const mockGetTestDefinitionById = getTestDefinitionById as jest.Mock;
+  const mockUpdateTestCaseById = updateTestCaseById as jest.Mock;
+  const mockCreateUpdatedTestCasePatch =
+    createUpdatedTestCasePatch as jest.Mock;
+  const mockBuildEditDefaults = buildEditDefaults as jest.Mock;
+
+  // A `column` param is classified 'select' by `isSelectParam` (param.name
+  // === 'column'), so edit prefill stores it as a FormSelectItem — see
+  // `buildEditParamEntry` in transformTestCaseFormData.ts.
+  const selectParamDefinition = {
+    id: 'def-select',
+    name: 'columnValuesToBeInSet',
+    fullyQualifiedName: 'columnValuesToBeInSet',
+    supportsRowLevelPassedFailed: false,
+    parameterDefinition: [
+      { name: 'column', dataType: TestDataType.String },
+      { name: 'partition.interval', dataType: TestDataType.String },
+      { name: 'allowedValues', dataType: TestDataType.Array },
+    ],
+  } as TestDefinition;
+
+  const selectParamTestCase = {
+    id: 'test-case-id',
+    name: 'existing-test-case',
+    displayName: 'Existing Test Case',
+    entityLink: '<#E::table::service.db.schema.table::columns::col_x>',
+    testDefinition: {
+      id: 'def-select',
+      fullyQualifiedName: 'columnValuesToBeInSet',
+    },
+    parameterValues: [
+      { name: 'column', value: 'col_x' },
+      { name: 'partition.interval', value: '15' },
+      { name: 'allowedValues', value: JSON.stringify(['a', 'b']) },
+    ],
+    dimensionColumns: ['col_b'],
+    tags: [],
+  } as unknown as TestCase;
+
+  beforeEach(() => {
+    mockGetTestDefinitionById.mockResolvedValue(selectParamDefinition);
+    mockUpdateTestCaseById.mockResolvedValue(selectParamTestCase);
+    mockCreateUpdatedTestCasePatch.mockImplementation(
+      realCreateUpdatedTestCasePatch
+    );
+    // Mirrors the real edit-prefill shape (`buildEditDefaults` /
+    // `buildEditParamEntry`): a select param prefills as a FormSelectItem, a
+    // dotted param name prefills sanitized (`___`), and `dimensionColumns`
+    // prefills as FormSelectItem[] — all exactly as they'd render in the UI.
+    mockBuildEditDefaults.mockReturnValue({
+      testName: selectParamTestCase.name,
+      displayName: selectParamTestCase.displayName,
+      params: {
+        column: { id: 'col_x', label: 'col_x' },
+        partition___interval: '30',
+        allowedValues: [
+          { value: { id: 'a', label: 'a' } },
+          { value: { id: 'b', label: 'b' } },
+        ],
+      },
+      dimensionColumns: [{ id: 'col_a', label: 'col_a' }],
+    });
+  });
+
+  it('emits ids/dotted-keys/string[] in the patch, not raw FormSelectItem shapes', async () => {
+    renderDrawer({ testCase: selectParamTestCase });
+
+    await waitFor(() => {
+      expect(mockGetTestDefinitionById).toHaveBeenCalledWith('def-select');
+    });
+
+    const submitBtn = await screen.findByTestId('create-btn');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(mockUpdateTestCaseById).toHaveBeenCalled();
+    });
+
+    const [, patch] = mockUpdateTestCaseById.mock.calls[0] as [
+      string,
+      Operation[]
+    ];
+
+    // Reconstruct the patched entity instead of asserting on individual ops
+    // directly — fast-json-patch may emit either a whole-array replace or
+    // per-index replaces depending on how many elements changed, and the
+    // assertion should hold either way.
+    const patched = applyPatch(structuredClone(selectParamTestCase), patch)
+      .newDocument as unknown as TestCase & {
+      parameterValues: Array<{ name: string; value: string }>;
+    };
+
+    const columnParam = patched.parameterValues.find(
+      (p) => p.name === 'column'
+    );
+
+    // Must be the raw string id, not `{ id: 'col_x', label: 'col_x' }`.
+    expect(columnParam?.value).toBe('col_x');
+
+    const dottedParam = patched.parameterValues.find(
+      (p) => p.name === 'partition.interval'
+    );
+
+    // The sanitized `___` key must be restored to its dotted form.
+    expect(dottedParam).toBeDefined();
+    expect(dottedParam?.value).toBe('30');
+    expect(
+      patched.parameterValues.some((p) => p.name === 'partition___interval')
+    ).toBe(false);
+
+    const allowedValuesParam = patched.parameterValues.find(
+      (p) => p.name === 'allowedValues'
+    );
+
+    // Array param values must unwrap the nested FormSelectItem to its id.
+    expect(JSON.parse(allowedValuesParam?.value as string)).toEqual(['a', 'b']);
+
+    // dimensionColumns must be a plain string[], not FormSelectItem[].
+    expect(patched.dimensionColumns).toEqual(['col_a']);
   });
 });
 

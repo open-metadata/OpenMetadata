@@ -106,6 +106,34 @@ const normalizeTagLabels = (values: unknown[] | undefined): TagLabel[] => {
 };
 
 /**
+ * Normalizes raw RHF `FormValues` into the flat, wire-shaped values both the
+ * create (`transformTestCaseFormData`) and edit (`TestCaseFormDrawer.
+ * handleEditSubmit`) submit paths need before building a payload/patch:
+ * `params` (dotted names restored, `FormSelectItem`/`{value:FormSelectItem}[]`
+ * unwrapped to ids), `dimensionColumns` (`FormSelectItem[]` -> `string[]`),
+ * and `tags`/`glossaryTerms` (collapsed to `TagLabel[]`).
+ *
+ * Edit-mode prefill (`buildEditDefaults`) stores select-type params and
+ * `dimensionColumns` as `FormSelectItem` shapes so the fields display
+ * correctly; both submit paths MUST run values through this single function
+ * before reading them, or the edit patch will emit raw objects/dotted keys
+ * instead of the ids/paths the API expects.
+ */
+export const normalizeFormValuesForPayload = (
+  values: FormValues,
+  selectedDefinition?: TestDefinition
+): FormValues => ({
+  ...values,
+  params: normalizeParamsForPayload(
+    values.params,
+    selectedDefinition
+  ) as FormValues['params'],
+  dimensionColumns: unwrapSelectValues(values.dimensionColumns),
+  tags: normalizeTagLabels(values.tags),
+  glossaryTerms: normalizeTagLabels(values.glossaryTerms),
+});
+
+/**
  * Builds a CreateTestCase payload from form values and resolved context.
  * Extracted from TestCaseFormV1.createTestCaseObj — no React, no network calls.
  */
@@ -130,10 +158,10 @@ export const transformTestCaseFormData = (
     isColumnLevel
   );
 
-  const normalizedValues = {
-    ...values,
-    params: normalizeParamsForPayload(values.params, ctx.selectedDefinition),
-  };
+  const normalizedValues = normalizeFormValuesForPayload(
+    values,
+    ctx.selectedDefinition
+  );
 
   return {
     name,
@@ -143,7 +171,7 @@ export const transformTestCaseFormData = (
     testDefinition: unwrapSelectValue(values.testTypeId) ?? '',
     dimensionColumns:
       values.testLevel === TestLevel.COLUMN_DIMENSION
-        ? unwrapSelectValues(values.dimensionColumns)
+        ? normalizedValues.dimensionColumns
         : undefined,
     topDimensions:
       values.testLevel === TestLevel.COLUMN_DIMENSION
@@ -151,8 +179,8 @@ export const transformTestCaseFormData = (
         : undefined,
     description: isEmpty(values.description) ? undefined : values.description,
     tags: [
-      ...normalizeTagLabels(values.tags),
-      ...normalizeTagLabels(values.glossaryTerms),
+      ...(normalizedValues.tags ?? []),
+      ...(normalizedValues.glossaryTerms ?? []),
     ],
     ...testCaseClassBase.getCreateTestCaseObject(
       normalizedValues as TestCaseFormType,
