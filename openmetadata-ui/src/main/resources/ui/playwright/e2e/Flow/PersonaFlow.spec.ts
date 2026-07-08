@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DELETE_TERM } from '../../constant/common';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
 import { expect, test } from '../../support/fixtures/userPages';
@@ -275,25 +274,11 @@ test.describe.serial('Persona operations', () => {
 
     await page.click('[data-testid="delete-button-title"]');
 
-    await expect(page.locator('.ant-modal-header')).toContainText(
-      PERSONA_DETAILS.displayName
-    );
-
-    await page.click(`[data-testid="hard-delete-option"]`);
-
-    await expect(page.locator('[data-testid="confirm-button"]')).toBeDisabled();
-
-    await page
-      .locator('[data-testid="confirmation-text-input"]')
-      .fill(DELETE_TERM);
+    await page.click(`[data-testid="hard-delete"]`);
 
     const deleteResponse = page.waitForResponse(
       `/api/v1/personas/*?hardDelete=true&recursive=false`
     );
-
-    await expect(
-      page.locator('[data-testid="confirm-button"]')
-    ).not.toBeDisabled();
 
     await page.click('[data-testid="confirm-button"]');
     await deleteResponse;
