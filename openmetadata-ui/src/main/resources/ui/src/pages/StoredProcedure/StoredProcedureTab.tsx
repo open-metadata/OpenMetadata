@@ -57,7 +57,7 @@ const StoredProcedureTab = () => {
   } = usePaging();
 
   const [storedProcedure, setStoredProcedure] = useState<ServicePageData[]>([]);
-  const [isLoading, setIsLoading] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
   const { fqn: decodedDatabaseSchemaFQN } = useFqn();
 
   useEffect(() => {
