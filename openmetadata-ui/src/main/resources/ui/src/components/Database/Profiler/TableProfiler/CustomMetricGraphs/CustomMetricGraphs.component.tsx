@@ -52,7 +52,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import DeleteWidgetModal from '../../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../../../common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
@@ -308,7 +308,7 @@ const CustomMetricGraphs = ({
           </div>
         );
       })}
-      <DeleteWidgetModal
+      <DeleteEntityModal
         allowSoftDelete={false}
         entityName={selectedMetrics?.name ?? t('label.custom-metric')}
         entityType={EntityType.CUSTOM_METRIC}
