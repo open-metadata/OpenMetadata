@@ -998,18 +998,6 @@ def format_entity_reference(entity: Any, entity_type: Optional[str] = None) -> D
     }
 
 
-DBT_AGG_TO_METRIC_TYPE = {
-    "sum": MetricType.SUM,
-    "min": MetricType.MIN,
-    "max": MetricType.MAX,
-    "average": MetricType.AVERAGE,
-    "count": MetricType.COUNT,
-    "count_distinct": MetricType.COUNT,
-    "median": MetricType.MEDIAN,
-    "percentile": MetricType.OTHER,
-    "sum_boolean": MetricType.SUM,
-}
-
 DBT_METRIC_TYPE_MAP = {
     "simple": MetricType.SIMPLE,
     "ratio": MetricType.RATIO,
@@ -1021,18 +1009,6 @@ DBT_METRIC_TYPE_MAP = {
 
 def map_dbt_metric_type(dbt_type: str) -> MetricType | None:
     return DBT_METRIC_TYPE_MAP.get(dbt_type)
-
-
-def map_dbt_agg_to_metric_type(agg: str) -> MetricType | None:
-    return DBT_AGG_TO_METRIC_TYPE.get(agg)
-
-
-def find_semantic_model_for_measure(semantic_models: dict[str, Any], measure_name: str) -> Any | None:
-    for sm in semantic_models.values():
-        for measure in getattr(sm, "measures", None) or []:
-            if measure.name == measure_name:
-                return sm
-    return None
 
 
 def find_semantic_model_by_unique_id(semantic_models: dict[str, Any], unique_id: str) -> Any | None:
