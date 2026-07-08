@@ -146,6 +146,10 @@ public class S3AssetService implements AssetService {
 
             PutObjectRequest putRequest = putBuilder.build();
             if (asset.getSize() == null) {
+              LOG.warn(
+                  "Asset {} uploaded without a size; buffering the full stream in memory. "
+                      + "Provide Asset.size for large uploads to avoid heap pressure.",
+                  asset.getId());
               byte[] bytes = IOUtils.toByteArray(content);
               s3Client.putObject(putRequest, RequestBody.fromBytes(bytes));
             } else {

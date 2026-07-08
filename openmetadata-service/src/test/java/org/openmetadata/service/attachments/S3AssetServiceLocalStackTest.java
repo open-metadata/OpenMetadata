@@ -20,6 +20,7 @@ import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.attachments.Asset;
@@ -52,11 +53,15 @@ class S3AssetServiceLocalStackTest {
 
   private S3AssetService assetService;
 
-  @BeforeEach
-  void setUp() {
+  @BeforeAll
+  static void createBucket() {
     try (S3Client bootstrap = newRawClient()) {
       bootstrap.createBucket(builder -> builder.bucket(BUCKET_NAME));
     }
+  }
+
+  @BeforeEach
+  void setUp() {
     assetService = new S3AssetService(localStackConfig());
   }
 
