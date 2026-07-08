@@ -66,10 +66,19 @@ class AuditPackGeneratorTest {
   }
 
   @Test
+  void signatureOf_differsByRequester() {
+    UUID domainId = UUID.randomUUID();
+    AuditReport first = domainReport(domainId).withUpdatedBy("alice");
+    AuditReport second = domainReport(domainId).withUpdatedBy("bob");
+
+    assertNotEquals(AuditPackGenerator.signatureOf(first), AuditPackGenerator.signatureOf(second));
+  }
+
+  @Test
   void stampRequestSignature_isDeterministicAndRequestSpecific() {
     UUID domainId = UUID.randomUUID();
-    AuditReport first = domainReport(domainId);
-    AuditReport second = domainReport(domainId);
+    AuditReport first = domainReport(domainId).withUpdatedBy("alice");
+    AuditReport second = domainReport(domainId).withUpdatedBy("alice");
     AuditPackGenerator.stampRequestSignature(first);
     AuditPackGenerator.stampRequestSignature(second);
     assertNotNull(first.getRequestSignature());
@@ -78,6 +87,10 @@ class AuditPackGeneratorTest {
     AuditReport different = domainReport(UUID.randomUUID());
     AuditPackGenerator.stampRequestSignature(different);
     assertNotEquals(first.getRequestSignature(), different.getRequestSignature());
+
+    AuditReport differentRequester = domainReport(domainId).withUpdatedBy("bob");
+    AuditPackGenerator.stampRequestSignature(differentRequester);
+    assertNotEquals(first.getRequestSignature(), differentRequester.getRequestSignature());
   }
 
   private AuditReport report(AuditReportStatus status, Long startedAt) {

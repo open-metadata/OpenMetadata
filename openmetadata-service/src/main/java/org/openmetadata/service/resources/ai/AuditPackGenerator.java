@@ -23,6 +23,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.UUID;
 import java.util.function.Consumer;
+import java.util.function.Predicate;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.ai.AuditReport;
@@ -123,6 +124,7 @@ public final class AuditPackGenerator {
 
       updateReport(
           reportId,
+          AuditPackGenerator::isRunningOnCurrentServer,
           current -> {
             current.setStatus(AuditReportStatus.Completed);
             current.setCompletedAt(System.currentTimeMillis());
@@ -134,6 +136,7 @@ public final class AuditPackGenerator {
       String message = failure.getMessage();
       updateReport(
           reportId,
+          AuditPackGenerator::isRunningOnCurrentServer,
           current -> {
             current.setStatus(AuditReportStatus.Failed);
             current.setCompletedAt(System.currentTimeMillis());
@@ -153,7 +156,7 @@ public final class AuditPackGenerator {
       long now = System.currentTimeMillis();
       List<AuditReport> interrupted = collectInterruptedReports(now);
       for (AuditReport report : interrupted) {
-        requeueAndSubmit(report);
+        requeueAndSubmit(report, now);
       }
       if (!interrupted.isEmpty()) {
         LOG.info(
@@ -225,14 +228,21 @@ public final class AuditPackGenerator {
     return result;
   }
 
-  private static void requeueAndSubmit(AuditReport report) {
+  private static void requeueAndSubmit(AuditReport report, long now) {
     if (report.getStatus() == AuditReportStatus.Running) {
-      updateReport(
-          report.getId(),
-          current -> {
-            current.setStatus(AuditReportStatus.Queued);
-            current.setRunningOn(null);
-          });
+      boolean requeued =
+          updateReport(
+              report.getId(),
+              current ->
+                  current.getStatus() == AuditReportStatus.Running && isInterrupted(current, now),
+              current -> {
+                current.setStatus(AuditReportStatus.Queued);
+                current.setRunningOn(null);
+                current.setStartedAt(null);
+              });
+      if (!requeued) {
+        return;
+      }
     }
     submit(report.getId());
   }
@@ -245,7 +255,8 @@ public final class AuditPackGenerator {
         refId(report.getFramework()),
         enumValue(report.getFormat()),
         String.valueOf(report.getAsOfDate()),
-        String.valueOf(Boolean.TRUE.equals(report.getIncludeRedacted())));
+        String.valueOf(Boolean.TRUE.equals(report.getIncludeRedacted())),
+        report.getUpdatedBy() == null ? "" : report.getUpdatedBy());
   }
 
   private static String enumValue(Object enumConstant) {
@@ -264,19 +275,43 @@ public final class AuditPackGenerator {
     return (AuditReportRepository) Entity.getEntityRepository(Entity.AUDIT_REPORT);
   }
 
-  private static void updateReport(UUID reportId, Consumer<AuditReport> mutation) {
+  private static boolean updateReport(UUID reportId, Consumer<AuditReport> mutation) {
+    return updateReport(reportId, current -> true, mutation);
+  }
+
+  private static boolean updateReport(
+      UUID reportId, Predicate<AuditReport> precondition, Consumer<AuditReport> mutation) {
     AuditReportRepository repository = auditReportRepository();
     try {
       AuditReport current =
-          repository.get(null, reportId, repository.getFields("id,name,artifacts,manifest"));
+          repository.get(
+              null,
+              reportId,
+              repository.getFields("id,name,status,runningOn,startedAt,artifacts,manifest"));
+      if (isTerminal(current.getStatus()) || !precondition.test(current)) {
+        return false;
+      }
       String originalJson = JsonUtils.pojoToJson(current);
       mutation.accept(current);
       String updatedJson = JsonUtils.pojoToJson(current);
       JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
       repository.patch(null, reportId, ADMIN_USER, patch);
+      return true;
     } catch (Exception updateError) {
       LOG.warn("Failed to update audit report {}: {}", reportId, updateError.getMessage());
+      return false;
     }
+  }
+
+  private static boolean isRunningOnCurrentServer(AuditReport report) {
+    return report.getStatus() == AuditReportStatus.Running
+        && currentServerId().equals(report.getRunningOn());
+  }
+
+  private static boolean isTerminal(AuditReportStatus status) {
+    return status == AuditReportStatus.Cancelled
+        || status == AuditReportStatus.Completed
+        || status == AuditReportStatus.Failed;
   }
 
   private static AuditPackPayload assemble(AuditReport report) {

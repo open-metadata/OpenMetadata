@@ -432,8 +432,12 @@ public class AIGovernanceResource {
       }
     }
     if (STATUS_APPROVED.equals(newStatus)) {
-      governance.setApprovedBy(user);
-      governance.setApprovedAt(now);
+      if (governance.getApprovedBy() == null) {
+        governance.setApprovedBy(user);
+      }
+      if (governance.getApprovedAt() == null) {
+        governance.setApprovedAt(now);
+      }
     }
     if (comment != null && !comment.isBlank()) {
       governance.setApprovalComments(comment);
