@@ -40,14 +40,15 @@ public final class VectorPagingContract {
     return from;
   }
 
+  // hasMore is preferred over totalHits because the vector service groups chunks by parent entity;
+  // totalHits reflects raw ES hits (multiple chunks per parent) and overstates paginable results.
   static boolean hasMoreInIndex(VectorSearchResponse response, int from, int rawCount) {
-    if (response.getTotalHits() != null) {
-      return (long) from + rawCount < response.getTotalHits();
-    }
     if (response.getHasMore() != null) {
       return response.getHasMore();
     }
-    // No authoritative signal; assume no more rather than risk advertising a phantom page.
+    if (response.getTotalHits() != null) {
+      return (long) from + rawCount < response.getTotalHits();
+    }
     return false;
   }
 }

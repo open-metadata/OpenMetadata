@@ -380,7 +380,7 @@ class SearchMetadataToolTest {
   }
 
   @Test
-  void trimMessageUsesAbsoluteNextOffsetWhenPaging() {
+  void trimMessageMentionsNextCursorWhenPaging() {
     List<Map<String, Object>> hits = new ArrayList<>();
     for (int i = 0; i < 5000; i++) {
       hits.add(buildHit(1.0, "svc.db.schema.table_" + i));
@@ -401,8 +401,7 @@ class SearchMetadataToolTest {
     assertEquals(true, result.get("hasMore"));
     String message = (String) result.get("message");
     assertTrue(
-        message.contains("'from'=" + (from + returnedCount)),
-        "next-page hint must be absolute (from + returnedCount): " + message);
+        message.contains("nextCursor"), "trim message should reference nextCursor: " + message);
   }
 
   @Test

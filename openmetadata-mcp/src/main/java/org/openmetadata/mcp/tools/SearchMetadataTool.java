@@ -392,7 +392,7 @@ public class SearchMetadataTool implements McpTool {
       result.put("hasMore", true);
     }
 
-    fitResultsToBudget(result, cleanedResults, totalResults, from, query);
+    fitResultsToBudget(result, cleanedResults, totalResults, query);
     attachPagingContract(result, from, totalResults);
 
     return result;
@@ -424,7 +424,6 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> result,
       List<Map<String, Object>> cleanedResults,
       long totalResults,
-      int from,
       String query) {
     long overhead = overheadWithoutResults(result);
     int fit = ResponseBudget.fitCount(cleanedResults, overhead);
@@ -442,8 +441,8 @@ public class SearchMetadataTool implements McpTool {
           "message",
           String.format(
               "Returning %d of %d results to stay within the response size budget. "
-                  + "Fetch more with 'from'=%d, or narrow the query with a service, schema, or name.",
-              trimmed.size(), totalResults, from + trimmed.size()));
+                  + "Pass 'nextCursor' to fetch the next page, or narrow the query.",
+              trimmed.size(), totalResults));
     }
   }
 
