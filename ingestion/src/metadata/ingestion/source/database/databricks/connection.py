@@ -85,6 +85,11 @@ DEFAULT_CATALOG = "main"
 SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "sys"})
 
 
+def _normalize_host_port(host_port: str) -> str:
+    """Strip a pasted URL scheme and path, leaving ``host:port``."""
+    return host_port.split("://", 1)[-1].split("/", 1)[0]
+
+
 # databricks-sql/thrift reports failures as message tokens, not numeric codes, so
 # rules key on tokens; specific ones precede broad ones (first match wins).
 DATABRICKS_ERRORS = ErrorPack(
@@ -179,8 +184,9 @@ class DatabricksEngineWrapper:
     def get_schemas(self, schema_name: Optional[str] = None):  # noqa: UP045
         """Get schemas and cache them"""
         if schema_name is not None:
-            with self.engine.connect() as connection:
-                connection.execute(text(f"USE CATALOG `{self.first_catalog}`"))
+            if self.first_catalog:
+                with self.engine.connect() as connection:
+                    connection.execute(text(f"USE CATALOG `{self.first_catalog}`"))
             self.first_schema = schema_name
             return [schema_name]
         if self.schemas is None:
@@ -199,7 +205,7 @@ class DatabricksEngineWrapper:
         """Get tables using the cached first schema"""
         if self.first_schema is None:
             self.get_schemas()
-        if self.first_schema:
+        if self.first_catalog and self.first_schema:
             with self.engine.connect() as connection:
                 tables = connection.execute(text(f"SHOW TABLES IN `{self.first_catalog}`.`{self.first_schema}`"))
                 return tables.fetchmany(DEFAULT_SAMPLE_ROWS)
@@ -209,7 +215,7 @@ class DatabricksEngineWrapper:
         """Get views using the cached first schema"""
         if self.first_schema is None:
             self.get_schemas()
-        if self.first_schema:
+        if self.first_catalog and self.first_schema:
             with self.engine.connect() as connection:
                 views = connection.execute(text(f"SHOW VIEWS IN `{self.first_catalog}`.`{self.first_schema}`"))
                 return views.fetchmany(DEFAULT_SAMPLE_ROWS)
@@ -231,7 +237,7 @@ class DatabricksEngineWrapper:
 
 def get_connection_url(connection: DatabricksConnectionConfig) -> str:
     scheme = connection.scheme.value if connection.scheme else "databricks"
-    url = f"{scheme}://{connection.hostPort}"
+    url = f"{scheme}://{_normalize_host_port(connection.hostPort)}"
     if connection.catalog:
         url = f"{url}?catalog={quote_plus(connection.catalog)}"
     return url
@@ -283,7 +289,7 @@ class DatabricksChecks:
         return self._engine_wrapper.first_catalog or self.service_connection.catalog or DEFAULT_CATALOG
 
     def _probe_target(self) -> tuple[str, int]:
-        host_port = self.service_connection.hostPort
+        host_port = _normalize_host_port(self.service_connection.hostPort)
         host, _, port = host_port.rpartition(":")
         if host and port.isdigit():
             return host, int(port)

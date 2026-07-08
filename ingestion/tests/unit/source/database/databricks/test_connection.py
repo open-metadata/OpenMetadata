@@ -278,3 +278,48 @@ def test_get_databases_failure_reports_the_attempted_command_as_evidence():
     ):
         checks.get_databases()
     assert exc.value.evidence.command == "SHOW CATALOGS"
+
+
+def test_probe_target_strips_a_pasted_url_scheme_and_path():
+    # A pasted workspace URL must not reach the socket probe as the host, or the
+    # gate fails with a misleading DNS error before the driver.
+    config = _config()
+    config.hostPort = "https://my-workspace.cloud.databricks.com:443/sql/1.0/warehouses/x"
+    checks = DatabricksChecks(client=MagicMock(), service_connection=config)
+    assert checks._probe_target() == ("my-workspace.cloud.databricks.com", 443)
+
+
+def test_connection_url_strips_a_pasted_url_scheme():
+    from metadata.ingestion.source.database.databricks.connection import get_connection_url
+
+    config = _config()
+    config.hostPort = "https://my-workspace.cloud.databricks.com:443"
+    url = get_connection_url(config)
+    assert "https://" not in url
+    assert "my-workspace.cloud.databricks.com:443" in url
+
+
+def test_schema_scoped_get_schemas_skips_use_catalog_when_catalog_unresolved():
+    # first_catalog None (GetDatabases failed/skipped) must not emit USE CATALOG `None`.
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksEngineWrapper,
+    )
+
+    engine = MagicMock()
+    wrapper = DatabricksEngineWrapper(engine)
+    wrapper.first_catalog = None
+    assert wrapper.get_schemas(schema_name="my_schema") == ["my_schema"]
+    engine.connect.assert_not_called()
+
+
+def test_get_tables_returns_empty_when_catalog_unresolved():
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksEngineWrapper,
+    )
+
+    engine = MagicMock()
+    wrapper = DatabricksEngineWrapper(engine)
+    wrapper.first_catalog = None
+    wrapper.first_schema = "my_schema"
+    assert wrapper.get_tables() == []
+    engine.connect.assert_not_called()
