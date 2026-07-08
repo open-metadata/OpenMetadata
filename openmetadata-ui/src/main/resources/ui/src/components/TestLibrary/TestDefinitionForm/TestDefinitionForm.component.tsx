@@ -24,6 +24,7 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
@@ -139,17 +140,28 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     onCancel();
   }, [form, onCancel]);
 
+  const scrollToError = useMemo(
+    () =>
+      createScrollToErrorHandler({
+        errorSelector: '[aria-invalid="true"], [data-invalid="true"]',
+      }),
+    []
+  );
+
   const submitAndClose = useMemo(
     () =>
-      form.handleSubmit(async (data) => {
-        try {
-          await handleSubmit(data);
-          handleDismiss();
-        } catch {
-          // error surfaced inline via errorMessage; keep the form open
-        }
-      }),
-    [form, handleSubmit, handleDismiss]
+      form.handleSubmit(
+        async (data) => {
+          try {
+            await handleSubmit(data);
+            handleDismiss();
+          } catch {
+            // error surfaced inline via errorMessage; keep the form open
+          }
+        },
+        () => scrollToError()
+      ),
+    [form, handleSubmit, handleDismiss, scrollToError]
   );
 
   const formBody = (

@@ -123,15 +123,15 @@ describe('TestDefinitionFormBody', () => {
     expect(screen.queryByTestId('remove-parameter-0')).not.toBeInTheDocument();
   });
 
-  it('disables the display name and description inputs when read-only', () => {
+  it('keeps display name and description editable when read-only (parity with the legacy form)', () => {
     render(<Harness isReadOnlyField />);
 
     expect(
       screen.getByTestId('display-name').querySelector('input')
-    ).toBeDisabled();
+    ).not.toBeDisabled();
     expect(
       screen.getByTestId('description').querySelector('textarea')
-    ).toBeDisabled();
+    ).not.toBeDisabled();
   });
 
   it('adds a parameter row when the Add Parameter control is clicked', () => {

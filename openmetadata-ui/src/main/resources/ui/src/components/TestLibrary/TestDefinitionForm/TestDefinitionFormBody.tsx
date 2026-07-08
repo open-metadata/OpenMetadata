@@ -109,7 +109,6 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'display-name',
-      isDisabled: isReadOnlyField,
     } as FieldProp['props'],
   };
 
@@ -124,7 +123,6 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'description',
-      isDisabled: isReadOnlyField,
     } as FieldProp['props'],
   };
 
@@ -179,7 +177,6 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     }),
     props: {
       'data-testid': 'data-quality-dimension',
-      isDisabled: isReadOnlyField,
       options: toOptions(Object.values(DataQualityDimensions)),
     } as FieldProp['props'],
   };
@@ -269,6 +266,9 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         data-testid="sql-expression"
         onClick={() => handleActiveField('root/sqlExpression')}>
         <label>{t('label.sql-query')}</label>
+        <p className="tw:text-xs tw:text-tertiary">
+          {t('message.test-definition-sql-query-help')}
+        </p>
         {isReadOnlyField ? (
           <textarea
             disabled
@@ -300,6 +300,9 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         data-testid="parameter-definition"
         onClick={() => handleActiveField('root/parameterDefinition')}>
         <label>{t('label.parameter-plural')}</label>
+        <p className="tw:text-xs tw:text-tertiary">
+          {t('message.test-definition-parameters-description')}
+        </p>
         {fields.map((field, index) => (
           <div
             className="m-t-md tw:rounded-lg tw:border tw:p-3"
