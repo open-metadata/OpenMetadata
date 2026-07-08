@@ -117,11 +117,15 @@ function VersionTable<T extends Column | SearchIndexField>({
 
     return {
       currentPage: internalCurrentPage,
-      showPagination: internalShowPagination,
+      // internalPaging.total is only synced from data.length via the effect
+      // above, so it can briefly be stale (e.g. 0) on the first render.
+      // Deriving both fields from data.length directly keeps them accurate
+      // immediately and avoids a "Page 1 of 0" flash with no data to show.
+      showPagination: internalShowPagination && data.length > 0,
       isLoading: Boolean(isLoading),
       isNumberBased: true,
       pageSize: internalPageSize,
-      paging: internalPaging,
+      paging: { ...internalPaging, total: data.length },
       pagingHandler: ({ currentPage: page }: PagingHandlerParams) =>
         internalHandlePageChange(page, { cursorType: null }),
       onShowSizeChange: internalHandlePageSizeChange,
@@ -133,6 +137,7 @@ function VersionTable<T extends Column | SearchIndexField>({
     internalShowPagination,
     internalPageSize,
     internalPaging,
+    data.length,
     internalHandlePageChange,
     internalHandlePageSizeChange,
   ]);
