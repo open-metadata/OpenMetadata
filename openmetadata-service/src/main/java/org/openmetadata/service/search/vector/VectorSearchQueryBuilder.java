@@ -116,7 +116,8 @@ public class VectorSearchQueryBuilder {
 
   private static void appendFilterMustClauses(StringBuilder sb, Map<String, List<String>> filters) {
     sb.append("{\"term\":{\"deleted\":false}}");
-    for (var e : filters.entrySet()) {
+    Map<String, List<String>> safeFilters = filters == null ? Map.of() : filters;
+    for (var e : safeFilters.entrySet()) {
       String field = e.getKey();
       List<String> values = e.getValue();
       if (values == null || values.isEmpty()) continue;

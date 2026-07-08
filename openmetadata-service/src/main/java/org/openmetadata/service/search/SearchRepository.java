@@ -581,8 +581,7 @@ public class SearchRepository {
         OpenSearchVectorService.init(osClient, embeddingClient);
         this.vectorIndexService = OpenSearchVectorService.getInstance();
       } else {
-        es.co.elastic.clients.elasticsearch.ElasticsearchClient esClient =
-            ((ElasticSearchClient) getSearchClient()).getNewClient();
+        var esClient = ((ElasticSearchClient) getSearchClient()).getNewClient();
         int knnMultiplier = resolveKnnNumCandidatesMultiplier(cfg);
         ElasticSearchVectorService.init(esClient, embeddingClient, knnMultiplier);
         this.vectorIndexService = ElasticSearchVectorService.getInstance();

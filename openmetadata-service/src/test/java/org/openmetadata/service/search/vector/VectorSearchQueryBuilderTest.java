@@ -923,4 +923,27 @@ class VectorSearchQueryBuilderTest {
         "Both queries should produce the same number of filter clauses");
     assertEquals(osFilters.toString(), esFilters.toString(), "Filter clauses should be identical");
   }
+
+  @Test
+  void nullFiltersProduceOnlyTheDeletedClauseWithoutThrowing() throws Exception {
+    float[] vector = {0.1f, 0.2f};
+
+    String osQuery = VectorSearchQueryBuilder.build(vector, 10, 0, 100, null, 0.0);
+    String esQuery = VectorSearchQueryBuilder.buildNativeESQuery(vector, 10, 0, 100, null);
+
+    JsonNode osMust =
+        MAPPER
+            .readTree(osQuery)
+            .get("query")
+            .get("knn")
+            .get("embedding")
+            .get("filter")
+            .get("bool")
+            .get("must");
+    JsonNode esMust = MAPPER.readTree(esQuery).get("knn").get("filter").get("bool").get("must");
+
+    assertEquals(1, osMust.size(), "Null filters should yield only the deleted=false clause");
+    assertEquals(1, esMust.size(), "Null filters should yield only the deleted=false clause");
+    assertEquals("{\"term\":{\"deleted\":false}}", osMust.get(0).toString());
+  }
 }
