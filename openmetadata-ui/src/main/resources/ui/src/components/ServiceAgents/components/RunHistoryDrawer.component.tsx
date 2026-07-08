@@ -71,7 +71,7 @@ const RunHistory: FC<RunHistoryProps> = ({ runs, selectedId, onSelect }) => {
   const { t } = useTranslation();
 
   return (
-    <Box className="tw:gap-2 tw:overflow-x-auto tw:pb-1">
+    <Box className="tw:shrink-0 tw:gap-2 tw:overflow-x-auto tw:pb-1">
       {runs.map((r) => {
         const m = RUN_META[r.status];
         const label = t(m.labelKey);
@@ -268,7 +268,7 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
 
             {/* steps card */}
             <Card
-              className="tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
+              className="tw:shrink-0 tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:px-4.5 tw:py-1 tw:shadow-xs"
               data-testid="run-steps-card"
               variant="ghost">
               <Box
