@@ -15,7 +15,6 @@ import {
   Button,
   Dialog,
   Input,
-  Label,
   Modal,
   ModalOverlay,
   Typography,
@@ -126,7 +125,6 @@ const EntityNameModal = <T extends EntityName>({
               className="tw:flex tw:flex-col tw:gap-4"
               onSubmit={handleSubmit(onSubmit)}>
               <Box className="tw:gap-1.5" direction="col">
-                <Label htmlFor="name">{t('label.name')}</Label>
                 <Controller
                   control={control}
                   name="name"
@@ -140,6 +138,7 @@ const EntityNameModal = <T extends EntityName>({
                         inputDataTestId="name"
                         isDisabled={!allowRename}
                         isInvalid={!!fieldState.error}
+                        label={t('label.name')}
                         placeholder={t('label.enter-entity-name', {
                           entity: t('label.glossary'),
                         })}
@@ -172,7 +171,6 @@ const EntityNameModal = <T extends EntityName>({
               </Box>
 
               <Box className="tw:gap-1.5" direction="col">
-                <Label htmlFor="displayName">{t('label.display-name')}</Label>
                 <Controller
                   control={control}
                   name="displayName"
@@ -185,6 +183,7 @@ const EntityNameModal = <T extends EntityName>({
                         id="displayName"
                         inputDataTestId="displayName"
                         isInvalid={!!fieldState.error}
+                        label={t('label.display-name')}
                         placeholder={t('message.enter-display-name')}
                         value={field.value ?? ''}
                         onChange={(val) =>
