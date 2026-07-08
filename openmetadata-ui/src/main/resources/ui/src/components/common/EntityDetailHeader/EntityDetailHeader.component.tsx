@@ -47,7 +47,13 @@ const EntityDetailHeader = ({
   );
 
   const isControlled = activeKey !== undefined;
-  const selectedKey = isControlled ? activeKey : internalKey;
+  // Fall back to the first visible tab when the tracked key isn't present yet
+  // (e.g. tabs loaded asynchronously after mount, or the selected tab became
+  // hidden) so a valid tab is always selected.
+  const resolvedInternalKey = visibleTabs.some((tab) => tab.key === internalKey)
+    ? internalKey
+    : visibleTabs[0]?.key;
+  const selectedKey = isControlled ? activeKey : resolvedInternalKey;
 
   const handleSelectionChange = (key: Key) => {
     if (!isControlled) {

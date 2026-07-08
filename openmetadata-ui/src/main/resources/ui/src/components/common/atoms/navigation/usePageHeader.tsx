@@ -20,7 +20,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
 import { startCase } from 'lodash';
-import { FC, ReactNode, useMemo } from 'react';
+import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { LearningIcon } from '../../../Learning/LearningIcon/LearningIcon.component';
@@ -78,7 +78,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
       </Button>
     ) : null;
 
-  const pageHeader = useMemo(() => {
+  const pageHeader = ((): ReactNode => {
     if (variant === 'default') {
       return (
         <Card className="tw:mb-5 tw:p-5">
@@ -156,15 +156,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
         variant="gradient"
       />
     );
-  }, [
-    variant,
-    displayTitle,
-    displayDescription,
-    addButton,
-    config,
-    currentUser,
-    t,
-  ]);
+  })();
 
   return { pageHeader };
 };

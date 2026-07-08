@@ -57,6 +57,17 @@ describe('EntityDetailHeader', () => {
     expect(screen.getByText('Insights Panel')).toBeInTheDocument();
   });
 
+  it('selects the first visible tab once tabs load asynchronously (uncontrolled)', () => {
+    const { rerender } = render(<EntityDetailHeader tabs={[]} title="S" />);
+
+    expect(screen.queryByText('Summary Panel')).not.toBeInTheDocument();
+
+    rerender(<EntityDetailHeader tabs={tabs} title="S" />);
+
+    expect(screen.getByRole('tab', { name: /Summary/ })).toBeInTheDocument();
+    expect(screen.getByText('Summary Panel')).toBeInTheDocument();
+  });
+
   it('is controlled by activeKey: fires onTabChange without self-switching', () => {
     const onTabChange = jest.fn();
     render(
