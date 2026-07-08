@@ -219,6 +219,8 @@ class TopologyRunnerMixin(Generic[C]):
         node_progress = self.progress_tracker.for_node(node, is_leaf=not child_nodes)
 
         if node_progress.wants_eager_count:
+            # Holds the node's whole producer output in memory — safe only for
+            # bounded container nodes; see NodeProgress.wants_eager_count.
             node_entities = list(self._run_node_producer(node) or [])
             node_progress.open(len(node_entities))
         else:

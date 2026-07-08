@@ -110,14 +110,27 @@ class NodeProgress:
 
     @property
     def wants_eager_count(self) -> bool:
-        """Materialize the producer for an exact child count only when the node's
-        counter is reconcilable (a container whose scope total is nudged toward
-        the observed child count). Leaf producers are always iterated lazily:
-        their per-leaf ``advance`` already yields an accurate processed count, and
-        an eager ``list()``-drain would run the producer to completion before any
-        stage sinks an entity — breaking connectors (e.g. S3 storage's
-        ``get_containers``) whose producer reads context a stage of the
-        just-yielded entity populated."""
+        """Whether the runner should drain this node's producer into a ``list()``
+        up front to learn its exact child count.
+
+        MEMORY WARNING: returning ``True`` makes the topology runner hold the
+        node's ENTIRE producer output in memory at once (see
+        ``TopologyRunnerMixin._process_node``). For a high-cardinality node —
+        tables in a large schema, dashboards in a big tenant — that is a real
+        OOM risk. Keep this ``True`` ONLY for low-cardinality *container* nodes
+        whose count is bounded (e.g. schemas per database, typically tens), and
+        NEVER for leaf entity nodes, which can number in the hundreds of
+        thousands. Any new reconcilable declaration must respect that bound; if
+        a container can itself be huge, add a cap or count it lazily instead.
+
+        So: eager only when the node's counter is reconcilable — a bounded
+        container whose scope total is nudged toward the observed child count.
+        Leaf producers are always iterated lazily: their per-leaf ``advance``
+        already yields an accurate processed count without materializing
+        anything, and an eager ``list()``-drain would additionally run the
+        producer to completion before any stage sinks an entity — breaking
+        connectors (e.g. S3 storage's ``get_containers``) whose producer reads
+        context a stage of the just-yielded entity populated."""
         return self._reconcilable
 
     def open(self, count: Optional[int]) -> None:  # noqa: UP045
