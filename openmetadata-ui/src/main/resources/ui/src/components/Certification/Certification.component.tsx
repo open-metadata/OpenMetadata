@@ -161,6 +161,7 @@ const Certification = ({
             const renderedIcon = iconURL
               ? renderIcon(iconURL, {
                   size: isIcon ? 28 : 40,
+                  alt: title,
                 })
               : null;
 

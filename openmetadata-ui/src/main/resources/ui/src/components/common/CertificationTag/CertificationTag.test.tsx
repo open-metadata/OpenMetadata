@@ -103,6 +103,7 @@ describe('CertificationTag', () => {
       expect.objectContaining({
         size: 28,
         className: 'certification-img',
+        alt: 'certification: Gold Medal',
       })
     );
   });

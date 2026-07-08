@@ -31,12 +31,14 @@ const CertificationTag = ({
 }) => {
   const imageItem = useMemo(() => {
     const iconURL = certification.tagLabel.style?.iconURL;
+    const name = getEntityName(certification.tagLabel);
 
     if (iconURL) {
       const iconSize = showName ? 16 : 28;
       const renderedIcon = renderIcon(iconURL, {
         size: iconSize,
         className: 'certification-img',
+        alt: `certification: ${name}`,
       });
 
       if (renderedIcon) {
@@ -49,7 +51,7 @@ const CertificationTag = ({
     return (
       <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
     );
-  }, [certification.tagLabel.style?.iconURL, showName]);
+  }, [certification.tagLabel, showName]);
 
   const certificationRender = useMemo(() => {
     const name = getEntityName(certification.tagLabel);
