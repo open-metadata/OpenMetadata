@@ -45,10 +45,12 @@ export interface UseAlertDetailsPageReturn extends AlertDetailsPermissions {
   }[];
   extraInfo: ReactNode;
   handleAlertDelete: () => Promise<void>;
+  handleAlertDeleteConfirm: () => Promise<void>;
   handleAlertEdit: () => Promise<void>;
   handleAlertSync: () => Promise<void>;
   handleTabChange: (activeKey: string) => void;
   hideDeleteModal: () => void;
+  isDeleting: boolean;
   isSyncing: boolean;
   loadingCount: number;
   onDescriptionUpdate: (description: string) => Promise<void>;

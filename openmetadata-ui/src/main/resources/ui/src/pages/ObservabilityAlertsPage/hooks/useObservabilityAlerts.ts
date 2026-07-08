@@ -30,8 +30,10 @@ import {
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../../rest/alertsAPI';
+import { deleteObservabilityAlert } from '../../../rest/observabilityAPI';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import {
   AlertTableColumn,
   ALERT_TABLE_COLUMN_IDS,
@@ -54,6 +56,7 @@ export function useObservabilityAlerts({
   const [loadingCount, setLoadingCount] = useState(0);
   const [alerts, setAlerts] = useState<EventSubscription[]>([]);
   const [selectedAlert, setSelectedAlert] = useState<EventSubscription>();
+  const [isDeleting, setIsDeleting] = useState(false);
   const [alertPermissions, setAlertPermissions] = useState<AlertPermission[]>();
   const [alertResourcePermission, setAlertResourcePermission] =
     useState<OperationPermission>();
@@ -172,6 +175,29 @@ export function useObservabilityAlerts({
     }
   }, [fetchAlerts, getResourceLimit]);
 
+  const handleAlertDeleteConfirm = useCallback(async () => {
+    if (!selectedAlert?.id) {
+      return;
+    }
+
+    const entityName = getEntityName(selectedAlert);
+    try {
+      setIsDeleting(true);
+      await deleteObservabilityAlert(selectedAlert.id);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: entityName })
+      );
+      await handleAlertDelete();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', { entity: entityName })
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedAlert, handleAlertDelete, t]);
+
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
       if (cursorType) {
@@ -230,8 +256,10 @@ export function useObservabilityAlerts({
     getAlertDetailsPath,
     handleAddAlert,
     handleAlertDelete,
+    handleAlertDeleteConfirm,
     handlePageSizeChange,
     handleSelectAlert,
+    isDeleting,
     loading,
     loadingCount,
     onPageChange,

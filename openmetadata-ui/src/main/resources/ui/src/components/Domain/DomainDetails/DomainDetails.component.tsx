@@ -67,6 +67,7 @@ import {
   patchDataProduct,
 } from '../../../rest/dataProductAPI';
 import { addDomains, patchDomains } from '../../../rest/domainAPI';
+import { deleteEntity } from '../../../rest/miscAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getIsErrorMatch } from '../../../utils/APIUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
@@ -75,6 +76,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import {
   getQueryFilterForDataProducts,
@@ -109,10 +111,11 @@ import {
   getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
-import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -205,6 +208,7 @@ const DomainDetails = ({
 
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [previewAsset, setPreviewAsset] =
@@ -333,6 +337,34 @@ const DomainDetails = ({
     fetchSubDomainsCount();
     refreshDomains?.();
   };
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!domain) {
+      return;
+    }
+    const entityName = getEntityName(domain);
+    try {
+      setIsDeleting(true);
+      await deleteEntity(
+        deleteWidgetClassBase.prepareEntityType(EntityType.DOMAIN),
+        domain.id,
+        false,
+        true
+      );
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: entityName })
+      );
+      setIsDelete(false);
+      onDelete(domain.id);
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', { entity: entityName })
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [domain, onDelete, t]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -1103,16 +1135,17 @@ const DomainDetails = ({
       />
 
       {domain && (
-        <DeleteEntityModal
-          afterDeleteAction={() => onDelete(domain.id)}
-          allowSoftDelete={false}
-          entityId={domain.id}
-          entityName={getEntityName(domain)}
-          entityType={EntityType.DOMAIN}
-          visible={isDelete}
+        <DeleteModal
+          entityTitle={getEntityName(domain)}
+          isDeleting={isDeleting}
+          message={t('message.delete-entity-message', {
+            entity: getEntityName(domain),
+          })}
+          open={isDelete}
           onCancel={() => {
             setIsDelete(false);
           }}
+          onDelete={handleDeleteConfirm}
         />
       )}
       <EntityNameModal<Domain>

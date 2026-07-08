@@ -38,8 +38,10 @@ export interface UseObservabilityAlertsReturn {
   getAlertDetailsPath: (fqn: string) => string;
   handleAddAlert: () => void;
   handleAlertDelete: () => Promise<void>;
+  handleAlertDeleteConfirm: () => Promise<void>;
   handlePageSizeChange: (page: number) => void;
   handleSelectAlert: (alert?: EventSubscription) => void;
+  isDeleting: boolean;
   loading: boolean;
   loadingCount: number;
   onPageChange: (params: PagingHandlerParams) => void;

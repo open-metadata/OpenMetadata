@@ -35,6 +35,7 @@ import {
 } from '../../../generated/events/eventSubscription';
 import { useFqn } from '../../../hooks/useFqn';
 import { updateNotificationAlert } from '../../../rest/alertsAPI';
+import { deleteEntity } from '../../../rest/miscAPI';
 import {
   getAlertEventsDiagnosticsInfo,
   getObservabilityAlertByFQN,
@@ -42,6 +43,7 @@ import {
   updateObservabilityAlert,
 } from '../../../rest/observabilityAPI';
 import { getAlertExtraInfo } from '../../../utils/Alerts/AlertsUtil';
+import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import observabilityRouterClassBase from '../../../utils/ObservabilityRouterClassBase';
 import {
@@ -79,6 +81,7 @@ export function useAlertDetailsPage({
   const [alertEventCountsLoading, setAlertEventCountsLoading] = useState(false);
   const [showDeleteModal, setShowDeleteModal] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const {
     viewPermission,
@@ -177,6 +180,35 @@ export function useAlertDetailsPage({
       ? navigate(ROUTES.NOTIFICATION_ALERT_LIST)
       : navigate(observabilityRouterClassBase.getObservabilityAlertsListPath());
   }, [afterDeleteAction, isNotificationAlert, navigate]);
+
+  const handleAlertDeleteConfirm = useCallback(async () => {
+    if (!alertDetails?.id) {
+      return;
+    }
+
+    const entityName = getEntityName(alertDetails);
+    try {
+      setIsDeleting(true);
+      await deleteEntity(
+        deleteWidgetClassBase.prepareEntityType(EntityType.SUBSCRIPTION),
+        alertDetails.id,
+        false,
+        true
+      );
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: entityName })
+      );
+      setShowDeleteModal(false);
+      await handleAlertDelete();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', { entity: entityName })
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [alertDetails, handleAlertDelete, t]);
 
   const handleAlertEdit = useCallback(async () => {
     if (onEditAlert) {
@@ -324,10 +356,12 @@ export function useAlertDetailsPage({
     editPermission,
     extraInfo,
     handleAlertDelete,
+    handleAlertDeleteConfirm,
     handleAlertEdit,
     handleAlertSync,
     handleTabChange,
     hideDeleteModal,
+    isDeleting,
     isSyncing,
     loadingCount: loadingCount + (permissionLoading ? 1 : 0),
     onDescriptionUpdate,

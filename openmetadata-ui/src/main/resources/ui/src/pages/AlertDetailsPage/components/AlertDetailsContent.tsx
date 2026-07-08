@@ -16,7 +16,7 @@ import { Button, Card, Col, Row, Skeleton, Space, Tabs, Tooltip } from 'antd';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import { OwnerLabel } from '../../../components/common/OwnerLabel/OwnerLabel.component';
 import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
@@ -36,11 +36,12 @@ function AlertDetailsContent({
   editOwnersPermission,
   editPermission,
   extraInfo,
-  handleAlertDelete,
+  handleAlertDeleteConfirm,
   handleAlertEdit,
   handleAlertSync,
   handleTabChange,
   hideDeleteModal,
+  isDeleting,
   isSyncing,
   onDescriptionUpdate,
   onOwnerUpdate,
@@ -164,14 +165,15 @@ function AlertDetailsContent({
           />
         </Col>
       </Row>
-      <DeleteEntityModal
-        afterDeleteAction={handleAlertDelete}
-        allowSoftDelete={false}
-        entityId={alertDetails?.id ?? ''}
-        entityName={getEntityName(alertDetails)}
-        entityType={EntityType.SUBSCRIPTION}
-        visible={showDeleteModal}
+      <DeleteModal
+        entityTitle={getEntityName(alertDetails)}
+        isDeleting={isDeleting}
+        message={t('message.delete-entity-message', {
+          entity: getEntityName(alertDetails),
+        })}
+        open={showDeleteModal}
         onCancel={hideDeleteModal}
+        onDelete={handleAlertDeleteConfirm}
       />
     </Card>
   );

@@ -18,7 +18,7 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as DeleteIcon } from '../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
@@ -54,6 +54,8 @@ import { Paging } from '../../generated/type/paging';
 import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAlertsFromName, getAllAlerts } from '../../rest/alertsAPI';
+import { deleteEntity } from '../../rest/miscAPI';
+import deleteWidgetClassBase from '../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import {
@@ -62,7 +64,7 @@ import {
   getSettingPath,
 } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
-import { showErrorToast } from '../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const NotificationListPage = () => {
   const { t } = useTranslation();
@@ -203,6 +205,36 @@ const NotificationListPage = () => {
       showErrorToast(error as AxiosError);
     }
   }, [fetchAlerts]);
+
+  const [isDeleting, setIsDeleting] = useState(false);
+
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!selectedAlert) {
+      return;
+    }
+    const entityName = getEntityName(selectedAlert);
+    try {
+      setIsDeleting(true);
+      await deleteEntity(
+        deleteWidgetClassBase.prepareEntityType(EntityType.SUBSCRIPTION),
+        selectedAlert.id,
+        false,
+        true
+      );
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: entityName })
+      );
+      setSelectedAlert(undefined);
+      await handleAlertDelete();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', { entity: entityName })
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedAlert, handleAlertDelete, t]);
 
   const onPageChange = useCallback(
     ({ cursorType, currentPage }: PagingHandlerParams) => {
@@ -387,16 +419,17 @@ const NotificationListPage = () => {
           />
         </Col>
         <Col span={24}>
-          <DeleteEntityModal
-            afterDeleteAction={handleAlertDelete}
-            allowSoftDelete={false}
-            entityId={selectedAlert?.id ?? ''}
-            entityName={getEntityName(selectedAlert)}
-            entityType={EntityType.SUBSCRIPTION}
-            visible={Boolean(selectedAlert)}
+          <DeleteModal
+            entityTitle={getEntityName(selectedAlert)}
+            isDeleting={isDeleting}
+            message={t('message.delete-entity-message', {
+              entity: getEntityName(selectedAlert),
+            })}
+            open={Boolean(selectedAlert)}
             onCancel={() => {
               setSelectedAlert(undefined);
             }}
+            onDelete={handleDeleteConfirm}
           />
         </Col>
       </Row>

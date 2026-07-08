@@ -14,13 +14,14 @@
 import Icon from '@ant-design/icons/lib/components/Icon';
 import { Button, Tooltip, Typography } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
+import { AxiosError } from 'axios';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as EditIcon } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as IconDelete } from '../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../components/common/Table/Table';
@@ -39,11 +40,14 @@ import { Operation } from '../../generated/entity/policies/policy';
 import { Paging } from '../../generated/type/paging';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getListKPIs } from '../../rest/KpiAPI';
+import { deleteEntity } from '../../rest/miscAPI';
 import { formatDateTime } from '../../utils/date-time/DateTimeUtils';
+import deleteWidgetClassBase from '../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { checkPermission } from '../../utils/PermissionsUtils';
 import { getKpiPath } from '../../utils/RouterUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 
 const KPIList = () => {
   const navigate = useNavigate();
@@ -60,6 +64,7 @@ const KPIList = () => {
   const [kpiPage, setKpiPage] = useState(INITIAL_PAGING_VALUE);
   const [kpiPaging, setKpiPaging] = useState<Paging>(pagingObject);
   const [selectedKpi, setSelectedKpi] = useState<Kpi>();
+  const [isDeleting, setIsDeleting] = useState(false);
 
   const fetchKpiList = async (param?: Record<string, string>) => {
     try {
@@ -203,6 +208,34 @@ const KPIList = () => {
     fetchKpiList();
   }, [fetchKpiList]);
 
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!selectedKpi) {
+      return;
+    }
+    const entityName = getEntityName(selectedKpi);
+    try {
+      setIsDeleting(true);
+      await deleteEntity(
+        deleteWidgetClassBase.prepareEntityType(EntityType.KPI),
+        selectedKpi.id,
+        false,
+        true
+      );
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: entityName })
+      );
+      setSelectedKpi(undefined);
+      handleAfterDeleteAction();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', { entity: entityName })
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedKpi, handleAfterDeleteAction, t]);
+
   const noDataPlaceHolder = useMemo(
     () =>
       viewKPIPermission ? (
@@ -244,17 +277,15 @@ const KPIList = () => {
       />
 
       {selectedKpi && (
-        <DeleteEntityModal
-          afterDeleteAction={handleAfterDeleteAction}
-          allowSoftDelete={false}
-          deleteMessage={t('message.are-you-sure-delete-entity', {
+        <DeleteModal
+          entityTitle={getEntityName(selectedKpi)}
+          isDeleting={isDeleting}
+          message={t('message.are-you-sure-delete-entity', {
             entity: getEntityName(selectedKpi),
           })}
-          entityId={selectedKpi.id}
-          entityName={getEntityName(selectedKpi)}
-          entityType={EntityType.KPI}
-          visible={!isUndefined(selectedKpi)}
+          open={!isUndefined(selectedKpi)}
           onCancel={() => setSelectedKpi(undefined)}
+          onDelete={handleDeleteConfirm}
         />
       )}
     </>

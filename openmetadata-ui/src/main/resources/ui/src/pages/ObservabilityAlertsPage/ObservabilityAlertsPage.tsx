@@ -12,9 +12,8 @@
  */
 import { Col, Row } from 'antd';
 import { useTranslation } from 'react-i18next';
-import DeleteEntityModal from '../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { EntityType } from '../../enums/entity.enum';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import ObservabilityAlertsHeader from './components/ObservabilityAlertsHeader';
 import ObservabilityAlertsTable from './components/ObservabilityAlertsTable';
@@ -37,8 +36,9 @@ const ObservabilityAlertsPage = () => {
     loadingCount,
     selectedAlert,
     handleAddAlert,
-    handleAlertDelete,
+    handleAlertDeleteConfirm,
     handleSelectAlert,
+    isDeleting,
     onViewAlert,
     onPageChange,
   } = useObservabilityAlerts();
@@ -74,14 +74,15 @@ const ObservabilityAlertsPage = () => {
           />
         </Col>
         <Col span={24}>
-          <DeleteEntityModal
-            afterDeleteAction={handleAlertDelete}
-            allowSoftDelete={false}
-            entityId={selectedAlert?.id ?? ''}
-            entityName={getEntityName(selectedAlert)}
-            entityType={EntityType.SUBSCRIPTION}
-            visible={Boolean(selectedAlert)}
+          <DeleteModal
+            entityTitle={getEntityName(selectedAlert)}
+            isDeleting={isDeleting}
+            message={t('message.delete-entity-message', {
+              entity: getEntityName(selectedAlert),
+            })}
+            open={Boolean(selectedAlert)}
             onCancel={() => handleSelectAlert(undefined)}
+            onDelete={handleAlertDeleteConfirm}
           />
         </Col>
       </Row>

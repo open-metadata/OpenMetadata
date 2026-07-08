@@ -133,12 +133,10 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
   return jest
     .fn()
-    .mockImplementation(({ visible }) =>
-      visible ? <p>DeleteEntityModal</p> : null
-    );
+    .mockImplementation(({ open }) => (open ? <p>DeleteEntityModal</p> : null));
 });
 
 jest.mock('../../hoc/LimitWrapper', () => {

@@ -266,13 +266,13 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../Modals/EntityDeleteModal/EntityDeleteModal', () => ({
+jest.mock('../../common/DeleteModal/DeleteModal', () => ({
   __esModule: true,
-  default: jest.fn().mockImplementation(({ visible, onConfirm, onCancel }) =>
-    visible ? (
+  default: jest.fn().mockImplementation(({ open, onDelete, onCancel }) =>
+    open ? (
       <div data-testid="entity-delete-modal">
         <button onClick={onCancel}>Cancel</button>
-        <button onClick={onConfirm}>Confirm</button>
+        <button onClick={onDelete}>Confirm</button>
       </div>
     ) : null
   ),

@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/Table';
@@ -42,7 +42,9 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { deleteEntity } from '../../../rest/miscAPI';
 import { getPolicies } from '../../../rest/rolesAPIV1';
+import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
@@ -55,7 +57,7 @@ import {
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './policies-list.less';
 
 const PoliciesListPage = () => {
@@ -64,6 +66,7 @@ const PoliciesListPage = () => {
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDeleting, setIsDeleting] = useState(false);
   const {
     currentPage,
     handlePageChange,
@@ -242,6 +245,34 @@ const PoliciesListPage = () => {
     fetchPolicies();
   }, [fetchPolicies]);
 
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!selectedPolicy) {
+      return;
+    }
+    const entityName = getEntityName(selectedPolicy);
+    try {
+      setIsDeleting(true);
+      await deleteEntity(
+        deleteWidgetClassBase.prepareEntityType(EntityType.POLICY),
+        selectedPolicy.id,
+        false,
+        true
+      );
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: entityName })
+      );
+      setSelectedPolicy(undefined);
+      handleAfterDeleteAction();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', { entity: entityName })
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedPolicy, handleAfterDeleteAction, t]);
+
   const handleAddPolicy = () => {
     navigate(ROUTES.ADD_POLICY);
   };
@@ -335,17 +366,15 @@ const PoliciesListPage = () => {
             size="small"
           />
           {selectedPolicy && deletePolicyPermission && (
-            <DeleteEntityModal
-              afterDeleteAction={handleAfterDeleteAction}
-              allowSoftDelete={false}
-              deleteMessage={t('message.are-you-sure-delete-entity', {
+            <DeleteModal
+              entityTitle={getEntityName(selectedPolicy)}
+              isDeleting={isDeleting}
+              message={t('message.are-you-sure-delete-entity', {
                 entity: getEntityName(selectedPolicy),
               })}
-              entityId={selectedPolicy.id}
-              entityName={getEntityName(selectedPolicy)}
-              entityType={EntityType.POLICY}
-              visible={!isUndefined(selectedPolicy)}
+              open={!isUndefined(selectedPolicy)}
               onCancel={() => setSelectedPolicy(undefined)}
+              onDelete={handleDeleteConfirm}
             />
           )}
         </Col>

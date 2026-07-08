@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/Table';
@@ -43,7 +43,9 @@ import { Operation } from '../../../generated/entity/policies/policy';
 import { Role } from '../../../generated/entity/teams/role';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { deleteEntity } from '../../../rest/miscAPI';
 import { getRoles } from '../../../rest/rolesAPIV1';
+import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
@@ -56,7 +58,7 @@ import {
   getRoleWithFqnPath,
 } from '../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../utils/TableColumn.util';
-import { showErrorToast } from '../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import './roles-list.less';
 
 const RolesListPage = () => {
@@ -64,6 +66,7 @@ const RolesListPage = () => {
   const { t } = useTranslation();
   const [roles, setRoles] = useState<Role[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState(false);
   const [selectedRole, setSelectedRole] = useState<Role>();
   const {
     currentPage,
@@ -240,6 +243,34 @@ const RolesListPage = () => {
     fetchRoles();
   }, [fetchRoles]);
 
+  const handleDeleteConfirm = useCallback(async () => {
+    if (!selectedRole) {
+      return;
+    }
+    const entityName = getEntityName(selectedRole).toString();
+    try {
+      setIsDeleting(true);
+      await deleteEntity(
+        deleteWidgetClassBase.prepareEntityType(EntityType.ROLE),
+        selectedRole.id,
+        false,
+        true
+      );
+      showSuccessToast(
+        t('server.entity-deleted-successfully', { entity: entityName })
+      );
+      setSelectedRole(undefined);
+      handleAfterDeleteAction();
+    } catch (error) {
+      showErrorToast(
+        error as AxiosError,
+        t('server.delete-entity-error', { entity: entityName })
+      );
+    } finally {
+      setIsDeleting(false);
+    }
+  }, [selectedRole, handleAfterDeleteAction, t]);
+
   const handleAddRole = () => {
     navigate(ROUTES.ADD_ROLE);
   };
@@ -333,17 +364,15 @@ const RolesListPage = () => {
             size="small"
           />
           {selectedRole && (
-            <DeleteEntityModal
-              afterDeleteAction={handleAfterDeleteAction}
-              allowSoftDelete={false}
-              deleteMessage={t('message.are-you-sure-delete-entity', {
+            <DeleteModal
+              entityTitle={getEntityName(selectedRole).toString()}
+              isDeleting={isDeleting}
+              message={t('message.are-you-sure-delete-entity', {
                 entity: getEntityName(selectedRole).toString(),
               })}
-              entityId={selectedRole.id}
-              entityName={getEntityName(selectedRole).toString()}
-              entityType={EntityType.ROLE}
-              visible={!isUndefined(selectedRole)}
+              open={!isUndefined(selectedRole)}
               onCancel={() => setSelectedRole(undefined)}
+              onDelete={handleDeleteConfirm}
             />
           )}
         </Col>
