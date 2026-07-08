@@ -588,4 +588,146 @@ describe('TestCaseFormBody', () => {
     expect(typeof lastCall.generateName).toBe('function');
     expect(lastCall.canCreatePipeline).toBe(true);
   });
+
+  describe('isEditMode', () => {
+    it('does not render the test-level cards in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      expect(screen.queryByText('label.table-level')).not.toBeInTheDocument();
+      expect(screen.queryByText('label.column-level')).not.toBeInTheDocument();
+      expect(
+        screen.queryByText('label.dimension-level')
+      ).not.toBeInTheDocument();
+    });
+
+    it('disables the table select in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      const tableSelect = await screen.findByTestId('selectedTable');
+      const input = tableSelect.querySelector('input');
+
+      expect(input).toBeDisabled();
+    });
+
+    it('disables the column select in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      await act(async () => {
+        formRef?.setValue('testLevel', TestLevel.COLUMN);
+      });
+
+      const columnSelect = await screen.findByTestId('selectedColumn');
+      const columnButton = columnSelect.querySelector('button');
+
+      expect(columnButton).toBeDisabled();
+    });
+
+    it('disables the test type select in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      const testTypeSelect = await screen.findByTestId('test-type');
+      const testTypeButton = testTypeSelect.querySelector('button');
+
+      expect(testTypeButton).toBeDisabled();
+    });
+
+    it('disables the name field in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      const nameField = await screen.findByTestId('test-case-name');
+      const nameInput = nameField.querySelector('input');
+
+      expect(nameInput).toBeDisabled();
+    });
+
+    it('does not render the custom-query toggle in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(screen.queryByTestId('custom-query')).not.toBeInTheDocument();
+    });
+
+    it('does not render the scheduler section in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    });
+
+    it('renders the display name field in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      expect(await screen.findByTestId('display-name')).toBeInTheDocument();
+    });
+
+    it('does not render the display name field in create mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE });
+      });
+
+      expect(screen.queryByTestId('display-name')).not.toBeInTheDocument();
+    });
+
+    it('does not auto-generate the test name in edit mode', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, isEditMode: true });
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      await act(async () => {
+        formRef?.setValue('testTypeId', {
+          id: TEST_DEFINITION_FQN,
+          label: 'Column Values To Be Between',
+        } as never);
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(formRef?.getValues('testName')).toBeFalsy();
+    });
+  });
+
+  describe('showOnlyParameter', () => {
+    it('renders only the test-type card and hides other sections', async () => {
+      await act(async () => {
+        renderBody({ table: SELECTED_TABLE, showOnlyParameter: true });
+      });
+
+      expect(screen.getByTestId('test-type-card')).toBeInTheDocument();
+      expect(screen.queryByTestId('select-table-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('test-details-card')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('pipeline-name')).not.toBeInTheDocument();
+    });
+  });
 });

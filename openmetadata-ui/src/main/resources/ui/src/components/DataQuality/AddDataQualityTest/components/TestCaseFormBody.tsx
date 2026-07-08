@@ -103,6 +103,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   onErrorDismiss,
   onActiveFieldChange,
   onContextChange,
+  isEditMode = false,
+  showOnlyParameter = false,
 }: TestCaseFormBodyProps) => {
   const { t } = useTranslation();
   const { config } = useLimitStore();
@@ -612,6 +614,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
 
   useEffect(() => {
     if (
+      !isEditMode &&
       selectedTableFqn &&
       selectedTestDefinition &&
       selectedTestLevel &&
@@ -623,6 +626,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       }
     }
   }, [
+    isEditMode,
     selectedTableFqn,
     selectedColumn,
     selectedTestDefinition,
@@ -674,7 +678,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
       'data-testid': 'selectedTable',
-      isDisabled: Boolean(table),
+      isDisabled: Boolean(table) || isEditMode,
       isLoading: isTableLoading,
       options: tableOptions,
       onSearchChange: debouncedFetchTables,
@@ -717,7 +721,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     placeholder: t('label.select-entity', { entity: t('label.column') }),
     props: {
       'data-testid': 'selectedColumn',
-      isDisabled: !selectedTableFqn,
+      isDisabled: !selectedTableFqn || isEditMode,
       options: columnOptions,
     },
   };
@@ -766,6 +770,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     props: {
       'data-testid': 'test-type',
       popoverClassName: 'test-type-popover',
+      isDisabled: isEditMode,
       options: testTypeOptions,
       onSelectionChange: (key?: string | number | null) =>
         handleActiveField(key ? `root/${key}` : 'root/testType'),
@@ -835,7 +840,19 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
     props: {
       'data-testid': 'test-case-name',
+      isDisabled: isEditMode,
       onChange: () => setIsTestNameManuallyEdited(true),
+    },
+  };
+
+  const displayNameField: FieldProp = {
+    name: 'displayName',
+    label: t('label.display-name'),
+    type: FieldTypes.TEXT,
+    required: false,
+    id: 'root/displayName',
+    props: {
+      'data-testid': 'display-name',
     },
   };
 
@@ -873,8 +890,8 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   // field afterwards replaces it as usual.
   const { setActive: setActiveFieldDoc } = useFieldDocRegistry();
   useEffect(() => {
-    setActiveFieldDoc('testLevel');
-  }, [setActiveFieldDoc]);
+    setActiveFieldDoc(isEditMode ? 'selectedTable' : 'testLevel');
+  }, [setActiveFieldDoc, isEditMode]);
 
   return (
     <div
@@ -893,44 +910,48 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         </div>
       )}
 
-      <div className="form-card-section" data-testid="select-table-card">
-        <div {...testLevelDoc}>
-          <FormField control={form.control} name="testLevel">
-            {({ field }) => (
-              <>
-                <FormItemLabel
-                  required
-                  label={t('message.select-test-level')}
-                />
-                <SelectionCardGroup
-                  options={testLevelOptions}
-                  value={field.value}
-                  onChange={(value) => {
-                    field.onChange(value);
-                    handleActiveField('root/testLevel');
-                  }}
-                />
-              </>
-            )}
-          </FormField>
+      {!showOnlyParameter && (
+        <div className="form-card-section" data-testid="select-table-card">
+          {!isEditMode && (
+            <div {...testLevelDoc}>
+              <FormField control={form.control} name="testLevel">
+                {({ field }) => (
+                  <>
+                    <FormItemLabel
+                      required
+                      label={t('message.select-test-level')}
+                    />
+                    <SelectionCardGroup
+                      options={testLevelOptions}
+                      value={field.value}
+                      onChange={(value) => {
+                        field.onChange(value);
+                        handleActiveField('root/testLevel');
+                      }}
+                    />
+                  </>
+                )}
+              </FormField>
+            </div>
+          )}
+
+          {getField(selectedTableField)}
+
+          {selectedTestLevel === TestLevel.COLUMN &&
+            getField(selectedColumnField)}
+
+          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
+            getField(dimensionColumnsField)}
+
+          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
+            getField(topDimensionsField)}
         </div>
-
-        {getField(selectedTableField)}
-
-        {selectedTestLevel === TestLevel.COLUMN &&
-          getField(selectedColumnField)}
-
-        {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
-          getField(dimensionColumnsField)}
-
-        {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
-          getField(topDimensionsField)}
-      </div>
+      )}
 
       <div
         className="form-card-section test-type-card test-type-section"
         data-testid="test-type-card">
-        {selectedTestLevel === TestLevel.TABLE && (
+        {!isEditMode && selectedTestLevel === TestLevel.TABLE && (
           <div
             className={classNames(
               'custom-test-type-container d-flex items-center',
@@ -978,77 +999,84 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
         {isComputeRowCountFieldVisible && getField(computeRowCountField)}
       </div>
 
-      <div
-        className="form-card-section test-details-section"
-        data-testid="test-details-card">
-        {getField(testNameField)}
+      {!showOnlyParameter && (
+        <div
+          className="form-card-section test-details-section"
+          data-testid="test-details-card">
+          {getField(testNameField)}
 
-        <FormField control={form.control} name="description">
-          {({ field }) => (
-            <div
-              className="tw:flex tw:flex-col tw:gap-1"
-              data-testid="description"
-              id="root/description"
-              {...descriptionDoc}>
-              <FormItemLabel label={t('label.description')} />
-              <RichTextEditor
-                initialValue={field.value ?? ''}
-                onFocus={() => handleActiveField('root/description')}
-                onTextChange={field.onChange}
-              />
-            </div>
-          )}
-        </FormField>
+          {isEditMode && getField(displayNameField)}
 
-        <FormField control={form.control} name="tags">
-          {({ field }) => (
-            <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
-              <TagSuggestion
-                label={t('label.tag-plural')}
-                placeholder={t('label.select-field', {
-                  field: t('label.tag-plural'),
-                })}
-                value={field.value ?? []}
-                onChange={field.onChange}
-              />
-            </div>
-          )}
-        </FormField>
+          <FormField control={form.control} name="description">
+            {({ field }) => (
+              <div
+                className="tw:flex tw:flex-col tw:gap-1"
+                data-testid="description"
+                id="root/description"
+                {...descriptionDoc}>
+                <FormItemLabel label={t('label.description')} />
+                <RichTextEditor
+                  initialValue={field.value ?? ''}
+                  onFocus={() => handleActiveField('root/description')}
+                  onTextChange={field.onChange}
+                />
+              </div>
+            )}
+          </FormField>
 
-        <FormField control={form.control} name="glossaryTerms">
-          {({ field }) => (
-            <div
-              data-testid="glossary-terms-selector"
-              id="root/glossaryTerms"
-              {...glossaryTermsDoc}>
-              <TagSuggestion
-                label={t('label.glossary-term-plural')}
-                placeholder={t('label.select-field', {
-                  field: t('label.glossary-term-plural'),
-                })}
-                tagType={TagSource.Glossary}
-                value={field.value ?? []}
-                onChange={field.onChange}
-              />
-            </div>
-          )}
-        </FormField>
-      </div>
+          <FormField control={form.control} name="tags">
+            {({ field }) => (
+              <div data-testid="tags-selector" id="root/tags" {...tagsDoc}>
+                <TagSuggestion
+                  label={t('label.tag-plural')}
+                  placeholder={t('label.select-field', {
+                    field: t('label.tag-plural'),
+                  })}
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                />
+              </div>
+            )}
+          </FormField>
 
-      {selectedTableFqn && canCreatePipeline && (
-        <div {...pipelineDoc}>
-          <TestCaseSchedulerSection
-            canCreatePipeline={canCreatePipeline}
-            form={form}
-            hasTestSuite={hasTestSuite}
-            schedulerOptions={schedulerOptions}
-            selectedTableData={selectedTableData}
-            table={table}
-            testSuite={testSuite}
-            onActiveFieldChange={onActiveFieldChange}
-          />
+          <FormField control={form.control} name="glossaryTerms">
+            {({ field }) => (
+              <div
+                data-testid="glossary-terms-selector"
+                id="root/glossaryTerms"
+                {...glossaryTermsDoc}>
+                <TagSuggestion
+                  label={t('label.glossary-term-plural')}
+                  placeholder={t('label.select-field', {
+                    field: t('label.glossary-term-plural'),
+                  })}
+                  tagType={TagSource.Glossary}
+                  value={field.value ?? []}
+                  onChange={field.onChange}
+                />
+              </div>
+            )}
+          </FormField>
         </div>
       )}
+
+      {!showOnlyParameter &&
+        !isEditMode &&
+        selectedTableFqn &&
+        canCreatePipeline && (
+          <div {...pipelineDoc}>
+            <TestCaseSchedulerSection
+              canCreatePipeline={canCreatePipeline}
+              form={form}
+              hasTestSuite={hasTestSuite}
+              schedulerOptions={schedulerOptions}
+              selectedTableData={selectedTableData}
+              table={table}
+              testSuite={testSuite}
+              onActiveFieldChange={onActiveFieldChange}
+            />
+          </div>
+        )}
     </div>
   );
 };

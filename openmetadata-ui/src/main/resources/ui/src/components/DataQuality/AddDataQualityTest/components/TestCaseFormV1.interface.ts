@@ -72,6 +72,8 @@ export interface TestCaseFormBodyProps {
   onErrorDismiss?: () => void;
   onActiveFieldChange?: (fieldId: string) => void;
   onContextChange?: (context: TestCaseFormContext) => void;
+  isEditMode?: boolean;
+  showOnlyParameter?: boolean;
 }
 
 export interface TestCaseSchedulerSectionProps {
@@ -94,6 +96,7 @@ export interface FormValues {
   selectedColumn?: string;
   testTypeId?: string;
   testName?: string;
+  displayName?: string;
   description?: string;
   tags?: TagLabel[];
   glossaryTerms?: TagLabel[];
