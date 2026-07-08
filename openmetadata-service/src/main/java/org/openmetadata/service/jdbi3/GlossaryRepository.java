@@ -85,6 +85,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.resources.glossary.GlossaryResource;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.policyevaluator.PolicyConditionUpdater;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.FullyQualifiedName;
@@ -485,7 +486,9 @@ public class GlossaryRepository extends EntityRepository<Glossary> {
       }
       String termStatus = csvRecord.get(10);
       try {
-        return nullOrEmpty(termStatus) ? EntityStatus.DRAFT : EntityStatus.fromValue(termStatus);
+        return nullOrEmpty(termStatus)
+            ? EntityStatus.DRAFT
+            : EntityFieldUtils.parseEntityStatus(termStatus);
       } catch (Exception ex) {
         // List should have even numbered terms - termName and endPoint
         importFailure(

@@ -12,6 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.mcp.util.McpParams;
 import org.openmetadata.mcp.util.McpResponseTrim;
 import org.openmetadata.mcp.util.ResponseBudget;
+import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.service.Entity;
@@ -64,11 +65,14 @@ public class SearchCompanyContextTool implements McpTool {
       result = errorResponse("Vector search service is not initialized");
     } else {
       int size = Math.min(Math.max(McpParams.getInt(params, "size", DEFAULT_SIZE), 1), MAX_SIZE);
+      int from =
+          VectorPagingContract.cursorOffsetOrDefault(
+              params, Math.max(McpParams.getInt(params, "from", 0), 0));
       try {
         VectorSearchResponse response =
             vectorService.search(
-                query, companyContextFilters(), size, 0, DEFAULT_K, DEFAULT_THRESHOLD);
-        result = buildResponse(query, response);
+                query, companyContextFilters(), size, from, DEFAULT_K, DEFAULT_THRESHOLD);
+        result = buildResponse(query, response, size, from);
       } catch (Exception e) {
         LOG.error("Company context search failed: {}", e.getMessage(), e);
         result = errorResponse("Company context search failed: " + McpResponseTrim.safeMessage(e));
@@ -85,7 +89,8 @@ public class SearchCompanyContextTool implements McpTool {
     return filters;
   }
 
-  private Map<String, Object> buildResponse(String query, VectorSearchResponse response) {
+  private Map<String, Object> buildResponse(
+      String query, VectorSearchResponse response, int requestedSize, int from) {
     List<Map<String, Object>> pills = new ArrayList<>();
     if (response.getHits() != null) {
       for (Map<String, Object> hit : response.getHits()) {
@@ -96,7 +101,15 @@ public class SearchCompanyContextTool implements McpTool {
     result.put("query", query);
     result.put("results", pills);
     result.put("returnedCount", pills.size());
+    int rawCount = pills.size();
     fitResultsToBudget(result, pills);
+    VectorPagingContract.attach(
+        result,
+        from,
+        rawCount,
+        requestedSize,
+        response,
+        "Showing %d knowledge pills. Pass 'nextCursor' to fetch the next page.");
     return result;
   }
 
