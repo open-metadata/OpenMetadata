@@ -20,7 +20,6 @@ import {
   type ListValues,
   type SelectFieldSettings,
 } from '@react-awesome-query-builder/ui';
-import { OMConfig } from './QueryBuilderOMConfig';
 import { debounce, isEmpty, sortBy, toLower } from 'lodash';
 import {
   SearchOutputType,
@@ -51,6 +50,7 @@ import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
+import { OMConfig } from './QueryBuilderOMConfig';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchPureUtils';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;

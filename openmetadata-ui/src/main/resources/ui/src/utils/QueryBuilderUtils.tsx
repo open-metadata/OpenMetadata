@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { RenderSettings } from '@react-awesome-query-builder/ui';
 import { Button } from '@openmetadata/ui-core-components';
+import type { RenderSettings } from '@react-awesome-query-builder/ui';
 import { Plus, X } from '@untitledui/icons';
 import { t } from './i18next/LocalUtil';
 

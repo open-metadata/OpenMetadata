@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { Button } from '@openmetadata/ui-core-components';
 import {
   Field,
   FieldOrGroup,
@@ -18,9 +19,8 @@ import {
   RenderSettings,
   ValueSource,
 } from '@react-awesome-query-builder/ui';
-import { Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
-import { Button } from '@openmetadata/ui-core-components';
 import { Plus, Trash01, X } from '@untitledui/icons';
+import { Checkbox, MenuProps, Radio, Space, Typography } from 'antd';
 import { isArray, isEmpty } from 'lodash';
 import ProfilePicture from '../components/common/ProfilePicture/ProfilePicture';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
