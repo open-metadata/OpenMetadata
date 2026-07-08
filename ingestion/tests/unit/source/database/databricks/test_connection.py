@@ -72,9 +72,8 @@ def test_close_disposes_the_engine_pool():
 def test_connection_timeout_drives_the_per_step_budget():
     from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 
-    # The user-configured connectionTimeout (default 120) must win as the per-step
-    # budget - a cold serverless warehouse can exceed the 60s framework default. Fed
-    # through BaseConnection.step_timeout_seconds, not a test_connection override.
+    # connectionTimeout (default 120) must win over the 60s framework default,
+    # fed through BaseConnection.step_timeout_seconds.
     default_config = _config()
     assert DatabricksConnection(default_config).step_timeout_seconds == default_config.connectionTimeout
 
@@ -103,8 +102,7 @@ def test_forbidden_message_is_classified():
 
 
 def test_malformed_http_path_is_classified():
-    # A bad httpPath fails at CheckAccess with MALFORMED_REQUEST; the gate then
-    # short-circuits the rest, so this must carry a diagnosis rather than a raw error.
+    # A bad httpPath fails CheckAccess with MALFORMED_REQUEST; needs a diagnosis.
     error = _SqlAlchemyError(
         Exception(
             "MALFORMED_REQUEST: Path /sql/1.0/warehouses/39c390db3a5e19e must match pattern "
@@ -140,8 +138,7 @@ def test_catalog_does_not_exist_is_classified():
 
 
 def test_no_such_catalog_exception_is_classified():
-    # Databricks raises NO_SUCH_CATALOG_EXCEPTION with "was not found" (not "does
-    # not exist"); key on the stable token so a configured bad catalog is diagnosed.
+    # NO_SUCH_CATALOG_EXCEPTION says "was not found", not "does not exist".
     error = _SqlAlchemyError(Exception("[NO_SUCH_CATALOG_EXCEPTION] Catalog 'batata' was not found. SQLSTATE: 42704"))
     assert DATABRICKS_ERRORS.classify(error).title == "Catalog not found"
 
@@ -183,19 +180,15 @@ def test_checks_cover_exactly_the_seeded_steps():
 
 
 def test_construction_does_not_touch_the_network():
-    # Building the provider must not resolve catalogs or connect - that has to run
-    # inside a check, behind the CheckAccess gate, or an unreachable host hangs the
-    # eager call instead of failing fast at the preflight.
+    # Building the provider must not connect - that belongs in a gated check.
     engine = MagicMock()
     DatabricksChecks(client=engine, service_connection=_config())
     engine.connect.assert_not_called()
 
 
 def test_construction_does_not_build_the_inspector():
-    # Regression: sqlalchemy.inspect(engine) eagerly opens a connection (the
-    # dialect's _init_engine runs engine.connect().close()), so building it in the
-    # wrapper's __init__ would connect before the gate - the auth error then escapes
-    # the runner as a 500 and an unreachable host hangs. The inspector must be lazy.
+    # Regression: inspect(engine) connects eagerly, so building it in __init__ would
+    # connect before the gate (auth error escapes as a 500). Keep it lazy.
     with patch(f"{CONNECTION_MODULE}.inspect") as mock_inspect:
         checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
         mock_inspect.assert_not_called()
@@ -243,9 +236,8 @@ def test_first_catalog_uses_configured_catalog_without_querying():
 
 
 def test_listing_caps_rows_at_the_sample_size_at_the_source():
-    # The wrapper must bound the fetch (fetchmany), not pull the whole result and
-    # slice - a catalog with 100k tables would otherwise balloon memory. This cap
-    # is test-connection only; real ingestion goes through the common framework.
+    # Bound the fetch (fetchmany), not fetchall-then-slice. Test-connection only;
+    # real ingestion goes through the common framework.
     from metadata.core.connections.test_connection.checks.database import (
         DEFAULT_SAMPLE_ROWS,
     )

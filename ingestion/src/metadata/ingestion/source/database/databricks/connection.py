@@ -77,23 +77,16 @@ logger = ingestion_logger()
 
 suppress_user_agent_entry_deprecation_log()
 
-# Databricks dials the workspace host over HTTPS (``<workspace>...:443``); the
-# gate probes that host:port for TCP reachability so a wrong workspace or a
-# firewall fails as a network problem before the driver, TLS, or the token.
+# Databricks dials the workspace over HTTPS; the gate TCP-probes this port.
 DEFAULT_DATABRICKS_PORT = 443
 
-# Fallback catalog used to scope tag probes when none is configured and no
-# catalog can be resolved (mirrors the legacy ``get_first_catalog`` default).
 DEFAULT_CATALOG = "main"
 
 SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "sys"})
 
 
-# The databricks-sql / thrift driver reports failures as message tokens rather
-# than stable numeric error codes, so the pack keys on those tokens. The
-# specific auth and object-not-found tokens are placed before the broader
-# privilege and "does not exist" rules (first match wins). Bad workspace host is
-# caught earlier by the TCP preflight via ``NETWORK_ERRORS``.
+# databricks-sql/thrift reports failures as message tokens, not numeric codes, so
+# rules key on tokens; specific ones precede broad ones (first match wins).
 DATABRICKS_ERRORS = ErrorPack(
     when(Matchers.contains("invalid access token")).diagnose(
         "Authentication failed",
@@ -154,9 +147,7 @@ DATABRICKS_ERRORS = ErrorPack(
 
 
 def _summarize(rows: Sequence[object], noun: str) -> str:
-    """``N <noun>s enumerated`` (``N+`` at the row cap), or ``no <noun>s enumerated``.
-
-    The ``+`` marks a capped sample so the figure is not read as an exact total."""
+    """``N <noun>s enumerated`` (``N+`` at the cap) or ``no <noun>s enumerated``."""
     count = len(rows)
     if not count:
         return f"no {noun}s enumerated"
@@ -166,12 +157,8 @@ def _summarize(rows: Sequence[object], noun: str) -> str:
 
 
 class DatabricksEngineWrapper:
-    """Wrapper to store engine and schemas to avoid multiple calls.
-
-    Catalog / schema resolution is lazy: no method here touches the network until
-    a check calls it, so building the wrapper while assembling the checks provider
-    stays behind the gate.
-    """
+    """Engine wrapper caching the resolved catalog and schema. Lookups are lazy, so
+    constructing it touches no network and stays behind the CheckAccess gate."""
 
     def __init__(self, engine: Engine):
         self.engine = engine
@@ -182,13 +169,9 @@ class DatabricksEngineWrapper:
 
     @property
     def inspector(self):
-        """Build the inspector on first use, never at construction.
-
-        ``inspect(engine)`` eagerly opens a connection (the dialect's
-        ``_init_engine`` runs ``engine.connect().close()``), so creating it in
-        ``__init__`` would touch the network while the checks provider is being
-        assembled - before the runner and the CheckAccess gate. Deferring it keeps
-        the first connection inside a gated ``@check``."""
+        # Lazy, never at construction: inspect(engine) connects eagerly (the
+        # dialect's _init_engine runs engine.connect().close()), which would
+        # bypass the CheckAccess gate.
         if self._inspector is None:
             self._inspector = inspect(self.engine)
         return self._inspector
@@ -201,9 +184,7 @@ class DatabricksEngineWrapper:
             self.first_schema = schema_name
             return [schema_name]
         if self.schemas is None:
-            # get_schema_names reflects the full list (no driver-side cap); bound it
-            # to the sample size so a catalog with thousands of schemas can't balloon
-            # the cached list. A probe only needs to prove schemas are reachable.
+            # Bound the reflected list (no driver-side cap) to the sample size.
             self.schemas = self.inspector.get_schema_names(database=self.first_catalog)[:DEFAULT_SAMPLE_ROWS]
             if self.schemas:
                 for schema in self.schemas:
@@ -284,13 +265,9 @@ def get_connection(connection: DatabricksConnectionConfig) -> Engine:
 
 
 class DatabricksChecks:
-    """Test-connection checks for Databricks.
-
-    Catalog / schema listing runs through ``DatabricksEngineWrapper`` so the first
-    accessible catalog and schema are resolved once and reused - the tag and
-    lineage probes scope to that catalog. Every statement is built inside its
-    ``@check`` method: nothing here connects before the gate.
-    """
+    """Test-connection checks for Databricks. Catalog/schema listing goes through
+    ``DatabricksEngineWrapper``; every statement is built inside its ``@check`` so
+    nothing connects before the gate."""
 
     errors = DATABRICKS_ERRORS
 
@@ -300,8 +277,7 @@ class DatabricksChecks:
         self._engine_wrapper = DatabricksEngineWrapper(client)
 
     def _first_catalog(self) -> str:
-        """Resolve (and cache) the catalog to scope tag probes to. Runs
-        ``SHOW CATALOGS`` only when none is configured; called from a check."""
+        """Resolve and cache the catalog to scope tag probes to."""
         if self._engine_wrapper.first_catalog is None:
             self._engine_wrapper.get_catalogs(catalog_name=self.service_connection.catalog)
         return self._engine_wrapper.first_catalog or self.service_connection.catalog or DEFAULT_CATALOG
@@ -314,10 +290,8 @@ class DatabricksChecks:
         return host_port, DEFAULT_DATABRICKS_PORT
 
     def _list(self, operation: Callable[[], Sequence[object] | None], command: str, noun: str) -> Evidence:
-        """Run a wrapper listing op, reporting the command plus a row-count summary.
-
-        On failure, re-raise as ``CheckError`` carrying the attempted command so the
-        failed step still reports what it ran."""
+        """Run a wrapper listing op, reporting the command and a row-count summary;
+        on failure re-raise as ``CheckError`` carrying the attempted command."""
         try:
             rows = operation()
         except Exception as cause:
@@ -399,10 +373,8 @@ class DatabricksChecks:
 class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
     def __init__(self, service_connection: DatabricksConnectionConfig) -> None:
         super().__init__(service_connection)
-        # Databricks exposes a user-facing connectionTimeout (default 120s); a cold
-        # serverless warehouse can take longer than the framework default to resume,
-        # so the configured value drives the per-step budget. Resolved here (a plain
-        # config read, no network) so it feeds BaseConnection's step_timeout_seconds.
+        # Honor the user-facing connectionTimeout (default 120s) as the per-step
+        # budget; a cold serverless warehouse can exceed the 60s framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
 
     def _get_client(self) -> Engine:
