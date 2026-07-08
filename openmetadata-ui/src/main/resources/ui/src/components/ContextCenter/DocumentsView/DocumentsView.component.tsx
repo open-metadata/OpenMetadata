@@ -34,7 +34,7 @@ import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-i
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
 import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
