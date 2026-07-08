@@ -28,7 +28,7 @@ import { Edit01 } from '@untitledui/icons';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { debounce, snakeCase } from 'lodash';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
@@ -912,18 +912,35 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     doc: t('message.doc-field-description'),
   });
 
-  // Seed the hint panel with the first section's documentation when the form
-  // opens, so it isn't empty before the user focuses a field. Focusing any
-  // field afterwards replaces it as usual.
-  const { setActive: setActiveFieldDoc } = useFieldDocRegistry();
+  // Seed the hint panel with the first field actually on screen so it isn't
+  // empty on open and never points at a field the current mode hides (edit
+  // hides the test-level card; params-only edit hides the table/column
+  // selectors). A field's doc registers even when the field is not rendered
+  // (the useFieldDoc hooks are called unconditionally), so query the DOM for
+  // the first rendered `data-field-doc` anchor rather than the registry.
+  // Focusing any field replaces it as usual.
+  const { setActive: setActiveFieldDoc, entries: fieldDocEntries } =
+    useFieldDocRegistry();
+  const formBodyRef = useRef<HTMLDivElement>(null);
+  const hasSeededFieldDocRef = useRef(false);
   useEffect(() => {
-    setActiveFieldDoc(isEditMode ? 'selectedTable' : 'testLevel');
-  }, [setActiveFieldDoc, isEditMode]);
+    if (hasSeededFieldDocRef.current) {
+      return;
+    }
+    const firstFieldName = formBodyRef.current
+      ?.querySelector('[data-field-doc]')
+      ?.getAttribute('data-field-doc');
+    if (firstFieldName) {
+      setActiveFieldDoc(firstFieldName);
+      hasSeededFieldDocRef.current = true;
+    }
+  }, [fieldDocEntries, setActiveFieldDoc]);
 
   return (
     <div
       className="test-case-form-v1 drawer-mode test-case-form-body"
       data-testid="test-case-form-v1"
+      ref={formBodyRef}
       onFocusCapture={handleFormFocusCapture}>
       {errorMessage && (
         <div className="floating-error-alert">
