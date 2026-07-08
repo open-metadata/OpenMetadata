@@ -311,4 +311,68 @@ describe('EntitySearchSettings', () => {
       expect(entityConfig.ranking.stages[0]).not.toHaveProperty('weight');
     });
   });
+
+  it('Should update the selected unnamed ranking stage while saving', async () => {
+    const configWithRanking = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          ...mockSearchConfig.assetTypeConfigurations[0],
+          ranking: {
+            enabled: true,
+            stages: [
+              {
+                fields: ['name.keyword'],
+                weight: 100,
+              },
+              {
+                fields: ['description'],
+                weight: 40,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockUseApplicationStore.mockReturnValue({
+      appPreferences: { searchConfig: configWithRanking },
+      setAppPreferences: mockSetAppPreferences,
+    });
+
+    (updateSettingsConfig as jest.Mock).mockImplementation((settings) =>
+      Promise.resolve({ data: settings })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    expect(screen.getByTestId('ranking-stage-unnamed-0')).toBeInTheDocument();
+    expect(screen.getByTestId('ranking-stage-unnamed-1')).toBeInTheDocument();
+
+    fireEvent.change(screen.getAllByRole('spinbutton')[1], {
+      target: { value: '' },
+    });
+
+    const { handleSaveChanges } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleSaveChanges();
+    });
+
+    await waitFor(() => {
+      const settings = (updateSettingsConfig as jest.Mock).mock.calls[0][0];
+      const entityConfig = settings.config_value.assetTypeConfigurations.find(
+        (config: { assetType: string }) => config.assetType === 'table'
+      );
+
+      expect(entityConfig.ranking.stages[0].weight).toBe(100);
+      expect(entityConfig.ranking.stages[1]).not.toHaveProperty('weight');
+    });
+  });
 });
