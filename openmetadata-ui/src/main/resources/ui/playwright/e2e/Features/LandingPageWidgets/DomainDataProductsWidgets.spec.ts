@@ -254,18 +254,16 @@ test.describe.serial('Domain and Data Product Asset Counts', () => {
     await waitForAllLoadersToDisappear(page);
     await sidebarClick(page, SidebarItem.DATA_PRODUCT);
     await selectDataProduct(page, dataProduct.data);
+    await waitForAllLoadersToDisappear(page);
 
+    const dataProductAssetsResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataProducts/name/') &&
+        response.url().includes('fields=domains%2Cassets') &&
+        response.request().method() === 'GET'
+    );
     await page.getByTestId('assets').click();
-
-    await page
-      .getByTestId('loader')
-      .waitFor({
-        state: 'detached',
-        timeout: 10000,
-      })
-      .catch(() => {
-        /* ignore if loader not found */
-      });
+    await dataProductAssetsResponse;
 
     let hasAssets = true;
     while (hasAssets) {

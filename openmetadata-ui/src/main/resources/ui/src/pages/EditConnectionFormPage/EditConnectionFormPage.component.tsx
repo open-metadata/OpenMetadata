@@ -394,7 +394,7 @@ function EditConnectionFormPage() {
           pageTitle={t('label.edit-entity', { entity: t('label.connection') })}
           secondPanel={{
             children: (
-              <Suspense fallback={<Loader />}>
+              <Suspense fallback={null}>
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}
