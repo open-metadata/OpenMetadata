@@ -54,7 +54,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
     return {
       folderName: getEntityName(file.folder),
       formattedFileSize: formatBytes(file.fileSize),
-      fileName: getEntityName(file)
+      fileName: getEntityName(file),
     };
   }, [file]);
 
@@ -104,7 +104,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           />
         </Box>
       </Box>
- 
+
       <Box
         className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4"
         direction="col"

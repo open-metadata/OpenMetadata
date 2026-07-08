@@ -787,18 +787,19 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                     {/* Section 4: Linked Data Assets */}
                     <div className="tw:flex tw:flex-col tw:gap-2">
                       <Box align="center" justify="between">
-                           <Typography
-                        className="tw:text-tertiary"
-                        size="text-xs"
-                        weight="semibold">
-                        {`${t('label.linked-data-asset-plural')} (${
-                          linkedAssets.length
-                        })`}
-                      </Typography>
-                         {!isViewOnly && <DataAssetSelectList
+                        <Typography
+                          className="tw:text-tertiary"
+                          size="text-xs"
+                          weight="semibold">
+                          {`${t('label.linked-data-asset-plural')} (${
+                            linkedAssets.length
+                          })`}
+                        </Typography>
+                        {!isViewOnly && (
+                          <DataAssetSelectList
                             placeholder={t('label.search-assets-to-link')}
                             popoverAlign="right"
-                           popoverClassName="tw:h-100"
+                            popoverClassName="tw:h-100"
                             renderTrigger={({ open }) => (
                               <Button
                                 className="tw:px-2.5 tw:py-1.5"
@@ -814,7 +815,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             searchIndex={SearchIndex.DATA_ASSET}
                             value={linkedAssets}
                             onChange={handleAssetChange}
-                          />}
+                          />
+                        )}
                       </Box>
 
                       {isViewOnly ? (

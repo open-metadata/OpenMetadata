@@ -173,7 +173,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
       data-testid={`memory-row-${memory.id}`}
       gap={3}
       onClick={() => onViewMemory?.(memory)}>
-      {(memory?.updatedBy) && (
+      {memory?.updatedBy && (
         <div className="tw:shrink-0 tw:mt-0.5">
           <ProfilePicture name={memory.updatedBy} />
         </div>
