@@ -795,7 +795,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           linkedAssets.length
                         })`}
                       </Typography>
-                         <DataAssetSelectList
+                         {!isViewOnly && <DataAssetSelectList
                             placeholder={t('label.search-assets-to-link')}
                             popoverAlign="right"
                            popoverClassName="tw:h-100"
@@ -814,7 +814,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             searchIndex={SearchIndex.DATA_ASSET}
                             value={linkedAssets}
                             onChange={handleAssetChange}
-                          />
+                          />}
                       </Box>
 
                       {isViewOnly ? (
