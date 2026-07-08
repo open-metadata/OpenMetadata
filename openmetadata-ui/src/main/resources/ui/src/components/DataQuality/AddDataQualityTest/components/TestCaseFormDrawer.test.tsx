@@ -25,7 +25,10 @@ import {
 import { useState } from 'react';
 import { Table } from '../../../../generated/entity/data/table';
 import { TestCase } from '../../../../generated/tests/testCase';
-import { TestDefinition } from '../../../../generated/tests/testDefinition';
+import {
+  TestDataType,
+  TestDefinition,
+} from '../../../../generated/tests/testDefinition';
 import {
   addIngestionPipeline,
   deployIngestionPipelineById,
@@ -42,6 +45,7 @@ import {
   TestCaseFormDrawerProps,
   TestLevel,
 } from './TestCaseFormV1.interface';
+import { buildEditDefaults } from './transformTestCaseFormData';
 
 const mockGetResourceLimit = jest.fn().mockResolvedValue(undefined);
 
@@ -757,6 +761,115 @@ describe('TestCaseFormDrawer', () => {
 
       expect(await screen.findByText('label.edit-entity')).toBeInTheDocument();
     });
+  });
+});
+
+describe('edit submit uses the directly-fetched definition (Finding 1 regression)', () => {
+  // createUpdatedTestCasePatch is mocked module-wide above; pull the real
+  // implementation here so a genuine JSON patch is produced and the
+  // Array-param serialization bug is actually observable end-to-end.
+  const { createUpdatedTestCasePatch: realCreateUpdatedTestCasePatch } =
+    jest.requireActual('../../../../utils/DataQuality/DataQualityPureUtils');
+
+  const mockGetTestDefinitionById = getTestDefinitionById as jest.Mock;
+  const mockUpdateTestCaseById = updateTestCaseById as jest.Mock;
+  const mockCreateUpdatedTestCasePatch =
+    createUpdatedTestCasePatch as jest.Mock;
+  const mockBuildEditDefaults = buildEditDefaults as jest.Mock;
+
+  const arrayParamDefinition = {
+    id: 'def-array',
+    name: 'columnValuesToBeInSet',
+    fullyQualifiedName: 'columnValuesToBeInSet',
+    supportsRowLevelPassedFailed: false,
+    parameterDefinition: [
+      { name: 'allowedValues', dataType: TestDataType.Array },
+    ],
+  } as TestDefinition;
+
+  const arrayParamTestCase = {
+    id: 'test-case-id',
+    name: 'existing-test-case',
+    displayName: 'Existing Test Case',
+    entityLink: '<#E::table::service.db.schema.table>',
+    testDefinition: {
+      id: 'def-array',
+      fullyQualifiedName: 'columnValuesToBeInSet',
+    },
+    parameterValues: [
+      { name: 'allowedValues', value: JSON.stringify(['a', 'b']) },
+    ],
+    tags: [],
+  } as unknown as TestCase;
+
+  beforeEach(() => {
+    mockGetTestDefinitionById.mockResolvedValue(arrayParamDefinition);
+    mockUpdateTestCaseById.mockResolvedValue(arrayParamTestCase);
+    // Real implementation, restored per-test since the top-level mock
+    // factory replaces createUpdatedTestCasePatch with a jest.fn().
+    mockCreateUpdatedTestCasePatch.mockImplementation(
+      realCreateUpdatedTestCasePatch
+    );
+    // Mirrors what the real buildEditDefaults produces for an Array-type
+    // param (see transformTestCaseFormData.buildEditParams): a
+    // `{ value: string }[]` shape that createTestCaseParameters must
+    // re-serialize using the test definition's parameterDefinition. The
+    // values differ from the stored testCase.parameterValues (['a','b'])
+    // so the edit produces a genuine, non-empty patch.
+    mockBuildEditDefaults.mockReturnValue({
+      testName: arrayParamTestCase.name,
+      displayName: arrayParamTestCase.displayName,
+      params: { allowedValues: [{ value: 'c' }, { value: 'd' }] },
+    });
+  });
+
+  it('serializes an Array-type param correctly even when TestCaseFormBody reports selectedDefinition as undefined (filter-miss/race)', async () => {
+    renderDrawer({ testCase: arrayParamTestCase });
+
+    await waitFor(() => {
+      expect(mockGetTestDefinitionById).toHaveBeenCalledWith('def-array');
+    });
+
+    // Simulate TestCaseFormBody resolving its filtered definitions list
+    // without the current test's definition (deprecated/mismatched, or a
+    // race where submit happens before the list loads).
+    await act(async () => {
+      emitContextFn?.({
+        selectedDefinition: undefined,
+        selectedTableData: undefined,
+        selectedColumn: undefined,
+        selectedTestLevel: TestLevel.TABLE,
+        generateName: () => 'generated-name',
+        canCreatePipeline: false,
+      });
+    });
+
+    const submitBtn = await screen.findByTestId('create-btn');
+
+    await act(async () => {
+      fireEvent.click(submitBtn);
+    });
+
+    await waitFor(() => {
+      expect(mockUpdateTestCaseById).toHaveBeenCalled();
+    });
+
+    const [, patch] = mockUpdateTestCaseById.mock.calls[0] as [
+      string,
+      Array<{ op: string; path: string; value?: unknown }>
+    ];
+
+    const paramsValueOp = patch.find((op) =>
+      op.path.startsWith('/parameterValues')
+    );
+
+    expect(paramsValueOp).toBeDefined();
+
+    // The allowedValues param must be serialized as a JSON-stringified array
+    // (matching TestCaseParameterValue.value: string), not the raw
+    // `{ value: string }[]` form-field shape.
+    expect(typeof paramsValueOp?.value).toBe('string');
+    expect(JSON.parse(paramsValueOp?.value as string)).toEqual(['c', 'd']);
   });
 });
 

@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 
-import { DrawerProps } from 'antd';
 import { ReactNode } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
@@ -28,17 +27,6 @@ import { SelectionOption } from '../../../common/SelectionCardGroup/SelectionCar
 // =============================================
 // COMPONENT PROPS
 // =============================================
-export interface TestCaseFormV1Props {
-  drawerProps?: DrawerProps;
-  className?: string;
-  table?: Table;
-  testSuite?: TestSuite;
-  onFormSubmit?: (testCase: TestCase) => void;
-  onCancel?: () => void;
-  loading?: boolean;
-  testLevel?: TestLevel;
-}
-
 export interface TestCaseFormDrawerProps {
   open: boolean;
   onClose: () => void;

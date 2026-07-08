@@ -33,6 +33,7 @@ import { usePermissionProvider } from '../../../../context/PermissionProvider/Pe
 import { EntityType as EntityTypeEnum } from '../../../../enums/entity.enum';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { TestCase } from '../../../../generated/tests/testCase';
+import { TestDefinition } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TableSearchSource } from '../../../../interface/search.interface';
 import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
@@ -114,6 +115,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const [activeField, setActiveField] = useState<string>('');
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
   const [showHint, setShowHint] = useState<boolean>(true);
+  const [editDefinition, setEditDefinition] = useState<TestDefinition>();
 
   const handleErrorDismiss = useCallback(() => setErrorMessage(''), []);
 
@@ -125,6 +127,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       const definition = await getTestDefinitionById(
         testCase.testDefinition?.id ?? ''
       );
+      setEditDefinition(definition);
       form.reset({
         ...form.getValues(),
         ...buildEditDefaults(testCase, definition),
@@ -165,15 +168,25 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const handleEditSubmit = useCallback(
     async (values: FormValues) => {
+      // `editDefinition` comes from the direct getTestDefinitionById fetch in
+      // the prefill effect, which is keyed by the test case's own definition
+      // id. `formContext.selectedDefinition` is resolved by TestCaseFormBody
+      // from its filtered getListTestDefinitions list, which can be
+      // undefined on a submit-before-load race or when the definition is
+      // filtered out (deprecated/mismatched service or data type). Prefer
+      // the directly-fetched definition so Array-type params are always
+      // correctly serialized.
+      const resolvedDefinition =
+        editDefinition ?? formContext?.selectedDefinition;
       const isComputeRowCountFieldVisible =
-        formContext?.selectedDefinition?.supportsRowLevelPassedFailed ?? false;
+        resolvedDefinition?.supportsRowLevelPassedFailed ?? false;
       const formValue = values as unknown as TestCaseFormType;
       const jsonPatch = createUpdatedTestCasePatch({
         testCase: testCase as TestCase,
         value: formValue,
         createTestCaseObject: testCaseClassBase.getCreateTestCaseObject(
           formValue,
-          formContext?.selectedDefinition
+          resolvedDefinition
         ),
         showOnlyParameter,
         isComputeRowCountFieldVisible,
@@ -192,7 +205,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
       );
       onUpdate?.(updated);
     },
-    [testCase, formContext, showOnlyParameter, onUpdate, t]
+    [testCase, editDefinition, formContext, showOnlyParameter, onUpdate, t]
   );
 
   const handleCreateSubmit = useCallback(
