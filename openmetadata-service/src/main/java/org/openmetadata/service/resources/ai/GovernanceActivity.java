@@ -21,6 +21,8 @@ import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.AIGovernanceActivityEvent;
+import org.openmetadata.schema.api.ai.AIGovernanceActivityResponse;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -46,7 +48,7 @@ final class GovernanceActivity {
 
   private GovernanceActivity() {}
 
-  static List<Map<String, Object>> compute(String entityType, String entityId, int limit) {
+  static AIGovernanceActivityResponse compute(String entityType, String entityId, int limit) {
     List<EntityInterface> assets = new ArrayList<>();
     boolean singleEntity = entityType != null && entityId != null;
     if (singleEntity) {
@@ -62,14 +64,14 @@ final class GovernanceActivity {
       collect(Entity.LLM_MODEL, assets);
     }
 
-    List<Map<String, Object>> events = new ArrayList<>();
+    List<AIGovernanceActivityEvent> events = new ArrayList<>();
     for (EntityInterface entity : assets) {
       events.addAll(eventsFor(entity, singleEntity));
     }
-    events.sort(Comparator.comparing((Map<String, Object> e) -> (Long) e.get("at")).reversed());
+    events.sort(Comparator.comparing(AIGovernanceActivityEvent::getAt).reversed());
     int effective = Math.min(limit > 0 ? limit : 50, events.size());
 
-    return events.subList(0, effective);
+    return new AIGovernanceActivityResponse().withEvents(events.subList(0, effective));
   }
 
   private static EntityInterface loadSingle(String entityType, String entityId) {
@@ -108,7 +110,7 @@ final class GovernanceActivity {
         : "owners,governanceMetadata";
   }
 
-  static List<Map<String, Object>> eventsFor(EntityInterface entity) {
+  static List<AIGovernanceActivityEvent> eventsFor(EntityInterface entity) {
     return eventsFor(entity, true);
   }
 
@@ -118,8 +120,9 @@ final class GovernanceActivity {
    *     false to avoid an N+1 version lookup per approved model; a single-entity timeline passes
    *     true so both submission and approval events are shown.
    */
-  static List<Map<String, Object>> eventsFor(EntityInterface entity, boolean reconstructHistory) {
-    List<Map<String, Object>> events = new ArrayList<>();
+  static List<AIGovernanceActivityEvent> eventsFor(
+      EntityInterface entity, boolean reconstructHistory) {
+    List<AIGovernanceActivityEvent> events = new ArrayList<>();
     String entityType =
         entity.getEntityReference() == null ? null : entity.getEntityReference().getType();
     Map<String, Object> json =
@@ -206,20 +209,21 @@ final class GovernanceActivity {
     return events;
   }
 
-  private static Map<String, Object> event(
+  private static AIGovernanceActivityEvent event(
       EntityInterface entity, String entityType, String type, String text, long at, Object who) {
-    Map<String, Object> event = new LinkedHashMap<>();
-    event.put("entityType", entityType);
-    event.put("entityId", entity.getId() == null ? null : entity.getId().toString());
-    event.put("entityName", entity.getName());
-    event.put("entityDisplayName", entity.getDisplayName());
-    event.put("entityFqn", entity.getFullyQualifiedName());
-    event.put("type", type);
-    event.put("text", text);
-    event.put("at", at);
-    event.put("createdAt", at);
+    AIGovernanceActivityEvent event =
+        new AIGovernanceActivityEvent()
+            .withEntityType(entityType)
+            .withEntityId(entity.getId() == null ? null : entity.getId().toString())
+            .withEntityName(entity.getName())
+            .withEntityDisplayName(entity.getDisplayName())
+            .withEntityFqn(entity.getFullyQualifiedName())
+            .withType(type)
+            .withText(text)
+            .withAt(at)
+            .withCreatedAt(at);
     if (who != null) {
-      event.put("who", who);
+      event.setWho(who.toString());
     }
     return event;
   }
@@ -229,7 +233,7 @@ final class GovernanceActivity {
    * is when the event was logged so the feed sorts chronologically, while
    * {@code scheduledAt} carries the future date the event refers to.
    */
-  private static Map<String, Object> scheduledEvent(
+  private static AIGovernanceActivityEvent scheduledEvent(
       EntityInterface entity,
       String entityType,
       String type,
@@ -237,8 +241,8 @@ final class GovernanceActivity {
       long at,
       long scheduledAt,
       Object who) {
-    Map<String, Object> event = event(entity, entityType, type, text, at, who);
-    event.put("scheduledAt", scheduledAt);
+    AIGovernanceActivityEvent event = event(entity, entityType, type, text, at, who);
+    event.setScheduledAt(scheduledAt);
     return event;
   }
 

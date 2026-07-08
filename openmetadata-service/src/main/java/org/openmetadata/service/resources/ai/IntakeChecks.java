@@ -18,12 +18,12 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.IntakeCheck;
+import org.openmetadata.schema.api.ai.IntakeChecksResponse;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.LLMModel;
 import org.openmetadata.schema.entity.ai.McpServer;
 import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.resources.ai.AIGovernanceResource.IntakeCheck;
-import org.openmetadata.service.resources.ai.AIGovernanceResource.IntakeChecksResponse;
 
 /**
  * Computes the 5 intake checks the Approvals queue UI surfaces for an AI asset.
@@ -41,15 +41,17 @@ final class IntakeChecks {
 
   static IntakeChecksResponse compute(EntityInterface entity) {
     List<IntakeCheck> checks = new ArrayList<>();
-    checks.add(new IntakeCheck(OWNER_ASSIGNED, hasOwner(entity), null));
-    checks.add(new IntakeCheck(RISK_CLASSIFIED, hasRisk(entity), null));
-    checks.add(new IntakeCheck(FAIRNESS_EVIDENCE, hasFairnessEvidence(entity), null));
-    checks.add(new IntakeCheck(DPIA_REFERENCED, hasDpia(entity), null));
-    checks.add(new IntakeCheck(TRANSPARENCY_DISCLOSURE, hasTransparency(entity), null));
-    IntakeChecksResponse response = new IntakeChecksResponse();
-    response.setChecks(checks);
+    checks.add(intakeCheck(OWNER_ASSIGNED, hasOwner(entity), null));
+    checks.add(intakeCheck(RISK_CLASSIFIED, hasRisk(entity), null));
+    checks.add(intakeCheck(FAIRNESS_EVIDENCE, hasFairnessEvidence(entity), null));
+    checks.add(intakeCheck(DPIA_REFERENCED, hasDpia(entity), null));
+    checks.add(intakeCheck(TRANSPARENCY_DISCLOSURE, hasTransparency(entity), null));
 
-    return response;
+    return new IntakeChecksResponse().withChecks(checks);
+  }
+
+  private static IntakeCheck intakeCheck(String name, boolean passing, String evidenceRef) {
+    return new IntakeCheck().withName(name).withPassing(passing).withEvidenceRef(evidenceRef);
   }
 
   private static boolean hasOwner(EntityInterface entity) {

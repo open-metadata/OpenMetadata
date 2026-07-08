@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.api.ai.AIGovernanceAssetSummary;
 import org.openmetadata.service.Entity;
 
 class DashboardRollupTest {
@@ -34,7 +35,7 @@ class DashboardRollupTest {
             asset("sixth", "Unregistered", "High", 1),
             asset("second", "Unregistered", "High", 700));
 
-    List<Map<String, Object>> top =
+    List<AIGovernanceAssetSummary> top =
         DashboardRollup.topByStatus(assets, "Unregistered", DashboardRollup.shadowRanking());
 
     assertEquals(List.of("top", "second", "high", "fifth", "mid"), names(top));
@@ -50,7 +51,7 @@ class DashboardRollupTest {
             shadow("highOld", "High", 0, 100L),
             shadow("highRecent", "High", 0, 200L));
 
-    List<Map<String, Object>> top =
+    List<AIGovernanceAssetSummary> top =
         DashboardRollup.topByStatus(assets, "Unregistered", DashboardRollup.shadowRanking());
 
     assertEquals(
@@ -62,7 +63,7 @@ class DashboardRollupTest {
     List<DashboardRollup.RolledAsset> assets =
         List.of(approval("newer", "High", 200L), approval("older", "High", 100L));
 
-    List<Map<String, Object>> top =
+    List<AIGovernanceAssetSummary> top =
         DashboardRollup.topByStatus(assets, "PendingApproval", DashboardRollup.approvalRanking());
 
     assertEquals(List.of("older", "newer"), names(top));
@@ -96,11 +97,11 @@ class DashboardRollupTest {
         .frameworkStatuses(Map.of());
   }
 
-  private List<Object> names(List<Map<String, Object>> assets) {
-    return assets.stream().map(asset -> asset.get("name")).toList();
+  private List<String> names(List<AIGovernanceAssetSummary> assets) {
+    return assets.stream().map(AIGovernanceAssetSummary::getName).toList();
   }
 
-  private List<Object> affectedUsers(List<Map<String, Object>> assets) {
-    return assets.stream().map(asset -> asset.get("affectedUsers")).toList();
+  private List<Integer> affectedUsers(List<AIGovernanceAssetSummary> assets) {
+    return assets.stream().map(AIGovernanceAssetSummary::getAffectedUsers).toList();
   }
 }

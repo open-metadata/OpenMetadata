@@ -23,6 +23,12 @@ import java.util.Map;
 import lombok.Builder;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.AIGovernanceAssetSummary;
+import org.openmetadata.schema.api.ai.AIGovernanceDashboardResponse;
+import org.openmetadata.schema.api.ai.AIGovernanceEstateStats;
+import org.openmetadata.schema.api.ai.AIGovernanceFrameworkReadiness;
+import org.openmetadata.schema.api.ai.AIGovernanceRiskMatrixCell;
+import org.openmetadata.schema.api.ai.AIGovernanceTopEntity;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
@@ -54,21 +60,19 @@ final class DashboardRollup {
 
   private DashboardRollup() {}
 
-  static Map<String, Object> compute() {
+  static AIGovernanceDashboardResponse compute() {
     List<RolledAsset> assets = new ArrayList<>();
     collectAssets(Entity.AI_APPLICATION, "owners,domains,governanceMetadata", assets);
     collectAssets(Entity.MCP_SERVER, "owners,domains,governanceMetadata", assets);
     collectAssets(Entity.LLM_MODEL, "owners,domains,governanceStatus,detection", assets);
 
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("estateStats", estateStats(assets));
-    response.put("frameworkReadiness", frameworkReadiness(assets));
-    response.put("riskMatrix", riskMatrix(assets));
-    response.put("topShadow", topByStatus(assets, "Unregistered", shadowRanking()));
-    response.put("topApprovals", topByStatus(assets, "PendingApproval", approvalRanking()));
-    response.put("generatedAt", System.currentTimeMillis());
-
-    return response;
+    return new AIGovernanceDashboardResponse()
+        .withEstateStats(estateStats(assets))
+        .withFrameworkReadiness(frameworkReadiness(assets))
+        .withRiskMatrix(riskMatrix(assets))
+        .withTopShadow(topByStatus(assets, "Unregistered", shadowRanking()))
+        .withTopApprovals(topByStatus(assets, "PendingApproval", approvalRanking()))
+        .withGeneratedAt(System.currentTimeMillis());
   }
 
   private static void collectAssets(String entityType, String fields, List<RolledAsset> out) {
@@ -91,7 +95,7 @@ final class DashboardRollup {
     }
   }
 
-  private static Map<String, Object> estateStats(List<RolledAsset> assets) {
+  private static AIGovernanceEstateStats estateStats(List<RolledAsset> assets) {
     int total = assets.size();
     int registered = 0;
     int shadow = 0;
@@ -123,16 +127,14 @@ final class DashboardRollup {
         unacceptable++;
       }
     }
-    Map<String, Object> stats = new LinkedHashMap<>();
-    stats.put("total", total);
-    stats.put("registered", registered);
-    stats.put("approved", approved);
-    stats.put("shadow", shadow);
-    stats.put("pending", pending);
-    stats.put("highRisk", highRisk);
-    stats.put("unacceptable", unacceptable);
-
-    return stats;
+    return new AIGovernanceEstateStats()
+        .withTotal(total)
+        .withRegistered(registered)
+        .withApproved(approved)
+        .withShadow(shadow)
+        .withPending(pending)
+        .withHighRisk(highRisk)
+        .withUnacceptable(unacceptable);
   }
 
   /**
@@ -141,12 +143,12 @@ final class DashboardRollup {
    * enabled (nearest {@code nextDeadline}, breaking ties on lowest readiness) so the
    * UI can badge it; nothing is focused when no enabled framework has assessments.
    */
-  private static List<Map<String, Object>> frameworkReadiness(List<RolledAsset> assets) {
-    List<Map<String, Object>> result = buildReadinessEntries(frameworkCounts(assets));
+  private static List<AIGovernanceFrameworkReadiness> frameworkReadiness(List<RolledAsset> assets) {
+    List<AIGovernanceFrameworkReadiness> result = buildReadinessEntries(frameworkCounts(assets));
     String focusKey = pickFocusFramework(result, enabledFrameworkDeadlines());
-    for (Map<String, Object> entry : result) {
-      String key = entry.get("framework").toString().toUpperCase(Locale.ROOT);
-      entry.put("focus", key.equals(focusKey));
+    for (AIGovernanceFrameworkReadiness entry : result) {
+      String key = entry.getFramework().toUpperCase(Locale.ROOT);
+      entry.setFocus(key.equals(focusKey));
     }
     return result;
   }
@@ -165,16 +167,18 @@ final class DashboardRollup {
     return bucketByFramework;
   }
 
-  private static List<Map<String, Object>> buildReadinessEntries(Map<String, int[]> counts) {
-    List<Map<String, Object>> result = new ArrayList<>();
+  private static List<AIGovernanceFrameworkReadiness> buildReadinessEntries(
+      Map<String, int[]> counts) {
+    List<AIGovernanceFrameworkReadiness> result = new ArrayList<>();
     counts.forEach(
         (framework, count) -> {
-          Map<String, Object> entry = new LinkedHashMap<>();
-          entry.put("framework", framework);
-          entry.put("compliant", count[0]);
-          entry.put("inScope", count[1]);
-          entry.put("readiness", count[1] == 0 ? 0.0 : (double) count[0] / count[1]);
-          result.add(entry);
+          result.add(
+              new AIGovernanceFrameworkReadiness()
+                  .withFramework(framework)
+                  .withCompliant(count[0])
+                  .withInScope(count[1])
+                  .withReadiness(count[1] == 0 ? 0.0 : (double) count[0] / count[1])
+                  .withFocus(false));
         });
     return result;
   }
@@ -210,16 +214,16 @@ final class DashboardRollup {
   }
 
   private static String pickFocusFramework(
-      List<Map<String, Object>> readiness, Map<String, Long> enabledDeadlines) {
+      List<AIGovernanceFrameworkReadiness> readiness, Map<String, Long> enabledDeadlines) {
     String focusKey = null;
     long bestDeadline = Long.MAX_VALUE;
     double bestReadiness = Double.MAX_VALUE;
-    for (Map<String, Object> entry : readiness) {
-      String key = entry.get("framework").toString().toUpperCase(Locale.ROOT);
+    for (AIGovernanceFrameworkReadiness entry : readiness) {
+      String key = entry.getFramework().toUpperCase(Locale.ROOT);
       if (enabledDeadlines.containsKey(key)) {
         Long deadline = enabledDeadlines.get(key);
         long effectiveDeadline = deadline == null ? Long.MAX_VALUE : deadline;
-        double readinessValue = ((Number) entry.get("readiness")).doubleValue();
+        double readinessValue = entry.getReadiness();
         if (effectiveDeadline < bestDeadline
             || (effectiveDeadline == bestDeadline && readinessValue < bestReadiness)) {
           bestDeadline = effectiveDeadline;
@@ -236,7 +240,7 @@ final class DashboardRollup {
    * carries the {@code topEntity} (the asset with the most affected users in that
    * cell) so the UI can name the headline asset alongside the count.
    */
-  private static List<Map<String, Object>> riskMatrix(List<RolledAsset> assets) {
+  private static List<AIGovernanceRiskMatrixCell> riskMatrix(List<RolledAsset> assets) {
     String[] risks = RISK_SEVERITY;
     int[] bucketCaps = {1000, 10000, 100000, Integer.MAX_VALUE};
     String[] bucketLabels = {"<1k", "1k–10k", "10k–100k", ">100k"};
@@ -252,15 +256,16 @@ final class DashboardRollup {
       }
     }
 
-    List<Map<String, Object>> cells = new ArrayList<>();
+    List<AIGovernanceRiskMatrixCell> cells = new ArrayList<>();
     for (int r = 0; r < risks.length; r++) {
       for (int c = 0; c < bucketCaps.length; c++) {
-        Map<String, Object> cell = new LinkedHashMap<>();
-        cell.put("risk", risks[r]);
-        cell.put("impactBucket", bucketLabels[c]);
-        cell.put("count", counts[r][c]);
+        AIGovernanceRiskMatrixCell cell =
+            new AIGovernanceRiskMatrixCell()
+                .withRisk(risks[r])
+                .withImpactBucket(bucketLabels[c])
+                .withCount(counts[r][c]);
         if (top[r][c] != null) {
-          cell.put("topEntity", top[r][c].toTopEntity());
+          cell.setTopEntity(top[r][c].toTopEntity());
         }
         cells.add(cell);
       }
@@ -307,7 +312,7 @@ final class DashboardRollup {
     return asset.name() == null ? "" : asset.name();
   }
 
-  static List<Map<String, Object>> topByStatus(
+  static List<AIGovernanceAssetSummary> topByStatus(
       List<RolledAsset> assets, String registrationStatus, Comparator<RolledAsset> ranking) {
     return assets.stream()
         .filter(asset -> registrationStatus.equals(asset.registrationStatus()))
@@ -402,34 +407,30 @@ final class DashboardRollup {
       return frameworkStatuses;
     }
 
-    Map<String, Object> toSummary() {
-      Map<String, Object> summary = new LinkedHashMap<>();
-      summary.put("entityType", entityType);
-      summary.put("id", id);
-      summary.put("name", name);
-      summary.put("displayName", displayName);
-      summary.put("fullyQualifiedName", fqn);
-      summary.put("registrationStatus", registrationStatus);
-      summary.put("euRisk", euRisk);
-      summary.put("affectedUsers", affectedUsers);
-      summary.put("registeredAt", registeredAt);
-      summary.put("detectedVia", detectedVia);
-      summary.put("detectedAt", detectedAt);
-      summary.put("submittedBy", submittedBy);
-      summary.put("submittedAt", registeredAt);
-      summary.put("team", team);
-
-      return summary;
+    AIGovernanceAssetSummary toSummary() {
+      return new AIGovernanceAssetSummary()
+          .withEntityType(entityType)
+          .withId(id)
+          .withName(name)
+          .withDisplayName(displayName)
+          .withFullyQualifiedName(fqn)
+          .withRegistrationStatus(registrationStatus)
+          .withEuRisk(euRisk)
+          .withAffectedUsers(affectedUsers)
+          .withRegisteredAt(registeredAt)
+          .withDetectedVia(detectedVia)
+          .withDetectedAt(detectedAt)
+          .withSubmittedBy(submittedBy)
+          .withSubmittedAt(registeredAt)
+          .withTeam(team);
     }
 
-    Map<String, Object> toTopEntity() {
-      Map<String, Object> entity = new LinkedHashMap<>();
-      entity.put("name", name);
-      entity.put("displayName", displayName);
-      entity.put("fullyQualifiedName", fqn);
-      entity.put("entityType", entityType);
-
-      return entity;
+    AIGovernanceTopEntity toTopEntity() {
+      return new AIGovernanceTopEntity()
+          .withName(name)
+          .withDisplayName(displayName)
+          .withFullyQualifiedName(fqn)
+          .withEntityType(entityType);
     }
 
     @SuppressWarnings("unchecked")

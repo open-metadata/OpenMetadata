@@ -19,6 +19,8 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.AIGovernancePolicyRuleResult;
+import org.openmetadata.schema.api.ai.AIGovernancePolicyViolation;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
 import org.openmetadata.schema.entity.ai.LLMModel;
@@ -56,8 +58,8 @@ final class PolicyEvaluator {
     NOT_APPLICABLE
   }
 
-  static List<Map<String, Object>> evaluate(EntityInterface entity, String entityType) {
-    List<Map<String, Object>> rules = new ArrayList<>();
+  static List<AIGovernancePolicyRuleResult> evaluate(EntityInterface entity, String entityType) {
+    List<AIGovernancePolicyRuleResult> rules = new ArrayList<>();
     rules.add(piiAccessRequiresDpia(entity, entityType));
     rules.add(subgroupFairnessQuarterly(entity, entityType));
     rules.add(humanOversight(entity, entityType));
@@ -67,7 +69,7 @@ final class PolicyEvaluator {
     return rules;
   }
 
-  private static Map<String, Object> piiAccessRequiresDpia(
+  private static AIGovernancePolicyRuleResult piiAccessRequiresDpia(
       EntityInterface entity, String entityType) {
     Map<String, Object> governance = governance(entity, entityType);
     Map<String, Object> classification =
@@ -93,7 +95,7 @@ final class PolicyEvaluator {
         dpiaUrl == null ? (accessesPii ? "No DPIA on file" : "N/A") : dpiaUrl);
   }
 
-  private static Map<String, Object> subgroupFairnessQuarterly(
+  private static AIGovernancePolicyRuleResult subgroupFairnessQuarterly(
       EntityInterface entity, String entityType) {
     Map<String, Object> governance = governance(entity, entityType);
     String euRisk = euRiskClassification(governance);
@@ -125,7 +127,8 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static Map<String, Object> humanOversight(EntityInterface entity, String entityType) {
+  private static AIGovernancePolicyRuleResult humanOversight(
+      EntityInterface entity, String entityType) {
     Map<String, Object> governance = governance(entity, entityType);
     Boolean oversight = humanOversightFromGovernance(governance);
     Status status;
@@ -148,7 +151,8 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static Map<String, Object> auditLogRetention(EntityInterface entity, String entityType) {
+  private static AIGovernancePolicyRuleResult auditLogRetention(
+      EntityInterface entity, String entityType) {
     Map<String, Object> governance = governance(entity, entityType);
     Map<String, Object> classification =
         asMap(governance == null ? null : governance.get("dataClassification"));
@@ -163,7 +167,8 @@ final class PolicyEvaluator {
         value == null ? "Not declared" : value);
   }
 
-  private static Map<String, Object> driftThreshold(EntityInterface entity, String entityType) {
+  private static AIGovernancePolicyRuleResult driftThreshold(
+      EntityInterface entity, String entityType) {
     // No drift field exists at the entity level today. Phase 2 schema work
     // adds runtime drift metrics; until then this rule is N/A.
     Status status = Status.NOT_APPLICABLE;
@@ -176,21 +181,18 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static Map<String, Object> rule(
+  private static AIGovernancePolicyRuleResult rule(
       String name, String description, Status status, String value) {
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("name", name);
-    result.put("description", description);
-    result.put(
-        "status",
-        switch (status) {
-          case PASSING -> "Passing";
-          case BREACHED -> "Breached";
-          case NOT_APPLICABLE -> "NotApplicable";
-        });
-    result.put("value", value);
-
-    return result;
+    return new AIGovernancePolicyRuleResult()
+        .withName(name)
+        .withDescription(description)
+        .withStatus(
+            switch (status) {
+              case PASSING -> "Passing";
+              case BREACHED -> "Breached";
+              case NOT_APPLICABLE -> "NotApplicable";
+            })
+        .withValue(value);
   }
 
   /**
@@ -288,12 +290,12 @@ final class PolicyEvaluator {
    * AI assets table; a real time-series store can replace this later without
    * changing the response shape.
    */
-  static List<Map<String, Object>> recentViolations(UUID policyId, Long since, int limit) {
+  static List<AIGovernancePolicyViolation> recentViolations(UUID policyId, Long since, int limit) {
     String ruleNamePattern = ruleNameForPolicy(policyId);
     long sinceMs = since == null ? 0 : since;
     int effectiveLimit = Math.max(1, Math.min(limit, 500));
 
-    List<Map<String, Object>> rows = new ArrayList<>();
+    List<AIGovernancePolicyViolation> rows = new ArrayList<>();
     scanAssets(Entity.AI_APPLICATION, ruleNamePattern, sinceMs, effectiveLimit, rows);
     if (rows.size() < effectiveLimit) {
       scanAssets(Entity.LLM_MODEL, ruleNamePattern, sinceMs, effectiveLimit, rows);
@@ -310,21 +312,21 @@ final class PolicyEvaluator {
       String ruleNamePattern,
       long sinceMs,
       int limit,
-      List<Map<String, Object>> rows) {
+      List<AIGovernancePolicyViolation> rows) {
     List<? extends EntityInterface> entities = listEntities(entityType, limit);
     for (EntityInterface entity : entities) {
       if (rows.size() >= limit) {
         return;
       }
-      List<Map<String, Object>> rules = evaluate(entity, entityType);
-      for (Map<String, Object> rule : rules) {
+      List<AIGovernancePolicyRuleResult> rules = evaluate(entity, entityType);
+      for (AIGovernancePolicyRuleResult rule : rules) {
         if (rows.size() >= limit) {
           return;
         }
-        if (!"Breached".equals(rule.get("status"))) {
+        if (!"Breached".equals(rule.getStatus())) {
           continue;
         }
-        String ruleName = String.valueOf(rule.get("name"));
+        String ruleName = rule.getName();
         if (ruleNamePattern != null
             && !ruleName.toLowerCase(Locale.ROOT).contains(ruleNamePattern)) {
           continue;
@@ -333,17 +335,16 @@ final class PolicyEvaluator {
         if (observedAt == null || observedAt < sinceMs) {
           continue;
         }
-        Map<String, Object> row = new LinkedHashMap<>();
-        row.put("entityType", entityType);
-        row.put("entityId", entity.getId() == null ? null : entity.getId().toString());
-        row.put(
-            "entityName",
-            entity.getDisplayName() == null ? entity.getName() : entity.getDisplayName());
-        row.put("ruleName", ruleName);
-        row.put("status", "Breached");
-        row.put("value", rule.get("value"));
-        row.put("observedAt", observedAt);
-        rows.add(row);
+        rows.add(
+            new AIGovernancePolicyViolation()
+                .withEntityType(entityType)
+                .withEntityId(entity.getId() == null ? null : entity.getId().toString())
+                .withEntityName(
+                    entity.getDisplayName() == null ? entity.getName() : entity.getDisplayName())
+                .withRuleName(ruleName)
+                .withStatus("Breached")
+                .withValue(rule.getValue())
+                .withObservedAt(observedAt));
       }
     }
   }

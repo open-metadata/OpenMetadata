@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
-import jakarta.json.JsonPatch;
 import jakarta.validation.Valid;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
@@ -32,41 +31,14 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
-import java.util.ArrayList;
-import java.util.LinkedHashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
 import java.util.UUID;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.schema.entity.ai.AIApplication;
-import org.openmetadata.schema.entity.ai.AIGovernanceRegistration;
-import org.openmetadata.schema.entity.ai.GovernanceMetadata;
-import org.openmetadata.schema.entity.ai.LLMModel;
-import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
-import org.openmetadata.schema.entity.ai.McpServer;
-import org.openmetadata.schema.type.EntityStatus;
-import org.openmetadata.schema.type.MetadataOperation;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.schema.api.ai.AIGovernanceBulkTriageRequest;
+import org.openmetadata.schema.api.ai.AIGovernanceTransitionRequest;
+import org.openmetadata.schema.api.ai.IntakeChecksResponse;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.security.policyevaluator.OperationContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContext;
-import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
 
-/**
- * Cross-cutting convenience endpoints that power the AI Governance Studio. The
- * canonical CRUD endpoints for AIApplication / LLMModel / McpServer live in their
- * own Resource classes; this resource is the one front door the Studio UI calls
- * for actions that span asset types (intake check rollups, shadow triage,
- * registration-state transitions, etc).
- */
-@Slf4j
-@SuppressWarnings("unchecked")
 @Path("/v1/aiGovernance")
 @Tag(
     name = "AI Governance",
@@ -77,15 +49,10 @@ import org.openmetadata.service.security.policyevaluator.ResourceContextInterfac
 @Collection(name = "aiGovernance")
 public class AIGovernanceResource {
 
-  private static final Set<String> SUPPORTED_TYPES =
-      Set.of(Entity.AI_APPLICATION, Entity.LLM_MODEL, Entity.MCP_SERVER);
-  private static final String STATUS_PENDING_APPROVAL = "PendingApproval";
-  private static final String STATUS_APPROVED = "Approved";
-
-  private final Authorizer authorizer;
+  private final AIGovernanceWorkflowService service;
 
   public AIGovernanceResource(Authorizer authorizer, Limits limits) {
-    this.authorizer = authorizer;
+    this.service = new AIGovernanceWorkflowService(authorizer);
   }
 
   @GET
@@ -110,9 +77,7 @@ public class AIGovernanceResource {
           @PathParam("entityType")
           String entityType,
       @Parameter(description = "Fully qualified name of the asset") @PathParam("fqn") String fqn) {
-    authorizeViewByFqn(securityContext, entityType, fqn);
-    EntityInterface entity = loadEntityByFqn(entityType, fqn);
-    return Response.ok(IntakeChecks.compute(entity)).build();
+    return Response.ok(service.getIntakeChecksByFqn(securityContext, entityType, fqn)).build();
   }
 
   @POST
@@ -127,16 +92,10 @@ public class AIGovernanceResource {
       @Context SecurityContext securityContext,
       @PathParam("entityType") String entityType,
       @PathParam("id") String id) {
-    EntityInterface entity =
-        transitionRegistration(
-            securityContext,
-            entityType,
-            id,
-            "PendingApproval",
-            securityContext.getUserPrincipal().getName(),
-            null);
-
-    return Response.ok(entity).build();
+    return Response.ok(
+            service.submitForReview(
+                securityContext, entityType, id, securityContext.getUserPrincipal().getName()))
+        .build();
   }
 
   @POST
@@ -150,17 +109,15 @@ public class AIGovernanceResource {
       @Context SecurityContext securityContext,
       @PathParam("entityType") String entityType,
       @PathParam("id") String id,
-      @Valid TransitionRequest request) {
-    EntityInterface entity =
-        transitionRegistration(
-            securityContext,
-            entityType,
-            id,
-            "Approved",
-            securityContext.getUserPrincipal().getName(),
-            request == null ? null : request.getComment());
-
-    return Response.ok(entity).build();
+      @Valid AIGovernanceTransitionRequest request) {
+    return Response.ok(
+            service.approve(
+                securityContext,
+                entityType,
+                id,
+                securityContext.getUserPrincipal().getName(),
+                request == null ? null : request.getComment()))
+        .build();
   }
 
   @POST
@@ -174,17 +131,15 @@ public class AIGovernanceResource {
       @Context SecurityContext securityContext,
       @PathParam("entityType") String entityType,
       @PathParam("id") String id,
-      @Valid TransitionRequest request) {
-    EntityInterface entity =
-        transitionRegistration(
-            securityContext,
-            entityType,
-            id,
-            "Rejected",
-            securityContext.getUserPrincipal().getName(),
-            request == null ? null : request.getComment());
-
-    return Response.ok(entity).build();
+      @Valid AIGovernanceTransitionRequest request) {
+    return Response.ok(
+            service.reject(
+                securityContext,
+                entityType,
+                id,
+                securityContext.getUserPrincipal().getName(),
+                request == null ? null : request.getComment()))
+        .build();
   }
 
   @GET
@@ -197,19 +152,10 @@ public class AIGovernanceResource {
   public Response getActivity(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @jakarta.ws.rs.QueryParam("entityType") String entityType,
-      @jakarta.ws.rs.QueryParam("entityId") String entityId,
-      @jakarta.ws.rs.QueryParam("limit") @jakarta.ws.rs.DefaultValue("50") int limit) {
-    if (entityType != null && entityId != null) {
-      authorizeViewById(securityContext, entityType, entityId);
-    } else if (entityType != null) {
-      authorizeViewResourceType(securityContext, entityType);
-    } else {
-      authorizeViewAcrossSupportedTypes(securityContext);
-    }
-    List<Map<String, Object>> events = GovernanceActivity.compute(entityType, entityId, limit);
-
-    return Response.ok(Map.of("events", events)).build();
+      @QueryParam("entityType") String entityType,
+      @QueryParam("entityId") String entityId,
+      @QueryParam("limit") @DefaultValue("50") int limit) {
+    return Response.ok(service.getActivity(securityContext, entityType, entityId, limit)).build();
   }
 
   @GET
@@ -220,10 +166,7 @@ public class AIGovernanceResource {
       description =
           "Returns the dashboard widgets in one shot: estate stats, risk × impact matrix counts, framework readiness percentages, top-N Shadow AI detections, top-N pending approvals. Computes from the AI Application / LLM Model / MCP Server entities directly so the UI can render in a single round-trip.")
   public Response getDashboard(@Context UriInfo uriInfo, @Context SecurityContext securityContext) {
-    authorizeViewAcrossSupportedTypes(securityContext);
-    Map<String, Object> response = DashboardRollup.compute();
-
-    return Response.ok(response).build();
+    return Response.ok(service.getDashboard(securityContext)).build();
   }
 
   @GET
@@ -238,11 +181,7 @@ public class AIGovernanceResource {
       @Context SecurityContext securityContext,
       @PathParam("entityType") String entityType,
       @PathParam("id") String id) {
-    authorizeViewById(securityContext, entityType, id);
-    EntityInterface entity = loadEntity(entityType, id);
-    List<Map<String, Object>> rules = PolicyEvaluator.evaluate(entity, entityType);
-
-    return Response.ok(Map.of("rules", rules)).build();
+    return Response.ok(service.getPolicyStatus(securityContext, entityType, id)).build();
   }
 
   @GET
@@ -258,14 +197,8 @@ public class AIGovernanceResource {
       @PathParam("policyId") UUID policyId,
       @QueryParam("since") Long since,
       @QueryParam("limit") @DefaultValue("50") int limit) {
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(Entity.AI_GOVERNANCE_POLICY, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(Entity.AI_GOVERNANCE_POLICY, policyId, null));
-    authorizeViewAcrossSupportedTypes(securityContext);
-    List<Map<String, Object>> violations = PolicyEvaluator.recentViolations(policyId, since, limit);
-
-    return Response.ok(Map.of("data", violations)).build();
+    return Response.ok(service.getPolicyViolations(securityContext, policyId, since, limit))
+        .build();
   }
 
   @POST
@@ -278,306 +211,7 @@ public class AIGovernanceResource {
   public Response bulkTriage(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Valid BulkTriageRequest request) {
-    List<Map<String, Object>> results = new ArrayList<>();
-    if (request != null && request.getItems() != null) {
-      String user = securityContext.getUserPrincipal().getName();
-      String targetStatus =
-          "Dismiss".equalsIgnoreCase(request.getAction()) ? "Rejected" : "PendingApproval";
-      for (BulkTriageItem item : request.getItems()) {
-        Map<String, Object> rowResult = new LinkedHashMap<>();
-        rowResult.put("entityType", item.getEntityType());
-        rowResult.put("id", item.getId());
-        try {
-          transitionRegistration(
-              securityContext,
-              item.getEntityType(),
-              item.getId(),
-              targetStatus,
-              user,
-              request.getReason());
-          rowResult.put("status", "ok");
-        } catch (Exception error) {
-          rowResult.put("status", "error");
-          rowResult.put("message", error.getMessage());
-          LOG.warn("Bulk triage failed for {}:{}", item.getEntityType(), item.getId(), error);
-        }
-        results.add(rowResult);
-      }
-    }
-    return Response.ok(Map.of("results", results)).build();
-  }
-
-  // ─── helpers ────────────────────────────────────────────────────────────
-
-  private EntityInterface loadEntityByFqn(String entityType, String fqn) {
-    assertSupported(entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    return repository.getByName(null, fqn, repository.getFields("owners,tags,domains,extension"));
-  }
-
-  private EntityInterface loadEntity(String entityType, String id) {
-    assertSupported(entityType);
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    return repository.get(
-        null, UUID.fromString(id), repository.getFields("owners,tags,domains,extension"));
-  }
-
-  private void assertSupported(String entityType) {
-    if (!SUPPORTED_TYPES.contains(entityType)) {
-      throw new IllegalArgumentException(
-          "Unsupported AI governance entityType '"
-              + entityType
-              + "'. Supported types: "
-              + SUPPORTED_TYPES);
-    }
-  }
-
-  /**
-   * Mutate an asset's registrationStatus and re-PATCH. Handles both the
-   * AIApplication / McpServer governanceMetadata path and the LlmModel
-   * flat governanceStatus enum.
-   */
-  private EntityInterface transitionRegistration(
-      SecurityContext securityContext,
-      String entityType,
-      String id,
-      String newStatus,
-      String user,
-      String comment) {
-    EntityInterface entity = loadEntity(entityType, id);
-    String originalJson = JsonUtils.pojoToJson(entity);
-    applyStatusTransition(entity, newStatus, user, comment);
-    String updatedJson = JsonUtils.pojoToJson(entity);
-    JsonPatch patch = JsonUtils.getJsonPatch(originalJson, updatedJson);
-    authorizePatch(securityContext, entityType, entity.getId(), patch);
-
-    EntityRepository<? extends EntityInterface> repository = Entity.getEntityRepository(entityType);
-    return repository.patch(null, entity.getId(), user, patch).entity();
-  }
-
-  private void authorizeViewByFqn(SecurityContext securityContext, String entityType, String fqn) {
-    assertSupported(entityType);
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(entityType, null, fqn));
-  }
-
-  private void authorizeViewById(SecurityContext securityContext, String entityType, String id) {
-    assertSupported(entityType);
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(entityType, UUID.fromString(id), null));
-  }
-
-  private void authorizeViewAcrossSupportedTypes(SecurityContext securityContext) {
-    for (String entityType : SUPPORTED_TYPES) {
-      authorizeViewResourceType(securityContext, entityType);
-    }
-  }
-
-  private void authorizeViewResourceType(SecurityContext securityContext, String entityType) {
-    assertSupported(entityType);
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, MetadataOperation.VIEW_ALL),
-        new ResourceContext<>(entityType));
-  }
-
-  private void authorizePatch(
-      SecurityContext securityContext, String entityType, UUID id, JsonPatch patch) {
-    assertSupported(entityType);
-    authorizer.authorize(
-        securityContext,
-        new OperationContext(entityType, patch),
-        new ResourceContext<>(entityType, id, null, ResourceContextInterface.Operation.PATCH));
-  }
-
-  private void applyStatusTransition(
-      EntityInterface entity, String newStatus, String user, String comment) {
-    entity.setEntityStatus(mapToEntityStatus(newStatus));
-    if (entity instanceof LLMModel llm) {
-      llm.setGovernanceStatus(mapToGovernanceStatus(newStatus));
-    } else if (entity instanceof AIApplication app) {
-      GovernanceMetadata governance =
-          app.getGovernanceMetadata() == null
-              ? new GovernanceMetadata()
-              : app.getGovernanceMetadata();
-      governance.setRegistrationStatus(GovernanceMetadata.RegistrationStatus.fromValue(newStatus));
-      stampRegistrationMilestones(governance, newStatus, user, comment);
-      app.setGovernanceMetadata(governance);
-    } else if (entity instanceof McpServer server) {
-      McpGovernanceMetadata governance =
-          server.getGovernanceMetadata() == null
-              ? new McpGovernanceMetadata()
-              : server.getGovernanceMetadata();
-      governance.setRegistrationStatus(
-          McpGovernanceMetadata.RegistrationStatus.fromValue(newStatus));
-      stampRegistrationMilestones(governance, newStatus, user, comment);
-      server.setGovernanceMetadata(governance);
-    }
-  }
-
-  private static void stampRegistrationMilestones(
-      AIGovernanceRegistration governance, String newStatus, String user, String comment) {
-    long now = System.currentTimeMillis();
-    if (STATUS_PENDING_APPROVAL.equals(newStatus)) {
-      if (governance.getRegisteredBy() == null) {
-        governance.setRegisteredBy(user);
-      }
-      if (governance.getRegisteredAt() == null) {
-        governance.setRegisteredAt(now);
-      }
-    }
-    if (STATUS_APPROVED.equals(newStatus)) {
-      if (governance.getApprovedBy() == null) {
-        governance.setApprovedBy(user);
-      }
-      if (governance.getApprovedAt() == null) {
-        governance.setApprovedAt(now);
-      }
-    }
-    if (comment != null && !comment.isBlank()) {
-      governance.setApprovalComments(comment);
-    }
-  }
-
-  private static EntityStatus mapToEntityStatus(String newStatus) {
-    EntityStatus result;
-    switch (newStatus) {
-      case "Approved":
-        result = EntityStatus.APPROVED;
-        break;
-      case "PendingApproval":
-        result = EntityStatus.IN_REVIEW;
-        break;
-      case "Rejected":
-        result = EntityStatus.REJECTED;
-        break;
-      default:
-        result = EntityStatus.DRAFT;
-    }
-    return result;
-  }
-
-  private static LLMModel.GovernanceStatus mapToGovernanceStatus(String newStatus) {
-    LLMModel.GovernanceStatus result;
-    switch (newStatus) {
-      case "Approved":
-        result = LLMModel.GovernanceStatus.APPROVED;
-        break;
-      case "PendingApproval":
-        result = LLMModel.GovernanceStatus.PENDING_REVIEW;
-        break;
-      case "Rejected":
-        result = LLMModel.GovernanceStatus.REJECTED;
-        break;
-      default:
-        result = LLMModel.GovernanceStatus.UNAUTHORIZED;
-    }
-    return result;
-  }
-
-  // ─── request / response payloads ────────────────────────────────────────
-
-  public static class TransitionRequest {
-    private String comment;
-
-    public String getComment() {
-      return comment;
-    }
-
-    public void setComment(String comment) {
-      this.comment = comment;
-    }
-  }
-
-  public static class BulkTriageRequest {
-    private String action;
-    private String reason;
-    private List<BulkTriageItem> items;
-
-    public String getAction() {
-      return action;
-    }
-
-    public void setAction(String action) {
-      this.action = action;
-    }
-
-    public String getReason() {
-      return reason;
-    }
-
-    public void setReason(String reason) {
-      this.reason = reason;
-    }
-
-    public List<BulkTriageItem> getItems() {
-      return items;
-    }
-
-    public void setItems(List<BulkTriageItem> items) {
-      this.items = items;
-    }
-  }
-
-  public static class BulkTriageItem {
-    private String entityType;
-    private String id;
-
-    public String getEntityType() {
-      return entityType;
-    }
-
-    public void setEntityType(String entityType) {
-      this.entityType = entityType;
-    }
-
-    public String getId() {
-      return id;
-    }
-
-    public void setId(String id) {
-      this.id = id;
-    }
-  }
-
-  public static class IntakeChecksResponse {
-    private List<IntakeCheck> checks;
-
-    public List<IntakeCheck> getChecks() {
-      return checks;
-    }
-
-    public void setChecks(List<IntakeCheck> checks) {
-      this.checks = checks;
-    }
-  }
-
-  public static class IntakeCheck {
-    private String name;
-    private boolean passing;
-    private String evidenceRef;
-
-    public IntakeCheck(String name, boolean passing, String evidenceRef) {
-      this.name = name;
-      this.passing = passing;
-      this.evidenceRef = evidenceRef;
-    }
-
-    public String getName() {
-      return name;
-    }
-
-    public boolean isPassing() {
-      return passing;
-    }
-
-    public String getEvidenceRef() {
-      return evidenceRef;
-    }
+      @Valid AIGovernanceBulkTriageRequest request) {
+    return Response.ok(service.bulkTriage(securityContext, request)).build();
   }
 }

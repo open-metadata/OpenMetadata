@@ -13,11 +13,13 @@
 package org.openmetadata.service.resources.ai;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.FrameworkControlCoverage;
+import org.openmetadata.schema.api.ai.FrameworkCoverageResponse;
+import org.openmetadata.schema.api.ai.FrameworkCoverageSummary;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.entity.ai.FrameworkAutoApplyRules;
@@ -52,25 +54,25 @@ import org.openmetadata.service.util.EntityUtil;
  */
 @Slf4j
 @SuppressWarnings("unchecked")
-final class FrameworkCoverageComputer {
+public final class FrameworkCoverageComputer {
 
   private static final int PAGE_SIZE = 1000;
 
   private FrameworkCoverageComputer() {}
 
-  static Map<String, Object> compute(
+  public static FrameworkCoverageResponse compute(
       AIGovernanceFramework framework, List<AIFrameworkControl> controls) {
     return compute(framework, controls, collectInScopeAssets(framework));
   }
 
-  static Map<String, Object> compute(
+  static FrameworkCoverageResponse compute(
       AIGovernanceFramework framework,
       List<AIFrameworkControl> controls,
       List<EntityInterface> assets) {
-    Map<String, Object> response = new LinkedHashMap<>();
-    response.put("frameworkId", framework.getId() == null ? null : framework.getId().toString());
-    response.put("frameworkName", framework.getName());
-    response.put("assetsInScope", assets.size());
+    FrameworkCoverageResponse response = new FrameworkCoverageResponse();
+    response.setFrameworkId(framework.getId());
+    response.setFrameworkName(framework.getName());
+    response.setAssetsInScope(assets.size());
 
     String frameworkName = framework.getName();
     List<AssetCompliance> assetCompliance =
@@ -94,31 +96,26 @@ final class FrameworkCoverageComputer {
       }
     }
 
-    List<Map<String, Object>> entries = new ArrayList<>();
+    List<FrameworkControlCoverage> entries = new ArrayList<>();
     for (AIFrameworkControl control : controls) {
-      Map<String, Object> entry = new LinkedHashMap<>();
       String code = control.getCode() == null ? control.getName() : control.getCode();
       ControlCoverage coverage = controlCoverage(assetCompliance, frameworkName, code);
-      entry.put("code", code);
-      entry.put("displayName", control.getDisplayName());
-      entry.put("category", control.getCategory());
-      entry.put("status", deriveControlStatus(coverage.nonCompliant(), coverage.partial()));
-      entry.put(
-          "affectedAssetCount",
+      FrameworkControlCoverage entry = new FrameworkControlCoverage();
+      entry.setCode(code);
+      entry.setDisplayName(control.getDisplayName());
+      entry.setCategory(control.getCategory());
+      entry.setStatus(deriveControlStatus(coverage.nonCompliant(), coverage.partial()));
+      entry.setAffectedAssetCount(
           deriveAffectedAssetCount(coverage.nonCompliant(), coverage.partial()));
-      entry.put("evidenceCount", coverage.evidence());
+      entry.setEvidenceCount(coverage.evidence());
       entries.add(entry);
     }
-    response.put("controls", entries);
-    response.put(
-        "summary",
-        Map.of(
-            "compliant",
-            compliantAssetCount,
-            "partial",
-            partialAssetCount,
-            "nonCompliant",
-            nonCompliantAssetCount));
+    response.setControls(entries);
+    response.setSummary(
+        new FrameworkCoverageSummary()
+            .withCompliant(compliantAssetCount)
+            .withPartial(partialAssetCount)
+            .withNonCompliant(nonCompliantAssetCount));
 
     return response;
   }
@@ -149,14 +146,15 @@ final class FrameworkCoverageComputer {
     return new ControlCoverage(evidence, partial, nonCompliant);
   }
 
-  private static String deriveControlStatus(int nonCompliant, int partial) {
-    String result;
+  private static FrameworkControlCoverage.Status deriveControlStatus(
+      int nonCompliant, int partial) {
+    FrameworkControlCoverage.Status result;
     if (nonCompliant > 0) {
-      result = "Gap";
+      result = FrameworkControlCoverage.Status.GAP;
     } else if (partial > 0) {
-      result = "Partial";
+      result = FrameworkControlCoverage.Status.PARTIAL;
     } else {
-      result = "Met";
+      result = FrameworkControlCoverage.Status.MET;
     }
 
     return result;
