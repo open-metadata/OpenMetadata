@@ -1032,10 +1032,11 @@ public class CreateTask implements TaskListener {
     if (reason != null && !reason.isBlank()) {
       // manualGrantReason is only ever set on the DAR path, so the payload is a
       // DataAccessRequestPayload — bind the typed POJO and set the field instead of hand-merging a
-      // raw Map. JsonUtils ignores unknown properties, so the round-trip preserves every field.
-      result =
-          JsonUtils.convertValue(payload, DataAccessRequestPayload.class)
-              .withManualGrantReason(reason);
+      // raw Map. JsonUtils ignores unknown properties, so the round-trip preserves every field. A
+      // null payload (convertValue returns null) yields a fresh payload carrying only the reason.
+      DataAccessRequestPayload dar =
+          JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+      result = (dar != null ? dar : new DataAccessRequestPayload()).withManualGrantReason(reason);
     }
     return result;
   }
