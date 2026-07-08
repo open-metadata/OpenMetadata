@@ -219,7 +219,7 @@ const DataAssetPickerShell: FC<DataAssetPickerShellProps> = ({
   }, [isOpen, onOpenChange]);
 
   return (
-    <div className="tw:relative" ref={wrapperRef}>
+    <div className="tw:relative tw:leading-0" ref={wrapperRef}>
       {renderTrigger({ isOpen, open, close })}
 
       {isOpen && (
