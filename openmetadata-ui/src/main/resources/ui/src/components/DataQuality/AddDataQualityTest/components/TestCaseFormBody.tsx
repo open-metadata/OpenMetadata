@@ -466,15 +466,20 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       // Edit mode prefills testTypeId (and selectedColumn) via
       // form.reset(buildEditDefaults(...)); testLevel is disabled there, so
       // this effect only fires from that prefill and must not wipe it.
+      // Clearing the derived definition/type here also unmounts the params
+      // section whenever fetchTestDefinitions' identity changes (it depends on
+      // selectedTableData, which loads async on edit open) — making the params
+      // flicker. In edit mode these stay as prefilled and are re-derived by the
+      // [selectedTestTypeFqn, testDefinitions] effect.
       if (!isEditMode) {
         form.setValue('testTypeId', undefined as never);
         if (selectedTestLevel === TestLevel.TABLE) {
           form.setValue('selectedColumn', undefined as never);
         }
+        setSelectedTestDefinition(undefined);
+        setSelectedTestType(undefined);
+        setIsCustomQuery(false);
       }
-      setSelectedTestDefinition(undefined);
-      setSelectedTestType(undefined);
-      setIsCustomQuery(false);
     }
   }, [selectedTestLevel, fetchTestDefinitions, form, isEditMode]);
 
