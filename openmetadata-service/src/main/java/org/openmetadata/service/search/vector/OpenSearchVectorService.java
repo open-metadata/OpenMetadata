@@ -15,6 +15,7 @@ import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -340,7 +341,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         // The alias is normally attached at creation, but an index left over from a partial or
         // manual setup may miss it — and reads via the alias would then silently skip all chunk
         // docs. The alias PUT is idempotent.
-        executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
+        executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getIndexAlias(), "{}");
       }
       ensured = true;
     } catch (Exception e) {
@@ -388,7 +389,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         "settings",
         MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
     root.set("mappings", mappings);
-    root.set("aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
+    root.set("aliases", MAPPER.createObjectNode().set(getIndexAlias(), MAPPER.createObjectNode()));
     return root.toString();
   }
 
