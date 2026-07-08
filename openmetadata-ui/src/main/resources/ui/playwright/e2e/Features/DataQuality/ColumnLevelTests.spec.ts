@@ -221,10 +221,10 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_minValue').clear();
-        await page.locator('#tableTestForm_params_minValue').fill('10');
-        await page.locator('#tableTestForm_params_maxValue').clear();
-        await page.locator('#tableTestForm_params_maxValue').fill('2000');
+        await page.locator('#testCaseFormV1_params_minValue').clear();
+        await page.locator('#testCaseFormV1_params_minValue').fill('10');
+        await page.locator('#testCaseFormV1_params_maxValue').clear();
+        await page.locator('#testCaseFormV1_params_maxValue').fill('2000');
 
         await clickUpdateButton(page);
       });
@@ -417,19 +417,19 @@ test.describe(
         ).toHaveText(`Edit ${testCase.name}`);
 
         await page.getByRole('button', { name: 'plus' }).click();
-        await page.fill('#tableTestForm_params_allowedValues_2_value', 'open');
-        await page.click('#tableTestForm_params_matchEnum');
+        await page.fill('#testCaseFormV1_params_allowedValues_2_value', 'open');
+        await page.click('#testCaseFormV1_params_matchEnum');
         await page
-          .locator('#tableTestForm_params_matchEnum[aria-checked="false"]')
+          .locator('#testCaseFormV1_params_matchEnum[aria-checked="false"]')
           .waitFor({ state: 'attached' });
         await expect(
-          page.locator('#tableTestForm_params_matchEnum')
+          page.locator('#testCaseFormV1_params_matchEnum')
         ).toHaveAttribute('aria-checked', 'false');
         await clickUpdateButton(page);
 
         await clickEditTestCaseButton(page, testCase.name);
         await expect(
-          page.locator('#tableTestForm_params_matchEnum')
+          page.locator('#testCaseFormV1_params_matchEnum')
         ).toHaveAttribute('aria-checked', 'false');
 
         await page.getByTestId('cancel-btn').click();
@@ -526,7 +526,7 @@ test.describe(
 
         await page.getByRole('button', { name: 'plus' }).click();
         await page.fill(
-          '#tableTestForm_params_forbiddenValues_2_value',
+          '#testCaseFormV1_params_forbiddenValues_2_value',
           '-9999'
         );
 
@@ -617,8 +617,8 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_regex').clear();
-        await page.locator('#tableTestForm_params_regex').fill('^[0-9]{1,5}$');
+        await page.locator('#testCaseFormV1_params_regex').clear();
+        await page.locator('#testCaseFormV1_params_regex').fill('^[0-9]{1,5}$');
 
         await clickUpdateButton(page);
       });
@@ -710,9 +710,9 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_forbiddenRegex').clear();
+        await page.locator('#testCaseFormV1_params_forbiddenRegex').clear();
         await page
-          .locator('#tableTestForm_params_forbiddenRegex')
+          .locator('#testCaseFormV1_params_forbiddenRegex')
           .fill('[^0-9]');
 
         await clickUpdateButton(page);
@@ -812,13 +812,17 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_minValueForMaxInCol').clear();
         await page
-          .locator('#tableTestForm_params_minValueForMaxInCol')
+          .locator('#testCaseFormV1_params_minValueForMaxInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_minValueForMaxInCol')
           .fill('100');
-        await page.locator('#tableTestForm_params_maxValueForMaxInCol').clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMaxInCol')
+          .locator('#testCaseFormV1_params_maxValueForMaxInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_maxValueForMaxInCol')
           .fill('20000');
 
         await clickUpdateButton(page);
@@ -916,13 +920,17 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_minValueForMinInCol').clear();
         await page
-          .locator('#tableTestForm_params_minValueForMinInCol')
+          .locator('#testCaseFormV1_params_minValueForMinInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_minValueForMinInCol')
           .fill('10');
-        await page.locator('#tableTestForm_params_maxValueForMinInCol').clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMinInCol')
+          .locator('#testCaseFormV1_params_maxValueForMinInCol')
+          .clear();
+        await page
+          .locator('#testCaseFormV1_params_maxValueForMinInCol')
           .fill('200');
 
         await clickUpdateButton(page);
@@ -1021,16 +1029,16 @@ test.describe(
         ).toHaveText(`Edit ${testCase.name}`);
 
         await page
-          .locator('#tableTestForm_params_minValueForMeanInCol')
+          .locator('#testCaseFormV1_params_minValueForMeanInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_minValueForMeanInCol')
+          .locator('#testCaseFormV1_params_minValueForMeanInCol')
           .fill('50');
         await page
-          .locator('#tableTestForm_params_maxValueForMeanInCol')
+          .locator('#testCaseFormV1_params_maxValueForMeanInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMeanInCol')
+          .locator('#testCaseFormV1_params_maxValueForMeanInCol')
           .fill('1000');
 
         await clickUpdateButton(page);
@@ -1129,16 +1137,16 @@ test.describe(
         ).toHaveText(`Edit ${testCase.name}`);
 
         await page
-          .locator('#tableTestForm_params_minValueForMedianInCol')
+          .locator('#testCaseFormV1_params_minValueForMedianInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_minValueForMedianInCol')
+          .locator('#testCaseFormV1_params_minValueForMedianInCol')
           .fill('100');
         await page
-          .locator('#tableTestForm_params_maxValueForMedianInCol')
+          .locator('#testCaseFormV1_params_maxValueForMedianInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_maxValueForMedianInCol')
+          .locator('#testCaseFormV1_params_maxValueForMedianInCol')
           .fill('800');
 
         await clickUpdateButton(page);
@@ -1237,16 +1245,16 @@ test.describe(
         ).toHaveText(`Edit ${testCase.name}`);
 
         await page
-          .locator('#tableTestForm_params_minValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_minValueForStdDevInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_minValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_minValueForStdDevInCol')
           .fill('5');
         await page
-          .locator('#tableTestForm_params_maxValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_maxValueForStdDevInCol')
           .clear();
         await page
-          .locator('#tableTestForm_params_maxValueForStdDevInCol')
+          .locator('#testCaseFormV1_params_maxValueForStdDevInCol')
           .fill('200');
 
         await clickUpdateButton(page);
@@ -1345,13 +1353,13 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_minValueForColSum').clear();
+        await page.locator('#testCaseFormV1_params_minValueForColSum').clear();
         await page
-          .locator('#tableTestForm_params_minValueForColSum')
+          .locator('#testCaseFormV1_params_minValueForColSum')
           .fill('1000');
-        await page.locator('#tableTestForm_params_maxValueForColSum').clear();
+        await page.locator('#testCaseFormV1_params_maxValueForColSum').clear();
         await page
-          .locator('#tableTestForm_params_maxValueForColSum')
+          .locator('#testCaseFormV1_params_maxValueForColSum')
           .fill('200000');
 
         await clickUpdateButton(page);
@@ -1443,10 +1451,10 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_minLength').clear();
-        await page.locator('#tableTestForm_params_minLength').fill('5');
-        await page.locator('#tableTestForm_params_maxLength').clear();
-        await page.locator('#tableTestForm_params_maxLength').fill('100');
+        await page.locator('#testCaseFormV1_params_minLength').clear();
+        await page.locator('#testCaseFormV1_params_minLength').fill('5');
+        await page.locator('#testCaseFormV1_params_maxLength').clear();
+        await page.locator('#testCaseFormV1_params_maxLength').fill('100');
 
         await clickUpdateButton(page);
       });
@@ -1538,8 +1546,10 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_missingCountValue').clear();
-        await page.locator('#tableTestForm_params_missingCountValue').fill('5');
+        await page.locator('#testCaseFormV1_params_missingCountValue').clear();
+        await page
+          .locator('#testCaseFormV1_params_missingCountValue')
+          .fill('5');
 
         await clickUpdateButton(page);
       });
@@ -1646,10 +1656,10 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.fill('#tableTestForm_params_longitudeColumnName', 'Edit');
-        await page.fill('#tableTestForm_params_latitudeColumnName', 'Edit');
-        await page.locator('#tableTestForm_params_radius').clear();
-        await page.fill('#tableTestForm_params_radius', '500');
+        await page.fill('#testCaseFormV1_params_longitudeColumnName', 'Edit');
+        await page.fill('#testCaseFormV1_params_latitudeColumnName', 'Edit');
+        await page.locator('#testCaseFormV1_params_radius').clear();
+        await page.fill('#testCaseFormV1_params_radius', '500');
         await clickUpdateButton(page);
       });
 

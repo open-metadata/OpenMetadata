@@ -259,8 +259,8 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${NEW_TABLE_TEST_CASE.name}`);
 
-        await page.locator('#tableTestForm_params_columnName').clear();
-        await page.fill('#tableTestForm_params_columnName', 'new_column_name');
+        await page.locator('#testCaseFormV1_params_columnName').clear();
+        await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
 
         // Remove existing tag and add new one
         await page.click(
@@ -324,10 +324,10 @@ test.describe(
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
         await testDefinitionResponse;
 
-        await page.locator('#tableTestForm_params_columnName').waitFor();
+        await page.locator('#testCaseFormV1_params_columnName').waitFor();
 
         await expect(
-          page.locator('#tableTestForm_params_columnName')
+          page.locator('#testCaseFormV1_params_columnName')
         ).toHaveValue('new_column_name');
 
         await page.getByRole('button', { name: 'Cancel' }).click();
@@ -464,9 +464,9 @@ test.describe(
           .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
           .click();
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
-        await page.locator('#tableTestForm_params_minLength').waitFor();
-        await page.locator('#tableTestForm_params_minLength').clear();
-        await page.fill('#tableTestForm_params_minLength', '4');
+        await page.locator('#testCaseFormV1_params_minLength').waitFor();
+        await page.locator('#testCaseFormV1_params_minLength').clear();
+        await page.fill('#testCaseFormV1_params_minLength', '4');
 
         // Remove existing tag and add new one for column test case
         await page.click(
@@ -525,9 +525,9 @@ test.describe(
         );
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
         await testDefinitionResponse;
-        await page.locator('#tableTestForm_params_minLength').waitFor();
+        await page.locator('#testCaseFormV1_params_minLength').waitFor();
         await expect(
-          page.locator('#tableTestForm_params_minLength')
+          page.locator('#testCaseFormV1_params_minLength')
         ).toHaveValue('4');
 
         await page.locator('button').getByText('Cancel').click();
@@ -575,13 +575,13 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_0_value')
+          page.locator('#testCaseFormV1_params_allowedValues_0_value')
         ).toHaveValue('gmail');
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_1_value')
+          page.locator('#testCaseFormV1_params_allowedValues_1_value')
         ).toHaveValue('yahoo');
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_2_value')
+          page.locator('#testCaseFormV1_params_allowedValues_2_value')
         ).toHaveValue('collate');
       });
 
@@ -666,9 +666,9 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
         await testDefinitionResponse3;
         await page
-          .locator('#tableTestForm_params_allowedValues_0_value')
+          .locator('#testCaseFormV1_params_allowedValues_0_value')
           .clear();
-        await page.fill('#tableTestForm_params_allowedValues_0_value', 'test');
+        await page.fill('#testCaseFormV1_params_allowedValues_0_value', 'test');
         const updateTestCaseResponse3 = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testCases/') &&

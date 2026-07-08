@@ -166,10 +166,10 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_minValue').clear();
-        await page.fill('#tableTestForm_params_minValue', '20');
-        await page.locator('#tableTestForm_params_maxValue').clear();
-        await page.fill('#tableTestForm_params_maxValue', '2000');
+        await page.locator('#testCaseFormV1_params_minValue').clear();
+        await page.fill('#testCaseFormV1_params_minValue', '20');
+        await page.locator('#testCaseFormV1_params_maxValue').clear();
+        await page.fill('#testCaseFormV1_params_maxValue', '2000');
 
         await clickUpdateButton(page);
       });
@@ -263,8 +263,8 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_value').clear();
-        await page.locator('#tableTestForm_params_value').fill('200');
+        await page.locator('#testCaseFormV1_params_value').clear();
+        await page.locator('#testCaseFormV1_params_value').fill('200');
 
         await clickUpdateButton(page);
       });
@@ -366,10 +366,10 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_minColValue').clear();
-        await page.locator('#tableTestForm_params_minColValue').fill('5');
-        await page.locator('#tableTestForm_params_maxColValue').clear();
-        await page.locator('#tableTestForm_params_maxColValue').fill('15');
+        await page.locator('#testCaseFormV1_params_minColValue').clear();
+        await page.locator('#testCaseFormV1_params_minColValue').fill('5');
+        await page.locator('#testCaseFormV1_params_maxColValue').clear();
+        await page.locator('#testCaseFormV1_params_maxColValue').fill('15');
 
         await clickUpdateButton(page);
       });
@@ -466,8 +466,8 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_columnCount').clear();
-        await page.locator('#tableTestForm_params_columnCount').fill('5');
+        await page.locator('#testCaseFormV1_params_columnCount').clear();
+        await page.locator('#testCaseFormV1_params_columnCount').fill('5');
 
         await clickUpdateButton(page);
       });
@@ -564,9 +564,9 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_columnName').clear();
+        await page.locator('#testCaseFormV1_params_columnName').clear();
         await page
-          .locator('#tableTestForm_params_columnName')
+          .locator('#testCaseFormV1_params_columnName')
           .fill(table.entity?.columns[1].name);
 
         await clickUpdateButton(page);
@@ -664,11 +664,11 @@ test.describe(
         ).toHaveText(`Edit ${testCase.name}`);
 
         await page.fill(
-          '#tableTestForm_params_columnNames',
+          '#testCaseFormV1_params_columnNames',
           `,${table.entity?.columns[2].name}`
         );
 
-        await page.click('#tableTestForm_params_ordered');
+        await page.click('#testCaseFormV1_params_ordered');
 
         await clickUpdateButton(page);
       });
@@ -832,7 +832,7 @@ test.describe(
         await expect(page.getByTestId('edit-test-form')).toBeVisible();
 
         const table1KeyColumnsEditInput = page.locator(
-          '#tableTestForm_params_keyColumns_0_value'
+          '#testCaseFormV1_params_keyColumns_0_value'
         );
 
         await expect(table1KeyColumnsEditInput).toBeVisible();
@@ -845,7 +845,7 @@ test.describe(
         await expect(table1Select.getByText(columnName)).toBeVisible();
 
         const table2KeyColumnsEditInput = page.locator(
-          '#tableTestForm_params_table2\\.keyColumns_0_value'
+          '#testCaseFormV1_params_table2\\.keyColumns_0_value'
         );
 
         await expect(table2KeyColumnsEditInput).toBeVisible();
@@ -869,7 +869,7 @@ test.describe(
         await expect(page.locator('[data-id="tableDiff"]')).toBeVisible();
 
         await page.fill(
-          '#tableTestForm_params_keyColumns_1_value',
+          '#testCaseFormV1_params_keyColumns_1_value',
           table1.entity?.columns[3].name
         );
         await page
@@ -882,7 +882,7 @@ test.describe(
           .getByRole('button')
           .click();
         await page.fill(
-          '#tableTestForm_params_useColumns_1_value',
+          '#testCaseFormV1_params_useColumns_1_value',
           table1.entity?.columns[2].name
         );
         await page
@@ -1131,10 +1131,10 @@ test.describe(
           page.getByTestId('edit-test-case-drawer-title')
         ).toHaveText(`Edit ${testCase.name}`);
 
-        await page.locator('#tableTestForm_params_min').clear();
-        await page.fill('#tableTestForm_params_min', '10');
-        await page.locator('#tableTestForm_params_max').clear();
-        await page.fill('#tableTestForm_params_max', '1000');
+        await page.locator('#testCaseFormV1_params_min').clear();
+        await page.fill('#testCaseFormV1_params_min', '10');
+        await page.locator('#testCaseFormV1_params_max').clear();
+        await page.fill('#testCaseFormV1_params_max', '1000');
 
         await clickUpdateButton(page);
       });
