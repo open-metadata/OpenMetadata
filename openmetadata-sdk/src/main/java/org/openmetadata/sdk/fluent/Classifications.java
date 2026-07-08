@@ -296,4 +296,14 @@ public final class Classifications {
       return new ClassificationDeleter(client, classification.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().classifications().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().classifications().getContextByName(fqn);
+  }
 }

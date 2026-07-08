@@ -8,7 +8,8 @@
       "description": "Validate that we can properly reach the database and authenticate with the given credentials.",
       "errorMessage": "Failed to connect to postgres, please validate the credentials",
       "mandatory": true,
-      "shortCircuit": true
+      "shortCircuit": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "GetDatabases",
