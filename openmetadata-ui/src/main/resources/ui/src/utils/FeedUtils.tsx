@@ -79,7 +79,7 @@ import {
 } from './ProfilerUtils';
 import { getSanitizeContent } from './sanitize.utils';
 import { getTermQuery } from './SearchUtils';
-import { getDecodedFqn, getEncodedFqn } from './StringsUtils';
+import { getDecodedFqn, getEncodedFqn } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getEntityType = (entityLink: string) => {

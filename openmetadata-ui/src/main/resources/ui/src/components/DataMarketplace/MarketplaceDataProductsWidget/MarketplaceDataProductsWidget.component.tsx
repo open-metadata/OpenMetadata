@@ -36,7 +36,7 @@ import { getTextFromHtmlString } from '../../../utils/BlockEditorUtils';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import dataMarketplaceClassBase from '../../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import Loader from '../../common/Loader/Loader';
 import AddDomainForm from '../../Domain/AddDomainForm/AddDomainForm.component';
