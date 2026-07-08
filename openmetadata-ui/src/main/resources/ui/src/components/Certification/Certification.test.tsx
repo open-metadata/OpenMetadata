@@ -109,7 +109,7 @@ describe('Certification', () => {
       expect(screen.getByTestId('certification-cards')).toBeInTheDocument();
     });
 
-    const radioButtons = screen.getAllByRole('radio');
+    const radioButtons = screen.getAllByTestId(/radio-btn-/);
 
     expect(radioButtons[0]).toHaveAttribute(
       'data-testid',
