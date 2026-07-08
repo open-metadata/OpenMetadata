@@ -50,7 +50,7 @@ const HeaderShell = ({
   return (
     <Card
       className={classNames(
-        'tw:mb-5 tw:p-4',
+        'tw:mb-5 tw:px-5 tw:py-4',
         // Fixed light-blue gradient by design — intentionally NOT the dynamic
         // brand-* tokens (those follow the deployment's primary color, which
         // would tint this header pink on Collate). Tailwind gradient stops also
@@ -79,7 +79,7 @@ const HeaderShell = ({
               align="center"
               className="tw:ml-auto tw:shrink-0"
               direction="row"
-              gap={3}>
+              gap={4}>
               {actions}
             </Box>
           )}
