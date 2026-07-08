@@ -10,15 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  defaultColors,
-  generateAllMuiPalettes,
-} from '@openmetadata/ui-core-components';
-import { useMemo } from 'react';
-import { useShallow } from 'zustand/react/shallow';
-import { DEFAULT_THEME } from '../constants/Appearance.constants';
-import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
-import { useApplicationStore } from './useApplicationStore';
+import { useMemo } from "react";
+import { LineageEdgeColors } from "../utils/EdgeStyleUtils";
+import { useTheme } from "../context/UntitledUIThemeProvider/theme-provider";
 
 /**
  * Resolves the literal colors used to paint lineage edges on the canvas.
@@ -29,29 +23,13 @@ import { useApplicationStore } from './useApplicationStore';
  * via CSS variables), so these values are intentionally the same in both modes.
  */
 export const useLineageEdgeColors = (): LineageEdgeColors => {
-  const { customTheme } = useApplicationStore(
-    useShallow((state) => ({
-      customTheme: state.applicationConfig?.customTheme,
-    }))
-  );
+  const { brandColors } = useTheme();
 
   return useMemo(() => {
-    const dynamicPalettes = customTheme
-      ? generateAllMuiPalettes(customTheme, defaultColors, DEFAULT_THEME)
-      : null;
-
-    const themeColors = {
-      ...defaultColors,
-      ...(dynamicPalettes && {
-        brand: dynamicPalettes.brand,
-        error: dynamicPalettes.error,
-      }),
-    };
-
     return {
-      primary: themeColors.brand[600],
-      columnHighlight: themeColors.indigo[600],
-      dqHighlight: themeColors.error[600],
+      primary: brandColors?.primaryColor ?? "#1570ef",
+      columnHighlight: "#444ce7", // It's a replacement to indigo-600 not a theme color
+      dqHighlight: brandColors?.errorColor ?? "#d92d20",
     };
-  }, [customTheme]);
+  }, [brandColors]);
 };

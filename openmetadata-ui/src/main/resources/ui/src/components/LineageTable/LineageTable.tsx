@@ -79,7 +79,6 @@ import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder'
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
-import Table from '../common/Table/Table';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
@@ -94,6 +93,8 @@ import {
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
+import TableV2 from '../common/Table/TableV2';
+
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
@@ -944,17 +945,15 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames(
-        { isFullScreen },
-        'lineage-card lineage-card-table'
-      )}
+      className={classNames({ isFullScreen }, 'lineage-card')}
       data-testid="lineage-card-table"
       variant="default">
       <div className="lineage-card-head tw:border-b tw:border-secondary tw:px-6 tw:py-4">
         {cardHeader}
       </div>
-      <div className="lineage-card-body tw:p-6">
-        <Table
+
+      <Card.Content className="tw:p-5 lineage-container">
+        <TableV2
           bordered
           className="h-full"
           columns={columns}
@@ -976,7 +975,7 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           }
           staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
         />
-      </div>
+      </Card.Content>
     </Card>
   );
 };

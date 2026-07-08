@@ -37,6 +37,7 @@
 import {
   Button,
   Dropdown,
+  Typography,
   Table as UntitledTable,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
@@ -79,7 +80,7 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
-import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
+import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
 import {
   TableColumnDropdownList,
   TableComponentProps,
@@ -576,36 +577,40 @@ const TableV2 = <T extends object>(
                     {t('label.customize')}
                   </Button>
                   <Dropdown.Popover>
-                    <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-                      <span
-                        className="text-sm text-grey-muted font-medium"
-                        data-testid="column-dropdown-title">
-                        {t('label.column')}
-                      </span>
-                      <Button
-                        color="link-color"
-                        data-testid="column-dropdown-action-button"
-                        size="sm"
-                        onPress={() => handleBulkColumnAction()}>
-                        {dropdownColumnList.length ===
-                        columnDropdownSelections.length
-                          ? t('label.hide-all')
-                          : t('label.view-all')}
-                      </Button>
-                    </div>
-                    {dropdownColumnList.map(
-                      (item: TableColumnDropdownList, index: number) => (
-                        <DraggableMenuItem
-                          currentItem={item}
-                          index={index}
-                          itemList={dropdownColumnList}
-                          key={item.value}
-                          selectedOptions={columnDropdownSelections}
-                          onMoveItem={handleMoveItem}
-                          onSelect={handleColumnItemSelect}
-                        />
-                      )
-                    )}
+                    <Dropdown.Menu>
+                      <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
+                        <Typography
+                          className="tw:text-tertiary"
+                          size="text-sm"
+                          weight="medium">
+                          {t('label.column')}
+                        </Typography>
+                        <Button
+                          color="link-color"
+                          size="xs"
+                          onClick={handleBulkColumnAction}>
+                          {dropdownColumnList.length ===
+                          columnDropdownSelections.length
+                            ? t('label.hide-all')
+                            : t('label.view-all')}
+                        </Button>
+                      </Dropdown.SectionHeader>
+
+                      <Dropdown.Separator />
+                      <Dropdown.Section>
+                        {dropdownColumnList.map((item, index) => (
+                          <DraggableMenuItemV2
+                            currentItem={item}
+                            index={index}
+                            itemList={dropdownColumnList}
+                            key={item.value}
+                            selectedOptions={columnDropdownSelections}
+                            onMoveItem={handleMoveItem}
+                            onSelect={handleColumnItemSelect}
+                          />
+                        ))}
+                      </Dropdown.Section>
+                    </Dropdown.Menu>
                   </Dropdown.Popover>
                 </Dropdown.Root>
               )}
