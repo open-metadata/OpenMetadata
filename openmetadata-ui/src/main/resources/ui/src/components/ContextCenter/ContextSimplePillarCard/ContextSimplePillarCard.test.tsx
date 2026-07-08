@@ -12,12 +12,17 @@
  */
 
 import { render, screen } from '@testing-library/react';
+import { FC } from 'react';
 import ContextSimplePillarCard from './ContextSimplePillarCard.component';
+
+const MockIcon: FC = () => {
+  return <div data-testid="mock-icon">Mock Icon</div>;
+};
 
 describe('ContextSimplePillarCard', () => {
   it('renders the title and children', () => {
     render(
-      <ContextSimplePillarCard title="Recently Viewed">
+      <ContextSimplePillarCard icon={MockIcon} title="Recently Viewed">
         <div>List content</div>
       </ContextSimplePillarCard>
     );
@@ -28,7 +33,7 @@ describe('ContextSimplePillarCard', () => {
 
   it('renders skeleton loaders when isLoading is true', () => {
     render(
-      <ContextSimplePillarCard isLoading title="Recently Viewed">
+      <ContextSimplePillarCard isLoading icon={MockIcon} title="Recently Viewed">
         <div>List content</div>
       </ContextSimplePillarCard>
     );
@@ -41,6 +46,7 @@ describe('ContextSimplePillarCard', () => {
       <ContextSimplePillarCard
         isEmpty
         emptyMessage="No data available"
+        icon={MockIcon}
         title="Recently Viewed">
         <div>List content</div>
       </ContextSimplePillarCard>
