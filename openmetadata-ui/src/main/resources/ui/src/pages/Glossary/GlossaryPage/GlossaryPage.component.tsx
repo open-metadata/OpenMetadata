@@ -20,6 +20,8 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
@@ -34,6 +36,7 @@ import { PAGE_SIZE_LARGE, ROUTES } from '../../../constants/constants';
 import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { observerOptions } from '../../../constants/Mydata.constants';
+import { useIsAiMode } from '../../../context/AiModeProvider/AiModeProvider';
 import { useAsyncDeleteProvider } from '../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
@@ -76,6 +79,7 @@ const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
@@ -590,7 +594,20 @@ const GlossaryPage = () => {
     glossaryElement
   );
 
-  return <div>{resizableLayout}</div>;
+  return (
+    <div>
+      {isAiMode && (
+        <HeaderShell
+          breadcrumb={
+            <HeaderBreadcrumb items={[{ label: t('label.glossary') }]} />
+          }
+          title={t('label.glossary')}
+          variant="gradient"
+        />
+      )}
+      {resizableLayout}
+    </div>
+  );
 };
 
 export default withPageLayout(GlossaryPage);

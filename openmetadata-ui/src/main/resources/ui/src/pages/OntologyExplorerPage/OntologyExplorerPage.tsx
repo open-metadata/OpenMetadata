@@ -21,12 +21,15 @@ import {
 import { Home02 } from '@untitledui/icons';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useIsAiMode } from '../../context/AiModeProvider/AiModeProvider';
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [stats, setStats] = useState<string[]>([]);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
 
@@ -38,69 +41,96 @@ const OntologyExplorerPage: React.FC = () => {
     setIsStatsLoading(loading);
   }, []);
 
+  const breadcrumb = (
+    <TitleBreadcrumb
+      useCustomArrow
+      titleLinks={[
+        {
+          name: '',
+          icon: <Home02 size={12} />,
+          url: '/',
+          activeTitle: true,
+        },
+        {
+          name: t('label.ontology-explorer'),
+          url: '',
+        },
+      ]}
+    />
+  );
+
+  const heading = (
+    <Typography
+      as="span"
+      data-testid="heading"
+      size="text-md"
+      weight="semibold">
+      {t('label.ontology-explorer')}
+    </Typography>
+  );
+
+  const betaBadge = (
+    <Badge
+      color="blue-light"
+      data-testid="beta-badge"
+      size="sm"
+      type="pill-color">
+      {t('label.beta')}
+    </Badge>
+  );
+
+  const statsRow = (
+    <div
+      className="tw:mt-1 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
+      data-testid="ontology-explorer-stats">
+      {isStatsLoading
+        ? [1, 2, 3].map((i) => (
+            <Skeleton height={20} key={i} variant="rounded" width={80} />
+          ))
+        : stats.map((item, index) => (
+            <React.Fragment key={item}>
+              {index > 0 && (
+                <Divider
+                  className="tw:h-4 tw:self-center"
+                  orientation="vertical"
+                />
+              )}
+              <Typography
+                data-testid={
+                  index === 0 ? 'ontology-explorer-stats-item' : undefined
+                }
+                size="text-sm"
+                weight="regular">
+                {item}
+              </Typography>
+            </React.Fragment>
+          ))}
+    </div>
+  );
+
   return (
     <PageLayoutV1 pageTitle={t('label.ontology-explorer')}>
       <div className="tw:flex tw:flex-col tw:gap-3">
-        <TitleBreadcrumb
-          useCustomArrow
-          titleLinks={[
-            {
-              name: '',
-              icon: <Home02 size={12} />,
-              url: '/',
-              activeTitle: true,
-            },
-            {
-              name: t('label.ontology-explorer'),
-              url: '',
-            },
-          ]}
-        />
-
-        <Card className="tw:p-5">
-          <div className="tw:flex tw:items-center tw:gap-2">
-            <Typography
-              as="span"
-              data-testid="heading"
-              size="text-md"
-              weight="semibold">
-              {t('label.ontology-explorer')}
-            </Typography>
-            <Badge
-              color="blue-light"
-              data-testid="beta-badge"
-              size="sm"
-              type="pill-color">
-              {t('label.beta')}
-            </Badge>
-          </div>
-          <div
-            className="tw:mt-1 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
-            data-testid="ontology-explorer-stats">
-            {isStatsLoading
-              ? [1, 2, 3].map((i) => (
-                  <Skeleton height={20} key={i} variant="rounded" width={80} />
-                ))
-              : stats.map((item, index) => (
-                  <React.Fragment key={item}>
-                    {index > 0 && (
-                      <Divider
-                        className="tw:h-4 tw:self-center"
-                        orientation="vertical"
-                      />
-                    )}
-                    <Typography
-                      data-testid={
-                        index === 0 ? 'ontology-explorer-stats-item' : undefined
-                      }
-                      size="text-sm"
-                      weight="regular">
-                      {item}
-                    </Typography>
-                  </React.Fragment>
-                ))}
-          </div>
-        </Card>
+        {isAiMode ? (
+          <HeaderShell
+            badge={betaBadge}
+            breadcrumb={breadcrumb}
+            meta={statsRow}
+            title={heading}
+            variant="gradient"
+          />
+        ) : (
+          <>
+            {breadcrumb}
+            <Card className="tw:p-5">
+              <div className="tw:flex tw:items-center tw:gap-2">
+                {heading}
+                {betaBadge}
+              </div>
+              {statsRow}
+            </Card>
+          </>
+        )}
 
         <OntologyExplorer
           height="calc(100vh - 230px)"

@@ -24,6 +24,8 @@ import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -31,6 +33,7 @@ import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityD
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
+import { useIsAiMode } from '../../context/AiModeProvider/AiModeProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -73,6 +76,7 @@ import { DeleteTagsType } from './TagsPage.interface';
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
   const [tagForm] = useForm();
@@ -754,6 +758,17 @@ const TagsPage = () => {
 
   return (
     <div>
+      {isAiMode && (
+        <HeaderShell
+          breadcrumb={
+            <HeaderBreadcrumb
+              items={[{ label: t('label.classification-plural') }]}
+            />
+          }
+          title={t('label.classification-plural')}
+          variant="gradient"
+        />
+      )}
       <ResizableLeftPanels
         showLearningIcon
         className="content-height-with-resizable-panel"
