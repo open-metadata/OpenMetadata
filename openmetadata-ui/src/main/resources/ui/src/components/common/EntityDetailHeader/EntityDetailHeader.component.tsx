@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import { Box, FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
 import { useMemo, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import HeaderShell from '../HeaderShell/HeaderShell.component';
@@ -63,13 +63,16 @@ const EntityDetailHeader = ({
   };
 
   const leading = serviceLogoUrl ? (
-    <div className="tw:flex tw:size-10 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:p-1.5">
+    <Box
+      align="center"
+      className="tw:size-10 tw:shrink-0 tw:rounded-md tw:border tw:border-secondary tw:bg-primary tw:p-1.5"
+      justify="center">
       <img
         alt=""
         className="tw:size-full tw:object-contain"
         src={serviceLogoUrl}
       />
-    </div>
+    </Box>
   ) : icon ? (
     <FeaturedIcon
       color="brand"

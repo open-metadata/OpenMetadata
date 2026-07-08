@@ -13,6 +13,7 @@
 
 import {
   Badge,
+  Box,
   Card,
   Divider,
   Skeleton,
@@ -80,9 +81,12 @@ const OntologyExplorerPage: React.FC = () => {
   );
 
   const statsRow = (
-    <div
-      className="tw:mt-1 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
-      data-testid="ontology-explorer-stats">
+    <Box
+      align="center"
+      className="tw:mt-1"
+      data-testid="ontology-explorer-stats"
+      gap={2}
+      wrap="wrap">
       {isStatsLoading
         ? [1, 2, 3].map((i) => (
             <Skeleton height={20} key={i} variant="rounded" width={80} />
@@ -105,12 +109,12 @@ const OntologyExplorerPage: React.FC = () => {
               </Typography>
             </React.Fragment>
           ))}
-    </div>
+    </Box>
   );
 
   return (
     <PageLayoutV1 pageTitle={t('label.ontology-explorer')}>
-      <div className="tw:flex tw:flex-col tw:gap-3">
+      <Box direction="col" gap={3}>
         {isAiMode ? (
           <HeaderShell
             badge={betaBadge}
@@ -123,10 +127,10 @@ const OntologyExplorerPage: React.FC = () => {
           <>
             {breadcrumb}
             <Card className="tw:p-5">
-              <div className="tw:flex tw:items-center tw:gap-2">
+              <Box align="center" gap={2}>
                 {heading}
                 {betaBadge}
-              </div>
+              </Box>
               {statsRow}
             </Card>
           </>
@@ -138,7 +142,7 @@ const OntologyExplorerPage: React.FC = () => {
           onLoadingChange={handleLoadingChange}
           onStatsChange={handleStatsChange}
         />
-      </div>
+      </Box>
     </PageLayoutV1>
   );
 };

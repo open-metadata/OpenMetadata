@@ -51,6 +51,11 @@ const HeaderShell = ({
     <Card
       className={classNames(
         'tw:mb-5 tw:p-4',
+        // Fixed light-blue gradient by design — intentionally NOT the dynamic
+        // brand-* tokens (those follow the deployment's primary color, which
+        // would tint this header pink on Collate). Tailwind gradient stops also
+        // can't take semantic tokens, so the stops are hardcoded; dark mode
+        // drops the gradient for the semantic bg-primary surface.
         variant === 'gradient' &&
           'tw:bg-gradient-to-r tw:from-[#EFF6FF] tw:to-[#D3EFFF] tw:dark:bg-primary tw:dark:bg-none',
         className
