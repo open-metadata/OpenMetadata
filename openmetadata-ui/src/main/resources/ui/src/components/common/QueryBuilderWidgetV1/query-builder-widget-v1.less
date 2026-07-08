@@ -11,18 +11,8 @@
  *  limitations under the License.
  */
 
-@import (reference) '../../../styles/variables.less';
-
 .query-builder-card {
-  background-color: @grey-6;
-  .ant-alert-info {
-    background-color: @blue-8;
-    border-color: @blue-7;
-
-    .ant-alert-icon {
-      color: @blue-7;
-    }
-  }
+  background-color: var(--color-bg-secondary);
 }
 
 .query-builder-form-field
@@ -37,7 +27,7 @@
           position: absolute !important;
           margin-top: 0;
           right: 0;
-          top: -56px; // updating this as size of button is increased
+          top: -56px;
           display: block;
         }
       }
@@ -50,12 +40,6 @@
 }
 
 .query-builder-form-field {
-  .ant-select-disabled.ant-select:not(.ant-select-customize-input)
-    .ant-select-selector {
-    color: @black;
-    background-color: @background-color;
-  }
-
   .hide--line.one--child {
     margin-top: 0;
     padding-top: 16px;
@@ -75,10 +59,6 @@
   .group--field {
     width: 180px;
 
-    .ant-select {
-      width: 100% !important;
-    }
-
     label {
       font-weight: normal;
       margin-bottom: 6px;
@@ -91,7 +71,7 @@
 
       .rule.group-or-rule {
         .rule--header {
-          .ant-btn-group {
+          .rule--btn-group {
             margin: 0 !important;
             align-self: flex-start;
           }
@@ -106,10 +86,6 @@
         .group--field {
           margin: 0px;
           flex: 0 1 25%;
-
-          .ant-select {
-            min-width: 100% !important; // override the inline min-width style of the select provided by antd
-          }
         }
       }
 
@@ -127,10 +103,6 @@
 
           .action.action--ADD-GROUP {
             display: none;
-          }
-
-          .rule-container .ant-btn-group {
-            visibility: visible;
           }
 
           .action.action--ADD-RULE {
@@ -152,19 +124,11 @@
             .widget--widget {
               margin: 0px;
               flex: 1;
-
-              .ant-col {
-                padding: 0px !important; // remove padding from ant-col inline styling by antd
-              }
             }
 
             .rule--operator,
             .rule--value .rule--widget {
               width: 100%;
-
-              .ant-select {
-                min-width: 100% !important; // override the inline min-width style of the select provided by antd
-              }
             }
           }
         }
@@ -199,10 +163,6 @@
           }
         }
       }
-
-      .rule-container .ant-btn-group {
-        visibility: visible;
-      }
     }
   }
 
@@ -218,47 +178,42 @@
 }
 
 .json-logic-field-select {
-  .ant-select-item-group {
+  .item-group {
     padding-left: 8px;
     position: relative;
-    color: @text-color;
+    color: var(--color-text-primary);
     font-size: 14px;
-    background-color: @grey-6;
+    background-color: var(--color-bg-secondary);
   }
 
-  /* Add vertical line for children */
-  .ant-select-item-option-grouped {
+  .item-option-grouped {
     position: relative;
     padding-left: 32px;
-    /* Indentation for child items */
   }
 
-  /* Add vertical line before each child */
-  .ant-select-item-option-grouped::before {
+  .item-option-grouped::before {
     content: '';
     position: absolute;
     left: 16px;
     top: 0;
     bottom: 0;
     width: 1px;
-    background-color: @border-color;
+    background-color: var(--color-border-primary);
   }
 
-  /* Adjust line height for last child */
-  .ant-select-item-option-grouped:last-child::before {
+  .item-option-grouped:last-child::before {
     height: 16px;
     bottom: auto;
   }
 
-  /* Add horizontal connector for each child */
-  .ant-select-item-option-grouped::after {
+  .item-option-grouped::after {
     content: '';
     position: absolute;
     left: 16px;
     top: 16px;
     width: 10px;
     height: 1px;
-    background-color: @border-color;
+    background-color: var(--color-border-primary);
   }
 }
 

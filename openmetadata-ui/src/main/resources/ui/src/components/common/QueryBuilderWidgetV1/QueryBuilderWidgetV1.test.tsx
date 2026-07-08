@@ -373,7 +373,7 @@ describe('QueryBuilderWidgetV1', () => {
       expect(searchQuery).toHaveBeenCalled();
 
       expect(
-        container.querySelector('.ant-skeleton.ant-skeleton-active')
+        container.querySelector('[aria-hidden="true"]')
       ).toBeInTheDocument();
 
       await act(async () => {
@@ -590,11 +590,11 @@ describe('QueryBuilderWidgetV1', () => {
         <QueryBuilderWidgetV1 outputType={SearchOutputType.ElasticSearch} />
       );
 
-      const col = screen
+      const innerDiv = screen
         .getByTestId('query-builder-form-field')
-        .querySelector('.ant-col');
+        .querySelector('.tw\\:pt-2');
 
-      expect(col).toHaveClass('p-t-sm');
+      expect(innerDiv).toBeInTheDocument();
     });
   });
 
