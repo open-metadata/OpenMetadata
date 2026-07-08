@@ -287,12 +287,18 @@ def _test_api_connection(
     timeout_seconds: Optional[int] = THREE_MIN,
 ) -> TestConnectionResult:
     rest_config = service_connection.connection
-    host = str(service_connection.hostPort) if getattr(service_connection, "hostPort", None) else None
+    host = (
+        str(service_connection.hostPort)
+        if getattr(service_connection, "hostPort", None)
+        else None
+    )
     auth_config = getattr(rest_config, "authConfig", None)
     verify = getattr(rest_config, "verifySSL", True)
 
     test_fn = {
-        "CheckAccess": lambda: _decorated_check_access(client, host, auth_config, verify),
+        "CheckAccess": lambda: _decorated_check_access(
+            client, host, auth_config, verify
+        ),
         "PipelineDetailsAccess": lambda: client.list_dags(limit=1),
         "TaskDetailAccess": lambda: True,
     }

@@ -26,10 +26,10 @@ from metadata.ingestion.sink.metadata_rest import (
     is_duplicate_query_conflict,
 )
 
-CHECKSUM_CONFLICT = (
-    'org.postgresql.util.PSQLException: ERROR: duplicate key value violates unique constraint "unique_query_checksum"'
+CHECKSUM_CONFLICT = 'org.postgresql.util.PSQLException: ERROR: duplicate key value violates unique constraint "unique_query_checksum"'
+NAMEHASH_CONFLICT_PG = (
+    'duplicate key value violates unique constraint "query_entity_namehash_key"'
 )
-NAMEHASH_CONFLICT_PG = 'duplicate key value violates unique constraint "query_entity_namehash_key"'
 NAMEHASH_CONFLICT_MYSQL = "Duplicate entry 'abc' for key 'query_entity.nameHash'"
 REAL_ERROR = "Invalid entity: SqlQuery must not be null"
 
@@ -47,18 +47,28 @@ def _result(failed_messages):
         numberOfRowsPassed=0,
         numberOfRowsFailed=len(failed_messages),
         successRequest=[],
-        failedRequest=[Response(request=f"svc.{i}", message=msg, status=400) for i, msg in enumerate(failed_messages)],
+        failedRequest=[
+            Response(request=f"svc.{i}", message=msg, status=400)
+            for i, msg in enumerate(failed_messages)
+        ],
     )
 
 
 def _flush_queries(sink, result):
     sink.metadata.bulk_create_or_update.return_value = result
-    sink.query_buffer = [CreateQueryRequest(query=SqlQuery("SELECT 1"), service=FullyQualifiedEntityName("svc"))]
+    sink.query_buffer = [
+        CreateQueryRequest(
+            query=SqlQuery("SELECT 1"), service=FullyQualifiedEntityName("svc")
+        )
+    ]
     return sink._flush_query_buffer()
 
 
 def test_already_present_queries_become_warnings_not_failures(sink):
-    out = _flush_queries(sink, _result([CHECKSUM_CONFLICT, NAMEHASH_CONFLICT_PG, NAMEHASH_CONFLICT_MYSQL]))
+    out = _flush_queries(
+        sink,
+        _result([CHECKSUM_CONFLICT, NAMEHASH_CONFLICT_PG, NAMEHASH_CONFLICT_MYSQL]),
+    )
 
     assert len(sink.status.warnings) == 3
     assert len(sink.status.failures) == 0
@@ -86,7 +96,9 @@ def test_is_duplicate_query_conflict_classification():
 
 
 def _query(text="SELECT 1"):
-    return CreateQueryRequest(query=SqlQuery(text), service=FullyQualifiedEntityName("svc"))
+    return CreateQueryRequest(
+        query=SqlQuery(text), service=FullyQualifiedEntityName("svc")
+    )
 
 
 def test_dispatch_routes_query_to_dedicated_buffer(sink):

@@ -397,7 +397,12 @@ class MetabaseSource(DashboardServiceSource):
             and chart_details.dataset_query.native
             and chart_details.dataset_query.native.query
         ):
-            query = re.sub(r"\[\[.*?\]\]", "", chart_details.dataset_query.native.query, flags=re.DOTALL)
+            query = re.sub(
+                r"\[\[.*?\]\]",
+                "",
+                chart_details.dataset_query.native.query,
+                flags=re.DOTALL,
+            )
 
         if not query or not query.strip():
             return
@@ -476,7 +481,11 @@ class MetabaseSource(DashboardServiceSource):
                 fqn_search_string=fqn_search_string,
                 fetch_multiple_entities=True,
             )
-            from_tables = [from_entities] if isinstance(from_entities, Table) else from_entities or []
+            from_tables = (
+                [from_entities]
+                if isinstance(from_entities, Table)
+                else from_entities or []
+            )
 
             for from_entity in from_tables:
                 if to_entity:
@@ -487,7 +496,9 @@ class MetabaseSource(DashboardServiceSource):
                     if dashboard_lineage:
                         yield dashboard_lineage
                 if chart_entity and isinstance(from_entity, Table):
-                    chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+                    chart_lineage = self._get_add_lineage_request(
+                        to_entity=chart_entity, from_entity=from_entity
+                    )
                     if chart_lineage:
                         yield chart_lineage
 
@@ -553,7 +564,9 @@ class MetabaseSource(DashboardServiceSource):
             fqn_search_string=fqn_search_string,
             fetch_multiple_entities=True,
         )
-        from_tables = [from_entities] if isinstance(from_entities, Table) else from_entities or []
+        from_tables = (
+            [from_entities] if isinstance(from_entities, Table) else from_entities or []
+        )
         to_fqn = fqn.build(
             self.metadata,
             entity_type=LineageDashboard,
@@ -580,6 +593,8 @@ class MetabaseSource(DashboardServiceSource):
                 if dashboard_lineage:
                     yield dashboard_lineage
             if chart_entity and isinstance(from_entity, Table):
-                chart_lineage = self._get_add_lineage_request(to_entity=chart_entity, from_entity=from_entity)
+                chart_lineage = self._get_add_lineage_request(
+                    to_entity=chart_entity, from_entity=from_entity
+                )
                 if chart_lineage:
                     yield chart_lineage

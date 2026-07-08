@@ -44,7 +44,11 @@ from metadata.ingestion.source.dashboard.powerbi.models import (
 _LOOSENED_MODELS_NAME_FIELD = [
     (PowerBIReport, {"id": "r-1"}, "name"),
     (PowerBiColumns, {}, "name"),
-    (PowerBiMeasureModel, {"dataType": "STRING", "dataTypeDisplay": "STRING", "description": ""}, "name"),
+    (
+        PowerBiMeasureModel,
+        {"dataType": "STRING", "dataTypeDisplay": "STRING", "description": ""},
+        "name",
+    ),
     (PowerBiMeasures, {}, "name"),
     (PowerBiTable, {}, "name"),
     (DatasetExpression, {}, "name"),
@@ -106,7 +110,12 @@ def test_fetch_workspace_scan_result_skips_one_bad_workspace(monkeypatch):
     api_client.client.get.return_value = {
         "workspaces": [
             {"id": "ws-good", "name": "Good", "state": "Active"},
-            {"id": "ws-bad", "name": "Bad", "state": "Active", "dashboards": "not-a-list"},
+            {
+                "id": "ws-bad",
+                "name": "Bad",
+                "state": "Active",
+                "dashboards": "not-a-list",
+            },
         ]
     }
 

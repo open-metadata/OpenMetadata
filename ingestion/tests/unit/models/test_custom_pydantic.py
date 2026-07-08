@@ -281,7 +281,9 @@ class TestPlainSecretStrInCustomSecretStrField:
         connection = _LeakedSecretConnection(password=CustomSecretStr("real_password"))
         connection.password = SecretStr("")
 
-        serialized = json.loads(_LeakedSecretParams(conn_config=connection).model_dump_json())
+        serialized = json.loads(
+            _LeakedSecretParams(conn_config=connection).model_dump_json()
+        )
 
         assert serialized["conn_config"]["password"] == ""
 
@@ -920,7 +922,9 @@ class TestExternalSecretReferenceSerialization:
     @pytest.fixture(autouse=True)
     def db_secrets_manager(self):
         Singleton.clear_all()
-        SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        SecretsManagerFactory(
+            SecretsManagerProvider.db, SecretsManagerClientLoader.noop
+        )
         yield
         Singleton.clear_all()
 
@@ -930,7 +934,9 @@ class TestExternalSecretReferenceSerialization:
 
         connection = Connection(password=self.EXTERNAL_SECRET_REFERENCE)
 
-        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}))
+        serialized = json.loads(
+            connection.model_dump_json(context={"mask_secrets": False})
+        )
 
         assert serialized["password"] == self.EXTERNAL_SECRET_REFERENCE
 
@@ -941,7 +947,9 @@ class TestExternalSecretReferenceSerialization:
             hostPort="localhost:3306",
         )
 
-        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}, by_alias=True))
+        serialized = json.loads(
+            connection.model_dump_json(context={"mask_secrets": False}, by_alias=True)
+        )
 
         assert serialized["authType"]["password"] == self.EXTERNAL_SECRET_REFERENCE
 
@@ -976,7 +984,9 @@ class TestExternalSecretReferenceResolution:
     @pytest.fixture(autouse=True)
     def external_secrets_manager(self):
         Singleton.clear_all()
-        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory = SecretsManagerFactory(
+            SecretsManagerProvider.db, SecretsManagerClientLoader.noop
+        )
         factory.secrets_manager = _FakeExternalSecretsManager()
         yield
         Singleton.clear_all()
@@ -999,7 +1009,9 @@ class TestExternalSecretReferenceResolution:
             hostPort="localhost:3306",
         )
 
-        serialized = json.loads(connection.model_dump_json(context={"mask_secrets": False}, by_alias=True))
+        serialized = json.loads(
+            connection.model_dump_json(context={"mask_secrets": False}, by_alias=True)
+        )
 
         assert serialized["authType"]["password"] == self.EXTERNAL_SECRET_REFERENCE
         assert serialized["authType"]["password"] != RESOLVED_EXTERNAL_SECRET
@@ -1025,7 +1037,9 @@ class TestNullSecretResolution:
     @pytest.fixture(autouse=True)
     def null_secrets_manager(self):
         Singleton.clear_all()
-        factory = SecretsManagerFactory(SecretsManagerProvider.db, SecretsManagerClientLoader.noop)
+        factory = SecretsManagerFactory(
+            SecretsManagerProvider.db, SecretsManagerClientLoader.noop
+        )
         factory.secrets_manager = _NullExternalSecretsManager()
         yield
         Singleton.clear_all()

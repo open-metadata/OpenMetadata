@@ -174,17 +174,33 @@ def patch_questdb_dialect(engine: Engine) -> Engine:
     logger.debug("Patching PostgreSQL dialect for QuestDB engine %s", engine.url)
 
     dialect.get_columns = types.MethodType(
-        lambda self, connection, table_name, schema=None, **_kw: _get_columns(connection, table_name),
+        lambda self, connection, table_name, schema=None, **_kw: _get_columns(
+            connection, table_name
+        ),
         dialect,
     )
-    dialect.get_pk_constraint = types.MethodType(lambda self, *a, **kw: _empty_pk_constraint(), dialect)
-    dialect.get_foreign_keys = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
-    dialect.get_unique_constraints = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
-    dialect.get_indexes = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
-    dialect.get_check_constraints = types.MethodType(lambda self, *a, **kw: _empty_list(), dialect)
-    dialect.get_table_comment = types.MethodType(lambda self, *a, **kw: _empty_table_comment(), dialect)
+    dialect.get_pk_constraint = types.MethodType(
+        lambda self, *a, **kw: _empty_pk_constraint(), dialect
+    )
+    dialect.get_foreign_keys = types.MethodType(
+        lambda self, *a, **kw: _empty_list(), dialect
+    )
+    dialect.get_unique_constraints = types.MethodType(
+        lambda self, *a, **kw: _empty_list(), dialect
+    )
+    dialect.get_indexes = types.MethodType(
+        lambda self, *a, **kw: _empty_list(), dialect
+    )
+    dialect.get_check_constraints = types.MethodType(
+        lambda self, *a, **kw: _empty_list(), dialect
+    )
+    dialect.get_table_comment = types.MethodType(
+        lambda self, *a, **kw: _empty_table_comment(), dialect
+    )
     dialect.get_view_definition = types.MethodType(
-        lambda self, connection, view_name, schema=None, **_kw: _get_view_definition_from_views(connection, view_name),
+        lambda self, connection, view_name, schema=None, **_kw: _get_view_definition_from_views(
+            connection, view_name
+        ),
         dialect,
     )
     return engine

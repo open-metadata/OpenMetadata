@@ -26,7 +26,10 @@ from metadata.generated.schema.entity.data.dashboardDataModel import DataModelTy
 from metadata.generated.schema.entity.data.table import Column, DataType
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.models.barrier import Barrier
-from metadata.ingestion.sink.metadata_rest import MetadataRestSink, MetadataRestSinkConfig
+from metadata.ingestion.sink.metadata_rest import (
+    MetadataRestSink,
+    MetadataRestSinkConfig,
+)
 
 
 def _make_data_model(name: str) -> CreateDashboardDataModelRequest:

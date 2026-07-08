@@ -71,7 +71,9 @@ class PostgresSampler(SQASampler):
             if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
                 self.sampling_fn = func.system
 
-    def set_tablesample(self, static: StaticSamplingConfig | None, selectable: SqaTable):
+    def set_tablesample(
+        self, static: StaticSamplingConfig | None, selectable: SqaTable
+    ):
         """Set the TABLESAMPLE clause for postgres
         Args:
             static (StaticSamplingConfig | None): sampling configuration
@@ -82,7 +84,9 @@ class PostgresSampler(SQASampler):
 
         return selectable
 
-    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
+    def get_sample_query(
+        self, static: StaticSamplingConfig | None, *, column=None
+    ) -> Query:
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         if static and static.profileSampleType == ProfileSampleType.PERCENTAGE:
             return self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")  # type: ignore

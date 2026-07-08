@@ -142,7 +142,11 @@ class JSONDataFrameReader(DataFrameReader):
         )
         data = json.loads(content)
         is_json_schema = isinstance(data, dict) and data.get("$schema")
-        raw_data = content if (is_json_schema or JSONDataFrameReader._is_iceberg_delta_shape(data)) else None
+        raw_data = (
+            content
+            if (is_json_schema or JSONDataFrameReader._is_iceberg_delta_shape(data))
+            else None
+        )
         data = [data] if isinstance(data, dict) else data
 
         def chunk_generator():
@@ -164,7 +168,9 @@ class JSONDataFrameReader(DataFrameReader):
             obj = json.loads(first_line)
             if not isinstance(obj, dict):
                 return False
-            if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(obj):  # noqa: SIM103
+            if obj.get("$schema") or JSONDataFrameReader._is_iceberg_delta_shape(
+                obj
+            ):  # noqa: SIM103
                 return False
             return True  # noqa:TRY300
         except json.JSONDecodeError:

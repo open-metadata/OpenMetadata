@@ -78,9 +78,16 @@ def hive_engine():
     with try_bind(container, 10000, None) as container:
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:
-            conn.execute(text("CREATE TABLE IF NOT EXISTS default.metric_test (id INT, name STRING)"))
             conn.execute(
-                text("INSERT INTO default.metric_test VALUES " + ", ".join(f"({i}, 'name_{i}')" for i in range(1, 101)))
+                text(
+                    "CREATE TABLE IF NOT EXISTS default.metric_test (id INT, name STRING)"
+                )
+            )
+            conn.execute(
+                text(
+                    "INSERT INTO default.metric_test VALUES "
+                    + ", ".join(f"({i}, 'name_{i}')" for i in range(1, 101))
+                )
             )
             conn.execute(text("ANALYZE TABLE default.metric_test COMPUTE STATISTICS"))
         yield engine

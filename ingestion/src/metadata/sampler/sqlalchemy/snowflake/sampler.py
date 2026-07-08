@@ -87,10 +87,14 @@ class SnowflakeSampler(SQASampler):
             func.ROW(text(f"{static.profileSample or 100 if static else 100} ROWS"))
         )
 
-    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> CTE:
+    def get_sample_query(
+        self, static: StaticSamplingConfig | None, *, column=None
+    ) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
-        rnd = self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
+        rnd = self._base_sample_query(selectable, column).cte(
+            f"{self.get_sampler_table_name()}_rnd"
+        )
         with self.session_factory() as client:
             query = client.query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")

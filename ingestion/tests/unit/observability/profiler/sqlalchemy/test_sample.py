@@ -35,10 +35,7 @@ from metadata.profiler.interface.sqlalchemy.profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.orm.registry import CustomTypes
 from metadata.profiler.processor.core import Profiler
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-)
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
 

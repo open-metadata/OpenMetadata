@@ -84,7 +84,9 @@ class MysqlSource(CommonDbSourceService):
         if self.source_config.includeStoredProcedures:
             with self.engine.connect() as conn:
                 results = conn.execute(
-                    text(MYSQL_GET_ROUTINES).bindparams(schema_name=self.context.get().database_schema)  # pyright: ignore[reportAttributeAccessIssue]
+                    text(MYSQL_GET_ROUTINES).bindparams(
+                        schema_name=self.context.get().database_schema
+                    )  # pyright: ignore[reportAttributeAccessIssue]
                 ).all()
             for row in results:
                 try:
@@ -120,7 +122,9 @@ class MysqlSource(CommonDbSourceService):
                     else None
                 ),
                 storedProcedureCode=StoredProcedureCode(
-                    language=STORED_PROC_LANGUAGE_MAP.get(stored_procedure.language, DEFAULT_STORED_PROC_LANGUAGE),
+                    language=STORED_PROC_LANGUAGE_MAP.get(
+                        stored_procedure.language, DEFAULT_STORED_PROC_LANGUAGE
+                    ),
                     code=stored_procedure.definition,
                 ),
                 databaseSchema=fqn.build(

@@ -49,7 +49,9 @@ class EmptyModel(Base):
 
 @pytest.fixture(scope="module")
 def trino_engine(trino_container, create_test_data):
-    engine = create_engine(make_url(trino_container.get_connection_url()).set(database="minio"))
+    engine = create_engine(
+        make_url(trino_container.get_connection_url()).set(database="minio")
+    )
     yield engine
     engine.dispose()
 
@@ -111,7 +113,13 @@ class TestTrinoTableMetricComputer:
         """empty table had stats dropped — SHOW STATS returns NULL row_count.
         Should fall back to COUNT(*)."""
         computer = _build_computer(trino_session, EmptyModel)
-        fallback_result = Mock(rowCount=0, columnCount=None, sizeInBytes=None, columnNames=None, createDateTime=None)
+        fallback_result = Mock(
+            rowCount=0,
+            columnCount=None,
+            sizeInBytes=None,
+            columnNames=None,
+            createDateTime=None,
+        )
         with patch.object(
             BaseTableMetricComputer,
             "compute",

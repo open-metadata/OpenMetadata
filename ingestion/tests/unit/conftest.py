@@ -24,7 +24,9 @@ _mock_validate = patch(
 )
 _mock_validate.start()
 
-_mock_log_server_version = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.log_server_version")
+_mock_log_server_version = patch(
+    "metadata.ingestion.ometa.ometa_api.OpenMetadata.log_server_version"
+)
 _mock_log_server_version.start()
 
 _mock_health = patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.health_check")

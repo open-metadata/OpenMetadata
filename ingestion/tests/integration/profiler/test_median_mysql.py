@@ -106,7 +106,9 @@ def mysql_engine():
                 )
             )
             values = ", ".join(f"({row[0]}, {row[1]}, '{row[2]}')" for row in TEST_ROWS)
-            conn.execute(text(f"INSERT INTO test_data (id, value, category) VALUES {values}"))
+            conn.execute(
+                text(f"INSERT INTO test_data (id, value, category) VALUES {values}")
+            )
             conn.commit()
         yield engine
         engine.dispose()
@@ -122,26 +124,34 @@ class TestMySQLMedianFn:
     def test_median_non_correlated(self, session):
         """p=0.5 over 10-row table picks the 5th sorted element (50)."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.50)
-        result = session.execute(text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")).scalar()
+        result = session.execute(
+            text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")
+        ).scalar()
         assert result == pytest.approx(50.0)
 
     def test_first_quartile_non_correlated(self, session):
         """p=0.25 over 10-row table picks the 3rd sorted element (30)."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.25)
-        result = session.execute(text(f"SELECT {compiled} AS q1_val FROM test_data LIMIT 1")).scalar()
+        result = session.execute(
+            text(f"SELECT {compiled} AS q1_val FROM test_data LIMIT 1")
+        ).scalar()
         assert result == pytest.approx(30.0)
 
     def test_third_quartile_non_correlated(self, session):
         """p=0.75 over 10-row table picks the 8th sorted element (300)."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.75)
-        result = session.execute(text(f"SELECT {compiled} AS q3_val FROM test_data LIMIT 1")).scalar()
+        result = session.execute(
+            text(f"SELECT {compiled} AS q3_val FROM test_data LIMIT 1")
+        ).scalar()
         assert result == pytest.approx(300.0)
 
     def test_median_with_dimension_col(self, session):
         """Per-group median: 3rd element of each 5-row group."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.50, "category")
         results = session.execute(
-            text(f"SELECT DISTINCT category, {compiled} AS median_val FROM test_data ORDER BY category")
+            text(
+                f"SELECT DISTINCT category, {compiled} AS median_val FROM test_data ORDER BY category"
+            )
         ).fetchall()
         medians = {row[0]: row[1] for row in results}
         assert medians["a"] == pytest.approx(30.0)
@@ -151,7 +161,9 @@ class TestMySQLMedianFn:
         """Per-group Q1: 1st element of each 5-row group."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.25, "category")
         results = session.execute(
-            text(f"SELECT DISTINCT category, {compiled} AS q1_val FROM test_data ORDER BY category")
+            text(
+                f"SELECT DISTINCT category, {compiled} AS q1_val FROM test_data ORDER BY category"
+            )
         ).fetchall()
         q1s = {row[0]: row[1] for row in results}
         assert q1s["a"] == pytest.approx(10.0)
@@ -161,7 +173,9 @@ class TestMySQLMedianFn:
         """Per-group Q3: 4th element of each 5-row group."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.75, "category")
         results = session.execute(
-            text(f"SELECT DISTINCT category, {compiled} AS q3_val FROM test_data ORDER BY category")
+            text(
+                f"SELECT DISTINCT category, {compiled} AS q3_val FROM test_data ORDER BY category"
+            )
         ).fetchall()
         q3s = {row[0]: row[1] for row in results}
         assert q3s["a"] == pytest.approx(40.0)
@@ -194,6 +208,9 @@ class TestMySQLMedianFn:
         """Same query 10x must return the same value — pre-fix this flipped."""
         compiled = _compile_median_fn(session, "value", "test_data", 0.50)
         results = {
-            session.execute(text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")).scalar() for _ in range(10)
+            session.execute(
+                text(f"SELECT {compiled} AS median_val FROM test_data LIMIT 1")
+            ).scalar()
+            for _ in range(10)
         }
         assert len(results) == 1, f"non-deterministic: got {results}"

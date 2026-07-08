@@ -56,14 +56,22 @@ ROW_COUNT = 500
 
 @pytest.fixture(scope="module")
 def mssql_engine():
-    container = SqlServerContainer("mcr.microsoft.com/mssql/server:2022-latest", dbname="master")
+    container = SqlServerContainer(
+        "mcr.microsoft.com/mssql/server:2022-latest", dbname="master"
+    )
     with container as container:
         url = "mssql+pytds://" + container.get_connection_url().split("://")[1]
         engine = create_engine(url, connect_args={"autocommit": True})
         with engine.connect() as conn:
-            conn.execute(text("CREATE TABLE dbo.sampling_test (id INT PRIMARY KEY, name NVARCHAR(256))"))
+            conn.execute(
+                text(
+                    "CREATE TABLE dbo.sampling_test (id INT PRIMARY KEY, name NVARCHAR(256))"
+                )
+            )
             values = ", ".join(f"({i}, 'row_{i}')" for i in range(1, ROW_COUNT + 1))
-            conn.execute(text(f"INSERT INTO dbo.sampling_test (id, name) VALUES {values}"))
+            conn.execute(
+                text(f"INSERT INTO dbo.sampling_test (id, name) VALUES {values}")
+            )
         yield engine
         with engine.connect() as conn:
             conn.execute(text("DROP TABLE IF EXISTS dbo.sampling_test"))
@@ -113,7 +121,9 @@ class TestMSSQLDynamicSampling:
             sampleConfigType=SampleConfigType.DYNAMIC,
             config=DynamicSamplingConfig(smartSampling=True),
         )
-        static = resolve_static_sampling_config(sample_config=config, row_count=ROW_COUNT)
+        static = resolve_static_sampling_config(
+            sample_config=config, row_count=ROW_COUNT
+        )
         assert static is not None
         assert static.profileSample == 100
         assert static.profileSampleType == ProfileSampleType.PERCENTAGE
@@ -129,7 +139,9 @@ class TestMSSQLDynamicSampling:
                 ],
             ),
         )
-        static = resolve_static_sampling_config(sample_config=config, row_count=ROW_COUNT)
+        static = resolve_static_sampling_config(
+            sample_config=config, row_count=ROW_COUNT
+        )
         assert static is not None
         assert static.profileSample == 30.0
 
@@ -162,6 +174,8 @@ class TestMSSQLDynamicSampling:
                 ],
             ),
         )
-        static = resolve_static_sampling_config(sample_config=config, row_count=ROW_COUNT)
+        static = resolve_static_sampling_config(
+            sample_config=config, row_count=ROW_COUNT
+        )
         # 500 < 1000 threshold → no sampling
         assert static is None

@@ -127,7 +127,13 @@ def probe_access_history_available(engine: Engine, account_usage_schema: str) ->
     """
     try:
         with engine.connect() as conn:
-            conn.execute(text(SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=account_usage_schema)))
+            conn.execute(
+                text(
+                    SNOWFLAKE_ACCESS_HISTORY_PROBE.format(
+                        account_usage=account_usage_schema
+                    )
+                )
+            )
     except Exception as exc:
         logger.info(
             f"ACCESS_HISTORY probe failed (will fall back to legacy lineage path): {exc}. "

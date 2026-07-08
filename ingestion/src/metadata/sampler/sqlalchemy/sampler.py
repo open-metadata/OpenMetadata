@@ -203,7 +203,9 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
         hash_object = hashlib.md5(encoded_name)
         return hash_object.hexdigest()
 
-    def get_sample_query(self, static: StaticSamplingConfig | None, *, column=None) -> Query:
+    def get_sample_query(
+        self, static: StaticSamplingConfig | None, *, column=None
+    ) -> Query:
         """get query for sample data"""
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
         with self.session_factory() as client:

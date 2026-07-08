@@ -38,9 +38,7 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import (
-    AWSCredentials,
-)
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.connections import builders
 
 IAM_TOKEN = "iam-token-v1"
@@ -120,7 +118,9 @@ class TestRdsIamTokenRefresh:
                 get_connection_args_fn=builders.get_connection_args_common,
             )
 
-        do_connect_registrations = [call for call in mock_listen.call_args_list if "do_connect" in call.args]
+        do_connect_registrations = [
+            call for call in mock_listen.call_args_list if "do_connect" in call.args
+        ]
         assert not do_connect_registrations, (
             "no do_connect listener is wired for IAM today — this is the gap B1 "
             "describes; once fixed, invert this assertion"

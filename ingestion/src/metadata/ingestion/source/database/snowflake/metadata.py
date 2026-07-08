@@ -53,10 +53,7 @@ from metadata.generated.schema.entity.services.ingestionPipelines.status import 
 from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
-from metadata.generated.schema.type.basic import (
-    EntityName,
-    SourceUrl,
-)
+from metadata.generated.schema.type.basic import EntityName, SourceUrl
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
 from metadata.generated.schema.type.tagLabel import TagLabel
 from metadata.ingestion.api.delete import delete_entity_by_name
@@ -295,9 +292,9 @@ class SnowflakeSource(
         with self.engine.connect() as conn:
             for row in conn.execute(text(SNOWFLAKE_GET_CLUSTER_KEY)):
                 if row.CLUSTERING_KEY:
-                    self.partition_details[f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"] = (
-                        row.CLUSTERING_KEY
-                    )
+                    self.partition_details[
+                        f"{row.TABLE_SCHEMA}.{row.TABLE_NAME}"
+                    ] = row.CLUSTERING_KEY
 
     def set_schema_description_map(self) -> None:
         self.schema_desc_map.clear()
@@ -435,7 +432,9 @@ class SnowflakeSource(
                 )
 
                 filter_name: str = (
-                    database_fqn if self.source_config.useFqnForFiltering and database_fqn else new_database
+                    database_fqn
+                    if self.source_config.useFqnForFiltering and database_fqn
+                    else new_database
                 )
                 if filter_by_database(
                     self.source_config.databaseFilterPattern,
@@ -749,7 +748,11 @@ class SnowflakeSource(
         )
 
         deleted_fqns = []
-        for table in snowflake_tables.get_deleted():  # pyright: ignore[reportAttributeAccessIssue]
+        for (
+            table
+        ) in (
+            snowflake_tables.get_deleted()
+        ):  # pyright: ignore[reportAttributeAccessIssue]
             try:
                 deleted_fqns.append(
                     fqn.build(
@@ -762,11 +765,16 @@ class SnowflakeSource(
                     )
                 )
             except Exception as err:
-                logger.warning(f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}")
+                logger.warning(
+                    f"Skipping deleted-table FQN for {table.name!r} in schema {schema_name}: {err}"
+                )
                 logger.debug(traceback.format_exc())
         self.context.get_global().deleted_tables.extend(deleted_fqns)
 
-        return [TableNameAndType(name=table.name, type_=table.type_) for table in snowflake_tables.get_not_deleted()]  # pyright: ignore[reportAttributeAccessIssue]
+        return [
+            TableNameAndType(name=table.name, type_=table.type_)
+            for table in snowflake_tables.get_not_deleted()
+        ]  # pyright: ignore[reportAttributeAccessIssue]
 
     def _get_stream_names_and_types(self, schema_name: str) -> List[TableNameAndType]:
         table_type = TableType.Stream

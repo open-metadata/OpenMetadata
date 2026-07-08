@@ -676,7 +676,9 @@ class TestCustomBasemodelValidation(TestCase):
                     dataType=DataType.STRING,
                 ),
                 Column(
-                    name=ColumnName("col__reserved__carriage_return__with__reserved__carriage_return__returns"),
+                    name=ColumnName(
+                        "col__reserved__carriage_return__with__reserved__carriage_return__returns"
+                    ),
                     dataType=DataType.STRING,
                 ),
             ],
@@ -703,12 +705,18 @@ class TestCustomBasemodelValidation(TestCase):
                 Column(
                     name=ColumnName(original_column),
                     dataType=DataType.STRUCT,
-                    children=[Column(name=ColumnName(original_child), dataType=DataType.STRING)],
+                    children=[
+                        Column(
+                            name=ColumnName(original_child), dataType=DataType.STRING
+                        )
+                    ],
                 )
             ],
         )
 
-        encoded = transform_entity_names(create_request, CreateDashboardDataModelRequest)
+        encoded = transform_entity_names(
+            create_request, CreateDashboardDataModelRequest
+        )
         encoded_name = encoded.name.root
         encoded_column = encoded.columns[0].name.root
         encoded_child = encoded.columns[0].children[0].name.root
@@ -728,7 +736,9 @@ class TestCustomBasemodelValidation(TestCase):
                 Column(
                     name=ColumnName(encoded_column),
                     dataType=DataType.STRUCT,
-                    children=[Column(name=ColumnName(encoded_child), dataType=DataType.STRING)],
+                    children=[
+                        Column(name=ColumnName(encoded_child), dataType=DataType.STRING)
+                    ],
                 )
             ],
         )
@@ -765,7 +775,9 @@ class TestTransformationConstants(TestCase):
         self.assertEqual(RESERVED_ARROW_KEYWORD, "__reserved__arrow__")
         self.assertEqual(RESERVED_QUOTE_KEYWORD, "__reserved__quote__")
         self.assertEqual(RESERVED_NEWLINE_KEYWORD, "__reserved__newline__")
-        self.assertEqual(RESERVED_CARRIAGE_RETURN_KEYWORD, "__reserved__carriage_return__")
+        self.assertEqual(
+            RESERVED_CARRIAGE_RETURN_KEYWORD, "__reserved__carriage_return__"
+        )
         self.assertEqual(RESERVED_TAB_KEYWORD, "__reserved__tab__")
 
     def test_reserved_keywords_uniqueness(self):

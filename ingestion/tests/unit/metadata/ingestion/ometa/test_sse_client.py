@@ -43,7 +43,9 @@ class MockSSEResponse:
             err.response = Mock(status_code=self.status_code)
             raise err
 
-    def iter_lines(self, decode_unicode: bool = False, delimiter: Optional[str] = None) -> Iterator[str]:  # noqa: UP045
+    def iter_lines(
+        self, decode_unicode: bool = False, delimiter: Optional[str] = None
+    ) -> Iterator[str]:  # noqa: UP045
         if self.raise_error:
             raise self.raise_error
         yield from self.lines
@@ -82,7 +84,9 @@ class MockByteStreamSSEResponse:
             err.response = Mock(status_code=self.status_code)
             raise err
 
-    def iter_lines(self, decode_unicode: bool = False, delimiter: Optional[str] = None) -> Iterator[str]:  # noqa: UP045
+    def iter_lines(
+        self, decode_unicode: bool = False, delimiter: Optional[str] = None
+    ) -> Iterator[str]:  # noqa: UP045
         text = self.raw.decode(self.encoding) if decode_unicode else self.raw
         lines = text.split(delimiter) if delimiter else text.splitlines()
         yield from lines
@@ -305,7 +309,9 @@ def test_stream_connection_error_with_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Connection failed"))
+            mock_response = MockSSEResponse(
+                [], raise_error=requests.exceptions.ConnectionError("Connection failed")
+            )
         else:
             mock_response = MockSSEResponse(
                 [
@@ -334,7 +340,9 @@ def test_stream_connection_error_with_retries(sse_client):
 
 def test_stream_max_retries_exceeded(sse_client):
     """Test that max retries are respected and exception is raised"""
-    mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Connection failed"))
+    mock_response = MockSSEResponse(
+        [], raise_error=requests.exceptions.ConnectionError("Connection failed")
+    )
     mock_session = MockRequestsSession(mock_response)
 
     with patch("requests.Session", return_value=mock_session):  # noqa: SIM117
@@ -383,7 +391,9 @@ def test_stream_resets_retry_count_on_success(sse_client):
         call_count += 1
 
         if call_count == 1:
-            mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Connection failed"))
+            mock_response = MockSSEResponse(
+                [], raise_error=requests.exceptions.ConnectionError("Connection failed")
+            )
         else:
             mock_response = MockSSEResponse(
                 [
@@ -593,7 +603,9 @@ def test_stream_exponential_backoff_on_retries(sse_client):
         call_count += 1
 
         if call_count < 3:
-            mock_response = MockSSEResponse([], raise_error=requests.exceptions.ConnectionError("Read failed"))
+            mock_response = MockSSEResponse(
+                [], raise_error=requests.exceptions.ConnectionError("Read failed")
+            )
         else:
             mock_response = MockSSEResponse(
                 [
@@ -706,7 +718,10 @@ def test_stream_with_realistic_message_event(sse_client):
     data_json = json.loads(event["data"])
     assert data_json["streamId"] == "stream-123"
     assert data_json["data"]["message"]["sender"] == "system"
-    assert data_json["data"]["message"]["content"][0]["textMessage"]["message"] == "Test message"
+    assert (
+        data_json["data"]["message"]["content"][0]["textMessage"]["message"]
+        == "Test message"
+    )
 
 
 def test_stream_with_stream_completed_event_terminates(sse_client):
@@ -910,13 +925,17 @@ def test_stream_preserves_utf8_emoji_in_single_data_line(sse_client):
             "data": {
                 "message": {
                     "sender": "assistant",
-                    "content": [{"textMessage": {"type": "markdown", "message": "## ✅ Done"}}],
+                    "content": [
+                        {"textMessage": {"type": "markdown", "message": "## ✅ Done"}}
+                    ],
                 }
             },
         },
         ensure_ascii=False,  # server emits raw UTF-8 (e2 9c 85), not \uXXXX escapes
     )
-    raw = (f'event: message\ndata: {payload}\n\nevent: stream-completed\ndata: {{"type":"completed"}}\n\n').encode()
+    raw = (
+        f'event: message\ndata: {payload}\n\nevent: stream-completed\ndata: {{"type":"completed"}}\n\n'
+    ).encode()
 
     mock_response = MockByteStreamSSEResponse(raw, declared_encoding="ISO-8859-1")
     mock_session = MockRequestsSession(mock_response)
@@ -926,4 +945,7 @@ def test_stream_preserves_utf8_emoji_in_single_data_line(sse_client):
 
     message_event = next(event for event in events if event["event"] == "message")
     data_json = json.loads(message_event["data"])
-    assert data_json["data"]["message"]["content"][0]["textMessage"]["message"] == "## ✅ Done"
+    assert (
+        data_json["data"]["message"]["content"][0]["textMessage"]["message"]
+        == "## ✅ Done"
+    )

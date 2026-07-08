@@ -16,9 +16,6 @@ import traceback
 from typing import Callable
 
 from flask import Blueprint, Response, jsonify, make_response, request
-from pydantic import ValidationError
-
-from metadata.ingestion.api.parser import parse_ingestion_pipeline_config_gracefully
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.utils.logger import routes_logger

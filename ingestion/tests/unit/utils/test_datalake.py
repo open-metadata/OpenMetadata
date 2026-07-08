@@ -193,7 +193,11 @@ class TestDatalakeUtils(TestCase):
         from metadata.utils.datalake.datalake_utils import _ArrayOfStruct
 
         sample_data = [
-            {"schema": {"fields": [{"id": 1, "name": "customer_id", "type": "string"}]}},
+            {
+                "schema": {
+                    "fields": [{"id": 1, "name": "customer_id", "type": "string"}]
+                }
+            },
             {"schema": {"fields": [{"id": 2, "required": False, "type": "string"}]}},
             {"schema": {"fields": [{"description": "ciam id"}]}},
         ]
@@ -202,7 +206,13 @@ class TestDatalakeUtils(TestCase):
         fields_value = actual["schema"]["fields"]
 
         assert isinstance(fields_value, _ArrayOfStruct)
-        assert set(fields_value.struct.keys()) == {"id", "name", "type", "required", "description"}
+        assert set(fields_value.struct.keys()) == {
+            "id",
+            "name",
+            "type",
+            "required",
+            "description",
+        }
 
     def test_construct_column_with_array_of_struct(self):
         """list-of-dicts values render as ARRAY<STRUCT<...>> with children for the struct fields."""
@@ -222,7 +232,11 @@ class TestDatalakeUtils(TestCase):
 
         assert fields_col["dataType"] == DataType.ARRAY.value
         assert fields_col["arrayDataType"] == DataType.STRUCT
-        assert {child["name"] for child in fields_col["children"]} == {"id", "name", "type"}
+        assert {child["name"] for child in fields_col["children"]} == {
+            "id",
+            "name",
+            "type",
+        }
 
     def test_create_column_object(self):
         """test create column object fn"""
@@ -251,11 +265,23 @@ class TestDatalakeUtils(TestCase):
                 DataType.STRING,
             ),
             # Minority of ambiguous month tokens mixed in a long list of plain strings.
-            ("mostly_strings_few_month_tokens", ["foo", "bar", "baz", "May", "qux", "quux", "March"], DataType.STRING),
+            (
+                "mostly_strings_few_month_tokens",
+                ["foo", "bar", "baz", "May", "qux", "quux", "March"],
+                DataType.STRING,
+            ),
             # All values are unambiguous ISO dates — must be DATETIME.
-            ("pure_iso_dates", ["2024-01-01", "2024-06-15", "2025-03-20"], DataType.DATETIME),
+            (
+                "pure_iso_dates",
+                ["2024-01-01", "2024-06-15", "2025-03-20"],
+                DataType.DATETIME,
+            ),
             # Natural-language date phrases — all parse as dates — must be DATETIME.
-            ("natural_language_dates", ["May 2025", "June 2026", "March 2024", "January 2023"], DataType.DATETIME),
+            (
+                "natural_language_dates",
+                ["May 2025", "June 2026", "March 2024", "January 2023"],
+                DataType.DATETIME,
+            ),
             # Pure strings, no date-parseable values at all.
             ("pure_strings", ["hello", "world", "foo", "bar"], DataType.STRING),
             # All plain integers stored as strings — must be INT.
@@ -264,7 +290,9 @@ class TestDatalakeUtils(TestCase):
         for name, values, expected in cases:
             with self.subTest(name):
                 df = pd.DataFrame({"col": values})
-                self.assertEqual(GenericDataFrameColumnParser.fetch_col_types(df, "col"), expected)
+                self.assertEqual(
+                    GenericDataFrameColumnParser.fetch_col_types(df, "col"), expected
+                )
 
 
 class TestParquetDataFrameColumnParser(TestCase):
@@ -855,7 +883,16 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
         content = json.dumps(
             {
                 "format-version": 1,
-                "schema": {"fields": [{"id": 1, "name": "customer_id", "required": False, "type": "string"}]},
+                "schema": {
+                    "fields": [
+                        {
+                            "id": 1,
+                            "name": "customer_id",
+                            "required": False,
+                            "type": "string",
+                        }
+                    ]
+                },
             }
         )
         _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
@@ -871,7 +908,9 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
     def test_read_json_object_propagates_raw_data_for_json_schema(self):
         from metadata.readers.dataframe.json import JSONDataFrameReader
 
-        content = json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"})
+        content = json.dumps(
+            {"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"}
+        )
         _gen, raw = JSONDataFrameReader._read_json_object(content.encode("utf-8"))
         self.assertEqual(raw, content)
 
@@ -885,18 +924,33 @@ class TestIcebergDeltaLakeMetadataParsing(TestCase):
         minified = json.dumps(
             {
                 "format-version": 1,
-                "schema": {"fields": [{"id": 1, "name": "customer_id", "required": False, "type": "string"}]},
+                "schema": {
+                    "fields": [
+                        {
+                            "id": 1,
+                            "name": "customer_id",
+                            "required": False,
+                            "type": "string",
+                        }
+                    ]
+                },
             }
         )
-        self.assertFalse(JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8"))))
+        self.assertFalse(
+            JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8")))
+        )
 
     def test_is_json_lines_returns_false_for_minified_json_schema(self):
         import io
 
         from metadata.readers.dataframe.json import JSONDataFrameReader
 
-        minified = json.dumps({"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"})
-        self.assertFalse(JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8"))))
+        minified = json.dumps(
+            {"$schema": "http://json-schema.org/draft-07/schema#", "type": "object"}
+        )
+        self.assertFalse(
+            JSONDataFrameReader._is_json_lines(io.BytesIO(minified.encode("utf-8")))
+        )
 
     def test_is_json_lines_returns_true_for_real_jsonl(self):
         import io
@@ -938,11 +992,15 @@ class TestFetchColTypesWithParsedObjects:
 
     def test_null_column_typed_as_string(self):
         df = pd.DataFrame({"col": [None]})
-        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+        assert (
+            GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+        )
 
     def test_string_column_typed_as_string(self):
         df = pd.DataFrame({"col": ["hello"]})
-        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+        assert (
+            GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+        )
 
     def test_int_column_typed_as_int(self):
         df = pd.DataFrame({"col": [42]})
@@ -974,7 +1032,9 @@ class TestFetchColTypesMixedTypes:
     def test_pure_string_column_typed_as_string(self):
         # Control: no structured types present → still STRING
         df = pd.DataFrame({"col": ["hello", "world"]})
-        assert GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+        assert (
+            GenericDataFrameColumnParser.fetch_col_types(df, "col") == DataType.STRING
+        )
 
     def test_pure_dict_column_typed_as_json(self):
         # Control: all dicts → JSON with no ambiguity
@@ -1020,7 +1080,13 @@ class TestGetChildrenWithParsedDicts:
         assert {c["name"] for c in children} == {"key"}
 
     def test_nested_dict_structure_returns_children(self):
-        nodes = {"model.Project.my_model": {"name": "my_model", "unique_id": "x", "description": "test"}}
+        nodes = {
+            "model.Project.my_model": {
+                "name": "my_model",
+                "unique_id": "x",
+                "description": "test",
+            }
+        }
         col = pd.Series([nodes])
         children = GenericDataFrameColumnParser.get_children(col)
         assert len(children) == 1
@@ -1037,7 +1103,9 @@ class TestSingleObjectJsonFileIngestion:
     errors.
     """
 
-    RESOURCES = os.path.join(os.path.dirname(os.path.dirname(__file__)), "resources", "datalake")  # noqa: PTH118, PTH120
+    RESOURCES = os.path.join(
+        os.path.dirname(os.path.dirname(__file__)), "resources", "datalake"
+    )  # noqa: PTH118, PTH120
 
     def _load_fixture_as_dataframe(self, filename):
         path = os.path.join(self.RESOURCES, filename)  # noqa: PTH118
@@ -1049,7 +1117,9 @@ class TestSingleObjectJsonFileIngestion:
 
     def _parsed_columns(self, filename):
         df = self._load_fixture_as_dataframe(filename)
-        return {col.name.root: col for col in GenericDataFrameColumnParser._get_columns(df)}
+        return {
+            col.name.root: col for col in GenericDataFrameColumnParser._get_columns(df)
+        }
 
     def test_dict_valued_columns_typed_as_json(self):
         cols = self._parsed_columns("dbt_catalog.json")
@@ -1067,12 +1137,30 @@ class TestSingleObjectJsonFileIngestion:
 
     def test_empty_dict_columns_typed_as_json_not_string(self):
         cols = self._parsed_columns("dbt_manifest.json")
-        for name in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
-            assert cols[name].dataType == DataType.JSON, f"column '{name}': expected JSON, got {cols[name].dataType}"
+        for name in (
+            "metrics",
+            "groups",
+            "disabled",
+            "group_map",
+            "saved_queries",
+            "semantic_models",
+            "unit_tests",
+        ):
+            assert (
+                cols[name].dataType == DataType.JSON
+            ), f"column '{name}': expected JSON, got {cols[name].dataType}"
 
     def test_empty_dict_columns_have_no_children(self):
         cols = self._parsed_columns("dbt_manifest.json")
-        for name in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
+        for name in (
+            "metrics",
+            "groups",
+            "disabled",
+            "group_map",
+            "saved_queries",
+            "semantic_models",
+            "unit_tests",
+        ):
             children = cols[name].children
             assert not children, f"column '{name}' should have no children"
 
@@ -1088,7 +1176,9 @@ class TestDbtSingleObjectJsonIngestion:
             [
                 {
                     "metadata": {"dbt_version": "1.5.0", "generated_at": "2024-01-01"},
-                    "nodes": {"model.Project.tbl": {"name": "tbl", "description": "test"}},
+                    "nodes": {
+                        "model.Project.tbl": {"name": "tbl", "description": "test"}
+                    },
                     "sources": {},
                     "errors": None,
                 }
@@ -1116,15 +1206,35 @@ class TestDbtSingleObjectJsonIngestion:
 
     def test_catalog_column_types(self):
         df = self._make_catalog_df()
-        assert GenericDataFrameColumnParser.fetch_col_types(df, "metadata") == DataType.JSON
-        assert GenericDataFrameColumnParser.fetch_col_types(df, "nodes") == DataType.JSON
-        assert GenericDataFrameColumnParser.fetch_col_types(df, "sources") == DataType.JSON
-        assert GenericDataFrameColumnParser.fetch_col_types(df, "errors") == DataType.STRING
+        assert (
+            GenericDataFrameColumnParser.fetch_col_types(df, "metadata")
+            == DataType.JSON
+        )
+        assert (
+            GenericDataFrameColumnParser.fetch_col_types(df, "nodes") == DataType.JSON
+        )
+        assert (
+            GenericDataFrameColumnParser.fetch_col_types(df, "sources") == DataType.JSON
+        )
+        assert (
+            GenericDataFrameColumnParser.fetch_col_types(df, "errors")
+            == DataType.STRING
+        )
 
     def test_manifest_empty_dict_columns_typed_as_json(self):
         df = self._make_manifest_df()
-        for col in ("metrics", "groups", "disabled", "group_map", "saved_queries", "semantic_models", "unit_tests"):
-            assert GenericDataFrameColumnParser.fetch_col_types(df, col) == DataType.JSON, f"{col} should be JSON"
+        for col in (
+            "metrics",
+            "groups",
+            "disabled",
+            "group_map",
+            "saved_queries",
+            "semantic_models",
+            "unit_tests",
+        ):
+            assert (
+                GenericDataFrameColumnParser.fetch_col_types(df, col) == DataType.JSON
+            ), f"{col} should be JSON"
 
     def test_catalog_nodes_children_extracted_without_error(self):
         df = self._make_catalog_df()

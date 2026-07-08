@@ -417,7 +417,9 @@ order by PROCEDURE_START_TIME desc
     """
 )
 
-MSSQL_GET_QUERY_STORE_STATE = "SELECT actual_state FROM sys.database_query_store_options"
+MSSQL_GET_QUERY_STORE_STATE = (
+    "SELECT actual_state FROM sys.database_query_store_options"
+)
 
 MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
     """

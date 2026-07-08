@@ -111,7 +111,9 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
             get_connection_args_fn=get_connection_args_common,
         )
 
-        def inject_iam_token(_dialect, _conn_rec, _cargs, cparams: Dict[str, Any]):  # noqa: UP006
+        def inject_iam_token(
+            _dialect, _conn_rec, _cargs, cparams: Dict[str, Any]
+        ):  # noqa: UP006
             cparams["password"] = token_manager.get_token()
             # RDS IAM auth requires TLS. A truthy ssl dict makes PyMySQL treat SSL
             # as required (an empty dict only yields PREFERRED, which can silently
@@ -203,9 +205,13 @@ class MySQLConnection(BaseConnection[MySQLConnectionConfig, Engine]):
         else:
             test_query_template = MYSQL_TEST_GET_QUERIES
             default_query_history_table = "mysql.general_log"
-        query_history_table = self.service_connection.queryHistoryTable or default_query_history_table
+        query_history_table = (
+            self.service_connection.queryHistoryTable or default_query_history_table
+        )
         queries = {
-            "GetQueries": test_query_template.format(query_history_table=query_history_table),
+            "GetQueries": test_query_template.format(
+                query_history_table=query_history_table
+            ),
         }
         return test_connection_db_schema_sources(
             metadata=metadata,
