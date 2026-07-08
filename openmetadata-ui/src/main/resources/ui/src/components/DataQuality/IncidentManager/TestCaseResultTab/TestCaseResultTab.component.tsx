@@ -320,6 +320,7 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
             <TestCaseFormDrawer
               showOnlyParameter
               open={isParameterEdit}
+              showDocPanel={false}
               testCase={testCaseData}
               variant="drawer"
               onClose={handleCancelParameter}
