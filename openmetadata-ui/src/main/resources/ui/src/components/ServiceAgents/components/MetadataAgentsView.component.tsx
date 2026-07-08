@@ -16,14 +16,18 @@ import { FC, ReactNode, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CodeIcon } from '../../../assets/svg/agents/code.svg';
+import { DISABLED } from '../../../constants/constants';
+import { useAirflowStatus } from '../../../context/AirflowStatusProvider/AirflowStatusProvider';
 import { ServiceCategory } from '../../../enums/service.enum';
 import {
   IngestionPipeline,
   PipelineType,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { ServicesType } from '../../../interface/service.interface';
 import { deleteIngestionPipelineById } from '../../../rest/ingestionPipelineAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
+import { getErrorPlaceHolder } from '../../../utils/IngestionUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
 import ConfirmationModal from '../../Modals/ConfirmationModal/ConfirmationModal';
@@ -59,6 +63,8 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const { platform } = useAirflowStatus();
+  const { theme } = useApplicationStore();
   const { runAgent, redeployAgent, killAgent, toggleAgent } =
     useAgentActions(onRefresh);
   const agentFqns = useMemo(() => agents.map((agent) => agent.fqn), [agents]);
@@ -174,6 +180,11 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     }
   }, [logsFor, rawText]);
 
+  const emptyPlaceholder = useMemo(
+    () => getErrorPlaceHolder(agents.length, platform === DISABLED, theme),
+    [agents.length, platform, theme]
+  );
+
   const addAgentSlot = useMemo(() => {
     if (addAgentSlotProp) {
       return addAgentSlotProp;
@@ -205,6 +216,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
         canCreateAgent={showAddAgent}
         dataTestId="metadata-agent-group"
         descKey="message.metadata-agents-description"
+        emptyPlaceholder={emptyPlaceholder}
         icon={<CodeIcon height={18} width={18} />}
         titleKey="label.metadata-agent-plural"
         onAction={onAction}

@@ -26,6 +26,7 @@ interface AgentGroupProps {
   canCreateAgent: boolean;
   dataTestId?: string;
   descKey: string;
+  emptyPlaceholder?: ReactNode;
   icon: ReactNode;
   titleKey: string;
   onAction: (action: string, agent: Agent) => void;
@@ -41,6 +42,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
   canCreateAgent,
   dataTestId = 'agent-group',
   descKey,
+  emptyPlaceholder,
   icon,
   onAction,
   onLogs,
@@ -90,19 +92,27 @@ const AgentGroup: FC<AgentGroupProps> = ({
             </Button>
           ))}
       </Box>
-      <div className="tw:grid tw:gap-2.5">
-        {agents.map((agent) => (
-          <AgentCard
-            agent={agent}
-            key={agent.id}
-            permissions={agentPermissions?.[agent.fqn]}
-            onAction={onAction}
-            onLogs={onLogs}
-            onRun={onRun}
-            onRunDetails={onRunDetails}
-          />
-        ))}
-      </div>
+      {agents.length === 0 && emptyPlaceholder ? (
+        <div
+          className="tw:border tw:rounded-xl tw:border-secondary tw:bg-white tw:dark:bg-gray-900"
+          data-testid="agent-group-empty-placeholder">
+          {emptyPlaceholder}
+        </div>
+      ) : (
+        <div className="tw:grid tw:gap-2.5">
+          {agents.map((agent) => (
+            <AgentCard
+              agent={agent}
+              key={agent.id}
+              permissions={agentPermissions?.[agent.fqn]}
+              onAction={onAction}
+              onLogs={onLogs}
+              onRun={onRun}
+              onRunDetails={onRunDetails}
+            />
+          ))}
+        </div>
+      )}
     </Card>
   );
 };
