@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { TestDefinition } from '../../generated/tests/testDefinition';
+import {
+  TestCaseParameterDefinition,
+  TestDataType,
+  TestDefinition,
+} from '../../generated/tests/testDefinition';
 
 const PARAM_NAME_SENTINEL = '___';
 
@@ -20,6 +24,73 @@ export const sanitizeParamName = (name: string): string =>
 
 export const restoreParamName = (sanitized: string): string =>
   sanitized.split(PARAM_NAME_SENTINEL).join('.');
+
+const COLUMN_PARAM_NAME = 'column';
+const PARTITION_COLUMN_PARAM_NAME = 'columnName';
+const PARTITION_TEST_DEFINITION_NAME = 'tableRowInsertedCountToBeBetween';
+
+/**
+ * True when `data` renders as a single `FieldTypes.SELECT` field in
+ * `ParameterFields.getFieldProp`/`getStringFieldProp` (tableDiff's own
+ * fields are handled separately by `TableDiffFields` and are out of scope
+ * here). A SELECT field's RHF value is a `FormSelectItem` (`{ id, label }`),
+ * not a raw string — the two call sites below MUST stay in sync with
+ * `ParameterFields.tsx` or edit-mode prefill silently breaks.
+ *
+ * Mirrors, in order:
+ * 1. `getFieldProp`: `data.optionValues?.length` — enum select.
+ * 2. `getStringFieldProp`: `data.name === 'column'` — generic column select.
+ * 3. `getStringFieldProp`: `definition.name === 'tableRowInsertedCountToBeBetween'
+ *    && data.name === 'columnName'` — partition column select.
+ */
+export const isSelectParam = (
+  definition: Pick<TestDefinition, 'name'> | undefined,
+  param: TestCaseParameterDefinition
+): boolean => {
+  const isEnumSelect = Boolean(param.optionValues?.length);
+  const isColumnSelect = param.name === COLUMN_PARAM_NAME;
+  const isPartitionColumnSelect =
+    definition?.name === PARTITION_TEST_DEFINITION_NAME &&
+    param.name === PARTITION_COLUMN_PARAM_NAME;
+
+  return isEnumSelect || isColumnSelect || isPartitionColumnSelect;
+};
+
+/**
+ * Classifies the RHF prefill shape for a single param, based on the same
+ * signals `ParameterFields`/`TableDiffFields` use to choose a field type.
+ * `buildEditParams` (edit-mode prefill) and the render layer must agree on
+ * this classification or a param prefills as the wrong shape and the field
+ * appears empty on edit.
+ *
+ * tableDiff's own column-array/select fields (`table2`, `keyColumns`,
+ * `table2.keyColumns`, `useColumns`) are classified by the caller before
+ * falling back to this general classifier — see `buildEditParamEntry` in
+ * `transformTestCaseFormData.ts`.
+ */
+export type ParamPrefillKind = 'select' | 'array' | 'boolean' | 'scalar';
+
+export const getParamPrefillKind = (
+  definition: Pick<TestDefinition, 'name'> | undefined,
+  param: TestCaseParameterDefinition | undefined
+): ParamPrefillKind => {
+  let result: ParamPrefillKind = 'scalar';
+
+  if (!param) {
+    result = 'scalar';
+  } else if (isSelectParam(definition, param)) {
+    result = 'select';
+  } else if (
+    param.dataType === TestDataType.Array ||
+    param.dataType === TestDataType.Set
+  ) {
+    result = 'array';
+  } else if (param.dataType === TestDataType.Boolean) {
+    result = 'boolean';
+  }
+
+  return result;
+};
 
 type FormSelectItemLike = { id: string; label?: string };
 

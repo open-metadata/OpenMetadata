@@ -25,7 +25,6 @@ import { LogLevels } from '../../../../generated/entity/services/ingestionPipeli
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
   TestCaseParameterDefinition,
-  TestDataType,
   TestDefinition,
 } from '../../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../../generated/tests/testSuite';
@@ -34,6 +33,7 @@ import testCaseClassBase from '../../../../pages/IncidentManager/IncidentManager
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
+  getParamPrefillKind,
   normalizeParamsForPayload,
   sanitizeParamName,
   unwrapSelectValue,
@@ -268,29 +268,48 @@ const buildEditArrayParamValue = (
  * Builds a single param's RHF value from its `parameterValues` entry, keyed
  * by the param's sanitized name (dots replaced, since RHF field paths can't
  * contain dots — see `sanitizeParamName`).
+ *
+ * tableDiff's own fields (`table2`, `keyColumns`, `table2.keyColumns`,
+ * `useColumns`, handled by `TableDiffFields.tsx`) are checked first since
+ * they don't go through `ParameterFields`'s generic per-dataType rendering.
+ * Every other param's shape is derived from `getParamPrefillKind`, the same
+ * classifier `ParameterFields.tsx` render logic is built on (via
+ * `isSelectParam`) — so the two can't drift out of sync.
  */
 const buildEditParamEntry = (
   curr: { name?: string; value?: string },
   param: TestCaseParameterDefinition | undefined,
+  definition: TestDefinition,
   isTableDiff: boolean
 ): EditParamValue => {
   let result: EditParamValue;
 
   if (isTableDiff && curr.name === TABLE2) {
     result = curr.value ? toColumnFormSelectItem(curr.value) : '';
-  } else if (
-    param?.dataType === TestDataType.Array &&
-    isValidJSONString(curr.value)
-  ) {
-    result = buildEditArrayParamValue(
-      curr.name ?? '',
-      curr.value ?? '[]',
-      isTableDiff
-    );
-  } else if (param?.dataType === TestDataType.Boolean) {
-    result = curr.value === 'true';
   } else {
-    result = curr.value ?? '';
+    const kind = getParamPrefillKind(definition, param);
+    switch (kind) {
+      case 'select':
+        result = curr.value ? toColumnFormSelectItem(curr.value) : '';
+
+        break;
+      case 'array':
+        result = isValidJSONString(curr.value)
+          ? buildEditArrayParamValue(
+              curr.name ?? '',
+              curr.value ?? '[]',
+              isTableDiff
+            )
+          : curr.value ?? '';
+
+        break;
+      case 'boolean':
+        result = curr.value === 'true';
+
+        break;
+      default:
+        result = curr.value ?? '';
+    }
   }
 
   return result;
@@ -316,7 +335,7 @@ const buildEditParams = (
     );
     const key = sanitizeParamName(curr.name || '');
 
-    result[key] = buildEditParamEntry(curr, param, isTableDiff);
+    result[key] = buildEditParamEntry(curr, param, definition, isTableDiff);
   });
 
   return result;

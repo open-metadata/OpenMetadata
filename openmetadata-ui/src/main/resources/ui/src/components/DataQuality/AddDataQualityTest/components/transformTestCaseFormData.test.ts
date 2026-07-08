@@ -502,3 +502,301 @@ describe('buildEditDefaults for tableDiff', () => {
     });
   });
 });
+
+/**
+ * Round-trip guard: `normalizeParamsForPayload(buildEditParams(testCase,
+ * definition), definition)` must reproduce the original `parameterValues`.
+ * Covers every param-prefill shape `ParameterFields`/`TableDiffFields` can
+ * render as a SELECT (or other non-scalar) field, not just tableDiff's
+ * `table2`.
+ */
+describe('buildEditDefaults round-trip across representative test types', () => {
+  const roundTrip = (
+    testCase: TestCase,
+    definition: TestDefinition
+  ): Record<string, unknown> | undefined => {
+    const editParams = buildEditDefaults(testCase, definition).params;
+
+    return normalizeParamsForPayload(
+      editParams as Record<string, unknown>,
+      definition
+    );
+  };
+
+  it('tableRowCountToBeBetween: numeric min/max scalars round-trip', () => {
+    const definition = {
+      name: 'tableRowCountToBeBetween',
+      fullyQualifiedName: 'tableRowCountToBeBetween',
+      parameterDefinition: [
+        { name: 'minValue', dataType: TestDataType.Int },
+        { name: 'maxValue', dataType: TestDataType.Int },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'row_count_between',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: { fullyQualifiedName: 'tableRowCountToBeBetween' },
+      parameterValues: [
+        { name: 'minValue', value: '10' },
+        { name: 'maxValue', value: '100' },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    expect(roundTrip(testCase, definition)).toEqual({
+      minValue: '10',
+      maxValue: '100',
+    });
+  });
+
+  it('tableColumnCountToBeBetween: numeric scalars round-trip', () => {
+    const definition = {
+      name: 'tableColumnCountToBeBetween',
+      fullyQualifiedName: 'tableColumnCountToBeBetween',
+      parameterDefinition: [
+        { name: 'minColValue', dataType: TestDataType.Int },
+        { name: 'maxColValue', dataType: TestDataType.Int },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'col_count_between',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: { fullyQualifiedName: 'tableColumnCountToBeBetween' },
+      parameterValues: [
+        { name: 'minColValue', value: '1' },
+        { name: 'maxColValue', value: '20' },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    expect(roundTrip(testCase, definition)).toEqual({
+      minColValue: '1',
+      maxColValue: '20',
+    });
+  });
+
+  it('columnValuesToBeBetween: numeric column-level params round-trip', () => {
+    const definition = {
+      name: 'columnValuesToBeBetween',
+      fullyQualifiedName: 'columnValuesToBeBetween',
+      parameterDefinition: [
+        { name: 'minValue', dataType: TestDataType.Number },
+        { name: 'maxValue', dataType: TestDataType.Number },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'col_values_between',
+      entityLink: '<#E::table::svc.db.sch.t::columns::amount>',
+      testDefinition: { fullyQualifiedName: 'columnValuesToBeBetween' },
+      parameterValues: [
+        { name: 'minValue', value: '0' },
+        { name: 'maxValue', value: '1000' },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    expect(roundTrip(testCase, definition)).toEqual({
+      minValue: '0',
+      maxValue: '1000',
+    });
+  });
+
+  it('columnValuesToMatchRegex: string param round-trips', () => {
+    const definition = {
+      name: 'columnValuesToMatchRegex',
+      fullyQualifiedName: 'columnValuesToMatchRegex',
+      parameterDefinition: [{ name: 'regex', dataType: TestDataType.String }],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'match_regex',
+      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      testDefinition: { fullyQualifiedName: 'columnValuesToMatchRegex' },
+      parameterValues: [{ name: 'regex', value: '^[a-z]+@[a-z]+\\.com$' }],
+      tags: [],
+    } as unknown as TestCase;
+
+    expect(roundTrip(testCase, definition)).toEqual({
+      regex: '^[a-z]+@[a-z]+\\.com$',
+    });
+  });
+
+  it('columnValuesToBeInSet: generic Array/Set param round-trips as string rows', () => {
+    const definition = {
+      name: 'columnValuesToBeInSet',
+      fullyQualifiedName: 'columnValuesToBeInSet',
+      parameterDefinition: [
+        { name: 'allowedValues', dataType: TestDataType.Set },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'values_in_set',
+      entityLink: '<#E::table::svc.db.sch.t::columns::status>',
+      testDefinition: { fullyQualifiedName: 'columnValuesToBeInSet' },
+      parameterValues: [
+        { name: 'allowedValues', value: '["active","inactive"]' },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    const editParams = buildEditDefaults(testCase, definition).params;
+
+    expect(editParams?.allowedValues).toEqual([
+      { value: 'active' },
+      { value: 'inactive' },
+    ]);
+    expect(roundTrip(testCase, definition)).toEqual({
+      allowedValues: [{ value: 'active' }, { value: 'inactive' }],
+    });
+  });
+
+  it('optionValues (enum SELECT) param prefills as a FormSelectItem and round-trips', () => {
+    // Mirrors ParameterFields.getFieldProp: `data.optionValues?.length` forces
+    // FieldTypes.SELECT regardless of dataType, so the RHF value is a
+    // FormSelectItem, not a raw string.
+    const definition = {
+      name: 'tableDiff',
+      fullyQualifiedName: 'columnValuesSumToBeBetween',
+      parameterDefinition: [
+        {
+          name: 'strategy',
+          dataType: TestDataType.String,
+          optionValues: ['SUM', 'AVG', 'COUNT'],
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'enum_param_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: { fullyQualifiedName: 'columnValuesSumToBeBetween' },
+      parameterValues: [{ name: 'strategy', value: 'AVG' }],
+      tags: [],
+    } as unknown as TestCase;
+
+    const editParams = buildEditDefaults(testCase, definition).params;
+
+    expect(editParams?.strategy).toEqual({ id: 'AVG', label: 'AVG' });
+    expect(roundTrip(testCase, definition)).toEqual({ strategy: 'AVG' });
+  });
+
+  it('a "column" param prefills as a column SELECT FormSelectItem and round-trips', () => {
+    // Mirrors ParameterFields.getStringFieldProp: `data.name === 'column'`
+    // always renders FieldTypes.SELECT.
+    const definition = {
+      name: 'columnValuesToBeUnique',
+      fullyQualifiedName: 'columnValuesToBeUnique',
+      parameterDefinition: [{ name: 'column', dataType: TestDataType.String }],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'column_param_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: { fullyQualifiedName: 'columnValuesToBeUnique' },
+      parameterValues: [{ name: 'column', value: 'user_id' }],
+      tags: [],
+    } as unknown as TestCase;
+
+    const editParams = buildEditDefaults(testCase, definition).params;
+
+    expect(editParams?.column).toEqual({ id: 'user_id', label: 'user_id' });
+    expect(roundTrip(testCase, definition)).toEqual({ column: 'user_id' });
+  });
+
+  it('tableRowInsertedCountToBeBetween: columnName partition SELECT prefills as FormSelectItem and round-trips', () => {
+    // Mirrors ParameterFields.getStringFieldProp: definition.name ===
+    // 'tableRowInsertedCountToBeBetween' && data.name === 'columnName' forces
+    // FieldTypes.SELECT.
+    const definition = {
+      name: 'tableRowInsertedCountToBeBetween',
+      fullyQualifiedName: 'tableRowInsertedCountToBeBetween',
+      parameterDefinition: [
+        { name: 'columnName', dataType: TestDataType.String },
+        { name: 'min', dataType: TestDataType.Int },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'partition_column_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        fullyQualifiedName: 'tableRowInsertedCountToBeBetween',
+      },
+      parameterValues: [
+        { name: 'columnName', value: 'created_at' },
+        { name: 'min', value: '5' },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    const editParams = buildEditDefaults(testCase, definition).params;
+
+    expect(editParams?.columnName).toEqual({
+      id: 'created_at',
+      label: 'created_at',
+    });
+    expect(roundTrip(testCase, definition)).toEqual({
+      columnName: 'created_at',
+      min: '5',
+    });
+  });
+
+  it('tableDiff: table2 + keyColumns + table2.keyColumns round-trip (regression)', () => {
+    const definition = {
+      name: 'tableDiff',
+      fullyQualifiedName: 'tableDiff',
+      parameterDefinition: [
+        { name: 'table2', dataType: TestDataType.String },
+        { name: 'keyColumns', dataType: TestDataType.Array },
+        { name: 'table2.keyColumns', dataType: TestDataType.Array },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'table_diff_regression',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: { fullyQualifiedName: 'tableDiff' },
+      parameterValues: [
+        { name: 'table2', value: 'svc.db.sch.t2' },
+        { name: 'keyColumns', value: '["id"]' },
+        { name: 'table2.keyColumns', value: '["id2"]' },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    expect(roundTrip(testCase, definition)).toEqual({
+      table2: 'svc.db.sch.t2',
+      keyColumns: [{ value: 'id' }],
+      'table2.keyColumns': [{ value: 'id2' }],
+    });
+  });
+
+  it('a Boolean param (e.g. computePassedFailedRowCount-style) prefills as boolean and round-trips', () => {
+    const definition = {
+      name: 'columnValuesToBeUnique',
+      fullyQualifiedName: 'columnValuesToBeUnique',
+      parameterDefinition: [
+        { name: 'caseSensitiveColumns', dataType: TestDataType.Boolean },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      name: 'bool_param_round_trip',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: { fullyQualifiedName: 'columnValuesToBeUnique' },
+      parameterValues: [{ name: 'caseSensitiveColumns', value: 'false' }],
+      tags: [],
+    } as unknown as TestCase;
+
+    const editParams = buildEditDefaults(testCase, definition).params;
+
+    expect(editParams?.caseSensitiveColumns).toBe(false);
+    expect(roundTrip(testCase, definition)).toEqual({
+      caseSensitiveColumns: false,
+    });
+  });
+});

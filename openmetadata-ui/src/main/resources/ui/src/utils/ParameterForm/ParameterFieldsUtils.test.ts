@@ -12,10 +12,13 @@
  */
 
 import {
+  TestCaseParameterDefinition,
   TestDataType,
   TestDefinition,
 } from '../../generated/tests/testDefinition';
 import {
+  getParamPrefillKind,
+  isSelectParam,
   normalizeParamsForPayload,
   restoreParamName,
   sanitizeParamName,
@@ -174,5 +177,112 @@ describe('normalizeParamsForPayload', () => {
     );
 
     expect(result).toEqual({ minLength: '1', maxLength: '10' });
+  });
+});
+
+describe('isSelectParam', () => {
+  it('is true for a param with optionValues (enum select)', () => {
+    const param = {
+      name: 'strategy',
+      optionValues: ['SUM', 'AVG'],
+    } as TestCaseParameterDefinition;
+
+    expect(isSelectParam({ name: 'anyDefinition' }, param)).toBe(true);
+  });
+
+  it('is true for a param named "column"', () => {
+    const param = { name: 'column' } as TestCaseParameterDefinition;
+
+    expect(isSelectParam({ name: 'columnValuesToBeUnique' }, param)).toBe(true);
+  });
+
+  it('is true for columnName under tableRowInsertedCountToBeBetween', () => {
+    const param = { name: 'columnName' } as TestCaseParameterDefinition;
+
+    expect(
+      isSelectParam({ name: 'tableRowInsertedCountToBeBetween' }, param)
+    ).toBe(true);
+  });
+
+  it('is false for columnName under a different definition', () => {
+    const param = { name: 'columnName' } as TestCaseParameterDefinition;
+
+    expect(isSelectParam({ name: 'someOtherTest' }, param)).toBe(false);
+  });
+
+  it('is false for a plain scalar param', () => {
+    const param = {
+      name: 'minValue',
+      dataType: TestDataType.Number,
+    } as TestCaseParameterDefinition;
+
+    expect(isSelectParam({ name: 'tableRowCountToBeBetween' }, param)).toBe(
+      false
+    );
+  });
+});
+
+describe('getParamPrefillKind', () => {
+  const definition = { name: 'tableRowInsertedCountToBeBetween' };
+
+  it('classifies an optionValues param as select', () => {
+    const param = {
+      name: 'strategy',
+      optionValues: ['SUM', 'AVG'],
+    } as TestCaseParameterDefinition;
+
+    expect(getParamPrefillKind(definition, param)).toBe('select');
+  });
+
+  it('classifies a "column" param as select', () => {
+    const param = { name: 'column' } as TestCaseParameterDefinition;
+
+    expect(getParamPrefillKind(definition, param)).toBe('select');
+  });
+
+  it('classifies partition columnName as select', () => {
+    const param = { name: 'columnName' } as TestCaseParameterDefinition;
+
+    expect(getParamPrefillKind(definition, param)).toBe('select');
+  });
+
+  it('classifies an Array param as array', () => {
+    const param = {
+      name: 'allowedValues',
+      dataType: TestDataType.Array,
+    } as TestCaseParameterDefinition;
+
+    expect(getParamPrefillKind(definition, param)).toBe('array');
+  });
+
+  it('classifies a Set param as array', () => {
+    const param = {
+      name: 'allowedValues',
+      dataType: TestDataType.Set,
+    } as TestCaseParameterDefinition;
+
+    expect(getParamPrefillKind(definition, param)).toBe('array');
+  });
+
+  it('classifies a Boolean param as boolean', () => {
+    const param = {
+      name: 'strict',
+      dataType: TestDataType.Boolean,
+    } as TestCaseParameterDefinition;
+
+    expect(getParamPrefillKind(definition, param)).toBe('boolean');
+  });
+
+  it('classifies a String param as scalar', () => {
+    const param = {
+      name: 'regex',
+      dataType: TestDataType.String,
+    } as TestCaseParameterDefinition;
+
+    expect(getParamPrefillKind(definition, param)).toBe('scalar');
+  });
+
+  it('classifies a missing param definition as scalar', () => {
+    expect(getParamPrefillKind(definition, undefined)).toBe('scalar');
   });
 });

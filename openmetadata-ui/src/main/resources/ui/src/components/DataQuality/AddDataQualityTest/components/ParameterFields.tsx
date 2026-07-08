@@ -39,6 +39,7 @@ import {
   TestDefinition,
 } from '../../../../generated/tests/testDefinition';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { isSelectParam } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import {
   validateEquals,
   validateGreaterThanOrEquals,
@@ -275,11 +276,11 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
     baseField: FieldProp,
     label: string
   ): FieldProp => {
+    // `table` must be loaded to source column options for either select
+    // variant; `isSelectParam` mirrors the name-matching rules shared with
+    // `buildEditParams` (see ParameterFieldsUtils) — keep both in sync.
     const isColumnField =
-      data.name === 'column' ||
-      (!isUndefined(table) &&
-        definition.name === 'tableRowInsertedCountToBeBetween' &&
-        data.name === 'columnName');
+      !isUndefined(table) && isSelectParam(definition, data);
 
     if (isColumnField) {
       return {
