@@ -31,6 +31,7 @@ export const ModalWithQueryEditor = ({
   onSave,
   onCancel,
   visible,
+  getContainer,
 }: ModalWithQueryEditorProps) => {
   const { t } = useTranslation();
   const [form] = useForm();
@@ -79,6 +80,7 @@ export const ModalWithQueryEditor = ({
           {isSaving ? <Loader size="small" type="white" /> : t('label.save')}
         </Button>,
       ]}
+      getContainer={getContainer}
       maskClosable={false}
       open={visible}
       title={<Typography.Text data-testid="header">{header}</Typography.Text>}

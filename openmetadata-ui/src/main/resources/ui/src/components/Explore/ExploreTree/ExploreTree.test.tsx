@@ -11,6 +11,10 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, waitFor } from '@testing-library/react';
+import {
+  TourContext,
+  TourProviderContextProps,
+} from '../../../context/TourProvider/TourProvider';
 import { EntityFields } from '../../../enums/AdvancedSearch.enum';
 import * as miscAPI from '../../../rest/miscAPI';
 import * as searchAPI from '../../../rest/searchAPI';
@@ -71,6 +75,56 @@ describe('ExploreTree', () => {
     expect(getByText('label.search-index-plural')).toBeInTheDocument();
     expect(getByText('label.ml-model-plural')).toBeInTheDocument();
     expect(getByText('label.governance')).toBeInTheDocument();
+  });
+
+  it('does not fetch entity counts while the product tour is open', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(buildAggregationResponse([]));
+
+    const { queryByTestId } = render(
+      <TourContext.Provider
+        value={
+          {
+            isTourOpen: true,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      </TourContext.Provider>
+    );
+
+    await waitFor(() => {
+      expect(queryByTestId('loader')).not.toBeInTheDocument();
+    });
+
+    expect(searchQuerySpy).not.toHaveBeenCalled();
+  });
+
+  it('fetches entity counts when the product tour closes', async () => {
+    const searchQuerySpy = jest
+      .spyOn(searchAPI, 'searchQuery')
+      .mockResolvedValue(buildAggregationResponse([]));
+
+    const renderWithTour = (isTourOpen: boolean) => (
+      <TourContext.Provider
+        value={
+          {
+            isTourOpen,
+          } as Partial<TourProviderContextProps> as TourProviderContextProps
+        }>
+        <ExploreTree onFieldValueSelect={jest.fn()} onTreeSelect={jest.fn()} />
+      </TourContext.Provider>
+    );
+
+    const { rerender } = render(renderWithTour(true));
+
+    expect(searchQuerySpy).not.toHaveBeenCalled();
+
+    rerender(renderWithTour(false));
+
+    await waitFor(() => {
+      expect(searchQuerySpy).toHaveBeenCalled();
+    });
   });
 
   it('grays out categories that cannot contain the selected asset type', async () => {
