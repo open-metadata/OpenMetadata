@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import DeleteWidgetModal from '../../../components/common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../../components/common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/Table';
@@ -333,7 +333,7 @@ const RolesListPage = () => {
             size="small"
           />
           {selectedRole && (
-            <DeleteWidgetModal
+            <DeleteEntityModal
               afterDeleteAction={handleAfterDeleteAction}
               allowSoftDelete={false}
               deleteMessage={t('message.are-you-sure-delete-entity', {

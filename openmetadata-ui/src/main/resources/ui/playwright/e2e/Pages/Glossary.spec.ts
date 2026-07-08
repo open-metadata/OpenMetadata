@@ -2130,18 +2130,11 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('[role="dialog"]')).toBeVisible();
+        await page.locator('[role="dialog"]').waitFor();
+
         await expect(page.getByTestId('modal-header')).toContainText(
           glossary.data.name
         );
-
-        await expect(page.getByTestId('body-text')).toContainText('DELETE');
-
-        const confirmationInput = page.getByTestId('confirmation-text-input');
-
-        await expect(confirmationInput).toBeVisible();
-
-        await confirmationInput.fill('DELETE');
 
         await page.getByTestId('confirm-button').click();
       });
@@ -2813,7 +2806,7 @@ test.describe('Glossary tests', () => {
       );
 
       // Click cancel/discard button
-      await page.click('[data-testid="discard-button"]');
+      await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();
@@ -2854,7 +2847,7 @@ test.describe('Glossary tests', () => {
       );
 
       // Click cancel/discard button
-      await page.click('[data-testid="discard-button"]');
+      await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();

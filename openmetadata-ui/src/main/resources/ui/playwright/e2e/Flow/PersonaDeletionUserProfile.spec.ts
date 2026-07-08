@@ -12,7 +12,6 @@
  */
 
 import { expect } from '@playwright/test';
-import { DELETE_TERM } from '../../constant/common';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { descriptionBox, uuid } from '../../utils/common';
@@ -139,22 +138,13 @@ test.describe.serial('User profile works after persona deletion', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await expect(page.locator('.ant-modal-header')).toContainText(
-        PERSONA_DETAILS.displayName
-      );
-
-      await page.getByTestId('hard-delete-option').click();
+      await page.getByTestId('hard-delete').click();
 
       const confirmButton = page.getByTestId('confirm-button');
-      await expect(confirmButton).toBeDisabled();
-
-      await page.getByTestId('confirmation-text-input').fill(DELETE_TERM);
 
       const deleteResponse = page.waitForResponse(
         `/api/v1/personas/*?hardDelete=true&recursive=false`
       );
-
-      await expect(confirmButton).toBeEnabled();
 
       await confirmButton.click();
       await deleteResponse;

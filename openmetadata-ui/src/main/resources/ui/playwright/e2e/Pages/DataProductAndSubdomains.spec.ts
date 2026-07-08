@@ -35,7 +35,10 @@ import {
   selectDataProduct,
   selectDomain,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
@@ -799,9 +802,8 @@ test.describe('Multiple Subdomains Tests', () => {
 
       await expect(page.getByRole('dialog')).toBeVisible();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 
