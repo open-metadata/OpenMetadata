@@ -417,6 +417,94 @@ describe('buildEditDefaults', () => {
     expect(result.tags?.some((tag) => tag.tagFQN === 'Tier.Tier1')).toBe(false);
   });
 
+  it('prefills tags/glossaryTerms as TagLabel[] (the shape TagSuggestion consumes), not FormSelectItem[] (regression)', () => {
+    // TagSuggestion.tsx reads `value: TagLabel[]` directly off each entry
+    // (tag.tagFQN, tag.displayName, tag.name, tag.source) to build its
+    // selectedItems — a bare `{ id, label }` FormSelectItem would render
+    // blank chips, exactly like the selectedTable/selectedColumn bug this
+    // mirrors.
+    const testCase = {
+      name: 'tag_shape_test',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-1',
+        name: 'tableRowCountToEqual',
+        fullyQualifiedName: 'tableRowCountToEqual',
+      },
+      parameterValues: [],
+      tags: [
+        {
+          tagFQN: 'PII.Sensitive',
+          source: 'Classification',
+          name: 'Sensitive',
+          displayName: 'Sensitive',
+        },
+        {
+          tagFQN: 'GlossaryTerm.example',
+          source: 'Glossary',
+          name: 'example',
+          displayName: 'Example Term',
+        },
+      ],
+    } as unknown as TestCase;
+
+    const result = buildEditDefaults(testCase, tableLevelDefinition);
+
+    expect(result.tags).toEqual([
+      {
+        tagFQN: 'PII.Sensitive',
+        source: 'Classification',
+        name: 'Sensitive',
+        displayName: 'Sensitive',
+      },
+    ]);
+    expect(result.glossaryTerms).toEqual([
+      {
+        tagFQN: 'GlossaryTerm.example',
+        source: 'Glossary',
+        name: 'example',
+        displayName: 'Example Term',
+      },
+    ]);
+    // Guard against a FormSelectItem-shaped regression: TagLabel has no
+    // `id`/`label` keys, it has `tagFQN`.
+    expect(result.tags?.[0]).not.toHaveProperty('id');
+    expect(result.tags?.[0]).not.toHaveProperty('label');
+    expect(result.glossaryTerms?.[0]).not.toHaveProperty('id');
+    expect(result.glossaryTerms?.[0]).not.toHaveProperty('label');
+  });
+
+  it('locks testLevel/testName/displayName/description as plain primitive values, not wrapped objects (regression)', () => {
+    // testLevel binds to SelectionCardGroup's `value`/`onChange` directly (a
+    // raw TestLevel string); testName/displayName are FieldTypes.TEXT
+    // (plain string); description feeds RichTextEditor's `initialValue`
+    // (plain markdown string) — none of these are FormSelectItem-shaped.
+    const testCase = {
+      name: 'primitive_shape_test',
+      displayName: 'Primitive Shape Test',
+      description: 'plain markdown description',
+      entityLink: '<#E::table::svc.db.sch.t>',
+      testDefinition: {
+        id: 'def-1',
+        name: 'tableRowCountToEqual',
+        fullyQualifiedName: 'tableRowCountToEqual',
+      },
+      parameterValues: [],
+      tags: [],
+    } as unknown as TestCase;
+
+    const result = buildEditDefaults(testCase, tableLevelDefinition);
+
+    expect(result.testLevel).toBe(TestLevel.TABLE);
+    expect(typeof result.testLevel).toBe('string');
+    expect(result.testName).toBe('primitive_shape_test');
+    expect(typeof result.testName).toBe('string');
+    expect(result.displayName).toBe('Primitive Shape Test');
+    expect(typeof result.displayName).toBe('string');
+    expect(result.description).toBe('plain markdown description');
+    expect(typeof result.description).toBe('string');
+  });
+
   it('prefills selectedColumn as a FormSelectItem for a column-level test with a Set param (regression)', () => {
     const testCase = {
       name: 'values_in_set_edit',
