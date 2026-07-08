@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -2154,7 +2154,7 @@ test.describe('Context Center Permissions', () => {
         await expect(
           tagsContainer
             .getByTestId('add-tag')
-            .or(glossaryContainer.getByTestId('edit-tag'))
+            .or(tagsContainer.getByTestId('edit-tag'))
         ).toBeVisible();
         await expect(
           glossaryContainer
