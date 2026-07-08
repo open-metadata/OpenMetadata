@@ -271,13 +271,23 @@ def test_get_databases_reports_catalog_count():
 
 
 def test_get_databases_failure_reports_the_attempted_command_as_evidence():
-    checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+    config = _config()
+    config.catalog = None
+    checks = DatabricksChecks(client=MagicMock(), service_connection=config)
     with (
         patch.object(checks._engine_wrapper, "get_catalogs", side_effect=Exception("boom")),
         pytest.raises(CheckError) as exc,
     ):
         checks.get_databases()
     assert exc.value.evidence.command == "SHOW CATALOGS"
+
+
+def test_get_databases_omits_the_command_when_catalog_is_configured():
+    # A configured catalog is trusted without running SHOW CATALOGS.
+    checks = DatabricksChecks(client=MagicMock(), service_connection=_config())
+    with patch.object(checks._engine_wrapper, "get_catalogs", return_value=[("my_catalog",)]):
+        evidence = checks.get_databases()
+    assert evidence.command is None
 
 
 def test_probe_target_strips_a_pasted_url_scheme_and_path():
@@ -290,13 +300,26 @@ def test_probe_target_strips_a_pasted_url_scheme_and_path():
 
 
 def test_connection_url_strips_a_pasted_url_scheme():
+    from urllib.parse import urlparse
+
     from metadata.ingestion.source.database.databricks.connection import get_connection_url
 
     config = _config()
     config.hostPort = "https://my-workspace.cloud.databricks.com:443"
-    url = get_connection_url(config)
-    assert "https://" not in url
-    assert "my-workspace.cloud.databricks.com:443" in url
+    parsed = urlparse(get_connection_url(config))
+    assert parsed.hostname == "my-workspace.cloud.databricks.com"
+    assert parsed.port == 443
+
+
+def test_auth_host_derivation_strips_a_pasted_scheme():
+    # OAuth/Azure-AD derive the workspace host from hostPort too; a pasted scheme
+    # must not leak in as the host or auth fails before the driver.
+    from metadata.ingestion.source.database.databricks.auth import _host, normalize_host_port
+
+    assert normalize_host_port("https://ws.cloud.databricks.com:443/sql/x") == "ws.cloud.databricks.com:443"
+    connection = MagicMock()
+    connection.hostPort = "https://ws.cloud.databricks.com:443"
+    assert _host(connection) == "ws.cloud.databricks.com"
 
 
 def test_schema_scoped_get_schemas_skips_use_catalog_when_catalog_unresolved():

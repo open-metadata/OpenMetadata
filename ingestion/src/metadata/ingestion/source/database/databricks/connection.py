@@ -51,7 +51,10 @@ from metadata.ingestion.connections.builders import (
     init_empty_connection_arguments,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.auth import (
+    get_auth_config,
+    normalize_host_port,
+)
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
@@ -83,11 +86,6 @@ DEFAULT_DATABRICKS_PORT = 443
 DEFAULT_CATALOG = "main"
 
 SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "sys"})
-
-
-def _normalize_host_port(host_port: str) -> str:
-    """Strip a pasted URL scheme and path, leaving ``host:port``."""
-    return host_port.split("://", 1)[-1].split("/", 1)[0]
 
 
 # databricks-sql/thrift reports failures as message tokens, not numeric codes, so
@@ -237,7 +235,7 @@ class DatabricksEngineWrapper:
 
 def get_connection_url(connection: DatabricksConnectionConfig) -> str:
     scheme = connection.scheme.value if connection.scheme else "databricks"
-    url = f"{scheme}://{_normalize_host_port(connection.hostPort)}"
+    url = f"{scheme}://{normalize_host_port(connection.hostPort)}"
     if connection.catalog:
         url = f"{url}?catalog={quote_plus(connection.catalog)}"
     return url
@@ -289,13 +287,13 @@ class DatabricksChecks:
         return self._engine_wrapper.first_catalog or self.service_connection.catalog or DEFAULT_CATALOG
 
     def _probe_target(self) -> tuple[str, int]:
-        host_port = _normalize_host_port(self.service_connection.hostPort)
+        host_port = normalize_host_port(self.service_connection.hostPort)
         host, _, port = host_port.rpartition(":")
         if host and port.isdigit():
             return host, int(port)
         return host_port, DEFAULT_DATABRICKS_PORT
 
-    def _list(self, operation: Callable[[], Sequence[object] | None], command: str, noun: str) -> Evidence:
+    def _list(self, operation: Callable[[], Sequence[object] | None], command: str | None, noun: str) -> Evidence:
         """Run a wrapper listing op, reporting the command and a row-count summary;
         on failure re-raise as ``CheckError`` carrying the attempted command."""
         try:
@@ -316,9 +314,12 @@ class DatabricksChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
+        # A configured catalog is trusted without querying, so no SHOW CATALOGS runs.
+        configured = self.service_connection.catalog
+        command = None if configured else DATABRICKS_GET_CATALOGS
         return self._list(
-            lambda: self._engine_wrapper.get_catalogs(catalog_name=self.service_connection.catalog),
-            DATABRICKS_GET_CATALOGS,
+            lambda: self._engine_wrapper.get_catalogs(catalog_name=configured),
+            command,
             "catalog",
         )
 
