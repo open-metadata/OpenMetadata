@@ -237,6 +237,19 @@ const toColumnFormSelectItem = (columnName: string): FormSelectItem => ({
 });
 
 /**
+ * `dimensionColumns` is rendered by a `FieldTypes.MULTI_SELECT` field whose
+ * options are `{ id: column.name, label }` — the generic autocomplete
+ * renderer stores its RHF value as `FormSelectItem[]`, matched by `id` (see
+ * `render-field-element.tsx`'s `AUTOCOMPLETE_FIELD_TYPES` branch). A bare
+ * `string[]` fails to prefill the selected chips, exactly like the
+ * `selectedColumn` bug this mirrors.
+ */
+const toColumnFormSelectItems = (
+  columnNames: string[] | undefined
+): FormSelectItem[] | undefined =>
+  columnNames?.map((columnName) => toColumnFormSelectItem(columnName));
+
+/**
  * Builds the RHF value for a single Array-typed param from its JSON-array
  * payload string. tableDiff's `ColumnArrayField` params store each row as
  * `{ value: FormSelectItem }`; every other Array param's row is a plain-text
@@ -391,14 +404,12 @@ export const buildEditDefaults = (
     | 'description'
     | 'computePassedFailedRowCount'
     | 'useDynamicAssertion'
-    | 'dimensionColumns'
     | 'topDimensions'
   > = pick(testCase, [
     'displayName',
     'description',
     'computePassedFailedRowCount',
     'useDynamicAssertion',
-    'dimensionColumns',
     'topDimensions',
   ]);
 
@@ -406,7 +417,12 @@ export const buildEditDefaults = (
     testLevel: buildEditTestLevel(testCase),
     testName: testCase.name,
     selectedTable: { id: tableFqn, label: tableFqn } as never,
-    selectedColumn: selectedColumn || undefined,
+    selectedColumn: (selectedColumn
+      ? toColumnFormSelectItem(selectedColumn)
+      : undefined) as never,
+    dimensionColumns: toColumnFormSelectItems(
+      testCase.dimensionColumns
+    ) as never,
     testTypeId: {
       id: testCase.testDefinition?.fullyQualifiedName ?? '',
       label: testCase.testDefinition?.fullyQualifiedName ?? '',

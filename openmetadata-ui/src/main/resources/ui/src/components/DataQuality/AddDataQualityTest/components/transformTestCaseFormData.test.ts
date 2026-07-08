@@ -303,7 +303,7 @@ describe('buildEditDefaults', () => {
       id: 'svc.db.sch.t',
       label: 'svc.db.sch.t',
     });
-    expect(result.selectedColumn).toBe('email');
+    expect(result.selectedColumn).toEqual({ id: 'email', label: 'email' });
   });
 
   it('derives COLUMN_DIMENSION testLevel when dimensionColumns are present', () => {
@@ -331,7 +331,9 @@ describe('buildEditDefaults', () => {
     const result = buildEditDefaults(testCase, definition);
 
     expect(result.testLevel).toBe(TestLevel.COLUMN_DIMENSION);
-    expect(result.dimensionColumns).toEqual(['country']);
+    expect(result.dimensionColumns).toEqual([
+      { id: 'country', label: 'country' },
+    ]);
     expect(result.topDimensions).toBe(5);
   });
 
@@ -413,6 +415,70 @@ describe('buildEditDefaults', () => {
     expect(result.glossaryTerms).toHaveLength(1);
     expect(result.glossaryTerms?.[0].tagFQN).toBe('GlossaryTerm.example');
     expect(result.tags?.some((tag) => tag.tagFQN === 'Tier.Tier1')).toBe(false);
+  });
+
+  it('prefills selectedColumn as a FormSelectItem for a column-level test with a Set param (regression)', () => {
+    const testCase = {
+      name: 'values_in_set_edit',
+      entityLink: '<#E::table::svc.db.sch.t::columns::status>',
+      testDefinition: {
+        id: 'def-set',
+        name: 'columnValuesToBeInSet',
+        fullyQualifiedName: 'columnValuesToBeInSet',
+      },
+      parameterValues: [
+        { name: 'allowedValues', value: '["active","inactive"]' },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    const definition = {
+      id: 'def-set',
+      name: 'columnValuesToBeInSet',
+      fullyQualifiedName: 'columnValuesToBeInSet',
+      parameterDefinition: [
+        { name: 'allowedValues', dataType: TestDataType.Set },
+      ],
+    } as unknown as TestDefinition;
+
+    const result = buildEditDefaults(testCase, definition);
+
+    expect(result.selectedColumn).toEqual({ id: 'status', label: 'status' });
+    expect(result.params?.allowedValues).toEqual([
+      { value: 'active' },
+      { value: 'inactive' },
+    ]);
+  });
+
+  it('prefills dimensionColumns as FormSelectItem[] for a dimension-level test (regression)', () => {
+    const testCase = {
+      name: 'dim_prefill_test',
+      entityLink: '<#E::table::svc.db.sch.t::columns::email>',
+      testDefinition: {
+        id: 'def-2',
+        name: 'columnValuesToBeNotNull',
+        fullyQualifiedName: 'columnValuesToBeNotNull',
+      },
+      parameterValues: [],
+      dimensionColumns: ['country', 'region'],
+      topDimensions: 10,
+      tags: [],
+    } as unknown as TestCase;
+
+    const definition = {
+      id: 'def-2',
+      name: 'columnValuesToBeNotNull',
+      fullyQualifiedName: 'columnValuesToBeNotNull',
+      parameterDefinition: [],
+    } as unknown as TestDefinition;
+
+    const result = buildEditDefaults(testCase, definition);
+
+    expect(result.dimensionColumns).toEqual([
+      { id: 'country', label: 'country' },
+      { id: 'region', label: 'region' },
+    ]);
+    expect(result.topDimensions).toBe(10);
   });
 });
 
