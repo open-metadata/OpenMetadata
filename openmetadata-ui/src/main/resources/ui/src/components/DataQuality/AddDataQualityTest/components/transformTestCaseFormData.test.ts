@@ -16,6 +16,7 @@ import {
   TestDataType,
   TestDefinition,
 } from '../../../../generated/tests/testDefinition';
+import { normalizeParamsForPayload } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { TestLevel } from './TestCaseFormV1.interface';
 import {
   buildEditDefaults,
@@ -412,5 +413,92 @@ describe('buildEditDefaults', () => {
     expect(result.glossaryTerms).toHaveLength(1);
     expect(result.glossaryTerms?.[0].tagFQN).toBe('GlossaryTerm.example');
     expect(result.tags?.some((tag) => tag.tagFQN === 'Tier.Tier1')).toBe(false);
+  });
+});
+
+describe('buildEditDefaults for tableDiff', () => {
+  const tableDiffDefinition = {
+    id: 'def-tablediff',
+    name: 'tableDiff',
+    fullyQualifiedName: 'tableDiff',
+    parameterDefinition: [
+      { name: 'table2', dataType: TestDataType.String },
+      { name: 'keyColumns', dataType: TestDataType.Array },
+      { name: 'table2.keyColumns', dataType: TestDataType.Array },
+      { name: 'threshold', dataType: TestDataType.Number },
+      { name: 'caseSensitiveColumns', dataType: TestDataType.Boolean },
+    ],
+  } as unknown as TestDefinition;
+
+  const tableDiffTestCase = {
+    name: 'table_diff_test',
+    entityLink: '<#E::table::svc.db.sch.t>',
+    testDefinition: {
+      id: 'def-tablediff',
+      name: 'tableDiff',
+      fullyQualifiedName: 'tableDiff',
+    },
+    parameterValues: [
+      { name: 'table2', value: 'svc.db.sch.t2' },
+      { name: 'keyColumns', value: '["id","name"]' },
+      { name: 'table2.keyColumns', value: '["id2"]' },
+      { name: 'threshold', value: '0' },
+      { name: 'caseSensitiveColumns', value: 'true' },
+    ],
+    tags: [],
+  } as unknown as TestCase;
+
+  it('prefills the table2 select param as a FormSelectItem', () => {
+    const result = buildEditDefaults(tableDiffTestCase, tableDiffDefinition);
+
+    expect(result.params?.table2).toEqual({
+      id: 'svc.db.sch.t2',
+      label: 'svc.db.sch.t2',
+    });
+  });
+
+  it('prefills dotted column-array params under their sanitized key', () => {
+    const result = buildEditDefaults(tableDiffTestCase, tableDiffDefinition);
+
+    expect(result.params).toHaveProperty('table2___keyColumns');
+    expect(result.params?.table2___keyColumns).toEqual([
+      { value: { id: 'id2', label: 'id2' } },
+    ]);
+  });
+
+  it('prefills the keyColumns column-array param with FormSelectItem rows', () => {
+    const result = buildEditDefaults(tableDiffTestCase, tableDiffDefinition);
+
+    expect(result.params?.keyColumns).toEqual([
+      { value: { id: 'id', label: 'id' } },
+      { value: { id: 'name', label: 'name' } },
+    ]);
+  });
+
+  it('prefills scalar and boolean params unchanged', () => {
+    const result = buildEditDefaults(tableDiffTestCase, tableDiffDefinition);
+
+    expect(result.params?.threshold).toBe('0');
+    expect(result.params?.caseSensitiveColumns).toBe(true);
+  });
+
+  it('round-trips through normalizeParamsForPayload back to the original parameterValues', () => {
+    const editParams = buildEditDefaults(
+      tableDiffTestCase,
+      tableDiffDefinition
+    ).params;
+
+    const roundTripped = normalizeParamsForPayload(
+      editParams as Record<string, unknown>,
+      tableDiffDefinition
+    );
+
+    expect(roundTripped).toEqual({
+      table2: 'svc.db.sch.t2',
+      keyColumns: [{ value: 'id' }, { value: 'name' }],
+      'table2.keyColumns': [{ value: 'id2' }],
+      threshold: '0',
+      caseSensitiveColumns: true,
+    });
   });
 });

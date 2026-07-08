@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { isArray, isEmpty, pick } from 'lodash';
+import { TABLE_DIFF } from '../../../../constants/TestSuite.constant';
 import {
   CreateIngestionPipeline,
   FluffyType as ConfigType,
@@ -22,6 +24,7 @@ import { Table } from '../../../../generated/entity/data/table';
 import { LogLevels } from '../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
+  TestCaseParameterDefinition,
   TestDataType,
   TestDefinition,
 } from '../../../../generated/tests/testDefinition';
@@ -32,6 +35,7 @@ import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   normalizeParamsForPayload,
+  sanitizeParamName,
   unwrapSelectValue,
   unwrapSelectValues,
 } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
@@ -48,6 +52,12 @@ import {
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
 import { normalizeSelectedTestProp } from '../../AddTestCaseList/AddTestCaseListForm.utils';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
+import {
+  KEY_COLUMNS,
+  TABLE2,
+  TABLE2_KEY_COLUMNS,
+  USE_COLUMNS,
+} from './TableDiffFields';
 import { FormValues, TestLevel } from './TestCaseFormV1.interface';
 
 export interface TestCaseTransformContext {
@@ -195,44 +205,118 @@ export const buildTestSuitePipelinePayload = (
 
 /**
  * `FormValues.params` is typed too narrowly for edit prefill (no `boolean`
- * param values). This widens just the field `buildEditDefaults` needs
- * without touching the shared `FormValues` interface, which other, later
- * tasks own.
+ * param values, no `FormSelectItem`-shaped rows). This widens just the field
+ * `buildEditDefaults` needs without touching the shared `FormValues`
+ * interface, which other, later tasks own.
  */
+type EditParamValue =
+  | string
+  | boolean
+  | FormSelectItem
+  | { value: string }[]
+  | { value: FormSelectItem }[];
+
 type EditFormValues = Omit<Partial<FormValues>, 'params'> & {
-  params?: Record<string, string | { value: string }[] | boolean>;
+  params?: Record<string, EditParamValue>;
+};
+
+/**
+ * tableDiff param names whose `ColumnArrayField` row renders a `SELECT`
+ * field (`FieldTypes.SELECT`), which stores the row value as a
+ * `FormSelectItem`, not a raw string — see `TableDiffFields.tsx`.
+ */
+const TABLE_DIFF_COLUMN_ARRAY_PARAMS = new Set([
+  KEY_COLUMNS,
+  TABLE2_KEY_COLUMNS,
+  USE_COLUMNS,
+]);
+
+const toColumnFormSelectItem = (columnName: string): FormSelectItem => ({
+  id: columnName,
+  label: columnName,
+});
+
+/**
+ * Builds the RHF value for a single Array-typed param from its JSON-array
+ * payload string. tableDiff's `ColumnArrayField` params store each row as
+ * `{ value: FormSelectItem }`; every other Array param's row is a plain-text
+ * field storing `{ value: string }` — see `TableDiffFields.tsx` vs
+ * `ParameterFields.tsx#ParamArrayField`.
+ */
+const buildEditArrayParamValue = (
+  paramName: string,
+  jsonValue: string,
+  isTableDiff: boolean
+): { value: string }[] | { value: FormSelectItem }[] | string => {
+  const parsed = JSON.parse(jsonValue || '[]');
+  let result: { value: string }[] | { value: FormSelectItem }[] | string;
+
+  if (!isArray(parsed)) {
+    result = parsed;
+  } else if (isTableDiff && TABLE_DIFF_COLUMN_ARRAY_PARAMS.has(paramName)) {
+    result = parsed.map((columnName: string) => ({
+      value: toColumnFormSelectItem(columnName),
+    }));
+  } else {
+    result = parsed.map((value: string) => ({ value }));
+  }
+
+  return result;
+};
+
+/**
+ * Builds a single param's RHF value from its `parameterValues` entry, keyed
+ * by the param's sanitized name (dots replaced, since RHF field paths can't
+ * contain dots — see `sanitizeParamName`).
+ */
+const buildEditParamEntry = (
+  curr: { name?: string; value?: string },
+  param: TestCaseParameterDefinition | undefined,
+  isTableDiff: boolean
+): EditParamValue => {
+  let result: EditParamValue;
+
+  if (isTableDiff && curr.name === TABLE2) {
+    result = curr.value ? toColumnFormSelectItem(curr.value) : '';
+  } else if (
+    param?.dataType === TestDataType.Array &&
+    isValidJSONString(curr.value)
+  ) {
+    result = buildEditArrayParamValue(
+      curr.name ?? '',
+      curr.value ?? '[]',
+      isTableDiff
+    );
+  } else if (param?.dataType === TestDataType.Boolean) {
+    result = curr.value === 'true';
+  } else {
+    result = curr.value ?? '';
+  }
+
+  return result;
 };
 
 /**
  * Builds the `params` RHF value from a TestCase's `parameterValues`, keyed by
- * param name. Mirrors the legacy `EditTestCaseModalV1.getParamsValue`: Array
- * params with a JSON-array value become `[{ value }, …]`; Boolean params
- * become an actual boolean; everything else stays a raw string.
+ * sanitized param name. Mirrors the legacy `EditTestCaseModalV1.getParamsValue`
+ * for scalar/boolean params, but produces the `FormSelectItem`-based shapes
+ * the RHF `TableDiffFields`/`ParameterFields` select and column-array fields
+ * actually read (see `ParameterFieldsUtils.normalizeParamsForPayload`, which
+ * reverses this on submit).
  */
 const buildEditParams = (
   testCase: TestCase,
   definition: TestDefinition
-): Record<string, string | { value: string }[] | boolean> => {
-  const result: Record<string, string | { value: string }[] | boolean> = {};
+): Record<string, EditParamValue> => {
+  const isTableDiff = definition.fullyQualifiedName === TABLE_DIFF;
+  const result: Record<string, EditParamValue> = {};
   (testCase.parameterValues ?? []).forEach((curr) => {
     const param = definition.parameterDefinition?.find(
       (paramDefinition) => paramDefinition.name === curr.name
     );
-    const key = curr.name || '';
+    const key = sanitizeParamName(curr.name || '');
 
-    if (
-      param?.dataType === TestDataType.Array &&
-      isValidJSONString(curr.value)
-    ) {
-      const value = JSON.parse(curr.value || '[]');
-      result[key] = isArray(value)
-        ? value.map((val) => ({ value: val }))
-        : value;
-    } else if (param?.dataType === TestDataType.Boolean) {
-      result[key] = curr.value === 'true';
-    } else {
-      result[key] = curr.value ?? '';
-    }
+    result[key] = buildEditParamEntry(curr, param, isTableDiff);
   });
 
   return result;

@@ -55,10 +55,10 @@ type TableHit = SearchHitBody<
   >
 >;
 
-const TABLE2 = 'table2';
-const TABLE2_KEY_COLUMNS = 'table2.keyColumns';
-const KEY_COLUMNS = 'keyColumns';
-const USE_COLUMNS = 'useColumns';
+export const TABLE2 = 'table2';
+export const TABLE2_KEY_COLUMNS = 'table2.keyColumns';
+export const KEY_COLUMNS = 'keyColumns';
+export const USE_COLUMNS = 'useColumns';
 
 const NUMERIC_DATA_TYPES = [
   TestDataType.Number,
