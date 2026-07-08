@@ -28,6 +28,7 @@ import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/Er
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
+import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import PaginationComponent from '../../../components/PaginationComponent/PaginationComponent';
@@ -269,6 +270,7 @@ const WorkflowsPage = () => {
         {isAiMode ? (
           <HeaderShell
             actions={createWorkflowButton}
+            badge={<LearningIcon pageId={LEARNING_PAGE_IDS.WORKFLOWS} />}
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin

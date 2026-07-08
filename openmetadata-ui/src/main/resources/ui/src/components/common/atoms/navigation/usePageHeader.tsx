@@ -130,11 +130,23 @@ export const usePageHeader = (config: PageHeaderConfig) => {
         })
       : displayTitle;
 
-    const badge =
+    const betaBadge =
       variant === 'beta' ? (
         <Badge color="brand" size="sm" type="color">
           {t(config.betaLabelKey ?? 'label.beta')}
         </Badge>
+      ) : null;
+
+    const learningIcon = config.learningPageId ? (
+      <LearningIcon pageId={config.learningPageId} />
+    ) : null;
+
+    const badge =
+      betaBadge || learningIcon ? (
+        <>
+          {betaBadge}
+          {learningIcon}
+        </>
       ) : undefined;
 
     const actions = isGreeting ? undefined : (

@@ -56,6 +56,7 @@ import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.comp
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/TableV2';
+import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -811,6 +812,7 @@ const MetricListPage = () => {
           {isAiMode ? (
             <HeaderShell
               actions={metricActions}
+              badge={<LearningIcon pageId={LEARNING_PAGE_IDS.METRICS} />}
               breadcrumb={
                 <HeaderBreadcrumb
                   noMargin
