@@ -326,7 +326,6 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                             entity=table,
                         ),
                     )
-                self.progress.reconcile_scope_total(Table.__name__, db_fqn, observed)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
@@ -336,6 +335,8 @@ class DatabaseFetcherStrategy(FetcherStrategy):
                     ),
                     right=None,
                 )
+            finally:
+                self.progress.reconcile_scope_total(Table.__name__, db_fqn, observed)
 
 
 class StorageFetcherStrategy(FetcherStrategy):

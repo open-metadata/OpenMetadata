@@ -771,6 +771,29 @@ def _db_strategy_with_progress(tables, server_total, capture=None):
     return strategy, registry, progress
 
 
+def _multi_db_strategy_with_progress(db_specs):
+    """DatabaseFetcherStrategy wired with a real ProgressRegistry across
+    MULTIPLE databases, each with its own seeded server total and its own
+    table list, to guard the per-database-scope reconciliation that sums
+    into a single global `Table` counter. `db_specs` is an ordered mapping
+    of database FQN -> (seed_total, tables)."""
+    registry = ProgressRegistry()
+    progress = ManualProgress(registry)
+
+    strategy = DatabaseFetcherStrategy.__new__(DatabaseFetcherStrategy)
+    strategy.progress = progress
+    strategy.config = SimpleNamespace(source=SimpleNamespace(type="mysql"))
+    strategy.global_profiler_config = None
+    strategy.metadata = MagicMock()
+    strategy.metadata.list_entities.side_effect = [SimpleNamespace(total=seed) for seed, _ in db_specs.values()]
+
+    databases = [SimpleNamespace(fullyQualifiedName=SimpleNamespace(root=fqn)) for fqn in db_specs]
+    strategy._get_database_entities = lambda: iter(databases)
+    strategy._build_table_params = lambda db: {}
+    strategy._get_table_entities = lambda db: iter(db_specs[db.fullyQualifiedName.root][1])
+    return strategy, registry, progress
+
+
 class TestDatabaseFetcherProgress:
     def test_seeds_server_total_then_reconciles_to_observed(self):
         with patch(
@@ -805,3 +828,51 @@ class TestDatabaseFetcherProgress:
 
         assert len(records) == 1
         assert registry.global_counters() == [("Table", 1, 1)]
+
+    def test_multi_database_aggregates_into_single_table_counter(self):
+        """Each database seeds and reconciles its own scope, but they all
+        roll up into one global `Table` counter: seeded totals (3 + 2) walk
+        down to observed totals (2 + 2) as each database's tables complete."""
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            return_value=MagicMock(spec=ProfilerSourceInterface),
+        ):
+            strategy, registry, _ = _multi_db_strategy_with_progress(
+                {
+                    "svc.db1": (3, [TABLE, TABLE]),
+                    "svc.db2": (2, [TABLE, TABLE]),
+                }
+            )
+            records = list(strategy.fetch())
+
+        assert len(records) == 4
+        assert registry.global_counters() == [("Table", 4, 4)]
+
+    def test_partial_db_failure_walks_back_phantom_seed(self):
+        """A failure creating the profiler source for db1 must not leave its
+        seeded total (5) inflating the shared `Table` counter: the `finally`
+        reconcile walks the phantom seed back to `observed=0` for that scope,
+        while db2 still contributes its real, completed total."""
+
+        def create_side_effect(*args, **kwargs):
+            database = args[2]
+            if database.fullyQualifiedName.root == "svc.db1":
+                raise RuntimeError("connection failed for db1")
+            return MagicMock(spec=ProfilerSourceInterface)
+
+        with patch(
+            "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
+            side_effect=create_side_effect,
+        ):
+            strategy, registry, _ = _multi_db_strategy_with_progress(
+                {
+                    "svc.db1": (5, [TABLE, TABLE]),
+                    "svc.db2": (2, [TABLE, TABLE]),
+                }
+            )
+            records = list(strategy.fetch())
+
+        errors = [record for record in records if record.left is not None]
+        assert len(errors) == 1
+        assert "connection failed for db1" in errors[0].left.error
+        assert registry.global_counters() == [("Table", 2, 2)]
