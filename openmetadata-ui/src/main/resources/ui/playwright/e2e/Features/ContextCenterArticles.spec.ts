@@ -1338,7 +1338,6 @@ test.describe('Context Center Articles', () => {
     test('displayName: switching articles does not bleed unsaved title into next article', async ({
       page,
     }) => {
-
       const newDisplayName = `Updated Title ${uuid()}`;
 
       await test.step('Navigate to draft article A and type new display name without saving', async () => {
@@ -1353,8 +1352,8 @@ test.describe('Context Center Articles', () => {
 
       const updateDisplayNameResponse = page.waitForResponse(
         (response) =>
-            response.url().includes('/api/v1/contextCenter/pages/') &&
-            response.request().method() === 'PATCH'
+          response.url().includes('/api/v1/contextCenter/pages/') &&
+          response.request().method() === 'PATCH'
       );
 
       await test.step('Navigate to draft article B via left hierarchy', async () => {
