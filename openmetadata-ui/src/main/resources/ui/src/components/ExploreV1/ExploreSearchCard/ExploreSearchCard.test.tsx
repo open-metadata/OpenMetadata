@@ -228,6 +228,34 @@ describe('ExploreSearchCard - Card container', () => {
     expect(card).toHaveClass('explore-search-card');
     expect(card).toHaveClass('highlight-card');
   });
+
+  it('renders human-readable ranking explanations from matched query names', () => {
+    renderCard(
+      { fullyQualifiedName: 'svc.db.schema.users' },
+      {
+        matchedQueries: [
+          'ranking:closeName:text',
+          'ranking:descriptionContext:text',
+        ],
+      }
+    );
+
+    expect(screen.getByTestId('ranking-details')).toHaveTextContent(
+      'label.ranking-detail-plural'
+    );
+    expect(screen.getByTestId('ranking-stage-closeName')).toHaveTextContent(
+      'label.close-name'
+    );
+    expect(screen.getByTestId('ranking-stage-closeName')).toHaveTextContent(
+      'message.search-ranking-close-name-explanation'
+    );
+    expect(
+      screen.getByTestId('ranking-stage-descriptionContext')
+    ).toHaveTextContent('label.description-context');
+    expect(screen.getByTestId('ranking-details')).toHaveTextContent(
+      'message.search-ranking-signals-explanation'
+    );
+  });
 });
 
 describe('ExploreSearchCard - Entity type tags', () => {

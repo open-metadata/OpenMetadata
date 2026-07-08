@@ -34,6 +34,7 @@ export interface ExploreSearchCardProps {
   actionPopoverContent?: React.ReactNode;
   onCheckboxChange?: (checked: boolean) => void;
   score?: number;
+  matchedQueries?: string[];
   highlight?: SearchedDataProps['data'][number]['highlight'];
   classNameForBreadcrumb?: string;
 }

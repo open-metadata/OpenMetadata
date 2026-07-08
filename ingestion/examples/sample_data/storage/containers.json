@@ -194,5 +194,48 @@
       "zstd",
       "tsv"
     ]
+  },
+  {
+    "name": "provider_address_texas_exports",
+    "displayName": "Provider Address Texas Exports",
+    "description": "Search relevancy fixture container for provider address Texas export files.",
+    "parent": "s3_storage_sample.departments",
+    "prefix": "/departments/provider-address-texas/",
+    "dataModel": {
+      "isPartitioned": false,
+      "columns": [
+        {
+          "name": "provider_id",
+          "dataType": "NUMERIC",
+          "dataTypeDisplay": "numeric",
+          "description": "Unique identifier for the provider.",
+          "tags": [],
+          "constraint": "PRIMARY_KEY",
+          "ordinalPosition": 1
+        },
+        {
+          "name": "provider_address",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "varchar",
+          "description": "Provider address exported for downstream systems.",
+          "tags": [],
+          "ordinalPosition": 2
+        },
+        {
+          "name": "texas_region",
+          "dataType": "VARCHAR",
+          "dataTypeDisplay": "varchar",
+          "description": "Texas region partition.",
+          "tags": [],
+          "ordinalPosition": 3
+        }
+      ]
+    },
+    "numberOfObjects": "12",
+    "size": "98304",
+    "fileFormats": [
+      "csv",
+      "parquet"
+    ]
   }
 ]

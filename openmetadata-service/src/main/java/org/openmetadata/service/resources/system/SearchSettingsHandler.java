@@ -3,11 +3,15 @@ package org.openmetadata.service.resources.system;
 import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
 import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
+import org.openmetadata.schema.api.search.StopWordsByLanguage;
 import org.openmetadata.service.exception.SystemSettingsException;
 
 public class SearchSettingsHandler {
@@ -21,6 +25,10 @@ public class SearchSettingsHandler {
   public void validateSearchSettings(SearchSettings searchSettings) {
     // Validate global settings
     validateGlobalSettings(searchSettings.getGlobalSettings());
+
+    if (searchSettings.getDefaultConfiguration() != null) {
+      validateAssetTypeConfiguration(searchSettings.getDefaultConfiguration());
+    }
 
     // Validate asset type configurations for duplicate fields
     if (searchSettings.getAssetTypeConfigurations() != null) {
@@ -44,6 +52,72 @@ public class SearchSettingsHandler {
         }
 
         validateExtensionField(fieldName, assetConfig.getAssetType());
+      }
+    }
+    validateRanking(assetConfig.getRanking(), assetConfig.getAssetType());
+  }
+
+  private void validateRanking(RankingConfiguration ranking, String assetType) {
+    if (ranking == null || Boolean.FALSE.equals(ranking.getEnabled())) {
+      return;
+    }
+    if (ranking.getStages() == null || ranking.getStages().isEmpty()) {
+      throw new SystemSettingsException(
+          String.format("Ranking stages cannot be empty for asset type: %s", assetType));
+    }
+
+    Set<String> stageNames = new HashSet<>();
+    for (RankingStage stage : ranking.getStages()) {
+      if (stage.getName() == null || stage.getName().trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format("Ranking stage name cannot be empty for asset type: %s", assetType));
+      }
+      if (!stageNames.add(stage.getName())) {
+        throw new SystemSettingsException(
+            String.format(
+                "Duplicate ranking stage found for stage: %s in asset type: %s",
+                stage.getName(), assetType));
+      }
+      if (stage.getFields() == null || stage.getFields().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stage %s must define at least one field for asset type: %s",
+                stage.getName(), assetType));
+      }
+      if (stage.getWeight() != null && stage.getWeight() <= 0.0) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stage %s weight must be greater than zero for asset type: %s",
+                stage.getName(), assetType));
+      }
+    }
+    validateStopWordsByLanguage(ranking, assetType);
+    if (ranking.getSignals() != null
+        && ranking.getSignals().getMaxBoost() != null
+        && ranking.getSignals().getMaxBoost() < 0.0) {
+      throw new SystemSettingsException(
+          String.format(
+              "Ranking signal maxBoost cannot be negative for asset type: %s", assetType));
+    }
+  }
+
+  private void validateStopWordsByLanguage(RankingConfiguration ranking, String assetType) {
+    StopWordsByLanguage stopWordsByLanguage = ranking.getStopWordsByLanguage();
+    if (stopWordsByLanguage == null || stopWordsByLanguage.getAdditionalProperties() == null) {
+      return;
+    }
+    for (Map.Entry<String, List<String>> entry :
+        stopWordsByLanguage.getAdditionalProperties().entrySet()) {
+      if (entry.getKey() == null || entry.getKey().trim().isEmpty()) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stopword language cannot be empty for asset type: %s", assetType));
+      }
+      if (entry.getValue() == null) {
+        throw new SystemSettingsException(
+            String.format(
+                "Ranking stopwords cannot be null for language: %s in asset type: %s",
+                entry.getKey(), assetType));
       }
     }
   }
@@ -212,6 +286,11 @@ public class SearchSettingsHandler {
     if (incomingSearchSettings.getDefaultConfiguration() == null) {
       incomingSearchSettings.setDefaultConfiguration(
           defaultSearchSettings.getDefaultConfiguration());
+    } else if (incomingSearchSettings.getDefaultConfiguration().getRanking() == null
+        && defaultSearchSettings.getDefaultConfiguration() != null) {
+      incomingSearchSettings
+          .getDefaultConfiguration()
+          .setRanking(defaultSearchSettings.getDefaultConfiguration().getRanking());
     }
 
     // Merge asset type configurations

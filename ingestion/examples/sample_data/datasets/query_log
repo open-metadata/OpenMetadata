@@ -1404,3 +1404,29 @@ query,cost,user
 "create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address",0.5,admin
 "create table shopify.dim_address_clean as select address_id, shop_id, first_name, last_name, address1 as address, company, city, region, zip, country, phone from shopify.dim_address",0.5,admin
 "select * from shopify.raw_customer limit 1",12,admin
+"select provider_id, provider_address from shopify.provider_address",8,admin
+"select provider_id, provider_address from shopify.provider_address",7,admin
+"select job_id, provider_address from shopify.service_job_registry",6,admin
+"select job_id, provider_address from shopify.service_job_registry",5,admin
+"select work_id, service_type from shopify.work",160,admin
+"select work_id, service_type from shopify.work",159,admin
+"select work_id, service_type from shopify.work",158,admin
+"select work_id, service_type from shopify.work",157,admin
+"select work_id, service_type from shopify.work",156,admin
+"select work_id, service_type from shopify.work",155,admin
+"select work_id, service_type from shopify.work",154,admin
+"select work_id, service_type from shopify.work",153,admin
+"select work_id, service_type from shopify.work",152,admin
+"select work_id, service_type from shopify.work",151,admin
+"select work_id, service_type from shopify.work",150,admin
+"select work_id, service_type from shopify.work",149,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",25,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",24,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",23,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",22,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",21,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",20,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",19,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",18,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",17,admin
+"select record_id, region_name from shopify.regional_directory_tier1_usage",16,admin

@@ -51,6 +51,20 @@ import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
+const RANKING_STAGE_LABEL_KEYS: Record<string, string> = {
+  exactName: 'label.exact-name',
+  closeName: 'label.close-name',
+  structuralContext: 'label.structural-context',
+  descriptionContext: 'label.description-context',
+};
+
+const RANKING_STAGE_DESCRIPTION_KEYS: Record<string, string> = {
+  exactName: 'message.search-ranking-exact-name-explanation',
+  closeName: 'message.search-ranking-close-name-explanation',
+  structuralContext: 'message.search-ranking-structural-context-explanation',
+  descriptionContext: 'message.search-ranking-description-context-explanation',
+};
+
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
   ExploreSearchCardProps
@@ -71,6 +85,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       checked = false,
       onCheckboxChange,
       score,
+      matchedQueries,
       highlight,
       classNameForBreadcrumb,
     },
@@ -86,6 +101,27 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         ? highlightEntityNameAndDescription(_source, highlight)
         : _source;
     }, [_source, highlight]);
+
+    const rankingStages = useMemo(() => {
+      const stageNames = new Set<string>();
+      matchedQueries
+        ?.filter((queryName) => queryName.startsWith('ranking:'))
+        .forEach((queryName) => {
+          const stageName = queryName.split(':')[1];
+          if (stageName) {
+            stageNames.add(stageName);
+          }
+        });
+
+      return [...stageNames].map((stageName) => ({
+        description: t(
+          RANKING_STAGE_DESCRIPTION_KEYS[stageName] ??
+            'message.search-ranking-generic-stage-explanation'
+        ),
+        label: t(RANKING_STAGE_LABEL_KEYS[stageName] ?? stageName),
+        name: stageName,
+      }));
+    }, [matchedQueries, t]);
 
     // Hover/focus on an entity card warms the React Query cache so the click that follows
     // hits an already-populated slot. Dispatched on entityType because each detail page reads
@@ -319,7 +355,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 )}
                 items={breadcrumbItems}
               />
-              {score && (
+              {score !== undefined && (
                 <div className="flex items-center gap-1 score-container">
                   <ScoreIcon />
 
@@ -435,6 +471,35 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 ${startCase(data.key)}${i === matches.length - 1 ? '' : ','}`}
               </span>
             ))}
+          </div>
+        ) : null}
+        {rankingStages.length > 0 || score !== undefined ? (
+          <div
+            className="ranking-details-container"
+            data-testid="ranking-details">
+            <Typography.Text className="text-xs font-medium">
+              {t('label.ranking-detail-plural')}
+            </Typography.Text>
+            {rankingStages.length > 0 ? (
+              <div className="ranking-stage-list">
+                {rankingStages.map(({ description, label, name }) => (
+                  <div
+                    className="ranking-stage-item"
+                    data-testid={`ranking-stage-${name}`}
+                    key={name}>
+                    <Typography.Text className="text-xs font-medium">
+                      {label}
+                    </Typography.Text>
+                    <Typography.Text className="text-xs text-grey-muted">
+                      {description}
+                    </Typography.Text>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <Typography.Text className="text-xs text-grey-muted">
+              {t('message.search-ranking-signals-explanation')}
+            </Typography.Text>
           </div>
         ) : null}
         {actionPopoverContent && (

@@ -351,6 +351,22 @@
 				"downstreamTasks": [],
 				"taskType": "dbtTestTask"
 				}]
+		},
+		{
+			"name": "provider_address_texas_pipeline",
+			"displayName": "Provider Address Texas Pipeline",
+			"description": "Search relevancy fixture pipeline for loading provider address Texas reference data.",
+			"sourceUrl": "https://airflow.example.com/dags/provider_address_texas_pipeline",
+			"scheduleInterval": "0 3 * * *",
+			"service": "sample_airflow",
+			"tasks": [{
+				"name": "load_provider_address_texas",
+				"displayName": "Load Provider Address Texas",
+				"description": "Load the provider address Texas fixture table.",
+				"sourceUrl": "https://airflow.example.com/dags/provider_address_texas_pipeline/tasks/load_provider_address_texas",
+				"downstreamTasks": [],
+				"taskType": "PythonOperator"
+				}]
 		}
 	]
 }

@@ -23,6 +23,8 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +65,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
@@ -99,6 +103,47 @@ public class MigrationUtil {
       };
 
   private MigrationUtil() {}
+
+  public static void backfillSearchRankingSettings() {
+    try {
+      Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+      if (searchSettings == null) {
+        LOG.warn(
+            "Search settings not found in database. "
+                + "Default settings will be loaded on next startup with ranking settings.");
+        return;
+      }
+
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
+      AssetTypeConfiguration defaultConfiguration =
+          defaultSettings != null ? defaultSettings.getDefaultConfiguration() : null;
+
+      if (defaultConfiguration == null || defaultConfiguration.getRanking() == null) {
+        LOG.warn("Default ranking settings not found in packaged searchSettings.json");
+        return;
+      }
+
+      AssetTypeConfiguration currentDefaultConfiguration =
+          currentSettings.getDefaultConfiguration();
+      if (currentDefaultConfiguration == null) {
+        currentSettings.setDefaultConfiguration(defaultConfiguration);
+        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+        LOG.info("Backfilled default search configuration with ranking settings");
+        return;
+      }
+
+      if (currentDefaultConfiguration.getRanking() == null) {
+        currentDefaultConfiguration.setRanking(defaultConfiguration.getRanking());
+        SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+        LOG.info("Backfilled search ranking settings into stored searchSettings");
+      } else {
+        LOG.info("Search ranking settings already exist in stored searchSettings");
+      }
+    } catch (Exception e) {
+      LOG.error("Error backfilling search ranking settings", e);
+    }
+  }
 
   /**
    * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on

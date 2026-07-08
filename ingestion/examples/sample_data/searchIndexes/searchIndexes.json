@@ -71,6 +71,40 @@
 			],
 			"tags": [],
 			"followers": []
+		},
+		{
+			"name": "provider_address_texas_index",
+			"displayName": "Provider Address Texas Index",
+			"fullyQualifiedName": "elasticsearch_sample.provider_address_texas_index",
+			"description": "Search relevancy fixture index for provider address Texas documents.",
+			"version": 0.1,
+			"updatedAt": 1638354087591,
+			"serviceType": "ElasticSearch",
+			"fields": [
+				{
+					"name": "provider_id",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Provider identifier.",
+					"tags": []
+				},
+				{
+					"name": "provider_address",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Provider address search field.",
+					"tags": []
+				},
+				{
+					"name": "texas_region",
+					"dataType": "TEXT",
+					"dataTypeDisplay": "text",
+					"description": "Texas region search field.",
+					"tags": []
+				}
+			],
+			"tags": [],
+			"followers": []
 		}
 	]
 }

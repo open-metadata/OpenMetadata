@@ -171,6 +171,7 @@ export const rawSearchQuery = <
     postFilter,
     fetchSource,
     filters,
+    explain,
   } = req;
 
   const queryWithSlash = getQueryWithSlash(query || '');
@@ -202,6 +203,7 @@ export const rawSearchQuery = <
       sort_field: sortField,
       sort_order: sortOrder,
       track_total_hits: trackTotalHits,
+      explain,
       fetch_source: fetchSource,
       include_source_fields: req.fetchSource ? req.includeFields : undefined,
       exclude_source_fields: req.excludeSourceFields,

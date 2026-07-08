@@ -120,6 +120,16 @@
       "sourceUrl": "http://localhost:808/superset/dashboard/forecast_sales_performance/",
       "charts": ["sample_superset.211"],
       "href": "http://localhost:8585/api/v1/dashboards/d2b0af00-f419-4905-bb43-036697ce53a5"
+    },
+    {
+      "name": "provider_address_texas_dashboard",
+      "displayName": "Provider Address Texas Dashboard",
+      "fullyQualifiedName": "sample_superset.provider_address_texas_dashboard",
+      "description": "Search relevancy fixture dashboard for provider address Texas reporting.",
+      "sourceUrl": "http://localhost:808/superset/dashboard/provider_address_texas_dashboard/",
+      "charts": ["sample_superset.210"],
+      "tags": [],
+      "href": "http://localhost:8585/api/v1/dashboards/provider_address_texas_dashboard"
     }
   ]
 }

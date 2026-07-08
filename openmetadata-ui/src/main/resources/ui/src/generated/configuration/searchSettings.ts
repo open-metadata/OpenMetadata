@@ -106,6 +106,11 @@ export interface AssetTypeConfiguration {
      */
     matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
     /**
+     * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+     * bounded metadata signals.
+     */
+    ranking?: RankingConfiguration;
+    /**
      * How to combine function scores if multiple boosts are applied.
      */
     scoreMode?: ScoreMode;
@@ -239,6 +244,107 @@ export interface MatchTypeBoostMultipliers {
      * Multiplier for phrase match queries
      */
     phraseMatchMultiplier?: number;
+}
+
+/**
+ * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+ * bounded metadata signals.
+ */
+export interface RankingConfiguration {
+    /**
+     * Human-readable ranking algorithm identifier.
+     */
+    algorithm?: string;
+    /**
+     * DisMax tie breaker used between ranking stages. Keep low so broad context matches do not
+     * overpower stronger name stages.
+     */
+    disMaxTieBreaker?: number;
+    /**
+     * Whether to use staged ranking for this asset. When disabled, legacy searchFields scoring is
+     * used.
+     */
+    enabled?: boolean;
+    /**
+     * Bounded metadata signals used after lexical relevance.
+     */
+    signals?: RankingSignals;
+    /**
+     * Ordered lexical ranking stages. Earlier stages should represent stronger relevance signals.
+     */
+    stages?: RankingStage[];
+    /**
+     * Language-neutral query words ignored by token-coverage ranking stages. These are unioned
+     * with stopWordsByLanguage.
+     */
+    stopWords?: string[];
+    /**
+     * Language-keyed query words ignored by token-coverage ranking stages. Keys should match
+     * search index mapping languages such as en, ru, zh, jp, or ja. Values are whole query tokens
+     * only; language analyzers still perform the actual index/query tokenization.
+     */
+    stopWordsByLanguage?: { [key: string]: string[] };
+}
+
+export interface RankingSignals {
+    /**
+     * How metadata signals combine with the lexical score.
+     */
+    boostMode?: BoostMode;
+    /**
+     * Metadata fields expected to contribute to signal scoring.
+     */
+    fields?: string[];
+    /**
+     * Maximum signal score added to lexical relevance. Keeps Tier and Usage as tie-breakers.
+     */
+    maxBoost?: number;
+    /**
+     * Human-readable explanation of how metadata signals should affect ranking.
+     */
+    purpose?: string;
+    /**
+     * How to combine metadata signal functions.
+     */
+    scoreMode?: ScoreMode;
+}
+
+export interface RankingStage {
+    /**
+     * Fields queried by this stage.
+     */
+    fields: string[];
+    /**
+     * Query strategy for this ranking stage.
+     */
+    matchType?: RankingStageMatchType;
+    /**
+     * Minimum significant-token coverage for tokenCoverage or fuzzy stages.
+     */
+    minimumShouldMatch?: string;
+    /**
+     * Stable stage name used in ranking debug output.
+     */
+    name: string;
+    /**
+     * Human-readable explanation of what this ranking stage is intended to do.
+     */
+    purpose?: string;
+    /**
+     * Stage-level score band. Higher stages should use materially higher weights than later stages.
+     */
+    weight?: number;
+}
+
+/**
+ * Query strategy for this ranking stage.
+ */
+export enum RankingStageMatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
+    TokenCoverage = "tokenCoverage",
 }
 
 /**

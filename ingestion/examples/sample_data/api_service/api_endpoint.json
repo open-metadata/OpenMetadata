@@ -266,6 +266,34 @@
       "description": "Delete pet by ID",
       "endpointURL": "https://petstore3.swagger.io/#/pet/deletePet",
       "requestMethod": "DELETE"
+    },
+    {
+      "name": "provider_address_texas_endpoint",
+      "apiCollection": "sample_api_service.pet",
+      "displayName": "Provider Address Texas Endpoint",
+      "description": "Search relevancy fixture endpoint for provider address Texas lookups.",
+      "endpointURL": "https://petstore3.swagger.io/#/pet/providerAddressTexas",
+      "requestMethod": "GET",
+      "responseSchema": {
+        "schemaType": "JSON",
+        "schemaFields": [
+          {
+            "name": "provider_id",
+            "dataType": "INT",
+            "description": "Provider identifier"
+          },
+          {
+            "name": "provider_address",
+            "dataType": "STRING",
+            "description": "Provider address"
+          },
+          {
+            "name": "texas_region",
+            "dataType": "STRING",
+            "description": "Texas region"
+          }
+        ]
+      }
     }
   ]
 }

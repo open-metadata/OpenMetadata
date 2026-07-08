@@ -3,7 +3,12 @@ package org.openmetadata.service.search.opensearch;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.opensearch._types.FieldValue;
+import os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier;
+import os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode;
+import os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore;
+import os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode;
 import os.org.opensearch.client.opensearch._types.query_dsl.Operator;
 import os.org.opensearch.client.opensearch._types.query_dsl.Query;
 import os.org.opensearch.client.opensearch._types.query_dsl.QueryStringQuery;
@@ -21,6 +26,22 @@ public class OpenSearchQueryBuilder {
     return Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
   }
 
+  public static Query termQuery(String field, String value, Float boost, String queryName) {
+    return Query.of(
+        q ->
+            q.term(
+                t -> {
+                  t.field(field).value(FieldValue.of(value));
+                  if (boost != null) {
+                    t.boost(boost);
+                  }
+                  if (queryName != null) {
+                    t.queryName(queryName);
+                  }
+                  return t;
+                }));
+  }
+
   public static Query termQuery(String field, boolean value) {
     return Query.of(q -> q.term(t -> t.field(field).value(FieldValue.of(value))));
   }
@@ -35,6 +56,22 @@ public class OpenSearchQueryBuilder {
 
   public static Query matchPhraseQuery(String field, String value) {
     return Query.of(q -> q.matchPhrase(m -> m.field(field).query(value)));
+  }
+
+  public static Query matchPhraseQuery(String field, String value, Float boost, String queryName) {
+    return Query.of(
+        q ->
+            q.matchPhrase(
+                m -> {
+                  m.field(field).query(value);
+                  if (boost != null) {
+                    m.boost(boost);
+                  }
+                  if (queryName != null) {
+                    m.queryName(queryName);
+                  }
+                  return m;
+                }));
   }
 
   public static Query wildcardQuery(String field, String value) {
@@ -102,6 +139,58 @@ public class OpenSearchQueryBuilder {
                     if (operator == Operator.Or) {
                       m.minimumShouldMatch("2<70%");
                     }
+                  }
+                  return m;
+                }));
+  }
+
+  public static Query multiMatchQuery(
+      String query,
+      Map<String, Float> fields,
+      TextQueryType type,
+      Operator operator,
+      String tieBreaker,
+      String fuzziness,
+      String minimumShouldMatch,
+      Float boost,
+      String queryName) {
+    List<String> fieldList = new ArrayList<>();
+    fields.forEach(
+        (field, fieldBoost) -> {
+          if (fieldBoost != null && fieldBoost != 1.0f) {
+            fieldList.add(field + "^" + fieldBoost);
+          } else {
+            fieldList.add(field);
+          }
+        });
+    return Query.of(
+        q ->
+            q.multiMatch(
+                m -> {
+                  m.query(query);
+                  m.fields(fieldList);
+                  if (type != null) {
+                    m.type(type);
+                  }
+                  if (operator != null) {
+                    m.operator(operator);
+                  }
+                  if (tieBreaker != null) {
+                    m.tieBreaker(Float.parseFloat(tieBreaker));
+                  }
+                  if (fuzziness != null && !fuzziness.equals("0")) {
+                    m.fuzziness(fuzziness);
+                    m.prefixLength(1);
+                    m.maxExpansions(10);
+                  }
+                  if (minimumShouldMatch != null) {
+                    m.minimumShouldMatch(minimumShouldMatch);
+                  }
+                  if (boost != null) {
+                    m.boost(boost);
+                  }
+                  if (queryName != null) {
+                    m.queryName(queryName);
                   }
                   return m;
                 }));
@@ -179,6 +268,17 @@ public class OpenSearchQueryBuilder {
     return new BoolQueryBuilder();
   }
 
+  public static Query disMaxQuery(List<Query> queries, double tieBreaker) {
+    return Query.of(
+        q ->
+            q.disMax(
+                d -> {
+                  d.queries(queries);
+                  d.tieBreaker((float) tieBreaker);
+                  return d;
+                }));
+  }
+
   public static class BoolQueryBuilder {
     private final List<Query> must = new ArrayList<>();
     private final List<Query> should = new ArrayList<>();
@@ -251,16 +351,16 @@ public class OpenSearchQueryBuilder {
                 r -> {
                   r.field(field);
                   if (gte != null) {
-                    r.gte(os.org.opensearch.client.json.JsonData.of(gte));
+                    r.gte(JsonData.of(gte));
                   }
                   if (lte != null) {
-                    r.lte(os.org.opensearch.client.json.JsonData.of(lte));
+                    r.lte(JsonData.of(lte));
                   }
                   if (gt != null) {
-                    r.gt(os.org.opensearch.client.json.JsonData.of(gt));
+                    r.gt(JsonData.of(gt));
                   }
                   if (lt != null) {
-                    r.lt(os.org.opensearch.client.json.JsonData.of(lt));
+                    r.lt(JsonData.of(lt));
                   }
                   return r;
                 }));
@@ -276,9 +376,9 @@ public class OpenSearchQueryBuilder {
 
   public static Query functionScoreQuery(
       Query query,
-      java.util.List<os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore> functions,
-      os.org.opensearch.client.opensearch._types.query_dsl.FunctionScoreMode scoreMode,
-      os.org.opensearch.client.opensearch._types.query_dsl.FunctionBoostMode boostMode,
+      List<FunctionScore> functions,
+      FunctionScoreMode scoreMode,
+      FunctionBoostMode boostMode,
       Float boost) {
     return Query.of(
         q ->
@@ -301,20 +401,48 @@ public class OpenSearchQueryBuilder {
                 }));
   }
 
-  public static os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore weightFunction(
-      Query filter, double weight) {
-    return os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore.of(
-        f -> f.filter(filter).weight((float) weight));
+  public static Query functionScoreQuery(
+      Query query,
+      List<FunctionScore> functions,
+      FunctionScoreMode scoreMode,
+      FunctionBoostMode boostMode,
+      Float boost,
+      Double maxBoost) {
+    return Query.of(
+        q ->
+            q.functionScore(
+                fs -> {
+                  fs.query(query);
+                  if (!functions.isEmpty()) {
+                    fs.functions(functions);
+                  }
+                  if (scoreMode != null) {
+                    fs.scoreMode(scoreMode);
+                  }
+                  if (boostMode != null) {
+                    fs.boostMode(boostMode);
+                  }
+                  if (boost != null) {
+                    fs.boost(boost);
+                  }
+                  if (maxBoost != null) {
+                    fs.maxBoost(maxBoost.floatValue());
+                  }
+                  return fs;
+                }));
   }
 
-  public static os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore
-      fieldValueFactorFunction(
-          Query filter,
-          String field,
-          Double factor,
-          Double missing,
-          os.org.opensearch.client.opensearch._types.query_dsl.FieldValueFactorModifier modifier) {
-    return os.org.opensearch.client.opensearch._types.query_dsl.FunctionScore.of(
+  public static FunctionScore weightFunction(Query filter, double weight) {
+    return FunctionScore.of(f -> f.filter(filter).weight((float) weight));
+  }
+
+  public static FunctionScore fieldValueFactorFunction(
+      Query filter,
+      String field,
+      Double factor,
+      Double missing,
+      FieldValueFactorModifier modifier) {
+    return FunctionScore.of(
         f -> {
           f.filter(filter);
           f.fieldValueFactor(
