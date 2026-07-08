@@ -16,6 +16,7 @@ import { SidebarItem } from '../../constant/sidebar';
 import { DataProduct } from '../../support/domain/DataProduct';
 import { Domain } from '../../support/domain/Domain';
 import { EntityTypeEndpoint } from '../../support/entity/Entity.interface';
+import { KnowledgeCenterResponseDataType } from '../../support/entity/KnowledgeCenter.interface';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { TopicClass } from '../../support/entity/TopicClass';
@@ -43,6 +44,7 @@ import {
   navigateToDashboard,
   QUICK_LINK_DESCRIPTION,
   QUICK_LINK_URL,
+  readDraftStore,
   scrollHierarchyToNode,
   scrollListingToCard,
   verifyArticleSearch,
@@ -66,6 +68,7 @@ import {
   updateQuickLink,
   updateTags,
   verifyNotificationAndClick,
+  waitForAutoSave,
 } from '../../utils/KnowledgeCenter';
 import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
@@ -81,6 +84,9 @@ import {
 const RELATED_QUICK_LINK_URL = 'https://docs.open-metadata.org';
 const UPDATED_QUICK_LINK_URL = 'https://docs.open-metadata.org/quick-link';
 const MIN_CARDS = 10;
+
+let DRAFT_ARTICLE_A_DISPLAY_NAME: string;
+let DRAFT_ARTICLE_B_DISPLAY_NAME: string;
 
 let articleEntity: KnowledgeCenterClass;
 let articleTagClassification: ClassificationClass;
@@ -98,12 +104,16 @@ let tableAsset: TableClass;
 let user: UserClass;
 let domain: Domain;
 let dataProduct: DataProduct;
+let draftArticleA: KnowledgeCenterResponseDataType;
+let draftArticleB: KnowledgeCenterResponseDataType;
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
 test.describe('Context Center Articles', () => {
   test.beforeAll(async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
+    DRAFT_ARTICLE_A_DISPLAY_NAME = `Draft Persist A ${uuid()}`;
+    DRAFT_ARTICLE_B_DISPLAY_NAME = `Draft Persist B ${uuid()}`;
 
     articleEntity = new KnowledgeCenterClass({
       displayName: `CC Article ${uuid()}`,
@@ -185,6 +195,16 @@ test.describe('Context Center Articles', () => {
     await dataConsumerEditorKnowledgeCenter.create(apiContext, 6);
     await dataStewardEditorKnowledgeCenter.create(apiContext, 6);
     await relatedKnowledgeCenter.create(apiContext, 15);
+
+    draftArticleA = await createArticleViaApi(apiContext, {
+      displayName: DRAFT_ARTICLE_A_DISPLAY_NAME,
+      description: 'Original description for draft article A',
+    });
+
+    draftArticleB = await createArticleViaApi(apiContext, {
+      displayName: DRAFT_ARTICLE_B_DISPLAY_NAME,
+      description: 'Original description for draft article B',
+    });
 
     await afterAction();
   });
@@ -1250,6 +1270,304 @@ test.describe('Context Center Articles', () => {
         dataStewardPage,
         dataStewardEditorKnowledgeCenter.knowledgePages[5]
       );
+    });
+  });
+
+  test.describe('Draft Persistence', () => {
+    test('description: switching articles does not bleed unsaved content into next article', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const newDescription = `New description ${uuid()}`;
+
+      await test.step('Navigate to draft article A and type new content without saving', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await page.fill('.om-block-editor', newDescription);
+      });
+
+      await test.step('Navigate to draft article B via left hierarchy', async () => {
+        const node = await scrollHierarchyToNode(
+          page,
+          DRAFT_ARTICLE_B_DISPLAY_NAME
+        );
+        await node.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Article B should show its own content, not Article A unsaved content', async () => {
+        const editor = page
+          .locator('.ProseMirror[contenteditable="true"]')
+          .first();
+
+        await expect(editor).not.toContainText(newDescription);
+      });
+
+      await test.step('Badge should show Saved on Article B', async () => {
+        await expect(page.getByTestId('content-change-state')).not.toHaveText(
+          'Unsaved'
+        );
+      });
+
+      await test.step('Navigate back to Article A — should show updated description', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await waitForAllLoadersToDisappear(page);
+
+        const editor = page
+          .locator('.ProseMirror[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toContainText(newDescription);
+        await assertArticleEditorSaved(page);
+      });
+
+      await test.step('Article list card should reflect updated description', async () => {
+        await navigateToArticles(page);
+        await verifyArticleSearch(page, DRAFT_ARTICLE_A_DISPLAY_NAME);
+        const card = await scrollListingToCard(
+          page,
+          DRAFT_ARTICLE_A_DISPLAY_NAME
+        );
+
+        await expect(
+          card.getByTestId('knowledge-card-description')
+        ).toContainText(newDescription);
+      });
+    });
+
+    test('displayName: switching articles does not bleed unsaved title into next article', async ({
+      page,
+    }) => {
+      const newDisplayName = `Updated Title ${uuid()}`;
+
+      await test.step('Navigate to draft article A and type new display name without saving', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await page
+          .getByTestId('entity-header-display-name')
+          .fill(newDisplayName);
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        await page.waitForTimeout(400);
+        await page.getByRole('link', { name: 'Articles' }).click();
+      });
+
+      const updateDisplayNameResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/contextCenter/pages/') &&
+          response.request().method() === 'PATCH'
+      );
+
+      await test.step('Navigate to draft article B via left hierarchy', async () => {
+        const node = await scrollHierarchyToNode(
+          page,
+          DRAFT_ARTICLE_B_DISPLAY_NAME
+        );
+        await updateDisplayNameResponse;
+        await node.click();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Article B should show its own title, not Article A unsaved title', async () => {
+        await expect(
+          page.getByTestId('entity-header-display-name')
+        ).not.toHaveValue(newDisplayName);
+      });
+
+      await test.step('Badge should show Saved on Article B', async () => {
+        await expect(page.getByTestId('content-change-state')).not.toHaveText(
+          'Unsaved'
+        );
+      });
+
+      await test.step('Navigate back to Article A — should show updated display name', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await waitForAllLoadersToDisappear(page);
+
+        await expect(
+          page.getByTestId('entity-header-display-name')
+        ).toHaveValue(newDisplayName);
+        await assertArticleEditorSaved(page);
+      });
+
+      await test.step('Article list card should reflect updated display name', async () => {
+        await navigateToArticles(page);
+        await verifyArticleSearch(page, newDisplayName);
+        const card = await scrollListingToCard(page, newDisplayName);
+
+        await expect(card).toBeVisible();
+      });
+    });
+
+    test('draft syncs on page reload — skeleton shown, content saved', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const reloadDescription = `Reload draft ${uuid()}`;
+
+      await test.step('Navigate to draft article A and type content without saving', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await page.fill('.om-block-editor', reloadDescription);
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        await page.waitForTimeout(400);
+      });
+
+      await test.step('Reload the page (simulates browser refresh before auto-save)', async () => {
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('Content should be synced and badge shows Saved', async () => {
+        const editor = page
+          .locator('.ProseMirror[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toContainText(reloadDescription);
+        await assertArticleEditorSaved(page);
+      });
+    });
+
+    test('no spurious sync when content is already saved — no PATCH on clean reload', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const savedDescription = `Already saved ${uuid()}`;
+
+      await test.step('Navigate to draft article A, type content, wait for auto-save', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await page.fill('.om-block-editor', savedDescription);
+        await waitForAutoSave(page);
+      });
+
+      let patchFired = false;
+      page.on('response', (response) => {
+        if (
+          response
+            .url()
+            .includes(`/api/v1/contextCenter/pages/${draftArticleA.id}`) &&
+          response.request().method() === 'PATCH'
+        ) {
+          patchFired = true;
+        }
+      });
+
+      await test.step('Reload the same article', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await waitForAllLoadersToDisappear(page);
+      });
+
+      await test.step('No PATCH should be fired (draft was already cleared after save)', async () => {
+        // assertArticleEditorSaved waits up to 15 s for the Saved badge,
+        // which is enough time for any spurious sync PATCH to have occurred.
+        await assertArticleEditorSaved(page);
+        expect(patchFired).toBe(false);
+      });
+    });
+
+    test('draft cleared from localStorage when article is deleted', async ({
+      page,
+      browser,
+    }) => {
+      test.slow();
+
+      let articleToDelete: KnowledgeCenterResponseDataType;
+
+      await test.step('Create a temporary article via API', async () => {
+        const { apiContext, afterAction } = await createNewPage(browser);
+
+        articleToDelete = await createArticleViaApi(apiContext, {
+          displayName: `Delete Draft Article ${uuid()}`,
+          description: 'Article to be deleted with draft',
+        });
+
+        await afterAction();
+      });
+
+      await test.step('Navigate to the article and type content to create a draft', async () => {
+        await navigateToArticle(page, articleToDelete.fullyQualifiedName);
+        await page.fill('.om-block-editor', 'This draft should be deleted');
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        await page.waitForTimeout(400);
+      });
+
+      await test.step('Navigate away to ensure draft is persisted in localStorage', async () => {
+        await navigateToArticle(page, draftArticleB.fullyQualifiedName);
+        await waitForAllLoadersToDisappear(page);
+
+        const drafts = await readDraftStore(page);
+
+        expect(Object.keys(drafts)).toContain(articleToDelete.id);
+      });
+
+      await test.step('Delete the article via the manage menu', async () => {
+        await navigateToArticle(page, articleToDelete.fullyQualifiedName);
+
+        const deleteResponse = page.waitForResponse(
+          `/api/v1/contextCenter/pages/*?recursive=true&hardDelete=false`
+        );
+
+        await page.getByTestId('manage-button').first().click();
+        await page.getByTestId('delete-btn').click();
+        await expect(page.getByTestId('confirm-button')).toBeVisible();
+        await page.getByTestId('confirm-button').click();
+
+        const res = await deleteResponse;
+
+        expect(res.status()).toBe(200);
+      });
+
+      await test.step('Draft should be removed from localStorage after deletion', async () => {
+        const drafts = await readDraftStore(page);
+
+        expect(Object.keys(drafts)).not.toContain(articleToDelete.id);
+      });
+    });
+
+    test('multiple articles hold independent drafts simultaneously', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const contentA = `Independent draft A ${uuid()}`;
+      const contentB = `Independent draft B ${uuid()}`;
+
+      await test.step('Type in draft article A without saving', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await page.fill('.om-block-editor', contentA);
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        await page.waitForTimeout(400);
+      });
+
+      await test.step('Navigate to draft article B and type without saving', async () => {
+        await navigateToArticle(page, draftArticleB.fullyQualifiedName);
+        await page.fill('.om-block-editor', contentB);
+        await page.getByText('Unsaved').waitFor({ state: 'visible' });
+        await page.waitForTimeout(400);
+      });
+
+      await test.step('Reload Article B — its own draft should be synced', async () => {
+        await page.reload();
+        await waitForAllLoadersToDisappear(page);
+
+        const editor = page
+          .locator('.ProseMirror[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toContainText(contentB);
+        await assertArticleEditorSaved(page);
+      });
+
+      await test.step('Navigate to Article A — its independent draft should also be synced', async () => {
+        await navigateToArticle(page, draftArticleA.fullyQualifiedName);
+        await waitForAllLoadersToDisappear(page);
+
+        const editor = page
+          .locator('.ProseMirror[contenteditable="true"]')
+          .first();
+
+        await expect(editor).toContainText(contentA);
+        await assertArticleEditorSaved(page);
+      });
     });
   });
 });
