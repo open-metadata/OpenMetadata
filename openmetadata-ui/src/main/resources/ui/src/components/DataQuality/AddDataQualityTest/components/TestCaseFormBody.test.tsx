@@ -197,11 +197,12 @@ const SELECTED_TABLE_WITH_SUITE = {
 let formRef: UseFormReturn<FormValues> | undefined;
 
 const renderBody = (
-  props: Partial<Parameters<typeof TestCaseFormBody>[0]> = {}
+  props: Partial<Parameters<typeof TestCaseFormBody>[0]> = {},
+  defaultValues: Partial<FormValues> = { testLevel: TestLevel.TABLE }
 ) => {
   const Wrapper = () => {
     const form = useForm<FormValues>({
-      defaultValues: { testLevel: TestLevel.TABLE },
+      defaultValues: defaultValues as FormValues,
     });
     formRef = form;
 
@@ -715,6 +716,33 @@ describe('TestCaseFormBody', () => {
       });
 
       expect(formRef?.getValues('testName')).toBeFalsy();
+    });
+
+    it('keeps the prefilled test type and column when the source fields already carry edit values', async () => {
+      await act(async () => {
+        renderBody(
+          { table: SELECTED_TABLE, isEditMode: true },
+          {
+            testLevel: TestLevel.COLUMN,
+            selectedTable: TABLE_FQN,
+            selectedColumn: 'email',
+            testTypeId: {
+              id: TEST_DEFINITION_FQN,
+              label: 'Column Values To Be Between',
+            } as never,
+          }
+        );
+      });
+
+      await waitFor(() => {
+        expect(mockGetListTestDefinitions).toHaveBeenCalled();
+      });
+
+      expect(formRef?.getValues('selectedColumn')).toBe('email');
+      expect(formRef?.getValues('testTypeId')).toEqual({
+        id: TEST_DEFINITION_FQN,
+        label: 'Column Values To Be Between',
+      });
     });
   });
 

@@ -433,10 +433,22 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     } else {
       setSelectedTableData(table);
     }
-    form.setValue('selectedColumn', undefined as never);
-    form.setValue('dimensionColumns', undefined);
-    form.setValue('topDimensions', undefined);
-  }, [selectedTableFqn, table, tablesCache, fetchSelectedTableData, form]);
+    // Edit mode prefills selectedColumn/dimensionColumns/topDimensions via
+    // form.reset(buildEditDefaults(...)); the table field is disabled there,
+    // so this effect only fires from that prefill and must not wipe it.
+    if (!isEditMode) {
+      form.setValue('selectedColumn', undefined as never);
+      form.setValue('dimensionColumns', undefined);
+      form.setValue('topDimensions', undefined);
+    }
+  }, [
+    selectedTableFqn,
+    table,
+    tablesCache,
+    fetchSelectedTableData,
+    form,
+    isEditMode,
+  ]);
 
   useEffect(() => {
     form.setValue('dimensionColumns', undefined);
@@ -446,15 +458,20 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   useEffect(() => {
     if (selectedTestLevel) {
       fetchTestDefinitions();
-      form.setValue('testTypeId', undefined as never);
-      if (selectedTestLevel === TestLevel.TABLE) {
-        form.setValue('selectedColumn', undefined as never);
+      // Edit mode prefills testTypeId (and selectedColumn) via
+      // form.reset(buildEditDefaults(...)); testLevel is disabled there, so
+      // this effect only fires from that prefill and must not wipe it.
+      if (!isEditMode) {
+        form.setValue('testTypeId', undefined as never);
+        if (selectedTestLevel === TestLevel.TABLE) {
+          form.setValue('selectedColumn', undefined as never);
+        }
       }
       setSelectedTestDefinition(undefined);
       setSelectedTestType(undefined);
       setIsCustomQuery(false);
     }
-  }, [selectedTestLevel, fetchTestDefinitions, form]);
+  }, [selectedTestLevel, fetchTestDefinitions, form, isEditMode]);
 
   useEffect(() => {
     if (

@@ -4074,6 +4074,7 @@
     "unauthorized-user": "¡Usuario no autorizado! Por favor revise el correo electrónico o la contraseña.",
     "unexpected-error": "Se produjo un error inesperado.",
     "unexpected-response": "Respuesta inesperada del servidor.",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}} actualizado exitosamente."
   }
 }

@@ -4074,6 +4074,7 @@
     "unauthorized-user": "משתמש לא מורשה! יש לבדוק את כתובת האימייל או הסיסמה",
     "unexpected-error": "אירעה שגיאה לא צפויה.",
     "unexpected-response": "תגובה לא צפויה מהשרת.",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}} עודכן בהצלחה."
   }
 }
