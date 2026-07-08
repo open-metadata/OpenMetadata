@@ -39,7 +39,9 @@ export const getAllFeeds = async (
   filterType?: FeedFilter,
   taskStatus?: ThreadTaskStatus,
   userId?: string,
-  limit?: number
+  limit?: number,
+  startTs?: number,
+  endTs?: number
 ) => {
   const isFilterAll = filterType === FeedFilter.ALL || isUndefined(filterType);
 
@@ -54,6 +56,8 @@ export const getAllFeeds = async (
         taskStatus,
         userId: isFilterAll ? undefined : userId,
         limit,
+        startTs,
+        endTs,
       },
     }
   );
