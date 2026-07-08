@@ -101,6 +101,70 @@ describe('DeploymentSummaryCard', () => {
     );
   });
 
+  it('should render nothing when all agents have never run', () => {
+    const { container } = render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ status: 'none', pct: 0 }),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            status: 'none',
+            pct: 0,
+          }),
+        ]}
+      />
+    );
+
+    expect(container).toBeEmptyDOMElement();
+  });
+
+  it('should ignore never-run agents and show completion when the rest finished', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({}),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            status: 'none',
+            pct: 0,
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+      'label.deployment-complete'
+    );
+    expect(
+      screen.queryByTestId('deployment-progress-bar')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should exclude never-run agents from the overall progress percent', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ status: 'running', pct: 40, eta: 120 }),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            status: 'none',
+            pct: 0,
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('deployment-summary-title')).toHaveTextContent(
+      'message.agents-deploying-ingesting'
+    );
+    expect(screen.getByTestId('deployment-progress-bar')).toHaveTextContent(
+      'message.percent-complete-all-agents'
+    );
+  });
+
   it('should aggregate error counts across all agents', () => {
     render(
       <DeploymentSummaryCard

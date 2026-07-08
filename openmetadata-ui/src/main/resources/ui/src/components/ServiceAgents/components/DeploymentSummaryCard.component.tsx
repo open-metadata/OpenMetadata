@@ -53,22 +53,25 @@ const SummaryStat: FC<SummaryStatProps> = ({
 
 const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
   const { t } = useTranslation();
-  const total = agents.length;
-  const running = agents.filter((a) => a.status === 'running').length;
-  const done = agents.filter((a) => a.status === 'success').length;
-  const failed = agents.filter((a) => a.status === 'failed').length;
+  // Agents with status 'none' have never run — they are not part of any
+  // deployment and must not surface as queued/in-progress in the banner.
+  const activeAgents = agents.filter((a) => a.status !== 'none');
+  const total = activeAgents.length;
+  const running = activeAgents.filter((a) => a.status === 'running').length;
+  const done = activeAgents.filter((a) => a.status === 'success').length;
+  const failed = activeAgents.filter((a) => a.status === 'failed').length;
   const queued = total - done - running - failed;
-  const assets = agents
+  const assets = activeAgents
     .filter((a) => a.unit === 'assets')
     .reduce((sum, a) => sum + a.assets, 0);
-  const errors = agents.reduce((sum, a) => sum + a.errors, 0);
-  const etas = agents
+  const errors = activeAgents.reduce((sum, a) => sum + a.errors, 0);
+  const etas = activeAgents
     .filter((a) => a.status === 'running' && a.eta !== null)
     .map((a) => a.eta as number);
   const maxEta = etas.length ? Math.max(...etas) : null;
   const overall =
     total > 0
-      ? Math.round(agents.reduce((sum, a) => sum + a.pct, 0) / total)
+      ? Math.round(activeAgents.reduce((sum, a) => sum + a.pct, 0) / total)
       : 0;
   const allDone = running === 0 && done + failed === total;
 
