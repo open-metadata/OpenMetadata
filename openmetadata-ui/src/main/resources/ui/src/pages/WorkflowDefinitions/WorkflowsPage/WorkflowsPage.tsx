@@ -34,10 +34,10 @@ import PaginationComponent from '../../../components/PaginationComponent/Paginat
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { useIsAiMode } from '../../../context/AiModeProvider/AiModeProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   createWorkflowDefinition,
   getWorkflowDefinitions,

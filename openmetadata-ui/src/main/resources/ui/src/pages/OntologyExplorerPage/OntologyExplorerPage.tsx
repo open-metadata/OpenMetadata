@@ -25,7 +25,7 @@ import HeaderShell from '../../components/common/HeaderShell/HeaderShell.compone
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { useIsAiMode } from '../../context/AiModeProvider/AiModeProvider';
+import { useIsAiMode } from '../../hooks/useAppMode';
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
