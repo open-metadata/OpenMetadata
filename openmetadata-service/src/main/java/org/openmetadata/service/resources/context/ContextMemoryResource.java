@@ -59,6 +59,7 @@ import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.limits.Limits;
@@ -174,7 +175,13 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
                   "Only return knowledge pills extracted from the context entity (file or page) with this id",
               schema = @Schema(type = "string", format = "uuid"))
           @QueryParam("sourceEntityId")
-          UUID sourceEntityId)
+          UUID sourceEntityId,
+      @Parameter(
+              description =
+                  "Only return knowledge pills whose primaryEntity (the data asset the pill applies to) has this id",
+              schema = @Schema(type = "string", format = "uuid"))
+          @QueryParam("primaryEntityId")
+          UUID primaryEntityId)
       throws IOException {
     if (hasSearchBackedListParams(q, assets, author, pinned, sortBy, offset)) {
       return listMemoriesFromSearch(
@@ -193,7 +200,8 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           after,
           include,
           sourceFileId,
-          sourceEntityId);
+          sourceEntityId,
+          primaryEntityId);
     }
 
     ListFilter filter = new ListFilter(include);
@@ -202,6 +210,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
     }
     if (sourceEntityId != null) {
       filter.addQueryParam("sourceEntityId", sourceEntityId.toString());
+    }
+    if (primaryEntityId != null) {
+      filter.addQueryParam("primaryEntityId", primaryEntityId.toString());
     }
     ResultList<ContextMemory> memories =
         addHref(
@@ -231,14 +242,21 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       String after,
       Include include,
       UUID sourceFileId,
-      UUID sourceEntityId)
+      UUID sourceEntityId,
+      UUID primaryEntityId)
       throws IOException {
-    validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId);
+    validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
     SearchListFilter searchListFilter =
         buildContextMemorySearchFilter(include, assets, author, pinned, null);
     SearchSortFilter searchSortFilter =
         new SearchSortFilter(resolveSortField(sortBy), resolveSortOrder(sortOrder), null, null);
     EntityUtil.Fields fields = getFields(fieldsParam);
+    // shareConfig visibility is enforced at query time by ContextMemorySearchVisibility (see
+    // OpenSearch/ElasticSearchSearchManager#applyContextMemoryVisibility, #29384), so the search
+    // already excludes memories the caller may not see. Post-filtering here would be redundant and
+    // would break offset pagination — it truncates a page below the requested limit and drops the
+    // engine's paging metadata (total count, cursors), so a client paging by offset silently stops
+    // short of the real result set.
     return listInternalFromSearch(
         uriInfo,
         securityContext,
@@ -263,14 +281,14 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   }
 
   private static void validateSearchBackedListParams(
-      String before, String after, UUID sourceFileId, UUID sourceEntityId) {
+      String before, String after, UUID sourceFileId, UUID sourceEntityId, UUID primaryEntityId) {
     if (!CommonUtil.nullOrEmpty(before) || !CommonUtil.nullOrEmpty(after)) {
       throw new BadRequestException(
           "before/after cursor pagination cannot be combined with q/assets/author/pinned/sortBy/offset");
     }
-    if (sourceFileId != null || sourceEntityId != null) {
+    if (sourceFileId != null || sourceEntityId != null || primaryEntityId != null) {
       throw new BadRequestException(
-          "sourceFileId/sourceEntityId cannot be combined with q/assets/author/pinned/sortBy/offset");
+          "sourceFileId/sourceEntityId/primaryEntityId cannot be combined with q/assets/author/pinned/sortBy/offset");
     }
   }
 
@@ -311,12 +329,24 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
 
   private String resolveAuthorId(String author) {
     String trimmed = author.trim();
+    String result;
     try {
-      return UUID.fromString(trimmed).toString();
+      result = UUID.fromString(trimmed).toString();
     } catch (IllegalArgumentException ignored) {
-      User user = Entity.getEntityByName(Entity.USER, trimmed, "", Include.NON_DELETED);
-      return user.getId().toString();
+      result = resolveAuthorByName(trimmed);
     }
+    return result;
+  }
+
+  private String resolveAuthorByName(String name) {
+    String result;
+    try {
+      User user = Entity.getEntityByName(Entity.USER, name, "", Include.NON_DELETED);
+      result = user.getId().toString();
+    } catch (EntityNotFoundException e) {
+      throw new BadRequestException("Unknown author '" + name + "'. Expected a user name or UUID.");
+    }
+    return result;
   }
 
   private static String resolveSortField(String sortBy) {
