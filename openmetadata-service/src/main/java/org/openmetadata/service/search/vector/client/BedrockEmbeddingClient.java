@@ -50,7 +50,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       List.of(
           new FamilyMatcher("cohere", BedrockEmbeddingFamily.COHERE),
           new FamilyMatcher("titan-embed-text-v2", BedrockEmbeddingFamily.TITAN_V2),
-          new FamilyMatcher("titan", BedrockEmbeddingFamily.TITAN_V1));
+          new FamilyMatcher("titan-embed-text-v1", BedrockEmbeddingFamily.TITAN_V1));
 
   private record FamilyMatcher(String token, BedrockEmbeddingFamily family) {}
 
