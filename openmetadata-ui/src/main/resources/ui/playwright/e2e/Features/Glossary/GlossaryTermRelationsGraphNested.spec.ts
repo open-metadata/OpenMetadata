@@ -14,9 +14,10 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { AdminClass } from '../../../support/user/AdminClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   readGraphEdges,
@@ -24,7 +25,7 @@ import {
   waitForGraphLoaded,
 } from '../../../utils/ontologyExplorer';
 
-const adminUser = new AdminClass();
+test.use({ storageState: 'playwright/.auth/admin.json' });
 
 const nestedGlossary = new Glossary();
 const parentTerm = new GlossaryTerm(nestedGlossary);
@@ -32,7 +33,7 @@ const parentTerm = new GlossaryTerm(nestedGlossary);
 const childTerm = new GlossaryTerm(nestedGlossary);
 
 test.beforeAll('Seed test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   await nestedGlossary.create(apiContext);
   await parentTerm.create(apiContext);
@@ -44,7 +45,7 @@ test.beforeAll('Seed test data', async ({ browser }) => {
 });
 
 test.afterAll('Cleanup test data', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   await childTerm.delete(apiContext);
   await parentTerm.delete(apiContext);
@@ -55,11 +56,8 @@ test.afterAll('Cleanup test data', async ({ browser }) => {
 
 test.describe('Glossary Term — Relations Graph (nested / parent-child)', () => {
   test('viewing a child term: parent appears as a 1-hop neighbour via parentOf edge', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await childTerm.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -78,16 +76,11 @@ test.describe('Glossary Term — Relations Graph (nested / parent-child)', () =>
       positions[parentTerm.responseData.id],
       'the parent term must appear as a 1-hop neighbour of the child'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('viewing a child term: parentOf edge is rendered between parent and child', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await childTerm.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -112,16 +105,11 @@ test.describe('Glossary Term — Relations Graph (nested / parent-child)', () =>
     expect(edge?.relationType, 'edge relationType must be "parentOf"').toBe(
       'parentOf'
     );
-
-    await page.close();
   });
 
   test('viewing the parent term: child appears as a 1-hop neighbour via parentOf edge', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await parentTerm.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -140,16 +128,11 @@ test.describe('Glossary Term — Relations Graph (nested / parent-child)', () =>
       positions[childTerm.responseData.id],
       'the child term must appear as a 1-hop neighbour of the parent'
     ).toBeDefined();
-
-    await page.close();
   });
 
   test('viewing the parent term: parentOf edge is rendered between parent and child', async ({
-    browser,
+    page,
   }) => {
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     await redirectToHomePage(page);
     await parentTerm.visitEntityPage(page);
     await waitForAllLoadersToDisappear(page);
@@ -174,7 +157,5 @@ test.describe('Glossary Term — Relations Graph (nested / parent-child)', () =>
     expect(edge?.relationType, 'edge relationType must be "parentOf"').toBe(
       'parentOf'
     );
-
-    await page.close();
   });
 });

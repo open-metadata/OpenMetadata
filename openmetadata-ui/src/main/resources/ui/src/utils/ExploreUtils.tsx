@@ -114,11 +114,15 @@ export const generateTabItems = (
           className="d-flex items-center justify-between"
           data-testid={`${lowerCase(tabDetail.label)}-tab`}>
           <div className="explore-tab-label">
-            <span className="explore-icon d-flex m-r-xs">
+            <span className="d-flex m-r-xs">
               <Icon
-                className={classNames(tabDetail.iconClassName, {
-                  'text-primary': tabSearchIndex === searchIndex,
-                })}
+                className={classNames(
+                  'tw:h-4 tw:w-4',
+                  tabDetail.iconClassName,
+                  {
+                    'text-primary': tabSearchIndex === searchIndex,
+                  }
+                )}
               />
             </span>
             <Typography.Text
