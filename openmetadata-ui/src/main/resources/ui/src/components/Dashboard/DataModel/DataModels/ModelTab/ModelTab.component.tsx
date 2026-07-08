@@ -191,7 +191,12 @@ const ModelTab = () => {
   const handleColumnFilterChange = useCallback<
     NonNullable<TableProps<Column>['onChange']>
   >(
-    (_pagination, tableFilters) => {
+    (_pagination, tableFilters, _sorter, extra) => {
+      // AntD fires onChange for sort/paginate too; only react to filter changes
+      if (extra.action !== 'filter') {
+        return;
+      }
+
       const tags = (tableFilters?.[TABLE_COLUMNS_KEYS.TAGS] as string[]) ?? [];
       const glossaryTerms =
         (tableFilters?.[TABLE_COLUMNS_KEYS.GLOSSARY] as string[]) ?? [];

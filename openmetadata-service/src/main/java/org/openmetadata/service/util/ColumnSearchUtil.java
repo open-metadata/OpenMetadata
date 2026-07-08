@@ -17,6 +17,7 @@ import static org.openmetadata.service.resources.tags.TagLabelUtil.addDerivedTag
 import static org.openmetadata.service.resources.tags.TagLabelUtil.batchFetchDerivedTags;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -50,6 +51,25 @@ public final class ColumnSearchUtil {
     public boolean isEmpty() {
       return nullOrEmpty(tagFQNs) && nullOrEmpty(glossaryTermFQNs);
     }
+
+    /** Build a filter from comma-separated tag and glossary-term FQN query params. */
+    public static ColumnTagFilter fromCsv(String tags, String glossaryTerms) {
+      return new ColumnTagFilter(parseFqnCsv(tags), parseFqnCsv(glossaryTerms));
+    }
+  }
+
+  private static Set<String> parseFqnCsv(String csv) {
+    Set<String> result;
+    if (nullOrEmpty(csv) || csv.isBlank()) {
+      result = Set.of();
+    } else {
+      result =
+          Arrays.stream(csv.split(","))
+              .map(String::trim)
+              .filter(fqn -> !fqn.isEmpty())
+              .collect(Collectors.toSet());
+    }
+    return result;
   }
 
   /**
@@ -85,7 +105,7 @@ public final class ColumnSearchUtil {
       String searchTerm,
       ColumnTagFilter columnTagFilter,
       Map<String, List<TagLabel>> tagsByHash) {
-    boolean matchesQuery = searchTerm == null || columnNameMatches(column, searchTerm);
+    boolean matchesQuery = searchTerm == null || columnTextMatches(column, searchTerm);
     boolean matchesTags =
         columnTagFilter == null
             || columnTagFilter.isEmpty()
@@ -93,13 +113,16 @@ public final class ColumnSearchUtil {
     return matchesQuery && matchesTags;
   }
 
-  private static boolean columnNameMatches(Column column, String searchTerm) {
+  private static boolean columnTextMatches(Column column, String searchTerm) {
     boolean nameMatches =
         column.getName() != null && column.getName().toLowerCase().contains(searchTerm);
     boolean displayNameMatches =
         column.getDisplayName() != null
             && column.getDisplayName().toLowerCase().contains(searchTerm);
-    return nameMatches || displayNameMatches;
+    boolean descriptionMatches =
+        column.getDescription() != null
+            && column.getDescription().toLowerCase().contains(searchTerm);
+    return nameMatches || displayNameMatches || descriptionMatches;
   }
 
   public static Comparator<Column> columnComparator(String sortBy, String sortOrder) {
