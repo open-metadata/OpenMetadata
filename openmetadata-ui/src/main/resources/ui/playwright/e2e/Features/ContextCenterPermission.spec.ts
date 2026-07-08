@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -1208,9 +1208,7 @@ test.describe('Context Center Permissions', () => {
       const row = viewOnlyPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.getByTestId('manage-button')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('selecting a document shows only download in bulk bar (no move or delete)', async () => {
         await row.getByTestId('document-checkbox').click();
@@ -1243,9 +1241,7 @@ test.describe('Context Center Permissions', () => {
       const row = createAllPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.getByTestId('manage-button')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('can create a folder', async () => {
         const folderName = `cc-permission-folder-${uuid()}`;
