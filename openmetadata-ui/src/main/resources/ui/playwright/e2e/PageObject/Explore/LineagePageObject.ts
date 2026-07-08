@@ -65,7 +65,7 @@ export class LineagePageObject extends RightPanelBase {
       '.lineage-info-container'
     );
     this.lineageCardLink = this.lineageItemCards.locator(
-      '.breadcrumb-menu-button'
+      'button[aria-label="Show hidden breadcrumbs"]'
     );
   }
 
