@@ -13,36 +13,30 @@
 import type { DateTimeWidgetProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
 
-// Determine the input type based on the widget's time-related settings.
-const getInputType = (operator: string): 'date' | 'datetime-local' | 'time' => {
-  if (operator.includes('time') && !operator.includes('date')) {
-    return 'time';
-  }
-  if (operator.includes('datetime') || operator.includes('date_time')) {
-    return 'datetime-local';
-  }
-
-  return 'date';
-};
-
 const classNameValue =
   'tw:rounded-lg tw:bg-primary tw:px-3 tw:py-2 tw:text-sm tw:text-primary ' +
   'tw:shadow-xs tw:ring-1 tw:ring-primary tw:ring-inset tw:outline-hidden ' +
   'tw:transition tw:duration-100 focus:tw:ring-2 focus:tw:ring-brand ' +
-  'disabled:tw:cursor-not-allowed disabled:tw:bg-disabled_subtle disabled:tw:text-disabled';
+  'disabled:tw:cursor-not-allowed disabled:tw:bg-disabled-subtle disabled:tw:text-disabled';
 
 const OMDateWidget: FC<DateTimeWidgetProps> = ({
   value,
   setValue,
   placeholder,
   readonly,
-  operator,
+  fieldType,
 }) => (
   <input
     className={classNameValue}
     disabled={readonly}
     placeholder={placeholder}
-    type={getInputType(operator)}
+    type={
+      fieldType === 'time'
+        ? 'time'
+        : fieldType === 'datetime'
+        ? 'datetime-local'
+        : 'date'
+    }
     value={String(value ?? '')}
     onChange={(e) => setValue(e.target.value || null)}
   />

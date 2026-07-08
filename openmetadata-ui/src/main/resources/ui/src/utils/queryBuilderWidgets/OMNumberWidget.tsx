@@ -27,9 +27,7 @@ const OMNumberWidget: FC<NumberWidgetProps> = ({
     size="sm"
     type="number"
     value={value !== null && value !== undefined ? String(value) : ''}
-    onChange={(v: string) =>
-      setValue(v === '' ? null : (Number(v) as number & null))
-    }
+    onChange={(v: string) => setValue(v === '' ? null : Number(v))}
   />
 );
 
