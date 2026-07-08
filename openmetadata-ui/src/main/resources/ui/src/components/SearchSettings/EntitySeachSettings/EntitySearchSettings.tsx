@@ -372,7 +372,11 @@ const EntitySearchSettings = () => {
     updateRankingSettings((ranking) => ({
       ...ranking,
       stages: (ranking.stages ?? []).map((stage) =>
-        stage.name === stageName ? { ...stage, weight: weight ?? 0 } : stage
+        stage.name === stageName
+          ? weight === null
+            ? omit(stage, 'weight')
+            : { ...stage, weight }
+          : stage
       ),
     }));
   };
@@ -687,6 +691,7 @@ const EntitySearchSettings = () => {
   );
 
   const renderRankingStage = (stage: RankingStage) => {
+    const stageName = stage.name ?? '';
     const matchType = stage.matchType
       ? `${startCase(stage.matchType)}${
           stage.minimumShouldMatch ? ` (${stage.minimumShouldMatch})` : ''
@@ -696,12 +701,12 @@ const EntitySearchSettings = () => {
     return (
       <div
         className="ranking-settings-card"
-        data-testid={`ranking-stage-${stage.name}`}
-        key={stage.name}>
+        data-testid={`ranking-stage-${stageName}`}
+        key={stageName}>
         <Row align="middle" className="m-b-xs" gutter={[12, 12]}>
           <Col flex="auto">
             <Typography.Text className="ranking-stage-title">
-              {startCase(stage.name)}
+              {stageName ? startCase(stageName) : t('label.no-data')}
             </Typography.Text>
           </Col>
           <Col className="ranking-number-control">
@@ -709,11 +714,11 @@ const EntitySearchSettings = () => {
               {t('label.weight')}
             </Typography.Text>
             <InputNumber
-              min={0}
-              value={stage.weight ?? 0}
+              min={1}
+              value={stage.weight ?? null}
               onChange={(value) =>
                 handleRankingStageWeightChange(
-                  stage.name,
+                  stageName,
                   typeof value === 'number' ? value : null
                 )
               }

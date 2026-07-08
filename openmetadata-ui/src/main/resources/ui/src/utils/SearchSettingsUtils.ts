@@ -186,7 +186,7 @@ const deriveRankingStageFields = (
     return fallbackFields;
   }
 
-  const stageName = stage.name.toLowerCase();
+  const stageName = (stage.name ?? '').toLowerCase();
 
   if (stageName.includes('exact')) {
     return deriveExactNameFields(configuredFields, fallbackFields);

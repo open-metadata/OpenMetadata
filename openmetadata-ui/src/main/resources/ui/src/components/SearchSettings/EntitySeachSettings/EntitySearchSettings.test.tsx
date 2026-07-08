@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { MemoryRouter, useParams } from 'react-router-dom';
 import {
   BoostMode,
@@ -247,5 +253,62 @@ describe('EntitySearchSettings', () => {
     // the entity config after the save response is processed.
     expect(entityConfig).not.toHaveProperty('allowedFields');
     expect(entityConfig).not.toHaveProperty('assetTypeConfigurations');
+  });
+
+  it('Should omit cleared ranking stage weight while saving', async () => {
+    const configWithRanking = {
+      ...mockSearchConfig,
+      assetTypeConfigurations: [
+        {
+          ...mockSearchConfig.assetTypeConfigurations[0],
+          ranking: {
+            enabled: true,
+            stages: [
+              {
+                name: 'exactName',
+                fields: ['name.keyword'],
+                weight: 100,
+              },
+            ],
+          },
+        },
+      ],
+    };
+
+    mockUseApplicationStore.mockReturnValue({
+      appPreferences: { searchConfig: configWithRanking },
+      setAppPreferences: mockSetAppPreferences,
+    });
+
+    (updateSettingsConfig as jest.Mock).mockImplementation((settings) =>
+      Promise.resolve({ data: settings })
+    );
+
+    await act(async () => {
+      render(
+        <MemoryRouter>
+          <EntitySearchSettings />
+        </MemoryRouter>
+      );
+    });
+
+    fireEvent.change(screen.getByRole('spinbutton'), {
+      target: { value: '' },
+    });
+
+    const { handleSaveChanges } = getLastSearchPreviewProps();
+
+    await act(async () => {
+      await handleSaveChanges();
+    });
+
+    await waitFor(() => {
+      const settings = (updateSettingsConfig as jest.Mock).mock.calls[0][0];
+      const entityConfig = settings.config_value.assetTypeConfigurations.find(
+        (config: { assetType: string }) => config.assetType === 'table'
+      );
+
+      expect(entityConfig.ranking.stages[0]).not.toHaveProperty('weight');
+    });
   });
 });
