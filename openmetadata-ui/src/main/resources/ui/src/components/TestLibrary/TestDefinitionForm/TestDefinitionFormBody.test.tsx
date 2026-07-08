@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 import { HookForm } from '@openmetadata/ui-core-components';
-import { render, screen } from '@testing-library/react';
+import { act, render, screen, waitFor } from '@testing-library/react';
 import { FC } from 'react';
-import { useForm } from 'react-hook-form';
+import { useForm, UseFormReturn } from 'react-hook-form';
+import { TestPlatform } from '../../../generated/tests/testDefinition';
 import { TestDefinitionFormValues } from './TestDefinitionForm.interface';
 import TestDefinitionFormBody from './TestDefinitionFormBody';
 
@@ -22,11 +23,18 @@ jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
   default: () => <div data-testid="code-editor" />,
 }));
 
-const Harness: FC<{ isEditMode?: boolean; isReadOnlyField?: boolean }> = ({
-  isEditMode = false,
-  isReadOnlyField = false,
-}) => {
-  const form = useForm<TestDefinitionFormValues>({ mode: 'onChange' });
+let formRef: UseFormReturn<TestDefinitionFormValues> | undefined;
+
+const Harness: FC<{
+  isEditMode?: boolean;
+  isReadOnlyField?: boolean;
+  defaultValues?: Partial<TestDefinitionFormValues>;
+}> = ({ isEditMode = false, isReadOnlyField = false, defaultValues }) => {
+  const form = useForm<TestDefinitionFormValues>({
+    mode: 'onChange',
+    defaultValues: defaultValues as TestDefinitionFormValues,
+  });
+  formRef = form;
 
   return (
     <HookForm form={form} onSubmit={jest.fn()}>
@@ -63,5 +71,83 @@ describe('TestDefinitionFormBody', () => {
     render(<Harness />);
 
     expect(screen.getByTestId('add-parameter-button')).toBeInTheDocument();
+  });
+
+  it('disables the name input in edit mode', () => {
+    render(<Harness isEditMode />);
+
+    const nameInput = screen
+      .getByTestId('test-definition-name')
+      .querySelector('input');
+
+    expect(nameInput).toBeDisabled();
+  });
+
+  it('disables fields and hides add/remove parameter controls when read-only', () => {
+    render(
+      <Harness
+        isReadOnlyField
+        defaultValues={{
+          parameterDefinition: [{ name: 'existing_param' }],
+        }}
+      />
+    );
+
+    const nameInput = screen
+      .getByTestId('test-definition-name')
+      .querySelector('input');
+
+    expect(nameInput).toBeDisabled();
+    expect(
+      screen.queryByTestId('add-parameter-button')
+    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('remove-parameter-0')).not.toBeInTheDocument();
+  });
+
+  describe('supportedDataTypes conditional required', () => {
+    it('flags supportedDataTypes required when testPlatforms includes OpenMetadata and it is empty', async () => {
+      render(<Harness />);
+
+      await act(async () => {
+        formRef?.setValue('testPlatforms', [
+          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+        ]);
+        formRef?.setValue('supportedDataTypes', []);
+      });
+
+      let isValid = true;
+      await act(async () => {
+        isValid = await formRef!.trigger('supportedDataTypes');
+      });
+
+      expect(isValid).toBe(false);
+
+      await waitFor(() => {
+        expect(
+          formRef?.getFieldState('supportedDataTypes').error?.message
+        ).toBeDefined();
+      });
+    });
+
+    it('does not flag supportedDataTypes when testPlatforms excludes OpenMetadata', async () => {
+      render(<Harness />);
+
+      await act(async () => {
+        formRef?.setValue('testPlatforms', [
+          { id: TestPlatform.Soda, label: TestPlatform.Soda },
+        ]);
+        formRef?.setValue('supportedDataTypes', []);
+      });
+
+      let isValid = false;
+      await act(async () => {
+        isValid = await formRef!.trigger('supportedDataTypes');
+      });
+
+      expect(isValid).toBe(true);
+      expect(
+        formRef?.getFieldState('supportedDataTypes').error
+      ).toBeUndefined();
+    });
   });
 });

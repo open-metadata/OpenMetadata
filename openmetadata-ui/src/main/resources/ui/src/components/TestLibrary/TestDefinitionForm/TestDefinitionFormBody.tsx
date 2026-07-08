@@ -94,7 +94,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     },
     props: {
       'data-testid': 'test-definition-name',
-      isDisabled: isEditMode,
+      isDisabled: isEditMode || isReadOnlyField,
     } as FieldProp['props'],
   };
 
@@ -107,7 +107,10 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     placeholder: t('label.enter-entity-name', {
       entity: t('label.display-name'),
     }),
-    props: { 'data-testid': 'display-name' },
+    props: {
+      'data-testid': 'display-name',
+      isDisabled: isReadOnlyField,
+    } as FieldProp['props'],
   };
 
   const descriptionField: FieldProp = {
@@ -119,7 +122,10 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     placeholder: t('label.enter-entity-description', {
       entity: t('label.test-definition'),
     }),
-    props: { 'data-testid': 'description' },
+    props: {
+      'data-testid': 'description',
+      isDisabled: isReadOnlyField,
+    } as FieldProp['props'],
   };
 
   const entityTypeField: FieldProp = {
@@ -203,13 +209,16 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       field: t('label.supported-data-type-plural'),
     }),
     rules: {
-      validate: (value?: DataType[]) => {
-        const platforms = form.getValues('testPlatforms') ?? [];
+      validate: (value?: FormSelectItem[]) => {
+        const platforms = (form.getValues('testPlatforms') ??
+          []) as FormSelectItem[];
+        const hasOpenMetadata = platforms.some(
+          (platform) =>
+            (typeof platform === 'object' ? platform?.id : platform) ===
+            TestPlatform.OpenMetadata
+        );
         let result: string | boolean = true;
-        if (
-          platforms.includes(TestPlatform.OpenMetadata) &&
-          (value ?? []).length === 0
-        ) {
+        if (hasOpenMetadata && (value ?? []).length === 0) {
           result = t('message.field-text-is-required', {
             fieldText: t('label.supported-data-type-plural'),
           });
@@ -352,7 +361,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
             {getField({
               name: `parameterDefinition.${index}.dataType`,
               label: t('label.data-type'),
-              type: FieldTypes.SELECT,
+              type: FieldTypes.AUTOCOMPLETE,
               required: false,
               id: `root/parameterDefinition/${index}/dataType`,
               placeholder: t('label.select-field', {

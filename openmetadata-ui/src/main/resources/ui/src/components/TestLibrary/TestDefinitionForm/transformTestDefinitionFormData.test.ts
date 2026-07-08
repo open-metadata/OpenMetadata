@@ -22,24 +22,40 @@ import {
 
 describe('transformTestDefinitionFormData', () => {
   describe('buildFormDefaults', () => {
-    it('defaults testPlatforms to [OpenMetadata] and supportedServices to [] when adding', () => {
+    it('defaults testPlatforms to [{OpenMetadata}] and supportedServices to [] when adding', () => {
       const defaults = buildFormDefaults(undefined);
 
-      expect(defaults.testPlatforms).toEqual([TestPlatform.OpenMetadata]);
+      expect(defaults.testPlatforms).toEqual([
+        { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+      ]);
       expect(defaults.supportedServices).toEqual([]);
     });
 
-    it('hydrates from initialValues when editing', () => {
+    it('wraps initial raw strings into FormSelectItems when editing', () => {
       const defaults = buildFormDefaults({
         name: 'my_test',
         entityType: EntityType.Column,
         testPlatforms: [TestPlatform.OpenMetadata],
         supportedServices: ['Mysql'],
+        supportedDataTypes: ['NUMERIC'],
+        parameterDefinition: [{ name: 'p', dataType: 'INT' }],
       } as never);
 
       expect(defaults.name).toBe('my_test');
-      expect(defaults.entityType).toBe(EntityType.Column);
-      expect(defaults.supportedServices).toEqual(['Mysql']);
+      expect(defaults.entityType).toEqual({ id: 'COLUMN', label: 'COLUMN' });
+      expect(defaults.testPlatforms).toEqual([
+        { id: 'OpenMetadata', label: 'OpenMetadata' },
+      ]);
+      expect(defaults.supportedServices).toEqual([
+        { id: 'Mysql', label: 'Mysql' },
+      ]);
+      expect(defaults.supportedDataTypes).toEqual([
+        { id: 'NUMERIC', label: 'NUMERIC' },
+      ]);
+      expect(defaults.parameterDefinition?.[0].dataType).toEqual({
+        id: 'INT',
+        label: 'INT',
+      });
     });
   });
 
@@ -48,8 +64,10 @@ describe('transformTestDefinitionFormData', () => {
       const payload = buildCreateTestDefinitionPayload({
         name: 'c',
         sqlExpression: 'SELECT 1',
-        entityType: EntityType.Column,
-        testPlatforms: [TestPlatform.OpenMetadata],
+        entityType: { id: EntityType.Column, label: EntityType.Column },
+        testPlatforms: [
+          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+        ],
       });
 
       expect(payload.validatorClass).toBe(
@@ -62,7 +80,9 @@ describe('transformTestDefinitionFormData', () => {
       const payload = buildCreateTestDefinitionPayload({
         name: 't',
         sqlExpression: 'SELECT 1',
-        testPlatforms: [TestPlatform.OpenMetadata],
+        testPlatforms: [
+          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+        ],
       });
 
       expect(payload.validatorClass).toBe(
@@ -74,11 +94,34 @@ describe('transformTestDefinitionFormData', () => {
     it('omits validatorClass when there is no sqlExpression', () => {
       const payload = buildCreateTestDefinitionPayload({
         name: 't',
-        entityType: EntityType.Table,
-        testPlatforms: [TestPlatform.OpenMetadata],
+        entityType: { id: EntityType.Table, label: EntityType.Table },
+        testPlatforms: [
+          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+        ],
       });
 
       expect(payload.validatorClass).toBeUndefined();
+    });
+
+    it('unwraps FormSelectItem-shaped values to raw strings in the payload', () => {
+      const payload = buildCreateTestDefinitionPayload({
+        name: 't',
+        sqlExpression: 'SELECT 1',
+        entityType: { id: 'Table', label: 'Table' } as never,
+        testPlatforms: [{ id: 'OpenMetadata', label: 'OpenMetadata' }],
+        supportedDataTypes: [{ id: 'NUMERIC', label: 'NUMERIC' }],
+        parameterDefinition: [
+          { name: 'p', dataType: { id: 'INT', label: 'INT' } },
+        ],
+      });
+
+      expect(payload.entityType).toBe('Table');
+      expect(payload.testPlatforms).toEqual(['OpenMetadata']);
+      expect(payload.supportedDataTypes).toEqual(['NUMERIC']);
+      expect(payload.parameterDefinition?.[0].dataType).toBe('INT');
+      expect(payload.validatorClass).toBe(
+        'TableRuleLibrarySqlExpressionValidator'
+      );
     });
   });
 
@@ -93,7 +136,7 @@ describe('transformTestDefinitionFormData', () => {
       const patch = buildEditPatch(initial, {
         name: 'n',
         displayName: 'new',
-        entityType: EntityType.Table,
+        entityType: { id: EntityType.Table, label: EntityType.Table },
       });
 
       expect(patch).toEqual([

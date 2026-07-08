@@ -10,35 +10,37 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { UseFormReturn } from 'react-hook-form';
-import {
-  DataQualityDimensions,
-  DataType,
-  EntityType,
-  TestDataType,
-  TestDefinition,
-  TestPlatform,
-} from '../../../generated/tests/testDefinition';
+import { TestDefinition } from '../../../generated/tests/testDefinition';
 
 export interface ParameterDefinitionValue {
   name?: string;
   displayName?: string;
   description?: string;
-  dataType?: TestDataType;
+  dataType?: FormSelectItem;
   required?: boolean;
 }
 
+/**
+ * Form state as react-hook-form actually holds it: the `getField` SELECT /
+ * MULTI_SELECT / AUTOCOMPLETE renderers store the selected option(s) as
+ * `FormSelectItem` object(s) (`{ id, label }`), not raw strings/enums — see
+ * `render-field-element.tsx`. The values→payload transform
+ * (`transformTestDefinitionFormData.ts`) unwraps these back to raw strings for
+ * the API; the payload types (`CreateTestDefinition`) stay raw.
+ */
 export interface TestDefinitionFormValues {
   name?: string;
   displayName?: string;
   description?: string;
   sqlExpression?: string;
-  entityType?: EntityType;
-  testPlatforms?: TestPlatform[];
-  dataQualityDimension?: DataQualityDimensions;
-  supportedServices?: string[];
-  supportedDataTypes?: DataType[];
+  entityType?: FormSelectItem;
+  testPlatforms?: FormSelectItem[];
+  dataQualityDimension?: FormSelectItem;
+  supportedServices?: FormSelectItem[];
+  supportedDataTypes?: FormSelectItem[];
   parameterDefinition?: ParameterDefinitionValue[];
   enabled?: boolean;
 }
