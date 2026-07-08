@@ -31,7 +31,7 @@ import { ColumnsType, ExpandableConfig } from 'antd/lib/table/interface';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
-import { debounce, isEmpty, isUndefined } from 'lodash';
+import { debounce, isEmpty, isUndefined, unionBy, uniqBy } from 'lodash';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   Button as AriaButton,
@@ -137,6 +137,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const tableContainerRef = useRef<HTMLDivElement>(null);
   const scrollContainerRef = useRef<HTMLDivElement>(null);
   const draggedGlossaryTermRef = useRef<GlossaryTerm>();
+  const fetchRequestSeqRef = useRef(0);
   const [containerWidth, setContainerWidth] = useState(0);
   const {
     activeGlossary,
@@ -153,9 +154,16 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   >({});
 
   const { glossaryTerms, expandableKeys } = useMemo(() => {
-    const terms = Array.isArray(glossaryChildTerms)
-      ? (glossaryChildTerms as ModifiedGlossaryTerm[])
-      : [];
+    // Deduplicate by FQN: the table keys rows on fullyQualifiedName, and
+    // duplicate keys make the underlying collection unrepresentable (it throws
+    // "Invalid array length" while building rows). Guard here so no write path
+    // can ever hand the table colliding keys.
+    const terms = uniqBy(
+      Array.isArray(glossaryChildTerms)
+        ? (glossaryChildTerms as ModifiedGlossaryTerm[])
+        : [],
+      'fullyQualifiedName'
+    );
 
     return {
       expandableKeys: findExpandableKeysForArray(terms),
@@ -176,6 +184,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   const [selectedStatus, setSelectedStatus] = useState<string[]>([
     ...statusDropdownSelection,
   ]);
+  const selectedStatusRef = useRef(selectedStatus);
+  selectedStatusRef.current = selectedStatus;
   const [confirmCheckboxChecked, setConfirmCheckboxChecked] = useState(false);
   const [totalTermsCount, setTotalTermsCount] = useState<number>(0);
 
@@ -189,6 +199,8 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     string | undefined
   >(undefined);
   const [searchTerm, setSearchTerm] = useState('');
+  const searchTermRef = useRef(searchTerm);
+  searchTermRef.current = searchTerm;
   const [searchInput, setSearchInput] = useState('');
   const [searchPaging, setSearchPaging] = useState<{
     offset: number;
@@ -277,6 +289,14 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   };
 
   const fetchAllTerms = async (loadMore = false) => {
+    // `fetchSearchTerm` / `fetchStatusKey` record the search and status filter
+    // this request was issued for so its response can be discarded if either has
+    // since changed. `requestSeq` tracks the most recent fetch so only the
+    // latest one clears the loading indicators, avoiding flicker when requests
+    // overlap.
+    const requestSeq = ++fetchRequestSeqRef.current;
+    const fetchSearchTerm = searchTerm;
+    const fetchStatusKey = selectedStatus.join(',');
     initializeLoadingStates(loadMore);
 
     try {
@@ -333,7 +353,17 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
         }));
       }
 
-      if (!data || !Array.isArray(data)) {
+      // Apply the response only when it still matches the active search context.
+      // A response computed for a different (now-outdated) search term — e.g. a
+      // listing request that was in flight when the user typed a query, or a
+      // stale search-mode fetch after the query changed — is discarded so it
+      // cannot repopulate or clear the table against the user's current intent.
+      if (
+        !data ||
+        !Array.isArray(data) ||
+        fetchSearchTerm !== searchTermRef.current ||
+        fetchStatusKey !== selectedStatusRef.current.join(',')
+      ) {
         return;
       }
 
@@ -349,22 +379,31 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
       const newTerms = data as ModifiedGlossary[];
 
-      if (loadMore && Array.isArray(glossaryChildTerms)) {
-        // Use unionBy to append new terms while avoiding duplicates
-        const mergedTerms = [...glossaryChildTerms, ...newTerms];
-
-        setGlossaryChildTerms(mergedTerms);
+      if (loadMore) {
+        // Read the freshest terms from the store rather than the closure so a
+        // superseded fetch (e.g. one that cleared the list for a search) cannot
+        // be re-appended from a stale snapshot. Deduplicate by FQN so an
+        // overlapping page never produces duplicate row keys, which the table
+        // collection cannot represent.
+        const currentTerms = useGlossaryStore.getState().glossaryChildTerms;
+        const baseTerms = Array.isArray(currentTerms) ? currentTerms : [];
+        setGlossaryChildTerms(
+          unionBy(baseTerms, newTerms, 'fullyQualifiedName')
+        );
       } else {
-        // Replace terms
-        setGlossaryChildTerms(data as ModifiedGlossary[]);
+        setGlossaryChildTerms(newTerms);
         // Start with all terms collapsed
         setExpandedRowKeys([]);
       }
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (requestSeq === fetchRequestSeqRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     } finally {
-      setIsTableLoading(false);
-      setIsLoadingMore(false);
+      if (requestSeq === fetchRequestSeqRef.current) {
+        setIsTableLoading(false);
+        setIsLoadingMore(false);
+      }
     }
   };
 

@@ -92,11 +92,20 @@ test.describe('Large Glossary Performance Tests', () => {
       'api/v1/glossaryTerms?directChildrenOf*'
     );
 
-    // Scroll to bottom to trigger infinite scroll
+    // Scroll to bottom to trigger infinite scroll. The table owns its own
+    // vertical scroll region (the element wrapping the inner <table>), so scroll
+    // that element rather than the outer container which does not overflow.
     await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
+      const innerScroller = document.querySelector(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      )?.parentElement;
+      const outerContainer = document.querySelector<HTMLElement>(
         '[data-testid="glossary-terms-scroll-container"]'
       );
+      const scrollContainer =
+        innerScroller && innerScroller.scrollHeight > innerScroller.clientHeight
+          ? innerScroller
+          : outerContainer;
       if (scrollContainer) {
         scrollContainer.scrollTop = scrollContainer.scrollHeight;
       }
