@@ -205,6 +205,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   if (isModalVariant) {
     return (
       <TestDefinitionFormModal
+        isSubmitting={form.formState.isSubmitting}
         open={open}
         submitLabel={t('label.save')}
         subtitle={t('message.page-sub-header-for-test-definitions')}

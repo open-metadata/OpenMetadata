@@ -4059,6 +4059,7 @@
     "unauthorized-user": "인증되지 않은 사용자입니다! 이메일 또는 비밀번호를 확인해주세요",
     "unexpected-error": "예기치 않은 오류가 발생했습니다.",
     "unexpected-response": "서버로부터 예기치 않은 응답이 있습니다.",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}}가 성공적으로 업데이트되었습니다."
   }
 }

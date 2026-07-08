@@ -4059,6 +4059,7 @@
     "unauthorized-user": "未經授權的使用者！請檢查電子郵件或密碼",
     "unexpected-error": "發生未預期的錯誤。",
     "unexpected-response": "來自伺服器的未預期回應。",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}} 更新成功。"
   }
 }

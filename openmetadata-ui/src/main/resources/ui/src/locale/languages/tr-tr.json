@@ -4059,6 +4059,7 @@
     "unauthorized-user": "Yetkisiz kullanıcı! lütfen e-postayı veya şifreyi kontrol edin",
     "unexpected-error": "Beklenmedik bir hata oluştu.",
     "unexpected-response": "Sunucudan beklenmedik yanıt.",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}} başarıyla güncellendi."
   }
 }

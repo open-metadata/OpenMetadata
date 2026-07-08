@@ -4059,6 +4059,7 @@
     "unauthorized-user": "Obehörig användare! Kontrollera e-post eller lösenord",
     "unexpected-error": "Ett oväntat fel inträffade.",
     "unexpected-response": "Oväntat svar från servern.",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}} uppdaterades."
   }
 }

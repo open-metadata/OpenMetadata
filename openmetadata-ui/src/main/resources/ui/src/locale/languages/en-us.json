@@ -4059,6 +4059,7 @@
     "unauthorized-user": "UnAuthorized user! please check email or password",
     "unexpected-error": "An unexpected error occurred.",
     "unexpected-response": "Unexpected response from server.",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}} updated successfully."
   }
 }

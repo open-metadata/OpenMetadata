@@ -4059,6 +4059,7 @@
     "unauthorized-user": "認証されていないユーザーです！メールアドレスまたはパスワードをご確認ください。",
     "unexpected-error": "予期しないエラーが発生しました。",
     "unexpected-response": "サーバーから予期しない応答が返されました。",
+    "update-entity-error": "Error while updating {{entity}}!",
     "update-entity-success": "{{entity}}は正常に更新されました。"
   }
 }
