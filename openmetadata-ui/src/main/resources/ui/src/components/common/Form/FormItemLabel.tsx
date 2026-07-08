@@ -13,6 +13,7 @@
 
 import { InfoCircleOutlined } from '@ant-design/icons';
 import { Badge, Tooltip } from 'antd';
+import classNames from 'classnames';
 import { useTranslation } from 'react-i18next';
 import { GRAYED_OUT_COLOR } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -29,13 +30,19 @@ const FormItemLabel = ({
   overlayClassName,
   placement = 'top',
   isBeta = false,
+  labelClassName,
+  betaBadgeClassName,
 }: FormItemLabelProps) => {
   const { t } = useTranslation();
   const { theme } = useApplicationStore();
 
   return (
     <>
-      <span data-testid="form-item-label">{label}</span>
+      <span
+        className={classNames('form-item-label', labelClassName)}
+        data-testid="form-item-label">
+        {label}
+      </span>
       {helperTextType === HelperTextType.Tooltip &&
         helperText &&
         showHelperText && (
@@ -55,7 +62,7 @@ const FormItemLabel = ({
         )}
       {isBeta && (
         <Badge
-          className="m-l-xs"
+          className={classNames('m-l-xs', betaBadgeClassName)}
           color={theme.primaryColor}
           count={t('label.beta')}
           size="small"

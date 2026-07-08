@@ -10,8 +10,73 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
+import { startCase } from 'lodash';
 import { FillSupersetFormProps } from '../support/interfaces/ServiceForm.interface';
+
+const escapeRegExp = (value: string) =>
+  value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+
+const getOneOfOptionLabels = (optionName: string) => {
+  const spacedLabel = optionName.replace(/([a-z0-9])([A-Z])/g, '$1 $2');
+
+  return [...new Set([optionName, spacedLabel])];
+};
+
+export const selectOneOfOption = async (
+  page: Page,
+  fieldId: string,
+  selectTestId: string,
+  optionName: string
+) => {
+  const field = page.locator(`[data-field-id="${fieldId}"]`);
+
+  for (const optionLabel of getOneOfOptionLabels(optionName)) {
+    const tab = field.getByRole('tab', {
+      name: new RegExp(`^${escapeRegExp(optionLabel)}$`, 'i'),
+    });
+
+    if (await tab.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await tab.click();
+
+      return;
+    }
+  }
+
+  const selectWidget = page.getByTestId(selectTestId);
+
+  if (await selectWidget.isVisible({ timeout: 1000 }).catch(() => false)) {
+    const combobox = selectWidget.getByRole('combobox');
+
+    if (await combobox.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await combobox.click({
+        // eslint-disable-next-line playwright/no-force-option -- some oneOf selectors are partially covered by the field wrapper
+        force: true,
+      });
+    } else {
+      await selectWidget.click();
+    }
+
+    const option = page.getByRole('option', { name: optionName });
+
+    if (await option.isVisible({ timeout: 1000 }).catch(() => false)) {
+      await option.click();
+
+      return;
+    }
+
+    await page
+      .getByLabel(startCase(optionName), { exact: true })
+      .getByText(startCase(optionName))
+      .click();
+
+    return;
+  }
+
+  throw new Error(
+    `Unable to select oneOf option "${optionName}" for field "${fieldId}"`
+  );
+};
 
 export const fillSupersetFormDetails = async ({
   page,
@@ -29,26 +94,29 @@ export const fillSupersetFormDetails = async ({
   await page.fill(String.raw`#root\/hostPort`, hostPort);
 
   if (connectionType === 'SupersetApiConnection') {
-    await page
-      .getByTestId('select-widget-root/connection__oneof_select')
-      .click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="${connectionType}"]`
+    await selectOneOfOption(
+      page,
+      'root/connection',
+      'select-widget-root/connection__oneof_select',
+      connectionType
     );
 
     if (provider) {
-      await page.getByTestId('select-widget-root/connection/provider').click();
-      await page.click(`.ant-select-dropdown:visible [title="${provider}"]`);
+      await page.getByRole('button', { name: 'db Provider *' }).click();
+      await page
+        .locator(`.core-select-widget-popover:visible`)
+        .getByRole('option', { name: provider })
+        .click();
     }
   } else if (
     connectionType === 'PostgresConnection' ||
     connectionType === 'MysqlConnection'
   ) {
-    await page
-      .getByTestId('select-widget-root/connection__oneof_select')
-      .click();
-    await page.click(
-      `.ant-select-dropdown:visible [title="${connectionType}"]`
+    await selectOneOfOption(
+      page,
+      'root/connection',
+      'select-widget-root/connection__oneof_select',
+      connectionType
     );
 
     if (connectionHostPort) {

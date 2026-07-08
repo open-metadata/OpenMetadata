@@ -87,7 +87,7 @@ jest.mock('../../../rest/feedsAPI', () => ({
     .mockResolvedValue([{ conversationCount: 0, mentionCount: 0 }]),
 }));
 
-jest.mock('../../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../../utils/EntityDisplayPureUtils', () => ({
   getCountBadge: (count: number) => (
     <span data-testid="filter-count">{count}</span>
   ),

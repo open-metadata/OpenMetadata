@@ -17,20 +17,17 @@ import { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import bgImg from '../../assets/img/forgot-password.png';
-import AlertBar from '../../components/AlertBar/AlertBar';
 import { useBasicAuth } from '../../components/Auth/AuthProviders/BasicAuthProvider';
 import BrandImage from '../../components/common/BrandImage/BrandImage';
 import DocumentTitle from '../../components/common/DocumentTitle/DocumentTitle';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { ROUTES } from '../../constants/constants';
-import { useAlertStore } from '../../hooks/useAlertStore';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './forgot-password.styles.less';
 
 const ForgotPassword = () => {
   const { t } = useTranslation();
   const { handleForgotPassword } = useBasicAuth();
-  const { alert, resetAlert } = useAlertStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
 
@@ -56,7 +53,6 @@ const ForgotPassword = () => {
 
   const handleLogin = () => {
     navigate(ROUTES.SIGNIN);
-    resetAlert();
   };
 
   return (
@@ -93,16 +89,6 @@ const ForgotPassword = () => {
               {t('message.enter-your-registered-email')}
             </Typography.Text>
           </Col>
-
-          {alert && (
-            <Col className="m-b-lg" span={24}>
-              <AlertBar
-                defaultExpand
-                message={alert?.message}
-                type={alert?.type}
-              />
-            </Col>
-          )}
 
           <Form
             className="w-full"

@@ -41,11 +41,11 @@ const EntityRouter = () => {
       {/* Handle Entity Import and Edit pages */}
       <Route
         element={<EntityImportRouter />}
-        path={ROUTES.ENTITY_IMPORT.replace('/bulk', '')}
+        path={`${ROUTES.ENTITY_IMPORT.replace('/bulk', '')}/*`}
       />
       <Route
         element={<EntityImportRouter />}
-        path={ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace('/bulk', '')}
+        path={`${ROUTES.BULK_EDIT_ENTITY_WITH_FQN.replace('/bulk', '')}/*`}
       />
 
       <Route

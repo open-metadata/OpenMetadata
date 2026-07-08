@@ -137,9 +137,6 @@ const KnowledgePageListComponent = forwardRef<
           const results = await fetchSearchResults({
             query: searchQuery,
             searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
-            queryFilter: {
-              query: { term: { pageType: PageType.ARTICLE } },
-            },
             sortField: 'updatedAt',
             sortOrder: 'desc',
             pageSize: PAGE_SIZE_MEDIUM,
@@ -153,7 +150,6 @@ const KnowledgePageListComponent = forwardRef<
             fields: getKnowledgePageFields(),
             limit: PAGE_SIZE_MEDIUM,
             offset,
-            pageType: PageType.ARTICLE,
             sortBy: 'updatedAt',
             sortOrder: 'desc',
           });

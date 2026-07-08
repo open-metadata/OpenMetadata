@@ -25,7 +25,6 @@ import {
   readCardinalityMap,
   readGraphEdges,
   readNodePositions,
-  removeRelationType,
   waitForGraphLoaded,
 } from '../../utils/ontologyExplorer';
 
@@ -77,7 +76,6 @@ test.describe('Ontology Explorer — E2E', () => {
       termBrand,
       catalog
     );
-    await removeRelationType(apiContext, CUSTOM_OWNS_RELATION);
     await disposeApiContext(page, apiContext);
   });
 

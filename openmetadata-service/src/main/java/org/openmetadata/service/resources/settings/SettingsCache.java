@@ -27,6 +27,7 @@ import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
+import static org.openmetadata.schema.settings.SettingsType.SEARCH_INDEX_MAPPINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
@@ -77,6 +78,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.system.AISettingsHandler;
 import org.openmetadata.service.resources.system.SearchSettingsHandler;
+import org.openmetadata.service.search.SearchFieldLimits;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.EntityUtil;
@@ -525,6 +528,9 @@ public class SettingsCache {
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
       Entity.getSystemRepository().createNewSetting(setting);
     }
+
+    // Initialize admin-editable, per-language/per-entity search index mappings (hardened at seed)
+    SearchIndexMappingsSeeder.seedIfAbsent();
   }
 
   private static GlossaryTermRelationType createRelationType(
@@ -587,6 +593,10 @@ public class SettingsCache {
       // If search settings are being invalidated, also invalidate aggregated fields
       if (SEARCH_SETTINGS.toString().equals(settingsName)) {
         CACHE.invalidate(SEARCH_SETTINGS_AGGREGATED_FIELDS);
+      }
+      // Stored mapping edits change the per-entity field limits (e.g. depth) used at build time
+      if (SEARCH_INDEX_MAPPINGS.toString().equals(settingsName)) {
+        SearchFieldLimits.invalidateEntityCache();
       }
     } catch (Exception ex) {
       LOG.error("Failed to invalidate cache for settings {}", settingsName, ex);

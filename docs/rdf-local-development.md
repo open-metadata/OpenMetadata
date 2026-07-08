@@ -211,6 +211,33 @@ Content-Type: application/json
 }
 ```
 
+### Get Glossary Term Relationship Graph
+```bash
+# Get the full glossary term graph
+GET /api/v1/rdf/glossary/graph
+
+# Filter primary terms to a glossary
+GET /api/v1/rdf/glossary/graph?glossaryId=<glossary-id>
+
+# Filter to a glossary term and its direct incoming/outgoing neighbors
+GET /api/v1/rdf/glossary/graph?glossaryTermId=<glossary-term-id>
+
+# Require the selected term to belong to a glossary, while still returning
+# direct cross-glossary neighbors when relationships cross glossary boundaries
+GET /api/v1/rdf/glossary/graph?glossaryId=<glossary-id>&glossaryTermId=<glossary-term-id>
+```
+
+Optional query parameters:
+
+| Parameter | Description |
+|-----------|-------------|
+| `glossaryId` | Filter primary terms to a glossary. |
+| `glossaryTermId` | Filter to a selected glossary term and its direct incoming/outgoing glossary-term relations. |
+| `relationTypes` | Comma-separated relation types to include. |
+| `limit` | Maximum number of terms to return. Default: `500`. |
+| `offset` | Pagination offset. Default: `0`. |
+| `includeIsolated` | Include terms without relations. Default: `true`. |
+
 ### Example Queries
 
 ```bash
@@ -227,6 +254,10 @@ curl -s -X POST \
   -H "Content-Type: application/json" \
   -d '{"query": "SELECT ?s ?p ?o WHERE { ?s ?p ?o } LIMIT 10"}' \
   http://localhost:8585/api/v1/rdf/sparql | jq
+
+# Get a selected glossary term graph
+curl -s -H "Authorization: Bearer <token>" \
+  "http://localhost:8585/api/v1/rdf/glossary/graph?glossaryId=<glossary-id>&glossaryTermId=<glossary-term-id>" | jq
 ```
 
 ## Indexing Entities to RDF
