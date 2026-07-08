@@ -17,6 +17,10 @@
     "event": {
       "description": "The per-run progress update",
       "$ref": "progressUpdate.json"
+    },
+    "ingestionPipeline": {
+      "description": "The ingestion pipeline (agent) this run belongs to. Populated on the DISCOVERY event that opens a run, so the UI can discover a newly created agent without a separate lookup.",
+      "$ref": "ingestionPipeline.json"
     }
   },
   "required": ["pipelineFqn", "runId", "event"],

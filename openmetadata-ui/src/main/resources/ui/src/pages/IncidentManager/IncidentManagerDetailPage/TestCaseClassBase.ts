@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { lazy, ReactElement } from 'react';
+import { lazy, ReactNode } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
@@ -55,10 +55,15 @@ const TestCaseResultTab = withSuspenseFallback(
   )
 );
 
+export interface TestCaseTabProps {
+  /** Tags/Glossary rail visibility — consumed only by the results tab. */
+  showSidePanel?: boolean;
+}
+
 export interface TestCaseTabType {
   LabelComponent: typeof TabsLabel;
   labelProps: TabsLabelProps;
-  Tab: () => ReactElement;
+  Tab: (props: TestCaseTabProps) => ReactNode;
   key: TestCasePageTabs;
   isBeta?: boolean;
 }
