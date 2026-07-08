@@ -856,7 +856,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       },
       validate: (value: string) => {
         let result: string | boolean = true;
-        if (value && existingTestCases.includes(value)) {
+        // Name is immutable in edit mode, so the uniqueness check must be
+        // skipped — the test case's own name would otherwise flag a false
+        // "already exists" error and silently block the update submit.
+        if (!isEditMode && value && existingTestCases.includes(value)) {
           result = t('message.entity-already-exists', {
             entity: t('label.name'),
           });

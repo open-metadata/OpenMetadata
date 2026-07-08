@@ -263,9 +263,12 @@ test.describe(
         await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
 
         // Remove existing tag and add new one
-        await page.click(
-          `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
-        );
+        await page
+          .locator(
+            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
 
         await page.click('[data-testid="tags-selector"] input');
         const newTagsSearchResponse = page.waitForResponse(
@@ -277,15 +280,18 @@ test.describe(
         );
         await newTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await page.keyboard.press('Escape');
 
         // Remove existing glossary term and add new one
-        await page.click(
-          `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
-        );
+        await page
+          .locator(
+            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const newGlossarySearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=glossaryTerm*`
@@ -297,11 +303,11 @@ test.describe(
         await newGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await page.keyboard.press('Escape');
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
@@ -469,9 +475,12 @@ test.describe(
         await page.fill('#testCaseFormV1_params_minLength', '4');
 
         // Remove existing tag and add new one for column test case
-        await page.click(
-          `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
-        );
+        await page
+          .locator(
+            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="tags-selector"] input');
         const columnNewTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -482,15 +491,18 @@ test.describe(
         );
         await columnNewTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await page.keyboard.press('Escape');
 
         // Remove existing glossary term and add new one for column test case
-        await page.click(
-          `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
-        );
+        await page
+          .locator(
+            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const columnNewGlossarySearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=glossaryTerm*`
@@ -502,11 +514,11 @@ test.describe(
         await columnNewGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await page.keyboard.press('Escape');
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
