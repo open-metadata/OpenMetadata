@@ -10,11 +10,24 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Col, Form, FormProps, Input, Row, Space } from 'antd';
-import { FC, useMemo } from 'react';
+import {
+  Box,
+  Button,
+  FormField,
+  HintText,
+  HookForm,
+  Input,
+} from '@openmetadata/ui-core-components';
+import { FC, useEffect, useMemo } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { UPLOADED_ASSETS_URL } from '../../../../../constants/BlockEditor.constants';
+import { isValidUrl } from '../../../../../utils/SSOUtils';
 import { ImagePopoverContentProps } from '../ImageComponent.interface';
+
+interface EmbedLinkFormValues {
+  Url: string;
+}
 
 const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
   updateAttributes,
@@ -25,72 +38,82 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
   fileType,
 }) => {
   const { t } = useTranslation();
+  const form = useForm<EmbedLinkFormValues>({ defaultValues: { Url: src } });
+
+  useEffect(() => {
+    form.reset({ Url: src });
+  }, [src]);
+
   const isAssetsUrl = useMemo(() => {
     return src?.includes(UPLOADED_ASSETS_URL);
   }, [src]);
 
-  const handleEmbedImage: FormProps['onFinish'] = (values) => {
+  const handleEmbedImage = (values: EmbedLinkFormValues) => {
     onPopupVisibleChange(false);
     onUploadingChange(true);
-    const { Url } = values;
-    updateAttributes({ src: Url });
+    updateAttributes({ src: values.Url });
     onUploadingChange(false);
   };
 
+  const handleDelete = () => {
+    deleteNode();
+  };
+
   return (
-    <Form
+    <HookForm
       data-testid="embed-link-form"
-      initialValues={{ Url: src }}
-      onFinish={handleEmbedImage}>
-      <Row gutter={[8, 8]}>
-        <Col span={24}>
-          <Form.Item
-            name="Url"
-            rules={[
-              {
-                required: true,
-                type: 'url',
-                message: t('label.field-required', {
-                  field: t('label.url-uppercase'),
-                }),
-              },
-            ]}>
+      form={form}
+      onSubmit={form.handleSubmit(handleEmbedImage)}>
+      <FormField
+        control={form.control}
+        name="Url"
+        rules={{
+          required: t('label.field-required', {
+            field: t('label.url-uppercase'),
+          }),
+          validate: (value: string) =>
+            isValidUrl(value) || t('label.invalid-url'),
+        }}>
+        {({ field, fieldState }) => (
+          <>
             <Input
               autoFocus
-              data-testid="embed-input"
+              inputDataTestId="embed-input"
+              isInvalid={fieldState.invalid}
               placeholder={
                 t('label.paste-the-file-type-link', {
                   fileType: t(`label.${fileType}`),
                 }) + ' ...'
               }
+              value={field.value}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
             />
-          </Form.Item>
-        </Col>
-        <Col className="om-image-node-embed-link-btn-col gap-3" span={24}>
-          <Space className="om-image-node-action">
-            <Button
-              danger
-              type="text"
-              onClick={(e) => {
-                e.preventDefault();
-                e.stopPropagation();
-                deleteNode();
-              }}>
-              {t('label.delete')}
-            </Button>
-          </Space>
-
-          <Button type="link" onClick={() => onPopupVisibleChange(false)}>
+            {fieldState.error && (
+              <HintText isInvalid>{fieldState.error.message}</HintText>
+            )}
+          </>
+        )}
+      </FormField>
+      <div className="tw:mt-3 tw:flex tw:items-center tw:justify-between tw:gap-2">
+        <Button color="tertiary-destructive" size="xs" onPress={handleDelete}>
+          {t('label.delete')}
+        </Button>
+        <Box align='center' gap={3}>
+          <Button
+            color="tertiary"
+            size="xs"
+            onPress={() => onPopupVisibleChange(false)}>
             {t('label.close')}
           </Button>
           {isAssetsUrl ? null : (
-            <Button htmlType="submit" type="primary">
+            <Button className='tw:capitalize' color="primary" size="xs" type="submit">
               {t('label.embed-file-type', { fileType })}
             </Button>
           )}
-        </Col>
-      </Row>
-    </Form>
+        </Box>
+      </div>
+    </HookForm>
   );
 };
 

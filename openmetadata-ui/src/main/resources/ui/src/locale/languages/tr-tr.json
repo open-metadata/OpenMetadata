@@ -3293,6 +3293,7 @@
     "icon-aspect-ratio": "Simge en boy oranı 1:1 olmalı ve önerilen boyut 64 x 64 piksel olmalıdır",
     "image-dimensions-exceeded": "Görsel boyutları izin verilen maksimum {{maxWidth}}×{{maxHeight}}px'i aşıyor",
     "image-too-small-to-reposition": "Yeniden konumlandırmak için görselin yüksekliği 103px'den fazla olmalıdır",
+    "image-upload-after-asset-creation": "Varlık oluşturulduktan sonra dosya yükleyebilirsiniz.",
     "image-upload-error": "Resim yükleme desteklenmiyor. Lütfen URL üzerinden kullanılabilen resimler için Markdown sözdizimini kullanın.",
     "impact-score-helper": "Etki Skoru, başarısız satırlar ve bunların kritikliği temelinde hesaplanarak, veri kalitesi sorunlarının alt süreçler üzerindeki potansiyel etkisini ölçer.",
     "import-csv-building-preview": "Building preview...",

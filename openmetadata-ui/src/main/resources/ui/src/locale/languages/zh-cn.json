@@ -3293,6 +3293,7 @@
     "icon-aspect-ratio": "图标宽高比应为1:1，建议尺寸为64 x 64像素",
     "image-dimensions-exceeded": "图片尺寸超过允许的最大值 {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "图片高度必须大于103px才能重新定位",
+    "image-upload-after-asset-creation": "资产创建后即可上传文件。",
     "image-upload-error": "不支持图片上传。请使用Markdown语法引用可通过URL访问的图片。",
     "impact-score-helper": "影响分数基于失败行数及其严重程度计算,量化数据质量问题对下游流程的潜在影响。",
     "import-csv-building-preview": "Building preview...",

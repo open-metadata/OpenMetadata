@@ -3293,6 +3293,7 @@
     "icon-aspect-ratio": "A proporção do ícone deve ser 1:1 e o tamanho recomendado deve ser 64 x 64 px",
     "image-dimensions-exceeded": "As dimensões da imagem excedem o máximo permitido de {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "A imagem deve ter mais de 103px de altura para reposicionar",
+    "image-upload-after-asset-creation": "Você pode enviar arquivos depois que o ativo for criado.",
     "image-upload-error": "O upload de imagens não é suportado. Use a sintaxe Markdown para imagens disponíveis via URL.",
     "impact-score-helper": "O Impact Score quantifica o efeito potencial de problemas de qualidade de dados em processos downstream, calculado com base em linhas com falha e sua criticidade.",
     "import-csv-building-preview": "Building preview...",

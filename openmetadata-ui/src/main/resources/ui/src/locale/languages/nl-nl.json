@@ -3293,6 +3293,7 @@
     "icon-aspect-ratio": "De beeldverhouding van het pictogram moet 1:1 zijn en de aanbevolen grootte moet 64 x 64 px zijn",
     "image-dimensions-exceeded": "Afbeeldingsafmetingen overschrijden het maximaal toegestane {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "Afbeelding moet hoger zijn dan 103px om te herpositioneren",
+    "image-upload-after-asset-creation": "U kunt bestanden uploaden nadat het item is aangemaakt.",
     "image-upload-error": "Afbeeldingen uploaden wordt niet ondersteund. Gebruik Markdown-syntax voor afbeeldingen beschikbaar via URL.",
     "impact-score-helper": "De Impact Score kwantificeert het potentiële effect van datakwaliteitsproblemen op downstream processen, berekend op basis van mislukte rijen en hun kriticaliteit.",
     "import-csv-building-preview": "Building preview...",

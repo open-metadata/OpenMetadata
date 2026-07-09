@@ -1,16 +1,27 @@
-import { InboxOutlined } from '@ant-design/icons';
-import { Upload, UploadProps } from 'antd';
-import { RcFile } from 'antd/lib/upload';
-import { isUndefined } from 'lodash';
+/*
+ *  Copyright 2025 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+import { FileUpload } from '@openmetadata/ui-core-components';
+import { AxiosError } from 'axios';
+import { isEmpty, isUndefined } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
 import { AssetType } from '../../../../../generated/attachments/asset';
 import { uploadAsset } from '../../../../../rest/assetAPI';
 import { getAcceptedFileTypes } from '../../../../../utils/BlockEditorUtils';
 import EntityLink from '../../../../../utils/EntityLink';
+import { showErrorToast } from '../../../../../utils/ToastUtils';
 import { useEntityAttachment } from '../../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import { ImagePopoverContentProps } from '../ImageComponent.interface';
-
 
 const UploadFileTab = ({
   updateAttributes,
@@ -21,58 +32,51 @@ const UploadFileTab = ({
   const { entityType, entityFqn = '' } = useEntityAttachment();
   const { t } = useTranslation();
 
-  const uploadProps: UploadProps = {
-    accept: getAcceptedFileTypes(fileType),
-    onDrop: (e) => {
-      e.preventDefault();
-      e.stopPropagation();
-    },
-    multiple: false,
-    customRequest: async (e) => {
-      // Type assertion to ensure file is RcFile
-      const file = e.file as RcFile;
+  const handleUpload = async (files: FileList) => {
+    const file = files[0];
+    if (isUndefined(entityType) || isEmpty(entityFqn)) {
+      showErrorToast(t('message.image-upload-after-asset-creation'));
 
-      if (isUndefined(entityType) || isUndefined(entityFqn)) {
-        e?.onError?.(new Error(t('message.image-upload-after-asset-creation')));
+      return;
+    }
 
-        return;
-      }
-
-      try {
-        const response = await uploadAsset(file,  EntityLink.getEntityLink(
-            entityType,
-            entityFqn,
-            entityType === EntityType.KNOWLEDGE_PAGE ? undefined : 'description'
-          ), AssetType.Inline);
-
-        onUploadingChange(true);
-        updateAttributes({
-          src: response.url,
-          alt: file.name,
-          fileName: file.name,
-          fileSize: file.size,
-          mimeType: file.type,
-        });
-        onUploadingChange(false);
-        e?.onSuccess?.(response);
-        onPopupVisibleChange(false);
-      } catch (error) {
-        e?.onError?.(error as Error);
-      }
-    },
+    try {
+      onUploadingChange(true);
+      const response = await uploadAsset(
+        file,
+        EntityLink.getEntityLink(
+          entityType,
+          entityFqn,
+          entityType === EntityType.KNOWLEDGE_PAGE ? undefined : 'description'
+        ),
+        AssetType.Inline
+      );
+      updateAttributes({
+        src: response.url,
+        alt: file.name,
+        fileName: file.name,
+        fileSize: file.size,
+        mimeType: file.type,
+      });
+      onPopupVisibleChange(false);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('label.failed-to-upload-file'));
+    } finally {
+      onUploadingChange(false);
+    }
   };
 
   return (
-    <Upload.Dragger {...uploadProps}>
-      <p className="ant-upload-drag-icon">
-        <InboxOutlined />
-      </p>
-      <p className="ant-upload-text">
-        {t('label.click-or-drag-entity-to-this-area-to-upload', {
-          entity: fileType,
-        })}
-      </p>
-    </Upload.Dragger>
+    <FileUpload.DropZone
+      accept={getAcceptedFileTypes(fileType)}
+      allowsMultiple={false}
+      clickToUploadLabel={t('label.click-to-upload')}
+      data-testid="upload-file-dropzone"
+      input-data-testid="upload-file-input"
+      isDisabled={isUndefined(entityType) || isEmpty(entityFqn)}
+      orDragAndDropLabel={t('label.or-drag-and-drop')}
+      onDropFiles={handleUpload}
+    />
   );
 };
 

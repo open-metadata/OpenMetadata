@@ -12,19 +12,30 @@
  */
 
 import { expect } from '@playwright/test';
+import { SHORTCUTS } from '../../constant/KnowledgeCenter.constant';
 import { createNewPage, uuid } from '../../utils/common';
 import {
   ContextCenterDocument,
+  createArticleViaApi,
+  deleteArticleByFqn,
   expectBulkIdsRequest,
   expectCapturedDownload,
   expectSelectedCount,
   getDocumentRowByName,
+  insertImageViaUpload,
+  insertImageViaUrl,
   installDownloadCapture,
+  navigateToArticle,
   navigateToDocuments,
   responseMatchesRequestPath,
   selectDocumentByName,
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  getEditor,
+  waitForAutoSave,
+} from '../../utils/KnowledgeCenter';
 import { test as base } from '../fixtures/pages';
 
 const test = base;
@@ -144,5 +155,111 @@ test.describe('Context Center - Download', () => {
     await expect(
       page.getByText('2 selected', { exact: true })
     ).not.toBeVisible();
+  });
+});
+
+test.describe('Context Center - Article Attachments', () => {
+  const articleFqnsToCleanup = new Set<string>();
+
+  test.afterAll(async ({ browser }) => {
+    if (articleFqnsToCleanup.size === 0) {
+      return;
+    }
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    for (const fqn of articleFqnsToCleanup) {
+      await deleteArticleByFqn(apiContext, fqn);
+    }
+
+    articleFqnsToCleanup.clear();
+    await afterAction();
+  });
+
+  test('image insert via upload and URL renders in editor, persists on reload, and is downloadable from the attachment widget', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const uploadedFileName = `attachment-${uuid()}.png`;
+
+    await test.step('navigate to the article', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+    });
+
+    await test.step('insert image via file upload', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertImageViaUpload(page, uploadedFileName);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
+    });
+
+    await test.step('insert image via URL embed', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.getByRole('paragraph').last().click()
+      await page.keyboard.press('Enter');
+      await insertImageViaUrl(
+        page,
+        'https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/openmetadata-docs/images/logo-mark.svg'
+      );
+
+      await expect(page.getByTestId('uploaded-image-node')).toHaveCount(2);
+    });
+
+    await test.step('verify autosave', async () => {
+      await waitForAutoSave(page);
+    });
+
+    await test.step('reload and verify persistence and attachment widget', async () => {
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await getEditor(page, true);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
+
+      const attachmentWidget = page.getByTestId('attachment-widget');
+      await expect(attachmentWidget).toBeVisible();
+
+      const attachmentItem = attachmentWidget
+        .locator('[data-testid^="attachment-item-"]')
+        .filter({ hasText: uploadedFileName });
+      await expect(attachmentItem).toBeVisible();
+    });
+
+    await test.step('download attachment from the widget', async () => {
+      await installDownloadCapture(page);
+
+      const attachmentWidget = page.getByTestId('attachment-widget');
+      const attachmentItem = attachmentWidget
+        .locator('[data-testid^="attachment-item-"]')
+        .filter({ hasText: uploadedFileName });
+      const downloadButton = attachmentItem.locator(
+        '[data-testid^="download-attachment-"]'
+      );
+
+      const downloadResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/attachments/') &&
+          response.url().includes('/download') &&
+          response.request().method() === 'GET'
+      );
+
+      await downloadButton.click();
+      const downloadResponse = await downloadResponsePromise;
+
+      expect([200, 302, 303]).toContain(downloadResponse.status());
+      await expectCapturedDownload(page, uploadedFileName);
+    });
   });
 });

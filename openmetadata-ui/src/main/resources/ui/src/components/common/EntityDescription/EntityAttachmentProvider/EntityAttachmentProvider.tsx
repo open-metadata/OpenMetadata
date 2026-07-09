@@ -13,7 +13,14 @@
 import type { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
 import { isString, isUndefined, noop } from 'lodash';
-import { createContext, ReactNode, useContext, useState } from 'react';
+import {
+    createContext,
+    MutableRefObject,
+    ReactNode,
+    useContext,
+    useRef,
+    useState
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';
 import { showErrorToast } from '../../../../utils/ToastUtils';
@@ -33,6 +40,8 @@ export interface EntityAttachmentType {
   handleErrorMessage: (error?: string) => void;
   allowImageUpload: boolean;
   allowFileUpload: boolean;
+  isPopoverOpenRef: MutableRefObject<boolean>;
+  setPopoverOpen: (open: boolean) => void;
 }
 
 interface EntityAttachmentProps {
@@ -58,9 +67,14 @@ export const EntityAttachmentProvider = ({
   const { onImageUpload = noop, allowImageUpload = false } =
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
   const [errorMessage, setErrorMessage] = useState<string>();
+  const isPopoverOpenRef = useRef<boolean>(false);
 
   const handleErrorMessage = (error?: string) => {
     setErrorMessage(error);
+  };
+
+  const setPopoverOpen = (open: boolean) => {
+    isPopoverOpenRef.current = open;
   };
 
   // Handle file upload logic
@@ -201,6 +215,8 @@ export const EntityAttachmentProvider = ({
     handleErrorMessage,
     allowImageUpload,
     allowFileUpload,
+    isPopoverOpenRef,
+    setPopoverOpen,
   };
 
   return (

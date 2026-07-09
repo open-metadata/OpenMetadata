@@ -3293,6 +3293,7 @@
     "icon-aspect-ratio": "Ikonens bildförhållande bör vara 1:1 och rekommenderad storlek bör vara 64 x 64 px",
     "image-dimensions-exceeded": "Bildens dimensioner överskrider det maximalt tillåtna {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "Bilden måste vara högre än 103px för att kunna flyttas",
+    "image-upload-after-asset-creation": "Du kan ladda upp filer efter att tillgången har skapats.",
     "image-upload-error": "Bilduppladdning stöds inte. Använd Markdown-syntax för bilder som är tillgängliga via URL.",
     "impact-score-helper": "Rangordnar dimensioner efter inverkan på datakvalitet. Det här värdet besvarar frågan: \"Var finns det verkliga problemet?\" genom att väga felfrekvenser mot datavolym.",
     "import-csv-building-preview": "Building preview...",

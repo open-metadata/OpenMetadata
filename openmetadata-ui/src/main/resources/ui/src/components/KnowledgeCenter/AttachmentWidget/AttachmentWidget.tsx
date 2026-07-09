@@ -17,9 +17,10 @@ import {
   FileIcon,
   getReadableFileSize,
   Skeleton,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
+import { AxiosError } from 'axios';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { AssetType } from '../../../generated/attachments/asset';
@@ -47,11 +48,11 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
         const assetData = await listAssetsByFqn(entityFqn, AssetType.Inline);
         if (!isCancelled?.()) {
           setAttachments(
-            assetData.map((asset) => ({
+            assetData.data.map((asset) => ({
               id: asset.id,
               name: asset.fileName,
               size: asset.size ?? 0,
-              fileType: asset.extension.replace(".", "") || '',
+              fileType: asset?.extension?.replace('.', '') || '',
               downloadUrl: asset.url,
             }))
           );
@@ -80,17 +81,16 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
 
   const handleDownload = async (file: AttachmentItem) => {
     try {
-      if(!file.id){
+      if (!file.id) {
         throw new Error('Invalid attachment URL');
       }
       const blob = await downloadAsset(file.id);
-       if (!blob) {
+      if (!blob) {
         throw new Error('Failed to fetch file');
       }
       downloadBlob(blob, file.name);
-    }
-    catch (error) {
-      showErrorToast(error as string);
+    } catch (error) {
+      showErrorToast(error as AxiosError, t('server.unexpected-error'));
     }
   };
 
@@ -128,14 +128,14 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
               </Typography>
             </div>
             <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-1">
-                  <ButtonUtility
-                    color="tertiary"
-                    data-testid={`download-attachment-${item.id}`}
-                    icon={<Download01 size={14} />}
-                    size="sm"
-                    tooltip={t('label.download')}
-                    onClick={() => handleDownload(item)}
-                  />
+              <ButtonUtility
+                color="tertiary"
+                data-testid={`download-attachment-${item.id}`}
+                icon={<Download01 size={14} />}
+                size="sm"
+                tooltip={t('label.download')}
+                onClick={() => handleDownload(item)}
+              />
             </div>
           </Card>
         ))}
