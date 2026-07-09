@@ -25,6 +25,13 @@ import { HeaderBreadcrumbProps } from './HeaderBreadcrumb.interface';
 
 const HOME_CRUMB_ID = '__breadcrumb_home__';
 
+// Force the home crumb icon to 20x20 per Figma. The core Breadcrumbs sizes every
+// icon from its `size` prop (xs → 14px), so override with an important size that
+// wins over the class the core passes in.
+const HomeCrumbIcon: FC<{ className?: string }> = ({ className }) => (
+  <HomeLine className={classNames(className, 'tw:size-5!')} />
+);
+
 const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   items,
   showHome = true,
@@ -53,7 +60,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
         id: HOME_CRUMB_ID,
         label: null,
         ariaLabel: t('label.home'),
-        icon: HomeLine,
+        icon: HomeCrumbIcon,
         href: ROUTES.HOME,
       },
       ...breadcrumbItems,
