@@ -31,7 +31,10 @@ import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import entityUtilClassBase from '../../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import EntityNameModal from '../../../Modals/EntityNameModal/EntityNameModal.component';
-import { EntityName } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
+import {
+  EntityName,
+  EntityNameValidationRule,
+} from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteEntityModal from '../../DeleteWidget/DeleteEntityModal';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageButtonProps } from './ManageButton.interface';
@@ -326,7 +329,9 @@ const ManageButton: FC<ManageButtonProps> = ({
       {onEditDisplayName && isDisplayNameEditing && (
         <EntityNameModal
           allowRename={allowRename}
-          displayNameValidationRules={DISPLAY_NAME_FIELD_RULES}
+          displayNameValidationRules={
+            DISPLAY_NAME_FIELD_RULES as EntityNameValidationRule[]
+          }
           entity={{
             name: entityName,
             displayName,
