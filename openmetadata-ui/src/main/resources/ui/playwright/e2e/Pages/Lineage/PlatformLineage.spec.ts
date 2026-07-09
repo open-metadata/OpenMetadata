@@ -140,7 +140,7 @@ test(
     await page.keyboard.press('Escape');
 
     await page.getByTestId('lineage-layer-btn').click();
-    await expect(serviceBtn).toHaveClass(/Mui-selected/);
+    await expect(serviceBtn).toHaveAttribute('data-selected');
   }
 );
 
@@ -157,7 +157,7 @@ test(
     await page.keyboard.press('Escape');
 
     await page.getByTestId('lineage-layer-btn').click();
-    await expect(domainBtn).toHaveClass(/Mui-selected/);
+    await expect(domainBtn).toHaveAttribute('data-selected');
 
     await page.keyboard.press('Escape');
 
@@ -178,14 +178,14 @@ test(
     await page.keyboard.press('Escape');
 
     await page.getByTestId('lineage-layer-btn').click();
-    await expect(serviceBtn).toHaveClass(/Mui-selected/);
-    await expect(domainBtn).not.toHaveClass(/Mui-selected/);
+    await expect(serviceBtn).toHaveAttribute('data-selected');
+    await expect(domainBtn).not.toHaveAttribute('data-selected');
 
     await domainBtn.click();
     await page.keyboard.press('Escape');
 
     await page.getByTestId('lineage-layer-btn').click();
-    await expect(domainBtn).toHaveClass(/Mui-selected/);
-    await expect(serviceBtn).not.toHaveClass(/Mui-selected/);
+    await expect(domainBtn).toHaveAttribute('data-selected');
+    await expect(serviceBtn).not.toHaveAttribute('data-selected');
   }
 );
