@@ -13,7 +13,6 @@
 
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { render, screen } from '@testing-library/react';
-import { FC } from 'react';
 import Breadcrumb from './HeaderBreadcrumb.component';
 
 const mockNavigate = jest.fn();
@@ -106,18 +105,11 @@ describe('Breadcrumb', () => {
     expect(homeItem.id).toBe('__breadcrumb_home__');
     expect(homeItem.label).toBeNull();
     expect(homeItem.ariaLabel).toBe('label.home');
+
+    const { HomeLine } = jest.requireActual('@untitledui/icons');
+
+    expect(homeItem.icon).toBe(HomeLine);
     expect(homeItem.href).toBe('/');
-  });
-
-  it('renders the home crumb icon at 20x20', () => {
-    render(
-      <Breadcrumb showHome items={[{ label: 'Section', href: '/section' }]} />
-    );
-
-    const HomeIcon = capturedItems[0].icon as FC;
-    const { container } = render(<HomeIcon />);
-
-    expect(container.querySelector('svg')).toHaveClass('tw:size-5!');
   });
 
   it('does not prepend a home crumb when showHome is false', () => {
