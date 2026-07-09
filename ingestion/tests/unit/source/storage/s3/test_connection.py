@@ -168,7 +168,7 @@ def test_error_pack_unrecognized_client():
 
 
 def test_error_pack_invalid_client_token():
-    # STS's code for an unknown access key ID; reachable via the assume-role leg.
+    # STS's code for an unknown access key ID.
     diagnosis = S3_ERRORS.classify(_client_error("InvalidClientTokenId", "ListBuckets"))
     assert diagnosis is not None
     assert diagnosis.title == "AWS access key not recognized"

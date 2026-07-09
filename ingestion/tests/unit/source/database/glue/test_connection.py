@@ -210,8 +210,7 @@ def test_error_pack_entity_not_found():
 
 
 def test_error_pack_inherits_the_shared_aws_diagnoses():
-    # Glue is a json-protocol service, so expired temporary credentials arrive as
-    # ExpiredTokenException (never the rest-xml "ExpiredToken").
+    # Glue is json-protocol: expired creds arrive as ExpiredTokenException.
     diagnosis = GLUE_ERRORS.classify(_client_error("ExpiredTokenException"))
     assert diagnosis is not None
     assert diagnosis.title == "AWS session token expired"
@@ -230,7 +229,7 @@ def test_error_pack_classifies_a_wrong_secret():
 
 
 def test_error_pack_classifies_an_sts_assume_role_denial():
-    # The assume-role leg runs before Glue and denies with the suffix-less code.
+    # The assume-role leg denies with the suffix-less code.
     diagnosis = GLUE_ERRORS.classify(_client_error("AccessDenied", "AssumeRole"))
     assert diagnosis is not None
     assert diagnosis.title == "Not authorized"

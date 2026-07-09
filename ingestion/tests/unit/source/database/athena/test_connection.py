@@ -119,7 +119,7 @@ def test_error_pack_classifies_access_denied_as_not_authorized():
 
 
 def test_error_pack_classifies_unrecognized_client_as_unknown_access_key():
-    # Athena is a json-protocol service: an unknown access key ID arrives as this.
+    # Athena is json-protocol: an unknown access key ID arrives as this.
     diagnosis = ATHENA_ERRORS.classify(_client_error("UnrecognizedClientException"))
     assert diagnosis is not None
     assert diagnosis.title == "AWS access key not recognized"
@@ -182,7 +182,7 @@ def test_error_pack_classifies_sts_assume_role_denied_as_not_authorized():
 
 
 def test_error_pack_classifies_invalid_client_token_as_unknown_access_key():
-    # STS's code, seen when the assume-role leg fails before Athena is reached.
+    # STS's code, from the assume-role leg.
     diagnosis = ATHENA_ERRORS.classify(_client_error("InvalidClientTokenId"))
     assert diagnosis is not None
     assert diagnosis.title == "AWS access key not recognized"
@@ -201,8 +201,8 @@ def test_error_pack_classifies_expired_token():
 
 
 def test_error_pack_prefers_an_authentication_code_over_not_authorized_text():
-    # The authorization rule sits above the shared AWS pack, so its message
-    # fallback must not swallow a rejected identity whose text says "not authorized".
+    # The authorization rule sits above AWS_ERRORS; its message fallback must not
+    # swallow a rejected identity.
     diagnosis = ATHENA_ERRORS.classify(_client_error("ExpiredToken", "not authorized: token expired"))
     assert diagnosis is not None
     assert diagnosis.title == "AWS session token expired"

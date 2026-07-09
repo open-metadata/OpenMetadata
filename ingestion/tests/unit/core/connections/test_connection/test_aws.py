@@ -62,11 +62,11 @@ def test_aws_code_ignores_the_message_text():
 @pytest.mark.parametrize(
     ("code", "expected"),
     [
-        # An unknown access key ID, under each protocol's code for it.
+        # An unknown access key ID, per protocol.
         ("InvalidAccessKeyId", "AWS access key not recognized"),
         ("UnrecognizedClientException", "AWS access key not recognized"),
         ("InvalidClientTokenId", "AWS access key not recognized"),
-        # A wrong secret, under each protocol's code for it.
+        # A wrong secret, per protocol.
         ("SignatureDoesNotMatch", "AWS secret key does not match"),
         ("InvalidSignatureException", "AWS secret key does not match"),
         ("ExpiredToken", "AWS session token expired"),
@@ -89,7 +89,6 @@ def test_aws_errors_classifies_every_authentication_code(code, expected):
     ],
 )
 def test_aws_errors_tells_clock_skew_apart_from_a_wrong_secret(code, message):
-    # Skew fails signature verification, so it arrives under the signature codes.
     diagnosis = AWS_ERRORS.classify(_client_error(code, message=message))
 
     assert diagnosis is not None
@@ -106,7 +105,7 @@ def test_aws_errors_still_reads_a_signature_mismatch_as_a_wrong_secret():
 
 
 def test_aws_errors_ignores_ec2_only_auth_failure():
-    # AuthFailure is an EC2 code; no connector on this framework talks to EC2.
+    # AuthFailure is EC2-only.
     assert AWS_ERRORS.classify(_client_error("AuthFailure")) is None
 
 
@@ -139,8 +138,7 @@ def test_aws_errors_folds_in_the_network_pack():
 
 
 def test_aws_errors_leaves_authorization_to_the_connector():
-    """AccessDenied's remedy names service-specific IAM actions, so the shared
-    pack must not claim it - a connector's own rule has to win."""
+    """AccessDenied's remedy names service-specific IAM actions."""
     assert AWS_ERRORS.classify(_client_error("AccessDeniedException")) is None
 
 

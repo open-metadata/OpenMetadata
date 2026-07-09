@@ -78,22 +78,16 @@ _AUTHORIZATION_CODES = frozenset({"AccessDeniedException", "AccessDenied"})
 def _authorization_error(error: BaseException) -> bool:
     """An IAM authorization failure - valid credentials, missing permission.
 
-    Athena/Glue raise ``AccessDeniedException`` and STS (assume-role) raises the
-    suffix-less ``AccessDenied``; both are authorization codes distinct from the
-    authentication ones, and AWS usually renders them "... is not authorized to
-    perform: ...". Match either the codes or the message so a missing-privilege
-    error is never read as a credential problem, whatever the wording.
-
-    The message fallback stands down for an authentication code, which the shared
-    AWS pack diagnoses more precisely."""
+    Athena/Glue raise ``AccessDeniedException``, STS raises ``AccessDenied``, and
+    AWS renders both as "... is not authorized to perform: ...". The message
+    fallback stands down for an authentication code, which AWS_ERRORS owns."""
     code = aws_error_code(error)
     return code in _AUTHORIZATION_CODES or (
         code not in AWS_AUTHENTICATION_CODES and "not authorized" in _message(error)
     )
 
 
-# Only what is specific to Athena: its IAM actions, its workgroup and staging-dir
-# configuration. Authentication and network failures come from AWS_ERRORS.
+# Only what is specific to Athena; the rest comes from AWS_ERRORS.
 ATHENA_ERRORS = ErrorPack(
     when(_authorization_error).diagnose(
         "Not authorized",

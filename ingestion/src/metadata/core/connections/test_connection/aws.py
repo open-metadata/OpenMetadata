@@ -9,15 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Shared diagnoses for the AWS-backed connectors (boto3 / botocore).
+Shared authentication diagnoses for the AWS-backed connectors (boto3 / botocore).
 
-Authentication codes come from SigV4 and STS, not from Glue, S3 or Athena, so
-they are service-agnostic and live here. A connector still owns its authorization
-diagnosis - an ``AccessDenied`` fix must name that service's IAM actions - plus
-its own not-found and configuration errors.
-
-Fold this in with ``ErrorPack.including(AWS_ERRORS)``; the connector's own rules
-still match first. ``NETWORK_ERRORS`` is already folded in here.
+Fold in with ``ErrorPack.including(AWS_ERRORS)``; the connector's own rules still
+match first, and it keeps its authorization diagnosis (an ``AccessDenied`` fix must
+name that service's IAM actions). ``NETWORK_ERRORS`` is already folded in here.
 """
 
 from __future__ import annotations
@@ -44,10 +40,7 @@ if TYPE_CHECKING:
 
 
 def aws_error_code(error: BaseException) -> str | None:
-    """The botocore ``ClientError`` code anywhere in the cause chain, if any.
-
-    A driver may wrap the ``ClientError`` (pyathena wraps it, SQLAlchemy wraps that
-    again), so the code only survives by walking the chain."""
+    """The botocore ``ClientError`` code anywhere in the cause chain, if any."""
     code = None
     for current in exception_chain(error):
         if isinstance(current, ClientError):
@@ -57,41 +50,36 @@ def aws_error_code(error: BaseException) -> str | None:
 
 
 def aws_code(*codes: str) -> Matcher:
-    """Match a botocore ``ClientError`` by its structured AWS error code - the
-    stable signal, where the rendered message text varies."""
+    """Match a botocore ``ClientError`` by its structured AWS error code."""
     wanted = frozenset(codes)
     return lambda error: aws_error_code(error) in wanted
 
 
-# One root cause, three codes: the wire protocol decides which one comes back.
-# InvalidAccessKeyId is rest-xml (S3), UnrecognizedClientException is json (Glue,
-# Athena), InvalidClientTokenId is query (STS) - and a connector that assumes a
-# role hits the STS leg before its own service, so all three stay reachable.
-# InvalidClientTokenId's message says "security token", but it means the access
-# key ID is unknown; an actually-expired token is ExpiredToken(Exception).
+# Each cause below has one code per wire protocol: rest-xml (S3), json (Glue,
+# Athena), query (STS). An assume-role config hits the STS leg first, so every
+# code stays reachable from every connector.
+# InvalidClientTokenId reads "security token" but means the key ID is unknown.
 _UNKNOWN_KEY = ("InvalidAccessKeyId", "UnrecognizedClientException", "InvalidClientTokenId")
-# rest-xml/query say SignatureDoesNotMatch, json says InvalidSignatureException.
 _BAD_SIGNATURE = ("SignatureDoesNotMatch", "InvalidSignatureException")
 _EXPIRED_TOKEN = ("ExpiredToken", "ExpiredTokenException")
 
-# Clock skew fails signature verification, so it arrives under the same codes as a
-# wrong secret and is told apart only by message. Ordered first for that reason.
 _SKEW_MESSAGES = ("signature expired", "signature not yet current")
 
-# Every code meaning "AWS rejected this identity", for connectors that also match
-# authorization failures by message text and must not confuse the two.
+# For connectors that also match authorization failures by message text.
 AWS_AUTHENTICATION_CODES = frozenset(_UNKNOWN_KEY + _BAD_SIGNATURE + _EXPIRED_TOKEN)
 
 
 def _clock_skew(error: BaseException) -> bool:
+    """Skew fails signature verification, so it shares the wrong-secret codes and
+    is told apart only by message."""
     if aws_error_code(error) not in _BAD_SIGNATURE:
         return False
     text = " ".join(str(current) for current in exception_chain(error)).lower()
     return any(message in text for message in _SKEW_MESSAGES)
 
 
-# Split by cause rather than one "Authentication failed": an unknown key, a wrong
-# secret, a skewed clock and an expired token each send the user somewhere different.
+# Split by cause: each one sends the user somewhere different. Skew first - it
+# shares the codes of the wrong-secret rule below.
 AWS_ERRORS = ErrorPack(
     when(_clock_skew).diagnose(
         "Request signature expired",

@@ -51,8 +51,7 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection.records import Evidence
 
 
-# Only what is specific to S3: its IAM actions, its not-found code, and an endpoint
-# hint naming endPointURL for S3-compatible stores. The rest comes from AWS_ERRORS.
+# Only what is specific to S3; the rest comes from AWS_ERRORS.
 S3_ERRORS = ErrorPack(
     when(aws_code("NoSuchBucket")).diagnose(
         "Bucket not found",
