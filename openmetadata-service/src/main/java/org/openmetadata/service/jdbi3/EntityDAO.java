@@ -843,7 +843,17 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("nameHashColumn") String nameHashColumnName,
       @Bind("limit") int limit);
 
-  @SqlQuery("SELECT json FROM <table> <cond> ORDER BY name, id LIMIT :limit OFFSET :offset")
+  // Deferred join (see listAfter/listBefore above): sort the offset window index-only on (name, id)
+  // and fetch json by primary key for only the returned rows, so the json blob never enters the
+  // filesort and cannot exhaust sort memory on large tables.
+  @SqlQuery(
+      "SELECT <table>.json FROM <table> "
+          + "INNER JOIN ("
+          + "SELECT <table>.id FROM <table> <cond> "
+          + "ORDER BY <table>.name, <table>.id "
+          + "LIMIT :limit OFFSET :offset"
+          + ") offset_subquery ON <table>.id = offset_subquery.id "
+          + "ORDER BY <table>.name, <table>.id")
   List<String> listAfter(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
