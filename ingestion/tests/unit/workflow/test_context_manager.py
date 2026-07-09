@@ -1,3 +1,5 @@
+import pytest
+
 from metadata.workflow.context.app_metadata_context import (
     AppMetadataContext,
     AppMetadataContextFieldsEnum,
@@ -58,12 +60,18 @@ def test_app_metadata_context_registered():
     assert isinstance(ctx, AppMetadataContext)
 
 
-def test_app_metadata_dumps_under_app_metadata_key():
+@pytest.fixture
+def reset_app_metadata():
+    """ContextManager is a process-wide singleton, so app-metadata state set by one
+    test would otherwise leak into every test that runs after it."""
+    yield
+    ContextManager.set_context_attr(ContextsEnum.APP_METADATA, AppMetadataContextFieldsEnum.DATA, None)
+
+
+def test_app_metadata_dumps_under_app_metadata_key(reset_app_metadata):
     data = {"impact": {"proposed": 9, "autoApplied": 0, "awaitingReview": 9, "rejected": 0}}
     ContextManager.set_context_attr(ContextsEnum.APP_METADATA, AppMetadataContextFieldsEnum.DATA, data)
 
     dumped = ContextManager.dump_contexts()
 
     assert dumped["appMetadata"]["data"] == data
-    # reset so we don't leak into other tests via the singleton
-    ContextManager.set_context_attr(ContextsEnum.APP_METADATA, AppMetadataContextFieldsEnum.DATA, None)
