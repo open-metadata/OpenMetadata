@@ -39,8 +39,10 @@
   }
 
   .explore-page-right-panel {
-    // fixed width to right panel
-    flex: 0 0 400px;
+    flex: 1 1 400px;
+    max-width: 800px;
+    min-width: 400px;
+    overflow: auto;
   }
 
   .explore-icon {
@@ -57,6 +59,7 @@
 
   .explore-main-card {
     .ant-card {
+      border-bottom: 0;
       border-bottom-right-radius: 0;
       border-bottom-left-radius: 0;
     }

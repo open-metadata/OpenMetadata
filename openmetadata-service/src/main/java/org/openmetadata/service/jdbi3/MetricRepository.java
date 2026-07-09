@@ -69,6 +69,7 @@ import org.openmetadata.service.jdbi3.FeedRepository.TaskWorkflow;
 import org.openmetadata.service.jdbi3.FeedRepository.ThreadContext;
 import org.openmetadata.service.resources.metrics.MetricResource;
 import org.openmetadata.service.security.AuthorizationException;
+import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 import org.openmetadata.service.util.MemoryOwnership;
@@ -447,7 +448,7 @@ public class MetricRepository extends EntityRepository<Metric> {
         return null;
       }
       try {
-        return EntityStatus.fromValue(csvRecord.get(fieldNumber));
+        return EntityFieldUtils.parseEntityStatus(csvRecord.get(fieldNumber));
       } catch (Exception ex) {
         importFailure(
             printer,
