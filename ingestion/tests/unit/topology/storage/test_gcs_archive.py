@@ -21,10 +21,7 @@ import pytest
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
-from metadata.ingestion.source.storage.gcs.metadata import (
-    GCSBucketResponse,
-    GcsSource,
-)
+from metadata.ingestion.source.storage.gcs.metadata import GCSBucketResponse, GcsSource
 from metadata.readers.archive import (
     TarArchiveReader,
     ZipArchiveReader,
@@ -103,7 +100,9 @@ class TestGCSArchiveIntegration:
     @pytest.fixture(autouse=True)
     def setup(self):
         with (
-            patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"),
+            patch(
+                "metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"
+            ),
             patch(
                 "metadata.ingestion.source.storage.storage_service.get_connection",
                 return_value=MagicMock(),
@@ -114,7 +113,9 @@ class TestGCSArchiveIntegration:
         ctx.objectstore_service = "test_svc"
         self.gcs_source.context = MagicMock()
         self.gcs_source.context.get.return_value = ctx
-        self.bucket = GCSBucketResponse(name="my-bucket", project_id="proj", creation_date=None)
+        self.bucket = GCSBucketResponse(
+            name="my-bucket", project_id="proj", creation_date=None
+        )
         yield
 
     def _make_archive_entity(self):
@@ -155,7 +156,9 @@ class TestGCSArchiveIntegration:
 
     def test_yields_parent_then_two_children(self):
         zip_bytes = _make_zip({"file1.csv": _CSV_CONTENT, "file2.csv": _CSV2_CONTENT})
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with patch(
@@ -165,7 +168,9 @@ class TestGCSArchiveIntegration:
             results = list(
                 self.gcs_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -177,7 +182,9 @@ class TestGCSArchiveIntegration:
 
     def test_yields_parent_then_one_child_tar(self):
         tar_bytes = _make_tar({"data.csv": _CSV_CONTENT})
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=len(tar_bytes))
 
         with patch(
@@ -187,7 +194,9 @@ class TestGCSArchiveIntegration:
             results = list(
                 self.gcs_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.tar.gz", structureFormat="tar.gz"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.tar.gz", structureFormat="tar.gz"
+                    ),
                 )
             )
 
@@ -197,7 +206,9 @@ class TestGCSArchiveIntegration:
 
     def test_schema_inferred_exactly_once(self):
         zip_bytes = _make_zip({"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT})
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with (
@@ -213,7 +224,9 @@ class TestGCSArchiveIntegration:
             list(
                 self.gcs_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -221,7 +234,9 @@ class TestGCSArchiveIntegration:
 
     def test_children_share_same_columns(self):
         zip_bytes = _make_zip({"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT})
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with patch(
@@ -231,7 +246,9 @@ class TestGCSArchiveIntegration:
             results = list(
                 self.gcs_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -241,7 +258,9 @@ class TestGCSArchiveIntegration:
         assert children[0].data_model.columns == children[1].data_model.columns
 
     def test_open_reader_value_error_yields_only_parent(self):
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=100)
 
         with patch(
@@ -261,7 +280,9 @@ class TestGCSArchiveIntegration:
 
     def test_empty_archive_yields_only_parent(self):
         zip_bytes = _make_zip({})
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with patch(
@@ -271,7 +292,9 @@ class TestGCSArchiveIntegration:
             results = list(
                 self.gcs_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="empty.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="empty.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -286,7 +309,9 @@ class TestGCSArchiveIntegration:
         results = list(
             self.gcs_source._generate_archive_containers(
                 bucket_response=self.bucket,
-                metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                metadata_entry=MetadataEntry(
+                    dataPath="archive.zip", structureFormat="zip"
+                ),
             )
         )
 
@@ -295,7 +320,9 @@ class TestGCSArchiveIntegration:
 
     def test_gcs_blob_adapter_is_used(self):
         zip_bytes = _make_zip({"file.csv": _CSV_CONTENT})
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with (
@@ -315,7 +342,9 @@ class TestGCSArchiveIntegration:
             list(
                 self.gcs_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -323,7 +352,9 @@ class TestGCSArchiveIntegration:
 
     def test_open_reader_called_with_archive_format(self):
         tar_bytes = _make_tar({"file.csv": _CSV_CONTENT})
-        self.gcs_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.gcs_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.gcs_source.get_size = MagicMock(return_value=len(tar_bytes))
 
         with patch(
@@ -333,13 +364,18 @@ class TestGCSArchiveIntegration:
             list(
                 self.gcs_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.tar.gz", structureFormat="tar.gz"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.tar.gz", structureFormat="tar.gz"
+                    ),
                 )
             )
 
         mock_open.assert_called_once()
         _, call_kwargs = mock_open.call_args
         assert (
-            call_kwargs.get("structure_format", mock_open.call_args[0][1] if len(mock_open.call_args[0]) > 1 else None)
+            call_kwargs.get(
+                "structure_format",
+                mock_open.call_args[0][1] if len(mock_open.call_args[0]) > 1 else None,
+            )
             or True
         )

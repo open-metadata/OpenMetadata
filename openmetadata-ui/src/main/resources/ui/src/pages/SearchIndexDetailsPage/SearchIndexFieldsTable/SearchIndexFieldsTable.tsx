@@ -66,6 +66,7 @@ import {
 } from '../../../utils/EntityUtils';
 import { makeData } from '../../../utils/SearchIndexUtils';
 import { stringToHTML } from '../../../utils/StringsUtils';
+import { columnFilterIcon } from '../../../utils/TableColumn.util';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
@@ -78,7 +79,6 @@ import {
   SearchIndexCellRendered,
   SearchIndexFieldsTableProps,
 } from './SearchIndexFieldsTable.interface';
-import { columnFilterIcon } from '../../../utils/TableColumn.util';
 
 const SearchIndexFieldsTable = ({
   searchIndexFields,

@@ -2479,14 +2479,12 @@ class PowerBIUnitTest(TestCase):
         ]
 
         for label, sql, expected_table in cases:
-            m_expression = (
-                f'TestEntity = let\n  Source = Sql.Database("server", "db", [Query = "{sql}"])\nin\n  Source;\r\n'
-            )
+            m_expression = f'TestEntity = let\n  Source = Sql.Database("server", "db", [Query = "{sql}"])\nin\n  Source;\r\n'
             result = self.powerbi._parse_sql_source(m_expression)
             assert result is not None, f"[{label}] _parse_sql_source returned None"
-            assert any(expected_table.lower() in t["table"].lower() for t in result), (
-                f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
-            )
+            assert any(
+                expected_table.lower() in t["table"].lower() for t in result
+            ), f"[{label}] expected table '{expected_table}' not found in result {[t['table'] for t in result]}"
 
     def test_yield_dashboard_lineage_yields_barrier_first(self):
         """The override must emit a ``Barrier`` as its first record so the sink
@@ -2540,7 +2538,9 @@ class PowerBIUnitTest(TestCase):
         )
 
         lineage_requests = list(
-            self.powerbi.create_datamart_upstream_datamart_lineage(MOCK_DATAMART, MOCK_DATAMART_ENTITY)
+            self.powerbi.create_datamart_upstream_datamart_lineage(
+                MOCK_DATAMART, MOCK_DATAMART_ENTITY
+            )
         )
 
         successful = [r for r in lineage_requests if r.right is not None]
@@ -2573,4 +2573,6 @@ class PowerBIUnitTest(TestCase):
         request = successful[0]
         assert request.dataModelType == DataModelType.PowerBIDatamart
         assert request.columns == []
-        assert request.sourceUrl.root.endswith("/groups/ws-1/datamarts/datamart_b?experience=power-bi")
+        assert request.sourceUrl.root.endswith(
+            "/groups/ws-1/datamarts/datamart_b?experience=power-bi"
+        )

@@ -23,10 +23,7 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-)
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.sqlalchemy.postgres.sampler import PostgresSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -97,8 +94,13 @@ class SampleTest(TestCase):
             ),
         )
         query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
-        expected_query = "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0)"
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        expected_query = (
+            "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE bernoulli(50.0)"
+        )
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )
 
     def test_sampling(self, sampler_mock):
         """

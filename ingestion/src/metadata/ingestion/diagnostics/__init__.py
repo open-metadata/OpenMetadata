@@ -55,11 +55,7 @@ from metadata.ingestion.diagnostics.collectors.operation_registry import (
     OperationRegistry,
 )
 from metadata.ingestion.diagnostics.config import DIAG_LOG_PREFIX
-from metadata.ingestion.diagnostics.kernel import (
-    emit_log,
-    get_handler,
-    set_handler,
-)
+from metadata.ingestion.diagnostics.kernel import emit_log, get_handler, set_handler
 
 # Back-compat alias: existing seams still import `_get_state` from the facade.
 _get_state = get_handler

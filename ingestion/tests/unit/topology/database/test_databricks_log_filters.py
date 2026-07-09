@@ -48,7 +48,9 @@ def clean_logger():
 
 
 def _emit(logger: logging.Logger, message: str) -> logging.LogRecord:
-    return logger.makeRecord(logger.name, logging.WARNING, __file__, 0, message, None, None)
+    return logger.makeRecord(
+        logger.name, logging.WARNING, __file__, 0, message, None, None
+    )
 
 
 def test_filters_user_agent_entry_message(clean_logger):

@@ -65,11 +65,14 @@ class RangeReadableBlob(Protocol):
     storage client into ZipRangeReader / open_archive_reader.
     """
 
-    def get_size(self) -> int: ...
+    def get_size(self) -> int:
+        ...
 
-    def read_range(self, offset: int, length: int) -> bytes: ...
+    def read_range(self, offset: int, length: int) -> bytes:
+        ...
 
-    def read_all(self) -> bytes: ...
+    def read_all(self) -> bytes:
+        ...
 
 
 class ADLSBlobAdapter:
@@ -97,14 +100,20 @@ class S3BlobAdapter:
         self._key = key
 
     def get_size(self) -> int:
-        return self._client.head_object(Bucket=self._bucket, Key=self._key)["ContentLength"]
+        return self._client.head_object(Bucket=self._bucket, Key=self._key)[
+            "ContentLength"
+        ]
 
     def read_range(self, offset: int, length: int) -> bytes:
         range_header = f"bytes={offset}-{offset + length - 1}"
-        return self._client.get_object(Bucket=self._bucket, Key=self._key, Range=range_header)["Body"].read(length)
+        return self._client.get_object(
+            Bucket=self._bucket, Key=self._key, Range=range_header
+        )["Body"].read(length)
 
     def read_all(self) -> bytes:
-        return self._client.get_object(Bucket=self._bucket, Key=self._key)["Body"].read()
+        return self._client.get_object(Bucket=self._bucket, Key=self._key)[
+            "Body"
+        ].read()
 
 
 class GCSBlobAdapter:
@@ -232,10 +241,12 @@ class ArchiveEntry:
 
 class ArchiveReader(ABC):
     @abstractmethod
-    def entries(self) -> Iterator[ArchiveEntry]: ...
+    def entries(self) -> Iterator[ArchiveEntry]:
+        ...
 
     @abstractmethod
-    def close(self) -> None: ...
+    def close(self) -> None:
+        ...
 
     def __enter__(self):
         return self
@@ -270,13 +281,19 @@ class ZipArchiveReader(ArchiveReader):
                 def _load(zf=self._zip_file, info=entry_info):
                     try:
                         with zf.open(info) as fh:
-                            return _checked_bytes(fh.read(_MAX_INNER_FILE_BYTES + 1), info.filename)
+                            return _checked_bytes(
+                                fh.read(_MAX_INNER_FILE_BYTES + 1), info.filename
+                            )
                     except ValueError:
                         raise
                     except Exception as exc:
-                        raise ValueError(f"Failed to read archive entry {info.filename!r}") from exc
+                        raise ValueError(
+                            f"Failed to read archive entry {info.filename!r}"
+                        ) from exc
 
-                yield ArchiveEntry(name=entry_info.filename, size=entry_info.file_size, loader=_load)
+                yield ArchiveEntry(
+                    name=entry_info.filename, size=entry_info.file_size, loader=_load
+                )
             except Exception as exc:
                 logger.warning(f"Skipping archive entry {entry_info.filename!r}: {exc}")
 
@@ -296,7 +313,9 @@ class ZipRangeReader(ArchiveReader):
         if blob_size == 0:
             raise ValueError("ZIP blob is empty")
         if blob_size > MAX_ARCHIVE_SIZE_BYTES:
-            raise ValueError(f"ZIP size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}")
+            raise ValueError(
+                f"ZIP size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}"
+            )
         self._blob = blob
         self._cd_entries: list[_ZipEntry] = self._read_central_directory(blob_size)
 
@@ -321,9 +340,12 @@ class ZipRangeReader(ArchiveReader):
             if cd_data[pos : pos + 4] != _CD_ENTRY_SIGNATURE:
                 break
             cd_entry = _CDEntry.from_bytes(cd_data, pos)
-            fname = cd_data[pos + _CDEntry.FIXED_SIZE : pos + _CDEntry.FIXED_SIZE + cd_entry.fname_len].decode(
-                _UTF8, errors="replace"
-            )
+            fname = cd_data[
+                pos
+                + _CDEntry.FIXED_SIZE : pos
+                + _CDEntry.FIXED_SIZE
+                + cd_entry.fname_len
+            ].decode(_UTF8, errors="replace")
             entries.append(
                 _ZipEntry(
                     name=fname,
@@ -333,7 +355,12 @@ class ZipRangeReader(ArchiveReader):
                     compress_method=cd_entry.compress_method,
                 )
             )
-            pos += _CDEntry.FIXED_SIZE + cd_entry.fname_len + cd_entry.extra_len + cd_entry.comment_len
+            pos += (
+                _CDEntry.FIXED_SIZE
+                + cd_entry.fname_len
+                + cd_entry.extra_len
+                + cd_entry.comment_len
+            )
         return entries
 
     def entries(self) -> Iterator[ArchiveEntry]:
@@ -344,7 +371,12 @@ class ZipRangeReader(ArchiveReader):
                 if local_hdr[:4] != _LOCAL_FILE_SIGNATURE:
                     raise ValueError(f"Invalid local file header for {ze.name!r}")
                 local_header = _LocalFileHeader.from_bytes(local_hdr)
-                data_offset = ze.local_offset + 30 + local_header.fname_len + local_header.extra_len
+                data_offset = (
+                    ze.local_offset
+                    + 30
+                    + local_header.fname_len
+                    + local_header.extra_len
+                )
                 if ze.comp_size > _MAX_INNER_FILE_BYTES:
                     raise ValueError(f"Compressed size exceeds limit for {ze.name!r}")
                 compressed = blob.read_range(data_offset, ze.comp_size)
@@ -354,9 +386,13 @@ class ZipRangeReader(ArchiveReader):
                     decomp = zlib.decompressobj(-15)
                     data = decomp.decompress(compressed, _MAX_INNER_FILE_BYTES)
                     if decomp.unconsumed_tail:
-                        raise ValueError(f"Decompressed size exceeds limit for {ze.name!r}")
+                        raise ValueError(
+                            f"Decompressed size exceeds limit for {ze.name!r}"
+                        )
                     return BytesIO(data)
-                raise ValueError(f"Unsupported ZIP compression method {ze.compress_method} for {ze.name!r}")
+                raise ValueError(
+                    f"Unsupported ZIP compression method {ze.compress_method} for {ze.name!r}"
+                )
 
             try:
                 if zip_entry.name.endswith("/"):
@@ -369,7 +405,9 @@ class ZipRangeReader(ArchiveReader):
                         f"Skipping {zip_entry.name!r}: uncompressed size {zip_entry.uncomp_size} exceeds limit"
                     )
                     continue
-                yield ArchiveEntry(name=zip_entry.name, size=zip_entry.uncomp_size, loader=_load)
+                yield ArchiveEntry(
+                    name=zip_entry.name, size=zip_entry.uncomp_size, loader=_load
+                )
             except Exception as exc:
                 logger.warning(f"Skipping archive entry {zip_entry.name!r}: {exc}")
 
@@ -383,11 +421,15 @@ class ZipReader(ArchiveReader):
     def __init__(self, blob: RangeReadableBlob) -> None:
         blob_size = blob.get_size()
         if blob_size > MAX_ARCHIVE_SIZE_BYTES:
-            raise ValueError(f"ZIP size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}")
+            raise ValueError(
+                f"ZIP size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}"
+            )
         try:
             self._reader: ArchiveReader = ZipRangeReader(blob)
         except (ValueError, struct.error, OSError) as exc:
-            logger.warning(f"ZipRangeReader failed ({exc}), falling back to full download")
+            logger.warning(
+                f"ZipRangeReader failed ({exc}), falling back to full download"
+            )
             data = blob.read_all()
             self._reader = ZipArchiveReader(data)
 
@@ -403,7 +445,9 @@ class TarArchiveReader(ArchiveReader):
 
     def __init__(self, data: bytes) -> None:
         try:
-            self._tar_file = tarfile.open(fileobj=BytesIO(data), mode="r:*")  # noqa: SIM115
+            self._tar_file = tarfile.open(
+                fileobj=BytesIO(data), mode="r:*"
+            )  # noqa: SIM115
         except tarfile.TarError as exc:
             raise ValueError("Corrupted TAR") from exc
 
@@ -413,9 +457,15 @@ class TarArchiveReader(ArchiveReader):
             def _load(tf=self._tar_file, member=tar_member):
                 try:
                     extracted = tf.extractfile(member)
-                    data = extracted.read(_MAX_INNER_FILE_BYTES + 1) if extracted is not None else None
+                    data = (
+                        extracted.read(_MAX_INNER_FILE_BYTES + 1)
+                        if extracted is not None
+                        else None
+                    )
                 except Exception as exc:
-                    raise ValueError(f"Failed to read archive entry {member.name!r}") from exc
+                    raise ValueError(
+                        f"Failed to read archive entry {member.name!r}"
+                    ) from exc
                 if data is None:
                     raise ValueError(f"Cannot extract {member.name!r}")
                 return _checked_bytes(data, member.name)
@@ -427,9 +477,13 @@ class TarArchiveReader(ArchiveReader):
                     logger.warning(f"Skipping suspicious path {tar_member.name!r}")
                     continue
                 if tar_member.size > _MAX_INNER_FILE_BYTES:
-                    logger.warning(f"Skipping {tar_member.name!r}: size {tar_member.size} exceeds limit")
+                    logger.warning(
+                        f"Skipping {tar_member.name!r}: size {tar_member.size} exceeds limit"
+                    )
                     continue
-                yield ArchiveEntry(name=tar_member.name, size=tar_member.size, loader=_load)
+                yield ArchiveEntry(
+                    name=tar_member.name, size=tar_member.size, loader=_load
+                )
             except Exception as exc:
                 logger.warning(f"Skipping archive entry {tar_member.name!r}: {exc}")
 
@@ -469,7 +523,9 @@ class SevenZipArchiveReader(ArchiveReader):
                 file_path.chmod(0o644)
                 size = file_path.stat().st_size
                 if size > _MAX_INNER_FILE_BYTES:
-                    logger.warning(f"Skipping {relative_name!r}: size {size} exceeds limit")
+                    logger.warning(
+                        f"Skipping {relative_name!r}: size {size} exceeds limit"
+                    )
                     continue
 
                 def _load(fp=file_path):
@@ -500,11 +556,15 @@ class RarArchiveReader(ArchiveReader):
             def _load(rf=self._rar_file, info=entry_info):
                 try:
                     with rf.open(info) as fh:
-                        return _checked_bytes(fh.read(_MAX_INNER_FILE_BYTES + 1), info.filename)
+                        return _checked_bytes(
+                            fh.read(_MAX_INNER_FILE_BYTES + 1), info.filename
+                        )
                 except ValueError:
                     raise
                 except Exception as exc:
-                    raise ValueError(f"Failed to read archive entry {info.filename!r}") from exc
+                    raise ValueError(
+                        f"Failed to read archive entry {info.filename!r}"
+                    ) from exc
 
             try:
                 if entry_info.is_dir():
@@ -513,9 +573,13 @@ class RarArchiveReader(ArchiveReader):
                     logger.warning(f"Skipping suspicious path {entry_info.filename!r}")
                     continue
                 if entry_info.file_size > _MAX_INNER_FILE_BYTES:
-                    logger.warning(f"Skipping {entry_info.filename!r}: size {entry_info.file_size} exceeds limit")
+                    logger.warning(
+                        f"Skipping {entry_info.filename!r}: size {entry_info.file_size} exceeds limit"
+                    )
                     continue
-                yield ArchiveEntry(name=entry_info.filename, size=entry_info.file_size, loader=_load)
+                yield ArchiveEntry(
+                    name=entry_info.filename, size=entry_info.file_size, loader=_load
+                )
             except Exception as exc:
                 logger.warning(f"Skipping archive entry {entry_info.filename!r}: {exc}")
 
@@ -540,7 +604,9 @@ def _validate_7z_entry_paths(szf) -> None:  # type: ignore[no-untyped-def]
 def _validate_7z_entry_sizes(szf, limit: int) -> None:  # type: ignore[no-untyped-def]
     for info in szf.list():
         if not info.is_directory and info.uncompressed > limit:
-            raise ValueError(f"Entry {info.filename!r} uncompressed size {info.uncompressed} exceeds limit")
+            raise ValueError(
+                f"Entry {info.filename!r} uncompressed size {info.uncompressed} exceeds limit"
+            )
 
 
 def _checked_bytes(data: bytes, name: str) -> BytesIO:
@@ -560,7 +626,9 @@ def get_archive_reader(structure_format: str, data: bytes) -> ArchiveReader:
     raise ValueError(f"Unsupported archive format: {structure_format!r}")
 
 
-def open_archive_reader(blob: RangeReadableBlob, structure_format: str) -> ArchiveReader:
+def open_archive_reader(
+    blob: RangeReadableBlob, structure_format: str
+) -> ArchiveReader:
     """Open the appropriate reader for a blob without a full download where possible.
 
     ZIP uses HTTP range requests via ZipReader (falls back to full download only if needed).
@@ -571,7 +639,9 @@ def open_archive_reader(blob: RangeReadableBlob, structure_format: str) -> Archi
         return ZipReader(blob)
     blob_size = blob.get_size()
     if blob_size > MAX_ARCHIVE_SIZE_BYTES:
-        raise ValueError(f"Archive size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}")
+        raise ValueError(
+            f"Archive size {blob_size} exceeds limit {MAX_ARCHIVE_SIZE_BYTES}"
+        )
     data = blob.read_all()
     return get_archive_reader(structure_format, data)
 
@@ -586,7 +656,9 @@ def detect_inner_format(filename: str) -> SupportedTypes | None:
 
 
 def is_archive_format(structure_format: str | None) -> bool:
-    return bool(structure_format) and f".{structure_format.lower()}" in ARCHIVE_EXTENSIONS
+    return (
+        bool(structure_format) and f".{structure_format.lower()}" in ARCHIVE_EXTENSIONS
+    )
 
 
 def get_first_schema_entry(
@@ -626,7 +698,9 @@ def iter_archive_entries_with_schema(
         yield entry, columns, entry_format
 
 
-def infer_columns_from_archive_entry(entry: ArchiveEntry, inner_format: SupportedTypes) -> list:
+def infer_columns_from_archive_entry(
+    entry: ArchiveEntry, inner_format: SupportedTypes
+) -> list:
     """Infer column definitions by reading the entry's bytes into a DataFrame.
 
     Returns an empty list on any failure so callers can proceed without schema.

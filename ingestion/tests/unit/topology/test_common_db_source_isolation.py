@@ -52,9 +52,20 @@ def source():
 def _fqn_side_effect(*, bad_name):
     """fqn.build that raises FQNBuildingException only for `bad_name`."""
 
-    def _build(_metadata, *, entity_type, service_name, database_name, schema_name, table_name, **_):
+    def _build(
+        _metadata,
+        *,
+        entity_type,
+        service_name,
+        database_name,
+        schema_name,
+        table_name,
+        **_,
+    ):
         if table_name == bad_name:
-            raise FQNBuildingException(f"Error building FQN for Table: Invalid name {table_name}")
+            raise FQNBuildingException(
+                f"Error building FQN for Table: Invalid name {table_name}"
+            )
         return f"{service_name}.{database_name}.{schema_name}.{table_name}"
 
     return _build
@@ -128,8 +139,12 @@ def test_get_tables_name_and_type_isolates_failed_view(caplog, source):
 def test_get_tables_name_and_type_handles_listing_failure(source):
     """If query_table_names_and_types itself raises, the function logs a
     warning and proceeds with the view loop (no crash)."""
-    source.query_table_names_and_types = MagicMock(side_effect=RuntimeError("upstream listing exploded"))
-    source.query_view_names_and_types = MagicMock(return_value=[TableNameAndType(name="V1", type_=TableType.View)])
+    source.query_table_names_and_types = MagicMock(
+        side_effect=RuntimeError("upstream listing exploded")
+    )
+    source.query_view_names_and_types = MagicMock(
+        return_value=[TableNameAndType(name="V1", type_=TableType.View)]
+    )
     source.standardize_table_name = lambda _schema, name: name
 
     with patch(

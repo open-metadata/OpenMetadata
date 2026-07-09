@@ -83,11 +83,15 @@ class TestUnityCatalogIncrementalTableProcessor:
         assert processor.get_deleted("schema1") == set()
 
     def test_split_full_name(self):
-        assert UnityCatalogIncrementalTableProcessor._split_full_name("cat.sch.tbl") == (
+        assert UnityCatalogIncrementalTableProcessor._split_full_name(
+            "cat.sch.tbl"
+        ) == (
             "sch",
             "tbl",
         )
-        assert UnityCatalogIncrementalTableProcessor._split_full_name("only.two") is None
+        assert (
+            UnityCatalogIncrementalTableProcessor._split_full_name("only.two") is None
+        )
         assert UnityCatalogIncrementalTableProcessor._split_full_name("a.b.c.d") is None
         assert UnityCatalogIncrementalTableProcessor._split_full_name(None) is None
         assert UnityCatalogIncrementalTableProcessor._split_full_name("") is None
@@ -110,7 +114,10 @@ class TestUnityCatalogIncrementalTableProcessor:
         processor.set_table_map(catalog="cat", start_timestamp=1000)
 
         deleted_sql = str(connection.execute.call_args_list[1].args[0])
-        assert "substring_index(request_params.full_name_arg, '.', 1) = 'cat'" in deleted_sql
+        assert (
+            "substring_index(request_params.full_name_arg, '.', 1) = 'cat'"
+            in deleted_sql
+        )
         assert "LIKE" not in deleted_sql
 
 
@@ -137,7 +144,9 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=False),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.tbl_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(
+                UnitycatalogSource._process_table(source, table, "cat", "schema1")
+            )
 
         assert result == [("tbl_a", TableType.Regular)]
         assert source.context.get().table_data is table
@@ -152,7 +161,9 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=False),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.v_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(
+                UnitycatalogSource._process_table(source, table, "cat", "schema1")
+            )
 
         assert result == [("v_a", TableType.View)]
 
@@ -166,7 +177,9 @@ class TestUnityCatalogIncrementalSource:
             patch(f"{UC_METADATA_MODULE}.filter_by_table", return_value=True),
         ):
             fqn_mock.build.return_value = "svc.cat.schema1.tbl_a"
-            result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+            result = list(
+                UnitycatalogSource._process_table(source, table, "cat", "schema1")
+            )
 
         assert result == []
         source.status.filter.assert_called_once()
@@ -175,7 +188,9 @@ class TestUnityCatalogIncrementalSource:
         source = self._make_source()
         table = SimpleNamespace(table_type=None)
 
-        result = list(UnitycatalogSource._process_table(source, table, "cat", "schema1"))
+        result = list(
+            UnitycatalogSource._process_table(source, table, "cat", "schema1")
+        )
 
         assert result == []
         source.status.failed.assert_called_once()
@@ -194,7 +209,9 @@ class TestUnityCatalogIncrementalSource:
 
         with patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock:
             fqn_mock.build.return_value = "svc.cat.schema1.dropped"
-            result = list(UnitycatalogSource._get_incremental_tables(source, "cat", "schema1"))
+            result = list(
+                UnitycatalogSource._get_incremental_tables(source, "cat", "schema1")
+            )
 
         assert result == [("chg", TableType.Regular)]
         assert source.context.get_global().deleted_tables == ["svc.cat.schema1.dropped"]
@@ -210,7 +227,9 @@ class TestUnityCatalogIncrementalSource:
         processor.get_changed.return_value = {"recreated", "new_change"}
         source.incremental_table_processor = processor
         source.context.get_global.return_value = SimpleNamespace(deleted_tables=[])
-        source.client.tables.get.return_value = SimpleNamespace(name="x", table_type=None)
+        source.client.tables.get.return_value = SimpleNamespace(
+            name="x", table_type=None
+        )
         source._process_table.return_value = iter([])
 
         with patch(f"{UC_METADATA_MODULE}.fqn") as fqn_mock:
@@ -230,7 +249,9 @@ class TestUnityCatalogIncrementalSource:
         source.context.get_global.return_value = SimpleNamespace(deleted_tables=[])
         source.client.tables.get.side_effect = Exception("boom")
 
-        result = list(UnitycatalogSource._get_incremental_tables(source, "cat", "schema1"))
+        result = list(
+            UnitycatalogSource._get_incremental_tables(source, "cat", "schema1")
+        )
 
         assert result == []
         source.status.failed.assert_called_once()
@@ -239,7 +260,9 @@ class TestUnityCatalogIncrementalSource:
         source = self._make_source()
         source.incremental_table_processor = None
 
-        result = list(UnitycatalogSource._get_incremental_tables(source, "cat", "schema1"))
+        result = list(
+            UnitycatalogSource._get_incremental_tables(source, "cat", "schema1")
+        )
 
         assert result == []
 
@@ -247,7 +270,9 @@ class TestUnityCatalogIncrementalSource:
         source = self._make_source()
         source.incremental.enabled = True
         source.incremental_table_processor = Mock()
-        source.context.get.return_value = SimpleNamespace(database="cat", database_schema="schema1")
+        source.context.get.return_value = SimpleNamespace(
+            database="cat", database_schema="schema1"
+        )
         source._get_incremental_tables.return_value = iter([("x", TableType.Regular)])
 
         result = list(UnitycatalogSource.get_tables_name_and_type(source))
@@ -259,15 +284,21 @@ class TestUnityCatalogIncrementalSource:
     def test_get_tables_uses_full_path_when_disabled(self):
         source = self._make_source()
         source.incremental.enabled = False
-        source.context.get.return_value = SimpleNamespace(database="cat", database_schema="schema1")
+        source.context.get.return_value = SimpleNamespace(
+            database="cat", database_schema="schema1"
+        )
         tables = [SimpleNamespace(name="t1"), SimpleNamespace(name="t2")]
         source.client.tables.list.return_value = tables
-        source._process_table.side_effect = lambda table, catalog, schema: iter([(table.name, TableType.Regular)])
+        source._process_table.side_effect = lambda table, catalog, schema: iter(
+            [(table.name, TableType.Regular)]
+        )
 
         result = list(UnitycatalogSource.get_tables_name_and_type(source))
 
         assert result == [("t1", TableType.Regular), ("t2", TableType.Regular)]
-        source.client.tables.list.assert_called_once_with(catalog_name="cat", schema_name="schema1")
+        source.client.tables.list.assert_called_once_with(
+            catalog_name="cat", schema_name="schema1"
+        )
         source._get_incremental_tables.assert_not_called()
 
     def test_mark_tables_as_deleted_incremental_uses_explicit_list(self):
@@ -275,7 +306,9 @@ class TestUnityCatalogIncrementalSource:
         source.incremental.enabled = True
         source.source_config.markDeletedTables = True
         source.context.get.return_value = SimpleNamespace(database="cat")
-        source.context.get_global.return_value = SimpleNamespace(deleted_tables=["svc.cat.schema1.dropped"])
+        source.context.get_global.return_value = SimpleNamespace(
+            deleted_tables=["svc.cat.schema1.dropped"]
+        )
 
         with patch(
             f"{UC_METADATA_MODULE}.delete_entity_by_name",
@@ -321,12 +354,18 @@ class TestUnityCatalogIncrementalSource:
 
         with (
             patch.object(WorkflowSource, "model_validate", return_value=config),
-            patch.object(IncrementalConfig, "create", return_value=sentinel) as incremental_create,
-            patch.object(UnitycatalogSource, "__init__", return_value=None) as init_mock,
+            patch.object(
+                IncrementalConfig, "create", return_value=sentinel
+            ) as incremental_create,
+            patch.object(
+                UnitycatalogSource, "__init__", return_value=None
+            ) as init_mock,
         ):
             UnitycatalogSource.create({"k": "v"}, metadata, pipeline_name="pipe")
 
-        incremental_create.assert_called_once_with(config.sourceConfig.config.incremental, "pipe", metadata)
+        incremental_create.assert_called_once_with(
+            config.sourceConfig.config.incremental, "pipe", metadata
+        )
         init_args = init_mock.call_args.args
         assert config in init_args
         assert metadata in init_args

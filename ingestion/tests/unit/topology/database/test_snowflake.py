@@ -878,7 +878,6 @@ class TestSnowflakeGetDatabaseNamesRawEagerFetch:
         assert names == ["DB_A", "DB_B", "DB_C"]
 
 
-
 class SnowflakeBadNameIsolationTest(TestCase):
     """
     Regression tests for the fault-isolation paths added so that a single
@@ -933,7 +932,9 @@ class SnowflakeBadNameIsolationTest(TestCase):
         mock_connection = Mock()
         mock_connection.execute = Mock(return_value=iter(rows))
 
-        result = get_schema_columns(dialect, mock_connection, schema="SCHEMA", info_cache={})
+        result = get_schema_columns(
+            dialect, mock_connection, schema="SCHEMA", info_cache={}
+        )
 
         # The good table's columns were populated even though a bad-named row
         # appeared between them — fault isolation at the per-row level.
@@ -961,8 +962,12 @@ class SnowflakeBadNameIsolationTest(TestCase):
         deleted_at = datetime(2026, 1, 1)
         snowflake_tables = SnowflakeTableList(
             tables=[
-                SnowflakeTable(name="GOOD_GONE", deleted=deleted_at, type_=TableType.Regular),
-                SnowflakeTable(name='BAD"GONE', deleted=deleted_at, type_=TableType.Regular),
+                SnowflakeTable(
+                    name="GOOD_GONE", deleted=deleted_at, type_=TableType.Regular
+                ),
+                SnowflakeTable(
+                    name='BAD"GONE', deleted=deleted_at, type_=TableType.Regular
+                ),
                 SnowflakeTable(name="ALIVE_TBL", deleted=None, type_=TableType.Regular),
             ]
         )
@@ -973,7 +978,16 @@ class SnowflakeBadNameIsolationTest(TestCase):
         source.context.get().__dict__["database"] = "db"
         source.context.get_global().deleted_tables = []
 
-        def fake_fqn_build(*, metadata, entity_type, service_name, database_name, schema_name, table_name, **_kw):
+        def fake_fqn_build(
+            *,
+            metadata,
+            entity_type,
+            service_name,
+            database_name,
+            schema_name,
+            table_name,
+            **_kw,
+        ):
             from metadata.utils.fqn import quote_name
 
             # quote_name still rejects names with embedded `"`; let that drive the failure.
@@ -1018,10 +1032,14 @@ def test_test_connection_validates_access_history_and_query_history():
         SnowflakeConnection,
     )
 
-    connection = SnowflakeConnection(SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh"))
+    connection = SnowflakeConnection(
+        SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh")
+    )
     connection._client = MagicMock()
 
-    with patch("metadata.ingestion.source.database.snowflake.connection.test_connection_steps") as mocked_steps:
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.test_connection_steps"
+    ) as mocked_steps:
         connection.test_connection(metadata=MagicMock())
 
     test_fn = mocked_steps.call_args.kwargs["test_fn"]

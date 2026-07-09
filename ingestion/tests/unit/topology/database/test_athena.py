@@ -440,7 +440,9 @@ class TestQueryTableNamesAndTypesCatalogId:
 
     def test_catalog_id_passed_to_paginate_when_configured(self):
         config = _athena_config_with_catalog_id(S3_TABLES_CATALOG_ID)
-        source, mock_paginator = _make_source_with_glue(config, [{"Name": MOCK_TABLE_NAME, "Parameters": {}}])
+        source, mock_paginator = _make_source_with_glue(
+            config, [{"Name": MOCK_TABLE_NAME, "Parameters": {}}]
+        )
 
         result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
 
@@ -458,7 +460,9 @@ class TestQueryTableNamesAndTypesCatalogId:
         result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
 
         assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
-        mock_paginator.paginate.assert_called_once_with(DatabaseName=MOCK_DATABASE_SCHEMA.name.root)
+        mock_paginator.paginate.assert_called_once_with(
+            DatabaseName=MOCK_DATABASE_SCHEMA.name.root
+        )
         assert "CatalogId" not in mock_paginator.paginate.call_args.kwargs
 
     def test_empty_table_list_returns_empty_without_inspector_fallback(self):
@@ -468,7 +472,12 @@ class TestQueryTableNamesAndTypesCatalogId:
         source, _ = _make_source_with_glue(config, [])
         mock_inspector = MagicMock()
 
-        with patch.object(type(source), "inspector", new_callable=PropertyMock, return_value=mock_inspector):
+        with patch.object(
+            type(source),
+            "inspector",
+            new_callable=PropertyMock,
+            return_value=mock_inspector,
+        ):
             result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
 
         assert result == []
@@ -481,11 +490,18 @@ class TestQueryTableNamesAndTypesCatalogId:
         mock_inspector = MagicMock()
         mock_inspector.get_table_names.return_value = [MOCK_TABLE_NAME]
 
-        with patch.object(type(source), "inspector", new_callable=PropertyMock, return_value=mock_inspector):
+        with patch.object(
+            type(source),
+            "inspector",
+            new_callable=PropertyMock,
+            return_value=mock_inspector,
+        ):
             result = source.query_table_names_and_types(MOCK_DATABASE_SCHEMA.name.root)
 
         assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
-        mock_inspector.get_table_names.assert_called_once_with(MOCK_DATABASE_SCHEMA.name.root)
+        mock_inspector.get_table_names.assert_called_once_with(
+            MOCK_DATABASE_SCHEMA.name.root
+        )
 
 
 @pytest.fixture
@@ -523,7 +539,11 @@ def _mock_query_rows(source, rows):
 
 def _get_request(mock_metadata, call_index=0):
     """Pull the CreateCustomPropertyRequest from a create_or_update_custom_property call."""
-    return mock_metadata.create_or_update_custom_property.call_args_list[call_index].args[0].createCustomPropertyRequest
+    return (
+        mock_metadata.create_or_update_custom_property.call_args_list[call_index]
+        .args[0]
+        .createCustomPropertyRequest
+    )
 
 
 class TestGetTableExtensionsEarlyExits:
@@ -532,34 +552,53 @@ class TestGetTableExtensionsEarlyExits:
     def test_returns_none_when_include_custom_properties_disabled(self, athena_source):
         athena_source.source_config.includeCustomProperties = False
         with patch.object(athena_source, "_fetch_iceberg_properties") as mock_fetch:
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
         assert result is None
         mock_fetch.assert_not_called()
 
     def test_returns_none_without_type_ref(self, athena_source):
         athena_source._string_property_type_ref = None
-        assert athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg) is None
+        assert (
+            athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            is None
+        )
 
     def test_returns_none_for_external_table(self, athena_source):
-        assert athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.External) is None
+        assert (
+            athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.External)
+            is None
+        )
 
     def test_returns_none_for_regular_table(self, athena_source):
-        assert athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Regular) is None
+        assert (
+            athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Regular)
+            is None
+        )
 
     def test_returns_none_when_table_type_is_none(self, athena_source):
         assert athena_source.get_table_extensions(MOCK_TABLE_NAME) is None
 
     def test_returns_none_when_query_yields_no_properties(self, athena_source):
         with patch.object(athena_source, "_fetch_iceberg_properties", return_value={}):
-            assert athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg) is None
+            assert (
+                athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+                is None
+            )
 
     def test_returns_none_when_all_values_filtered_out(self, athena_source):
         props = {"k1": None, "k2": ""}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata"),
         ):
-            assert athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg) is None
+            assert (
+                athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+                is None
+            )
 
 
 class TestGetTableExtensionsSanitization:
@@ -568,10 +607,14 @@ class TestGetTableExtensionsSanitization:
     def test_dot_is_preserved(self, athena_source):
         props = {"myprop.owner": "team-a"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"myprop.owner": "team-a"}
         request = _get_request(mock_metadata)
@@ -581,10 +624,14 @@ class TestGetTableExtensionsSanitization:
     def test_hyphen_is_preserved(self, athena_source):
         props = {"myprop-owner": "x"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"myprop-owner": "x"}
         request = _get_request(mock_metadata)
@@ -594,10 +641,14 @@ class TestGetTableExtensionsSanitization:
         """Dots and hyphens together are allowed — name passes through untouched."""
         props = {"myprop.airflow-dag-id": "scrape-dag"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"myprop.airflow-dag-id": "scrape-dag"}
         request = _get_request(mock_metadata)
@@ -608,10 +659,14 @@ class TestGetTableExtensionsSanitization:
         """Everything outside [A-Za-z0-9_.-] gets replaced with __."""
         props = {"myprop/airflow:dag id@prod": "v"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"myprop__airflow__dag__id__prod": "v"}
         request = _get_request(mock_metadata)
@@ -621,20 +676,28 @@ class TestGetTableExtensionsSanitization:
         """Allowed chars (. -) stay; disallowed chars (/ space) get replaced."""
         props = {"myprop.data/type-v1 beta": "v"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata"),
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"myprop.data__type-v1__beta": "v"}
 
     def test_already_valid_name_unchanged(self, athena_source):
         props = {"simple_key": "value"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"simple_key": "value"}
         request = _get_request(mock_metadata)
@@ -644,20 +707,28 @@ class TestGetTableExtensionsSanitization:
     def test_alphanumeric_and_underscore_preserved(self, athena_source):
         props = {"abc123_XYZ": "v"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata"),
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
         assert result == {"abc123_XYZ": "v"}
 
     def test_sanitized_name_at_256_chars_not_hashed(self, athena_source):
         name = "a" * 256
         props = {name: "value"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {name: "value"}
         request = _get_request(mock_metadata)
@@ -667,12 +738,18 @@ class TestGetTableExtensionsSanitization:
         original = "myprop." + ("a" * 260)
         props = {original: "value"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
-        expected_hash = hashlib.md5(original.encode("utf-8"), usedforsecurity=False).hexdigest()
+        expected_hash = hashlib.md5(
+            original.encode("utf-8"), usedforsecurity=False
+        ).hexdigest()
         assert result == {expected_hash: "value"}
         request = _get_request(mock_metadata)
         assert request.name.root == expected_hash
@@ -704,10 +781,14 @@ class TestGetTableExtensionsValueFiltering:
     def test_skips_none_valued_property(self, athena_source):
         props = {"k1": "v1", "k2": None}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"k1": "v1"}
         assert mock_metadata.create_or_update_custom_property.call_count == 1
@@ -715,30 +796,42 @@ class TestGetTableExtensionsValueFiltering:
     def test_skips_empty_string_valued_property(self, athena_source):
         props = {"k1": "v1", "k2": ""}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata"),
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
         assert result == {"k1": "v1"}
 
     def test_keeps_string_zero(self, athena_source):
         """'0' is falsy-ish in some checks but is a legitimate value."""
         props = {"k": "0"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata"),
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
         assert result == {"k": "0"}
 
     def test_keeps_whitespace_value(self, athena_source):
         """A single space is not an empty string and should pass through."""
         props = {"k": " "}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata"),
         ):
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
         assert result == {"k": " "}
 
 
@@ -748,7 +841,9 @@ class TestGetTableExtensionsDedup:
     def test_same_prop_across_tables_registered_once(self, athena_source):
         props = {"shared_key": "v"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
             athena_source.get_table_extensions("tbl1", TableType.Iceberg)
@@ -775,16 +870,24 @@ class TestGetTableExtensionsDedup:
         """A failed registration must not be cached — so a retry on the next table can succeed."""
         props = {"k1": "v1"}
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
-            mock_metadata.create_or_update_custom_property.side_effect = Exception("boom")
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            mock_metadata.create_or_update_custom_property.side_effect = Exception(
+                "boom"
+            )
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result is None
         assert "k1" not in athena_source._processed_prop
 
-    def test_registration_failure_for_one_prop_does_not_block_others(self, athena_source):
+    def test_registration_failure_for_one_prop_does_not_block_others(
+        self, athena_source
+    ):
         """Registration errors on one prop don't prevent others from being returned."""
         props = {"bad_prop": "x", "good_prop": "y"}
         call_flag = {"first": True}
@@ -796,11 +899,15 @@ class TestGetTableExtensionsDedup:
             return
 
         with (
-            patch.object(athena_source, "_fetch_iceberg_properties", return_value=props),
+            patch.object(
+                athena_source, "_fetch_iceberg_properties", return_value=props
+            ),
             patch.object(athena_source, "metadata") as mock_metadata,
         ):
             mock_metadata.create_or_update_custom_property.side_effect = side_effect
-            result = athena_source.get_table_extensions(MOCK_TABLE_NAME, TableType.Iceberg)
+            result = athena_source.get_table_extensions(
+                MOCK_TABLE_NAME, TableType.Iceberg
+            )
 
         assert result == {"good_prop": "y"}
 
@@ -814,7 +921,9 @@ class TestFetchIcebergProperties:
             [("myprop.owner", "team-a"), ("myprop.source", "ex")],
         )
 
-        result = athena_source._fetch_iceberg_properties(MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME)
+        result = athena_source._fetch_iceberg_properties(
+            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME
+        )
         assert result == {"myprop.owner": "team-a", "myprop.source": "ex"}
 
     def test_returns_empty_dict_on_exception(self, athena_source):
@@ -822,7 +931,9 @@ class TestFetchIcebergProperties:
         mock_engine.connect.side_effect = Exception("connection refused")
         athena_source.engine = mock_engine
 
-        result = athena_source._fetch_iceberg_properties(MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME)
+        result = athena_source._fetch_iceberg_properties(
+            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME
+        )
         assert result == {}
 
     def test_filters_null_key_and_null_value_rows(self, athena_source):
@@ -836,7 +947,9 @@ class TestFetchIcebergProperties:
             ],
         )
 
-        result = athena_source._fetch_iceberg_properties(MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME)
+        result = athena_source._fetch_iceberg_properties(
+            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME
+        )
         assert result == {"k1": "v1", "k3": "v3"}
 
     def test_query_targets_dollar_properties_metatable(self, athena_source):
@@ -854,7 +967,9 @@ class TestFetchIcebergProperties:
     def test_values_are_coerced_to_string(self, athena_source):
         _mock_query_rows(athena_source, [("k_int", 42), ("k_bool", True)])
 
-        result = athena_source._fetch_iceberg_properties(MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME)
+        result = athena_source._fetch_iceberg_properties(
+            MOCK_DATABASE_SCHEMA.name.root, MOCK_TABLE_NAME
+        )
         assert result == {"k_int": "42", "k_bool": "True"}
 
 

@@ -124,13 +124,17 @@ class TrackedREST(REST):
         data: Any = None,
         json: Any = None,
         headers: Optional[dict] = None,  # noqa: UP045
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
     ):
         """POST method with tracking."""
         start = perf_counter()
         try:
-            return super().post(path, data, json, headers, timeout=timeout, retries=retries)
+            return super().post(
+                path, data, json, headers, timeout=timeout, retries=retries
+            )
         finally:
             duration_ms = (perf_counter() - start) * 1000
             self._record_api_call("POST", path, duration_ms)

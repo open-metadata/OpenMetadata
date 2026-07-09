@@ -54,7 +54,9 @@ logger = ingestion_logger()
 
 
 @reflection.cache
-def get_table_comment(self, connection, table_name, schema=None, **kw):  # pylint: disable=unused-argument
+def get_table_comment(
+    self, connection, table_name, schema=None, **kw
+):  # pylint: disable=unused-argument
     return get_table_comment_wrapper(
         self,
         connection,
@@ -112,7 +114,9 @@ def get_identity_values(coltype, identity_start, identity_increment):
 
 @reflection.cache
 @db_plus_owner
-def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
+def get_columns(
+    self, connection, tablename, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument, too-many-locals, disable=too-many-branches, too-many-statements
     """
     This function overrides to add support for column comments
     """
@@ -314,7 +318,9 @@ def get_columns(self, connection, tablename, dbname, owner, schema, **kw):  # py
 
 @reflection.cache
 @db_plus_owner
-def get_view_definition(self, connection, viewname, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+def get_view_definition(
+    self, connection, viewname, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
     return get_view_definition_wrapper(
         self,
         connection,
@@ -455,7 +461,9 @@ def get_foreign_keys(
 
 @reflection.cache
 @db_plus_owner_listing
-def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+def get_table_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)
@@ -473,7 +481,9 @@ def get_table_names(self, connection, dbname, owner, schema, **kw):  # pylint: d
 
 @reflection.cache
 @db_plus_owner_listing
-def get_view_names(self, connection, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+def get_view_names(
+    self, connection, dbname, owner, schema, **kw
+):  # pylint: disable=unused-argument
     tables = ischema.tables
     query_ = (
         sql.select(tables.c.table_name)

@@ -24,7 +24,11 @@ from metadata.ingestion.ometa.http_adapter import (
 
 
 def test_keepalive_options_enable_so_keepalive():
-    assert (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1) in build_keepalive_socket_options()
+    assert (
+        socket.SOL_SOCKET,
+        socket.SO_KEEPALIVE,
+        1,
+    ) in build_keepalive_socket_options()
 
 
 def test_transport_retry_is_transport_only_and_idempotent_safe():
@@ -45,5 +49,7 @@ def test_mount_resilient_adapter_wires_keepalive_and_retry():
         assert isinstance(adapter.max_retries, Retry)
         assert adapter.max_retries.read == 1
 
-    pooled = session.get_adapter("https://x").poolmanager.connection_pool_kw["socket_options"]
+    pooled = session.get_adapter("https://x").poolmanager.connection_pool_kw[
+        "socket_options"
+    ]
     assert (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1) in pooled

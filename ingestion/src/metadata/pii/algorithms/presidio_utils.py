@@ -95,7 +95,9 @@ def build_analyzer_engine(
     model_name = get_model_for_language(language)
     supported_language = language.value
 
-    nlp_engine = load_nlp_engine(model_name=model_name, supported_language=supported_language)
+    nlp_engine = load_nlp_engine(
+        model_name=model_name, supported_language=supported_language
+    )
     recognizer_registry = RecognizerRegistry(
         recognizers=list(_get_all_pattern_recognizers()),
         supported_languages=[supported_language],
@@ -535,9 +537,9 @@ def explain_recognition_results(results: list[RecognizerResult]) -> str:
     for recognizer_identifier, group in grouped_results:
         group_list = list(group)
 
-        recognizer_name: str = cast("dict[str, str]", group_list[0].recognition_metadata).get(
-            presidio_constants.RECOGNIZER_METADATA_NAME, recognizer_identifier
-        )
+        recognizer_name: str = cast(
+            "dict[str, str]", group_list[0].recognition_metadata
+        ).get(presidio_constants.RECOGNIZER_METADATA_NAME, recognizer_identifier)
         results_count = len(group_list)
         results_score = sum(r.score for r in group_list) / results_count
         maybe_plural_time = "time" if results_count == 1 else "times"
@@ -555,18 +557,28 @@ def explain_recognition_results(results: list[RecognizerResult]) -> str:
         patterns_matched: set[tuple[str, float]] = set()
         for result in group_list:
             if (
-                result.analysis_explanation is None  # pyright: ignore[reportUnnecessaryComparison]
-                or result.analysis_explanation.pattern is None  # pyright: ignore[reportUnnecessaryComparison]
+                result.analysis_explanation
+                is None  # pyright: ignore[reportUnnecessaryComparison]
+                or result.analysis_explanation.pattern
+                is None  # pyright: ignore[reportUnnecessaryComparison]
             ):
                 continue
 
-            patterns_matched.add((result.analysis_explanation.pattern, result.analysis_explanation.score))
+            patterns_matched.add(
+                (result.analysis_explanation.pattern, result.analysis_explanation.score)
+            )
 
         if patterns_matched:
-            textual_explanation += presidio_constants.TEXTUAL_EXPLANATION_PATTERN_HEADER_TEMPLATE + "\n"
-            for pattern, score in sorted(patterns_matched, key=lambda o: o[1], reverse=True):
+            textual_explanation += (
+                presidio_constants.TEXTUAL_EXPLANATION_PATTERN_HEADER_TEMPLATE + "\n"
+            )
+            for pattern, score in sorted(
+                patterns_matched, key=lambda o: o[1], reverse=True
+            ):
                 textual_explanation += (
-                    presidio_constants.TEXTUAL_EXPLANATION_PATTERN_ITEM_TEMPLATE.format(pattern=pattern, score=score)
+                    presidio_constants.TEXTUAL_EXPLANATION_PATTERN_ITEM_TEMPLATE.format(
+                        pattern=pattern, score=score
+                    )
                     + "\n"
                 )
 

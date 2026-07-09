@@ -72,29 +72,40 @@ class QuestDBSource(CommonDbSourceService):
     """
 
     @classmethod
-    def create(cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None):
+    def create(
+        cls, config_dict: dict, metadata: OpenMetadata, pipeline_name: str | None = None
+    ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         service_conn = config.serviceConnection
         connection = service_conn.root.config if service_conn is not None else None
         if not isinstance(connection, QuestDBConnection):
-            raise InvalidSourceException(f"Expected QuestDBConnection, but got {connection}")
+            raise InvalidSourceException(
+                f"Expected QuestDBConnection, but got {connection}"
+            )
         return cls(config, metadata)
 
     def __init__(self, config: WorkflowSource, metadata: OpenMetadata) -> None:
         super().__init__(config, metadata)
-        self._tables_cache: defaultdict[str, dict[str, QuestDBTableRow]] = defaultdict(dict)
+        self._tables_cache: defaultdict[str, dict[str, QuestDBTableRow]] = defaultdict(
+            dict
+        )
         try:
             rows = query_tables(self.connection)
             for row in rows:
                 self._tables_cache[row.table_type][row.name] = row
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to load QuestDB table catalog: %s — partition details will be unavailable", exc)
+            logger.warning(
+                "Failed to load QuestDB table catalog: %s — partition details will be unavailable",
+                exc,
+            )
 
     def get_database_names(self) -> Iterable[str]:
         yield QUESTDB_DEFAULT_DATABASE
 
-    def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+    def query_table_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Yield ``TableNameAndType`` entries for QuestDB tables (``table_type == "T"``).
 
@@ -113,7 +124,9 @@ class QuestDBSource(CommonDbSourceService):
                 logger.debug(traceback.format_exc())
                 logger.warning("Skipping table %s: %s", row.name, exc)
 
-    def query_view_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
+    def query_view_names_and_types(
+        self, schema_name: str
+    ) -> Iterable[TableNameAndType]:
         """
         Yield ``TableNameAndType`` entries for QuestDB views and materialized views.
 
@@ -125,7 +138,9 @@ class QuestDBSource(CommonDbSourceService):
             self._tables_cache.get(QUESTDB_TABLE_TYPE_MATERIALIZED_VIEW, {}).values(),
         ):
             try:
-                yield TableNameAndType(name=row.name, type_=QUESTDB_VIEW_TYPE_MAP[row.table_type])
+                yield TableNameAndType(
+                    name=row.name, type_=QUESTDB_VIEW_TYPE_MAP[row.table_type]
+                )
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning("Skipping view %s: %s", row.name, exc)
@@ -143,9 +158,15 @@ class QuestDBSource(CommonDbSourceService):
                 return str(result).strip() if result else None
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning("Failed to fetch materialized view definition for %s: %s", table_name, exc)
+                logger.warning(
+                    "Failed to fetch materialized view definition for %s: %s",
+                    table_name,
+                    exc,
+                )
                 return None
-        return super().get_schema_definition(table_type, table_name, schema_name, inspector)
+        return super().get_schema_definition(
+            table_type, table_name, schema_name, inspector
+        )
 
     def get_table_partition_details(
         self,
@@ -172,7 +193,12 @@ class QuestDBSource(CommonDbSourceService):
                 or not designated_timestamp
             ):
                 return False, None
-            logger.debug("Table %s partitioned by %s on column %s", table_name, partition_by, designated_timestamp)
+            logger.debug(
+                "Table %s partitioned by %s on column %s",
+                table_name,
+                partition_by,
+                designated_timestamp,
+            )
             return True, TablePartition(
                 columns=[
                     PartitionColumnDetails(
@@ -184,5 +210,7 @@ class QuestDBSource(CommonDbSourceService):
             )
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning("Failed to get partition details for %s: %s", table_name, exc)
+            logger.warning(
+                "Failed to get partition details for %s: %s", table_name, exc
+            )
             return False, None

@@ -240,11 +240,15 @@ class TestS3BlobAdapter:
         s3_client.head_object.return_value = {"ContentLength": 1024}
         adapter = S3BlobAdapter(s3_client, "my-bucket", "path/to/file.zip")
         assert adapter.get_size() == 1024
-        s3_client.head_object.assert_called_once_with(Bucket="my-bucket", Key="path/to/file.zip")
+        s3_client.head_object.assert_called_once_with(
+            Bucket="my-bucket", Key="path/to/file.zip"
+        )
 
     def test_read_range_range_header_format(self):
         s3_client = MagicMock()
-        s3_client.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"data"))}
+        s3_client.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=b"data"))
+        }
         adapter = S3BlobAdapter(s3_client, "bucket", "key")
         adapter.read_range(0, 100)
         call_kwargs = s3_client.get_object.call_args[1]
@@ -252,7 +256,9 @@ class TestS3BlobAdapter:
 
     def test_read_range_off_by_one(self):
         s3_client = MagicMock()
-        s3_client.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"xxxxx"))}
+        s3_client.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=b"xxxxx"))
+        }
         adapter = S3BlobAdapter(s3_client, "bucket", "key")
         adapter.read_range(10, 5)
         call_kwargs = s3_client.get_object.call_args[1]
@@ -260,14 +266,18 @@ class TestS3BlobAdapter:
 
     def test_read_range_returns_body_read(self):
         s3_client = MagicMock()
-        s3_client.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"result"))}
+        s3_client.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=b"result"))
+        }
         adapter = S3BlobAdapter(s3_client, "bucket", "key")
         result = adapter.read_range(0, 6)
         assert result == b"result"
 
     def test_read_all(self):
         s3_client = MagicMock()
-        s3_client.get_object.return_value = {"Body": MagicMock(read=MagicMock(return_value=b"full"))}
+        s3_client.get_object.return_value = {
+            "Body": MagicMock(read=MagicMock(return_value=b"full"))
+        }
         adapter = S3BlobAdapter(s3_client, "bucket", "key")
         result = adapter.read_all()
         call_kwargs = s3_client.get_object.call_args[1]
@@ -380,7 +390,9 @@ class TestDetectInnerFormat:
         assert detect_inner_format("data.parquet") == SupportedTypes.PARQUET
 
     def test_parquet_snappy_longest_match(self):
-        assert detect_inner_format("data.parquet.snappy") == SupportedTypes.PARQUET_SNAPPY
+        assert (
+            detect_inner_format("data.parquet.snappy") == SupportedTypes.PARQUET_SNAPPY
+        )
 
     def test_json(self):
         assert detect_inner_format("data.json") == SupportedTypes.JSON
@@ -545,7 +557,9 @@ class TestZipArchiveReader:
     def test_skips_suspicious_path(self):
         zip_bytes = _make_zip({"safe.csv": _CSV_CONTENT})
         reader = ZipArchiveReader(zip_bytes)
-        with patch("metadata.readers.archive._is_safe_archive_path", return_value=False):
+        with patch(
+            "metadata.readers.archive._is_safe_archive_path", return_value=False
+        ):
             entries = list(reader.entries())
         reader.close()
         assert entries == []
@@ -667,7 +681,9 @@ class TestTarArchiveReader:
     def test_exception_in_extractfile_raises_on_data_access(self):
         tar_bytes = _make_tar({"file.csv": _CSV_CONTENT}, mode="w:")
         reader = TarArchiveReader(tar_bytes)
-        with patch.object(reader._tar_file, "extractfile", side_effect=OSError("bad read")):
+        with patch.object(
+            reader._tar_file, "extractfile", side_effect=OSError("bad read")
+        ):
             entries = list(reader.entries())
             assert len(entries) == 1
             with pytest.raises(ValueError):
@@ -755,7 +771,9 @@ class TestZipRangeReader:
 
     def test_zip64_sentinel_raises(self):
         sentinel = _ZIP64_SENTINEL
-        eocd = struct.pack("<4sHHHHIIH", b"PK\x05\x06", 0, 0, 1, 1, sentinel, sentinel, 0)
+        eocd = struct.pack(
+            "<4sHHHHIIH", b"PK\x05\x06", 0, 0, 1, 1, sentinel, sentinel, 0
+        )
         blob = _MockBlob(eocd)
         with pytest.raises(ValueError, match="ZIP64"):
             ZipRangeReader(blob)
@@ -792,14 +810,18 @@ class TestZipRangeReader:
         assert {e.name for e in entries} == {"a.csv", "b.csv"}
 
     def test_stored_method_zero(self):
-        zip_bytes = _make_zip({"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_STORED)
+        zip_bytes = _make_zip(
+            {"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_STORED
+        )
         blob = _MockBlob(zip_bytes)
         with ZipRangeReader(blob) as reader:
             entries = list(reader.entries())
         assert entries[0].data.read() == _CSV_CONTENT
 
     def test_deflate_method_eight(self):
-        zip_bytes = _make_zip({"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_DEFLATED)
+        zip_bytes = _make_zip(
+            {"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_DEFLATED
+        )
         blob = _MockBlob(zip_bytes)
         with ZipRangeReader(blob) as reader:
             entries = list(reader.entries())
@@ -865,7 +887,9 @@ class TestZipRangeReader:
         import metadata.readers.archive as arch_mod
 
         original = arch_mod._MAX_INNER_FILE_BYTES
-        zip_bytes = _make_zip({"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_DEFLATED)
+        zip_bytes = _make_zip(
+            {"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_DEFLATED
+        )
         try:
             blob = _MockBlob(zip_bytes)
             reader = ZipRangeReader(blob)
@@ -893,7 +917,9 @@ class TestZipRangeReader:
         zip_bytes = _make_zip({"safe.csv": _CSV_CONTENT})
         blob = _MockBlob(zip_bytes)
         reader = ZipRangeReader(blob)
-        with patch("metadata.readers.archive._is_safe_archive_path", return_value=False):
+        with patch(
+            "metadata.readers.archive._is_safe_archive_path", return_value=False
+        ):
             entries = list(reader.entries())
         reader.close()
         assert entries == []
@@ -999,7 +1025,9 @@ class TestSevenZipArchiveReader:
         mock_szf.__exit__ = MagicMock(return_value=False)
         mock_szf.list.return_value = [mock_info]
 
-        with patch("py7zr.SevenZipFile", return_value=mock_szf), pytest.raises(ValueError, match="Suspicious path"):
+        with patch("py7zr.SevenZipFile", return_value=mock_szf), pytest.raises(
+            ValueError, match="Suspicious path"
+        ):
             SevenZipArchiveReader(seven_z_bytes)
 
     def test_large_file_in_7z_raises_on_construction(self):
@@ -1289,7 +1317,9 @@ class TestZipBombProtection:
         """Entry with lying uncomp_size=0 in CD passes eager check but fails on decompression."""
         import metadata.readers.archive as arch_mod
 
-        zip_bytes = _make_zip({"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_DEFLATED)
+        zip_bytes = _make_zip(
+            {"data.csv": _CSV_CONTENT}, compression=zipfile.ZIP_DEFLATED
+        )
         original = arch_mod._MAX_INNER_FILE_BYTES
         try:
             arch_mod._MAX_INNER_FILE_BYTES = 5
@@ -1630,7 +1660,9 @@ class TestIterArchiveEntriesWithSchema:
 
     def test_mixed_archive_and_data_files(self):
         inner_zip = _make_zip({"inner.csv": _CSV_CONTENT})
-        zip_bytes = _make_zip({"nested.zip": inner_zip, "real.csv": _CSV_CONTENT, "image.png": b"\x89PNG"})
+        zip_bytes = _make_zip(
+            {"nested.zip": inner_zip, "real.csv": _CSV_CONTENT, "image.png": b"\x89PNG"}
+        )
         with ZipArchiveReader(zip_bytes) as reader:
             results = list(iter_archive_entries_with_schema(reader))
         names = [r[0].name for r in results]
@@ -1646,7 +1678,9 @@ class TestIterArchiveEntriesWithSchema:
         cached_property stores its result in instance.__dict__["data"] on first access.
         Entries whose loader was never called will have no "data" key in __dict__.
         """
-        zip_bytes = _make_zip({"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT, "c.csv": _CSV_CONTENT})
+        zip_bytes = _make_zip(
+            {"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT, "c.csv": _CSV_CONTENT}
+        )
         with ZipArchiveReader(zip_bytes) as reader:
             results = list(iter_archive_entries_with_schema(reader))
 
@@ -1672,9 +1706,21 @@ class TestIterArchiveEntriesWithSchema:
             return loader
 
         entries_in = [
-            ArchiveEntry("first.csv", len(_CSV_CONTENT), _tracked_loader("first.csv", _CSV_CONTENT)),
-            ArchiveEntry("second.csv", len(_CSV2_CONTENT), _tracked_loader("second.csv", _CSV2_CONTENT)),
-            ArchiveEntry("third.csv", len(_CSV_CONTENT), _tracked_loader("third.csv", _CSV_CONTENT)),
+            ArchiveEntry(
+                "first.csv",
+                len(_CSV_CONTENT),
+                _tracked_loader("first.csv", _CSV_CONTENT),
+            ),
+            ArchiveEntry(
+                "second.csv",
+                len(_CSV2_CONTENT),
+                _tracked_loader("second.csv", _CSV2_CONTENT),
+            ),
+            ArchiveEntry(
+                "third.csv",
+                len(_CSV_CONTENT),
+                _tracked_loader("third.csv", _CSV_CONTENT),
+            ),
         ]
 
         mock_reader = MagicMock()

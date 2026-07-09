@@ -65,7 +65,9 @@ def get_connection_url(connection: QuestDBConnectionConfig) -> str:
 
     options = get_connection_options_dict(connection)
     if options:
-        params = "&".join(f"{key}={quote_plus(value)}" for (key, value) in options.items() if value)
+        params = "&".join(
+            f"{key}={quote_plus(value)}" for (key, value) in options.items() if value
+        )
         url = f"{url}?{params}"
     return url
 

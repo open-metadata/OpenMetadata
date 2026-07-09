@@ -16,7 +16,6 @@ import traceback
 from typing import Callable
 
 from flask import Blueprint, Response, jsonify, make_response, request
-
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.api.utils import (
     get_request_arg,

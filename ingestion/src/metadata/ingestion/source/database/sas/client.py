@@ -30,7 +30,11 @@ logger = ingestion_logger()
 # OM_SAS_VERIFY_SSL=false (e.g. dev deployments with self-signed certs).
 # Replaces the previous hard-coded verify=False, which Snyk Code flags as
 # python/SSLVerificationBypass.
-_VERIFY_SSL = os.environ.get("OM_SAS_VERIFY_SSL", "true").lower() not in ("false", "0", "no")
+_VERIFY_SSL = os.environ.get("OM_SAS_VERIFY_SSL", "true").lower() not in (
+    "false",
+    "0",
+    "no",
+)
 
 
 class SASClient:

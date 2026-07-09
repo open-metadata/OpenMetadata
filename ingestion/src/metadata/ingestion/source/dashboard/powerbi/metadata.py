@@ -439,9 +439,9 @@ class PowerbiSource(DashboardServiceSource):
         ):
             reports_prefix = RDL_REPORTS_PREFIX
         try:
-            pages: Optional[List[ReportPage]] = (
-                self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
-            )
+            pages: Optional[
+                List[ReportPage]
+            ] = self.client.api_client.fetch_report_pages(workspace_id, dashboard_id)
             if (
                 pages and pages[0].name
             ):  # if there are pages and page has name then only add page id in url:  # if there are pages and page has name then only add page id in url
@@ -485,7 +485,9 @@ class PowerbiSource(DashboardServiceSource):
             f"{workspace_id}/datamarts/{datamart_id}?experience=power-bi"
         )
 
-    def _get_chart_url(self, report_id: Optional[str], workspace_id: str, dashboard_id: str) -> str:  # noqa: UP045
+    def _get_chart_url(
+        self, report_id: Optional[str], workspace_id: str, dashboard_id: str
+    ) -> str:  # noqa: UP045
         """
         Method to build the chart url
         """
@@ -786,11 +788,15 @@ class PowerbiSource(DashboardServiceSource):
                 logger.warning(f"Error to yield dataflow entity column: {exc}")
         return datasource_columns
 
-    def _get_datamodels_list(self) -> List[Union[Dataset, Dataflow, Datamart]]:  # noqa: UP006, UP007
+    def _get_datamodels_list(
+        self,
+    ) -> List[Union[Dataset, Dataflow, Datamart]]:  # noqa: UP006, UP007
         """
         Get All the Powerbi Datasets, Dataflows, and Datamarts
         """
-        workspace = self.context.get().workspace  # pyright: ignore[reportAttributeAccessIssue]
+        workspace = (
+            self.context.get().workspace
+        )  # pyright: ignore[reportAttributeAccessIssue]
         return workspace.datasets + workspace.dataflows + (workspace.datamarts or [])
 
     def _filtered_datamodels(self) -> list:
@@ -858,7 +864,9 @@ class PowerbiSource(DashboardServiceSource):
                     )
                     if dataflow_export:
                         self.state.cache_dataflow_export(dataset.id, dataflow_export)
-                        datamodel_columns = self._get_dataflow_column_info(dataflow_export)
+                        datamodel_columns = self._get_dataflow_column_info(
+                            dataflow_export
+                        )
                 elif isinstance(dataset, Datamart):
                     data_model_type = DataModelType.PowerBIDatamart.value
                     datamodel_columns = []
@@ -938,7 +946,9 @@ class PowerbiSource(DashboardServiceSource):
                 )
                 return
             tile_report_ids = [
-                chart.reportId for chart in dashboard_details.tiles or [] if self.state.is_known_report(chart.reportId)
+                chart.reportId
+                for chart in dashboard_details.tiles or []
+                if self.state.is_known_report(chart.reportId)
             ]
         except Exception as exc:  # pylint: disable=broad-except
             yield Either(
@@ -2460,10 +2470,14 @@ class PowerbiSource(DashboardServiceSource):
                                 db_service_prefix=db_service_prefix,
                             )
                         # 6. dataflow-upstreamDataflow lineage
-                        yield from self.create_dataflow_upstream_dataflow_lineage(datamodel, datamodel_entity)
+                        yield from self.create_dataflow_upstream_dataflow_lineage(
+                            datamodel, datamodel_entity
+                        )
                     elif isinstance(datamodel, Datamart):
                         # 7. datamart-upstreamDatamart lineage
-                        yield from self.create_datamart_upstream_datamart_lineage(datamodel, datamodel_entity)
+                        yield from self.create_datamart_upstream_datamart_lineage(
+                            datamodel, datamodel_entity
+                        )
                     else:
                         logger.warning(
                             f"Unknown datamodel type: {type(datamodel)}, name: {datamodel.name}"
@@ -2484,8 +2498,12 @@ class PowerbiSource(DashboardServiceSource):
         """Flush the sink before lineage resolution so that target lookups in
         super().yield_dashboard_lineage see this workspace's just-flushed entities.
         """
-        ws_id = self.context.get().workspace.id  # pyright: ignore[reportAttributeAccessIssue]
-        yield Either(right=Barrier(reason=f"powerbi_ws:{ws_id}"))  # pyright: ignore[reportCallIssue]
+        ws_id = (
+            self.context.get().workspace.id
+        )  # pyright: ignore[reportAttributeAccessIssue]
+        yield Either(
+            right=Barrier(reason=f"powerbi_ws:{ws_id}")
+        )  # pyright: ignore[reportCallIssue]
         yield from super().yield_dashboard_lineage(dashboard_details)
 
     def yield_datamodel_dashboard_lineage(

@@ -23,9 +23,7 @@ from metadata.ingestion.source.database.mysql.queries import (
     MYSQL_TEST_GET_QUERIES,
     MYSQL_TEST_GET_QUERIES_SLOW_LOGS,
 )
-from metadata.ingestion.source.database.mysql.query_parser import (
-    MysqlQueryParserSource,
-)
+from metadata.ingestion.source.database.mysql.query_parser import MysqlQueryParserSource
 
 START_TIME = datetime(2026, 1, 1, 0, 0, 0)
 END_TIME = datetime(2026, 1, 2, 0, 0, 0)
@@ -145,6 +143,8 @@ class TestTestConnectionProbeTemplates:
         assert "`argument`" in rendered
 
     def test_slow_log_probe_accepts_custom_table(self):
-        rendered = MYSQL_TEST_GET_QUERIES_SLOW_LOGS.format(query_history_table="custom.tbl")
+        rendered = MYSQL_TEST_GET_QUERIES_SLOW_LOGS.format(
+            query_history_table="custom.tbl"
+        )
         assert "from custom.tbl" in rendered
         assert "`sql_text`" in rendered

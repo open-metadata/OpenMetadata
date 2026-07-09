@@ -31,12 +31,11 @@ from metadata.generated.schema.entity.data.table import (
     ColumnName,
     ColumnProfile,
     ColumnProfilerConfig,
-    SystemProfile,
-    TableProfile,
 )
 from metadata.generated.schema.entity.data.table import (
     ProfileSampleType as TableProfileSampleType,
 )
+from metadata.generated.schema.entity.data.table import SystemProfile, TableProfile
 from metadata.generated.schema.settings.settings import Settings  # noqa: TC001
 from metadata.generated.schema.tests.customMetric import (
     CustomMetric as CustomMetricEntity,

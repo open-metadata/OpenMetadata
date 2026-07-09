@@ -139,7 +139,9 @@ class SnowflakeLineageSource(
             return False
         if self.engine is None:
             return True
-        if probe_access_history_available(self.engine, self.service_connection.accountUsageSchema):
+        if probe_access_history_available(
+            self.engine, self.service_connection.accountUsageSchema
+        ):
             logger.info("ACCESS_HISTORY-based lineage path enabled.")
             return True
         logger.warning(
@@ -216,7 +218,9 @@ class SnowflakeLineageSource(
                             )
                         except Exception as exc:
                             logger.debug(traceback.format_exc())
-                            logger.warning("Error processing query_dict %s: %s", query_dict, exc)
+                            logger.warning(
+                                "Error processing query_dict %s: %s", query_dict, exc
+                            )
                 total_fetched += row_count
                 if row_count < batch_size:
                     break
@@ -262,7 +266,9 @@ class SnowflakeLineageSource(
             logger.warning("COPY_HISTORY lineage phase failed: %s", exc)
             logger.debug(traceback.format_exc())
 
-    def _iter_lineage_date_windows(self) -> Iterable[Tuple[datetime, datetime]]:  # noqa: UP006
+    def _iter_lineage_date_windows(
+        self,
+    ) -> Iterable[Tuple[datetime, datetime]]:  # noqa: UP006
         """
         Split the configured [start, end] window into `accessHistoryChunkSize`
         day chunks. A single query over a large window (e.g. queryLogDuration=180)
@@ -272,7 +278,9 @@ class SnowflakeLineageSource(
         """
         window_start = self.start
         while window_start < self.end:
-            window_end = min(window_start + timedelta(days=self._access_history_chunk_days), self.end)
+            window_end = min(
+                window_start + timedelta(days=self._access_history_chunk_days), self.end
+            )
             yield window_start, window_end
             window_start = window_end
 
@@ -293,7 +301,9 @@ class SnowflakeLineageSource(
                     edge = self._build_access_history_edge(row)
                 except Exception as exc:
                     failed += 1
-                    logger.warning("Skipping ACCESS_HISTORY row that failed edge building: %s", exc)
+                    logger.warning(
+                        "Skipping ACCESS_HISTORY row that failed edge building: %s", exc
+                    )
                     logger.debug(traceback.format_exc())
                     continue
                 if edge is None:
@@ -312,7 +322,9 @@ class SnowflakeLineageSource(
             failed,
         )
 
-    def _fetch_access_history_rows(self, window_start: datetime, window_end: datetime) -> Iterable[AccessHistoryRow]:
+    def _fetch_access_history_rows(
+        self, window_start: datetime, window_end: datetime
+    ) -> Iterable[AccessHistoryRow]:
         """
         Run the combined ACCESS_HISTORY query for a single [window_start,
         window_end) window and yield parsed rows. Uses `stream_results=True`
@@ -332,8 +344,14 @@ class SnowflakeLineageSource(
                 if engine is None:
                     continue
                 with engine.connect() as conn:
-                    logger.debug("Executing ACCESS_HISTORY lineage query for %s - %s", window_start, window_end)
-                    rows = conn.execution_options(stream_results=True, max_row_buffer=1000).execute(text(sql_statement))
+                    logger.debug(
+                        "Executing ACCESS_HISTORY lineage query for %s - %s",
+                        window_start,
+                        window_end,
+                    )
+                    rows = conn.execution_options(
+                        stream_results=True, max_row_buffer=1000
+                    ).execute(text(sql_statement))
                     for raw_row in rows:
                         parsed = self._parse_access_history_row(raw_row)
                         if parsed is not None:
@@ -347,7 +365,9 @@ class SnowflakeLineageSource(
             )
             logger.debug(traceback.format_exc())
 
-    def _parse_access_history_row(self, raw_row: Any) -> Optional[AccessHistoryRow]:  # noqa: UP045
+    def _parse_access_history_row(
+        self, raw_row: Any
+    ) -> Optional[AccessHistoryRow]:  # noqa: UP045
         """
         Parse one cursor row into an `AccessHistoryRow`. A single malformed row
         is logged and skipped (returns None) so it doesn't abort the rest of
@@ -360,7 +380,9 @@ class SnowflakeLineageSource(
             logger.debug(traceback.format_exc())
             return None
 
-    def _build_access_history_edge(self, row: AccessHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045
+    def _build_access_history_edge(
+        self, row: AccessHistoryRow
+    ) -> Optional[AddLineageRequest]:  # noqa: UP045
         """
         Resolve both sides of a table edge to OM Table entities and build the
         AddLineageRequest, attaching column lineage parsed from the row's
@@ -383,7 +405,9 @@ class SnowflakeLineageSource(
             return None
 
         column_pairs = self._parse_column_pairs(row.column_pairs)
-        columns_lineage = self._build_columns_lineage(downstream_entity, upstream_entity, column_pairs)
+        columns_lineage = self._build_columns_lineage(
+            downstream_entity, upstream_entity, column_pairs
+        )
 
         lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
             source=LineageEdgeSource.QueryLineage,
@@ -393,8 +417,12 @@ class SnowflakeLineageSource(
 
         return AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=upstream_entity.id.root, type="table"),  # pyright: ignore[reportCallIssue]
-                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),  # pyright: ignore[reportCallIssue]
+                fromEntity=EntityReference(
+                    id=upstream_entity.id.root, type="table"
+                ),  # pyright: ignore[reportCallIssue]
+                toEntity=EntityReference(
+                    id=downstream_entity.id.root, type="table"
+                ),  # pyright: ignore[reportCallIssue]
                 lineageDetails=lineage_details,
             )
         )
@@ -442,7 +470,9 @@ class SnowflakeLineageSource(
             d_fqn = get_column_fqn(downstream_entity, d_col)
             u_fqn = get_column_fqn(upstream_entity, u_col)
             if d_fqn and u_fqn:
-                result.append(ColumnLineage(fromColumns=[u_fqn], toColumn=d_fqn))  # pyright: ignore[reportCallIssue]
+                result.append(
+                    ColumnLineage(fromColumns=[u_fqn], toColumn=d_fqn)
+                )  # pyright: ignore[reportCallIssue]
         return result
 
     def _yield_copy_history_lineage(self) -> Iterable[Either[AddLineageRequest]]:
@@ -468,7 +498,9 @@ class SnowflakeLineageSource(
                 if engine is None:
                     continue
                 with engine.connect() as conn:
-                    logger.debug("Executing COPY_HISTORY lineage query: %s", sql_statement)
+                    logger.debug(
+                        "Executing COPY_HISTORY lineage query: %s", sql_statement
+                    )
                     rows = conn.execute(text(sql_statement))
                     for raw_row in rows:
                         try:
@@ -479,7 +511,10 @@ class SnowflakeLineageSource(
                             edge = self._build_copy_edge(row)
                         except Exception as exc:
                             failed += 1
-                            logger.warning("Skipping COPY_HISTORY row that failed processing: %s", exc)
+                            logger.warning(
+                                "Skipping COPY_HISTORY row that failed processing: %s",
+                                exc,
+                            )
                             logger.debug(traceback.format_exc())
                             continue
                         if edge is None:
@@ -499,17 +534,27 @@ class SnowflakeLineageSource(
             failed,
         )
 
-    def _build_copy_edge(self, row: CopyHistoryRow) -> Optional[AddLineageRequest]:  # noqa: UP045
+    def _build_copy_edge(
+        self, row: CopyHistoryRow
+    ) -> Optional[AddLineageRequest]:  # noqa: UP045
         """
         Resolve the downstream table and upstream container, then build the
         Container → Table lineage request. Returns None if either side is
         unresolvable in OM (e.g., storage service not ingested).
         """
-        if not (row.downstream_database and row.downstream_schema and row.downstream_table and row.stage_location):
+        if not (
+            row.downstream_database
+            and row.downstream_schema
+            and row.downstream_table
+            and row.stage_location
+        ):
             return None
 
         downstream_fqn = fqn._build(
-            self.config.serviceName, row.downstream_database, row.downstream_schema, row.downstream_table
+            self.config.serviceName,
+            row.downstream_database,
+            row.downstream_schema,
+            row.downstream_table,
         )
         downstream_entity = self._get_table_by_fqn(downstream_fqn)
         if downstream_entity is None:
@@ -526,13 +571,21 @@ class SnowflakeLineageSource(
 
         return AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(id=container_entity.id.root, type="container"),  # pyright: ignore[reportCallIssue]
-                toEntity=EntityReference(id=downstream_entity.id.root, type="table"),  # pyright: ignore[reportCallIssue]
-                lineageDetails=LineageDetails(source=LineageEdgeSource.QueryLineage),  # pyright: ignore[reportCallIssue]
+                fromEntity=EntityReference(
+                    id=container_entity.id.root, type="container"
+                ),  # pyright: ignore[reportCallIssue]
+                toEntity=EntityReference(
+                    id=downstream_entity.id.root, type="table"
+                ),  # pyright: ignore[reportCallIssue]
+                lineageDetails=LineageDetails(
+                    source=LineageEdgeSource.QueryLineage
+                ),  # pyright: ignore[reportCallIssue]
             )
         )
 
-    def _resolve_snowflake_table(self, snowflake_fqn: str) -> Optional[Table]:  # noqa: UP045
+    def _resolve_snowflake_table(
+        self, snowflake_fqn: str
+    ) -> Optional[Table]:  # noqa: UP045
         """
         Parse a Snowflake-style `DB.SCHEMA.TABLE` FQN into OM-style and resolve
         to a Table entity. Caches both hits and misses for the run.
@@ -555,16 +608,25 @@ class SnowflakeLineageSource(
         self._table_cache[om_fqn] = entity
         return entity
 
-    def _resolve_container_by_path(self, stage_location: str) -> Optional[Container]:  # noqa: UP045
+    def _resolve_container_by_path(
+        self, stage_location: str
+    ) -> Optional[Container]:  # noqa: UP045
         try:
-            results = self.metadata.es_search_container_by_path(full_path=stage_location) or []
+            results = (
+                self.metadata.es_search_container_by_path(full_path=stage_location)
+                or []
+            )
             return results[0] if results else None
         except Exception as exc:
-            logger.debug("Failed to resolve Container for path `%s`: %s", stage_location, exc)
+            logger.debug(
+                "Failed to resolve Container for path `%s`: %s", stage_location, exc
+            )
             return None
 
     @staticmethod
-    def _split_snowflake_fqn(snowflake_fqn: str) -> Optional[Tuple[str, str, str]]:  # noqa: UP006, UP045
+    def _split_snowflake_fqn(
+        snowflake_fqn: str,
+    ) -> Optional[Tuple[str, str, str]]:  # noqa: UP006, UP045
         """
         Split a Snowflake `DB.SCHEMA.TABLE` FQN into its three parts.
         Handles quoted identifiers (`"My DB"."My.Schema"."Table"`) by
@@ -591,7 +653,10 @@ class SnowflakeLineageSource(
         if len(parts) != 3:
             logger.debug("Skipping FQN with unexpected part count: %s", snowflake_fqn)
             return None
-        normalized = [p[1:-1].replace('""', '"') if p.startswith('"') and p.endswith('"') else p for p in parts]
+        normalized = [
+            p[1:-1].replace('""', '"') if p.startswith('"') and p.endswith('"') else p
+            for p in parts
+        ]
         if not all(normalized):
             logger.debug("Skipping FQN with empty part: %s", snowflake_fqn)
             return None
