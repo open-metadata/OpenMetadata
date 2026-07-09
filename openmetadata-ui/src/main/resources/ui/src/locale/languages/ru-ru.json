@@ -2886,6 +2886,7 @@
     "collaborate-with-other-user": "для совместной работы с другими пользователями.",
     "collate-ai-widget-description": "Обзор данных, сгенерированных Collate ИИ для сервиса. <0>Узнать больше.</0>",
     "column-bulk-operations-description": "Управляйте и редактируйте метаданные для нескольких столбцов одновременно.Ищите, фильтруйте и обновляйте отображаемые имена, описания, теги и термины глоссария в ваших ресурсах данных.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "Фильтруйте происхождение по тегам или именам колонок. Используйте 'tag:ИмяТега' для фильтрации по тегам или просто введите имя колонки.",
     "column-name-pattern-placeholder": "Введите шаблон регулярного выражения для фильтрации столбцов (например, id*, *date).",
     "column-name-sla-description": "<0>{{label}}</0>: Представляет время обновления данных, соответствующее <0>{{data}}</0>",

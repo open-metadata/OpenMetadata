@@ -2886,6 +2886,7 @@
     "collaborate-with-other-user": "للتعاون مع المستخدمين الآخرين.",
     "collate-ai-widget-description": "نظرة عامة على البيانات التي تم إنشاؤها بواسطة Collate AI للخدمة. <0>تعلم المزيد.</0>",
     "column-bulk-operations-description": "إدارة وتعديل البيانات الوصفية لأعمدة متعددة في آنٍ واحد. البحث والتصفية وتحديث أسماء العرض والأوصاف والوسوم ومصطلحات المسرد عبر أصول البيانات الخاصة بك.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "تصفية النسب حسب علامات الأعمدة أو الأسماء. استخدم 'tag:اسم_العلامة' لتصفية العلامات أو أدخل اسم العمود فقط.",
     "column-name-pattern-placeholder": "أدخل نمط Regex لتصفية الأعمدة (مثل id_*, *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: يمثل وقت تحديث البيانات المقابل لـ <0>{{data}}</0>",

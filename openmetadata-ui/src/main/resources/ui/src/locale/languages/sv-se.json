@@ -2886,6 +2886,7 @@
     "collaborate-with-other-user": "för att samarbeta med andra användare.",
     "collate-ai-widget-description": "Översikt över de data som genererats av Collate AI för tjänsten. <0>läs mer.</0>",
     "column-bulk-operations-description": "Hantera och redigera metadata för flera kolumner samtidigt. Sök, filtrera och uppdatera visningsnamn, beskrivningar, taggar och ordlistetermer över dina datatillgångar.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "Filtrera härkomst efter kolumntaggar eller namn. Använd 'tag:TagName' för taggfiltrering eller ange bara kolumnnamnet.",
     "column-name-pattern-placeholder": "Ange ett regex-mönster för att filtrera kolumner (t.ex. id_*, *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: Representerar uppdateringstiden för data som motsvarar <0>{{data}}</0>",

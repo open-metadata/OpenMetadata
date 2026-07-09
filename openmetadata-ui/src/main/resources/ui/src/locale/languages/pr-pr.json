@@ -2886,6 +2886,7 @@
     "collaborate-with-other-user": "برای همکاری با کاربران دیگر.",
     "collate-ai-widget-description": "نمای کلی داده‌های تولید شده توسط Collate AI برای سرویس. <0>بیشتر بدانید.</0>",
     "column-bulk-operations-description": "مدیریت و ویرایش فراداده‌ها برای چندین ستون به طور همزمان. نام‌های نمایشی، توضیحات، برچسب‌ها و اصطلاحات فرهنگ‌نامه را در دارایی‌های داده خود جستجو، فیلتر و به‌روزرسانی کنید.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "Filtre a linhagem por tags ou nomes de colunas. Use 'tag:NomeTag' para filtragem por tag ou apenas digite o nome da coluna.",
     "column-name-pattern-placeholder": "الگوی regex را برای فیلتر کردن ستون‌ها وارد کنید (مثلاً id_*، *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: زمان به‌روزرسانی داده‌ها را مطابق با <0>{{data}}</0> نشان می‌دهد",

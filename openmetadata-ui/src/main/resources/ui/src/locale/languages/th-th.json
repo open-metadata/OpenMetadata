@@ -2886,6 +2886,7 @@
     "collaborate-with-other-user": "เพื่อร่วมมือกับผู้ใช้คนอื่น",
     "collate-ai-widget-description": "ภาพรวมของข้อมูลที่สร้างโดย Collate AI สำหรับบริการ <0>เรียนรู้เพิ่มเติม</0>",
     "column-bulk-operations-description": "จัดการและแก้ไขข้อมูลเมตาสำหรับหลายคอลัมน์พร้อมกัน ค้นหา ตัวกรอง และอัปเดตชื่อแสดง คำอธิบาย แท็ก และคำในสารานุกรมในทรัพย์สินข้อมูลของคุณ",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "กรองสายโยงตามแท็กคอลัมน์หรือชื่อ ใช้ 'tag:ชื่อแท็ก' สำหรับการกรองแท็ก หรือเพียงแค่ป้อนชื่อคอลัมน์",
     "column-name-pattern-placeholder": "ใส่รูปแบบ regex เพื่อกรองคอลัมน์ (เช่น id_*, *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: แสดงเวลาการรีเฟรชข้อมูลที่สอดคล้องกับ <0>{{data}}</0>",

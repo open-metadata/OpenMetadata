@@ -2886,6 +2886,7 @@
     "collaborate-with-other-user": "diğer kullanıcılarla işbirliği yapmak için.",
     "collate-ai-widget-description": "Collate AI tarafından servis için oluşturulan verilere genel bakış. <0>daha fazla bilgi edinin.</0>",
     "column-bulk-operations-description": "Birden fazla sütun için meta verileri aynı anda yönetin ve düzenleyin. Veri varlıklarınızdaki görünen adları, açıklamaları, etiketleri ve sözlük terimlerini arayın, filtreleyin ve güncelleyin.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "Sütun etiketlerine veya adlarına göre soyağacı filtreleyin. Etiket filtrelemesi için 'tag:EtiketAdı' kullanın veya sadece sütun adını girin.",
     "column-name-pattern-placeholder": "Sütunları filtrelemek için regex deseni girin (örn. id_*, *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: <0>{{data}}</0> ile ilgili veri yenileme zamanını temsil eder",

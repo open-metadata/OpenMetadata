@@ -2886,6 +2886,7 @@
     "collaborate-with-other-user": "para colaborar con otros usuarios.",
     "collate-ai-widget-description": "Resumen de los datos generados por Collate AI para el servicio. <0>saber más.</0>",
     "column-bulk-operations-description": "Administre y edite metadatos para varias columnas a la vez.Busque, filtre y actualice nombres para mostrar, descripciones, etiquetas y términos del glosario en sus activos de datos.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "Filtre el linaje por etiquetas o nombres de columnas. Use 'tag:NombreEtiqueta' para filtrar por etiqueta o simplemente ingrese el nombre de la columna.",
     "column-name-pattern-placeholder": "Ingrese el patrón de expresiones regulares para filtrar columnas (por ejemplo, id*, *fecha)",
     "column-name-sla-description": "<0>{{label}}</0>: Representa el tiempo de actualización de datos correspondiente a <0>{{data}}</0>",
