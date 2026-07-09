@@ -365,17 +365,13 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
             yield configured_db
         else:
             for new_database in self.get_database_names_raw():
-                database_fqn = fqn.build(
-                    self.metadata,
-                    entity_type=Database,
-                    service_name=self.context.get().database_service,
-                    database_name=new_database,
-                )
-
-                if filter_by_database(
-                    self.source_config.databaseFilterPattern,
-                    (database_fqn if self.source_config.useFqnForFiltering else new_database),
-                ):
+                if self._is_database_filtered(new_database):
+                    database_fqn = fqn.build(
+                        self.metadata,
+                        entity_type=Database,
+                        service_name=self.context.get().database_service,
+                        database_name=new_database,
+                    )
                     self.status.filter(database_fqn, "Database Filtered Out")
                     continue
 
