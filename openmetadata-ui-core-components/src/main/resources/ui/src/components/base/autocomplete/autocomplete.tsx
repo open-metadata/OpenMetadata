@@ -5,10 +5,10 @@ import { Popover } from '@/components/base/select/popover';
 import {
   type SelectItemType,
   SelectContext,
+  SelectEmptyState,
   sizes,
 } from '@/components/base/select/select';
 import { Typography } from '@/components/foundations/typography';
-import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { SearchLg } from '@untitledui/icons';
@@ -21,6 +21,7 @@ import type {
   RefObject,
 } from 'react';
 import {
+  Children,
   createContext,
   isValidElement,
   useCallback,
@@ -401,6 +402,33 @@ export const AutocompleteBase = ({
     [allItems]
   );
 
+  // The ListBox renders the caller's static children. Filter them by the
+  // computed `visibleItems` so the default `contains` filter actually narrows
+  // the list as the user types. Async callers neutralize this by passing
+  // `filterOption={() => true}` (visibleItems === allItems), and any non-item
+  // child (create/footer rows, whose id isn't in the collection) is preserved.
+  const visibleIds = useMemo(
+    () => new Set(visibleItems.map((item) => String(item.id))),
+    [visibleItems]
+  );
+  const visibleChildren = useMemo(() => {
+    if (typeof children === 'function') {
+      return children;
+    }
+
+    return Children.toArray(children).filter((child) => {
+      if (!isValidElement(child)) {
+        return true;
+      }
+      const childId = (child.props as { id?: Key }).id;
+      if (childId == null || !itemMap.has(childId as SelectItemType['id'])) {
+        return true;
+      }
+
+      return visibleIds.has(String(childId));
+    });
+  }, [children, visibleIds, itemMap]);
+
   const onRemove = useCallback(
     (keys: Set<Key>) => {
       const key = keys.values().next().value;
@@ -464,20 +492,9 @@ export const AutocompleteBase = ({
   );
 
   const triggerRef = useRef<HTMLDivElement>(null);
-  const [popoverWidth, setPopoverWidth] = useState('');
-
-  const onResize = useCallback(() => {
-    if (!triggerRef.current) {
-      return;
-    }
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPopoverWidth(rect.width + 'px');
-  }, [triggerRef]);
-
-  useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
   const selectContextValue = useMemo(
-    () => ({ size: 'sm' as const, fontSize: 'md' as const }),
+    () => ({ size: 'sm' as const, fontSize: 'sm' as const }),
     []
   );
 
@@ -520,7 +537,7 @@ export const AutocompleteBase = ({
           allowsEmptyCollection
           inputValue={filterText}
           items={visibleItems}
-          menuTrigger="input"
+          menuTrigger="focus"
           selectedKey={null}
           onInputChange={onInputChange}
           onSelectionChange={onSelectionChange}
@@ -539,11 +556,7 @@ export const AutocompleteBase = ({
                   isInvalid={isInvalid}
                   placeholder={placeholder}
                   size="sm"
-                  onFocus={(event) => {
-                    onResize();
-                    onFocus?.(event);
-                  }}
-                  onPointerEnter={onResize}
+                  onFocus={onFocus}
                 />
               </div>
 
@@ -551,12 +564,12 @@ export const AutocompleteBase = ({
                 <Popover
                   className={popoverClassName}
                   size="md"
-                  style={{ width: popoverWidth }}
                   triggerRef={triggerRef}>
                   <AriaListBox
                     className="tw:size-full tw:outline-hidden"
+                    renderEmptyState={() => <SelectEmptyState />}
                     selectionMode="multiple">
-                    {children}
+                    {visibleChildren}
                   </AriaListBox>
                 </Popover>
               )}
