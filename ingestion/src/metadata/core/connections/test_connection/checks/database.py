@@ -59,6 +59,13 @@ class DatabaseStep(StepName):
     GetColumnMetadata = "GetColumnMetadata"
     GetTableComments = "GetTableComments"
     GetInformationSchemaColumns = "GetInformationSchemaColumns"
+    GetViewDefinitions = "GetViewDefinitions"
+    GetCatalogTags = "GetCatalogTags"
+    GetSchemaTags = "GetSchemaTags"
+    GetTableTags = "GetTableTags"
+    GetColumnTags = "GetColumnTags"
+    GetTableLineage = "GetTableLineage"
+    GetColumnLineage = "GetColumnLineage"
 
 
 @contextmanager
