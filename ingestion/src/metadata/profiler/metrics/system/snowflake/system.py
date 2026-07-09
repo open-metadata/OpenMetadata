@@ -45,6 +45,7 @@ RESULT_SCAN = """
     """
 QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=[\s*\n])"  # pylint: disable=line-too-long
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
+LEADING_SQL_COMMENT_PATTERN = re.compile(r"^(?:\s+|--[^\n]*(?:\n|$)|/\*.*?\*/)+", re.DOTALL)
 
 
 def sha256_hash(text: str) -> str:
@@ -56,10 +57,15 @@ def sha256_hash(text: str) -> str:
 cache = LRUCache(LRU_CACHE_SIZE)
 
 
+def _strip_leading_sql_comments(query: str) -> str:
+    """Remove leading whitespace and SQL comments before parsing DML statements."""
+    return re.sub(LEADING_SQL_COMMENT_PATTERN, "", query)
+
+
 @cache.wrap(key_func=lambda query: sha256_hash(query.strip()))
 def _parse_query(query: str) -> Optional[str]:  # noqa: UP045
     """Parse snowflake queries to extract the identifiers"""
-    match = re.match(QUERY_PATTERN, query, re.IGNORECASE)
+    match = re.match(QUERY_PATTERN, _strip_leading_sql_comments(query), re.IGNORECASE)
     try:
         # This will match results like `DATABASE.SCHEMA.TABLE1` or IDENTIFIER('TABLE1')
         # If we have `IDENTIFIER` type of queries coming from Stored Procedures, we'll need to further clean it up.
