@@ -377,7 +377,7 @@ test.describe('Column Level Lineage', () => {
       await test.step('Verify column layer is inactive initially', async () => {
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).not.toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).not.toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
@@ -387,7 +387,7 @@ test.describe('Column Level Lineage', () => {
 
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
