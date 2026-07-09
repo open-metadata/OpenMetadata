@@ -12,9 +12,18 @@
  */
 
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { TFunction } from 'i18next';
+import { FC } from 'react';
 import { ReactComponent as GovernanceIcon } from '../../../assets/svg/ic-governance.svg';
 import { ROUTES } from '../../../constants/constants';
+
+// The governance base crumb icon renders at 20x20 per Figma (node 11297-9818),
+// overriding the core breadcrumb's coupled icon size (14px at size="xs") with an
+// important size so only the base icon grows — chevron/text keep the xs sizing.
+const GovernanceCrumbIcon: FC<{ className?: string }> = ({ className }) => (
+  <GovernanceIcon className={classNames(className, 'tw:size-5!')} />
+);
 
 /**
  * Icon-only base crumb shared by the Governance-section headers (Glossary,
@@ -27,6 +36,6 @@ export const getGlossaryHomeCrumb = (
 ): Omit<BreadcrumbItemType, 'id'> => ({
   label: null,
   ariaLabel: t('label.glossary'),
-  icon: GovernanceIcon,
+  icon: GovernanceCrumbIcon,
   href: ROUTES.GLOSSARY,
 });
