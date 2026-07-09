@@ -55,6 +55,8 @@ public final class McpResponseTrim {
   public static final String MAX_RESPONSE_CHARS_KEY = "maxResponseChars";
   public static final String HAS_MORE_KEY = "hasMore";
   public static final String NEXT_OFFSET_KEY = "nextOffset";
+  public static final String NEXT_CURSOR_KEY = "nextCursor";
+  public static final String TOTAL_KEY = "total";
   public static final String MESSAGE_KEY = "message";
 
   /**
