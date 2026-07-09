@@ -13,5 +13,3 @@
 
 export * from './IconPicker.constants';
 export * from './IconPicker.interface';
-export * from './IconPicker.utils';
-export { default as IconPickerFieldWithLabel } from './IconPickerFieldWithLabel';

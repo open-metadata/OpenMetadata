@@ -47,11 +47,6 @@ import { DomainSelectableListProps } from '../components/common/DomainSelectable
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
-import {
-  getIconPickerItems,
-  IconDefinition,
-  IconPickerFieldWithLabel,
-} from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
 import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
@@ -440,31 +435,6 @@ export const getField = (field: FieldProp) => {
           <ColorSwatchPicker
             {...(props as Record<string, unknown>)}
             label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.ICON_PICKER_MUI: {
-      const {
-        defaultIcon,
-        customStyles: _customStyles,
-        ...restProps
-      } = props as {
-        defaultIcon?: IconDefinition;
-        customStyles?: Record<string, string | number>;
-      } & Record<string, unknown>;
-
-      return (
-        <Form.Item {...formProps}>
-          <IconPickerFieldWithLabel
-            {...(restProps as Record<string, unknown>)}
-            defaultIcon={defaultIcon}
-            id={id}
-            items={getIconPickerItems(defaultIcon)}
-            label={muiLabel}
-            name={String(id ?? name)}
-            tooltip={helperText}
           />
         </Form.Item>
       );
