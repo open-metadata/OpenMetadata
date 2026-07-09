@@ -252,7 +252,7 @@ describe('ExploreSearchCard - Entity type tags', () => {
       constraint: Constraint.Null,
     } as Partial<ExploreSearchCardProps['source']>);
 
-    expect(screen.queryByTestId('Constraint')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
     expect(screen.queryByText(Constraint.Null)).not.toBeInTheDocument();
   });
 
