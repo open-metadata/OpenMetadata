@@ -30,6 +30,11 @@ export interface HeaderShellProps {
   badge?: ReactNode;
   /** Meta row under the title (owner·domain·tier). */
   meta?: ReactNode;
+  /**
+   * Set when `meta` holds a stats row. Uses an 8px title-block gap instead of
+   * the default 2px. For stats-style headers with no subtitle.
+   */
+  hasStats?: boolean;
   /** Right-aligned actions (search, buttons, view toggle). */
   actions?: ReactNode;
   /** Footer row rendered full-width under the header, typically the tab strip. */

@@ -46,6 +46,7 @@ const HeaderShell = ({
   subtitle,
   badge,
   meta,
+  hasStats = false,
   actions,
   footer,
   variant = 'flat',
@@ -77,7 +78,12 @@ const HeaderShell = ({
         {breadcrumb}
         <Box align="center" direction="row" gap={4}>
           {leading}
-          <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
+          <Box
+            className={classNames(
+              'tw:min-w-0',
+              hasStats ? 'tw:gap-2' : 'tw:gap-0.5'
+            )}
+            direction="col">
             <Box align="center" direction="row" gap={2}>
               {renderTitle(title)}
               {badge}

@@ -44,7 +44,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
       <div>{children}</div>
     )),
-  Divider: jest.fn().mockImplementation(() => <hr />),
+  Dot: jest.fn().mockImplementation(() => <span data-testid="stats-dot" />),
   Skeleton: jest.fn().mockImplementation(() => <div data-testid="skeleton" />),
   Typography: jest
     .fn()
@@ -92,7 +92,7 @@ describe('OntologyExplorerPage', () => {
 
     expect(screen.getByTestId('heading')).toBeInTheDocument();
     expect(screen.getByTestId('beta-badge')).toBeInTheDocument();
-    expect(screen.getByTestId('beta-badge')).toHaveTextContent('label.beta');
+    expect(screen.getByTestId('beta-badge')).toHaveTextContent('LABEL.BETA');
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
   });
