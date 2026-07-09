@@ -91,11 +91,19 @@ def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Call
 
 def _get_test_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:  # noqa: UP045
     """
-    Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
+    Build the test-connection function from the ServiceSpec connection_class.
+
+    The temporary owner is closed after the test (via the context manager), since
+    ``BaseConnection.test_connection`` does not close itself.
     """
     connection_class = _get_connection_class_from_spec(connection)
     if connection_class:
-        return connection_class(connection).test_connection
+
+        def _test(metadata: OpenMetadata, *args, **kwargs):
+            with connection_class(connection) as owned:
+                return owned.test_connection(metadata, *args, **kwargs)
+
+        return _test
     return None
 
 

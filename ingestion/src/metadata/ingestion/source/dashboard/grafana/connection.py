@@ -36,7 +36,7 @@ class GrafanaConnection(BaseConnection[GrafanaConnectionConfig, GrafanaApiClient
         Create connection to Grafana
         """
         return GrafanaApiClient(
-            host_port=self.service_connection.hostPort,
+            host_port=str(self.service_connection.hostPort),
             api_key=self.service_connection.apiKey.get_secret_value(),
             verify_ssl=self.service_connection.verifySSL or True,
             page_size=self.service_connection.pageSize or 100,

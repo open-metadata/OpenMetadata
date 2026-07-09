@@ -20,7 +20,7 @@ from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.importer import import_sink_class
 from metadata.utils.logger import profiler_logger
-from metadata.utils.ssl_manager import check_ssl_and_init
+from metadata.utils.ssl_manager import SSLManager, check_ssl_and_init
 from metadata.workflow.ingestion import IngestionWorkflow
 
 logger = profiler_logger()
@@ -73,7 +73,7 @@ class ProfilerWorkflow(IngestionWorkflow):
         def main(self):
             service_config = self.config.source.serviceConnection.root.config
             ssl_manager = check_ssl_and_init(service_config)
-            if ssl_manager:
+            if isinstance(ssl_manager, SSLManager):
                 service_config = ssl_manager.setup_ssl(service_config)
 
             test_connection_common(self.metadata, None, service_config)

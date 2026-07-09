@@ -72,7 +72,12 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection, run_test_connection
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_dashboard, filter_by_project
 from metadata.utils.logger import ingestion_logger
@@ -250,7 +255,7 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
         self._connection = create_connection(self.service_connection)
-        self.client = self._connection.client
+        self.client = self._connection.client if self._connection else get_connection(self.service_connection)
         self.test_connection()
 
     @property
@@ -439,7 +444,8 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             return
 
     def close(self):
-        self._connection.close()
+        if self._connection is not None:
+            self._connection.close()
         self.metadata.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -630,7 +636,10 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
             yield dashboard_details
 
     def test_connection(self) -> None:
-        run_test_connection(self.metadata, self._connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.client, self.service_connection)
 
     def prepare(self):
         """By default, nothing to prepare"""
