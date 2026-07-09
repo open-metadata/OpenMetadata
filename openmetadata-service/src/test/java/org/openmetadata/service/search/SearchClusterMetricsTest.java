@@ -38,6 +38,23 @@ public class SearchClusterMetricsTest {
   @Mock private OpenSearchClient openSearchClient;
   @Mock private ElasticSearchClient elasticSearchClient;
 
+  @Test
+  void boundsConcurrentBulkRequestsToOffHeapBudget() {
+    long payload = 90L * 1024 * 1024;
+    assertEquals(
+        10,
+        SearchClusterMetrics.boundConcurrentRequestsToMemory(40, payload, 1800L * 1024 * 1024),
+        "0.9 GB safe / 90 MB payload = 10 concurrent");
+    assertEquals(
+        40,
+        SearchClusterMetrics.boundConcurrentRequestsToMemory(40, payload, 64L * 1024 * 1024 * 1024),
+        "ample headroom leaves concurrency untouched");
+    assertEquals(
+        1,
+        SearchClusterMetrics.boundConcurrentRequestsToMemory(40, payload, 0L),
+        "no off-heap headroom degrades to serial rather than OOMKilling");
+  }
+
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);
