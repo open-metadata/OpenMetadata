@@ -10,6 +10,31 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { t } from 'i18next';
+import {
+  cloneDeep,
+  isArray,
+  isNil,
+  isUndefined,
+  lowerCase,
+  omit,
+  omitBy,
+  parseInt,
+  startCase,
+  uniqBy,
+} from 'lodash';
+import QueryString from 'qs';
+import { Surface } from 'recharts';
+import { ReactComponent as AccuracyIcon } from '../../assets/svg/ic-accuracy.svg';
+import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
+import { ReactComponent as CompletenessIcon } from '../../assets/svg/ic-completeness.svg';
+import { ReactComponent as ConsistencyIcon } from '../../assets/svg/ic-consistency.svg';
+import { ReactComponent as IntegrityIcon } from '../../assets/svg/ic-integrity.svg';
+import { ReactComponent as SqlIcon } from '../../assets/svg/ic-sql.svg';
+import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-test.svg';
+import { ReactComponent as UniquenessIcon } from '../../assets/svg/ic-uniqueness.svg';
+import { ReactComponent as ValidityIcon } from '../../assets/svg/ic-validity.svg';
+import { ReactComponent as NoDimensionIcon } from '../../assets/svg/no-dimension-icon.svg';
 import type { SelectionOption } from '../../components/common/SelectionCardGroup/SelectionCardGroup.interface';
 import type { StatusData } from '../../components/DataQuality/ChartWidgets/StatusCardWidget/StatusCardWidget.interface';
 import type { TestCaseSearchParams } from '../../components/DataQuality/DataQuality.interface';
@@ -30,12 +55,15 @@ import {
   TestDataType,
   type TestDefinition,
 } from '../../generated/tests/testDefinition';
+import type { DataInsightChartTooltipProps } from '../../interface/data-insight.interface';
 import type { TableSearchSource } from '../../interface/search.interface';
 import {
   DataQualityPageTabs,
   type DataQualityDashboardChartFilters,
 } from '../../pages/DataQuality/DataQualityPage.interface';
 import type { ListTestCaseParamsBySearch } from '../../rest/testAPI';
+import { getEntryFormattedValue } from '../DataInsightUtils';
+import { formatDate } from '../date-time/DateTimeUtils';
 import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityUtils';
 import { getEntityFQN } from '../FeedUtils';

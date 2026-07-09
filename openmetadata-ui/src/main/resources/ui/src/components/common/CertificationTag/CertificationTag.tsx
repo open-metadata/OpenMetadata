@@ -17,6 +17,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import { renderIcon } from '../../../utils/IconUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
