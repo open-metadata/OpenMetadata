@@ -126,7 +126,9 @@ const SchemaTable = () => {
   const [testCaseSummary, setTestCaseSummary] = useState<TestSummary>();
   const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
   const [editColumn, setEditColumn] = useState<Column>();
-  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>('name');
+  const [sortBy, setSortBy] = useState<'name' | 'ordinalPosition'>(
+    'ordinalPosition'
+  );
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   const [activeTagFilter, setActiveTagFilter] = useState<{
     tags: string[];

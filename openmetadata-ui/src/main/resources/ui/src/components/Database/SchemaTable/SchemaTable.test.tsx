@@ -401,7 +401,7 @@ describe('Test EntityTable Component', () => {
         fields: 'tags,customMetrics,extension',
         limit: 50,
         offset: 0,
-        sortBy: 'name',
+        sortBy: 'ordinalPosition',
         sortOrder: 'asc',
       }
     );
@@ -426,7 +426,7 @@ describe('Test EntityTable Component', () => {
         fields: 'tags,customMetrics,extension',
         limit: 50,
         offset: 0,
-        sortBy: 'name',
+        sortBy: 'ordinalPosition',
         sortOrder: 'asc',
       }
     );
