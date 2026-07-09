@@ -29,3 +29,20 @@ def test_test_connection_runs_steps():
         result = conn.test_connection(metadata=MagicMock())
 
     assert result is mock_step.return_value
+
+
+def _client_kwargs(verify_ssl_value):
+    service_connection = MagicMock()
+    service_connection.verifySSL = verify_ssl_value
+    conn = GrafanaConnection(service_connection)
+    with patch(f"{CONNECTION_MODULE}.GrafanaApiClient") as mock_client:
+        conn._get_client()
+    return mock_client.call_args.kwargs
+
+
+def test_verify_ssl_honors_explicit_false():
+    assert _client_kwargs(False)["verify_ssl"] is False
+
+
+def test_verify_ssl_defaults_to_true_when_unset():
+    assert _client_kwargs(None)["verify_ssl"] is True

@@ -38,7 +38,7 @@ class GrafanaConnection(BaseConnection[GrafanaConnectionConfig, GrafanaApiClient
         return GrafanaApiClient(
             host_port=str(self.service_connection.hostPort),
             api_key=self.service_connection.apiKey.get_secret_value(),
-            verify_ssl=self.service_connection.verifySSL or True,
+            verify_ssl=(self.service_connection.verifySSL if self.service_connection.verifySSL is not None else True),
             page_size=self.service_connection.pageSize or 100,
         )
 
