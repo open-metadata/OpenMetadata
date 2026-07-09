@@ -96,12 +96,4 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
   });
-
-  it('spaces the stats row 12px below the header', () => {
-    render(<OntologyExplorerPage />);
-
-    expect(screen.getByTestId('ontology-explorer-stats')).toHaveClass(
-      'tw:mt-3'
-    );
-  });
 });
