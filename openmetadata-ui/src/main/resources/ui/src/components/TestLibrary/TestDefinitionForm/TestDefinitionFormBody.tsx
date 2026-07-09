@@ -283,7 +283,8 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         {isReadOnlyField ? (
           <textarea
             disabled
-            className="tw:font-mono tw:text-xs tw:w-full"
+            className="tw:min-h-[120px] tw:w-full tw:resize-y tw:rounded-lg tw:border tw:border-solid tw:border-gray-300 tw:bg-gray-50 tw:p-3 tw:font-mono tw:text-xs tw:text-secondary"
+            placeholder={t('label.sql-query')}
             rows={8}
             value={sqlExpression ?? ''}
           />
