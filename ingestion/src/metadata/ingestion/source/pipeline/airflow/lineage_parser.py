@@ -212,7 +212,9 @@ def _parse_xlets(xlet: Any) -> None:
     ),
     release="1.4.0",
 )
-def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:  # noqa: UP006
+def dictionary_lineage_annotation(
+    xlet: dict,
+) -> dict[str, list[OMEntity]] | None:
     """
     Handle OM specific inlet/outlet information. E.g.,
 

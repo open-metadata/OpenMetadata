@@ -265,7 +265,13 @@ def _test_task_detail_access_rest(client) -> bool:  # pyright: ignore[reportMiss
     """
     dags = (client.list_dags(limit=1) or {}).get("dags") or []
     if dags:
-        response = client.get_dag_tasks(dags[0]["dag_id"])
+        try:
+            dag_id = dags[0]["dag_id"]
+        except (KeyError, TypeError) as e:
+            raise AirflowTaskDetailsAccessError(
+                f"Task details access error: malformed DAG list entry {dags[0]!r}"
+            ) from e
+        response = client.get_dag_tasks(dag_id)
         if not isinstance(response, dict) or "tasks" not in response:
             raise AirflowTaskDetailsAccessError(f"Task details access error: unexpected response {response}")
     return True
