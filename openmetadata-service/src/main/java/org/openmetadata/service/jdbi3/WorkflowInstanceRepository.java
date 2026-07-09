@@ -55,6 +55,14 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
 
+    // Preserve a terminal SUPERSEDED status set upstream by the supersede path — the process-end
+    // execution listener also lands here and would otherwise recompute the status to FINISHED.
+    if (workflowInstance.getStatus() == WorkflowInstance.WorkflowStatus.SUPERSEDED) {
+      workflowInstance.setEndedAt(endedAt);
+      getTimeSeriesDao().update(JsonUtils.pojoToJson(workflowInstance), workflowInstanceId);
+      return;
+    }
+
     workflowInstance.setEndedAt(endedAt);
 
     WorkflowInstanceStateRepository workflowInstanceStateRepository =
