@@ -11,7 +11,9 @@
  *  limitations under the License.
  */
 
+import { AxiosError } from 'axios';
 import { useEffect, useRef, useState } from 'react';
+import { useTranslation } from 'react-i18next';
 import { downloadAsset } from '../rest/assetAPI';
 import { showErrorToast } from '../utils/ToastUtils';
 import { getAttachmentId } from '../utils/UploadAttachmentUtils';
@@ -20,6 +22,7 @@ import { getAttachmentId } from '../utils/UploadAttachmentUtils';
 const pendingRequests = new Map<string, Promise<void>>();
 
 export const useAuthenticatedFile = (url: string) => {
+  const { t } = useTranslation();
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const isMounted = useRef(true);
 
@@ -55,7 +58,7 @@ export const useAuthenticatedFile = (url: string) => {
           document.body.removeChild(link);
           URL.revokeObjectURL(objectUrl);
         } catch (error) {
-          showErrorToast(error as string);
+          showErrorToast(error as AxiosError, t('server.unexpected-error'));
         } finally {
           if (isMounted.current) {
             setIsLoading(false);
@@ -70,7 +73,7 @@ export const useAuthenticatedFile = (url: string) => {
     try {
       await request;
     } catch (error) {
-      showErrorToast(error as string);
+      showErrorToast(error as AxiosError, t('server.unexpected-error'));
     }
   };
 
