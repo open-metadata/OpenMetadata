@@ -153,20 +153,24 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     []
   );
 
+  // Raw RHF success handler. Passed to `useFormDrawerWithHook.onSubmit`, which
+  // runs it through a single `hookForm.handleSubmit`; the modal variant needs the
+  // pre-wrapped `submitAndClose` below because it calls submit on a button press.
+  const onValidSubmit = useCallback(
+    async (data: TestDefinitionFormValues) => {
+      try {
+        await handleSubmit(data);
+        handleDismiss();
+      } catch {
+        // error surfaced inline via errorMessage; keep the form open
+      }
+    },
+    [handleSubmit, handleDismiss]
+  );
+
   const submitAndClose = useMemo(
-    () =>
-      form.handleSubmit(
-        async (data) => {
-          try {
-            await handleSubmit(data);
-            handleDismiss();
-          } catch {
-            // error surfaced inline via errorMessage; keep the form open
-          }
-        },
-        () => scrollToError()
-      ),
-    [form, handleSubmit, handleDismiss, scrollToError]
+    () => form.handleSubmit(onValidSubmit, () => scrollToError()),
+    [form, onValidSubmit, scrollToError]
   );
 
   const formBody = (
@@ -194,7 +198,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
             'drawer-doc-panel service-doc-panel markdown-parser',
             'tw:my-6 tw:mr-6 tw:min-h-0 tw:min-w-0 tw:basis-[40%]',
             'tw:overflow-y-auto tw:rounded-xl tw:border',
-            'tw:border-solid tw:border-gray-200 tw:px-5'
+            'tw:border-solid tw:border-secondary tw:px-5'
           )}>
           <ServiceDocPanel
             activeField={activeField}
@@ -222,15 +226,17 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       submitLabel: t('label.save'),
       submitTestId: 'save-test-definition',
       onClose: handleDismiss,
-      onSubmit: () => submitAndClose(),
+      onSubmit: onValidSubmit,
     });
 
-  // react-hook-form applies defaultValues only on first render; re-seed the form
-  // when the target entity changes (edit a different definition, or create↔edit)
-  // so a persistently mounted form never shows stale values.
+  // react-hook-form applies defaultValues only on the first render; re-seed the
+  // form whenever the target entity reference changes (edit a different
+  // definition, create↔edit, or a same-id refetch) so a persistently mounted
+  // form never shows stale values. Callers pass a stable `initialValues` ref per
+  // selection, so this does not loop.
   useEffect(() => {
     form.reset(buildFormDefaults(initialValues));
-  }, [initialValues?.id]);
+  }, [initialValues, form]);
 
   useEffect(() => {
     if (!isModalVariant && open) {
