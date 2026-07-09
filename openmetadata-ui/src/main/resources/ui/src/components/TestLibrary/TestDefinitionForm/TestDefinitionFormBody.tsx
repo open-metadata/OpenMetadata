@@ -15,9 +15,11 @@ import {
   Button,
   FieldProp,
   FieldTypes,
+  FormItemLabel,
   FormItemLayout,
   FormSelectItem,
   getField,
+  HelperTextType,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { FC, FocusEvent, lazy, useCallback } from 'react';
@@ -188,6 +190,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     required: false,
     id: 'root/supportedServices',
     helperText: t('message.supported-services-help'),
+    helperTextType: HelperTextType.TOOLTIP,
     placeholder: t('message.empty-means-all-services'),
     props: {
       'data-testid': 'supported-services',
@@ -265,10 +268,10 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         data-testid="sql-expression"
         onClick={() => handleActiveField('root/sqlExpression')}>
-        <label>{t('label.sql-query')}</label>
-        <p className="tw:text-xs tw:text-tertiary">
-          {t('message.test-definition-sql-query-help')}
-        </p>
+        <FormItemLabel
+          label={t('label.sql-query')}
+          tooltip={t('message.test-definition-sql-query-help')}
+        />
         {isReadOnlyField ? (
           <textarea
             disabled
@@ -299,10 +302,10 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         data-testid="parameter-definition"
         onClick={() => handleActiveField('root/parameterDefinition')}>
-        <label>{t('label.parameter-plural')}</label>
-        <p className="tw:text-xs tw:text-tertiary">
-          {t('message.test-definition-parameters-description')}
-        </p>
+        <FormItemLabel
+          label={t('label.parameter-plural')}
+          tooltip={t('message.test-definition-parameters-description')}
+        />
         {fields.map((field, index) => (
           <div
             className="m-t-md tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:p-3"
