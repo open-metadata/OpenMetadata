@@ -533,7 +533,7 @@ describe('ExploreTree', () => {
     expect(getByText('label.governance')).toBeInTheDocument();
   });
 
-  it('opts into service style top hits only for service name buckets', async () => {
+  it('includes style top hits and search text for service name buckets', async () => {
     const postAggregateSpy = jest
       .spyOn(miscAPI, 'postAggregateFieldOptions')
       .mockResolvedValue(
@@ -563,12 +563,13 @@ describe('ExploreTree', () => {
     const response = await getExploreTreeAggregationResponse({
       bucketToFind: EntityFields.SERVICE,
       countQueryFilter: { query: { bool: {} } },
-      searchQueryParam: '',
+      searchQueryParam: 'customer',
     });
 
     expect(postAggregateSpy).toHaveBeenCalledWith(
       expect.objectContaining({
         fieldName: 'service.displayName.keyword',
+        queryText: 'customer',
         sourceFields: ['service.style'],
         topHits: {
           size: 1,

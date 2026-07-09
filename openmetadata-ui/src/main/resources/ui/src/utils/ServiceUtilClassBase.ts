@@ -57,6 +57,7 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
+import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../interface/knowledge-center.interface';
 import { KnowledgePageSearchSource } from '../interface/search.interface';
 import {
@@ -82,6 +83,17 @@ import {
 } from './ServicePureUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringUtils';
+
+type ServiceLogoStyle = {
+  iconURL?: string;
+};
+
+type ServiceLogoSource = {
+  serviceType?: string;
+  entityType?: string;
+  style?: ServiceLogoStyle;
+  service?: Partial<EntityReference> & { style?: ServiceLogoStyle };
+};
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -365,14 +377,7 @@ class ServiceUtilClassBase {
     return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
   }
 
-  public getServiceTypeLogo(searchSource: {
-    serviceType?: string;
-    entityType?: string;
-    style?: {
-      iconURL?: string;
-    };
-    service?: unknown;
-  }): string {
+  public getServiceTypeLogo(searchSource: ServiceLogoSource): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
@@ -384,12 +389,12 @@ class ServiceUtilClassBase {
       return isQuickLink ? QuickLinkIcon : KnowledgeCenterIcon;
     }
 
-    const ownIcon = get(searchSource, 'style.iconURL', '');
+    const ownIcon = searchSource.style?.iconURL;
     if (ownIcon) {
       return ownIcon;
     }
 
-    const serviceIcon = get(searchSource, 'service.style.iconURL', '');
+    const serviceIcon = searchSource.service?.style?.iconURL;
     if (serviceIcon) {
       return serviceIcon;
     }

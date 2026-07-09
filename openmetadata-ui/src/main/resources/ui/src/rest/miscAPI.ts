@@ -22,7 +22,6 @@ import { SearchIndex } from '../enums/search.enum';
 import { AuthenticationConfiguration } from '../generated/configuration/authenticationConfiguration';
 import { AuthorizerConfiguration } from '../generated/configuration/authorizerConfiguration';
 import { AggregationRequest } from '../generated/search/aggregationRequest';
-import { SearchRequest } from '../generated/search/searchRequest';
 import { ValidationResponse } from '../generated/system/validationResponse';
 import { Paging } from '../generated/type/paging';
 import { SearchResponse } from '../interface/search.interface';
@@ -31,9 +30,6 @@ import {
   getEncodedFqn,
 } from '../utils/StringUtils';
 import APIClient from './index';
-
-type AggregateFieldOptionsRequest = SearchRequest &
-  Pick<AggregationRequest, 'sourceFields' | 'topHits'>;
 
 export const getSearchAPIQueryParams = (
   queryString: string,
@@ -250,18 +246,18 @@ export const getAggregateFieldOptions = (
 
 /**
  * Posts aggregate field options request with parameters in the body.
- * @param {SearchRequest} body - The search request body containing the parameters.
+ * @param {AggregationRequest} body - The aggregation request body containing the parameters.
  * @return {Promise<SearchResponse<ExploreSearchIndex>>} A promise that resolves to the search response
  * containing the aggregate field options.
  */
 export const postAggregateFieldOptions = ({
   fieldValue,
   ...rest
-}: AggregateFieldOptionsRequest) => {
+}: AggregationRequest) => {
   const withWildCardValue = fieldValue
     ? `.*${escapeESReservedCharacters(fieldValue)}.*`
     : '.*';
-  const body: AggregateFieldOptionsRequest = {
+  const body: AggregationRequest = {
     fieldValue: withWildCardValue,
     ...rest,
   };

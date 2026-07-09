@@ -138,6 +138,7 @@ export const getExploreTreeAggregationResponse = async ({
     ? (
         await postAggregateFieldOptions({
           query: JSON.stringify(countQueryFilter),
+          queryText: searchQueryParam,
           fieldName: bucketToFind,
           fieldValue: '',
           index: SearchIndex.DATA_ASSET,
