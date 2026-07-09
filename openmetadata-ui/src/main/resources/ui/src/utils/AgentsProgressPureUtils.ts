@@ -59,25 +59,52 @@ const computeAssets = (agent: Agent, update: ProgressUpdate): number => {
   return Math.max(candidate, agent.assets);
 };
 
+/**
+ * Sum of every counter's `total`, but only when all totals are known. Returns
+ * null when there are no counters or any total is still unknown, so callers can
+ * distinguish "no reliable target yet" from a genuine zero.
+ */
+const sumKnownCounterTotals = (counters?: GlobalCounter[]): number | null =>
+  counters?.length &&
+  counters.every(
+    (counter) => counter.total !== null && counter.total !== undefined
+  )
+    ? counters.reduce((sum, counter) => sum + (counter.total ?? 0), 0)
+    : null;
+
 const computeTarget = (
   agent: Agent,
   update: ProgressUpdate,
   assets: number
 ): number => {
-  const counters = update.globalCounters;
+  const knownTotal = sumKnownCounterTotals(update.globalCounters);
   let target = agent.target;
-  if (
-    counters?.length &&
-    counters.every(
-      (counter) => counter.total !== null && counter.total !== undefined
-    )
-  ) {
-    target = counters.reduce((sum, counter) => sum + (counter.total ?? 0), 0);
+  if (knownTotal !== null) {
+    target = knownTotal;
   } else if (target === 0 && assets > 0) {
     target = Math.max(assets, 1);
   }
 
   return target;
+};
+
+/**
+ * Progress percentage is derived purely from globalCounters (done vs total),
+ * never from totalAssetsIngested. The two live on different scales — done/total
+ * count entities that survive scope pruning, while totalAssetsIngested counts
+ * leaf assets — so mixing them yields a misleading percentage. Falls back to the
+ * previous pct when counters are absent or their totals are not all known, and
+ * stays monotonic so the bar never moves backwards.
+ */
+const computeProgressPct = (agent: Agent, update: ProgressUpdate): number => {
+  const total = sumKnownCounterTotals(update.globalCounters);
+  let raw = agent.pct;
+  if (total !== null && total > 0) {
+    const done = sumGlobalCounters(update.globalCounters ?? []);
+    raw = Math.min(100, Math.round((done / total) * 100));
+  }
+
+  return Math.max(raw, agent.pct);
 };
 
 const computeEta = (agent: Agent, update: ProgressUpdate): number | null =>
@@ -91,12 +118,10 @@ const buildRunningFields = (
 ): Pick<Agent, AgentFields> => {
   const assets = computeAssets(agent, update);
   const target = computeTarget(agent, update, assets);
-  const rawPct =
-    target > 0 ? Math.min(100, Math.round((assets / target) * 100)) : agent.pct;
 
   return {
     status: 'running',
-    pct: Math.max(rawPct, agent.pct),
+    pct: computeProgressPct(agent, update),
     assets,
     target,
     eta: computeEta(agent, update),

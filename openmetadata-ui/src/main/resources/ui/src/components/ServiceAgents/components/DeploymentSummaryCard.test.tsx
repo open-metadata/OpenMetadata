@@ -80,7 +80,7 @@ describe('DeploymentSummaryCard', () => {
     ).not.toBeInTheDocument();
   });
 
-  it('should aggregate asset counts across asset-unit agents only', () => {
+  it('should aggregate asset counts from Metadata agents only', () => {
     render(
       <DeploymentSummaryCard
         agents={[
@@ -89,8 +89,16 @@ describe('DeploymentSummaryCard', () => {
           buildAgent({
             id: 'agent-3',
             fqn: 'service.agent-3',
-            unit: 'queries',
+            pipelineType: PipelineType.Profiler,
+            unit: 'assets',
             assets: 999,
+          }),
+          buildAgent({
+            id: 'agent-4',
+            fqn: 'service.agent-4',
+            pipelineType: PipelineType.Usage,
+            unit: 'queries',
+            assets: 500,
           }),
         ]}
       />
@@ -98,6 +106,28 @@ describe('DeploymentSummaryCard', () => {
 
     expect(screen.getByTestId('summary-assets-ingested')).toHaveTextContent(
       '150'
+    );
+  });
+
+  it('should keep the Metadata agent count while other agents still run', () => {
+    render(
+      <DeploymentSummaryCard
+        agents={[
+          buildAgent({ assets: 80 }),
+          buildAgent({
+            id: 'agent-2',
+            fqn: 'service.agent-2',
+            pipelineType: PipelineType.Profiler,
+            status: 'running',
+            pct: 20,
+            assets: 10,
+          }),
+        ]}
+      />
+    );
+
+    expect(screen.getByTestId('summary-assets-ingested')).toHaveTextContent(
+      '80'
     );
   });
 
