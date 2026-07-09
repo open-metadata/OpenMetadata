@@ -14,7 +14,7 @@ import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
 import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
-import { DataType } from '../../../generated/entity/data/table';
+import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
 import searchClassBase from '../../../utils/SearchClassBase';
 import ExploreSearchCard from './ExploreSearchCard';
@@ -244,6 +244,26 @@ describe('ExploreSearchCard - Entity type tags', () => {
 
     expect(screen.queryByTestId('Type')).not.toBeInTheDocument();
     expect(screen.queryByText('STRING')).not.toBeInTheDocument();
+  });
+
+  it('does not render NULL constraint as a metadata tag for column cards', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      constraint: Constraint.Null,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(screen.queryByTestId('Constraint')).not.toBeInTheDocument();
+    expect(screen.queryByText(Constraint.Null)).not.toBeInTheDocument();
+  });
+
+  it('renders real constraint metadata for column cards', () => {
+    renderCard({
+      entityType: 'tableColumn',
+      constraint: Constraint.PrimaryKey,
+    } as Partial<ExploreSearchCardProps['source']>);
+
+    expect(screen.getByTestId('label.constraint')).toBeInTheDocument();
+    expect(screen.getByText(Constraint.PrimaryKey)).toBeInTheDocument();
   });
 });
 
