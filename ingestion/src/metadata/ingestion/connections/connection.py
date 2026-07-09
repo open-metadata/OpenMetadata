@@ -106,9 +106,7 @@ class BaseConnection(ABC, Generic[S, C]):
         # unbound TypeVar so the access can't be proven statically.
         service_type = self.service_connection.type.value  # pyright: ignore[reportAttributeAccessIssue]
         effective_timeout = timeout_seconds if timeout_seconds is not None else self.step_timeout_seconds
-        return TestConnectionRunner(self.checks(), service_type, effective_timeout).run(
-            metadata, automation_workflow
-        )
+        return TestConnectionRunner(self.checks(), service_type, effective_timeout).run(metadata, automation_workflow)
 
     def _on_close(self, teardown: Callable[[], None]) -> None:
         """Register a teardown to run on ``close()``. ``_get_client`` calls this
