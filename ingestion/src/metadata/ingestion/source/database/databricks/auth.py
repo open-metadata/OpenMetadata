@@ -34,6 +34,15 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 )
 
 
+def normalize_host_port(host_port: str) -> str:
+    """Strip a pasted URL scheme and path, leaving ``host:port``."""
+    return host_port.split("://", 1)[-1].split("/", 1)[0]
+
+
+def _host(connection: Union[DatabricksConnection, UnityCatalogConnection]) -> str:  # noqa: UP007
+    return normalize_host_port(connection.hostPort).split(":")[0]
+
+
 def get_personal_access_token_auth(
     connection: Union[DatabricksConnection, UnityCatalogConnection],  # noqa: UP007
 ) -> dict:
@@ -51,7 +60,7 @@ def get_databricks_oauth_auth(
     """
 
     def credential_provider():
-        hostname = connection.hostPort.split(":")[0]
+        hostname = _host(connection)
         config = Config(
             host=f"https://{hostname}",
             client_id=connection.authType.clientId,
@@ -68,7 +77,7 @@ def get_azure_ad_auth(connection: Union[DatabricksConnection, UnityCatalogConnec
     """
 
     def credential_provider():
-        hostname = connection.hostPort.split(":")[0]
+        hostname = _host(connection)
         config = Config(
             host=f"https://{hostname}",
             azure_client_secret=connection.authType.azureClientSecret.get_secret_value(),

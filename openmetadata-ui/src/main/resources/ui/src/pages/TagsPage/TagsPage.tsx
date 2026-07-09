@@ -12,17 +12,18 @@
  */
 
 import { Badge, Button, Typography } from '@openmetadata/ui-core-components';
-import { useForm } from 'antd/lib/form/Form';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { compare } from 'fast-json-patch';
 import { isUndefined } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as PlusIcon } from '../../assets/svg/plus-primary.svg';
 import ClassificationDetails from '../../components/Classifications/ClassificationDetails/ClassificationDetails';
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
@@ -30,7 +31,6 @@ import HeaderShell from '../../components/common/HeaderShell/HeaderShell.compone
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
-import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import { HTTP_STATUS_CODE } from '../../constants/Auth.constants';
 import { TIER_CATEGORY } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
@@ -57,10 +57,7 @@ import {
   patchClassification,
   patchTag,
 } from '../../rest/tagAPI';
-import {
-  getCountBadge,
-  getEntityDeleteMessage,
-} from '../../utils/EntityDisplayPureUtils';
+import { getCountBadge } from '../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   checkPermission,
@@ -72,7 +69,11 @@ import tagClassBase from '../../utils/TagClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import ClassificationFormDrawer from './ClassificationFormDrawer';
 import TagFormDrawer from './TagFormDrawer';
-import { DeleteTagsType } from './TagsPage.interface';
+import {
+  DeleteTagsType,
+  TagFormValues,
+  TAG_FORM_DEFAULTS,
+} from './TagsPage.interface';
 
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
@@ -80,8 +81,10 @@ const TagsPage = () => {
   const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
-  const [tagForm] = useForm();
-  const [classificationForm] = useForm();
+  const tagForm = useForm<TagFormValues>({ defaultValues: TAG_FORM_DEFAULTS });
+  const classificationForm = useForm<TagFormValues>({
+    defaultValues: TAG_FORM_DEFAULTS,
+  });
   const [classifications, setClassifications] = useState<Array<Classification>>(
     []
   );
@@ -602,7 +605,7 @@ const TagsPage = () => {
 
   const handleTagDrawerClose = useCallback(() => {
     setIsTagDrawerOpen(false);
-    tagForm.resetFields();
+    tagForm.reset();
     setEditTag(undefined);
   }, [tagForm]);
 
@@ -612,12 +615,12 @@ const TagsPage = () => {
 
   const handleClassificationDrawerClose = useCallback(() => {
     setIsClassificationDrawerOpen(false);
-    classificationForm.resetFields();
+    classificationForm.reset();
   }, [classificationForm]);
 
   const handleClassificationDrawerOpen = useCallback(() => {
     setIsClassificationDrawerOpen(true);
-    classificationForm.resetFields();
+    classificationForm.reset();
   }, [classificationForm]);
 
   const handleTagFormSubmit = useCallback(
@@ -656,7 +659,7 @@ const TagsPage = () => {
 
   const handleAddNewTagClick = useCallback(() => {
     setEditTag(undefined);
-    tagForm.resetFields();
+    tagForm.reset();
     handleTagDrawerOpen();
   }, [handleTagDrawerOpen, tagForm]);
 
@@ -676,7 +679,7 @@ const TagsPage = () => {
                   iconLeading={<PlusIcon style={{ height: 16, width: 16 }} />}
                   size="sm"
                   onClick={() => {
-                    classificationForm.resetFields();
+                    classificationForm.reset();
                     handleClassificationDrawerOpen();
                   }}>
                   <span className="tw:text-brand-600 tw:font-normal">
@@ -807,16 +810,14 @@ const TagsPage = () => {
                 ref={classificationDetailsRef}
               />
 
-              <EntityDeleteModal
-                bodyText={getEntityDeleteMessage(
-                  deleteTags.data?.name ?? '',
-                  ''
-                )}
-                entityName={deleteTags.data?.name ?? ''}
-                entityType={t('label.classification')}
-                visible={deleteTags.state}
+              <DeleteModal
+                entityTitle={deleteTags.data?.name ?? ''}
+                message={t('message.delete-entity-message', {
+                  entity: deleteTags.data?.name ?? '',
+                })}
+                open={deleteTags.state}
                 onCancel={handleCancelClassificationDelete}
-                onConfirm={handleConfirmClick}
+                onDelete={handleConfirmClick}
               />
             </>
           ),
@@ -828,7 +829,7 @@ const TagsPage = () => {
 
       <TagFormDrawer
         editTag={editTag}
-        formRef={tagForm}
+        form={tagForm}
         isLoading={isTagFormLoading}
         isTier={isTier}
         open={isTagDrawerOpen}
@@ -840,7 +841,7 @@ const TagsPage = () => {
 
       <ClassificationFormDrawer
         classifications={classifications}
-        formRef={classificationForm}
+        form={classificationForm}
         isLoading={isClassificationFormLoading}
         isTier={isTier}
         open={isClassificationDrawerOpen}
