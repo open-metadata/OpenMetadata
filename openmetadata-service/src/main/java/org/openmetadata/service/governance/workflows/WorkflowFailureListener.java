@@ -15,12 +15,14 @@ import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEvent;
 import org.flowable.common.engine.api.delegate.event.FlowableEventListener;
 import org.flowable.common.engine.api.delegate.event.FlowableExceptionEvent;
+import org.flowable.engine.HistoryService;
 import org.flowable.engine.ProcessEngine;
 import org.flowable.engine.ProcessEngines;
 import org.flowable.engine.RuntimeService;
 import org.flowable.engine.delegate.event.FlowableCancelledEvent;
 import org.flowable.engine.impl.persistence.entity.ExecutionEntity;
 import org.flowable.engine.runtime.ProcessInstance;
+import org.flowable.variable.api.history.HistoricVariableInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -88,7 +90,16 @@ public class WorkflowFailureListener implements FlowableEventListener {
   }
 
   private boolean isIntentionalTerminationEvent(FlowableEvent event) {
-    boolean intentional = false;
+    // Two-source read for reliability: the event's ExecutionEntity carries variables in-memory
+    // (fast path, works while the entity is still cached), and HistoricVariableInstance survives
+    // the teardown (fallback for child-execution events where the process-scoped variable isn't
+    // resolved locally). Either source proves the terminate was intentional.
+    return isReasonSetOnEventEntity(event)
+        || isReasonSetOnHistoricInstance(getProcessInstanceId(event));
+  }
+
+  private boolean isReasonSetOnEventEntity(FlowableEvent event) {
+    boolean set = false;
     // Flowable delivers event bodies as raw types via FlowableEngineEntityEvent#getEntity(); the
     // entity for a terminate end event is the ExecutionEntity that owns the variables map.
     if (event instanceof FlowableEngineEntityEvent entityEvent
@@ -96,10 +107,37 @@ public class WorkflowFailureListener implements FlowableEventListener {
       Object reason = executionEntity.getVariable(Workflow.TERMINATION_REASON_VARIABLE);
       // Variable comes back as untyped Object from Flowable's variable map.
       if (reason instanceof String reasonStr && !reasonStr.isBlank()) {
-        intentional = true;
+        set = true;
       }
     }
-    return intentional;
+    return set;
+  }
+
+  private boolean isReasonSetOnHistoricInstance(String processInstanceId) {
+    boolean set = false;
+    if (processInstanceId != null) {
+      try {
+        HistoryService historyService =
+            ProcessEngines.getDefaultProcessEngine().getHistoryService();
+        HistoricVariableInstance historic =
+            historyService
+                .createHistoricVariableInstanceQuery()
+                .processInstanceId(processInstanceId)
+                .variableName(Workflow.TERMINATION_REASON_VARIABLE)
+                .singleResult();
+        if (historic != null
+            && historic.getValue() instanceof String reasonStr
+            && !reasonStr.isBlank()) {
+          set = true;
+        }
+      } catch (Exception e) {
+        LOG.debug(
+            "[WorkflowFailure] Historic terminationReason lookup failed for processInstanceId={}: {}",
+            processInstanceId,
+            e.getMessage());
+      }
+    }
+    return set;
   }
 
   private String extractIntentionalCancellationCause(FlowableEvent event) {
