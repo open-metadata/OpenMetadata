@@ -4059,7 +4059,7 @@
     "unauthorized-user": "کاربر غیرمجاز! لطفاً ایمیل یا رمز عبور را بررسی کنید.",
     "unexpected-error": "یک خطای غیرمنتظره رخ داده است.",
     "unexpected-response": "پاسخ غیرمنتظره‌ای از سرور.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "خطا در به‌روزرسانی {{entity}}!",
     "update-entity-success": "{{entity}} با موفقیت به‌روزرسانی شد."
   }
 }

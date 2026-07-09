@@ -4059,7 +4059,7 @@
     "unauthorized-user": "Неавторизованный пользователь! пожалуйста, проверьте электронную почту или пароль",
     "unexpected-error": "Произошла непредвиденная ошибка.",
     "unexpected-response": "Неожиданный ответ от сервера.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "Ошибка при обновлении объекта «{{entity}}»!",
     "update-entity-success": "Объект «{{entity}}» обновлен."
   }
 }

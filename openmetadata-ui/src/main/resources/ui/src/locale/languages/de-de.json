@@ -4059,7 +4059,7 @@
     "unauthorized-user": "Unbefugter Benutzer! Bitte überprüfen Sie E-Mail oder Passwort.",
     "unexpected-error": "Ein unerwarteter Fehler ist aufgetreten.",
     "unexpected-response": "Unerwartete Antwort vom Server.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "Fehler beim Aktualisieren von {{entity}}!",
     "update-entity-success": "{{entity}} erfolgreich aktualisiert."
   }
 }

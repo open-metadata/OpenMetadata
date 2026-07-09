@@ -4059,7 +4059,7 @@
     "unauthorized-user": "Ongeautoriseerde gebruiker! controleer e-mail of wachtwoord",
     "unexpected-error": "Er is een onverwachte fout opgetreden.",
     "unexpected-response": "Onverwachte respons van de server.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "Fout bij het updaten van {{entity}}!",
     "update-entity-success": "{{entity}} succesvol bijgewerkt."
   }
 }

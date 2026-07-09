@@ -4059,7 +4059,7 @@
     "unauthorized-user": "مستخدم غير مصرح به! يرجى التحقق من البريد الإلكتروني أو كلمة المرور",
     "unexpected-error": "حدث خطأ غير متوقع.",
     "unexpected-response": "استجابة غير متوقعة من الخادم.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "خطأ أثناء تحديث {{entity}}!",
     "update-entity-success": "تم تحديث {{entity}} بنجاح."
   }
 }
