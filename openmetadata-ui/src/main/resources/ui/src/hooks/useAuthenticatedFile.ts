@@ -18,7 +18,6 @@ import { downloadAsset } from '../rest/assetAPI';
 import { showErrorToast } from '../utils/ToastUtils';
 import { getAttachmentId } from '../utils/UploadAttachmentUtils';
 
-
 // Track in-flight requests globally
 const pendingRequests = new Map<string, Promise<void>>();
 

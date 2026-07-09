@@ -148,10 +148,13 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
       dataTestId="attachment-widget"
       isExpandDisabled={false}
       title={t('label.attachment-plural')}>
-      {attachments.length === 0 ? 
-      <Typography className="tw:text-utility-gray-400" size="text-sm">
+      {attachments.length === 0 ? (
+        <Typography className="tw:text-utility-gray-400" size="text-sm">
           {t('label.no-entity', { entity: t('label.attachment-plural') })}
-        </Typography> :content}
+        </Typography>
+      ) : (
+        content
+      )}
     </WidgetCard>
   );
 };
