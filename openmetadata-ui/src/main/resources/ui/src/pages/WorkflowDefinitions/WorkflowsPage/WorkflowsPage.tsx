@@ -26,6 +26,7 @@ import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
@@ -274,7 +275,11 @@ const WorkflowsPage = () => {
             breadcrumb={
               <HeaderBreadcrumb
                 noMargin
-                items={[{ label: t('label.workflow-plural') }]}
+                items={[
+                  getGlossaryHomeCrumb(t),
+                  { label: t('label.workflow-plural') },
+                ]}
+                showHome={false}
               />
             }
             className="tw:mb-4"

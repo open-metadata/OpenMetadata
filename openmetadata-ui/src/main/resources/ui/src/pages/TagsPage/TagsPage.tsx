@@ -25,6 +25,7 @@ import ClassificationDetails from '../../components/Classifications/Classificati
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -763,7 +764,11 @@ const TagsPage = () => {
           breadcrumb={
             <HeaderBreadcrumb
               noMargin
-              items={[{ label: t('label.classification-plural') }]}
+              items={[
+                getGlossaryHomeCrumb(t),
+                { label: t('label.classification-plural') },
+              ]}
+              showHome={false}
             />
           }
           title={t('label.classification-plural')}

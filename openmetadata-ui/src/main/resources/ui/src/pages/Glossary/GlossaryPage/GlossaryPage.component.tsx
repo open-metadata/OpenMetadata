@@ -21,6 +21,7 @@ import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
@@ -601,7 +602,8 @@ const GlossaryPage = () => {
           breadcrumb={
             <HeaderBreadcrumb
               noMargin
-              items={[{ label: t('label.glossary') }]}
+              items={[getGlossaryHomeCrumb(t), { label: t('label.glossary') }]}
+              showHome={false}
             />
           }
           title={t('label.glossary')}

@@ -21,8 +21,8 @@ import {
 } from '@openmetadata/ui-core-components';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as GovernanceIcon } from '../../assets/svg/ic-governance.svg';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -45,15 +45,7 @@ const OntologyExplorerPage: React.FC = () => {
   const breadcrumb = (
     <HeaderBreadcrumb
       noMargin
-      items={[
-        {
-          label: null,
-          ariaLabel: t('label.home'),
-          icon: GovernanceIcon,
-          href: '/',
-        },
-        { label: t('label.ontology-explorer') },
-      ]}
+      items={[getGlossaryHomeCrumb(t), { label: t('label.ontology-explorer') }]}
       showHome={false}
     />
   );
@@ -69,11 +61,7 @@ const OntologyExplorerPage: React.FC = () => {
   );
 
   const betaBadge = (
-    <Badge
-      color="blue-light"
-      data-testid="beta-badge"
-      size="sm"
-      type="pill-color">
+    <Badge color="blue-light" data-testid="beta-badge" size="sm" type="color">
       {t('label.beta')}
     </Badge>
   );

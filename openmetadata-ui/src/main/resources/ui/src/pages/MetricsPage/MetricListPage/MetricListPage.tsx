@@ -52,6 +52,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
@@ -829,7 +830,11 @@ const MetricListPage = () => {
               breadcrumb={
                 <HeaderBreadcrumb
                   noMargin
-                  items={[{ label: t('label.metric-plural') }]}
+                  items={[
+                    getGlossaryHomeCrumb(t),
+                    { label: t('label.metric-plural') },
+                  ]}
+                  showHome={false}
                 />
               }
               subtitle={t('message.metric-description')}
