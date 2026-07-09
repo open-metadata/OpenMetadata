@@ -24,6 +24,12 @@ public final class SearchRankingHelper {
   // identifier queries like "sample_data" into "sample data", which then fails to match the
   // keyword fqnParts/name compound tokens that keep the identifier intact.
   private static final Pattern WHITESPACE_SPLITTER = Pattern.compile("\\s+");
+  // n-gram fields are indexed with an edge-n-gram analyzer; querying them with that same analyzer
+  // re-n-grams the query text, so a long single token explodes into hundreds of clauses and trips
+  // OpenSearch's maxClauseCount. Query them with a plain analyzer instead (the canonical
+  // edge-n-gram
+  // pattern): the query stays one token and still matches the indexed n-grams.
+  private static final String NGRAM_SEARCH_ANALYZER = "standard";
 
   private SearchRankingHelper() {}
 
@@ -113,6 +119,13 @@ public final class SearchRankingHelper {
 
   public static String minimumShouldMatch(RankingStage stage) {
     return !nullOrEmpty(stage.getMinimumShouldMatch()) ? stage.getMinimumShouldMatch() : "2<70%";
+  }
+
+  public static String stageSearchAnalyzer(RankingStage stage) {
+    List<String> fields = stage.getFields();
+    boolean allNgramFields =
+        !nullOrEmpty(fields) && fields.stream().allMatch(field -> field.endsWith(".ngram"));
+    return allNgramFields ? NGRAM_SEARCH_ANALYZER : null;
   }
 
   public static Double signalMaxBoost(RankingConfiguration ranking) {

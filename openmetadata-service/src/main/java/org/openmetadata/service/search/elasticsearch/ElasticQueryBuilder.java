@@ -153,6 +153,30 @@ public class ElasticQueryBuilder {
       String minimumShouldMatch,
       Float boost,
       String queryName) {
+    return multiMatchQuery(
+        query,
+        fields,
+        type,
+        operator,
+        tieBreaker,
+        fuzziness,
+        minimumShouldMatch,
+        boost,
+        queryName,
+        null);
+  }
+
+  public static Query multiMatchQuery(
+      String query,
+      Map<String, Float> fields,
+      TextQueryType type,
+      Operator operator,
+      String tieBreaker,
+      String fuzziness,
+      String minimumShouldMatch,
+      Float boost,
+      String queryName,
+      String analyzer) {
     List<String> fieldList = new ArrayList<>();
     fields.forEach(
         (field, fieldBoost) -> {
@@ -190,6 +214,9 @@ public class ElasticQueryBuilder {
                   }
                   if (queryName != null) {
                     m.queryName(queryName);
+                  }
+                  if (analyzer != null) {
+                    m.analyzer(analyzer);
                   }
                   return m;
                 }));

@@ -2,6 +2,7 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import java.util.List;
 import org.junit.jupiter.api.Test;
@@ -187,5 +188,25 @@ class SearchRankingHelperTest {
     // The partial-name stage must keep the n-gram fields that every other stage drops; without
     // them substring queries like "ord" silently stop matching "orders_fact".
     assertEquals(List.of("name.ngram", "displayName.ngram"), partialName.getFields());
+  }
+
+  @Test
+  void stageSearchAnalyzerUsesPlainAnalyzerOnlyForNgramStages() {
+    // n-gram-only stage: query with a plain analyzer so a long token cannot re-n-gram into
+    // hundreds of clauses and trip OpenSearch's maxClauseCount.
+    assertEquals(
+        "standard",
+        SearchRankingHelper.stageSearchAnalyzer(
+            new RankingStage().withFields(List.of("name.ngram", "displayName.ngram"))));
+
+    // Non-n-gram stages keep the field's own analyzer.
+    assertNull(
+        SearchRankingHelper.stageSearchAnalyzer(
+            new RankingStage().withFields(List.of("name", "displayName"))));
+
+    // A mixed stage must not force the plain analyzer onto the non-n-gram fields.
+    assertNull(
+        SearchRankingHelper.stageSearchAnalyzer(
+            new RankingStage().withFields(List.of("name", "name.ngram"))));
   }
 }

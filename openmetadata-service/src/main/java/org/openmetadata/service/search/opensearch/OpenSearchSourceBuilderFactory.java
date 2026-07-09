@@ -1140,7 +1140,8 @@ public class OpenSearchSourceBuilderFactory
         fuzziness,
         SearchRankingHelper.minimumShouldMatch(stage),
         SearchRankingHelper.stageWeight(stage),
-        rankingQueryName(stage, "text"));
+        rankingQueryName(stage, "text"),
+        SearchRankingHelper.stageSearchAnalyzer(stage));
   }
 
   private String rankingQueryName(RankingStage stage, String field) {
