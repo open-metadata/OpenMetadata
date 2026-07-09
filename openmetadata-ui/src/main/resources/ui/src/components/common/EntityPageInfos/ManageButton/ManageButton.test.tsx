@@ -11,12 +11,29 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { EntityType } from '../../../../enums/entity.enum';
+import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
 import ManageButton from './ManageButton';
+
+const mockHandleOnAsyncEntityDeleteConfirm = jest.fn();
+const mockHardDeleteEntity = jest.fn().mockResolvedValue(true);
 
 jest.mock('../../../../utils/AnnouncementsUtils', () => ({
   ANNOUNCEMENT_ENTITIES: ['table', 'topic', 'dashboard', 'pipeline'],
+}));
+
+jest.mock(
+  '../../../../context/AsyncDeleteProvider/AsyncDeleteProvider',
+  () => ({
+    useAsyncDeleteProvider: () => ({
+      handleOnAsyncEntityDeleteConfirm: mockHandleOnAsyncEntityDeleteConfirm,
+    }),
+  })
+);
+
+jest.mock('../../../../utils/DeleteWidget/DeleteWidgetUtils', () => ({
+  hardDeleteEntity: (...args: unknown[]) => mockHardDeleteEntity(...args),
 }));
 
 jest.mock('../../DeleteWidget/DeleteEntityModal', () => {
@@ -24,7 +41,14 @@ jest.mock('../../DeleteWidget/DeleteEntityModal', () => {
 });
 
 jest.mock('../../DeleteModal/DeleteModal', () => {
-  return jest.fn().mockReturnValue(<div>DeleteModal</div>);
+  return jest.fn().mockImplementation(({ onDelete }) => (
+    <div>
+      <span>DeleteModal</span>
+      <button data-testid="confirm-delete-button" onClick={onDelete}>
+        confirm
+      </button>
+    </div>
+  ));
 });
 
 const mockAnnouncementClick = jest.fn();
@@ -99,6 +123,42 @@ describe('Test manage button component', () => {
 
     expect(await screen.findByText('DeleteModal')).toBeInTheDocument();
     expect(screen.queryByText('DeleteEntityModal')).not.toBeInTheDocument();
+  });
+
+  it('Should route hard-delete through the async provider when isAsyncDelete is set', async () => {
+    mockHandleOnAsyncEntityDeleteConfirm.mockClear();
+    mockHardDeleteEntity.mockClear();
+
+    render(
+      <ManageButton {...mockProps} isAsyncDelete allowSoftDelete={false} />
+    );
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('delete-button'));
+    fireEvent.click(await screen.findByTestId('confirm-delete-button'));
+
+    await waitFor(() =>
+      expect(mockHandleOnAsyncEntityDeleteConfirm).toHaveBeenCalledWith(
+        expect.objectContaining({ deleteType: DeleteType.HARD_DELETE })
+      )
+    );
+
+    expect(mockHardDeleteEntity).not.toHaveBeenCalled();
+  });
+
+  it('Should use the sync hard-delete when isAsyncDelete is not set', async () => {
+    mockHandleOnAsyncEntityDeleteConfirm.mockClear();
+    mockHardDeleteEntity.mockClear();
+
+    render(<ManageButton {...mockProps} allowSoftDelete={false} />);
+
+    fireEvent.click(await screen.findByTestId('manage-button'));
+    fireEvent.click(await screen.findByTestId('delete-button'));
+    fireEvent.click(await screen.findByTestId('confirm-delete-button'));
+
+    await waitFor(() => expect(mockHardDeleteEntity).toHaveBeenCalledTimes(1));
+
+    expect(mockHandleOnAsyncEntityDeleteConfirm).not.toHaveBeenCalled();
   });
 
   it('Should call announcement callback on click of announcement option', async () => {

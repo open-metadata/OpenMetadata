@@ -26,6 +26,7 @@ import { ReactComponent as IconSetting } from '../../../../assets/svg/ic-setting
 import { ReactComponent as IconDropdown } from '../../../../assets/svg/menu.svg';
 import { DISPLAY_NAME_FIELD_RULES } from '../../../../constants/Form.constants';
 import { NO_PERMISSION_FOR_ACTION } from '../../../../constants/HelperTextUtil';
+import { useAsyncDeleteProvider } from '../../../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import { EntityType } from '../../../../enums/entity.enum';
 import { ANNOUNCEMENT_ENTITIES } from '../../../../utils/AnnouncementsUtils';
 import { hardDeleteEntity } from '../../../../utils/DeleteWidget/DeleteWidgetUtils';
@@ -38,6 +39,7 @@ import {
 } from '../../../Modals/EntityNameModal/EntityNameModal.interface';
 import DeleteModal from '../../DeleteModal/DeleteModal';
 import DeleteEntityModal from '../../DeleteWidget/DeleteEntityModal';
+import { DeleteType } from '../../DeleteWidget/DeleteWidget.interface';
 import { ManageButtonItemLabel } from '../../ManageButtonContentItem/ManageButtonContentItem.component';
 import { ManageButtonProps } from './ManageButton.interface';
 import './ManageButton.less';
@@ -71,6 +73,7 @@ const ManageButton: FC<ManageButtonProps> = ({
   trigger,
 }) => {
   const { t } = useTranslation();
+  const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
   const [isDelete, setIsDelete] = useState<boolean>(false);
   const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [isDropdownOpen, setIsDropdownOpen] = useState(false);
@@ -87,18 +90,35 @@ const ManageButton: FC<ManageButtonProps> = ({
 
   const handleHardDelete = useCallback(async () => {
     setIsDeleting(true);
-    const isSuccess = await hardDeleteEntity(
-      displayName ?? entityName,
-      entityId ?? '',
-      entityType,
-      { isRecursiveDelete, prepareType, successMessage }
-    );
-    if (isSuccess) {
-      afterDeleteAction?.(false);
+    try {
+      if (isAsyncDelete) {
+        await handleOnAsyncEntityDeleteConfirm({
+          entityName: displayName ?? entityName,
+          entityId: entityId ?? '',
+          entityType,
+          deleteType: DeleteType.HARD_DELETE,
+          prepareType,
+          isRecursiveDelete: isRecursiveDelete ?? false,
+          afterDeleteAction,
+        });
+      } else {
+        const isSuccess = await hardDeleteEntity(
+          displayName ?? entityName,
+          entityId ?? '',
+          entityType,
+          { isRecursiveDelete, prepareType, successMessage }
+        );
+        if (isSuccess) {
+          afterDeleteAction?.(false);
+        }
+      }
+    } finally {
+      setIsDelete(false);
+      setIsDeleting(false);
     }
-    setIsDelete(false);
-    setIsDeleting(false);
   }, [
+    isAsyncDelete,
+    handleOnAsyncEntityDeleteConfirm,
     displayName,
     entityName,
     entityId,

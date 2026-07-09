@@ -24,9 +24,9 @@ import {
   SelectMode,
   useQuickFiltersWithComponent,
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from './TestDefinitionTable.component';
 import { useTestDefinitionListPage } from './useTestDefinitionListPage';
