@@ -11,23 +11,58 @@
  *  limitations under the License.
  */
 
-import { Chip, ChipProps as MuiChipProps, SxProps, Theme } from '@mui/material';
+import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { Tag01, XClose } from '@untitledui/icons';
-import { FC, ReactElement } from 'react';
+import classNames from 'classnames';
+import { FC, MouseEvent, ReactElement } from 'react';
+import { useTranslation } from 'react-i18next';
 
-export interface TagChipProps extends Omit<MuiChipProps, 'variant' | 'color'> {
+export interface TagChipProps {
   label: string;
   icon?: ReactElement;
   onDelete?: (e: Event) => void;
   size?: 'small' | 'medium' | 'large';
   variant?: 'filled' | 'outlined' | 'blueGray';
   tagColor?: string; // For the colored bar indicator
-  sx?: SxProps<Theme>;
   maxWidth?: string | number;
   showEllipsis?: boolean;
   showIcon?: boolean;
   labelDataTestId?: string;
+  className?: string;
+  'data-testid'?: string;
+  disabled?: boolean;
+  tabIndex?: number;
+  'data-tag-index'?: number;
 }
+
+const sizeStyles = {
+  small: {
+    root: 'tw:h-[24px] tw:px-1.5 tw:py-0.5',
+    typography: 'text-xs' as const,
+    icon: 14,
+    deleteIcon: 'tw:*:data-icon:size-3',
+  },
+  medium: {
+    root: 'tw:h-[28px] tw:px-2 tw:py-0.5',
+    typography: 'text-sm' as const,
+    icon: 16,
+    deleteIcon: 'tw:*:data-icon:size-3.5',
+  },
+  large: {
+    root: 'tw:h-[30px] tw:px-2 tw:py-1',
+    typography: 'text-sm' as const,
+    icon: 18,
+    deleteIcon: 'tw:*:data-icon:size-4',
+  },
+};
+
+const variantStyles = {
+  blueGray:
+    'tw:rounded-lg tw:border tw:border-utility-gray-blue-200 tw:bg-utility-gray-blue-50 tw:text-utility-gray-blue-700',
+  filled: 'tw:rounded-full tw:bg-secondary tw:text-secondary',
+  outlined:
+    'tw:rounded-lg tw:border tw:border-primary tw:bg-transparent tw:text-secondary',
+};
 
 const TagChip: FC<TagChipProps> = ({
   label,
@@ -36,86 +71,72 @@ const TagChip: FC<TagChipProps> = ({
   size = 'small',
   variant = 'blueGray',
   tagColor,
-  sx,
   maxWidth,
   showEllipsis = true,
   showIcon = true,
   labelDataTestId,
+  className,
+  disabled,
+  tabIndex,
   ...otherProps
 }) => {
+  const { t } = useTranslation();
   const defaultIcon = showIcon ? (
-    <Tag01 size={size === 'small' ? 12 : size === 'large' ? 14 : 13} />
+    <Tag01 size={sizeStyles[size].icon} />
   ) : undefined;
   const chipIcon = icon !== undefined ? icon : defaultIcon;
 
-  const ellipsisStyles = showEllipsis
-    ? {
-        '& .MuiChip-label': {
-          overflow: 'hidden',
-          textOverflow: 'ellipsis',
-          whiteSpace: 'nowrap',
-          display: 'block',
-        },
-      }
-    : {};
-
-  const colorBarStyles = tagColor
-    ? {
-        position: 'relative' as const,
-        paddingLeft: '12px',
-        '&::before': {
-          content: '""',
-          position: 'absolute' as const,
-          left: 0,
-          top: '50%',
-          transform: 'translateY(-50%)',
-          width: '3px',
-          height: '70%',
-          backgroundColor: tagColor,
-          borderRadius: '2px 0 0 2px',
-        },
-      }
-    : {};
-
-  const heightStyles =
-    size === 'small'
-      ? { height: 24 }
-      : size === 'medium'
-      ? { height: 28 }
-      : size === 'large'
-      ? { height: 30 }
-      : {};
-
-  // Custom delete icon with appropriate sizing
-  const deleteIcon = onDelete ? (
-    <XClose size={size === 'small' ? 12 : size === 'large' ? 16 : 14} />
-  ) : undefined;
-
   return (
-    <Chip
-      {...otherProps}
-      deleteIcon={deleteIcon}
-      icon={chipIcon}
-      label={label}
-      size={size}
-      slotProps={{
-        label: labelDataTestId ? { 'data-testid': labelDataTestId } : undefined,
-      }}
-      sx={{
-        maxWidth,
-        minWidth: 0,
-        ...ellipsisStyles,
-        ...colorBarStyles,
-        ...heightStyles,
-        '& .MuiChip-icon': {
-          flexShrink: 0,
-          marginLeft: 0,
+    <div
+      aria-disabled={disabled}
+      className={classNames(
+        'tw:inline-flex tw:min-w-0 tw:items-center tw:whitespace-nowrap tw:transition-all tw:duration-150',
+        sizeStyles[size].root,
+        variantStyles[variant],
+        {
+          'tw:relative tw:pl-3': tagColor,
+          'tw:cursor-not-allowed tw:opacity-50': disabled,
         },
-        ...sx,
-      }}
-      variant={variant as 'filled' | 'outlined'}
-      onDelete={onDelete}
-    />
+        className
+      )}
+      data-tag-index={otherProps['data-tag-index']}
+      data-testid={otherProps['data-testid']}
+      style={{ maxWidth }}
+      tabIndex={tabIndex}>
+      {tagColor && (
+        <span
+          className="tw:absolute tw:left-0 tw:top-1/2 tw:h-[70%] tw:w-0.75 tw:-translate-y-1/2 tw:rounded-[2px_0_0_2px]"
+          style={{ backgroundColor: tagColor }}
+        />
+      )}
+      {chipIcon && (
+        <span className="tw:mr-1 tw:inline-flex tw:shrink-0 tw:items-center">
+          {chipIcon}
+        </span>
+      )}
+      <Typography
+        data-testid={labelDataTestId}
+        ellipsis={showEllipsis}
+        size={sizeStyles[size].typography}
+        weight={variant === 'blueGray' ? 'regular' : 'medium'}>
+        {label}
+      </Typography>
+      {onDelete && (
+        <ButtonUtility
+          aria-label={t('label.remove')}
+          className={classNames(
+            'tw:ml-1 tw:size-auto tw:shrink-0 tw:rounded-none tw:p-0 tw:text-inherit tw:shadow-none tw:ring-0 tw:hover:bg-transparent tw:hover:text-inherit',
+            sizeStyles[size].deleteIcon
+          )}
+          icon={XClose}
+          isDisabled={disabled}
+          size="xs"
+          onClick={(e: MouseEvent<HTMLButtonElement>) =>
+            onDelete(e.nativeEvent)
+          }
+        />
+      )}
+    </div>
   );
 };
 

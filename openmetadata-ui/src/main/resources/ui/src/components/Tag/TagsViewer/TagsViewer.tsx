@@ -75,7 +75,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                   data-testid="tags"
                   label={tagName}
                   labelDataTestId={`tag-${tag.tagFQN}`}
-                  size="large"
+                  size="small"
                   tagColor={tag.style?.color}
                   variant="blueGray"
                 />
