@@ -401,14 +401,22 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /**
-   * Additive {@code PUT _mapping} body applied by {@link #applyChunkMappingUpgradeIfStale}. Sends
-   * the full property set (re-declaring unchanged fields is a legal no-op) plus the bumped
-   * {@code _meta.chunkDocVersion}. Absent-on-old-docs fields simply do not match until a Search
+   * Additive {@code PUT _mapping} body applied by {@link #applyChunkMappingUpgradeIfStale}. Sends the
+   * property set <b>minus the {@code embedding} knn_vector</b> plus the bumped
+   * {@code _meta.chunkDocVersion}. Re-declaring the existing {@code knn_vector} is rejected by some
+   * OpenSearch versions/plugins even with identical parameters; because {@code PUT _mapping} is
+   * atomic, that would fail the whole request and silently leave the genuinely new denormalized
+   * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
+   * {@code docVersion} — defeating the rollout. Omitting the unchanged vector avoids that
+   * all-or-nothing failure; the remaining fields are additive (new fields) or legal no-ops
+   * (unchanged keyword/text/integer). Absent-on-old-docs fields simply do not match until a Search
    * Reindex backfills them, so there is zero regression before the backfill runs.
    */
   private String buildChunkMappingUpgradeBody() {
+    ObjectNode properties = buildChunkProperties();
+    properties.remove("embedding");
     var body = MAPPER.createObjectNode();
-    body.set("properties", buildChunkProperties());
+    body.set("properties", properties);
     body.set("_meta", chunkMeta());
     return body.toString();
   }

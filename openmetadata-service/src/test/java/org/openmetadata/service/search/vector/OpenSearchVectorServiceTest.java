@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -540,5 +541,25 @@ class OpenSearchVectorServiceTest {
       when(mockGenericClient.execute(any()))
           .thenReturn(responses[0], java.util.Arrays.copyOfRange(responses, 1, responses.length));
     }
+  }
+
+  @Test
+  void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
+    Method m = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    m.setAccessible(true);
+    String body = (String) m.invoke(vectorService);
+
+    // The unchanged embedding knn_vector must NOT be re-declared: PUT _mapping is atomic and some
+    // OpenSearch versions reject re-declaring an existing knn_vector, which would fail the whole
+    // additive upgrade and silently leave the new fields unmapped.
+    assertTrue(!body.contains("knn_vector"), "upgrade body must not re-declare the knn_vector");
+    assertTrue(
+        !body.contains("\"embedding\""), "embedding field excluded from the additive upgrade");
+    // The genuinely new denormalized fields and the version marker must be present.
+    assertTrue(body.contains("\"owners\""), "new nested owners field present");
+    assertTrue(body.contains("\"service\""), "new service field present");
+    assertTrue(body.contains("\"columns\""), "new columns field present");
+    assertTrue(body.contains("\"description\""), "new description field present");
+    assertTrue(body.contains("chunkDocVersion"), "_meta.chunkDocVersion bumped");
   }
 }

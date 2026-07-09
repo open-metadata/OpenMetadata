@@ -43,7 +43,7 @@ public class VectorDocBuilder {
   /**
    * Schema version of the denormalized chunk document (issue #862/#858). Stamped on every chunk doc
    * as {@code docVersion} and mirrored on the chunk index mapping as {@code _meta.chunkDocVersion}.
-   * Bump this whenever {@link #addFilterFields} materializes a new field or changes an existing one
+   * Bump this whenever {@link #buildDenormalizedFields} materializes a new field or changes an existing one
    * so {@code OpenSearchVectorService} triggers an additive {@code PUT _mapping} and an
    * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
    * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
@@ -217,7 +217,8 @@ public class VectorDocBuilder {
       String metaLight,
       String semanticMetaLight,
       List<String> chunks,
-      List<String> semanticChunks) {}
+      List<String> semanticChunks,
+      Map<String, Object> denormalizedFields) {}
 
   /** One embedding-field map per body chunk. See {@link #fromEntity} for the doc shape. */
   public static List<Map<String, Object>> buildChunkFields(
@@ -238,7 +239,12 @@ public class VectorDocBuilder {
             buildMetaLightText(entity, entityType),
             buildSemanticMetaLightText(entity, entityType),
             TextChunkManager.chunk(buildBodyText(entity, entityType)),
-            TextChunkManager.chunk(buildSemanticBodyText(entity, entityType)));
+            TextChunkManager.chunk(buildSemanticBodyText(entity, entityType)),
+            // Denormalized keyword/filter fields are entity-level constants — build them once and
+            // share them across every chunk instead of recomputing (reflection, HTML strip,
+            // fqnParts,
+            // column/owner iteration) per chunk.
+            buildDenormalizedFields(entity, entityType));
     List<Map<String, Object>> docs = new ArrayList<>(ctx.chunks().size());
     for (int index = 0; index < ctx.chunks().size(); index++) {
       docs.add(buildChunkDoc(ctx, index, embeddingSource));
@@ -255,7 +261,8 @@ public class VectorDocBuilder {
     String textToLLMContext =
         String.format(
             "%s%s | chunk %d/%d", ctx.metaLight(), ctx.chunks().get(index), index + 1, chunkCount);
-    Map<String, Object> fields = new HashMap<>();
+    // Shallow-copy the shared entity-level fields, then overlay this chunk's per-chunk fields.
+    Map<String, Object> fields = new HashMap<>(ctx.denormalizedFields());
     fields.put("embedding", embeddingSource.embeddingFor(index, textToEmbed));
     fields.put("textToLLMContext", textToLLMContext);
     fields.put("textToEmbed", textToEmbed);
@@ -263,15 +270,15 @@ public class VectorDocBuilder {
     fields.put("chunkCount", chunkCount);
     fields.put("parentId", ctx.parentId());
     fields.put("fingerprint", ctx.fingerprint());
-    addFilterFields(fields, ctx.entity(), ctx.entityType());
     return fields;
   }
 
   /**
-   * Materialize onto each chunk doc the keyword, filter and identity fields it needs to be
-   * self-sufficient (issues #862/#858). Chunk docs live in a dedicated {@code dynamic:false} index
-   * co-aliased with the entity indices, so unlike the legacy entity-doc path every field the read
-   * side scores, filters or displays on must be copied here:
+   * Build, <b>once per entity</b>, the keyword, filter and identity fields every chunk doc needs to
+   * be self-sufficient (issues #862/#858); {@link #buildChunkDoc} copies this map onto each chunk.
+   * Chunk docs live in a dedicated {@code dynamic:false} index co-aliased with the entity indices,
+   * so unlike the legacy entity-doc path every field the read side scores, filters or displays on
+   * must be copied here:
    *
    * <ul>
    *   <li>KNN filter fields ({@code entityType}, {@code deleted}, {@code tags}/{@code domains}/
@@ -288,8 +295,9 @@ public class VectorDocBuilder {
    * so denormalizing them does not change the fingerprint; the {@link #CHUNK_DOC_VERSION} marker is
    * what drives the additive backfill.
    */
-  private static void addFilterFields(
-      Map<String, Object> fields, EntityInterface entity, String entityType) {
+  private static Map<String, Object> buildDenormalizedFields(
+      EntityInterface entity, String entityType) {
+    Map<String, Object> fields = new HashMap<>();
     fields.put("entityType", entityType);
     fields.put("deleted", Boolean.TRUE.equals(entity.getDeleted()));
     fields.put("docVersion", CHUNK_DOC_VERSION);
@@ -342,6 +350,7 @@ public class VectorDocBuilder {
         fields.put("columns", columns);
       }
     }
+    return fields;
   }
 
   private static String capText(String text, int maxChars) {
@@ -412,8 +421,11 @@ public class VectorDocBuilder {
           fields.put(key, value);
         }
       }
-    } catch (Exception ignored) {
-      // Entity type has no such reference; nothing to denormalize.
+    } catch (NoSuchMethodException e) {
+      // Expected: this entity type has no such reference; nothing to denormalize.
+    } catch (ReflectiveOperationException e) {
+      // A getter that exists but failed (e.g. threw) is a real problem worth surfacing.
+      LOG.debug("Failed to denormalize {} for entity {}: {}", key, entity.getId(), e.getMessage());
     }
   }
 
