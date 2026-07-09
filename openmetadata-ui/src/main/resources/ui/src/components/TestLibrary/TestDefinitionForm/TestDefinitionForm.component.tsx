@@ -12,6 +12,7 @@
  */
 import { HookForm } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -177,9 +178,17 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
 
   const drawerForm = (
     <HookForm form={form} onSubmit={submitAndClose}>
-      <div className="drawer-content-wrapper">
-        <div className="drawer-form-content">{formBody}</div>
-        <div className="drawer-doc-panel service-doc-panel markdown-parser">
+      <div className="tw:flex tw:h-full tw:gap-6">
+        <div className="drawer-form-content tw:h-full tw:min-w-0 tw:basis-[60%] tw:overflow-y-auto tw:py-6 tw:pr-2">
+          {formBody}
+        </div>
+        <div
+          className={classNames(
+            'drawer-doc-panel service-doc-panel markdown-parser',
+            'tw:my-6 tw:mr-6 tw:min-w-0 tw:basis-[40%]',
+            'tw:overflow-y-auto tw:rounded-xl tw:border',
+            'tw:border-solid tw:border-gray-200 tw:px-5'
+          )}>
           <ServiceDocPanel
             activeField={activeField}
             serviceName={TEST_DEFINITION_FORM}

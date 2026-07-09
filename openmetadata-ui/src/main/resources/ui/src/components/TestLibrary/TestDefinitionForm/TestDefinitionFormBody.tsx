@@ -243,11 +243,11 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
 
   return (
     <div
-      className="new-form-style"
+      className="new-form-style tw:flex tw:flex-col tw:gap-5"
       data-testid="test-definition-form-body"
       onFocusCapture={handleFocus}>
       {errorMessage && (
-        <div className="m-b-md">
+        <div>
           <Alert
             closable
             title={t('label.error')}
@@ -305,7 +305,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         </p>
         {fields.map((field, index) => (
           <div
-            className="m-t-md tw:rounded-lg tw:border tw:p-3"
+            className="m-t-md tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:p-3"
             data-testid={`parameter-card-${index}`}
             key={field.id}>
             <div className="tw:flex tw:justify-between">
