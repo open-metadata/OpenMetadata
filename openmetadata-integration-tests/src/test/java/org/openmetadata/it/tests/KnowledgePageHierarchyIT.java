@@ -12,6 +12,7 @@
  */
 package org.openmetadata.it.tests;
 
+import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -19,6 +20,7 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import jakarta.ws.rs.core.Response;
+import java.time.Duration;
 import java.util.List;
 import java.util.UUID;
 import org.apache.http.client.HttpResponseException;
@@ -55,6 +57,7 @@ public class KnowledgePageHierarchyIT {
 
   private static final String KC_PATH = "v1/contextCenter/pages";
   private static final String KC_HIERARCHY_PATH = KC_PATH + "/hierarchy";
+  private static final String KC_SEARCH_HIERARCHY_PATH = KC_PATH + "/search/hierarchy";
   private static final String PARENT_FIELD = "parent";
   private static final String ORGANIZATION_NAME = "Organization";
 
@@ -106,6 +109,72 @@ public class KnowledgePageHierarchyIT {
 
   private boolean containsTopLevelId(ResultList<PageHierarchy> hierarchy, UUID id) {
     return hierarchy.getData().stream().anyMatch(node -> id.equals(node.getId()));
+  }
+
+  private ResultList<PageHierarchy> listSearchHierarchy(RestClient rest, String query) {
+    String path = KC_SEARCH_HIERARCHY_PATH + query;
+    try (Response response = rest.rawGet(path)) {
+      assertEquals(
+          200, response.getStatus(), "Search hierarchy call failed: " + response.getStatus());
+      String body = response.readEntity(String.class);
+      return JsonUtils.readValue(body, new TypeReference<ResultList<PageHierarchy>>() {});
+    }
+  }
+
+  private int indexOfId(List<PageHierarchy> nodes, UUID id) {
+    for (int i = 0; i < nodes.size(); i++) {
+      if (id.equals(nodes.get(i).getId())) {
+        return i;
+      }
+    }
+    return -1;
+  }
+
+  @Test
+  void testSearchHierarchyRejectsInvalidSortBy(TestNamespace ns) {
+    RestClient rest = RestClient.admin();
+    try (Response response = rest.rawGet(KC_SEARCH_HIERARCHY_PATH + "?sortBy=notAField")) {
+      assertEquals(400, response.getStatus(), response.readEntity(String.class));
+    }
+  }
+
+  @Test
+  void testSearchHierarchyRejectsInvalidSortOrder(TestNamespace ns) {
+    RestClient rest = RestClient.admin();
+    try (Response response =
+        rest.rawGet(KC_SEARCH_HIERARCHY_PATH + "?sortBy=name&sortOrder=sideways")) {
+      assertEquals(400, response.getStatus(), response.readEntity(String.class));
+    }
+  }
+
+  @Test
+  void testSearchHierarchySortsByName(TestNamespace ns) throws HttpResponseException {
+    RestClient rest = RestClient.admin();
+    Page pageA = createPage(rest, buildCreateRequest(ns.prefix("aaa-sort"), null));
+    Page pageM = createPage(rest, buildCreateRequest(ns.prefix("mmm-sort"), null));
+    Page pageZ = createPage(rest, buildCreateRequest(ns.prefix("zzz-sort"), null));
+
+    await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(1))
+        .untilAsserted(
+            () -> {
+              List<PageHierarchy> asc =
+                  listSearchHierarchy(rest, "?limit=1000000&sortBy=name&sortOrder=asc").getData();
+              int a = indexOfId(asc, pageA.getId());
+              int m = indexOfId(asc, pageM.getId());
+              int z = indexOfId(asc, pageZ.getId());
+              assertTrue(
+                  a >= 0 && m >= 0 && z >= 0, "All created pages must be indexed and returned");
+              assertTrue(a < m && m < z, "Ascending name sort must order aaa < mmm < zzz");
+            });
+
+    List<PageHierarchy> desc =
+        listSearchHierarchy(rest, "?limit=1000000&sortBy=name&sortOrder=desc").getData();
+    int a = indexOfId(desc, pageA.getId());
+    int m = indexOfId(desc, pageM.getId());
+    int z = indexOfId(desc, pageZ.getId());
+    assertTrue(z < m && m < a, "Descending name sort must order zzz < mmm < aaa");
   }
 
   @Test

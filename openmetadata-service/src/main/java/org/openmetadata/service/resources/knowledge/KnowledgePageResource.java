@@ -398,13 +398,37 @@ public class KnowledgePageResource extends EntityResource<Page, KnowledgePageRep
               description =
                   "FQN of the active page to show the active page correctly in  the hierarchy , while showing other root nodes at level 1.")
           @QueryParam("activeFqn")
-          String activeFqn) {
+          String activeFqn,
+      @Parameter(
+              description = "Field to sort by. Supported: name, createdAt, updatedAt.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"name", "createdAt", "updatedAt"}))
+          @QueryParam("sortBy")
+          String sortBy,
+      @Parameter(
+              description = "Sort order. Supported: asc, desc. Defaults to desc.",
+              schema =
+                  @Schema(
+                      type = "string",
+                      allowableValues = {"asc", "desc"}))
+          @QueryParam("sortOrder")
+          String sortOrder) {
+    SearchSortFilter sortFilter = buildHierarchySortFilter(sortBy, sortOrder);
     if (!CommonUtil.nullOrEmpty(activeFqn)) {
       return repository.getHierarchyWithSearchForActivePage(
-          activeFqn, knowledgePageType, offset, limit);
+          activeFqn, knowledgePageType, sortFilter, offset, limit);
     } else {
-      return repository.getHierarchyWithSearch(parent, knowledgePageType, offset, limit);
+      return repository.getHierarchyWithSearch(
+          parent, knowledgePageType, sortFilter, offset, limit);
     }
+  }
+
+  private static SearchSortFilter buildHierarchySortFilter(String sortBy, String sortOrder) {
+    String effectiveSortBy = CommonUtil.nullOrEmpty(sortBy) ? "updatedAt" : sortBy;
+    return new SearchSortFilter(
+        resolveSortField(effectiveSortBy), resolveSortOrder(sortOrder), null, null);
   }
 
   @GET
