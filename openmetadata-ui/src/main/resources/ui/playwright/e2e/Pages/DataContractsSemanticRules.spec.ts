@@ -3257,10 +3257,10 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.between
       );
 
-      const startDate = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
+      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
       const endDate = customFormatDateTime(
         getEpochMillisForFutureDays(5),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await selectRange(page, ruleLocator, startDate, endDate);
@@ -3289,11 +3289,14 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newStart = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
-      page.getByRole('textbox', { name: 'Enter date from' }).fill(newStart);
-      await page.press('.ant-picker-input-active input', 'Enter');
-      await page.press('.ant-picker-input-active input', 'Enter');
+      await page
+        .locator('.group')
+        .nth(0)
+        .locator('.rule--value input[type="date"]')
+        .nth(0)
+        .fill(newStart);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3344,10 +3347,10 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.not_between
       );
 
-      const startDate = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
+      const startDate = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
       const endDate = customFormatDateTime(
         getEpochMillisForFutureDays(5),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await selectRange(page, ruleLocator, startDate, endDate);
@@ -3377,23 +3380,14 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newStart = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
       await page
         .locator('.group')
         .nth(0)
-        .locator('.rule--value .ant-picker-range')
-        .click();
-
-      await page.locator('.ant-picker-dropdown-range').waitFor({
-        state: 'visible',
-      });
-
-      await page
-        .getByRole('textbox', { name: 'Enter date from' })
+        .locator('.rule--value input[type="date"]')
+        .nth(0)
         .fill(newStart);
-      await page.press('.ant-picker-input-active input', 'Enter');
-      await page.press('.ant-picker-input-active input', 'Enter');
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3443,14 +3437,9 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
         DATA_CONTRACT_SEMANTIC_OPERATIONS.less
       );
 
-      const date = customFormatDateTime(getCurrentMillis(), 'dd.MM.yyyy');
+      const date = customFormatDateTime(getCurrentMillis(), 'yyyy-MM-dd');
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3477,19 +3466,14 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
         .locator('.group')
         .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .locator('.rule--value input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3541,15 +3525,10 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const date = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3576,19 +3555,14 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(-1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
         .locator('.group')
         .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .locator('.rule--value input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3640,15 +3614,10 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const date = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3674,19 +3643,14 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(-1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
         .locator('.group')
         .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .locator('.rule--value input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3742,15 +3706,10 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const date = customFormatDateTime(
         getEpochMillisForFutureDays(-1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
-      await ruleLocator.locator('.rule--value .ant-picker').click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(date);
-      await page.press('.ant-picker-input input', 'Enter');
+      await ruleLocator.locator('.rule--value input[type="date"]').fill(date);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
@@ -3776,19 +3735,14 @@ test.describe('Data Contracts Semantics Rule Updated on', () => {
 
       const newDate = customFormatDateTime(
         getEpochMillisForFutureDays(1),
-        'dd.MM.yyyy'
+        'yyyy-MM-dd'
       );
 
       await page
         .locator('.group')
         .nth(0)
-        .locator('.rule--value .ant-picker')
-        .click();
-      await page.locator('.ant-picker-dropdown').waitFor({
-        state: 'visible',
-      });
-      await page.locator('.ant-picker-input input').fill(newDate);
-      await page.press('.ant-picker-input input', 'Enter');
+        .locator('.rule--value input[type="date"]')
+        .fill(newDate);
 
       // save and trigger contract validation
       await saveAndTriggerDataContractValidation(page, true);
