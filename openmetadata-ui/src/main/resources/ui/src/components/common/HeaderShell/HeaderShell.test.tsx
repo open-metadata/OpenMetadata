@@ -84,18 +84,21 @@ describe('HeaderShell', () => {
     expect(screen.getByTestId('actions')).toBeInTheDocument();
   });
 
-  it('applies the Figma gradient on the gradient variant', () => {
-    const { container } = render(
-      <HeaderShell title="Gradient" variant="gradient" />
-    );
+  it('applies the Figma gradient and brand border on the gradient variant', () => {
+    render(<HeaderShell title="Gradient" variant="gradient" />);
 
-    expect(container.querySelector('.tw\\:bg-gradient-to-r')).not.toBeNull();
+    const { className } = screen.getByTestId('header-shell');
+
+    expect(className).toContain('linear-gradient');
+    expect(className).toContain('border-[#EFF8FF]');
   });
 
   it('does not apply the gradient on the default flat variant', () => {
-    const { container } = render(<HeaderShell title="Flat" />);
+    render(<HeaderShell title="Flat" />);
 
-    expect(container.querySelector('.tw\\:bg-gradient-to-r')).toBeNull();
+    expect(screen.getByTestId('header-shell').className).not.toContain(
+      'linear-gradient'
+    );
   });
 
   it('applies a custom className to the card', () => {

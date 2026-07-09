@@ -51,13 +51,17 @@ const HeaderShell = ({
     <Card
       className={classNames(
         'tw:mb-5 tw:px-5 tw:py-4',
-        // Fixed light-blue gradient by design — intentionally NOT the dynamic
-        // brand-* tokens (those follow the deployment's primary color, which
-        // would tint this header pink on Collate). Tailwind gradient stops also
-        // can't take semantic tokens, so the stops are hardcoded; dark mode
-        // drops the gradient for the semantic bg-primary surface.
+        // Fixed light-blue header treatment per Figma — intentionally NOT the
+        // dynamic brand-* tokens (those follow the deployment's primary color and
+        // would tint this header pink on Collate). The gradient stops and the
+        // #EFF8FF border are hardcoded because Tailwind arbitrary values can't
+        // take semantic tokens. The border is marked important so it wins over
+        // the Card `elevated` variant's border-secondary (cx/tailwind-merge isn't
+        // configured for our tw: prefix, so it won't reliably dedupe the two).
+        // Dark mode drops the gradient and restores the neutral border on the
+        // semantic bg-primary surface.
         variant === 'gradient' &&
-          'tw:bg-gradient-to-r tw:from-[#EFF6FF] tw:to-[#D3EFFF] tw:dark:bg-primary tw:dark:bg-none',
+          'tw:border-[#EFF8FF]! tw:bg-[linear-gradient(89deg,rgba(239,246,255,0.32)_-2.31%,rgba(239,248,255,0.80)_102.64%)] tw:dark:border-secondary! tw:dark:bg-none tw:dark:bg-primary',
         className
       )}
       data-testid={dataTestId}
