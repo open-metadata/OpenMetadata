@@ -70,10 +70,10 @@ const conjsProps = {
 };
 
 describe('OMFieldSelect', () => {
-  it('renders a button (select trigger)', () => {
+  it('renders a combobox input', () => {
     render(<OMFieldSelect {...fieldProps} />);
 
-    expect(screen.getByRole('button')).toBeInTheDocument();
+    expect(screen.getByRole('combobox')).toBeInTheDocument();
   });
 });
 

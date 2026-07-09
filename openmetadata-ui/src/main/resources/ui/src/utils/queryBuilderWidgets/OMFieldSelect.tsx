@@ -10,9 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Select, SelectItemType } from '@openmetadata/ui-core-components';
+import { Autocomplete, SelectItemType } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
-import type { FC } from 'react';
+import type { FC, ReactNode } from 'react';
+import { useMemo } from 'react';
 
 const OMFieldSelect: FC<FieldProps> = ({
   items,
@@ -21,31 +22,36 @@ const OMFieldSelect: FC<FieldProps> = ({
   readonly,
   placeholder,
 }) => {
-  const selectItems: SelectItemType[] = items.map((item) => ({
-    id: item.key,
-    label: item.label,
-  }));
+  const selectItems: SelectItemType[] = useMemo(
+    () => items.map((item) => ({ id: item.key, label: item.label })),
+    [items]
+  );
+
+  const selectedLabel = selectedKey
+    ? selectItems.find((i) => i.id === selectedKey)?.label ?? selectedKey
+    : undefined;
+
+  const selectedItemsValue = useMemo(
+    () =>
+      selectedKey
+        ? [{ id: selectedKey, label: selectedLabel ?? selectedKey }]
+        : [],
+    [selectedKey, selectedLabel]
+  );
 
   return (
-    <Select.ComboBox
+    <Autocomplete
+      icon={null}
       isDisabled={readonly}
       items={selectItems}
-      placeholder={placeholder ?? 'Select field'}
-      selectedKey={selectedKey ?? undefined}
-      shortcut={false}
-      showSearchIcon={false}
-      size="sm"
-      onSelectionChange={(key) => {
-        if (key) {
-          setField(String(key));
-        }
-      }}>
+      placeholder={selectedLabel ?? placeholder ?? 'Select field'}
+      renderTag={(): ReactNode => null}
+      selectedItems={selectedItemsValue}
+      onItemInserted={(key) => setField(String(key))}>
       {(item) => (
-        <Select.Item id={item.id} key={item.id}>
-          {item.label}
-        </Select.Item>
+        <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
       )}
-    </Select.ComboBox>
+    </Autocomplete>
   );
 };
 
