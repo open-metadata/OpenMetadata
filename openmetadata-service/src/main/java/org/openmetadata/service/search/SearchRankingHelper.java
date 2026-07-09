@@ -38,7 +38,13 @@ public final class SearchRankingHelper {
   }
 
   public static String significantQueryText(String query, RankingConfiguration ranking) {
-    List<String> tokens = significantTokens(query, ranking);
+    List<String> tokens = significantTokens(query, ranking, true);
+    return tokens.isEmpty() ? (query == null ? "" : query.trim()) : String.join(" ", tokens);
+  }
+
+  public static String significantQueryTextPreservingCase(
+      String query, RankingConfiguration ranking) {
+    List<String> tokens = significantTokens(query, ranking, false);
     return tokens.isEmpty() ? (query == null ? "" : query.trim()) : String.join(" ", tokens);
   }
 
@@ -47,12 +53,17 @@ public final class SearchRankingHelper {
       return List.of();
     }
 
-    String normalized = query.trim().toLowerCase(Locale.ROOT);
     LinkedHashSet<String> values = new LinkedHashSet<>();
-    values.add(normalized);
+    String trimmed = query.trim();
+    addExactTextVariants(values, trimmed);
+    addExactTextVariants(values, trimmed.toLowerCase(Locale.ROOT));
+    return new ArrayList<>(values);
+  }
 
+  private static void addExactTextVariants(LinkedHashSet<String> values, String query) {
+    values.add(query);
     List<String> tokens =
-        TOKEN_SPLITTER.splitAsStream(normalized).filter(token -> !token.isBlank()).toList();
+        TOKEN_SPLITTER.splitAsStream(query).filter(token -> !token.isBlank()).toList();
     if (tokens.size() > 1) {
       values.add(String.join(" ", tokens));
       values.add(String.join("_", tokens));
@@ -60,10 +71,14 @@ public final class SearchRankingHelper {
       values.add(String.join(".", tokens));
       values.add(String.join("", tokens));
     }
-    return new ArrayList<>(values);
   }
 
   public static List<String> significantTokens(String query, RankingConfiguration ranking) {
+    return significantTokens(query, ranking, true);
+  }
+
+  private static List<String> significantTokens(
+      String query, RankingConfiguration ranking, boolean normalize) {
     if (query == null || query.trim().isEmpty()) {
       return List.of();
     }
@@ -71,9 +86,10 @@ public final class SearchRankingHelper {
     Set<String> stopWords = stopWords(ranking);
 
     LinkedHashSet<String> tokens = new LinkedHashSet<>();
-    for (String token : TOKEN_SPLITTER.split(query.toLowerCase(Locale.ROOT))) {
-      if (isSignificantToken(token, stopWords)) {
-        tokens.add(token);
+    for (String token : TOKEN_SPLITTER.split(query.trim())) {
+      String normalizedToken = token.toLowerCase(Locale.ROOT);
+      if (isSignificantToken(normalizedToken, stopWords)) {
+        tokens.add(normalize ? normalizedToken : token);
       }
     }
     return new ArrayList<>(tokens);
@@ -317,7 +333,6 @@ public final class SearchRankingHelper {
   }
 
   private static boolean isWeakSingleCharacterToken(int codePoint) {
-    return Character.isDigit(codePoint)
-        || Character.UnicodeScript.of(codePoint) == Character.UnicodeScript.LATIN;
+    return Character.UnicodeScript.of(codePoint) == Character.UnicodeScript.LATIN;
   }
 }

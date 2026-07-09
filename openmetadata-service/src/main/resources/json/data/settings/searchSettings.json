@@ -2389,6 +2389,19 @@
           "weight": 100.0
         },
         {
+          "name": "phraseName",
+          "purpose": "Exact phrase identity match on analyzed name fields.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "phrase",
+          "weight": 70.0
+        },
+        {
           "name": "closeName",
           "purpose": "Close identity match after removing weak query words such as 'in' or 'of'.",
           "fields": [
@@ -2400,6 +2413,20 @@
           ],
           "matchType": "tokenCoverage",
           "weight": 40.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "fuzzyName",
+          "purpose": "Typo-tolerant identity fallback for short name searches.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "fuzzy",
+          "weight": 24.0,
           "minimumShouldMatch": "2<70%"
         },
         {

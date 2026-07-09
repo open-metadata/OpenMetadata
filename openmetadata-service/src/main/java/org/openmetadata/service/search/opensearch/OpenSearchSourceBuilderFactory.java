@@ -1030,9 +1030,12 @@ public class OpenSearchSourceBuilderFactory
       String query, AssetTypeConfiguration assetConfig, RankingConfiguration ranking) {
     List<Query> stageQueries = new ArrayList<>();
     String significantQuery = SearchRankingHelper.significantQueryText(query, ranking);
+    String exactSignificantQuery =
+        SearchRankingHelper.significantQueryTextPreservingCase(query, ranking);
 
     for (RankingStage stage : listOrEmpty(ranking.getStages())) {
-      Query stageQuery = buildRankingStageQueryV2(query, significantQuery, stage);
+      Query stageQuery =
+          buildRankingStageQueryV2(query, significantQuery, exactSignificantQuery, stage);
       if (stageQuery != null) {
         stageQueries.add(stageQuery);
       }
@@ -1072,7 +1075,10 @@ public class OpenSearchSourceBuilderFactory
   }
 
   private Query buildRankingStageQueryV2(
-      String originalQuery, String significantQuery, RankingStage stage) {
+      String originalQuery,
+      String significantQuery,
+      String exactSignificantQuery,
+      RankingStage stage) {
     if (stage.getFields() == null || stage.getFields().isEmpty()) {
       return null;
     }
@@ -1080,7 +1086,7 @@ public class OpenSearchSourceBuilderFactory
     RankingStage.MatchType matchType =
         stage.getMatchType() == null ? RankingStage.MatchType.STANDARD : stage.getMatchType();
     return switch (matchType) {
-      case EXACT -> buildExactRankingStageQueryV2(significantQuery, stage);
+      case EXACT -> buildExactRankingStageQueryV2(exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
       case FUZZY -> buildTextRankingStageQueryV2(
           significantQuery, stage, getFuzziness(significantQuery));

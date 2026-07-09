@@ -16,14 +16,18 @@ import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
@@ -131,11 +135,86 @@ public class MigrationUtil {
           currentDefaultConfiguration.setRanking(defaultConfiguration.getRanking());
           SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
           LOG.info("Backfilled search ranking settings into stored searchSettings");
+        } else if (mergeMissingDefaultRankingStages(
+            currentDefaultConfiguration.getRanking(), defaultConfiguration.getRanking())) {
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled missing search ranking stages into stored searchSettings");
         } else {
           LOG.info("Search ranking settings already exist in stored searchSettings");
         }
       }
     }
+  }
+
+  private static boolean mergeMissingDefaultRankingStages(
+      RankingConfiguration currentRanking, RankingConfiguration defaultRanking) {
+    if (currentRanking == null
+        || defaultRanking == null
+        || Boolean.FALSE.equals(currentRanking.getEnabled())) {
+      return false;
+    }
+
+    List<RankingStage> defaultStages = listOrEmpty(defaultRanking.getStages());
+    if (defaultStages.isEmpty()) {
+      return false;
+    }
+
+    List<RankingStage> currentStages = new ArrayList<>(listOrEmpty(currentRanking.getStages()));
+    Set<String> currentStageNames = new HashSet<>();
+    for (RankingStage stage : currentStages) {
+      if (!nullOrEmpty(stage.getName())) {
+        currentStageNames.add(stage.getName());
+      }
+    }
+
+    boolean merged = false;
+    for (int index = 0; index < defaultStages.size(); index++) {
+      RankingStage defaultStage = defaultStages.get(index);
+      if (nullOrEmpty(defaultStage.getName())
+          || currentStageNames.contains(defaultStage.getName())) {
+        continue;
+      }
+      currentStages.add(rankingStageInsertIndex(currentStages, defaultStages, index), defaultStage);
+      currentStageNames.add(defaultStage.getName());
+      merged = true;
+      LOG.info("Backfilled missing search ranking stage: {}", defaultStage.getName());
+    }
+
+    if (merged) {
+      currentRanking.setStages(currentStages);
+    }
+    return merged;
+  }
+
+  private static int rankingStageInsertIndex(
+      List<RankingStage> currentStages, List<RankingStage> defaultStages, int defaultStageIndex) {
+    for (int index = defaultStageIndex - 1; index >= 0; index--) {
+      int currentIndex = rankingStageIndex(currentStages, defaultStages.get(index).getName());
+      if (currentIndex >= 0) {
+        return currentIndex + 1;
+      }
+    }
+
+    for (int index = defaultStageIndex + 1; index < defaultStages.size(); index++) {
+      int currentIndex = rankingStageIndex(currentStages, defaultStages.get(index).getName());
+      if (currentIndex >= 0) {
+        return currentIndex;
+      }
+    }
+
+    return currentStages.size();
+  }
+
+  private static int rankingStageIndex(List<RankingStage> stages, String stageName) {
+    if (nullOrEmpty(stageName)) {
+      return -1;
+    }
+    for (int index = 0; index < stages.size(); index++) {
+      if (stageName.equals(stages.get(index).getName())) {
+        return index;
+      }
+    }
+    return -1;
   }
 
   /**
