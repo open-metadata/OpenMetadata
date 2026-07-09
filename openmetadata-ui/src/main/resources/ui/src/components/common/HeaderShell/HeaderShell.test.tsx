@@ -15,10 +15,21 @@ import { render, screen } from '@testing-library/react';
 import HeaderShell from './HeaderShell.component';
 
 describe('HeaderShell', () => {
-  it('renders the title', () => {
+  it('renders a string title as a level-3 heading', () => {
     render(<HeaderShell title="My Title" />);
 
-    expect(screen.getByText('My Title')).toBeInTheDocument();
+    expect(
+      screen.getByRole('heading', { level: 3, name: 'My Title' })
+    ).toBeInTheDocument();
+  });
+
+  it('renders a React element title as-is without wrapping it in a heading', () => {
+    render(
+      <HeaderShell title={<span data-testid="custom-title">Custom</span>} />
+    );
+
+    expect(screen.getByTestId('custom-title')).toBeInTheDocument();
+    expect(screen.queryByRole('heading', { level: 3 })).not.toBeInTheDocument();
   });
 
   it('renders every optional slot when provided', () => {
@@ -44,16 +55,33 @@ describe('HeaderShell', () => {
     expect(screen.getByText('A subtitle')).toBeInTheDocument();
   });
 
-  it('omits the actions container when no actions are passed', () => {
-    render(<HeaderShell data-testid="shell" title="No Actions" />);
+  it('renders a React element subtitle as-is', () => {
+    render(
+      <HeaderShell
+        subtitle={<span data-testid="custom-subtitle">Sub</span>}
+        title="Titled"
+      />
+    );
 
-    expect(screen.getByTestId('shell')).toBeInTheDocument();
+    expect(screen.getByTestId('custom-subtitle')).toBeInTheDocument();
   });
 
-  it('uses the default test id when none is provided', () => {
-    render(<HeaderShell title="Default" />);
+  it('omits the actions container when no actions are passed', () => {
+    const { container } = render(<HeaderShell title="No Actions" />);
 
-    expect(screen.getByTestId('header-shell')).toBeInTheDocument();
+    expect(container.querySelector('.tw\\:ml-auto')).toBeNull();
+  });
+
+  it('renders the actions container when actions are passed', () => {
+    const { container } = render(
+      <HeaderShell
+        actions={<button data-testid="actions">Add</button>}
+        title="With Actions"
+      />
+    );
+
+    expect(container.querySelector('.tw\\:ml-auto')).not.toBeNull();
+    expect(screen.getByTestId('actions')).toBeInTheDocument();
   });
 
   it('applies the Figma gradient on the gradient variant', () => {
@@ -62,5 +90,31 @@ describe('HeaderShell', () => {
     );
 
     expect(container.querySelector('.tw\\:bg-gradient-to-r')).not.toBeNull();
+  });
+
+  it('does not apply the gradient on the default flat variant', () => {
+    const { container } = render(<HeaderShell title="Flat" />);
+
+    expect(container.querySelector('.tw\\:bg-gradient-to-r')).toBeNull();
+  });
+
+  it('applies a custom className to the card', () => {
+    const { container } = render(
+      <HeaderShell className="custom-header" title="Classy" />
+    );
+
+    expect(container.querySelector('.custom-header')).not.toBeNull();
+  });
+
+  it('uses a custom test id when one is provided', () => {
+    render(<HeaderShell data-testid="my-shell" title="Custom Id" />);
+
+    expect(screen.getByTestId('my-shell')).toBeInTheDocument();
+  });
+
+  it('uses the default test id when none is provided', () => {
+    render(<HeaderShell title="Default" />);
+
+    expect(screen.getByTestId('header-shell')).toBeInTheDocument();
   });
 });
