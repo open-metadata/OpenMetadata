@@ -101,6 +101,14 @@ describe('HeaderShell', () => {
     );
   });
 
+  it('renders the card without a shadow to match the Figma design', () => {
+    render(<HeaderShell title="No Shadow" variant="gradient" />);
+
+    expect(screen.getByTestId('header-shell').className).not.toContain(
+      'shadow'
+    );
+  });
+
   it('applies a custom className to the card', () => {
     const { container } = render(
       <HeaderShell className="custom-header" title="Classy" />

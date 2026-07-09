@@ -50,13 +50,13 @@ const HeaderShell = ({
   return (
     <Card
       className={classNames(
-        'tw:mb-5 tw:px-5 tw:py-4',
+        'tw:mb-5 tw:px-5 tw:py-3',
         // Fixed light-blue header treatment per Figma — intentionally NOT the
         // dynamic brand-* tokens (those follow the deployment's primary color and
         // would tint this header pink on Collate). The gradient stops and the
         // #EFF8FF border are hardcoded because Tailwind arbitrary values can't
         // take semantic tokens. The border is marked important so it wins over
-        // the Card `elevated` variant's border-secondary (cx/tailwind-merge isn't
+        // the Card `default` variant's border-secondary (cx/tailwind-merge isn't
         // configured for our tw: prefix, so it won't reliably dedupe the two).
         // Dark mode drops the gradient and restores the neutral border on the
         // semantic bg-primary surface.
@@ -65,7 +65,7 @@ const HeaderShell = ({
         className
       )}
       data-testid={dataTestId}
-      variant="elevated">
+      variant="default">
       <Box direction="col" gap={2}>
         {breadcrumb}
         <Box align="center" direction="row" gap={4}>
