@@ -11,15 +11,24 @@
  *  limitations under the License.
  */
 
+import { TestSuite } from '../../../generated/tests/testSuite';
+import { BundleSuiteFormData } from './BundleSuiteForm.interface';
 import {
   buildBundlePipelinePayload,
   buildCreateTestSuite,
 } from './transformBundleSuiteFormData';
 
+const formData = (
+  overrides: Partial<BundleSuiteFormData>
+): BundleSuiteFormData => overrides as unknown as BundleSuiteFormData;
+
+const testSuite = (overrides: Partial<TestSuite>): TestSuite =>
+  overrides as unknown as TestSuite;
+
 describe('buildCreateTestSuite', () => {
   it('builds CreateTestSuite with current user owner', () => {
     const r = buildCreateTestSuite(
-      { name: 'suite', description: 'd' } as any,
+      formData({ name: 'suite', description: 'd' }),
       'u1'
     );
 
@@ -28,7 +37,7 @@ describe('buildCreateTestSuite', () => {
   });
 
   it('builds CreateTestSuite with empty owners when no userId', () => {
-    const r = buildCreateTestSuite({ name: 'suite' } as any);
+    const r = buildCreateTestSuite(formData({ name: 'suite' }));
 
     expect(r.name).toBe('suite');
     expect(r.owners).toEqual([]);
@@ -36,7 +45,7 @@ describe('buildCreateTestSuite', () => {
 
   it('builds CreateTestSuite with description', () => {
     const r = buildCreateTestSuite(
-      { name: 'suite', description: 'my description' } as any,
+      formData({ name: 'suite', description: 'my description' }),
       'u2'
     );
 
@@ -47,13 +56,13 @@ describe('buildCreateTestSuite', () => {
 describe('buildBundlePipelinePayload', () => {
   it('builds bundle pipeline payload with debug logger when enableDebugLog', () => {
     const p = buildBundlePipelinePayload(
-      {
+      formData({
         pipelineName: 'p',
         cron: '0 0 * * *',
         enableDebugLog: true,
         raiseOnError: true,
-      } as any,
-      { id: 's1', name: 'suite', fullyQualifiedName: 'suite.fqn' } as any
+      }),
+      testSuite({ id: 's1', name: 'suite', fullyQualifiedName: 'suite.fqn' })
     );
 
     expect(p.loggerLevel).toBe('DEBUG');
@@ -62,13 +71,13 @@ describe('buildBundlePipelinePayload', () => {
 
   it('builds bundle pipeline payload with info logger when enableDebugLog is false', () => {
     const p = buildBundlePipelinePayload(
-      {
+      formData({
         pipelineName: 'p',
         cron: '0 0 * * *',
         enableDebugLog: false,
         raiseOnError: false,
-      } as any,
-      { id: 's2', name: 'suite2', fullyQualifiedName: 'suite2.fqn' } as any
+      }),
+      testSuite({ id: 's2', name: 'suite2', fullyQualifiedName: 'suite2.fqn' })
     );
 
     expect(p.loggerLevel).toBe('INFO');
@@ -77,8 +86,8 @@ describe('buildBundlePipelinePayload', () => {
 
   it('defaults raiseOnError to true when not provided', () => {
     const p = buildBundlePipelinePayload(
-      { pipelineName: 'p', cron: '0 0 * * *' } as any,
-      { id: 's3', name: 'suite3', fullyQualifiedName: 'suite3.fqn' } as any
+      formData({ pipelineName: 'p', cron: '0 0 * * *' }),
+      testSuite({ id: 's3', name: 'suite3', fullyQualifiedName: 'suite3.fqn' })
     );
 
     expect(p.raiseOnError).toBe(true);
@@ -86,8 +95,8 @@ describe('buildBundlePipelinePayload', () => {
 
   it('sets scheduleInterval from cron', () => {
     const p = buildBundlePipelinePayload(
-      { pipelineName: 'p', cron: '0 6 * * *' } as any,
-      { id: 's4', name: 'suite4', fullyQualifiedName: 'suite4.fqn' } as any
+      formData({ pipelineName: 'p', cron: '0 6 * * *' }),
+      testSuite({ id: 's4', name: 'suite4', fullyQualifiedName: 'suite4.fqn' })
     );
 
     expect(p.airflowConfig.scheduleInterval).toBe('0 6 * * *');
@@ -95,8 +104,8 @@ describe('buildBundlePipelinePayload', () => {
 
   it('sets sourceConfig type to TestSuite', () => {
     const p = buildBundlePipelinePayload(
-      { pipelineName: 'p', cron: '0 0 * * *' } as any,
-      { id: 's5', name: 'suite5', fullyQualifiedName: 'suite5.fqn' } as any
+      formData({ pipelineName: 'p', cron: '0 0 * * *' }),
+      testSuite({ id: 's5', name: 'suite5', fullyQualifiedName: 'suite5.fqn' })
     );
 
     expect(p.sourceConfig.config).toEqual({ type: 'TestSuite' });
