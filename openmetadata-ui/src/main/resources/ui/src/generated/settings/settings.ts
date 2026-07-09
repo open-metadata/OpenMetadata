@@ -2328,6 +2328,23 @@ export interface FilterExtractor {
  */
 export interface HybridSearch {
     /**
+     * Let denormalized chunk docs participate in the lexical (keyword) sub-query so keyword and
+     * best-chunk semantic evidence fuse on one doc. Kill switch: set false to exclude chunk
+     * docs from the lexical leg and revert to pre-#862 ranking without a redeploy.
+     */
+    chunkLexicalCoverageEnabled?: boolean;
+    /**
+     * Number of top chunks per entity returned under the collapse inner_hits (consumed by
+     * AskCollate to build richer context).
+     */
+    collapseInnerHitsSize?: number;
+    /**
+     * Tiny should-clause boost applied to entity docs (exists(id)) so an entity doc
+     * deterministically wins an exact tie against its own chunk 0. Cannot satisfy the query
+     * alone. Set to 0 to disable.
+     */
+    entityPreferenceEpsilon?: number;
+    /**
      * Highlight fragment size (characters) for hybrid search hits.
      */
     fragmentSize?: number;
@@ -2340,6 +2357,13 @@ export interface HybridSearch {
      */
     paginationDepth?: number;
     /**
+     * Emit a query-level collapse{parentId, inner_hits} on the hybrid body so each entity
+     * yields one fully-scored best chunk plus its top-N chunks in a single response. Requires
+     * OpenSearch >= 3.2; set false on older clusters to fall back to the pipeline collapse
+     * response processor.
+     */
+    queryLevelCollapseEnabled?: boolean;
+    /**
      * Name of the OpenSearch search pipeline used to normalize hybrid (BM25 + KNN) scores.
      */
     searchPipeline?: string;
@@ -2347,6 +2371,11 @@ export interface HybridSearch {
      * Minimum score threshold for the semantic (KNN) sub-query results.
      */
     semanticScoreThreshold?: number;
+    /**
+     * Constant-score boost for the per-term textToEmbed coverage clause, giving body-content
+     * keyword locality on each chunk. Set to 0 to disable the clause.
+     */
+    textToEmbedCoverageBoost?: number;
 }
 
 /**
