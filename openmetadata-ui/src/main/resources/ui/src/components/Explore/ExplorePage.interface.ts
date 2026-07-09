@@ -91,6 +91,8 @@ export interface ExploreProps {
   tabItems: ItemType[];
 
   searchResults?: SearchResponse<ExploreSearchIndex>;
+  showRankingDetails?: boolean;
+  onChangeShowRankingDetails?: (showRankingDetails: boolean) => void;
 
   onChangeAdvancedSearchQuickFilters: (
     queryFilter: QueryFilterInterface | undefined
