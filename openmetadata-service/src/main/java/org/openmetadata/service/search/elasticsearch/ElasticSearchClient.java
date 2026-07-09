@@ -1129,23 +1129,70 @@ public class ElasticSearchClient implements SearchClient {
   @Override
   @lombok.SneakyThrows
   public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
-      listPageHierarchy(String parentFqn, String pageType, int offset, int limit) {
-    return getPageHierarchyFromSearch(parentFqn, pageType, offset, limit);
+      listPageHierarchy(
+          String parentFqn,
+          String pageType,
+          org.openmetadata.service.search.SearchSortFilter sortFilter,
+          int offset,
+          int limit) {
+    return getPageHierarchyFromSearch(parentFqn, pageType, sortFilter, offset, limit);
   }
 
   @Override
   @lombok.SneakyThrows
   public org.openmetadata.schema.utils.ResultList<org.openmetadata.schema.entity.data.PageHierarchy>
-      listPageHierarchyForActivePage(String activeFqn, String pageType, int offset, int limit) {
-    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, offset, limit);
+      listPageHierarchyForActivePage(
+          String activeFqn,
+          String pageType,
+          org.openmetadata.service.search.SearchSortFilter sortFilter,
+          int offset,
+          int limit) {
+    return getPageHierarchyFromSearchForActivePage(activeFqn, pageType, sortFilter, offset, limit);
+  }
+
+  private java.util.List<es.co.elastic.clients.elasticsearch._types.SortOptions>
+      buildPageHierarchySortOptions(org.openmetadata.service.search.SearchSortFilter sortFilter) {
+    java.util.List<es.co.elastic.clients.elasticsearch._types.SortOptions> sortOptions =
+        new java.util.ArrayList<>();
+    if (sortFilter != null
+        && sortFilter.getSortField() != null
+        && !"fullyQualifiedName".equals(sortFilter.getSortField())) {
+      String field = sortFilter.getSortField();
+      es.co.elastic.clients.elasticsearch._types.SortOrder order =
+          "desc".equalsIgnoreCase(sortFilter.getSortType())
+              ? es.co.elastic.clients.elasticsearch._types.SortOrder.Desc
+              : es.co.elastic.clients.elasticsearch._types.SortOrder.Asc;
+      sortOptions.add(
+          es.co.elastic.clients.elasticsearch._types.SortOptions.of(
+              so -> so.field(f -> f.field(field).order(order))));
+    }
+    // Always append a stable tiebreaker on fullyQualifiedName (keyword, unique per page) so
+    // from/size pagination cannot miss/duplicate hits when the primary sort field is non-unique.
+    // _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x without setting
+    // indices.id_field_data.enabled=true at the cluster level.
+    sortOptions.add(
+        es.co.elastic.clients.elasticsearch._types.SortOptions.of(
+            so ->
+                so.field(
+                    f ->
+                        f.field("fullyQualifiedName")
+                            .order(es.co.elastic.clients.elasticsearch._types.SortOrder.Asc))));
+    return sortOptions;
   }
 
   private org.openmetadata.schema.utils.ResultList<
           org.openmetadata.schema.entity.data.PageHierarchy>
-      getPageHierarchyFromSearch(String parentFqn, String pageType, int offset, int limit)
+      getPageHierarchyFromSearch(
+          String parentFqn,
+          String pageType,
+          org.openmetadata.service.search.SearchSortFilter sortFilter,
+          int offset,
+          int limit)
           throws java.io.IOException {
     es.co.elastic.clients.elasticsearch._types.query_dsl.Query boolQuery =
         buildPageHierarchyBoolQuery(parentFqn, pageType);
+    java.util.List<es.co.elastic.clients.elasticsearch._types.SortOptions> sortOptions =
+        buildPageHierarchySortOptions(sortFilter);
 
     es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
         es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
@@ -1156,19 +1203,7 @@ public class ElasticSearchClient implements SearchClient {
                                 org.openmetadata.service.jdbi3.KnowledgePageRepository
                                     .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
-                    // Stable sort so from/size pagination cannot miss/duplicate hits.
-                    // fullyQualifiedName is a keyword field with doc_values and is unique per
-                    // page (name is unique within a parent's children), so no tiebreaker is
-                    // needed. _id cannot be used as a sort field on ES 9.x / OpenSearch 3.x
-                    // without setting indices.id_field_data.enabled=true at the cluster level.
-                    .sort(
-                        sort ->
-                            sort.field(
-                                f ->
-                                    f.field("fullyQualifiedName")
-                                        .order(
-                                            es.co.elastic.clients.elasticsearch._types.SortOrder
-                                                .Asc)))
+                    .sort(sortOptions)
                     .from(offset)
                     .size(limit));
 
@@ -1189,9 +1224,16 @@ public class ElasticSearchClient implements SearchClient {
   private org.openmetadata.schema.utils.ResultList<
           org.openmetadata.schema.entity.data.PageHierarchy>
       getPageHierarchyFromSearchForActivePage(
-          String activeFqn, String pageType, int offset, int limit) throws java.io.IOException {
+          String activeFqn,
+          String pageType,
+          org.openmetadata.service.search.SearchSortFilter sortFilter,
+          int offset,
+          int limit)
+          throws java.io.IOException {
     es.co.elastic.clients.elasticsearch._types.query_dsl.Query boolQuery =
         buildPageHierarchyBoolQueryForActivePage(activeFqn, pageType);
+    java.util.List<es.co.elastic.clients.elasticsearch._types.SortOptions> sortOptions =
+        buildPageHierarchySortOptions(sortFilter);
 
     es.co.elastic.clients.elasticsearch.core.SearchRequest searchRequest =
         es.co.elastic.clients.elasticsearch.core.SearchRequest.of(
@@ -1202,15 +1244,7 @@ public class ElasticSearchClient implements SearchClient {
                                 org.openmetadata.service.jdbi3.KnowledgePageRepository
                                     .KNOWLEDGE_PAGE_TERM_SEARCH_INDEX))
                     .query(boolQuery)
-                    // Stable sort by fqn (keyword, unique per page). See note above on _id.
-                    .sort(
-                        sort ->
-                            sort.field(
-                                f ->
-                                    f.field("fullyQualifiedName")
-                                        .order(
-                                            es.co.elastic.clients.elasticsearch._types.SortOrder
-                                                .Asc)))
+                    .sort(sortOptions)
                     .from(offset)
                     .size(limit));
 
