@@ -36,7 +36,8 @@ const IconPickerFieldWithLabel: FC<IconPickerFieldWithLabelProps> = ({
   // tooltip. Anything else (e.g. iconTooltipDataRender()) is already a
   // fully-built icon+tooltip widget, so it's rendered as-is instead of being
   // wrapped in a second tooltip.
-  const hasPlainTooltipContent = tooltip === undefined || typeof tooltip === 'string';
+  const hasPlainTooltipContent =
+    tooltip === undefined || typeof tooltip === 'string';
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-1.5">
