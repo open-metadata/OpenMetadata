@@ -39,7 +39,6 @@ import React, { ComponentProps, Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { ColorSwatchPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
@@ -47,10 +46,6 @@ import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
-import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
-import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
-import MUITextField from '../components/common/MUITextField/MUITextField';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
@@ -123,9 +118,6 @@ export const getField = (field: FieldProp) => {
     ...formItemProps,
   };
 
-  // Define MUI label for MUI field types
-  const muiLabel = field.muiLabel;
-  
   switch (type) {
     case FieldTypes.TEXT:
       fieldElement = (
@@ -133,29 +125,6 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
-
-    case FieldTypes.TEXT_MUI: {
-      const { error, ...muiProps } = props;
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUITextField
-            error={Boolean(error)}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-            {...muiProps}
-          />
-        </Form.Item>
-      );
-    }
 
     case FieldTypes.UT_TEXT: {
       const isRequired = fieldRules.some(
@@ -203,30 +172,6 @@ export const getField = (field: FieldProp) => {
             placeholder={placeholder}>
             {(item: SelectItemType) => <UTSelect.Item {...item} />}
           </UTSelect>
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.PASSWORD_MUI: {
-      const { error, ...muiProps } = props;
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUITextField
-            error={Boolean(error)}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-            type="password"
-            {...muiProps}
-          />
         </Form.Item>
       );
     }
@@ -317,23 +262,6 @@ export const getField = (field: FieldProp) => {
       );
     }
 
-    case FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUIGlossaryTagSuggestion
-            {...(props as unknown as AntDTagSuggestionProps)}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-
     case FieldTypes.TREE_ASYNC_SELECT_LIST:
       fieldElement = (
         <TreeAsyncSelectList
@@ -362,22 +290,6 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
-    case FieldTypes.DOMAIN_SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUIDomainSelect
-            {...(props as unknown as MUIDomainSelectProps)}
-            label={muiLabel as string}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
     case FieldTypes.USER_TEAM_SELECT:
       {
         const { children, ...rest } = props;
@@ -417,17 +329,6 @@ export const getField = (field: FieldProp) => {
       fieldElement = <ColorPicker {...props} />;
 
       break;
-
-    case FieldTypes.COLOR_PICKER_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <ColorSwatchPicker
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
 
     case FieldTypes.UT_SWITCH: {
       const { isDisabled, onChange, size, ...switchRest } =
