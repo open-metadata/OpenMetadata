@@ -293,6 +293,7 @@ class ExasolCliTest(CliCommonDB.TestSuite, SQACommonMethods):
             ),
             None,
         )
+        self.assertIsNotNone(boolean_join, "Expected a col_boolean column join")
         self.assertTrue(
             any(
                 joined_with.fullyQualifiedName.root.lower().endswith(f".{JOIN_TABLE_NAME.lower()}.col_boolean")
