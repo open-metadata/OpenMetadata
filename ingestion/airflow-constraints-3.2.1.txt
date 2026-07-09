@@ -75,7 +75,7 @@ aiohttp==3.13.5
 aioitertools==0.13.0
 aiomysql==0.3.2
 aiosignal==1.4.0
-aiosmtplib==5.1.0
+aiosmtplib==5.1.1
 aiosqlite==0.21.0
 airbyte-api==0.53.0
 alembic==1.18.4
