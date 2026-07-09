@@ -603,18 +603,25 @@ test.describe(
           'Table test case display name'
         );
 
-        await expect(page.locator('[id="root\\/selected-entity"]')).toHaveValue(
+        // In edit mode the immutable table / column / test-type fields are
+        // disabled react-aria comboboxes/selects: the prefilled value renders as
+        // a chip/label inside the field container (the underlying input is hidden
+        // and empty), so assert on the container text. The table chip shows the
+        // fully qualified name (which contains the table name) and the test-type
+        // chip shows the test definition name. The name field is a plain disabled
+        // text input, so its value is asserted directly.
+        await expect(page.getByTestId('selectedTable')).toContainText(
           table2.entityResponseData?.['name']
         );
-        await expect(page.locator('[id="root\\/column"]')).toHaveValue(
+        await expect(page.locator('[id="root\\/column"]')).toContainText(
           table2.entity?.columns[3].name
         );
         await expect(page.locator('[id="root\\/name"]')).toHaveValue(
           testCaseName
         );
-        await expect(
-          page.locator('[id="root\\/columnValuesToBeInSet"]')
-        ).toHaveValue('Column Values To Be In Set');
+        await expect(page.getByTestId('test-type')).toContainText(
+          'columnValuesToBeInSet'
+        );
 
         // Edit test case display name
         const updateTestCaseResponse = page.waitForResponse(
@@ -646,7 +653,7 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
         await testDefinitionResponse;
         await page
-          .getByTestId('edit-test-form')
+          .getByTestId('test-case-form-v1')
           .locator(descriptionBox)
           .fill('Test case description');
         const updateTestCaseResponse2 = page.waitForResponse(

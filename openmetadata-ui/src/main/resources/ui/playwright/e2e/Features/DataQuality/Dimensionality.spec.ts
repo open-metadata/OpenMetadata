@@ -163,14 +163,20 @@ test(
       });
 
       await expect(
-        page.locator(
-          `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column}"]`
-        )
+        page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.column })
       ).not.toBeVisible();
 
-      await page.click(
-        `.ant-select-dropdown:not(.ant-select-dropdown-hidden) [title="${NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0]}"]`
-      );
+      await page
+        .getByRole('option')
+        .filter({
+          hasText: NEW_COLUMN_TEST_CASE_VALUE_TO_BE_BETWEEN.editDimensions[0],
+        })
+        .first()
+        .click();
+
+      await page.keyboard.press('Escape');
 
       const updateTestCaseResponse = page.waitForResponse(
         (response: Response) =>
@@ -178,7 +184,7 @@ test(
           response.request().method() === 'PATCH'
       );
 
-      await page.getByTestId('update-btn').click();
+      await page.getByTestId('create-btn').click();
       const response = await updateTestCaseResponse;
 
       expect(response.status()).toBe(200);

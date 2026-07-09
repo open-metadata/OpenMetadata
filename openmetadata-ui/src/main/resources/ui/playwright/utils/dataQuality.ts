@@ -351,7 +351,7 @@ export const openCreateNewBundleSuiteForm = async (page: Page) => {
   );
   await page.getByTestId('create-new-bundle-suite').click();
   await listResponse;
-  await page.locator('form.bundle-suite-form').waitFor();
+  await page.locator('.bundle-suite-form').waitFor();
 };
 
 export const fillAndSubmitBundleSuiteForm = async (
@@ -387,8 +387,12 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
-  const dropdown = page.locator('[role="listbox"]');
-  const option = dropdown.locator('[role="option"]', {
+  // AddToBundleSuiteModal still renders an antd Select (not migrated to the
+  // react-aria stack), so scope to the visible antd dropdown and its option
+  // rows. A generic `[role="listbox"]` matches multiple listboxes on the page
+  // (e.g. the header asset search) and resolves ambiguously.
+  const dropdown = page.locator('.ant-select-dropdown:visible');
+  const option = dropdown.locator('.ant-select-item-option', {
     hasText: suiteName,
   });
 
