@@ -71,6 +71,33 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
     }
   }, [useAsyncSearch, loadAsync]);
 
+  if (useAsyncSearch && asyncFetch) {
+    return (
+      <Select.ComboBox
+        isDisabled={readonly}
+        items={items}
+        placeholder={placeholder}
+        selectedKey={
+          value !== null && value !== undefined ? String(value) : undefined
+        }
+        shortcut={false}
+        showSearchIcon={false}
+        size="sm"
+        onInputChange={(v) => {
+          loadAsync(v);
+        }}
+        onSelectionChange={(key) =>
+          setValue(key !== null ? String(key) : null)
+        }>
+        {(item) => (
+          <Select.Item id={item.id} key={item.id}>
+            {item.label}
+          </Select.Item>
+        )}
+      </Select.ComboBox>
+    );
+  }
+
   return (
     <Select
       isDisabled={readonly}

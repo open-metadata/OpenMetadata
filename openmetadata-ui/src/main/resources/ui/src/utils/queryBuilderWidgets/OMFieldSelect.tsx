@@ -24,15 +24,16 @@ const OMFieldSelect: FC<FieldProps> = ({
   const selectItems: SelectItemType[] = items.map((item) => ({
     id: item.key,
     label: item.label,
-    supportingText: item.grouplabel,
   }));
 
   return (
-    <Select
+    <Select.ComboBox
       isDisabled={readonly}
       items={selectItems}
       placeholder={placeholder ?? 'Select field'}
-      selectedKey={selectedKey ?? null}
+      selectedKey={selectedKey ?? undefined}
+      shortcut={false}
+      showSearchIcon={false}
       size="sm"
       onSelectionChange={(key) => {
         if (key) {
@@ -44,7 +45,7 @@ const OMFieldSelect: FC<FieldProps> = ({
           {item.label}
         </Select.Item>
       )}
-    </Select>
+    </Select.ComboBox>
   );
 };
 

@@ -453,23 +453,24 @@ test.describe(
         const ruleLocator = page.locator('.rule').nth(0);
         await selectOption(
           page,
-          ruleLocator.locator('.rule--field .ant-select'),
+          ruleLocator.locator('.rule--field'),
           'Status',
           true
         );
-        await selectOption(
-          page,
-          ruleLocator.locator('.rule--operator .ant-select'),
-          '=='
-        );
+        await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
       });
 
       await test.step('Open Status value dropdown and verify all hard-coded options appear', async () => {
         const ruleLocator = page.locator('.rule').nth(0);
-        await ruleLocator.locator('.widget--widget > .ant-select').click();
+        const triggerBtn = ruleLocator.locator(
+          '.widget--widget button[aria-haspopup="listbox"]'
+        );
+
+        await expect(triggerBtn).toBeVisible();
+        await triggerBtn.click();
 
         const dropdown = page
-          .locator('.ant-select-dropdown')
+          .locator('[role="listbox"]')
           .filter({ hasText: EntityStatus.Approved })
           .last();
 
@@ -478,7 +479,7 @@ test.describe(
         for (const status of ENTITY_STATUSES) {
           await expect(
             dropdown
-              .locator('.ant-select-item-option')
+              .getByRole('option')
               .filter({ hasText: new RegExp(`^${status}$`, 'i') })
               .first()
           ).toBeVisible();
@@ -1638,83 +1639,45 @@ test.describe(
 
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         'Custom Properties',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         'Table',
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--field .ant-select'),
+        ruleLocator.locator('.rule--field'),
         enumCPName,
         true
       );
       await selectOption(
         page,
-        ruleLocator.locator('.rule--operator .ant-select'),
+        ruleLocator.locator('.rule--operator'),
         'Equals'
       );
 
-      const valueSelector = ruleLocator.locator(
-        '.ant-select-selection-overflow'
+      const comboboxInput = ruleLocator.locator(
+        '.rule--widget input[role="combobox"]'
       );
 
-      await expect(valueSelector).toBeVisible({ timeout: 15000 });
-      await valueSelector.click();
+      await expect(comboboxInput).toBeVisible({ timeout: 15000 });
+      await comboboxInput.click();
 
-      const dropdown = page.locator('.ant-select-dropdown:visible').last();
+      const dropdown = page.locator('[role="listbox"]:visible').last();
 
       await expect(dropdown).toBeVisible();
 
-      return { ruleLocator, valueSelector, dropdown };
+      return { ruleLocator, comboboxInput, dropdown };
     };
 
-    test('should append page-2 items and make them visible when Load more button is clicked', async ({
-      page,
-    }) => {
-      test.slow();
-
-      const { dropdown } = await openEnumValueDropdown(page);
-
-      // Page 1 items present; page-2 item not yet visible
-      await expect(
-        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
-      ).toBeVisible({ timeout: 10000 });
-      await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
-      ).not.toBeVisible();
-
-      // "Load more..." button visible at the bottom of the list
-      const loadMoreBtn = dropdown
-        .locator('a')
-        .filter({ hasText: /load more/i });
-
-      await expect(loadMoreBtn).toBeVisible();
-
-      // Click Load more → page-2 items append
-      await loadMoreBtn.click();
-
-      // Hover over the virtual list so mouse wheel events target it
-      const virtualListHolder = dropdown.locator('.rc-virtual-list-holder');
-
-      await expect(virtualListHolder).toBeVisible();
-      await virtualListHolder.hover();
-
-      // Wheel-scroll in small increments until the page-2 item comes into view
-      const secondPageItem = dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`);
-      let found = await secondPageItem.isVisible();
-
-      for (let i = 0; i < 20 && !found; i++) {
-        await page.mouse.wheel(0, 200);
-        found = await secondPageItem.isVisible();
-      }
-
-      await expect(secondPageItem).toBeVisible({ timeout: 5000 });
+    test.skip('should append page-2 items and make them visible when Load more button is clicked', () => {
+      // Load more and rc-virtual-list are Ant Design Select features not present
+      // in the new react-aria MultiSelect component.
     });
 
     test('should find page-2 items via search without clicking Load more', async ({
@@ -1726,22 +1689,22 @@ test.describe(
 
       // Page 1 items load; page-2 item is not yet visible
       await expect(
-        dropdown.locator(`[title="${FIRST_PAGE_VALUE}"]`)
+        dropdown.getByRole('option', { name: FIRST_PAGE_VALUE })
       ).toBeVisible({ timeout: 10000 });
       await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
       ).not.toBeVisible();
 
       // Type to search — asyncFetch filters the full values array, not just the loaded page
       const searchInput = ruleLocator.locator(
-        '.rule--widget .ant-select-selection-search-input'
+        '.rule--widget input[role="combobox"]'
       );
 
       await searchInput.fill(SECOND_PAGE_VALUE);
 
       // Item appears immediately without clicking Load more
       await expect(
-        dropdown.locator(`[title="${SECOND_PAGE_VALUE}"]`)
+        dropdown.getByRole('option', { name: SECOND_PAGE_VALUE })
       ).toBeVisible({ timeout: 10000 });
     });
   }

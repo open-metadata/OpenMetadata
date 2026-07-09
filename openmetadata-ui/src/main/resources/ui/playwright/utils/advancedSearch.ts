@@ -174,51 +174,37 @@ export const selectOption = async (
   optionTitle: string,
   isSearchable = false
 ) => {
-  if (isSearchable) {
-    // Wait for dropdown to be visible before clicking
-    const selector = dropdownLocator.locator('.ant-select-selector');
-    await expect(selector).toBeVisible();
-    await selector.click();
+  const comboboxInput = dropdownLocator.locator('input[role="combobox"]');
 
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
+  if ((await comboboxInput.count()) > 0) {
+    await expect(comboboxInput).toBeVisible();
 
-    // Clear any existing input and type the new value
-    const combobox = dropdownLocator.getByRole('combobox');
-    await combobox.clear();
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
-
-    await combobox.fill(optionTitle);
-
-    await dropdownLocator
-      .locator('.ant-select-arrow-loading svg[data-icon="loading"]')
-      .waitFor({ state: 'detached' });
+    if (isSearchable) {
+      await comboboxInput.clear();
+      await comboboxInput.fill(optionTitle);
+    } else {
+      await comboboxInput.click();
+    }
   } else {
-    await dropdownLocator.click();
+    const triggerButton = dropdownLocator.locator(
+      'button[aria-haspopup="listbox"]'
+    );
+
+    await expect(triggerButton).toBeVisible();
+    await triggerButton.click();
   }
 
-  await expect(dropdownLocator).toHaveClass(/(^|\s)ant-select-focused(\s|$)/);
+  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
 
-  await page.locator('.ant-select-dropdown:visible').first().waitFor({
-    state: 'visible',
-  });
-
-  // CRITICAL: Use :visible selector chain pattern (Rule 4 from deflake guide)
-  // Use .first() to handle multiple matches (acceptable when scoped to visible dropdown)
-  const optionLocator = page
-    .locator('.ant-select-dropdown:visible')
-    .getByTitle(optionTitle, { exact: true })
-    .first();
-  await expect(optionLocator).toBeVisible();
-
-  // Wait for dropdown animations to settle before clicking
-  // This prevents "element detached from DOM" errors during re-renders
   // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown animation settling
   await page.waitForTimeout(100);
+
+  const optionLocator = page
+    .locator('[role="listbox"]:visible')
+    .getByRole('option', { name: optionTitle, exact: true })
+    .first();
+
+  await expect(optionLocator).toBeVisible();
   await optionLocator.click({ timeout: 10000 });
 };
 
@@ -260,19 +246,10 @@ export const fillRule = async (
   const ruleLocator = page.locator('.rule').nth(index - 1);
 
   // Perform click on rule field
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--field .ant-select'),
-    field.id,
-    true
-  );
+  await selectOption(page, ruleLocator.locator('.rule--field'), field.id, true);
 
   // Perform click on operator
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--operator .ant-select'),
-    condition
-  );
+  await selectOption(page, ruleLocator.locator('.rule--operator'), condition);
 
   if (searchCriteria) {
     const inputElement = ruleLocator.locator(
@@ -284,14 +261,10 @@ export const fillRule = async (
       await inputElement.fill(searchData);
     } else {
       const dropdownInput = ruleLocator.locator(
-        '.widget--widget > .ant-select > .ant-select-selector input'
+        '.widget--widget input[role="combobox"]'
       );
 
-      const aggregateRes1 = page.waitForResponse('/api/v1/search/aggregate?*');
-
       await dropdownInput.click();
-
-      await aggregateRes1;
 
       const aggregateRes2 = page.waitForResponse(
         `/api/v1/search/aggregate?*${getEncodedFqn(
@@ -303,27 +276,26 @@ export const fillRule = async (
 
       await aggregateRes2;
 
-      const dropdown = page.locator('.ant-select-dropdown:visible');
-      const exactTitleMatch = dropdown
-        .locator('[title]')
-        .filter({
-          hasText: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
+      const dropdown = page.locator('[role="listbox"]:visible');
+      const exactMatch = dropdown
+        .getByRole('option', {
+          name: new RegExp(`^${escapeRegex(searchData)}$`, 'i'),
         })
         .first();
-      const partialTextMatch = dropdown
-        .locator('.ant-select-item-option-content')
+      const partialMatch = dropdown
+        .getByRole('option')
         .filter({
           hasText: new RegExp(escapeRegex(searchData), 'i'),
         })
         .first();
 
-      if (await exactTitleMatch.count()) {
-        await exactTitleMatch.click();
-      } else if (await partialTextMatch.count()) {
-        await partialTextMatch.click();
+      if (await exactMatch.count()) {
+        await exactMatch.click();
+      } else if (await partialMatch.count()) {
+        await partialMatch.click();
       } else {
         // Some suggestion backends normalize or delay option text; Enter keeps
-        // the typed criteria and avoids waiting forever on an exact title match.
+        // the typed criteria and avoids waiting forever on an exact match.
         await dropdownInput.press('Enter');
       }
     }
@@ -664,28 +636,26 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   // Perform click on rule field
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     'Database',
     true
   );
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--operator .ant-select'),
-    '=='
-  );
+  await selectOption(page, ruleLocator.locator('.rule--operator'), '==');
 
   const inputElement = ruleLocator.locator(
-    '.rule--widget--SELECT .ant-select-selection-search-input'
+    '.rule--widget--SELECT input[role="combobox"]'
   );
-  await inputElement.fill('non-existing-value');
-  const dropdownText = page.locator('.ant-select-item-empty');
 
-  await expect(dropdownText).toContainText('Loading...');
+  await inputElement.fill('non-existing-value');
+
+  const listbox = page.locator('[role="listbox"]:visible');
+
+  await expect(listbox).toBeVisible();
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
   await page.waitForTimeout(1000);
 
-  await expect(dropdownText).not.toContainText('Loading...');
+  await expect(listbox.getByRole('option')).toHaveCount(0);
 };
 
 // For fields backed by hard-coded listValues (no aggregate API call), options are
@@ -709,20 +679,12 @@ export const fillStaticListRule = async (
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     fieldLabel,
     true
   );
-  await selectOption(
-    page,
-    ruleLocator.locator('.rule--operator .ant-select'),
-    condition
-  );
-  await selectOption(
-    page,
-    ruleLocator.locator('.widget--widget > .ant-select'),
-    value
-  );
+  await selectOption(page, ruleLocator.locator('.rule--operator'), condition);
+  await selectOption(page, ruleLocator.locator('.widget--widget'), value);
 };
 
 export const getFieldsSuggestionSearchText = (

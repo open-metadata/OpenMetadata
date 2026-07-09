@@ -430,7 +430,8 @@ const handlePropertyValueInput = async (
     // Handle entity reference selection
     if (isEntityRefProperty) {
       await page
-        .locator(`.ant-select-dropdown:visible [title*="${value as string}"]`)
+        .locator('[role="listbox"]:visible [role="option"]')
+        .filter({ hasText: value as string })
         .first()
         .click();
     }
@@ -449,21 +450,21 @@ export const applyCustomPropertyFilter = async (
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     'Custom Properties',
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     entityType,
     true
   );
 
   await selectOption(
     page,
-    ruleLocator.locator('.rule--field .ant-select'),
+    ruleLocator.locator('.rule--field'),
     propertyName,
     true
   );
@@ -471,7 +472,7 @@ export const applyCustomPropertyFilter = async (
   const operatorLabel = getOperatorLabel(operator);
   await selectOption(
     page,
-    ruleLocator.locator('.rule--operator .ant-select'),
+    ruleLocator.locator('.rule--operator'),
     operatorLabel
   );
 
