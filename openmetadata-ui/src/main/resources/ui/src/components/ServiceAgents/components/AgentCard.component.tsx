@@ -107,7 +107,9 @@ const AgentCard: FC<AgentCardProps> = ({
       )}
       <Box align="center" className="tw:gap-3.5">
         {/* identity */}
-        <Box align="start" className="tw:w-[300px] tw:shrink-0 tw:gap-3">
+        <Box
+          align="start"
+          className="tw:w-[30%] tw:min-w-[300px] tw:max-w-[520px] tw:shrink-0 tw:gap-3">
           <span
             className={`tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl ${
               isRunning ? 'tw:bg-brand-primary' : 'tw:bg-tertiary'
