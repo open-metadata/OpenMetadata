@@ -157,6 +157,7 @@ interface BadgeProps<T extends BadgeTypes> {
   children: ReactNode;
   className?: string;
   bordered?: boolean;
+  'data-testid'?: string;
 }
 
 export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
@@ -196,7 +197,8 @@ export const Badge = <T extends BadgeTypes>(props: BadgeProps<T>) => {
         colors.styles[color].root,
         bordered && 'tw:ring-1 tw:ring-inset',
         props.className
-      )}>
+      )}
+      data-testid={props['data-testid']}>
       {children}
     </span>
   );

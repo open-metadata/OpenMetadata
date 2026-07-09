@@ -230,40 +230,20 @@ describe('ExploreSearchCard - Card container', () => {
   });
 });
 
-describe('ExploreSearchCard - Data type badge', () => {
+describe('ExploreSearchCard - Entity type tags', () => {
   beforeEach(() => {
     jest.clearAllMocks();
   });
 
-  it('renders the column data type as the first metadata badge for column cards', () => {
+  it('does not render column data type as a metadata tag for column cards', () => {
     renderCard({
       entityType: 'tableColumn',
       dataType: DataType.String,
       dataTypeDisplay: 'STRING',
     });
 
-    expect(screen.getByTestId('Type')).toHaveTextContent('STRING');
-  });
-
-  it('preserves complex column data type syntax in uppercase', () => {
-    const complexDataType =
-      'struct<street_name:varchar(24),zipcode:int,city:varchar(100),country:struct<country_code:int, name:varchar(100)>>';
-
-    renderCard({
-      entityType: 'tableColumn',
-      dataType: DataType.Struct,
-      dataTypeDisplay: complexDataType,
-    });
-
-    expect(screen.getByTestId('Type')).toHaveTextContent(
-      complexDataType.toUpperCase()
-    );
-    expect(screen.getByText(complexDataType.toUpperCase())).toHaveClass(
-      'tw:max-w-full',
-      'tw:min-h-5.5',
-      'tw:break-words',
-      'tw:whitespace-normal'
-    );
+    expect(screen.queryByTestId('Type')).not.toBeInTheDocument();
+    expect(screen.queryByText('STRING')).not.toBeInTheDocument();
   });
 });
 

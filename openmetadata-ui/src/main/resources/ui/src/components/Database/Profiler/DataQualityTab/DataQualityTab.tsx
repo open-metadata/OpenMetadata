@@ -46,6 +46,7 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
+import { deleteEntity } from '../../../../rest/miscAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
@@ -55,9 +56,9 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
-import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
@@ -136,6 +137,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   >([]);
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
+  const [isDeletingTestCase, setIsDeletingTestCase] = useState(false);
   const [isPermissionLoading, setIsPermissionLoading] = useState(true);
   const [testCasePermissions, setTestCasePermissions] = useState<
     TestCasePermission[]
@@ -244,6 +246,28 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       showErrorToast(error as AxiosError);
     } finally {
       setIsTestCaseRemovalLoading(false);
+    }
+  };
+
+  const handleDeleteTestCase = async () => {
+    const entityId = selectedTestCase?.data?.id;
+    if (!entityId) {
+      return;
+    }
+    setIsDeletingTestCase(true);
+    try {
+      await deleteEntity('dataQuality/testCases', entityId, true, true);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: getEntityName(selectedTestCase?.data),
+        })
+      );
+      afterDeleteAction?.();
+      handleCancel();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeletingTestCase(false);
     }
   };
 
@@ -891,15 +915,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onConfirm={handleConfirmClick}
         />
       ) : (
-        <DeleteWidgetModal
-          isRecursiveDelete
-          afterDeleteAction={afterDeleteAction}
-          allowSoftDelete={false}
-          entityId={selectedTestCase?.data?.id ?? ''}
-          entityName={getEntityName(selectedTestCase?.data)}
-          entityType={EntityType.TEST_CASE}
-          visible={selectedTestCase?.action === 'DELETE'}
+        <DeleteModal
+          entityTitle={getEntityName(selectedTestCase?.data)}
+          isDeleting={isDeletingTestCase}
+          message={t('message.delete-entity-message', {
+            entity: getEntityName(selectedTestCase?.data),
+          })}
+          open={selectedTestCase?.action === 'DELETE'}
           onCancel={handleCancel}
+          onDelete={handleDeleteTestCase}
         />
       )}
     </div>
