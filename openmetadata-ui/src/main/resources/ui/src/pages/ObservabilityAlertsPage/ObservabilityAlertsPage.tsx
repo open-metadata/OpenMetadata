@@ -49,6 +49,11 @@ import LimitWrapper from '../../hoc/LimitWrapper';
 import { usePaging } from '../../hooks/paging/usePaging';
 import { getAllAlerts } from '../../rest/alertsAPI';
 import { getEntityName } from '../../utils/EntityNameUtils';
+import {
+  getObservabilityAlertDetailsPath,
+  getObservabilityAlertsEditPath,
+} from '../../utils/RouterUtils';
+import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 
 const ObservabilityAlertsPage = () => {

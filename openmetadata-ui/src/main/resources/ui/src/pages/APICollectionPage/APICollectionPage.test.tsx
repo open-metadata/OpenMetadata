@@ -41,10 +41,12 @@ jest.mock('../../utils/EntityDisplayUtils', () => ({
 jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('test-api-collection'),
 }));
+jest.mock('../../utils/CommonUtils', () => ({
+  getFeedCounts: jest.fn(),
+}));
 jest.mock('../../utils/FeedUtils', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
-  getFeedCounts: jest.fn(),
   getEntityMissingError: jest.fn(),
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),

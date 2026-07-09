@@ -57,10 +57,12 @@ jest.mock('react-router-dom', () => ({
   useNavigate: jest.fn(() => mockNavigate),
 }));
 jest.mock('../../utils/EntityUtils', () => ({
-  getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
   getEntityName: jest
     .fn()
     .mockImplementation(({ displayName, name }) => displayName || name || ''),
+}));
+jest.mock('../../utils/EntityBreadcrumbUtils', () => ({
+  getEntityLinkFromType: jest.fn().mockReturnValue('/mock-entity-link'),
 }));
 
 jest.mock('../../utils/Fqn', () => ({
