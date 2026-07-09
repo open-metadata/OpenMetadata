@@ -139,10 +139,18 @@ test.describe(
         // The combobox closes on selection, so no Escape (Escape closes the drawer).
         await page.locator('[id="root/supportedDataTypes"]').fill('NUMBER');
         await page.getByRole('option', { name: 'NUMBER', exact: true }).click();
+        await expect(
+          page.getByTestId('supported-data-types').getByText('NUMBER', {
+            exact: true,
+          })
+        ).toBeVisible();
 
         // Add a test platform (multi-select combobox)
         await page.locator('[id="root/testPlatforms"]').fill('dbt');
         await page.getByRole('option', { name: 'dbt', exact: true }).click();
+        await expect(
+          page.getByTestId('test-platforms').getByText('dbt', { exact: true })
+        ).toBeVisible();
 
         // Wait for POST response when creating test definition
         const testDefinitionResponse = page.waitForResponse(

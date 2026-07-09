@@ -29,6 +29,7 @@ describe('transformTestDefinitionFormData', () => {
         { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
       ]);
       expect(defaults.supportedServices).toEqual([]);
+      expect(defaults.supportedDataTypes).toEqual([]);
     });
 
     it('wraps initial raw strings into FormSelectItems when editing', () => {
@@ -122,6 +123,19 @@ describe('transformTestDefinitionFormData', () => {
       expect(payload.validatorClass).toBe(
         'TableRuleLibrarySqlExpressionValidator'
       );
+    });
+
+    it('normalizes a stray single FormSelectItem (non-array) multi-select value to an array', () => {
+      const payload = buildCreateTestDefinitionPayload({
+        name: 't',
+        entityType: { id: EntityType.Table, label: EntityType.Table },
+        testPlatforms: [
+          { id: TestPlatform.OpenMetadata, label: TestPlatform.OpenMetadata },
+        ],
+        supportedDataTypes: { id: 'NUMBER', label: 'NUMBER' } as never,
+      });
+
+      expect(payload.supportedDataTypes).toEqual(['NUMBER']);
     });
   });
 

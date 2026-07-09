@@ -50,10 +50,17 @@ const fromSelectItem = (value?: unknown): string | undefined => {
   return result;
 };
 
-const fromSelectItems = (values?: unknown[]): string[] | undefined =>
-  values
-    ?.map((value) => fromSelectItem(value))
-    .filter((value): value is string => Boolean(value));
+const fromSelectItems = (values?: unknown): string[] | undefined => {
+  let result: string[] | undefined;
+  if (values != null) {
+    const list = Array.isArray(values) ? values : [values];
+    result = list
+      .map((value) => fromSelectItem(value))
+      .filter((value): value is string => Boolean(value));
+  }
+
+  return result;
+};
 
 const unwrapParameterDefinition = (
   parameters?: ParameterDefinitionValue[]
@@ -78,7 +85,7 @@ export const buildFormDefaults = (
     ] as FormSelectItem[]),
   dataQualityDimension: toSelectItem(initialValues?.dataQualityDimension),
   supportedServices: toSelectItems(initialValues?.supportedServices) ?? [],
-  supportedDataTypes: toSelectItems(initialValues?.supportedDataTypes),
+  supportedDataTypes: toSelectItems(initialValues?.supportedDataTypes) ?? [],
   parameterDefinition: initialValues?.parameterDefinition?.map((parameter) => ({
     ...parameter,
     dataType: toSelectItem(parameter.dataType),
