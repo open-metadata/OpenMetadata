@@ -11,11 +11,20 @@
  *  limitations under the License.
  */
 
+import { Table } from '../../../../generated/entity/data/table';
 import { TestCase } from '../../../../generated/tests/testCase';
 import {
   TestDataType,
   TestDefinition,
 } from '../../../../generated/tests/testDefinition';
+import { TestSuite } from '../../../../generated/tests/testSuite';
+import { EntityReference } from '../../../../generated/type/entityReference';
+import {
+  LabelType,
+  State,
+  TagLabel,
+  TagSource,
+} from '../../../../generated/type/tagLabel';
 import { normalizeParamsForPayload } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import { TestLevel } from './TestCaseFormV1.interface';
 import {
@@ -24,6 +33,23 @@ import {
   transformTestCaseFormData,
 } from './transformTestCaseFormData';
 
+const makeTag = (tagFQN: string): TagLabel => ({
+  tagFQN,
+  source: TagSource.Classification,
+  labelType: LabelType.Manual,
+  state: State.Confirmed,
+});
+
+const makeTable = (fullyQualifiedName: string): Table =>
+  ({ fullyQualifiedName, columns: [] } as unknown as Table);
+
+const makeTestSuite = (id: string, fullyQualifiedName: string): TestSuite =>
+  ({ id, fullyQualifiedName } as unknown as TestSuite);
+
+const makeDefinition = (
+  parameterDefinition: Array<{ name: string }>
+): TestDefinition => ({ parameterDefinition } as unknown as TestDefinition);
+
 describe('transformTestCaseFormData', () => {
   it('builds a table-level CreateTestCase with generated entityLink and merged tags', () => {
     const result = transformTestCaseFormData(
@@ -31,16 +57,13 @@ describe('transformTestCaseFormData', () => {
         testLevel: TestLevel.TABLE,
         testTypeId: 'tableRowCountToEqual',
         testName: 'my_test',
-        tags: [{ tagFQN: 'PII.Sensitive' } as any],
-        glossaryTerms: [{ tagFQN: 'g.term' } as any],
+        tags: [makeTag('PII.Sensitive')],
+        glossaryTerms: [makeTag('g.term')],
         computePassedFailedRowCount: true,
       },
       {
         selectedTestLevel: TestLevel.TABLE,
-        selectedTableData: {
-          fullyQualifiedName: 'svc.db.sch.t',
-          columns: [],
-        } as any,
+        selectedTableData: makeTable('svc.db.sch.t'),
       }
     );
 
@@ -57,10 +80,7 @@ describe('transformTestCaseFormData', () => {
       {
         selectedTestLevel: TestLevel.COLUMN,
         selectedColumn: 'email',
-        selectedTableData: {
-          fullyQualifiedName: 'svc.db.sch.t',
-          columns: [],
-        } as any,
+        selectedTableData: makeTable('svc.db.sch.t'),
       }
     );
 
@@ -69,7 +89,7 @@ describe('transformTestCaseFormData', () => {
 
   it('uses ctx.selectedTable FQN when selectedTableData is undefined', () => {
     const result = transformTestCaseFormData(
-      { testLevel: TestLevel.TABLE, testTypeId: 'x', testName: 'n' } as any,
+      { testLevel: TestLevel.TABLE, testTypeId: 'x', testName: 'n' },
       {
         selectedTestLevel: TestLevel.TABLE,
         selectedTable: 'svc.db.sch.only_string',
@@ -81,10 +101,10 @@ describe('transformTestCaseFormData', () => {
 
   it('falls back to generateName when testName is empty', () => {
     const result = transformTestCaseFormData(
-      { testLevel: TestLevel.TABLE, testTypeId: 'x', testName: '  ' } as any,
+      { testLevel: TestLevel.TABLE, testTypeId: 'x', testName: '  ' },
       {
         selectedTestLevel: TestLevel.TABLE,
-        selectedTableData: { fullyQualifiedName: 't', columns: [] } as any,
+        selectedTableData: makeTable('t'),
         generateName: () => 'generated_name_123',
       }
     );
@@ -99,14 +119,12 @@ describe('transformTestCaseFormData', () => {
         testLevel: TestLevel.COLUMN,
         testTypeId: 'columnValuesToBeInSet',
         params: { columnName: { id: 'email', label: 'email' } },
-      } as any,
+      },
       {
         selectedTestLevel: TestLevel.COLUMN,
         selectedColumn: 'email',
-        selectedTableData: { fullyQualifiedName: 't', columns: [] } as any,
-        selectedDefinition: {
-          parameterDefinition: [{ name: 'columnName' }],
-        } as any,
+        selectedTableData: makeTable('t'),
+        selectedDefinition: makeDefinition([{ name: 'columnName' }]),
       }
     );
 
@@ -127,7 +145,7 @@ describe('transformTestCaseFormData', () => {
       {
         selectedTestLevel: TestLevel.COLUMN,
         selectedColumn: 'c',
-        selectedTableData: { fullyQualifiedName: 't', columns: [] } as any,
+        selectedTableData: makeTable('t'),
       }
     );
 
@@ -143,11 +161,11 @@ describe('transformTestCaseFormData', () => {
           id: 'columnValuesToBeBetween',
           label: 'Column Values To Be Between',
         },
-      } as any,
+      },
       {
         selectedTestLevel: TestLevel.COLUMN,
         selectedColumn: 'email',
-        selectedTableData: { fullyQualifiedName: 't', columns: [] } as any,
+        selectedTableData: makeTable('t'),
       }
     );
 
@@ -160,10 +178,10 @@ describe('transformTestCaseFormData', () => {
       {
         testLevel: TestLevel.TABLE,
         testTypeId: { id: 'tableCustomSQLQuery' },
-      } as any,
+      },
       {
         selectedTestLevel: TestLevel.TABLE,
-        selectedTableData: { fullyQualifiedName: 't', columns: [] } as any,
+        selectedTableData: makeTable('t'),
       }
     );
 
@@ -180,11 +198,11 @@ describe('transformTestCaseFormData', () => {
           { id: 'b', label: 'B' },
         ],
         topDimensions: 3,
-      } as any,
+      },
       {
         selectedTestLevel: TestLevel.COLUMN,
         selectedColumn: 'c',
-        selectedTableData: { fullyQualifiedName: 't', columns: [] } as any,
+        selectedTableData: makeTable('t'),
       }
     );
 
@@ -197,14 +215,15 @@ describe('buildTestSuitePipelinePayload', () => {
   it('uses selected test cases when selectAllTestCases is false', () => {
     const payload = buildTestSuitePipelinePayload(
       {
+        testLevel: TestLevel.TABLE,
         cron: '0 0 * * *',
         selectAllTestCases: false,
-        testCases: [{ name: 'tc2' } as any],
+        testCases: [{ name: 'tc2' } as unknown as EntityReference],
         enableDebugLog: true,
         raiseOnError: false,
-      } as any,
+      },
       {
-        testSuite: { id: 's1', fullyQualifiedName: 'suite.fqn' } as any,
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
         createdTestCaseName: 'tc1',
         selectedTable: 'svc.db.sch.t',
       }
@@ -218,9 +237,13 @@ describe('buildTestSuitePipelinePayload', () => {
 
   it('omits testCases when selectAllTestCases is true', () => {
     const payload = buildTestSuitePipelinePayload(
-      { cron: '0 0 * * *', selectAllTestCases: true } as any,
       {
-        testSuite: { id: 's1', fullyQualifiedName: 'suite.fqn' } as any,
+        testLevel: TestLevel.TABLE,
+        cron: '0 0 * * *',
+        selectAllTestCases: true,
+      },
+      {
+        testSuite: makeTestSuite('s1', 'suite.fqn'),
         createdTestCaseName: 'tc1',
       }
     );

@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { useForm, UseFormReturn } from 'react-hook-form';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.constants';
+import { TestCase } from '../../../generated/tests/testCase';
 import { BundleSuiteFormData } from './BundleSuiteForm.interface';
 import BundleSuiteFormBody from './BundleSuiteFormBody';
 
@@ -68,36 +69,43 @@ jest.mock('../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1', () =>
 jest.mock('../AddTestCaseList/AddTestCaseList.component', () => ({
   AddTestCaseList: jest
     .fn()
-    // eslint-disable-next-line @typescript-eslint/no-explicit-any
-    .mockImplementation(({ onChange, selectedTest }: any) => (
-      <div data-testid="add-test-case-list">
-        <span data-testid="selected-count">{selectedTest?.length ?? 0}</span>
-        <button
-          data-testid="select-cases-btn"
-          onClick={() =>
-            onChange?.({
-              selectAll: false,
-              includeIds: ['tc-1'],
-              excludeIds: [],
-              testCases: [{ id: 'tc-1', name: 'tc_1' }],
-            })
-          }>
-          select
-        </button>
-        <button
-          data-testid="clear-cases-btn"
-          onClick={() =>
-            onChange?.({
-              selectAll: false,
-              includeIds: [],
-              excludeIds: [],
-              testCases: [],
-            })
-          }>
-          clear
-        </button>
-      </div>
-    )),
+    .mockImplementation(
+      ({
+        onChange,
+        selectedTest,
+      }: {
+        onChange?: (payload: unknown) => void;
+        selectedTest?: string[];
+      }) => (
+        <div data-testid="add-test-case-list">
+          <span data-testid="selected-count">{selectedTest?.length ?? 0}</span>
+          <button
+            data-testid="select-cases-btn"
+            onClick={() =>
+              onChange?.({
+                selectAll: false,
+                includeIds: ['tc-1'],
+                excludeIds: [],
+                testCases: [{ id: 'tc-1', name: 'tc_1' }],
+              })
+            }>
+            select
+          </button>
+          <button
+            data-testid="clear-cases-btn"
+            onClick={() =>
+              onChange?.({
+                selectAll: false,
+                includeIds: [],
+                excludeIds: [],
+                testCases: [],
+              })
+            }>
+            clear
+          </button>
+        </div>
+      )
+    ),
 }));
 
 let formRef: UseFormReturn<BundleSuiteFormData> | undefined;
@@ -327,7 +335,7 @@ describe('BundleSuiteFormBody', () => {
       testCases: [
         { id: 'tc-1', name: 'tc_one' },
         { id: 'tc-2', name: 'tc_two' },
-      ] as any,
+      ] as unknown as TestCase[],
     };
 
     await act(async () => {

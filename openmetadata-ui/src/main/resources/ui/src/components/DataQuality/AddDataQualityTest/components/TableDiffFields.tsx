@@ -178,7 +178,16 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
               name: `${fieldName}.${index}.value`,
               label: '',
               type: FieldTypes.SELECT,
-              required: data.required,
+              // Only the group label shows the required asterisk; per-row fields
+              // must not repeat it. Validation stays enforced via `rules`.
+              required: false,
+              rules: data.required
+                ? {
+                    required: t('message.field-text-is-required', {
+                      fieldText: label,
+                    }),
+                  }
+                : undefined,
               placeholder: t('message.select-column-name'),
               id: `testCaseFormV1_params_${data.name}_${index}_value`,
               props: {

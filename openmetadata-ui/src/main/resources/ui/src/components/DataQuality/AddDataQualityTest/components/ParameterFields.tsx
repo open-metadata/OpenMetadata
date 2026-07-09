@@ -23,7 +23,7 @@ import {
   HintText,
   useFieldDoc,
 } from '@openmetadata/ui-core-components';
-import { Trash01 } from '@untitledui/icons';
+import { Plus, Trash01 } from '@untitledui/icons';
 import { isUndefined } from 'lodash';
 import { lazy, useEffect, useRef } from 'react';
 import { RegisterOptions, useFieldArray, UseFormReturn } from 'react-hook-form';
@@ -90,11 +90,12 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
           tooltip={data.description}
         />
         <Button
+          aria-label={t('label.add-entity', { entity: label })}
           data-testid={`add-${data.name}`}
+          iconLeading={Plus}
           size="xs"
-          onClick={() => append({ value: undefined } as never)}>
-          {t('label.add-entity', { entity: label })}
-        </Button>
+          onClick={() => append({ value: undefined } as never)}
+        />
       </div>
       {fields.map((field, index) => (
         <div
@@ -105,7 +106,9 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
               name: `params.${data.name}.${index}.value`,
               label: '',
               type: FieldTypes.TEXT,
-              required: data.required,
+              // Only the group label shows the required asterisk; per-row fields
+              // must not repeat it. Validation is still enforced via `rules`.
+              required: false,
               rules: rowRequired ? { required: rowRequired } : undefined,
               placeholder: t('message.enter-a-field', { field: label }),
               id: `testCaseFormV1_params_${data.name}_${index}_value`,

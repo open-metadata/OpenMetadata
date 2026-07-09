@@ -101,16 +101,23 @@ const BundleSuiteFormDrawer: FC<BundleSuiteFormDrawerProps> = ({
   // initialValues after opening, whenever the seed CONTENT changes. Keying on
   // content (not object identity) keeps inline initialValues objects from
   // wiping user edits on unrelated parent re-renders.
-  const seedSignature = JSON.stringify([
-    initialValues?.name ?? '',
-    initialValues?.description ?? '',
-    (initialValues?.testCases ?? []).map((tc) => tc.id),
-  ]);
+  const seedSignature = useMemo(
+    () =>
+      JSON.stringify([
+        initialValues?.name ?? '',
+        initialValues?.description ?? '',
+        (initialValues?.testCases ?? []).map((tc) => tc.id),
+      ]),
+    [initialValues?.name, initialValues?.description, initialValues?.testCases]
+  );
 
   useEffect(() => {
     if (open) {
       form.reset(computeDefaultValues());
     }
+    // Re-seed only when the drawer opens or the seed CONTENT (seedSignature)
+    // changes; `form`/`computeDefaultValues` are intentionally excluded so a
+    // parent re-render does not wipe in-progress edits.
   }, [open, seedSignature]);
 
   const createAndDeployPipeline = useCallback(

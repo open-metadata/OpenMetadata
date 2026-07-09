@@ -137,12 +137,22 @@ const normalizeArrayValue = (
   value: unknown[]
 ): { value: string }[] | unknown[] =>
   value.map((item) => {
+    // useFieldArray rows: { value: string | FormSelectItem }.
     if (typeof item === 'object' && item !== null && 'value' in item) {
       const inner = (item as { value: unknown }).value;
 
-      if (isFormSelectItem(inner)) {
-        return { value: inner.id };
-      }
+      return isFormSelectItem(inner) ? { value: inner.id } : item;
+    }
+
+    // Bare FormSelectItem (e.g. a multi-select that stores { id, label }[]).
+    if (isFormSelectItem(item)) {
+      return { value: item.id };
+    }
+
+    // Bare string element — normalize to the { value } row shape the payload
+    // builder expects so array params are never dropped.
+    if (typeof item === 'string') {
+      return { value: item };
     }
 
     return item;

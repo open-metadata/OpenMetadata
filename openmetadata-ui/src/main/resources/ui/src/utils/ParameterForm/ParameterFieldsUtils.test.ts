@@ -116,6 +116,33 @@ describe('normalizeParamsForPayload', () => {
     });
   });
 
+  it('normalizes a bare FormSelectItem[] array into { value } rows', () => {
+    const result = normalizeParamsForPayload(
+      {
+        keyColumns: [
+          { id: 'c1', label: 'C1' },
+          { id: 'c2', label: 'C2' },
+        ],
+      },
+      undefined
+    );
+
+    expect(result).toEqual({
+      keyColumns: [{ value: 'c1' }, { value: 'c2' }],
+    });
+  });
+
+  it('normalizes a bare string[] array into { value } rows', () => {
+    const result = normalizeParamsForPayload(
+      { allowedValues: ['a', 'b'] },
+      undefined
+    );
+
+    expect(result).toEqual({
+      allowedValues: [{ value: 'a' }, { value: 'b' }],
+    });
+  });
+
   it('restores a sanitized dotted key to its literal form', () => {
     const result = normalizeParamsForPayload(
       { table2___keyColumns: [{ value: { id: 'c1' } }] },

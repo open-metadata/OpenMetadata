@@ -50,6 +50,27 @@ export interface TagSuggestionProps {
   tagType?: TagSource;
 }
 
+const TAG_DATA_CACHE_MAX_SIZE = 200;
+
+// Bounded insert for the tag-metadata lookup: refreshes recency and evicts the
+// oldest entry once the cap is reached so a long-lived form with many searches
+// cannot grow the cache without limit.
+const setBoundedTagData = (
+  cache: Map<string, TagLabel>,
+  key: string,
+  data: TagLabel
+): void => {
+  cache.delete(key);
+  cache.set(key, data);
+  while (cache.size > TAG_DATA_CACHE_MAX_SIZE) {
+    const oldestKey = cache.keys().next().value;
+    if (oldestKey === undefined) {
+      break;
+    }
+    cache.delete(oldestKey);
+  }
+};
+
 const TagSuggestion: FC<TagSuggestionProps> = ({
   onChange,
   value = [],
@@ -83,7 +104,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
           : await tagClassBase.getTags(searchText, 1, true);
       const fetched: SelectOption[] = response?.data || [];
       fetched.forEach((opt) => {
-        tagDataMap.current.set(opt.value, opt.data as TagLabel);
+        setBoundedTagData(tagDataMap.current, opt.value, opt.data as TagLabel);
       });
       setOptions(
         fetched.map((opt) => {
@@ -111,7 +132,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   useEffect(() => {
     if (initialOptions.length > 0) {
       initialOptions.forEach((opt) => {
-        tagDataMap.current.set(opt.value, opt.data as TagLabel);
+        setBoundedTagData(tagDataMap.current, opt.value, opt.data as TagLabel);
       });
       setOptions(
         initialOptions.map((opt) => {
@@ -147,9 +168,13 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
       if (String(key) === NO_DATA_OPTION_ID) {
         return;
       }
+      // Ignore re-insertion of an already-selected tag; appending it again
+      // would create a duplicate that flows into the payload.
+      if (value.some((tag) => tag.tagFQN === String(key))) {
+        return;
+      }
       const tagData = tagDataMap.current.get(String(key));
-      const existingTag = value.find((tag) => tag.tagFQN === String(key));
-      const newTag: EntityTags = existingTag ?? {
+      const newTag: EntityTags = {
         tagFQN: String(key),
         source: tagType,
         name: tagData?.name,
@@ -162,7 +187,7 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
       searchDebounced.cancel();
       fetchOptions('');
     },
-    [value, onChange, searchDebounced]
+    [value, onChange, searchDebounced, tagType]
   );
 
   const handleItemCleared = useCallback(

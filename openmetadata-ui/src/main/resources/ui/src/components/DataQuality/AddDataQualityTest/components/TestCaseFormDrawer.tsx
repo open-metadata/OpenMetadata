@@ -54,6 +54,7 @@ import { createScrollToErrorHandler } from '../../../../utils/formPureUtils';
 import { showSuccessToast } from '../../../../utils/ToastUtils';
 import { AiFormModal } from '../../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../../common/atoms/drawer/useFormDrawer';
+import Loader from '../../../common/Loader/Loader';
 import RichTextEditorPreviewerV1 from '../../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ServiceDocPanel from '../../../common/ServiceDocPanel/ServiceDocPanel';
 import { TestCaseFormType } from '../AddDataQualityTest.interface';
@@ -118,23 +119,46 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   const [formContext, setFormContext] = useState<TestCaseFormContext>();
   const [showHint, setShowHint] = useState<boolean>(true);
   const [editDefinition, setEditDefinition] = useState<TestDefinition>();
+  // Id of the test case whose edit prefill has finished. Until this matches the
+  // open test case, the body renders a loader so the form appears fully
+  // populated in one paint instead of filling in as the async prefill lands.
+  const [editPrefilledId, setEditPrefilledId] = useState<string>();
 
   const handleErrorDismiss = useCallback(() => setErrorMessage(''), []);
 
   useEffect(() => {
     if (!testCase || !open) {
-      return;
+      return undefined;
     }
+    // Guard against a stale prefill: if the drawer closes (or reopens for a
+    // different test case) while this fetch is in flight, its late result must
+    // not reset the form out from under the current contents.
+    let cancelled = false;
     (async () => {
-      const definition = await getTestDefinitionById(
-        testCase.testDefinition?.id ?? ''
-      );
-      setEditDefinition(definition);
-      form.reset({
-        ...form.getValues(),
-        ...buildEditDefaults(testCase, definition),
-      } as FormValues);
+      try {
+        const definition = await getTestDefinitionById(
+          testCase.testDefinition?.id ?? ''
+        );
+        if (cancelled) {
+          return;
+        }
+        setEditDefinition(definition);
+        form.reset({
+          ...form.getValues(),
+          ...buildEditDefaults(testCase, definition),
+        } as FormValues);
+      } finally {
+        // Release the loader even if the definition fetch fails, so the drawer
+        // never gets stuck on the spinner.
+        if (!cancelled) {
+          setEditPrefilledId(testCase.id);
+        }
+      }
     })();
+
+    return () => {
+      cancelled = true;
+    };
   }, [testCase, open, form]);
 
   const handleActiveFieldChange = useCallback(
@@ -296,6 +320,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
 
   const testCaseFormBody = (
     <TestCaseFormBody
+      editDefinition={editDefinition}
       errorMessage={errorMessage}
       form={form}
       isEditMode={isEditMode}
@@ -329,6 +354,20 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
     []
   );
 
+  // In edit mode hold the form behind a loader until the prefill (definition
+  // fetch + form.reset) is done for the open test case, so it renders fully
+  // populated in one paint rather than flickering values in as calls resolve.
+  const isEditPrefilling =
+    isEditMode && open && editPrefilledId !== testCase?.id;
+
+  const gatedFormBody = isEditPrefilling ? (
+    <div className="tw:flex tw:items-center tw:justify-center tw:py-16">
+      <Loader />
+    </div>
+  ) : (
+    testCaseFormBody
+  );
+
   const formBody = (
     <HookForm
       form={form}
@@ -341,7 +380,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         className={`drawer-content-wrapper${
           showDocPanel ? '' : ' no-doc-panel'
         }`}>
-        <div className="drawer-form-content">{testCaseFormBody}</div>
+        <div className="drawer-form-content">{gatedFormBody}</div>
         {docPanel}
       </div>
     </HookForm>
@@ -355,6 +394,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   // the legacy antd drawer (only the bundle suite drawer was mask-locked).
   const handleDrawerDismiss = useCallback(() => {
     form.reset();
+    // Force the loader again on the next open so a reopened drawer never shows
+    // the previous (or empty) form before its prefill lands.
+    setEditPrefilledId(undefined);
     onClose();
   }, [form, onClose]);
 
@@ -446,7 +488,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
             () => scrollToError()
           )}>
-          {testCaseFormBody}
+          {gatedFormBody}
         </HookForm>
       </AiFormModal>
     );

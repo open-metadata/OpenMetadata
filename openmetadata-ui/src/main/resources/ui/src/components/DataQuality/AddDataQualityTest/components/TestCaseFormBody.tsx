@@ -106,6 +106,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   onContextChange,
   isEditMode = false,
   showOnlyParameter = false,
+  editDefinition,
 }: TestCaseFormBodyProps) => {
   const { t } = useTranslation();
   const { config } = useLimitStore();
@@ -120,8 +121,13 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const [isTableLoading, setIsTableLoading] = useState(false);
 
   const [testDefinitions, setTestDefinitions] = useState<TestDefinition[]>([]);
-  const [selectedTestDefinition, setSelectedTestDefinition] =
-    useState<TestDefinition>();
+  // Seed from the drawer-resolved edit definition so the parameter section is
+  // present on the very first paint (the drawer only mounts this body once
+  // `editDefinition` is ready), rather than appearing a frame later when the
+  // effect below runs.
+  const [selectedTestDefinition, setSelectedTestDefinition] = useState<
+    TestDefinition | undefined
+  >(editDefinition);
   const [selectedTestType, setSelectedTestType] = useState<string>();
   const [currentColumnType, setCurrentColumnType] = useState<string>();
   const [isCustomQuery, setIsCustomQuery] = useState(false);
@@ -532,13 +538,30 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     fetchTestDefinitions,
   ]);
 
+  // Edit mode: render the parameter section from the definition the drawer
+  // already resolved, so it appears immediately on open rather than waiting on
+  // the async test-definition list.
+  useEffect(() => {
+    if (isEditMode && editDefinition) {
+      setSelectedTestDefinition(editDefinition);
+    }
+  }, [isEditMode, editDefinition]);
+
   useEffect(() => {
     setSelectedTestType(selectedTestTypeFqn);
     const testDefinition = testDefinitions.find(
       (definition) => definition.fullyQualifiedName === selectedTestTypeFqn
     );
-    setSelectedTestDefinition(testDefinition);
-  }, [selectedTestTypeFqn, testDefinitions]);
+    // Only clear the resolved definition in add mode. In edit mode the type is
+    // fixed and already seeded from `editDefinition`; clearing it here whenever
+    // the async list momentarily lacks a match unmounts the parameter section
+    // and makes it flicker.
+    if (testDefinition) {
+      setSelectedTestDefinition(testDefinition);
+    } else if (!isEditMode) {
+      setSelectedTestDefinition(undefined);
+    }
+  }, [selectedTestTypeFqn, testDefinitions, isEditMode]);
 
   const testTypeOptions: FormSelectItem[] = useMemo(
     () =>

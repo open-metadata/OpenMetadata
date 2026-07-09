@@ -20,7 +20,7 @@ import {
   getField,
 } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { FC, useCallback, useMemo, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { UseFormReturn, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { MAX_NAME_LENGTH } from '../../../constants/constants';
@@ -28,6 +28,7 @@ import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../constants/Schedular.consta
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { getScheduleOptionsFromSchedules } from '../../../utils/CronExpressionUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import RichTextEditor from '../../common/RichTextEditor/RichTextEditor';
 import ScheduleIntervalV1 from '../../Settings/Services/AddIngestion/Steps/ScheduleIntervalV1';
 import { AddTestCaseList } from '../AddTestCaseList/AddTestCaseList.component';
@@ -55,17 +56,35 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
   const { permissions } = usePermissionProvider();
   const { ingestionPipeline } = permissions;
 
-  const [testCaseSelectionPayload, setTestCaseSelectionPayload] =
-    useState<AddTestCaseListChangePayload>(() => {
-      const initialTestCases = initialValues?.testCases ?? [];
+  const initialTestCases = useMemo(
+    () => initialValues?.testCases ?? [],
+    [initialValues?.testCases]
+  );
 
-      return {
-        selectAll: false,
-        includeIds: initialTestCases.map((tc) => tc.id ?? '').filter(Boolean),
-        excludeIds: [],
-        testCases: initialTestCases,
-      };
+  const [testCaseSelectionPayload, setTestCaseSelectionPayload] =
+    useState<AddTestCaseListChangePayload>(() => ({
+      selectAll: false,
+      includeIds: initialTestCases.map((tc) => tc.id ?? '').filter(Boolean),
+      excludeIds: [],
+      testCases: initialTestCases,
+    }));
+
+  // The drawer stays mounted, so re-seed the selection when it reopens with a
+  // different set of initial test cases. Keyed on the id signature (not the
+  // array reference) so a re-render with the same data does not clobber the
+  // user's in-progress selection.
+  const initialTestCaseSignature = initialTestCases
+    .map((tc) => tc.id ?? '')
+    .filter(Boolean)
+    .join(',');
+  useEffect(() => {
+    setTestCaseSelectionPayload({
+      selectAll: false,
+      includeIds: initialTestCases.map((tc) => tc.id ?? '').filter(Boolean),
+      excludeIds: [],
+      testCases: initialTestCases,
     });
+  }, [initialTestCaseSignature]);
 
   const enableScheduler = useWatch({
     control: form.control,
@@ -120,15 +139,19 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
     },
   };
 
+  // Label-less: the title/description sit beside the toggle in the
+  // card-title-container (matching main's horizontal scheduler header), so the
+  // switch itself only needs an aria-label.
   const enableSchedulerField: FieldProp = {
     name: 'enableScheduler',
-    label: t('label.create-entity', { entity: t('label.pipeline') }),
+    label: '',
     type: FieldTypes.SWITCH,
     required: false,
     id: 'root/enableScheduler',
     formItemLayout: FormItemLayout.HORIZONTAL,
     props: {
       'data-testid': 'scheduler-toggle',
+      'aria-label': t('label.create-entity', { entity: t('label.pipeline') }),
     },
   };
 
@@ -167,7 +190,7 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
   };
 
   return (
-    <div className="bundle-suite-form-body">
+    <div className="bundle-suite-form bundle-suite-form-body drawer-mode">
       {errorMessage && (
         <div className="floating-error-alert">
           <Alert
@@ -180,22 +203,24 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
         </div>
       )}
 
-      {getField(nameField)}
+      <div className="form-card-section" data-testid="basic-info-card">
+        {getField(nameField)}
 
-      <FormField control={form.control} name="description">
-        {({ field }) => (
-          <div
-            className="tw:flex tw:flex-col tw:gap-1"
-            data-testid="test-suite-description"
-            id="root/description">
-            <FormItemLabel label={t('label.description')} />
-            <RichTextEditor
-              initialValue={field.value ?? ''}
-              onTextChange={field.onChange}
-            />
-          </div>
-        )}
-      </FormField>
+        <FormField control={form.control} name="description">
+          {({ field }) => (
+            <div
+              className="tw:flex tw:flex-col tw:gap-1"
+              data-testid="test-suite-description"
+              id="root/description">
+              <FormItemLabel label={t('label.description')} />
+              <RichTextEditor
+                initialValue={field.value ?? ''}
+                onTextChange={field.onChange}
+              />
+            </div>
+          )}
+        </FormField>
+      </div>
 
       <FormField
         control={form.control}
@@ -213,9 +238,16 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
           },
         }}>
         {() => (
-          <div>
+          <div
+            className="form-card-section bundle-suite-form-test-case-selection-card"
+            data-testid="test-case-selection-card">
             <FormItemLabel required label={t('label.test-case-plural')} />
             <AddTestCaseList
+              // The drawer renders inside a react-aria overlay (fixed inset-0)
+              // that intercepts pointer events. Render the filter dropdowns
+              // within the drawer body so their menus stack above the overlay
+              // instead of portaling to document.body underneath it.
+              getPopupContainer={getPopupContainer}
               selectedTest={selectedTestNames}
               showButton={false}
               onChange={handleTestCaseSelection}
@@ -225,13 +257,22 @@ const BundleSuiteFormBody: FC<BundleSuiteFormBodyProps> = ({
       </FormField>
 
       {ingestionPipeline.Create && (
-        <div className="scheduler-section" data-testid="scheduler-card">
-          {getField(enableSchedulerField)}
-          <p className="tw:text-sm tw:text-tertiary">
-            {`${t('message.pipeline-entity-description', {
-              entity: t('label.bundle-suite'),
-            })} (${t('label.optional')})`}
-          </p>
+        <div
+          className="form-card-section scheduler-section"
+          data-testid="scheduler-card">
+          <div className="card-title-container d-flex items-center gap-3">
+            {getField(enableSchedulerField)}
+            <div>
+              <p className="card-title-text m-0">
+                {t('label.create-entity', { entity: t('label.pipeline') })}
+              </p>
+              <p className="card-title-description m-0">
+                {`${t('message.pipeline-entity-description', {
+                  entity: t('label.bundle-suite'),
+                })} (${t('label.optional')})`}
+              </p>
+            </div>
+          </div>
 
           {enableScheduler && (
             <>

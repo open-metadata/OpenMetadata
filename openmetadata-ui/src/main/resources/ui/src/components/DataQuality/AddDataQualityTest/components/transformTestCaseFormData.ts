@@ -171,7 +171,7 @@ export const transformTestCaseFormData = (
     testDefinition: unwrapSelectValue(values.testTypeId) ?? '',
     dimensionColumns:
       values.testLevel === TestLevel.COLUMN_DIMENSION
-        ? normalizedValues.dimensionColumns
+        ? unwrapSelectValues(values.dimensionColumns)
         : undefined,
     topDimensions:
       values.testLevel === TestLevel.COLUMN_DIMENSION

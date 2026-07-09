@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { UseFormReturn } from 'react-hook-form';
 import { Table } from '../../../../generated/entity/data/table';
@@ -65,6 +66,11 @@ export interface TestCaseFormBodyProps {
   onContextChange?: (context: TestCaseFormContext) => void;
   isEditMode?: boolean;
   showOnlyParameter?: boolean;
+  // In edit mode the drawer resolves the test definition up front via a
+  // targeted getTestDefinitionById; passing it in lets the body render the
+  // parameter section immediately instead of waiting on (and flickering
+  // against) the async test-definition list.
+  editDefinition?: TestDefinition;
 }
 
 export interface TestCaseSchedulerSectionProps {
@@ -85,7 +91,9 @@ export interface FormValues {
   testLevel: TestLevel;
   selectedTable?: string;
   selectedColumn?: string;
-  testTypeId?: string;
+  // Select-backed fields hold a FormSelectItem while the react-aria control is
+  // active and a plain string once resolved; the transform helpers unwrap both.
+  testTypeId?: string | FormSelectItem;
   testName?: string;
   displayName?: string;
   description?: string;
@@ -93,9 +101,12 @@ export interface FormValues {
   glossaryTerms?: TagLabel[];
   computePassedFailedRowCount?: boolean;
   useDynamicAssertion?: boolean;
-  params?: Record<string, string | { [key: string]: string }[]>;
+  params?: Record<
+    string,
+    string | FormSelectItem | { [key: string]: string }[]
+  >;
   parameterValues?: Array<{ name: string; value: string }>;
-  dimensionColumns?: string[];
+  dimensionColumns?: Array<string | FormSelectItem>;
   topDimensions?: number;
   // Scheduler fields
   pipelineName?: string;
