@@ -55,6 +55,7 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
   KnowledgePage,
@@ -145,6 +146,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const {
       preferences: { recentlyViewedQuickLinks: recentlyViewed },
     } = useCurrentUserPreferences();
+    const { removeDraft } = useArticleDraftStore();
 
     const [paginationState, setPaginationState] = useReducer(
       hierarchyPaginationReducer,
@@ -878,6 +880,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 } else {
                   await deleteKnowledgePage(deletePage.id);
                 }
+                removeDraft(deletePage.id);
                 await handleAfterDeletePage(deletePage);
                 setDeletePage(undefined);
               } catch (error) {

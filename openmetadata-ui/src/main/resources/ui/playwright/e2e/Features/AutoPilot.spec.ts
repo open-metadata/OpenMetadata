@@ -12,6 +12,7 @@
  */
 
 import { expect, test } from '@playwright/test';
+import { isEmpty } from 'lodash';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
@@ -27,7 +28,10 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import { getServiceCategoryFromService } from '../../utils/serviceIngestion';
+import {
+  getAgentCard,
+  getServiceCategoryFromService,
+} from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const user = new UserClass();
@@ -113,8 +117,66 @@ services.forEach((ServiceClass) => {
         await page.waitForURL('**/service/**');
         await waitForAllLoadersToDisappear(page);
 
-        // Check the auto pilot status via API polling
-        await checkAutoPilotStatus(page, service);
+        // Open a parallel page on the Agents tab BEFORE any AutoPilot run
+        // starts. Its pipeline list loads empty, so the agent cards asserted
+        // below can only arrive through the SSE DISCOVERY events that carry
+        // the newly created pipeline entities — the page is never reloaded.
+        const agentsPage =
+          service.serviceType === 'Mysql'
+            ? await page.context().newPage()
+            : undefined;
+
+        try {
+          if (agentsPage) {
+            await agentsPage.goto(page.url());
+            await waitForAllLoadersToDisappear(agentsPage);
+            await agentsPage.click('[role="tab"] [data-testid="agents"]');
+
+            const metadataSubTab = agentsPage.locator(
+              '[data-testid="metadata-sub-tab"]'
+            );
+            if (await metadataSubTab.isVisible()) {
+              await metadataSubTab.click();
+            }
+          }
+
+          // Check the auto pilot status via API polling
+          await checkAutoPilotStatus(page, service);
+
+          if (agentsPage) {
+            const { apiContext } = await getApiContext(agentsPage);
+            const pipelinesResponse = await apiContext.get(
+              `/api/v1/services/ingestionPipelines?fields=pipelineStatuses&service=${
+                service.serviceResponseData.name
+              }&pipelineType=metadata%2Cusage%2Clineage%2Cprofiler%2CautoClassification%2Cdbt&serviceType=${getServiceCategoryFromService(
+                service.category
+              )}&limit=15`
+            );
+            const pipelines: Array<{
+              name: string;
+              pipelineStatuses?: unknown;
+            }> = (await pipelinesResponse.json()).data;
+
+            // Only pipelines that actually ran emit DISCOVERY frames; the
+            // ones AutoPilot leaves Pending never stream and stay invisible.
+            const ranPipelines = pipelines.filter(
+              (pipeline) => !isEmpty(pipeline.pipelineStatuses)
+            );
+
+            expect(ranPipelines.length).toBeGreaterThan(0);
+
+            for (const pipeline of ranPipelines) {
+              const agentCard = getAgentCard(agentsPage, pipeline.name);
+
+              await expect(agentCard).toBeVisible();
+              await expect(
+                agentCard.getByTestId('pipeline-status')
+              ).not.toBeEmpty();
+            }
+          }
+        } finally {
+          await agentsPage?.close();
+        }
 
         // Reload to render the completed workflow status in the UI.
         // The page was loaded before the workflow finished, and the WebSocket

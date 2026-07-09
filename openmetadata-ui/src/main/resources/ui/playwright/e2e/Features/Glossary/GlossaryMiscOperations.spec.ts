@@ -159,14 +159,14 @@ test.describe('Glossary Miscellaneous Operations', () => {
       await page.getByTestId('rename-button').first().click();
 
       // Wait for rename modal to appear
-      await expect(page.locator('[role="dialog"]')).toBeVisible();
+      const renameModal = page.getByTestId('entity-name-modal');
+      await expect(renameModal).toBeVisible();
 
       const newName = 'RenamedParent';
-      // Use getByLabel to target the Name input in the modal
-      await page.getByLabel('Name', { exact: true }).fill(newName);
+      await renameModal.getByTestId('name').fill(newName);
 
       const renameRes = page.waitForResponse('/api/v1/glossaryTerms/*');
-      await page.getByRole('button', { name: 'Save' }).click();
+      await renameModal.getByTestId('save-button').click();
       await renameRes;
 
       // Navigate to child term and verify its FQN includes new parent name
