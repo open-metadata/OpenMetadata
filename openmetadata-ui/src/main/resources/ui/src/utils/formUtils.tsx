@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import {
-  FormItemLabel as UTItemLabel,
   Input as UTInput,
   Select as UTSelect,
   SelectItemType,
@@ -125,18 +124,8 @@ export const getField = (field: FieldProp) => {
   };
 
   // Define MUI label for MUI field types
-  const muiLabel = field.muiLabel || (
-    <UTItemLabel
-      label={label}
-      required={required}
-      tooltip={
-        helperTextType !== HelperTextType.ALERT && showHelperText
-          ? helperText
-          : undefined
-      }
-    />
-  );
-
+  const muiLabel = field.muiLabel;
+  
   switch (type) {
     case FieldTypes.TEXT:
       fieldElement = (
