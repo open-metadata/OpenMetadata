@@ -2,6 +2,7 @@ package org.openmetadata.service.search.vector;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
@@ -9,6 +10,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
 import java.util.function.Supplier;
@@ -205,7 +207,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
     return clusterAlias == null || clusterAlias.isEmpty()
         ? CHUNK_INDEX_BASE
-        : clusterAlias.toLowerCase(java.util.Locale.ROOT) + "_" + CHUNK_INDEX_BASE;
+        : clusterAlias.toLowerCase(Locale.ROOT) + "_" + CHUNK_INDEX_BASE;
   }
 
   @Override
@@ -305,7 +307,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     List<String> passages = new ArrayList<>();
     try {
       ensureChunkIndex();
-      float[] vector = embeddingClient.embed(query);
+      float[] vector = embeddingClient.embedQuery(query);
       Map<String, List<String>> filters = Map.of("parentId", List.of(parentId));
       String queryJson = VectorSearchQueryBuilder.build(vector, k, 0, k, filters, 0.0);
       String response =
@@ -404,8 +406,8 @@ public class OpenSearchVectorService implements VectorIndexService {
     return root.toString();
   }
 
-  private com.fasterxml.jackson.databind.node.ObjectNode nestedKeyword(String field) {
-    return (com.fasterxml.jackson.databind.node.ObjectNode)
+  private ObjectNode nestedKeyword(String field) {
+    return (ObjectNode)
         MAPPER
             .createObjectNode()
             .set(
@@ -591,7 +593,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       String preference) {
     long start = System.currentTimeMillis();
     try {
-      float[] queryVector = embeddingClient.embed(query);
+      float[] queryVector = embeddingClient.embedQuery(query);
       LinkedHashMap<String, List<Map<String, Object>>> byParent = new LinkedHashMap<>();
       int rawOffset = 0;
       long totalHits = -1L;

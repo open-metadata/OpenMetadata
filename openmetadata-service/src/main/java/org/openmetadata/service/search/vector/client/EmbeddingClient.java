@@ -6,6 +6,7 @@ import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import lombok.extern.slf4j.Slf4j;
+import java.util.function.Supplier;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 
@@ -70,6 +71,32 @@ public abstract class EmbeddingClient {
     } catch (RuntimeException failure) {
       recordFailure(failure);
       throw failure;
+   * Embed text that will be used as a search query. Defaults to treating a query like a document;
+   * clients whose backend distinguishes query and document embeddings (e.g. Cohere on Bedrock)
+   * override this.
+   */
+  protected float[] doEmbedQuery(String text) {
+    return doEmbed(text);
+  }
+
+  public final float[] embed(String text) {
+    return embedWithLimit(() -> doEmbed(text));
+  }
+
+  public final float[] embedQuery(String text) {
+    return embedWithLimit(() -> doEmbedQuery(text));
+  }
+
+  private float[] embedWithLimit(Supplier<float[]> embedder) {
+    try {
+      concurrencyLimiter.acquire();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      throw new RuntimeException(
+          "Embedding generation was interrupted while waiting for permit", e);
+    }
+    try {
+      return embedder.get();
     } finally {
       concurrencyLimiter.release();
     }
