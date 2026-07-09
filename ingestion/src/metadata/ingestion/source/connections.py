@@ -75,67 +75,33 @@ def run_test_connection(metadata: OpenMetadata, connection: BaseConnection) -> N
     raise_test_connection_exception(connection.test_connection(metadata))
 
 
-def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:  # noqa: UP045
+def get_test_connection_fn(connection: BaseModel) -> Callable:
     """
-    Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
-    """
-    connection_class = _get_connection_class_from_spec(connection)
-    if connection_class:
-
-        def _get_client(conn):
-            return connection_class(conn).client
-
-        return _get_client
-    return None
-
-
-def _get_test_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:  # noqa: UP045
-    """
-    Build the test-connection function from the ServiceSpec connection_class.
-
-    The temporary owner is closed after the test (via the context manager), since
-    ``BaseConnection.test_connection`` does not close itself.
+    Build the test-connection function: the ServiceSpec ``connection_class`` when
+    defined, else the source's legacy module-level ``test_connection``.
     """
     connection_class = _get_connection_class_from_spec(connection)
     if connection_class:
 
         def _test(metadata: OpenMetadata, *args, **kwargs):
+            # BaseConnection.test_connection does not self-close; close the
+            # temporary owner via the context manager once the test is done.
             with connection_class(connection) as owned:
                 return owned.test_connection(metadata, *args, **kwargs)
 
         return _test
-    return None
-
-
-def get_connection_fn(connection: BaseModel) -> Callable:
-    """
-    Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
-    """
-    # Try ServiceSpec path first
-    connection_fn = _get_connection_fn_from_service_spec(connection)
-    if connection_fn:
-        return connection_fn
-    # Fallback to default
-    return import_connection_fn(connection=connection, function_name=GET_CONNECTION_FN_NAME)
-
-
-def get_test_connection_fn(connection: BaseModel) -> Callable:
-    """
-    Import the test_connection function from the source
-    """
-    test_fn = _get_test_fn_from_service_spec(connection)
-    if test_fn:
-        return test_fn
-    # Fallback to default
     return import_connection_fn(connection=connection, function_name=TEST_CONNECTION_FN_NAME)
 
 
 def get_connection(connection: BaseModel) -> Any:
     """
-    Main method to prepare a connection from
-    a service connection pydantic model
+    Prepare a client from a service connection: the ServiceSpec ``BaseConnection``
+    client when defined, else the source's legacy module-level ``get_connection``.
     """
-    return get_connection_fn(connection)(connection)
+    owned = create_connection(connection)
+    if owned is not None:
+        return owned.client
+    return import_connection_fn(connection=connection, function_name=GET_CONNECTION_FN_NAME)(connection)
 
 
 def test_connection_common(metadata: OpenMetadata, connection_obj, service_connection):
