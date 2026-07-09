@@ -639,9 +639,9 @@ describe('TestCaseFormBody', () => {
       });
 
       const testTypeSelect = await screen.findByTestId('test-type');
-      const testTypeButton = testTypeSelect.querySelector('button');
+      const testTypeInput = testTypeSelect.querySelector('input');
 
-      expect(testTypeButton).toBeDisabled();
+      expect(testTypeInput).toBeDisabled();
     });
 
     it('disables the name field in edit mode', async () => {
