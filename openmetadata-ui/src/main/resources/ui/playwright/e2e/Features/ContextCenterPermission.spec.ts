@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -1678,7 +1678,7 @@ test.describe.fixme('Context Center Permissions', () => {
       await expect(row).not.toBeVisible();
     });
 
-    test('created-by-me filter on the archive page shows only the current user\'s archived documents', async ({
+    test("created-by-me filter on the archive page shows only the current user's archived documents", async ({
       allPermissionPage,
       browser,
     }) => {
@@ -1736,7 +1736,7 @@ test.describe.fixme('Context Center Permissions', () => {
         ).toBeVisible();
       });
 
-      await test.step('the other user\'s archived document is not visible under created-by-me', async () => {
+      await test.step("the other user's archived document is not visible under created-by-me", async () => {
         await expect(
           allPermissionPage.getByTestId(`archive-row-${otherUserDocId}`)
         ).not.toBeVisible();

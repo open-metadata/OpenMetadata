@@ -14,14 +14,7 @@
 import { Card, Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import {
-  FC,
-  useCallback,
-  useEffect,
-  useMemo,
-  useRef,
-  useState,
-} from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
@@ -51,9 +44,7 @@ const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
-  const { paging, pageSize, handlePagingChange } = usePaging(
-    ARCHIVE_PAGE_SIZE
-  );
+  const { paging, pageSize, handlePagingChange } = usePaging(ARCHIVE_PAGE_SIZE);
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);

@@ -36,7 +36,6 @@ import {
 } from '../../utils/ContextCenterUtil';
 import { test } from '../fixtures/pages';
 
-
 test.use({ storageState: 'playwright/.auth/admin.json' });
 const ARCHIVE_PAGE_SIZE = 15;
 const totalDocs = ARCHIVE_PAGE_SIZE + 3;
@@ -56,7 +55,7 @@ test.describe('Context Center - Archive Page', () => {
     const uploads = Array.from({ length: 18 }, (_, i) =>
       createDisposableArchivedDocument(apiContext, `${namePrefix}-${i}`)
     );
-   await Promise.all(uploads);
+    await Promise.all(uploads);
 
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
@@ -530,7 +529,6 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 // ─── Suite: Archive lazy-loading (infinite scroll) ──────────────────────────
 
 test.describe('Context Center - Archive Page Lazy Loading', () => {
-
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
