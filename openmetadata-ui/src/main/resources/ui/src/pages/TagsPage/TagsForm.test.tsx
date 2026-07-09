@@ -56,9 +56,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
     HelperTextType,
     Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
     Avatar: () => <div data-testid="avatar" />,
-    FormItemLabel: ({ label }: { label: React.ReactNode }) => (
-      <label>{label}</label>
-    ),
     FormItemLabel: ({
       label,
       tooltip,
