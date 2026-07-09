@@ -221,10 +221,18 @@ public class SearchSourceBuilderFactoryTest {
             "name:test AND type:table",
             "description:\"exact phrase\"",
             "[a TO z]",
+            "-deprecated",
+            "customer -orders",
             "*PII*")
         .forEach(query -> assertTrue(osFactory.containsQuerySyntax(query)));
 
-    List.of("customer order", "[".repeat(5000), "[a TO " + " ".repeat(5000), "a".repeat(5000))
+    List.of(
+            "customer order",
+            "customer-orders",
+            "\"customer orders\"",
+            "[".repeat(5000),
+            "[a TO " + " ".repeat(5000),
+            "a".repeat(5000))
         .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
   }
 

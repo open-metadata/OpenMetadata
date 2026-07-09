@@ -90,35 +90,55 @@
       {
         "field": "tier.tagFQN",
         "value": "Tier.Tier1",
-        "boost": 0.05
+        "boost": 0.5
       },
       {
         "field": "tier.tagFQN",
         "value": "Tier.Tier2",
-        "boost": 0.03
+        "boost": 0.3
       },
       {
         "field": "tier.tagFQN",
         "value": "Tier.Tier3",
-        "boost": 0.01
+        "boost": 0.15
+      },
+      {
+        "field": "entityStatus",
+        "value": "approved",
+        "boost": 0.12
+      },
+      {
+        "field": "entityStatus",
+        "value": "in review",
+        "boost": 0.08
+      },
+      {
+        "field": "entityStatus",
+        "value": "draft",
+        "boost": 0.05
+      },
+      {
+        "field": "entityStatus",
+        "value": "unprocessed",
+        "boost": 0.05
       }
     ],
     "fieldValueBoosts": [
       {
         "field": "usageSummary.weeklyStats.count",
-        "factor": 0.002,
+        "factor": 0.00005,
         "modifier": "log1p",
         "missing": 1
       },
       {
         "field": "totalVotes",
-        "factor": 0.005,
+        "factor": 0.0015,
         "modifier": "log1p",
         "missing": 0
       },
       {
         "field": "usageSummary.weeklyStats.percentileRank",
-        "factor": 0.0005,
+        "factor": 0.005,
         "modifier": "none",
         "missing": 0
       }
@@ -362,13 +382,13 @@
       "fieldValueBoosts": [
         {
           "field": "usageSummary.monthlyStats.count",
-          "factor": 0.002,
+          "factor": 0.000025,
           "modifier": "log1p",
           "missing": 0
         },
         {
           "field": "usageSummary.monthlyStats.percentileRank",
-          "factor": 0.0005,
+          "factor": 0.0025,
           "modifier": "none",
           "missing": 0
         }
@@ -2480,21 +2500,141 @@
           "to",
           "with"
         ],
-        "ru": [],
-        "zh": [],
-        "jp": [],
-        "ja": []
+        "de": [
+          "der",
+          "die",
+          "das",
+          "den",
+          "dem",
+          "ein",
+          "eine",
+          "und",
+          "oder",
+          "in",
+          "im",
+          "am",
+          "an",
+          "auf",
+          "von",
+          "mit",
+          "zu",
+          "fur"
+        ],
+        "es": [
+          "el",
+          "la",
+          "los",
+          "las",
+          "un",
+          "una",
+          "y",
+          "o",
+          "en",
+          "de",
+          "del",
+          "para",
+          "por",
+          "con",
+          "a"
+        ],
+        "fr": [
+          "le",
+          "la",
+          "les",
+          "un",
+          "une",
+          "des",
+          "et",
+          "ou",
+          "en",
+          "de",
+          "du",
+          "dans",
+          "pour",
+          "par",
+          "avec",
+          "a"
+        ],
+        "pt": [
+          "o",
+          "a",
+          "os",
+          "as",
+          "um",
+          "uma",
+          "e",
+          "ou",
+          "em",
+          "de",
+          "do",
+          "da",
+          "para",
+          "por",
+          "com"
+        ],
+        "ru": [
+          "и",
+          "в",
+          "во",
+          "на",
+          "с",
+          "со",
+          "по",
+          "для",
+          "из",
+          "от",
+          "к",
+          "ко",
+          "о",
+          "об",
+          "за"
+        ],
+        "zh": [
+          "的",
+          "了",
+          "和",
+          "在",
+          "是",
+          "到",
+          "与",
+          "及"
+        ],
+        "jp": [
+          "の",
+          "に",
+          "は",
+          "を",
+          "と",
+          "で",
+          "が",
+          "へ",
+          "や"
+        ],
+        "ja": [
+          "の",
+          "に",
+          "は",
+          "を",
+          "と",
+          "で",
+          "が",
+          "へ",
+          "や"
+        ]
       },
       "disMaxTieBreaker": 0.05,
       "signals": {
-        "purpose": "Use Tier, Usage, and Votes only to break ties between similarly relevant results.",
+        "purpose": "Use Tier, Status, Usage, and Votes only to break ties between similarly relevant results.",
         "boostMode": "sum",
         "scoreMode": "sum",
         "maxBoost": 2.0,
         "fields": [
           "tier.tagFQN",
+          "entityStatus",
           "usageSummary.weeklyStats.count",
           "usageSummary.weeklyStats.percentileRank",
+          "usageSummary.monthlyStats.count",
+          "usageSummary.monthlyStats.percentileRank",
           "totalVotes"
         ]
       }

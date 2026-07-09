@@ -194,9 +194,9 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     if (containsRangeQuery(query)) {
       return true;
     }
+    boolean pureQuotedQuery = isPureQuotedQuery(query);
     for (int i = 0; i < query.length(); i++) {
-      char current = query.charAt(i);
-      if (isSingleCharacterSyntax(current)
+      if (isSingleCharacterSyntax(query, i, pureQuotedQuery)
           || isFieldQuerySeparator(query, i)
           || isBooleanOperatorAt(query, i)) {
         return true;
@@ -205,11 +205,31 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     return false;
   }
 
-  private static boolean isSingleCharacterSyntax(char current) {
+  private static boolean isSingleCharacterSyntax(String query, int index, boolean pureQuotedQuery) {
+    char current = query.charAt(index);
     return switch (current) {
-      case '*', '?', '(', ')', '"', '+', '-', '~', '^' -> true;
+      case '*', '?', '(', ')', '~', '^' -> true;
+      case '"' -> !pureQuotedQuery;
+      case '-' -> isTokenLeadingSyntax(query, index);
+      case '+' -> isTokenLeadingSyntax(query, index);
       default -> false;
     };
+  }
+
+  private static boolean isPureQuotedQuery(String query) {
+    if (query.length() < 2 || query.charAt(0) != '"' || query.charAt(query.length() - 1) != '"') {
+      return false;
+    }
+    for (int i = 1; i < query.length() - 1; i++) {
+      if (query.charAt(i) == '"') {
+        return false;
+      }
+    }
+    return true;
+  }
+
+  private static boolean isTokenLeadingSyntax(String query, int index) {
+    return index == 0 || Character.isWhitespace(query.charAt(index - 1));
   }
 
   private static boolean isFieldQuerySeparator(String query, int index) {

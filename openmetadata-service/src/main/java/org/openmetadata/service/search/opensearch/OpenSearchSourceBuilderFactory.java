@@ -527,13 +527,13 @@ public class OpenSearchSourceBuilderFactory
   }
 
   private Query applyFunctionScoringV2(Query baseQuery, AssetTypeConfiguration assetConfig) {
-    List<FunctionScore> functions = collectBoostFunctionsV2(assetConfig);
+    RankingConfiguration ranking = SearchRankingHelper.resolveRanking(searchSettings, assetConfig);
+    List<FunctionScore> functions = collectBoostFunctionsV2(assetConfig, ranking);
 
     if (functions.isEmpty()) {
       return baseQuery;
     }
 
-    RankingConfiguration ranking = SearchRankingHelper.resolveRanking(searchSettings, assetConfig);
     String scoreModeValue =
         assetConfig.getScoreMode() != null ? assetConfig.getScoreMode().value() : "sum";
     String boostModeValue =
@@ -552,7 +552,8 @@ public class OpenSearchSourceBuilderFactory
         SearchRankingHelper.signalMaxBoost(ranking));
   }
 
-  private List<FunctionScore> collectBoostFunctionsV2(AssetTypeConfiguration assetConfig) {
+  private List<FunctionScore> collectBoostFunctionsV2(
+      AssetTypeConfiguration assetConfig, RankingConfiguration ranking) {
     List<FunctionScore> functions = new ArrayList<>();
 
     // Add baseline weight of 1.0 so that assets with no tier/usage retain their text score
@@ -563,21 +564,31 @@ public class OpenSearchSourceBuilderFactory
 
     if (searchSettings.getGlobalSettings().getTermBoosts() != null) {
       searchSettings.getGlobalSettings().getTermBoosts().stream()
+          .filter(
+              termBoost -> SearchRankingHelper.signalFieldEnabled(ranking, termBoost.getField()))
           .map(this::buildTermBoostFunctionV2)
           .forEach(functions::add);
     }
     if (assetConfig.getTermBoosts() != null) {
       assetConfig.getTermBoosts().stream()
+          .filter(
+              termBoost -> SearchRankingHelper.signalFieldEnabled(ranking, termBoost.getField()))
           .map(this::buildTermBoostFunctionV2)
           .forEach(functions::add);
     }
     if (searchSettings.getGlobalSettings().getFieldValueBoosts() != null) {
       searchSettings.getGlobalSettings().getFieldValueBoosts().stream()
+          .filter(
+              fieldValueBoost ->
+                  SearchRankingHelper.signalFieldEnabled(ranking, fieldValueBoost.getField()))
           .map(this::buildFieldValueBoostFunctionV2)
           .forEach(functions::add);
     }
     if (assetConfig.getFieldValueBoosts() != null) {
       assetConfig.getFieldValueBoosts().stream()
+          .filter(
+              fieldValueBoost ->
+                  SearchRankingHelper.signalFieldEnabled(ranking, fieldValueBoost.getField()))
           .map(this::buildFieldValueBoostFunctionV2)
           .forEach(functions::add);
     }
@@ -1035,7 +1046,8 @@ public class OpenSearchSourceBuilderFactory
 
     for (RankingStage stage : listOrEmpty(ranking.getStages())) {
       Query stageQuery =
-          buildRankingStageQueryV2(query, significantQuery, exactSignificantQuery, stage);
+          buildRankingStageQueryV2(
+              query, significantQuery, exactSignificantQuery, stage, assetConfig);
       if (stageQuery != null) {
         stageQueries.add(stageQuery);
       }
@@ -1078,7 +1090,8 @@ public class OpenSearchSourceBuilderFactory
       String originalQuery,
       String significantQuery,
       String exactSignificantQuery,
-      RankingStage stage) {
+      RankingStage stage,
+      AssetTypeConfiguration assetConfig) {
     if (stage.getFields() == null || stage.getFields().isEmpty()) {
       return null;
     }
@@ -1086,16 +1099,22 @@ public class OpenSearchSourceBuilderFactory
     RankingStage.MatchType matchType =
         stage.getMatchType() == null ? RankingStage.MatchType.STANDARD : stage.getMatchType();
     return switch (matchType) {
-      case EXACT -> buildExactRankingStageQueryV2(exactSignificantQuery, stage);
+      case EXACT -> buildExactRankingStageQueryV2(originalQuery, exactSignificantQuery, stage);
       case PHRASE -> buildPhraseRankingStageQueryV2(originalQuery, stage);
       case FUZZY -> buildTextRankingStageQueryV2(
-          significantQuery, stage, getFuzziness(significantQuery));
-      case TOKEN_COVERAGE, STANDARD -> buildTextRankingStageQueryV2(significantQuery, stage, "0");
+          significantQuery, stage, assetConfig, getFuzziness(significantQuery));
+      case TOKEN_COVERAGE -> buildTokenCoverageRankingStageQueryV2(
+          significantQuery, stage, assetConfig);
+      case STANDARD -> buildTextRankingStageQueryV2(significantQuery, stage, assetConfig, "0");
     };
   }
 
-  private Query buildExactRankingStageQueryV2(String query, RankingStage stage) {
-    List<String> exactTexts = SearchRankingHelper.exactMatchTexts(query);
+  private Query buildExactRankingStageQueryV2(
+      String originalQuery, String exactSignificantQuery, RankingStage stage) {
+    List<String> exactQueries = new ArrayList<>();
+    exactQueries.add(originalQuery);
+    exactQueries.add(exactSignificantQuery);
+    List<String> exactTexts = SearchRankingHelper.exactMatchTexts(exactQueries);
     if (exactTexts.isEmpty()) {
       return null;
     }
@@ -1108,12 +1127,12 @@ public class OpenSearchSourceBuilderFactory
             OpenSearchQueryBuilder.termQuery(
                 field,
                 exactTexts.get(index),
-                weight,
+                null,
                 rankingQueryName(stage, field, String.valueOf(index))));
       }
     }
     exactQuery.minimumShouldMatch(1);
-    return exactQuery.build();
+    return OpenSearchQueryBuilder.constantScoreQuery(exactQuery.build(), weight);
   }
 
   private Query buildPhraseRankingStageQueryV2(String query, RankingStage stage) {
@@ -1122,15 +1141,42 @@ public class OpenSearchSourceBuilderFactory
     for (String field : stage.getFields()) {
       phraseQuery.should(
           OpenSearchQueryBuilder.matchPhraseQuery(
-              field, query, weight, rankingQueryName(stage, field)));
+              field, query, null, rankingQueryName(stage, field)));
     }
     phraseQuery.minimumShouldMatch(1);
-    return phraseQuery.build();
+    return OpenSearchQueryBuilder.constantScoreQuery(phraseQuery.build(), weight);
   }
 
-  private Query buildTextRankingStageQueryV2(String query, RankingStage stage, String fuzziness) {
-    Map<String, Float> fields = new LinkedHashMap<>();
-    stage.getFields().forEach(field -> fields.put(field, DEFAULT_BOOST));
+  private Query buildTokenCoverageRankingStageQueryV2(
+      String query, RankingStage stage, AssetTypeConfiguration assetConfig) {
+    List<String> terms = SearchRankingHelper.queryTerms(query);
+    if (terms.isEmpty()) {
+      return null;
+    }
+    Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
+    OpenSearchQueryBuilder.BoolQueryBuilder coverageQuery = OpenSearchQueryBuilder.boolQuery();
+    for (int index = 0; index < terms.size(); index++) {
+      coverageQuery.should(
+          OpenSearchQueryBuilder.multiMatchQuery(
+              terms.get(index),
+              fields,
+              TextQueryType.BestFields,
+              Operator.Or,
+              String.valueOf(DEFAULT_TIE_BREAKER),
+              "0",
+              null,
+              null,
+              rankingQueryName(stage, "token", String.valueOf(index)),
+              SearchRankingHelper.stageSearchAnalyzer(stage)));
+    }
+    coverageQuery.minimumShouldMatch(SearchRankingHelper.minimumShouldMatch(stage));
+    return OpenSearchQueryBuilder.constantScoreQuery(
+        coverageQuery.build(), SearchRankingHelper.stageWeight(stage));
+  }
+
+  private Query buildTextRankingStageQueryV2(
+      String query, RankingStage stage, AssetTypeConfiguration assetConfig, String fuzziness) {
+    Map<String, Float> fields = SearchRankingHelper.stageFieldWeights(stage, assetConfig);
     return OpenSearchQueryBuilder.multiMatchQuery(
         query,
         fields,

@@ -4,9 +4,11 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.regex.Pattern;
 import org.openmetadata.schema.api.search.AssetTypeConfiguration;
@@ -60,14 +62,23 @@ public final class SearchRankingHelper {
   }
 
   public static List<String> exactMatchTexts(String query) {
-    if (query == null || query.trim().isEmpty()) {
+    return query == null ? List.of() : exactMatchTexts(List.of(query));
+  }
+
+  public static List<String> exactMatchTexts(List<String> queries) {
+    if (queries == null || queries.isEmpty()) {
       return List.of();
     }
 
     LinkedHashSet<String> values = new LinkedHashSet<>();
-    String trimmed = query.trim();
-    addExactTextVariants(values, trimmed);
-    addExactTextVariants(values, trimmed.toLowerCase(Locale.ROOT));
+    for (String query : queries) {
+      if (query == null || query.trim().isEmpty()) {
+        continue;
+      }
+      String trimmed = query.trim();
+      addExactTextVariants(values, trimmed);
+      addExactTextVariants(values, trimmed.toLowerCase(Locale.ROOT));
+    }
     return new ArrayList<>(values);
   }
 
@@ -121,6 +132,16 @@ public final class SearchRankingHelper {
     return !nullOrEmpty(stage.getMinimumShouldMatch()) ? stage.getMinimumShouldMatch() : "2<70%";
   }
 
+  public static List<String> queryTerms(String query) {
+    if (query == null || query.trim().isEmpty()) {
+      return List.of();
+    }
+    return WHITESPACE_SPLITTER
+        .splitAsStream(query.trim())
+        .filter(token -> !token.isBlank())
+        .toList();
+  }
+
   public static String stageSearchAnalyzer(RankingStage stage) {
     List<String> fields = stage.getFields();
     boolean allNgramFields =
@@ -145,6 +166,42 @@ public final class SearchRankingHelper {
     return signals != null && signals.getBoostMode() != null
         ? signals.getBoostMode().value()
         : fallback;
+  }
+
+  public static boolean signalFieldEnabled(RankingConfiguration ranking, String field) {
+    RankingSignals signals = ranking != null ? ranking.getSignals() : null;
+    return signals == null
+        || nullOrEmpty(signals.getFields())
+        || signals.getFields().contains(field);
+  }
+
+  public static Map<String, Float> stageFieldWeights(
+      RankingStage stage, AssetTypeConfiguration assetConfig) {
+    LinkedHashMap<String, Float> weights = new LinkedHashMap<>();
+    List<String> fields = listOrEmpty(stage.getFields());
+    if (fields.isEmpty()) {
+      return weights;
+    }
+
+    Map<String, Double> configuredBoosts = configuredBoosts(assetConfig);
+    double maxBoost =
+        fields.stream()
+            .map(field -> configuredBoost(field, configuredBoosts))
+            .filter(boost -> boost != null && boost > 0.0D)
+            .mapToDouble(Double::doubleValue)
+            .max()
+            .orElse(1.0D);
+
+    for (String field : fields) {
+      Double configuredBoost = configuredBoost(field, configuredBoosts);
+      if (configuredBoost == null || configuredBoost <= 0.0D) {
+        weights.put(field, 1.0F);
+      } else {
+        double normalizedBoost = 0.75D + (Math.min(configuredBoost / maxBoost, 1.0D) * 0.5D);
+        weights.put(field, (float) normalizedBoost);
+      }
+    }
+    return weights;
   }
 
   private static RankingConfiguration defaultRanking(SearchSettings searchSettings) {
@@ -191,6 +248,37 @@ public final class SearchRankingHelper {
       }
     }
     return new ArrayList<>(fields);
+  }
+
+  private static Map<String, Double> configuredBoosts(AssetTypeConfiguration assetConfig) {
+    LinkedHashMap<String, Double> boosts = new LinkedHashMap<>();
+    if (assetConfig == null || assetConfig.getSearchFields() == null) {
+      return boosts;
+    }
+    for (FieldBoost fieldBoost : assetConfig.getSearchFields()) {
+      if (!nullOrEmpty(fieldBoost.getField()) && fieldBoost.getBoost() != null) {
+        boosts.put(fieldBoost.getField(), fieldBoost.getBoost());
+      }
+    }
+    return boosts;
+  }
+
+  private static Double configuredBoost(String field, Map<String, Double> configuredBoosts) {
+    Double boost = configuredBoosts.get(field);
+    if (boost != null) {
+      return boost;
+    }
+    String baseField = baseSearchField(field);
+    return baseField.equals(field) ? null : configuredBoosts.get(baseField);
+  }
+
+  private static String baseSearchField(String field) {
+    for (String suffix : List.of(".keyword", ".ngram", ".compound")) {
+      if (field.endsWith(suffix)) {
+        return field.substring(0, field.length() - suffix.length());
+      }
+    }
+    return field;
   }
 
   private static RankingStage copyStage(RankingStage stage, List<String> fields) {
