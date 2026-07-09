@@ -23,6 +23,10 @@ jest.mock('../../DeleteWidget/DeleteEntityModal', () => {
   return jest.fn().mockReturnValue(<div>DeleteEntityModal</div>);
 });
 
+jest.mock('../../DeleteModal/DeleteModal', () => {
+  return jest.fn().mockReturnValue(<div>DeleteModal</div>);
+});
+
 const mockAnnouncementClick = jest.fn();
 const mockOnRestoreEntity = jest.fn();
 
@@ -80,6 +84,21 @@ describe('Test manage button component', () => {
     fireEvent.click(deleteOption);
 
     expect(await screen.findByText('DeleteEntityModal')).toBeInTheDocument();
+  });
+
+  it('Should render the simple DeleteModal when allowSoftDelete is false', async () => {
+    render(<ManageButton {...mockProps} allowSoftDelete={false} />);
+
+    const manageButton = await screen.findByTestId('manage-button');
+
+    fireEvent.click(manageButton);
+
+    const deleteOption = await screen.findByTestId('delete-button');
+
+    fireEvent.click(deleteOption);
+
+    expect(await screen.findByText('DeleteModal')).toBeInTheDocument();
+    expect(screen.queryByText('DeleteEntityModal')).not.toBeInTheDocument();
   });
 
   it('Should call announcement callback on click of announcement option', async () => {
