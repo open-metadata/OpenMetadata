@@ -307,6 +307,7 @@ const EditIngestionPage = () => {
         <div className="tw:flex tw:flex-shrink-0 tw:items-center tw:justify-end tw:gap-5 tw:py-4">
           <Button
             color="secondary"
+            data-testid="previous-button"
             size="sm"
             type="button"
             onPress={handleFooterBack}>
@@ -314,6 +315,7 @@ const EditIngestionPage = () => {
           </Button>
           <Button
             color="primary"
+            data-testid="next-button"
             size="sm"
             type="button"
             onPress={handleFooterNext}>
