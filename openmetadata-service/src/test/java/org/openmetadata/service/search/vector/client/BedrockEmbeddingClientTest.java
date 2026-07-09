@@ -45,6 +45,16 @@ class BedrockEmbeddingClientTest {
   }
 
   @Test
+  void otherTitanModelsFallBackToDefaultTitanV2() {
+    assertEquals(
+        BedrockEmbeddingFamily.TITAN_V2,
+        BedrockEmbeddingClient.familyFor("amazon.titan-embed-image-v1"));
+    assertEquals(
+        BedrockEmbeddingFamily.TITAN_V2,
+        BedrockEmbeddingClient.familyFor("amazon.titan-embed-text-v3"));
+  }
+
+  @Test
   void titanV1RequestSendsOnlyInputText() throws Exception {
     JsonNode payload = buildPayload(BedrockEmbeddingFamily.TITAN_V1, "hello world", 1024, false);
 
