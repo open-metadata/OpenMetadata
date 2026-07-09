@@ -608,21 +608,35 @@ test.describe(
         await expect(tableOption).toBeVisible();
         await tableOption.click();
 
-        await page.getByTestId('test-platforms').click();
-        const openMetadataOption = page.getByRole('option', {
-          name: 'OpenMetadata',
-          exact: true,
-        });
-        await expect(openMetadataOption).toBeVisible();
-        await openMetadataOption.click();
+        // OpenMetadata is selected by default. Remove its chip (the chip is a
+        // span with the label and an unlabeled remove button) and add dbt so the
+        // definition is external (no OpenMetadata platform => read-only on edit).
+        const platformsField = page
+          .locator('[role="group"]')
+          .filter({ has: page.locator('[id="root/testPlatforms"]') });
+        await platformsField
+          .locator('span')
+          .filter({ hasText: 'OpenMetadata' })
+          .getByRole('button')
+          .click();
+        await expect(
+          platformsField.getByText('OpenMetadata', { exact: true })
+        ).toBeHidden();
 
+        await page.locator('[id="root/testPlatforms"]').fill('dbt');
         const dbtOption = page.getByRole('option', {
           name: 'dbt',
           exact: true,
         });
         await expect(dbtOption).toBeVisible();
         await dbtOption.click();
+        await expect(
+          platformsField.getByText('dbt', { exact: true })
+        ).toBeVisible();
+        // Close the still-open platforms dropdown (a single Escape dismisses the
+        // combobox popover, not the drawer) so the fields below are clickable.
         await page.keyboard.press('Escape');
+        await expect(dbtOption).toBeHidden();
 
         // Add a parameter to verify DQ Dimension can still be set on a subsequent edit
         await page.getByRole('button', { name: 'Add Parameter' }).click();
@@ -655,18 +669,16 @@ test.describe(
           page.getByTestId('test-definition-form-body')
         ).toBeVisible();
 
+        await expect(page.locator('[id="root/entityType"]')).toBeDisabled();
+        await expect(page.locator('[id="root/testPlatforms"]')).toBeDisabled();
         await expect(
-          page.getByTestId('entity-type').locator('input')
+          page.getByTestId('sql-expression').locator('textarea')
         ).toBeDisabled();
         await expect(
-          page.getByTestId('test-platforms').locator('input')
-        ).toBeDisabled();
-        await expect(page.getByTestId('sql-expression')).toBeDisabled();
-        await expect(
-          page.getByTestId('supported-data-types').locator('input')
+          page.locator('[id="root/supportedDataTypes"]')
         ).toBeDisabled();
         await expect(
-          page.getByTestId('supported-services').locator('input')
+          page.locator('[id="root/supportedServices"]')
         ).toBeDisabled();
 
         await expect(
