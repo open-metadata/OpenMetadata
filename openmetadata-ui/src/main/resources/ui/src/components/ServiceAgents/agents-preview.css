@@ -11,10 +11,23 @@
  *  limitations under the License.
  */
 
-export interface CondensedBreadcrumbProps {
-  items: string[];
-  separator?: React.ReactNode;
-  itemsBeforeCollapse?: number;
-  itemsAfterCollapse?: number;
-  className?: string;
+@keyframes rddrawer {
+  from {
+    transform: translateX(100%);
+    opacity: 0;
+  }
+  to {
+    transform: translateX(0);
+    opacity: 1;
+  }
+}
+
+@keyframes agspin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+.agents-drawer {
+  animation: rddrawer 0.22s ease;
 }

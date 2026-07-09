@@ -614,7 +614,7 @@ const EmbeddedAddServicePage = () => {
           pageTitle={t('label.add-entity', { entity: t('label.service') })}
           secondPanel={{
             children: (
-              <Suspense fallback={<Loader />}>
+              <Suspense fallback={null}>
                 <ServiceDocPanel
                   focusedMode
                   activeField={activeField}

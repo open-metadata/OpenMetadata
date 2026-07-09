@@ -34,7 +34,7 @@ import { changePassword } from '../../rest/auth-API';
 import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { getUserOnlineStatus, isMaskedEmail } from '../../utils/UsersPureUtils';
-import DeleteWidgetModal from '../common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../common/DeleteWidget/DeleteEntityModal';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
 import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
 import { ProfileEditModal } from '../Modals/ProfileEditModal/ProfileEditModal';
@@ -280,7 +280,7 @@ const ProfileSectionUserDetailsCard = ({
       )}
 
       {isDelete && (
-        <DeleteWidgetModal
+        <DeleteEntityModal
           isRecursiveDelete
           afterDeleteAction={afterDeleteAction}
           allowSoftDelete={!userData.deleted}
