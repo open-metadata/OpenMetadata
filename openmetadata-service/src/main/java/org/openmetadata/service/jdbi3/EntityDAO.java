@@ -636,27 +636,33 @@ public interface EntityDAO<T extends EntityInterface> {
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond);
 
+  // Deferred join: the cursor page is resolved index-only on (name, id) inside the derived table,
+  // then <table>.json is fetched by primary key for only the :limit paged rows. Selecting json in
+  // the ORDER BY ... LIMIT scan makes MySQL pack the LONGTEXT blob into the filesort as an addon
+  // field, which exhausts sort_buffer_size and throws ER_OUT_OF_SORTMEMORY ("Out of sort memory")
+  // on wide entities (e.g. table_entity with many columns) once a single sort row exceeds the
+  // buffer. See idx_<table>_name_id and #28888.
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.id, <table>.json FROM <table> <mysqlCond> AND "
+          "SELECT <table>.json FROM <table> "
+              + "INNER JOIN ("
+              + "SELECT <table>.id FROM <table> <mysqlCond> AND "
               + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId)) "
-              + // Pagination by entity name or id (when entity name same)
-              "ORDER BY <table>.name DESC,<table>.id DESC "
-              + // Pagination by entity name or id (when entity name same)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name,id",
+              + "ORDER BY <table>.name DESC,<table>.id DESC "
+              + "LIMIT :limit"
+              + ") last_rows_subquery ON <table>.id = last_rows_subquery.id "
+              + "ORDER BY <table>.name,<table>.id",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT json FROM ("
-              + "SELECT <table>.name, <table>.id, <table>.json FROM <table> <postgresCond> AND "
+          "SELECT <table>.json FROM <table> "
+              + "INNER JOIN ("
+              + "SELECT <table>.id FROM <table> <postgresCond> AND "
               + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId)) "
-              + // Pagination by entity id or name (when entity have same name)
-              "ORDER BY <table>.name DESC,<table>.id DESC "
-              + // Pagination by entity id or name (when entity have same name)
-              "LIMIT :limit"
-              + ") last_rows_subquery ORDER BY name,id",
+              + "ORDER BY <table>.name DESC,<table>.id DESC "
+              + "LIMIT :limit"
+              + ") last_rows_subquery ON <table>.id = last_rows_subquery.id "
+              + "ORDER BY <table>.name,<table>.id",
       connectionType = POSTGRES)
   List<String> listBefore(
       @Define("table") String table,
@@ -669,17 +675,25 @@ public interface EntityDAO<T extends EntityInterface> {
 
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT <table>.json FROM <table> <mysqlCond> AND "
+          "SELECT <table>.json FROM <table> "
+              + "INNER JOIN ("
+              + "SELECT <table>.id FROM <table> <mysqlCond> AND "
               + "(<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId)) "
               + "ORDER BY <table>.name,<table>.id "
-              + "LIMIT :limit",
+              + "LIMIT :limit"
+              + ") next_rows_subquery ON <table>.id = next_rows_subquery.id "
+              + "ORDER BY <table>.name,<table>.id",
       connectionType = MYSQL)
   @ConnectionAwareSqlQuery(
       value =
-          "SELECT <table>.json FROM <table> <postgresCond> AND "
+          "SELECT <table>.json FROM <table> "
+              + "INNER JOIN ("
+              + "SELECT <table>.id FROM <table> <postgresCond> AND "
               + "(<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId)) "
               + "ORDER BY <table>.name,<table>.id "
-              + "LIMIT :limit",
+              + "LIMIT :limit"
+              + ") next_rows_subquery ON <table>.id = next_rows_subquery.id "
+              + "ORDER BY <table>.name,<table>.id",
       connectionType = POSTGRES)
   List<String> listAfter(
       @Define("table") String table,
@@ -766,15 +780,18 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("afterId") String afterId,
       @Define("groupBy") String groupBy);
 
+  // Deferred join (see the ConnectionAware listBefore/listAfter above): resolve the cursor page
+  // index-only on (name, id), then fetch json by primary key for only the :limit paged rows so the
+  // ORDER BY ... LIMIT filesort never materializes the json blob and cannot exhaust sort memory.
   @SqlQuery(
-      "SELECT json FROM ("
-          + "SELECT id,name, json FROM <table> <cond> AND "
-          + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
-          + // Pagination by entity id or name (when entity have same name)
-          "ORDER BY name DESC, id DESC "
-          + // Pagination by entity id or name (when entity have same name)
-          "LIMIT :limit"
-          + ") last_rows_subquery ORDER BY name,id")
+      "SELECT <table>.json FROM <table> "
+          + "INNER JOIN ("
+          + "SELECT <table>.id FROM <table> <cond> AND "
+          + "(<table>.name < :beforeName OR (<table>.name = :beforeName AND <table>.id < :beforeId)) "
+          + "ORDER BY <table>.name DESC, <table>.id DESC "
+          + "LIMIT :limit"
+          + ") last_rows_subquery ON <table>.id = last_rows_subquery.id "
+          + "ORDER BY <table>.name,<table>.id")
   List<String> listBefore(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
@@ -784,7 +801,14 @@ public interface EntityDAO<T extends EntityInterface> {
       @Bind("beforeId") String beforeId);
 
   @SqlQuery(
-      "SELECT json FROM <table> <cond> AND (<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId)) ORDER BY name,id LIMIT :limit")
+      "SELECT <table>.json FROM <table> "
+          + "INNER JOIN ("
+          + "SELECT <table>.id FROM <table> <cond> AND "
+          + "(<table>.name > :afterName OR (<table>.name = :afterName AND <table>.id > :afterId)) "
+          + "ORDER BY <table>.name,<table>.id "
+          + "LIMIT :limit"
+          + ") next_rows_subquery ON <table>.id = next_rows_subquery.id "
+          + "ORDER BY <table>.name,<table>.id")
   List<String> listAfter(
       @Define("table") String table,
       @BindMap Map<String, ?> params,
