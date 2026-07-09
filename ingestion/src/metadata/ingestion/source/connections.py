@@ -62,6 +62,19 @@ def _get_connection_class_from_spec(
     return None
 
 
+def create_connection(connection: BaseModel) -> Optional[BaseConnection]:  # noqa: UP045
+    """Return the ServiceSpec ``BaseConnection`` owner, or ``None`` if the
+    connection has no ``connection_class``."""
+    connection_class = _get_connection_class_from_spec(connection)
+    return connection_class(connection) if connection_class else None
+
+
+def run_test_connection(metadata: OpenMetadata, connection: BaseConnection) -> None:
+    """Test an already-built connection owner, reusing its live client, and raise
+    on failure. Does not close it; the source owns and closes the connection."""
+    raise_test_connection_exception(connection.test_connection(metadata))
+
+
 def _get_connection_fn_from_service_spec(connection: BaseModel) -> Optional[Callable]:  # noqa: UP045
     """
     Import the get_connection function from the source, or use ServiceSpec connection_class if defined.
@@ -118,10 +131,15 @@ def get_connection(connection: BaseModel) -> Any:
 
 
 def test_connection_common(metadata: OpenMetadata, connection_obj, service_connection):
-    test_connection_fn = get_test_connection_fn(service_connection)
-    # TODO: Remove this once we migrate all connectors to use the new test connection function
-    try:
-        result = test_connection_fn(metadata)
-    except TypeError:
-        result = test_connection_fn(metadata, connection_obj, service_connection)
+    owned = create_connection(service_connection)
+    if owned is not None:
+        with owned:
+            result = owned.test_connection(metadata)
+    else:
+        # Non-migrated / custom connector: legacy module-level test_connection
+        test_connection_fn = get_test_connection_fn(service_connection)
+        try:
+            result = test_connection_fn(metadata)
+        except TypeError:
+            result = test_connection_fn(metadata, connection_obj, service_connection)
     raise_test_connection_exception(result)

@@ -78,7 +78,7 @@ class GrafanaSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.client: GrafanaApiClient = self.connection_obj
+        self.client: GrafanaApiClient = self._connection.client
         self.folders: List[GrafanaFolder] = []  # noqa: UP006
         self.datasources: Dict[str, GrafanaDatasource] = {}  # noqa: UP006
         self.dashboards: List[GrafanaSearchResult] = []  # noqa: UP006
