@@ -175,10 +175,13 @@ export const selectOption = async (
   isSearchable = false
 ) => {
   const comboboxInput = dropdownLocator.locator('input[role="combobox"]');
+  const triggerButton = dropdownLocator.locator(
+    'button[aria-haspopup="listbox"]'
+  );
 
-  if ((await comboboxInput.count()) > 0) {
-    await expect(comboboxInput).toBeVisible();
+  await expect(comboboxInput.or(triggerButton)).toBeVisible();
 
+  if (await comboboxInput.isVisible()) {
     if (isSearchable) {
       await comboboxInput.clear();
       await comboboxInput.fill(optionTitle);
@@ -186,11 +189,6 @@ export const selectOption = async (
       await comboboxInput.click();
     }
   } else {
-    const triggerButton = dropdownLocator.locator(
-      'button[aria-haspopup="listbox"]'
-    );
-
-    await expect(triggerButton).toBeVisible();
     await triggerButton.click();
   }
 
