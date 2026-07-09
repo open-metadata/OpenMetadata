@@ -230,19 +230,19 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   // so a persistently mounted form never shows stale values.
   useEffect(() => {
     form.reset(buildFormDefaults(initialValues));
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [initialValues?.id]);
 
   useEffect(() => {
-    if (isModalVariant) {
-      return;
-    }
-    if (open) {
+    if (!isModalVariant && open) {
       openDrawer();
-    } else if (isOpen) {
+    }
+  }, [isModalVariant, open, openDrawer]);
+
+  useEffect(() => {
+    if (!isModalVariant && !open && isOpen) {
       closeDrawer();
     }
-  }, [isModalVariant, open, isOpen, openDrawer, closeDrawer]);
+  }, [isModalVariant, open, isOpen, closeDrawer]);
 
   if (isModalVariant) {
     return (
