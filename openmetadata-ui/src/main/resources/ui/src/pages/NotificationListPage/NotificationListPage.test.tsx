@@ -133,12 +133,10 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
   return jest
     .fn()
-    .mockImplementation(({ visible }) =>
-      visible ? <p>DeleteEntityModal</p> : null
-    );
+    .mockImplementation(({ open }) => (open ? <p>DeleteModal</p> : null));
 });
 
 jest.mock('../../hoc/LimitWrapper', () => {
@@ -273,7 +271,7 @@ describe('Notification Alerts Page Tests', () => {
       userEvent.click(deleteButton);
     });
 
-    const deleteModal = await screen.findByText('DeleteEntityModal');
+    const deleteModal = await screen.findByText('DeleteModal');
 
     expect(deleteModal).toBeInTheDocument();
   });
