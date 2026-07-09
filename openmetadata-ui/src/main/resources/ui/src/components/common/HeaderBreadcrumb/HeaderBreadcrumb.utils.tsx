@@ -13,13 +13,13 @@
 
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { TFunction } from 'i18next';
-import { ReactComponent as GlossaryIcon } from '../../../assets/svg/glossary.svg';
+import { ReactComponent as GovernanceIcon } from '../../../assets/svg/ic-governance.svg';
 import { ROUTES } from '../../../constants/constants';
 
 /**
  * Icon-only base crumb shared by the Governance-section headers (Glossary,
  * Ontology Explorer, Classification, Metrics, Column Bulk Operations, Workflows).
- * Renders the glossary icon and links back to the glossary homepage. Use with
+ * Renders the governance icon and links back to the glossary homepage. Use with
  * `showHome={false}` as the first item.
  */
 export const getGlossaryHomeCrumb = (
@@ -27,6 +27,6 @@ export const getGlossaryHomeCrumb = (
 ): Omit<BreadcrumbItemType, 'id'> => ({
   label: null,
   ariaLabel: t('label.glossary'),
-  icon: GlossaryIcon,
+  icon: GovernanceIcon,
   href: ROUTES.GLOSSARY,
 });
