@@ -33,7 +33,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import AirflowMessageBanner from '../../components/common/AirflowMessageBanner/AirflowMessageBanner';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../components/common/Loader/Loader';
+import { PageLoader } from '../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../components/common/NextPrevious/NextPrevious.interface';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
 import TestConnection from '../../components/common/TestConnection/TestConnection';
@@ -44,6 +44,7 @@ import FilesTable from '../../components/DriveService/File/FilesTable/FilesTable
 import SpreadsheetsTable from '../../components/DriveService/Spreadsheet/SpreadsheetsTable/SpreadsheetsTable';
 import { EntityName } from '../../components/Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useMetadataAgents } from '../../components/ServiceAgents/hooks/useMetadataAgents';
 import ServiceInsightsTab from '../../components/ServiceInsights/ServiceInsightsTab';
 import { WorkflowStatesData } from '../../components/ServiceInsights/ServiceInsightsTab.interface';
 import { useApplicationsProvider } from '../../components/Settings/Applications/ApplicationsProvider/ApplicationsProvider';
@@ -302,6 +303,13 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const [ingestionPipelines, setIngestionPipelines] = useState<
     IngestionPipeline[]
   >([]);
+  // Lives at page level so the discovery stream stays connected on every tab;
+  // agents created while another tab is active still reach the list and counts.
+  const { agents: metadataAgents, discoveredCount } = useMetadataAgents(
+    ingestionPipelines,
+    serviceCategory as ServiceCategory,
+    decodedServiceFQN
+  );
   const [connectionDetails, setConnectionDetails] = useState<ConfigData>();
   const [servicePermission, setServicePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
@@ -1617,9 +1625,9 @@ const ServiceDetailsPage: FunctionComponent = () => {
   const agentCounts = useMemo(() => {
     return {
       [ServiceAgentSubTabs.COLLATE_AI]: collateAgentPaging.total,
-      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total,
+      [ServiceAgentSubTabs.METADATA]: ingestionPaging.total + discoveredCount,
     };
-  }, [collateAgentPaging, ingestionPaging]);
+  }, [collateAgentPaging, ingestionPaging, discoveredCount]);
 
   const refreshAgentsList = useCallback(
     async (agentListType: ServiceAgentSubTabs) => {
@@ -1648,6 +1656,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     () => (
       <Ingestion
         agentCounts={agentCounts}
+        agents={metadataAgents}
         airflowInformation={airflowInformation}
         collateAgentPagingInfo={collateAgentPagingInfo}
         collateAgentsList={collateAgentsList}
@@ -1675,6 +1684,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
       isIngestionPipelineLoading,
       serviceDetails,
       ingestionPipelines,
+      metadataAgents,
       ingestionPaging,
       getAllIngestionWorkflows,
       handleIngestionListUpdate,
@@ -1884,7 +1894,8 @@ const ServiceDetailsPage: FunctionComponent = () => {
         name: t('label.agent-plural'),
         key: EntityTabs.AGENTS,
         isHidden: !showIngestionTab,
-        count: ingestionPaging.total + collateAgentPaging.total,
+        count:
+          ingestionPaging.total + collateAgentPaging.total + discoveredCount,
         children: ingestionTab,
       });
     }
@@ -1950,6 +1961,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
     dataModelPaging,
     ingestionPaging,
     collateAgentPaging,
+    discoveredCount,
     ingestionTab,
     testConnectionTab,
     activeTab,
@@ -1997,7 +2009,7 @@ const ServiceDetailsPage: FunctionComponent = () => {
   );
 
   if (isLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!(servicePermission.ViewAll || servicePermission.ViewBasic)) {

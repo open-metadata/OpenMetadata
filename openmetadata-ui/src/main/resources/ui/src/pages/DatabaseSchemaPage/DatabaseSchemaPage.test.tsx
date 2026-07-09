@@ -155,9 +155,15 @@ jest.mock('../../utils/ToastUtils', () => ({
     .mockImplementation(({ children }) => <div>{children}</div>),
 }));
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>testLoader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <p>ErrorPlaceHolder</p>)

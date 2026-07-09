@@ -20,7 +20,7 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../../components/common/Loader/Loader';
+import { PageLoader } from '../../../components/common/Loader/Loader';
 import { DataAssetWithDomains } from '../../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import { QueryVote } from '../../../components/Database/TableQueries/TableQueries.interface';
 import MetricDetails from '../../../components/Metric/MetricDetails/MetricDetails';
@@ -346,7 +346,7 @@ const MetricDetailsPage = () => {
   }, [metricFqn]);
 
   if (permissionsLoading || metricLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
   if (isError) {
     return (
@@ -367,7 +367,7 @@ const MetricDetailsPage = () => {
     );
   }
   if (!metricDetails) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   return (
