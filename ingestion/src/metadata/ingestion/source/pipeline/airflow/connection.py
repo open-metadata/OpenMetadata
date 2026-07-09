@@ -255,6 +255,22 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
         raise AirflowTaskDetailsAccessError(f"Task details access error : {e}") from e
 
 
+def _test_task_detail_access_rest(client) -> bool:  # pyright: ignore[reportMissingParameterType]
+    """
+    HTTP equivalent of _test_task_detail_access for the REST/MWAA path:
+    read one DAG's tasks to confirm the /tasks endpoint is reachable and
+    readable. A broken endpoint / missing permission raises HTTPError from
+    the underlying client; a 2xx-but-empty body (see _parse_response) is
+    caught by the missing-"tasks"-key check below.
+    """
+    dags = (client.list_dags(limit=1) or {}).get("dags") or []
+    if dags:
+        response = client.get_dag_tasks(dags[0]["dag_id"])
+        if not isinstance(response, dict) or "tasks" not in response:
+            raise AirflowTaskDetailsAccessError(f"Task details access error: unexpected response {response}")
+    return True
+
+
 def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # pyright: ignore[reportMissingParameterType]
     """
     Call client.get_version(); on failure, attempt a managed-flavor-specific
@@ -292,7 +308,7 @@ def _test_api_connection(
     test_fn = {
         "CheckAccess": lambda: _decorated_check_access(client, host, auth_config, verify),
         "PipelineDetailsAccess": lambda: client.list_dags(limit=1),
-        "TaskDetailAccess": lambda: True,
+        "TaskDetailAccess": lambda: _test_task_detail_access_rest(client),
     }
     return test_connection_steps(
         metadata=metadata,

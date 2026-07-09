@@ -273,10 +273,17 @@ def dictionary_lineage_annotation(xlet: dict) -> Dict[str, List[OMEntity]]:  # n
 
     # Check if we can properly build the OMEntity class
     if XLET_KEYS.issubset(xlet_dict.keys()):
+        entity_class = ENTITY_REFERENCE_CLASS_MAP.get(xlet_dict["entity"])
+        if entity_class is None:
+            logger.warning(
+                f"Skipping xlet with unknown entity type [{xlet_dict['entity']}] "
+                f"for fqn [{xlet_dict.get('fqn')}]. Known types: {sorted(ENTITY_REFERENCE_CLASS_MAP)}"
+            )
+            return None
         return {
             xlet_dict["key"]: [
                 OMEntity(
-                    entity=ENTITY_REFERENCE_CLASS_MAP[xlet_dict["entity"]],
+                    entity=entity_class,
                     fqn=xlet_dict["fqn"],
                     key=xlet_dict["key"],
                 )
