@@ -157,4 +157,27 @@ describe('useAuthenticatedImage', () => {
 
     expect(mockDownloadAsset).toHaveBeenCalledTimes(1);
   });
+
+  it('does not revoke the shared blob URL while another instance still uses it', async () => {
+    const src = attachmentSrc('attachment-id-shared');
+    const first = renderHook(() => useAuthenticatedImage(src));
+    const second = renderHook(() => useAuthenticatedImage(src));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(first.result.current.imageSrc).toBe(BLOB_URL);
+    expect(second.result.current.imageSrc).toBe(BLOB_URL);
+
+    first.unmount();
+
+    expect(revokeObjectURLMock).not.toHaveBeenCalled();
+
+    second.unmount();
+
+    expect(revokeObjectURLMock).toHaveBeenCalledTimes(1);
+    expect(revokeObjectURLMock).toHaveBeenCalledWith(BLOB_URL);
+  });
 });

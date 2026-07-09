@@ -17,6 +17,23 @@ import { getAttachmentId } from '../utils/UploadAttachmentUtils';
 
 // Track in-flight requests globally
 const pendingRequests = new Map<string, Promise<string>>();
+// Track how many mounted hook instances currently hold a blob URL for a src,
+// so it's only revoked once the last consumer releases it
+const blobUrlRefCounts = new Map<string, number>();
+
+const acquireBlobUrl = (src: string) => {
+  blobUrlRefCounts.set(src, (blobUrlRefCounts.get(src) ?? 0) + 1);
+};
+
+const releaseBlobUrl = (src: string, objectUrl: string) => {
+  const count = (blobUrlRefCounts.get(src) ?? 1) - 1;
+  if (count <= 0) {
+    blobUrlRefCounts.delete(src);
+    URL.revokeObjectURL(objectUrl);
+  } else {
+    blobUrlRefCounts.set(src, count);
+  }
+};
 
 export const useAuthenticatedImage = (src: string) => {
   const [imageSrc, setImageSrc] = useState<string>(src);
@@ -66,10 +83,15 @@ export const useAuthenticatedImage = (src: string) => {
 
     try {
       const objectUrl = await request;
-      if (isMounted.current) {
-        if (objectUrl.startsWith('blob:')) {
+      if (objectUrl.startsWith('blob:')) {
+        acquireBlobUrl(src);
+        if (isMounted.current) {
           objectUrlRef.current = objectUrl;
+          setImageSrc(objectUrl);
+        } else {
+          releaseBlobUrl(src, objectUrl);
         }
+      } else if (isMounted.current) {
         setImageSrc(objectUrl);
       }
     } catch (error) {
@@ -92,7 +114,7 @@ export const useAuthenticatedImage = (src: string) => {
 
     return () => {
       if (objectUrlRef.current) {
-        URL.revokeObjectURL(objectUrlRef.current);
+        releaseBlobUrl(src, objectUrlRef.current);
         objectUrlRef.current = null;
       }
     };
