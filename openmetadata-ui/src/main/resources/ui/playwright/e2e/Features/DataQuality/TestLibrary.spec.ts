@@ -263,7 +263,7 @@ test.describe(
         await deleteButton.click();
 
         // Wait for confirmation modal
-        await page.locator('.ant-modal').waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
 
         // Verify modal content
         await expect(
