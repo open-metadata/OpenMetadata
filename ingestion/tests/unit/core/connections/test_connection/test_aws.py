@@ -62,21 +62,52 @@ def test_aws_code_ignores_the_message_text():
 @pytest.mark.parametrize(
     ("code", "expected"),
     [
-        ("InvalidAccessKeyId", "access key"),
-        ("SignatureDoesNotMatch", "secret key"),
-        ("InvalidSignatureException", "secret key"),
-        ("UnrecognizedClientException", "not recognized"),
-        ("AuthFailure", "not recognized"),
-        ("InvalidClientTokenId", "security token"),
-        ("ExpiredToken", "expired"),
-        ("ExpiredTokenException", "expired"),
+        # An unknown access key ID, under each protocol's code for it.
+        ("InvalidAccessKeyId", "AWS access key not recognized"),
+        ("UnrecognizedClientException", "AWS access key not recognized"),
+        ("InvalidClientTokenId", "AWS access key not recognized"),
+        # A wrong secret, under each protocol's code for it.
+        ("SignatureDoesNotMatch", "AWS secret key does not match"),
+        ("InvalidSignatureException", "AWS secret key does not match"),
+        ("ExpiredToken", "AWS session token expired"),
+        ("ExpiredTokenException", "AWS session token expired"),
     ],
 )
 def test_aws_errors_classifies_every_authentication_code(code, expected):
     diagnosis = AWS_ERRORS.classify(_client_error(code))
 
     assert diagnosis is not None
-    assert expected in diagnosis.title.lower()
+    assert diagnosis.title == expected
+
+
+@pytest.mark.parametrize("code", ["InvalidSignatureException", "SignatureDoesNotMatch"])
+@pytest.mark.parametrize(
+    "message",
+    [
+        "Signature expired: 20260709T101500Z is now earlier than 20260709T102000Z",
+        "Signature not yet current: 20260709T104500Z is still later than 20260709T102000Z",
+    ],
+)
+def test_aws_errors_tells_clock_skew_apart_from_a_wrong_secret(code, message):
+    # Skew fails signature verification, so it arrives under the signature codes.
+    diagnosis = AWS_ERRORS.classify(_client_error(code, message=message))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Request signature expired"
+
+
+def test_aws_errors_still_reads_a_signature_mismatch_as_a_wrong_secret():
+    error = _client_error(
+        "InvalidSignatureException",
+        message="The request signature we calculated does not match the signature you provided.",
+    )
+
+    assert AWS_ERRORS.classify(error).title == "AWS secret key does not match"
+
+
+def test_aws_errors_ignores_ec2_only_auth_failure():
+    # AuthFailure is an EC2 code; no connector on this framework talks to EC2.
+    assert AWS_ERRORS.classify(_client_error("AuthFailure")) is None
 
 
 def test_aws_errors_classifies_missing_credentials():

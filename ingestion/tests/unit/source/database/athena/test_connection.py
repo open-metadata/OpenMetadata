@@ -118,13 +118,14 @@ def test_error_pack_classifies_access_denied_as_not_authorized():
     assert diagnosis.title == "Not authorized"
 
 
-def test_error_pack_classifies_unrecognized_client_as_auth_failure():
+def test_error_pack_classifies_unrecognized_client_as_unknown_access_key():
+    # Athena is a json-protocol service: an unknown access key ID arrives as this.
     diagnosis = ATHENA_ERRORS.classify(_client_error("UnrecognizedClientException"))
     assert diagnosis is not None
-    assert diagnosis.title == "AWS credentials not recognized"
+    assert diagnosis.title == "AWS access key not recognized"
 
 
-def test_error_pack_classifies_auth_failure_through_a_wrapping_cause():
+def test_error_pack_classifies_a_signature_error_through_a_wrapping_cause():
     wrapped = RuntimeError("query failed")
     wrapped.__cause__ = _client_error("InvalidSignatureException")
     diagnosis = ATHENA_ERRORS.classify(wrapped)
@@ -180,19 +181,20 @@ def test_error_pack_classifies_sts_assume_role_denied_as_not_authorized():
     assert diagnosis.title == "Not authorized"
 
 
-def test_error_pack_classifies_invalid_token_as_auth_failure():
+def test_error_pack_classifies_invalid_client_token_as_unknown_access_key():
+    # STS's code, seen when the assume-role leg fails before Athena is reached.
     diagnosis = ATHENA_ERRORS.classify(_client_error("InvalidClientTokenId"))
     assert diagnosis is not None
-    assert diagnosis.title == "AWS security token is invalid"
+    assert diagnosis.title == "AWS access key not recognized"
 
 
-def test_error_pack_classifies_signature_mismatch_as_auth_failure():
+def test_error_pack_classifies_signature_mismatch_as_wrong_secret():
     diagnosis = ATHENA_ERRORS.classify(_client_error("SignatureDoesNotMatch"))
     assert diagnosis is not None
     assert diagnosis.title == "AWS secret key does not match"
 
 
-def test_error_pack_classifies_expired_token_as_auth_failure():
+def test_error_pack_classifies_expired_token():
     diagnosis = ATHENA_ERRORS.classify(_client_error("ExpiredToken"))
     assert diagnosis is not None
     assert diagnosis.title == "AWS session token expired"
@@ -227,7 +229,7 @@ def test_check_access_surfaces_client_build_failure_for_classification():
     provider = AthenaChecks(client_factory=_raising_factory(error))
     with pytest.raises(ClientError) as exc_info:
         provider.check_access()
-    assert ATHENA_ERRORS.classify(exc_info.value).title == "AWS security token is invalid"
+    assert ATHENA_ERRORS.classify(exc_info.value).title == "AWS access key not recognized"
 
 
 def test_athena_url():

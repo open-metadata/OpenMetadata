@@ -164,13 +164,14 @@ def test_error_pack_signature_mismatch():
 def test_error_pack_unrecognized_client():
     diagnosis = S3_ERRORS.classify(_client_error("UnrecognizedClientException", "ListMetrics"))
     assert diagnosis is not None
-    assert "not recognized" in diagnosis.title.lower()
+    assert diagnosis.title == "AWS access key not recognized"
 
 
 def test_error_pack_invalid_client_token():
+    # STS's code for an unknown access key ID; reachable via the assume-role leg.
     diagnosis = S3_ERRORS.classify(_client_error("InvalidClientTokenId", "ListBuckets"))
     assert diagnosis is not None
-    assert "security token" in diagnosis.title.lower()
+    assert diagnosis.title == "AWS access key not recognized"
 
 
 def test_error_pack_expired_token():

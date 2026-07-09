@@ -50,10 +50,11 @@ GLUE_ERRORS = ErrorPack(
         fix="Grant glue:GetDatabases and glue:GetTables to the identity used, and check any "
         "Lake Formation permissions on the catalog.",
     ),
+    # Raised by GetTables when the database vanished between listing and probing it;
+    # a plain GetDatabases listing (no CatalogId) returns an empty list instead.
     when(aws_code("EntityNotFoundException")).diagnose(
-        "Glue catalog entity not found",
-        fix="The database or catalog does not exist in this account and region; check awsRegion "
-        "and that the Glue Data Catalog is populated.",
+        "Glue database not found",
+        fix="The database disappeared from the catalog while the connection was being tested; re-run the test.",
     ),
 ).including(AWS_ERRORS)
 
@@ -79,8 +80,11 @@ def _paginate(client: Any, operation: str, key: str, limit: int, **kwargs: Any) 
 def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
     """Enumerate the Glue databases the identity can see, reporting at most ``limit``.
 
-    An empty catalog never raises, so it surfaces as a non-blocking caveat; a
-    missing permission raises ``AccessDeniedException`` and fails the step."""
+    An empty catalog never raises, so it surfaces as a non-blocking caveat. A
+    missing IAM action raises ``AccessDeniedException`` and fails the step, but
+    Lake Formation instead filters the response down to what the caller may see -
+    so zero grants read exactly like an empty catalog, and only a caveat can
+    distinguish them for the user."""
     command = "glue:GetDatabases"
     try:
         databases = _paginate(client, "get_databases", "DatabaseList", limit)
@@ -90,8 +94,9 @@ def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
     if not databases:
         caveat = Diagnosis(
             title="No databases visible",
-            remediation="Verify the identity can read the Glue Data Catalog in awsRegion, "
-            "and that the catalog holds at least one database.",
+            remediation="The catalog in awsRegion may be empty, or Lake Formation may be filtering "
+            "it out: grant the identity DESCRIBE on the databases it should read. Ingestion would "
+            "collect nothing as configured.",
         )
     shown = min(len(databases), limit)
     summary = f"{_count(shown, 'database')} enumerated" + _more_suffix(shown, len(databases) > limit)

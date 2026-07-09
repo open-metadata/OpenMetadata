@@ -206,15 +206,34 @@ def test_error_pack_access_denied():
 def test_error_pack_entity_not_found():
     diagnosis = GLUE_ERRORS.classify(_client_error("EntityNotFoundException", "GetTables"))
     assert diagnosis is not None
-    assert "not found" in diagnosis.title.lower()
+    assert diagnosis.title == "Glue database not found"
 
 
 def test_error_pack_inherits_the_shared_aws_diagnoses():
-    # Authentication, region and endpoint failures are identical across AWS
-    # services; GLUE_ERRORS gets them by folding in AWS_ERRORS.
+    # Glue is a json-protocol service, so expired temporary credentials arrive as
+    # ExpiredTokenException (never the rest-xml "ExpiredToken").
     diagnosis = GLUE_ERRORS.classify(_client_error("ExpiredTokenException"))
     assert diagnosis is not None
-    assert "expired" in diagnosis.title.lower()
+    assert diagnosis.title == "AWS session token expired"
+
+
+def test_error_pack_classifies_an_unknown_access_key():
+    diagnosis = GLUE_ERRORS.classify(_client_error("UnrecognizedClientException"))
+    assert diagnosis is not None
+    assert diagnosis.title == "AWS access key not recognized"
+
+
+def test_error_pack_classifies_a_wrong_secret():
+    diagnosis = GLUE_ERRORS.classify(_client_error("InvalidSignatureException"))
+    assert diagnosis is not None
+    assert diagnosis.title == "AWS secret key does not match"
+
+
+def test_error_pack_classifies_an_sts_assume_role_denial():
+    # The assume-role leg runs before Glue and denies with the suffix-less code.
+    diagnosis = GLUE_ERRORS.classify(_client_error("AccessDenied", "AssumeRole"))
+    assert diagnosis is not None
+    assert diagnosis.title == "Not authorized"
 
 
 def test_error_pack_inherits_the_network_pack_through_aws_errors():

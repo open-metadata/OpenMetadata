@@ -63,35 +63,48 @@ def aws_code(*codes: str) -> Matcher:
     return lambda error: aws_error_code(error) in wanted
 
 
-_BAD_ACCESS_KEY = ("InvalidAccessKeyId",)
-_BAD_SECRET = ("SignatureDoesNotMatch", "InvalidSignatureException")
-_UNRECOGNIZED = ("UnrecognizedClientException", "AuthFailure")
-_BAD_TOKEN = ("InvalidClientTokenId",)
+# One root cause, three codes: the wire protocol decides which one comes back.
+# InvalidAccessKeyId is rest-xml (S3), UnrecognizedClientException is json (Glue,
+# Athena), InvalidClientTokenId is query (STS) - and a connector that assumes a
+# role hits the STS leg before its own service, so all three stay reachable.
+# InvalidClientTokenId's message says "security token", but it means the access
+# key ID is unknown; an actually-expired token is ExpiredToken(Exception).
+_UNKNOWN_KEY = ("InvalidAccessKeyId", "UnrecognizedClientException", "InvalidClientTokenId")
+# rest-xml/query say SignatureDoesNotMatch, json says InvalidSignatureException.
+_BAD_SIGNATURE = ("SignatureDoesNotMatch", "InvalidSignatureException")
 _EXPIRED_TOKEN = ("ExpiredToken", "ExpiredTokenException")
+
+# Clock skew fails signature verification, so it arrives under the same codes as a
+# wrong secret and is told apart only by message. Ordered first for that reason.
+_SKEW_MESSAGES = ("signature expired", "signature not yet current")
 
 # Every code meaning "AWS rejected this identity", for connectors that also match
 # authorization failures by message text and must not confuse the two.
-AWS_AUTHENTICATION_CODES = frozenset(_BAD_ACCESS_KEY + _BAD_SECRET + _UNRECOGNIZED + _BAD_TOKEN + _EXPIRED_TOKEN)
+AWS_AUTHENTICATION_CODES = frozenset(_UNKNOWN_KEY + _BAD_SIGNATURE + _EXPIRED_TOKEN)
 
 
-# Split by cause rather than one "Authentication failed": a wrong key id, a wrong
-# secret and an expired token each send the user somewhere different.
+def _clock_skew(error: BaseException) -> bool:
+    if aws_error_code(error) not in _BAD_SIGNATURE:
+        return False
+    text = " ".join(str(current) for current in exception_chain(error)).lower()
+    return any(message in text for message in _SKEW_MESSAGES)
+
+
+# Split by cause rather than one "Authentication failed": an unknown key, a wrong
+# secret, a skewed clock and an expired token each send the user somewhere different.
 AWS_ERRORS = ErrorPack(
-    when(aws_code(*_BAD_ACCESS_KEY)).diagnose(
-        "Invalid AWS access key",
-        fix="The awsAccessKeyId does not exist in AWS; check the configured credentials.",
+    when(_clock_skew).diagnose(
+        "Request signature expired",
+        fix="The clock where ingestion runs is too far from AWS's (tolerance is about 5 minutes); sync it with NTP.",
     ),
-    when(aws_code(*_BAD_SECRET)).diagnose(
+    when(aws_code(*_UNKNOWN_KEY)).diagnose(
+        "AWS access key not recognized",
+        fix="AWS does not know this awsAccessKeyId - it may be deleted, inactive, or from another "
+        "account or partition. With temporary credentials, the awsSessionToken may also be invalid.",
+    ),
+    when(aws_code(*_BAD_SIGNATURE)).diagnose(
         "AWS secret key does not match",
         fix="The awsSecretAccessKey is wrong for this awsAccessKeyId; re-enter the credential pair.",
-    ),
-    when(aws_code(*_UNRECOGNIZED)).diagnose(
-        "AWS credentials not recognized",
-        fix="The security token or access key is invalid; check the configured credentials.",
-    ),
-    when(aws_code(*_BAD_TOKEN)).diagnose(
-        "AWS security token is invalid",
-        fix="The awsSessionToken (or access key) is invalid for this region; refresh the credentials.",
     ),
     when(aws_code(*_EXPIRED_TOKEN)).diagnose(
         "AWS session token expired",
