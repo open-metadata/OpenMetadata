@@ -29,7 +29,7 @@ import { Tag } from '../../generated/entity/classification/tag';
 import { Paging } from '../../generated/type/paging';
 import { getTags } from '../../rest/tagAPI';
 import { getEntityName } from '../../utils/EntityUtils';
-import { getTagImageSrc } from '../../utils/IconUtils';
+import { isImageUrl, renderIcon } from '../../utils/IconUtils';
 import { stringToHTML } from '../../utils/StringsUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { FocusTrapWithContainer } from '../common/FocusTrap/FocusTrapWithContainer';
@@ -153,9 +153,17 @@ const Certification = ({
         onScroll={handleScroll}>
         <Radio.Group className="w-full" value={selectedCertification}>
           {certifications.map((certificate) => {
-            const tagSrc = getTagImageSrc(certificate.style?.iconURL ?? '');
+            const iconURL = certificate.style?.iconURL;
             const title = getEntityName(certificate);
             const { id, fullyQualifiedName, description } = certificate;
+
+            const isIcon = iconURL && !isImageUrl(iconURL);
+            const renderedIcon = iconURL
+              ? renderIcon(iconURL, {
+                  size: isIcon ? 28 : 40,
+                  alt: title,
+                })
+              : null;
 
             return (
               <div
@@ -171,8 +179,12 @@ const Certification = ({
                   value={fullyQualifiedName}
                 />
                 <div className="certification-card-content">
-                  {tagSrc ? (
-                    <img alt={title} src={tagSrc} />
+                  {renderedIcon ? (
+                    isIcon ? (
+                      <div className="certification-icon">{renderedIcon}</div>
+                    ) : (
+                      renderedIcon
+                    )
                   ) : (
                     <div className="certification-icon">
                       <CertificationIcon height={28} width={28} />
