@@ -178,7 +178,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
 
   const drawerForm = (
     <HookForm form={form} onSubmit={submitAndClose}>
-      <div className="tw:flex tw:h-full tw:gap-6">
+      <div className="tw:flex tw:h-[calc(100vh-120px)] tw:gap-6">
         <div className="drawer-form-content tw:h-full tw:min-w-0 tw:basis-[60%] tw:overflow-y-auto tw:py-6 tw:pr-2">
           {formBody}
         </div>

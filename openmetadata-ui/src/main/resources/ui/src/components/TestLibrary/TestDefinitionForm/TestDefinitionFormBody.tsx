@@ -266,6 +266,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       {getField(descriptionField)}
 
       <div
+        className="tw:flex tw:flex-col tw:gap-1.5"
         data-testid="sql-expression"
         onClick={() => handleActiveField('root/sqlExpression')}>
         <FormItemLabel
@@ -300,6 +301,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       {getField(supportedDataTypesField)}
 
       <div
+        className="tw:flex tw:flex-col tw:gap-3"
         data-testid="parameter-definition"
         onClick={() => handleActiveField('root/parameterDefinition')}>
         <FormItemLabel
@@ -395,11 +397,11 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         ))}
         {!isReadOnlyField && (
           <Button
-            className="m-t-md"
-            color="secondary"
+            className="tw:w-full tw:justify-center tw:border tw:border-dashed tw:border-gray-300"
+            color="tertiary"
             data-testid="add-parameter-button"
             iconLeading={Plus}
-            size="sm"
+            size="md"
             onClick={() => append({})}>
             {t('label.add-entity', { entity: t('label.parameter') })}
           </Button>
