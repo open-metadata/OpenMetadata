@@ -19,7 +19,9 @@ import {
   ReactComponent as DefaultDataProductIcon,
 } from '../assets/svg/ic-data-product.svg';
 import { ActivityFeedLayoutType } from '../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
-import withSuspenseFallback from '../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../components/AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
@@ -106,7 +108,8 @@ const InputOutputPortsTab = withSuspenseFallback(
     import('../components/DataProducts/InputOutputPortsTab').then((module) => ({
       default: module.InputOutputPortsTab,
     }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const ResizablePanels = withSuspenseFallback(
