@@ -22,7 +22,7 @@ import {
   Modal,
   ModalOverlay,
 } from '@openmetadata/ui-core-components';
-import { FC, useState } from 'react';
+import { FC, useEffect, useState } from 'react';
 import { useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { Style } from '../../../generated/type/schema';
@@ -52,6 +52,16 @@ const IconColorModal: FC<StyleModalProps> = ({
     },
   });
   const [isSaving, setIsSaving] = useState<boolean>(false);
+
+  // The parent keeps this modal mounted and only toggles `open`, so
+  // useForm's defaultValues (captured once at mount) go stale across
+  // reopens with a different `style` — reset on every open to pick up
+  // the latest values.
+  useEffect(() => {
+    if (open) {
+      form.reset({ iconURL: style?.iconURL, color: style?.color });
+    }
+  }, [open]);
 
   const selectedColor = useWatch({ control: form.control, name: 'color' });
 

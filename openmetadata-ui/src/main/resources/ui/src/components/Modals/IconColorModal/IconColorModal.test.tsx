@@ -275,4 +275,23 @@ describe('IconColorModal component', () => {
 
     expect(colorInput).toHaveValue(newColor);
   });
+
+  it('should refresh form values when reopened with a new style while staying mounted', async () => {
+    const { rerender } = render(<IconColorModal {...mockProps} />);
+
+    expect(await screen.findByTestId('icon-picker-btn-input')).toHaveValue(
+      mockStyle.iconURL
+    );
+
+    rerender(<IconColorModal {...mockProps} open={false} />);
+
+    const newStyle: Style = { iconURL: 'Tag01', color: '#00FF00' };
+    rerender(<IconColorModal {...mockProps} open style={newStyle} />);
+
+    const iconInput = await screen.findByTestId('icon-picker-btn-input');
+    const colorInput = await screen.findByTestId('root/color-input');
+
+    expect(iconInput).toHaveValue(newStyle.iconURL);
+    expect(colorInput).toHaveValue(newStyle.color);
+  });
 });
