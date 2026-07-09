@@ -88,7 +88,8 @@ const TagChip: FC<TagChipProps> = ({
 
   return (
     <div
-      aria-disabled={disabled}
+      aria-disabled={disabled ?? undefined}
+      role={disabled !== undefined ? 'group' : undefined}
       className={classNames(
         'tw:inline-flex tw:min-w-0 tw:items-center tw:whitespace-nowrap tw:transition-all tw:duration-150',
         sizeStyles[size].root,
