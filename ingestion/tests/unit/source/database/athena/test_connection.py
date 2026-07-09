@@ -121,7 +121,7 @@ def test_error_pack_classifies_access_denied_as_not_authorized():
 def test_error_pack_classifies_unrecognized_client_as_auth_failure():
     diagnosis = ATHENA_ERRORS.classify(_client_error("UnrecognizedClientException"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS credentials not recognized"
 
 
 def test_error_pack_classifies_auth_failure_through_a_wrapping_cause():
@@ -129,7 +129,7 @@ def test_error_pack_classifies_auth_failure_through_a_wrapping_cause():
     wrapped.__cause__ = _client_error("InvalidSignatureException")
     diagnosis = ATHENA_ERRORS.classify(wrapped)
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS secret key does not match"
 
 
 def test_error_pack_classifies_missing_workgroup():
@@ -183,19 +183,27 @@ def test_error_pack_classifies_sts_assume_role_denied_as_not_authorized():
 def test_error_pack_classifies_invalid_token_as_auth_failure():
     diagnosis = ATHENA_ERRORS.classify(_client_error("InvalidClientTokenId"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS security token is invalid"
 
 
 def test_error_pack_classifies_signature_mismatch_as_auth_failure():
     diagnosis = ATHENA_ERRORS.classify(_client_error("SignatureDoesNotMatch"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS secret key does not match"
 
 
 def test_error_pack_classifies_expired_token_as_auth_failure():
     diagnosis = ATHENA_ERRORS.classify(_client_error("ExpiredToken"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS session token expired"
+
+
+def test_error_pack_prefers_an_authentication_code_over_not_authorized_text():
+    # The authorization rule sits above the shared AWS pack, so its message
+    # fallback must not swallow a rejected identity whose text says "not authorized".
+    diagnosis = ATHENA_ERRORS.classify(_client_error("ExpiredToken", "not authorized: token expired"))
+    assert diagnosis is not None
+    assert diagnosis.title == "AWS session token expired"
 
 
 def test_error_pack_returns_none_for_unknown_error():
@@ -219,7 +227,7 @@ def test_check_access_surfaces_client_build_failure_for_classification():
     provider = AthenaChecks(client_factory=_raising_factory(error))
     with pytest.raises(ClientError) as exc_info:
         provider.check_access()
-    assert ATHENA_ERRORS.classify(exc_info.value).title == "Authentication failed"
+    assert ATHENA_ERRORS.classify(exc_info.value).title == "AWS security token is invalid"
 
 
 def test_athena_url():

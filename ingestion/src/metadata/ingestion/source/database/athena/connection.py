@@ -18,7 +18,6 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 from urllib.parse import quote_plus
 
-from botocore.exceptions import ClientError
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
@@ -29,13 +28,17 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
+from metadata.core.connections.test_connection.aws import (
+    AWS_AUTHENTICATION_CODES,
+    AWS_ERRORS,
+    aws_error_code,
+)
 from metadata.core.connections.test_connection.checks.database import (
     DatabaseStep,
     list_schemas,
     run_sql,
 )
 from metadata.core.connections.test_connection.classifier import exception_chain
-from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
@@ -64,30 +67,12 @@ def _message(error: BaseException) -> str:
     return " ".join(str(current) for current in exception_chain(error)).lower()
 
 
-def _aws_error_code(error: BaseException) -> str | None:
-    """The botocore ``ClientError`` code anywhere in the cause chain.
-
-    pyathena wraps a botocore ``ClientError`` raised by the underlying AWS call;
-    SQLAlchemy then wraps that, so the actionable code (``AccessDeniedException``
-    and friends) only survives by walking the chain."""
-    code = None
-    for current in exception_chain(error):
-        if isinstance(current, ClientError):
-            code = current.response.get("Error", {}).get("Code")
-            break
-    return code
-
-
-def _aws_code(*codes: str) -> Matcher:
-    """Match a botocore ``ClientError`` code - the stable signal for an AWS-side
-    rejection, where the rendered message text varies."""
-    wanted = frozenset(codes)
-    return lambda error: _aws_error_code(error) in wanted
-
-
 def _all_of(*tokens: str) -> Matcher:
     """Match when every token is present in the error's cause-chain text."""
     return lambda error: all(token in _message(error) for token in tokens)
+
+
+_AUTHORIZATION_CODES = frozenset({"AccessDeniedException", "AccessDenied"})
 
 
 def _authorization_error(error: BaseException) -> bool:
@@ -97,31 +82,19 @@ def _authorization_error(error: BaseException) -> bool:
     suffix-less ``AccessDenied``; both are authorization codes distinct from the
     authentication ones, and AWS usually renders them "... is not authorized to
     perform: ...". Match either the codes or the message so a missing-privilege
-    error is never read as a credential problem, whatever the wording."""
-    return _aws_error_code(error) in {"AccessDeniedException", "AccessDenied"} or "not authorized" in _message(error)
+    error is never read as a credential problem, whatever the wording.
+
+    The message fallback stands down for an authentication code, which the shared
+    AWS pack diagnoses more precisely."""
+    code = aws_error_code(error)
+    return code in _AUTHORIZATION_CODES or (
+        code not in AWS_AUTHENTICATION_CODES and "not authorized" in _message(error)
+    )
 
 
-# Athena's transport is HTTPS to the regional AWS endpoint over botocore, so auth
-# and permission failures surface as botocore ``ClientError``s matched by
-# code/message, not driver errnos. The credential codes cover both the STS
-# assume-role handshake (which the checks run inside CheckAccess) and the Athena
-# query itself. NETWORK_ERRORS is folded in so a genuine DNS/socket failure to the
-# endpoint is typed rather than left raw.
+# Only what is specific to Athena: its IAM actions, its workgroup and staging-dir
+# configuration. Authentication and network failures come from AWS_ERRORS.
 ATHENA_ERRORS = ErrorPack(
-    when(
-        _aws_code(
-            "UnrecognizedClientException",
-            "InvalidClientTokenId",
-            "InvalidSignatureException",
-            "SignatureDoesNotMatch",
-            "AuthFailure",
-            "ExpiredToken",
-            "ExpiredTokenException",
-        )
-    ).diagnose(
-        "Authentication failed",
-        fix="Check the AWS credentials (access key, secret, session token, or assume-role ARN).",
-    ),
     when(_authorization_error).diagnose(
         "Not authorized",
         fix="Grant the IAM principal the required Athena and Glue permissions "
@@ -142,11 +115,13 @@ ATHENA_ERRORS = ErrorPack(
         "s3StagingDir, and if the bucket requires encryption, use a workgroup that sets "
         "server-side encryption on query results.",
     ),
+    # By message, not by type: pyathena renders EndpointConnectionError into the
+    # SQLAlchemy error it raises, so the original type does not survive the chain.
     when(Matchers.contains("could not connect to the endpoint")).diagnose(
         "Cannot reach the AWS Athena endpoint",
         fix="Check that awsRegion is correct and that the Athena endpoint is reachable from where ingestion runs.",
     ),
-).including(NETWORK_ERRORS)
+).including(AWS_ERRORS)
 
 
 class AthenaChecks:

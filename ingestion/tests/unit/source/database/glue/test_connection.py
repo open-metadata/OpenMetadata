@@ -15,12 +15,7 @@ from pathlib import Path
 from unittest.mock import MagicMock, patch
 
 import pytest
-from botocore.exceptions import (
-    ClientError,
-    EndpointConnectionError,
-    NoCredentialsError,
-    NoRegionError,
-)
+from botocore.exceptions import ClientError
 
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
@@ -192,42 +187,6 @@ def test_get_tables_failure_names_the_database_it_probed():
     assert failure.value.evidence.command == "glue:GetTables (DatabaseName=sales)"
 
 
-def test_error_pack_invalid_access_key():
-    diagnosis = GLUE_ERRORS.classify(_client_error("InvalidAccessKeyId"))
-    assert diagnosis is not None
-    assert "access key" in diagnosis.title.lower()
-
-
-def test_error_pack_signature_mismatch():
-    diagnosis = GLUE_ERRORS.classify(_client_error("SignatureDoesNotMatch"))
-    assert diagnosis is not None
-    assert "secret key" in diagnosis.title.lower()
-
-
-def test_error_pack_invalid_signature_exception_variant():
-    diagnosis = GLUE_ERRORS.classify(_client_error("InvalidSignatureException"))
-    assert diagnosis is not None
-    assert "secret key" in diagnosis.title.lower()
-
-
-def test_error_pack_unrecognized_client():
-    diagnosis = GLUE_ERRORS.classify(_client_error("UnrecognizedClientException"))
-    assert diagnosis is not None
-    assert "not recognized" in diagnosis.title.lower()
-
-
-def test_error_pack_invalid_client_token():
-    diagnosis = GLUE_ERRORS.classify(_client_error("InvalidClientTokenId"))
-    assert diagnosis is not None
-    assert "security token" in diagnosis.title.lower()
-
-
-def test_error_pack_expired_token():
-    diagnosis = GLUE_ERRORS.classify(_client_error("ExpiredTokenException"))
-    assert diagnosis is not None
-    assert "expired" in diagnosis.title.lower()
-
-
 def test_error_pack_access_denied():
     diagnosis = GLUE_ERRORS.classify(
         ClientError(
@@ -250,40 +209,18 @@ def test_error_pack_entity_not_found():
     assert "not found" in diagnosis.title.lower()
 
 
-def test_error_pack_no_credentials():
-    diagnosis = GLUE_ERRORS.classify(NoCredentialsError())
+def test_error_pack_inherits_the_shared_aws_diagnoses():
+    # Authentication, region and endpoint failures are identical across AWS
+    # services; GLUE_ERRORS gets them by folding in AWS_ERRORS.
+    diagnosis = GLUE_ERRORS.classify(_client_error("ExpiredTokenException"))
     assert diagnosis is not None
-    assert "credentials" in diagnosis.title.lower()
+    assert "expired" in diagnosis.title.lower()
 
 
-def test_error_pack_no_region():
-    diagnosis = GLUE_ERRORS.classify(NoRegionError())
-    assert diagnosis is not None
-    assert "region" in diagnosis.title.lower()
-
-
-def test_error_pack_endpoint_unreachable():
-    diagnosis = GLUE_ERRORS.classify(EndpointConnectionError(endpoint_url="https://glue.bad-region.amazonaws.com"))
-    assert diagnosis is not None
-    assert "endpoint" in diagnosis.title.lower()
-
-
-def test_error_pack_folds_in_the_network_pack():
+def test_error_pack_inherits_the_network_pack_through_aws_errors():
     diagnosis = GLUE_ERRORS.classify(ConnectionRefusedError("refused"))
     assert diagnosis is not None
     assert "refused" in diagnosis.title.lower()
-
-
-def test_error_pack_matches_structured_code_not_message_text():
-    # The structured code is EntityNotFoundException; the message echoes "AccessDenied".
-    # Matching the code (not the text) must classify it as the entity error.
-    error = ClientError(
-        {"Error": {"Code": "EntityNotFoundException", "Message": "database 'AccessDenied-logs' not found"}},
-        "GetTables",
-    )
-    diagnosis = GLUE_ERRORS.classify(error)
-    assert diagnosis is not None
-    assert "entity not found" in diagnosis.title.lower()
 
 
 def test_error_pack_unmatched_returns_none():
