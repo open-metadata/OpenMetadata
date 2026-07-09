@@ -34,6 +34,7 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { File } from '../../../../generated/entity/data/file';
 import { Column, TagSource } from '../../../../generated/entity/data/table';
 import { TagLabel } from '../../../../generated/type/tagLabel';
+import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import { getAllTags } from '../../../../utils/TableTags/TableTags.utils';
@@ -52,7 +53,6 @@ import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.compon
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 
 function FileColumnsTable() {
   const { t } = useTranslation();

@@ -37,7 +37,7 @@ import { patchTopicDetails } from '../rest/topicsAPI';
 import { getColumnSorter, highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { getLinkForFqn } from './ServiceUtils';
-import { stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringUtils';
 import {
   certificationTableObject,
   dataProductTableObject,

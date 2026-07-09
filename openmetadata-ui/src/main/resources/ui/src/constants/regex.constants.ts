@@ -11,7 +11,14 @@
  *  limitations under the License.
  */
 
-import { ADMONITION_TYPES } from './BlockEditor.constants';
+export const ADMONITION_TYPES = [
+  'note',
+  'warning',
+  'danger',
+  'info',
+  'tip',
+  'caution',
+] as const;
 
 export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;

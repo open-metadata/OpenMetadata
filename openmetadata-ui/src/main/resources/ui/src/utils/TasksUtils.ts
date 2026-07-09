@@ -102,7 +102,7 @@ import {
 } from './RouterUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
 import { STORED_PROCEDURE_DEFAULT_FIELDS } from './StoredProceduresUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 import { showErrorToast } from './ToastUtils';
 
 export const getRequestDescriptionPath = (

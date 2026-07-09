@@ -47,12 +47,12 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import {
   aggregateTestResultsByEntity,
   TestCaseCountByStatus,
 } from '../../../../utils/DataQuality/DataQualityUtils';
-import { bytesToSize } from '../../../../utils/StringsUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
+import { bytesToSize } from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TableUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import TestCaseFormV1 from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1';

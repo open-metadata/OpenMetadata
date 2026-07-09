@@ -134,12 +134,12 @@ jest.mock('../../utils/EntityLineageUtils', () => ({
   getViewportForLineageExport: jest.fn(() => ({ x: 0, y: 0, zoom: 1 })),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn((val) => `escaped_${val}`),
   getEncodedFqn: jest.fn((val) => encodeURIComponent(val)),
 }));
 
-const mockEscapeESReservedCharacters = require('../../utils/StringsUtils')
+const mockEscapeESReservedCharacters = require('../../utils/StringUtils')
   .escapeESReservedCharacters as jest.Mock;
 
 jest.mock('../../utils/date-time/DateTimeUtils', () => ({

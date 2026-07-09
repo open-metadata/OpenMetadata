@@ -95,6 +95,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'name'),
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),
+  hasEditAccess: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../utils/DataAssetsHeader.utils', () => ({

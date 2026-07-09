@@ -19,7 +19,7 @@ import React from 'react';
 import NotificationMessage from '../components/common/atoms/notifications/NotificationMessage';
 import { ClientErrors } from '../enums/Axios.enum';
 import i18n from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
 const CloseButton = ({ closeSnackbar }: { closeSnackbar?: () => void }) => (
   <ButtonUtility

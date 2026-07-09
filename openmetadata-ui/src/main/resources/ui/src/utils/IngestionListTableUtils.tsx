@@ -26,7 +26,7 @@ import {
 import { getScheduleDescriptionTexts } from './date-time/DateTimeUtils';
 import { getEntityName, highlightSearchText } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
-import { stringToHTML } from './StringsUtils';
+import { stringToHTML } from './StringUtils';
 
 export const renderNameField =
   (searchText?: string) => (_: string, record: IngestionPipeline) =>

@@ -41,6 +41,11 @@ const mockCurrentUser = {
   email: 'test@example.com',
 };
 
+const mockApplicationStore = {
+  currentUser: mockCurrentUser,
+  searchCriteria: '',
+};
+
 // Mock react-router-dom
 const mockNavigate = jest.fn();
 jest.mock('react-router-dom', () => ({
@@ -60,9 +65,7 @@ describe('CustomiseLandingPageHeader', () => {
     jest.clearAllMocks();
 
     // Set default mock implementations
-    mockUseApplicationStore.mockReturnValue({
-      currentUser: mockCurrentUser,
-    });
+    mockUseApplicationStore.mockReturnValue(mockApplicationStore);
 
     mockGetRecentlyViewedData.mockReturnValue([]);
 
@@ -81,6 +84,7 @@ describe('CustomiseLandingPageHeader', () => {
 
   it('should display welcome message with user name when displayName is not available', () => {
     mockUseApplicationStore.mockReturnValue({
+      ...mockApplicationStore,
       currentUser: { ...mockCurrentUser, displayName: undefined },
     });
 
@@ -149,7 +153,7 @@ describe('CustomiseLandingPageHeader', () => {
 
     it('uses the backgroundColor prop when provided, overriding admin theme', () => {
       mockUseApplicationStore.mockReturnValue({
-        currentUser: mockCurrentUser,
+        ...mockApplicationStore,
         applicationConfig: {
           customTheme: { panelBackgroundColor: '#aaaaaa' },
         },
@@ -169,7 +173,7 @@ describe('CustomiseLandingPageHeader', () => {
 
     it('falls back to admin theme panelBackgroundColor when prop is absent', () => {
       mockUseApplicationStore.mockReturnValue({
-        currentUser: mockCurrentUser,
+        ...mockApplicationStore,
         applicationConfig: {
           customTheme: { panelBackgroundColor: '#cccccc' },
         },
@@ -184,7 +188,7 @@ describe('CustomiseLandingPageHeader', () => {
 
     it('falls back to the default gradient when neither prop nor admin theme is set', () => {
       mockUseApplicationStore.mockReturnValue({
-        currentUser: mockCurrentUser,
+        ...mockApplicationStore,
         applicationConfig: { customTheme: {} },
       });
 

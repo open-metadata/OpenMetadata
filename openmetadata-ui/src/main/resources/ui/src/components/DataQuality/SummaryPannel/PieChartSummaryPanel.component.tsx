@@ -23,7 +23,7 @@ import {
   RED_3,
   YELLOW_2,
 } from '../../../constants/Color.constants';
-import { calculatePercentage } from '../../../utils/CommonUtils';
+import { calculatePercentage } from '../../../utils/NumberUtils';
 import { SummaryPanelProps } from './SummaryPanel.interface';
 import SummaryPieChartCard from './SummaryPieChartCard/SummaryPieChartCard.component';
 

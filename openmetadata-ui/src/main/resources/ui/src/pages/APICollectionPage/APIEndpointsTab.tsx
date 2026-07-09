@@ -52,7 +52,7 @@ import {
   getEntityName,
   highlightSearchText,
 } from '../../utils/EntityUtils';
-import { stringToHTML } from '../../utils/StringsUtils';
+import { stringToHTML } from '../../utils/StringUtils';
 import { descriptionTableObject } from '../../utils/TableColumn.util';
 import { showErrorToast } from '../../utils/ToastUtils';
 

@@ -55,7 +55,7 @@ jest.mock('../../../components/common/ResizablePanels/ResizablePanels', () =>
 const mockProps = {
   pageTitle: 'add-policy',
 };
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/SearchUtils', () => ({
   getIsErrorMatch: jest.fn(),
 }));
 

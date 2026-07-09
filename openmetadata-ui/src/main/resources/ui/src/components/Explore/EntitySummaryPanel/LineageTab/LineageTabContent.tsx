@@ -23,7 +23,7 @@ import { ReactComponent as UpstreamIcon } from '../../../../assets/svg/lineage-u
 import { ERROR_PLACEHOLDER_TYPE } from '../../../../enums/common.enum';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
-import { getServiceLogo } from '../../../../utils/CommonUtils';
+import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
 import {
   getEntityLinkFromType,

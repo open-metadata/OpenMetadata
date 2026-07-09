@@ -43,6 +43,7 @@ import {
   postTestCaseIncidentStatus,
   updateTestCaseIncidentById,
 } from '../../../../rest/incidentManagerAPI';
+import { updateTestCaseById } from '../../../../rest/testAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import {
   getColumnNameFromEntityLink,
@@ -50,7 +51,6 @@ import {
 } from '../../../../utils/EntityUtils';
 import { getCommonExtraInfoForVersionDetails } from '../../../../utils/EntityVersionUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
-import { updateTestCaseById } from '../../../../rest/testAPI';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { getTaskDetailPath } from '../../../../utils/TasksUtils';

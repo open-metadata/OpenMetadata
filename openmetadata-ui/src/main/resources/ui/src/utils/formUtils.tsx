@@ -81,7 +81,7 @@ import AntDTagSuggestion, {
   TagSuggestionProps as AntDTagSuggestionProps,
 } from '../pages/TasksPage/shared/TagSuggestion';
 import { t } from './i18next/LocalUtil';
-import { getErrorText } from './StringsUtils';
+import { getErrorText } from './StringUtils';
 
 export const getField = (field: FieldProp) => {
   const {

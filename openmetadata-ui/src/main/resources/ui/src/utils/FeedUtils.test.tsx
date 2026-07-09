@@ -10,11 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
-import { EntityType, FqnPart } from '../enums/entity.enum';
+import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { CardStyle, FieldOperation } from '../generated/entity/feed/thread';
-import { getPartialNameFromTableFQN } from './CommonUtils';
 import {
   entityDisplayName,
   getBackendFormat,
@@ -46,9 +44,14 @@ jest.mock('../rest/searchAPI', () => ({
   }),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => encodeURIComponent(fqn)),
   getDecodedFqn: jest.fn().mockImplementation((fqn) => decodeURIComponent(fqn)),
+}));
+
+jest.mock('./CommonUtils', () => ({
+  ...jest.requireActual('./CommonUtils'),
+  getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
 }));
 
 jest.mock('./FeedUtils', () => ({
@@ -58,11 +61,6 @@ jest.mock('./FeedUtils', () => ({
   getEntityType: jest.fn().mockReturnValue('entityType'),
   buildMentionLink: jest.fn().mockReturnValue('buildMentionLink'),
   getEntityBreadcrumbs: jest.fn().mockReturnValue('entityBreadcrumbs'),
-}));
-
-jest.mock('./CommonUtils', () => ({
-  getPartialNameFromTableFQN: jest.fn(),
-  getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
 }));
 
 describe('Feed Utils', () => {
@@ -116,16 +114,10 @@ describe('Feed Utils', () => {
   });
 
   // entityDisplayName
-  it('should call getPartialNameFromTableFQN when entity type is TestSuite', () => {
+  it('should return the test case name for TestSuite entity type', () => {
     const fqn = 'test.testSuite';
 
-    entityDisplayName(EntityType.TEST_SUITE, fqn);
-
-    expect(getPartialNameFromTableFQN).toHaveBeenCalledWith(
-      fqn,
-      [FqnPart.TestCase],
-      FQN_SEPARATOR_CHAR
-    );
+    expect(entityDisplayName(EntityType.TEST_SUITE, fqn)).toBe('testSuite');
   });
 });
 

@@ -33,7 +33,7 @@ import { searchQuery } from '../rest/searchAPI';
 import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
 import i18n from './i18next/LocalUtil';
 import { getTermQuery } from './SearchUtils';
-import { escapeESReservedCharacters, getEncodedFqn } from './StringsUtils';
+import { escapeESReservedCharacters, getEncodedFqn } from './StringUtils';
 
 export interface TagRightPanelParams {
   editOwnerPermission: boolean;

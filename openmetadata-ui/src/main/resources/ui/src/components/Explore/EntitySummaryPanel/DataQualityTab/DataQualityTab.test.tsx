@@ -198,12 +198,18 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
   getListTestCaseIncidentStatus: jest.fn(),
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  default: { t: jest.fn().mockReturnValue('') },
+  t: jest.fn().mockReturnValue(''),
+  translateWithNestedKeys: jest.fn().mockReturnValue(''),
   Transi18next: jest
     .fn()
     .mockImplementation(({ i18nKey }) => (
       <span data-testid="trans-i18next">{i18nKey}</span>
     )),
+}));
+
+jest.mock('../../../../utils/FqnUtils', () => ({
   getTableFQNFromColumnFQN: jest.fn().mockImplementation((fqn) => {
     if (fqn?.includes('::columns::')) {
       return fqn.split('::columns::')[0];

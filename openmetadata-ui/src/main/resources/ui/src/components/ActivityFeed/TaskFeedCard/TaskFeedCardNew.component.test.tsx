@@ -101,7 +101,7 @@ jest.mock('../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockReturnValue(1234567890),
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('Sensitive'),
 }));
 

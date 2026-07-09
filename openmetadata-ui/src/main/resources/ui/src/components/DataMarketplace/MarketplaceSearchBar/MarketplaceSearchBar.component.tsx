@@ -31,7 +31,7 @@ import { searchQuery } from '../../../rest/searchAPI';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 import './marketplace-search-bar.less';
 
 const PAGE_SIZE = 5;
