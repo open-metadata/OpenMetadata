@@ -118,15 +118,17 @@ class SearchRelevancyPreviewIT {
 
     final SearchSettings base = currentSettings();
 
-    final SearchSettings nameOnly = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings nameOnly = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(nameOnly, TABLE_INDEX, NAME_FIELD, 5.0);
+    nameOnly = SearchSettingsTestHelper.withRankingDisabled(nameOnly, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, query, TABLE_INDEX, nameOnly, 10))
         .as("searching only 'name' must return only the table whose name carries the token")
         .containsExactly(tokenInName.getId().toString());
 
-    final SearchSettings descriptionOnly = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings descriptionOnly = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(
         descriptionOnly, TABLE_INDEX, DESCRIPTION_FIELD, 5.0);
+    descriptionOnly = SearchSettingsTestHelper.withRankingDisabled(descriptionOnly, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, query, TABLE_INDEX, descriptionOnly, 10))
         .as("searching only 'description' must return only the table whose description carries it")
         .containsExactly(tokenInDescription.getId().toString());
@@ -187,16 +189,18 @@ class SearchRelevancyPreviewIT {
 
     final SearchSettings base = currentSettings();
 
-    final SearchSettings exact = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings exact = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(
         exact, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.EXACT);
+    exact = SearchSettingsTestHelper.withRankingDisabled(exact, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, exact, 10))
         .as("matchType=exact must match only the whole-keyword name, not the prefixed sibling")
         .containsExactly(exactTable.getId().toString());
 
-    final SearchSettings standard = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings standard = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(
         standard, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.STANDARD);
+    standard = SearchSettingsTestHelper.withRankingDisabled(standard, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, standard, 10))
         .as("matchType=standard must match both the exact and the prefixed name")
         .hasSize(2);
