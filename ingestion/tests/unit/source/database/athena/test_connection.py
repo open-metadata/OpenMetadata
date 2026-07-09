@@ -18,6 +18,7 @@ from botocore.exceptions import ClientError
 
 from metadata.core.connections.test_connection.check import collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.records import Evidence
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
 )
@@ -110,6 +111,31 @@ def test_every_athena_step_resolves_to_a_check():
         DatabaseStep.GetTables,
         DatabaseStep.GetViews,
     }
+
+
+def test_every_check_reports_the_command_it_ran():
+    # pyathena reflects via the AWS API, so the shared SQL capture yields nothing;
+    # each reflection step names its API operation instead.
+    provider = _checks()
+    inspector = MagicMock()
+    inspector.get_schema_names.return_value = ["ecommerce"]
+    inspector.get_table_names.return_value = ["orders"]
+    inspector.get_view_names.return_value = ["v_orders"]
+
+    with (
+        patch(f"{CONNECTION_MODULE}.list_schemas", return_value=Evidence(summary="1 schema enumerated")),
+        patch(f"{CONNECTION_MODULE}.inspect", return_value=inspector),
+    ):
+        assert provider.get_schemas().command == "athena:ListDatabases (CatalogName=AwsDataCatalog)"
+        assert provider.get_tables().command == "athena:ListTableMetadata (CatalogName=AwsDataCatalog)"
+        assert provider.get_views().command == "athena:ListTableMetadata (CatalogName=AwsDataCatalog)"
+
+
+def test_command_names_a_configured_catalog():
+    provider = _checks(catalogId="my_catalog")
+
+    with patch(f"{CONNECTION_MODULE}.list_schemas", return_value=Evidence(summary="ok")):
+        assert provider.get_schemas().command == "athena:ListDatabases (CatalogName=my_catalog)"
 
 
 def test_error_pack_classifies_access_denied_as_not_authorized():

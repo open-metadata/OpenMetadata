@@ -15,6 +15,7 @@ Source connection handler
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from urllib.parse import quote_plus
 
@@ -60,6 +61,13 @@ if TYPE_CHECKING:
 # Cap how many schemas the test connection probes so a catalog with many
 # databases cannot exhaust the test-connection timeout.
 MAX_SCHEMAS_TO_PROBE = 100
+
+DEFAULT_CATALOG = "AwsDataCatalog"
+
+# pyathena reflects through the Athena metadata API rather than SQL, so the shared
+# statement capture records nothing; the reported command is the API operation.
+LIST_DATABASES = "athena:ListDatabases"
+LIST_TABLE_METADATA = "athena:ListTableMetadata"
 
 
 def _message(error: BaseException) -> str:
@@ -156,6 +164,10 @@ class AthenaChecks:
     def _catalog_label(self) -> str:
         return f"catalog '{self.catalog_id}'" if self.catalog_id else "the default catalog (AwsDataCatalog)"
 
+    @property
+    def _catalog_name(self) -> str:
+        return self.catalog_id or DEFAULT_CATALOG
+
     def _targeted_schemas(self) -> list[str]:
         """The schemas the configured schemaFilterPattern would target, mirroring
         what the ingestion run will read.
@@ -186,7 +198,8 @@ class AthenaChecks:
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        command = f"{LIST_DATABASES} (CatalogName={self._catalog_name})"
+        return replace(list_schemas(self.client), command=command)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
@@ -200,6 +213,7 @@ class AthenaChecks:
         if not targeted:
             return Evidence(
                 summary=f"no schemas visible in {self._catalog_label}",
+                command=f"{LIST_DATABASES} (CatalogName={self._catalog_name})",
                 caveat=Diagnosis(
                     title="No schemas visible",
                     remediation=f"No databases were listable in {self._catalog_label}. Check the login's "
@@ -208,11 +222,16 @@ class AthenaChecks:
                 ),
             )
         inspector = inspect(self.client)
+        command = f"{LIST_TABLE_METADATA} (CatalogName={self._catalog_name})"
         readable = any(inspector.get_table_names(schema) for schema in targeted)
-        result = Evidence(summary=f"tables readable across {len(targeted)} targeted schema(s) of {self._catalog_label}")
+        result = Evidence(
+            summary=f"tables readable across {len(targeted)} targeted schema(s) of {self._catalog_label}",
+            command=command,
+        )
         if not readable:
             result = Evidence(
                 summary=f"no readable tables across {len(targeted)} targeted schema(s) of {self._catalog_label}",
+                command=command,
                 caveat=Diagnosis(
                     title="No readable tables",
                     remediation="No tables were readable in any targeted schema. AWS Lake Formation returns "
@@ -231,7 +250,10 @@ class AthenaChecks:
         inspector = inspect(self.client)
         visible = any(inspector.get_view_names(schema) for schema in targeted)
         summary = "views visible" if visible else "no views visible (not required)"
-        return Evidence(summary=f"{summary} across {len(targeted)} targeted schema(s)")
+        return Evidence(
+            summary=f"{summary} across {len(targeted)} targeted schema(s)",
+            command=f"{LIST_TABLE_METADATA} (CatalogName={self._catalog_name})",
+        )
 
 
 class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
