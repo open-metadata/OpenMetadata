@@ -59,10 +59,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
 }));
 
-jest.mock('@untitledui/icons', () => ({
-  Home02: () => <div>Home02</div>,
-}));
-
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
   default: jest.fn(({ children }: { children: React.ReactNode }) => (
@@ -71,7 +67,7 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
 }));
 
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => ({
     __esModule: true,
     default: jest.fn(() => <div data-testid="breadcrumb" />),

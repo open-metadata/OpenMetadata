@@ -30,7 +30,7 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   showHome = true,
   type,
   divider,
-  size,
+  size = 'xs',
   maxItems,
   className,
   noMargin = false,
@@ -72,7 +72,14 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
 
   return (
     <Breadcrumbs
-      className={classNames(noMargin ? undefined : 'tw:mb-3', className)}
+      className={classNames(
+        // The tail (current) crumb is semibold per Figma; the core Breadcrumbs
+        // renders it font-medium, so override via the aria-current descendant
+        // (higher specificity wins — no !important needed).
+        'tw:[&_[aria-current]]:font-semibold',
+        noMargin ? undefined : 'tw:mb-3',
+        className
+      )}
       data-testid="breadcrumb"
       divider={divider}
       items={allItems}

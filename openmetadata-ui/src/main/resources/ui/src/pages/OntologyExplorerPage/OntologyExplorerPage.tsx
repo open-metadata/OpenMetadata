@@ -19,11 +19,11 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as GovernanceIcon } from '../../assets/svg/ic-governance.svg';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useIsAiMode } from '../../hooks/useAppMode';
@@ -43,20 +43,18 @@ const OntologyExplorerPage: React.FC = () => {
   }, []);
 
   const breadcrumb = (
-    <TitleBreadcrumb
-      useCustomArrow
-      titleLinks={[
+    <HeaderBreadcrumb
+      noMargin
+      items={[
         {
-          name: '',
-          icon: <Home02 size={12} />,
-          url: '/',
-          activeTitle: true,
+          label: null,
+          ariaLabel: t('label.home'),
+          icon: GovernanceIcon,
+          href: '/',
         },
-        {
-          name: t('label.ontology-explorer'),
-          url: '',
-        },
+        { label: t('label.ontology-explorer') },
       ]}
+      showHome={false}
     />
   );
 
