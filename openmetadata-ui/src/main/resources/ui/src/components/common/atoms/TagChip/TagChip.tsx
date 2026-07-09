@@ -14,7 +14,7 @@
 import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { Tag01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, MouseEvent, ReactElement } from 'react';
+import { FC, KeyboardEvent, MouseEvent, ReactElement } from 'react';
 import { useTranslation } from 'react-i18next';
 
 export interface TagChipProps {
@@ -84,12 +84,22 @@ const TagChip: FC<TagChipProps> = ({
   const defaultIcon = showIcon ? (
     <Tag01 size={sizeStyles[size].icon} />
   ) : undefined;
-  const chipIcon = icon !== undefined ? icon : defaultIcon;
+  const chipIcon = icon ?? defaultIcon;
+
+  const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
+    if (
+      onDelete &&
+      !disabled &&
+      (e.key === 'Backspace' || e.key === 'Delete')
+    ) {
+      e.preventDefault();
+      onDelete(e.nativeEvent);
+    }
+  };
 
   return (
     <div
-      aria-disabled={disabled ?? undefined}
-      role={disabled !== undefined ? 'group' : undefined}
+      aria-disabled={disabled}
       className={classNames(
         'tw:inline-flex tw:min-w-0 tw:items-center tw:whitespace-nowrap tw:transition-all tw:duration-150',
         sizeStyles[size].root,
@@ -102,8 +112,10 @@ const TagChip: FC<TagChipProps> = ({
       )}
       data-tag-index={otherProps['data-tag-index']}
       data-testid={otherProps['data-testid']}
+      role={onDelete ? 'button' : undefined}
       style={{ maxWidth }}
-      tabIndex={tabIndex}>
+      tabIndex={tabIndex}
+      onKeyDown={onDelete ? handleKeyDown : undefined}>
       {tagColor && (
         <span
           className="tw:absolute tw:left-0 tw:top-1/2 tw:h-[70%] tw:w-0.75 tw:-translate-y-1/2 tw:rounded-[2px_0_0_2px]"
@@ -116,16 +128,30 @@ const TagChip: FC<TagChipProps> = ({
         </span>
       )}
       <Typography
+        className='tw:text-secondary'
         data-testid={labelDataTestId}
         ellipsis={showEllipsis}
         size={sizeStyles[size].typography}
         weight={variant === 'blueGray' ? 'regular' : 'medium'}>
         {label}
       </Typography>
+      {onDelete && (
+        <ButtonUtility
+          aria-label={t('label.remove')}
+          className={classNames(
+            'tw:ml-1 tw:size-auto tw:shrink-0 tw:rounded-none tw:p-0 tw:text-inherit tw:shadow-none tw:ring-0 tw:hover:bg-transparent tw:hover:text-inherit',
+            sizeStyles[size].deleteIcon
+          )}
+          icon={XClose}
+          isDisabled={disabled}
+          size="xs"
           onClick={(e: MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
-            onDelete(e.nativeEvent);
-          }}
+            onDelete(e.nativeEvent)
+          }
+          }
+        />
+      )}
     </div>
   );
 };
