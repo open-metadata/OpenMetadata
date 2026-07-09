@@ -18,6 +18,7 @@ import {
   queryByTestId,
   render,
 } from '@testing-library/react';
+import { type PropsWithChildren } from 'react';
 import { MemoryRouter } from 'react-router';
 import { MAX_RESULT_HITS } from '../../constants/explore.constants';
 import { TAG_CONSTANT } from '../../constants/Tag.constants';
@@ -25,8 +26,13 @@ import { SearchIndex } from '../../enums/search.enum';
 import SearchedData from './SearchedData';
 import { SearchedDataProps } from './SearchedData.interface';
 
+const TestWrapper = ({ children }: PropsWithChildren) => (
+  <MemoryRouter>{children}</MemoryRouter>
+);
+
 const mockData: SearchedDataProps['data'] = [
   {
+    _id: 'search-hit-1',
     _index: SearchIndex.TABLE,
     _source: {
       id: '1',
@@ -58,6 +64,7 @@ const mockData: SearchedDataProps['data'] = [
     },
   },
   {
+    _id: 'search-hit-2',
     _index: SearchIndex.TABLE,
     _source: {
       id: '2',
@@ -74,6 +81,7 @@ const mockData: SearchedDataProps['data'] = [
     },
   },
   {
+    _id: 'search-hit-3',
     _index: SearchIndex.TABLE,
     _source: {
       id: '3',
@@ -91,7 +99,6 @@ const mockData: SearchedDataProps['data'] = [
   },
 ];
 
-const mockPaginate = jest.fn();
 const mockHandleSummaryPanelDisplay = jest.fn();
 
 jest.mock('../Database/TableDataCardBody/TableDataCardBody', () => {
@@ -116,15 +123,18 @@ const MOCK_PROPS = {
   currentPage: 0,
   data: mockData,
   handleSummaryPanelDisplay: mockHandleSummaryPanelDisplay,
-  onPaginationChange: mockPaginate,
   selectedEntityId: 'name1',
   totalValue: 10,
 };
 
 describe('Test SearchedData Component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+  });
+
   it('Component should render', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const searchedDataContainer = getByTestId(container, 'search-container');
@@ -134,7 +144,7 @@ describe('Test SearchedData Component', () => {
 
   it('Should display table card according to data provided in props', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
     const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
     const card2 = getByTestId(container, 'table-data-card_fullyQualifiedName2');
@@ -147,7 +157,7 @@ describe('Test SearchedData Component', () => {
 
   it('Should display table card with name and display name highlighted', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
@@ -170,7 +180,7 @@ describe('Test SearchedData Component', () => {
 
   it('Should display table card with description highlighted', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const card1 = getByTestId(container, 'table-data-card_fullyQualifiedName1');
@@ -195,7 +205,7 @@ describe('Test SearchedData Component', () => {
         <p>hello world</p>
       </SearchedData>,
       {
-        wrapper: MemoryRouter,
+        wrapper: TestWrapper,
       }
     );
 
@@ -206,7 +216,7 @@ describe('Test SearchedData Component', () => {
     const { container } = render(
       <SearchedData {...MOCK_PROPS} data={[]} totalValue={0} />,
       {
-        wrapper: MemoryRouter,
+        wrapper: TestWrapper,
       }
     );
 
@@ -215,7 +225,7 @@ describe('Test SearchedData Component', () => {
 
   it('Component should render highlights', () => {
     const { container } = render(<SearchedData {...MOCK_PROPS} />, {
-      wrapper: MemoryRouter,
+      wrapper: TestWrapper,
     });
 
     const searchedDataContainer = getByTestId(container, 'search-container');

@@ -106,8 +106,7 @@ describe('PipelineActionsDropdown', () => {
   });
 
   it('should hide run button when Trigger permission is absent', async () => {
-    const pipelineName =
-      mockPipelineActionsDropdownProps.ingestion.name ?? '';
+    const pipelineName = mockPipelineActionsDropdownProps.ingestion.name ?? '';
 
     await act(async () => {
       render(

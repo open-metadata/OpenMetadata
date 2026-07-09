@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import userEvent from '@testing-library/user-event';
 import { MemoryRouter } from 'react-router-dom';
 import { mockUserData } from '../../components/Settings/Users/mocks/User.mocks';
@@ -118,12 +124,10 @@ jest.mock('../../rest/dataModelsAPI', () => ({
     .mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
-  getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
-}));
-
-jest.mock('../../utils/RecentActivityUtils', () => ({
+jest.mock('../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../utils/CommonUtils'),
   addToRecentViewed: jest.fn(),
+  getEntityMissingError: jest.fn(() => ENTITY_MISSING_ERROR),
 }));
 
 jest.mock('../../utils/DataModelsUtils', () => ({
@@ -153,24 +157,42 @@ jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'testEntityName'),
 }));
 
+const renderPage = () => render(<DataModelsPage />, { wrapper: MemoryRouter });
+
 describe('DataModelPage component', () => {
+  beforeEach(() => {
+    jest.clearAllMocks();
+    (getDataModelByFqn as jest.Mock).mockResolvedValue({});
+    (patchDataModelDetails as jest.Mock).mockResolvedValue({});
+    (addDataModelFollower as jest.Mock).mockResolvedValue({});
+    (removeDataModelFollower as jest.Mock).mockResolvedValue({});
+    (updateDataModelVotes as jest.Mock).mockResolvedValue({});
+    mockGetEntityPermissionByFqn.mockResolvedValue({
+      ViewAll: true,
+      ViewBasic: true,
+    });
+  });
+
   it('should render necessary elements', async () => {
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
-    expect(getDataModelByFqn).toHaveBeenCalled();
-    expect(screen.getByText('DataModelDetails')).toBeInTheDocument();
+    await waitFor(() => {
+      expect(getDataModelByFqn).toHaveBeenCalled();
+    });
+
+    expect(await screen.findByText('DataModelDetails')).toBeInTheDocument();
   });
 
   it('toggle delete action check', async () => {
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     // toggle delete
     fireEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: TOGGLE_DELETE,
       })
     );
@@ -180,12 +202,12 @@ describe('DataModelPage component', () => {
 
   it('follow data model action check', async () => {
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     // follow data model
     fireEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: FOLLOW_DATA_MODEL,
       })
     );
@@ -203,12 +225,12 @@ describe('DataModelPage component', () => {
     });
 
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     // unfollow data model
     fireEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: FOLLOW_DATA_MODEL,
       })
     );
@@ -218,12 +240,12 @@ describe('DataModelPage component', () => {
 
   it('update data model action check', async () => {
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     // update data model
     fireEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: UPDATE_DATA_MODEL,
       })
     );
@@ -233,12 +255,12 @@ describe('DataModelPage component', () => {
 
   it('update vote action check', async () => {
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     // update vote
     fireEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: UPDATE_VOTE,
       })
     );
@@ -252,12 +274,12 @@ describe('DataModelPage component', () => {
     (updateDataModelVotes as jest.Mock).mockRejectedValueOnce(ERROR);
 
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     // create thread
     userEvent.click(
-      screen.getByRole('button', {
+      await screen.findByRole('button', {
         name: CREATE_THREAD,
       })
     );
@@ -265,21 +287,21 @@ describe('DataModelPage component', () => {
     await act(async () => {
       // update data model
       fireEvent.click(
-        screen.getByRole('button', {
+        await screen.findByRole('button', {
           name: UPDATE_DATA_MODEL,
         })
       );
 
       // follow data model
       fireEvent.click(
-        screen.getByRole('button', {
+        await screen.findByRole('button', {
           name: FOLLOW_DATA_MODEL,
         })
       );
 
       // update vote
       fireEvent.click(
-        screen.getByRole('button', {
+        await screen.findByRole('button', {
           name: UPDATE_VOTE,
         })
       );
@@ -294,7 +316,7 @@ describe('DataModelPage component', () => {
     mockGetEntityPermissionByFqn.mockRejectedValueOnce(ERROR);
 
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     expect(screen.getByText(ERROR_PLACEHOLDER)).toBeInTheDocument();
@@ -307,7 +329,7 @@ describe('DataModelPage component', () => {
     });
 
     await act(async () => {
-      render(<DataModelsPage />, { wrapper: MemoryRouter });
+      renderPage();
     });
 
     expect(useFqn).toHaveBeenCalled();

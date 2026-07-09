@@ -97,8 +97,8 @@ jest.mock('.../../../../context/PermissionProvider/PermissionProvider', () => ({
   })),
 }));
 
-jest.mock('../../../../utils/FqnUtils', () => ({
-  ...jest.requireActual('../../../../utils/FqnUtils'),
+jest.mock('../../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../../utils/CommonUtils'),
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
 }));
 

@@ -125,7 +125,7 @@ describe('TestDefinitionForm Component', () => {
   });
 
   describe('Rendering', () => {
-    it('should render form in create mode with all required fields', () => {
+    it('should render form in create mode with all required fields', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
@@ -133,7 +133,7 @@ describe('TestDefinitionForm Component', () => {
       expect(screen.getByLabelText('label.name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.display-name')).toBeInTheDocument();
       expect(screen.getByLabelText('label.description')).toBeInTheDocument();
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+      expect(await screen.findByTestId('code-editor')).toBeInTheDocument();
       expect(screen.getByLabelText('label.entity-type')).toBeInTheDocument();
       expect(
         screen.getByLabelText('label.test-platform-plural')
@@ -178,12 +178,12 @@ describe('TestDefinitionForm Component', () => {
       );
     });
 
-    it('should render SQL query editor section', () => {
+    it('should render SQL query editor section', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+      expect(await screen.findByTestId('code-editor')).toBeInTheDocument();
     });
 
     it('should render field documentation panel and update active field on focus', () => {
@@ -286,9 +286,9 @@ describe('TestDefinitionForm Component', () => {
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      const sqlEditor = screen.getByTestId(
+      const sqlEditor = (await screen.findByTestId(
         'code-editor'
-      ) as HTMLTextAreaElement;
+      )) as HTMLTextAreaElement;
 
       await act(async () => {
         fireEvent.change(sqlEditor, {
@@ -301,7 +301,7 @@ describe('TestDefinitionForm Component', () => {
       );
     });
 
-    it('should populate SQL expression in edit mode', () => {
+    it('should populate SQL expression in edit mode', async () => {
       render(
         <TestDefinitionForm
           initialValues={mockInitialValues}
@@ -310,7 +310,7 @@ describe('TestDefinitionForm Component', () => {
         />
       );
 
-      const sqlEditor = screen.getByTestId('code-editor');
+      const sqlEditor = await screen.findByTestId('code-editor');
 
       expect(sqlEditor).toHaveValue(
         'SELECT * FROM {table} WHERE {column} IS NOT NULL'
@@ -585,9 +585,9 @@ describe('TestDefinitionForm Component', () => {
 
         await submitEmptyForm();
 
-        const formItem = screen
-          .getByTestId('code-editor')
-          .closest('.ant-form-item');
+        const formItem = (await screen.findByTestId('code-editor')).closest(
+          '.ant-form-item'
+        );
 
         await assertNoRequiredError(formItem);
       });
@@ -1002,12 +1002,12 @@ describe('TestDefinitionForm Component', () => {
       expect(supportedServicesField).not.toBeDisabled();
     });
 
-    it('should show all fields in create mode regardless of platform', () => {
+    it('should show all fields in create mode regardless of platform', async () => {
       render(
         <TestDefinitionForm onCancel={mockOnCancel} onSuccess={mockOnSuccess} />
       );
 
-      expect(screen.getByTestId('code-editor')).toBeInTheDocument();
+      expect(await screen.findByTestId('code-editor')).toBeInTheDocument();
       expect(screen.getByLabelText('label.entity-type')).not.toBeDisabled();
       expect(
         screen.getByLabelText('label.test-platform-plural')

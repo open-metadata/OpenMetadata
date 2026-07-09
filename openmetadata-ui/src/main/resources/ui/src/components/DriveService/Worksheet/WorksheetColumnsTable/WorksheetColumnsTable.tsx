@@ -37,6 +37,7 @@ import {
   Worksheet,
 } from '../../../../generated/entity/data/worksheet';
 import { TagLabel } from '../../../../generated/type/tagLabel';
+import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 import { getEntityName } from '../../../../utils/EntityUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
 import { getAllTags } from '../../../../utils/TableTags/TableTags.utils';
@@ -56,7 +57,6 @@ import { ColumnFilter } from '../../../Database/ColumnFilter/ColumnFilter.compon
 import TableDescription from '../../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
 
 function WorksheetColumnsTable() {
   const { t } = useTranslation();
