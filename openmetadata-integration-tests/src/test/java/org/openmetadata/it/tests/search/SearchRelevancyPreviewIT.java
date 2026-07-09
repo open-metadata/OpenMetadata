@@ -47,6 +47,7 @@ class SearchRelevancyPreviewIT {
   private static final String NAME_FIELD = "name";
   private static final String DESCRIPTION_FIELD = "description";
   private static final String USAGE_COUNT_FIELD = "usageSummary.weeklyStats.count";
+  private static final double USAGE_SIGNAL_FACTOR = 0.001;
   private static final Duration INDEXED_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration RANK_POLL = Duration.ofSeconds(3);
 
@@ -91,7 +92,8 @@ class SearchRelevancyPreviewIT {
     awaitIndexed(marker, 2);
 
     final SearchSettings boosted = SearchSettingsTestHelper.copyOf(currentSettings());
-    SearchSettingsTestHelper.addGlobalFieldValueBoost(boosted, USAGE_COUNT_FIELD, 50.0);
+    SearchSettingsTestHelper.addGlobalFieldValueBoost(
+        boosted, USAGE_COUNT_FIELD, USAGE_SIGNAL_FACTOR);
 
     // Usage rolls into usageSummary asynchronously, so poll until the numeric boost takes effect.
     Awaitility.await("usage field-value boost ranks the heavily-used table first")

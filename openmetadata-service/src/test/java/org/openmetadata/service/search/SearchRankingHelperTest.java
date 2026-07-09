@@ -62,6 +62,17 @@ class SearchRankingHelperTest {
   }
 
   @Test
+  void significantQueryTextPreservingCaseDeduplicatesMixedCaseTokens() {
+    String significantQuery =
+        SearchRankingHelper.significantQueryTextPreservingCase(
+            "Warehouse warehouse", new RankingConfiguration());
+
+    assertEquals("Warehouse", significantQuery);
+    assertEquals(
+        List.of("Warehouse", "warehouse"), SearchRankingHelper.exactMatchTexts(significantQuery));
+  }
+
+  @Test
   void resolveRankingHandlesDefaultRankingWithoutStages() {
     SearchSettings settings =
         new SearchSettings()

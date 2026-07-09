@@ -85,14 +85,15 @@ public final class SearchRankingHelper {
 
     Set<String> stopWords = stopWords(ranking);
 
-    LinkedHashSet<String> tokens = new LinkedHashSet<>();
+    LinkedHashSet<String> seenTokens = new LinkedHashSet<>();
+    List<String> tokens = new ArrayList<>();
     for (String token : TOKEN_SPLITTER.split(query.trim())) {
       String normalizedToken = token.toLowerCase(Locale.ROOT);
-      if (isSignificantToken(normalizedToken, stopWords)) {
+      if (isSignificantToken(normalizedToken, stopWords) && seenTokens.add(normalizedToken)) {
         tokens.add(normalize ? normalizedToken : token);
       }
     }
-    return new ArrayList<>(tokens);
+    return tokens;
   }
 
   public static double disMaxTieBreaker(RankingConfiguration ranking) {
