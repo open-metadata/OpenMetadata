@@ -4,9 +4,11 @@ import java.lang.reflect.Method;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.function.BiConsumer;
 import java.util.function.Function;
@@ -32,10 +34,39 @@ import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @UtilityClass
 public class VectorDocBuilder {
+
+  /**
+   * Schema version of the denormalized chunk document (issue #862/#858). Stamped on every chunk doc
+   * as {@code docVersion} and mirrored on the chunk index mapping as {@code _meta.chunkDocVersion}.
+   * Bump this whenever {@link #addFilterFields} materializes a new field or changes an existing one
+   * so {@code OpenSearchVectorService} triggers an additive {@code PUT _mapping} and an
+   * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
+   * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
+   */
+  public static final int CHUNK_DOC_VERSION = 1;
+
+  /**
+   * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
+   * text is already embedded and searchable via {@code textToEmbed}; the {@code description} field
+   * exists only so the shard-fair lexical clauses (which target {@code description}) can match on
+   * chunk docs, so a hard cap keeps chunk {@code _source} growth bounded on pathological bodies.
+   */
+  static final int MAX_CHUNK_DESCRIPTION_CHARS = 5000;
+
+  /**
+   * Source of the per-chunk embedding vector. The normal write path calls the embedding client;
+   * the docVersion-migration path reuses vectors already stored on the chunk docs so a mapping-only
+   * change never incurs embedding-provider cost.
+   */
+  @FunctionalInterface
+  interface ChunkEmbeddingSource {
+    float[] embeddingFor(int chunkIndex, String textToEmbed);
+  }
 
   /**
    * Strategy for producing the semantic "body text" of an entity that will be chunked and fed to
@@ -120,7 +151,33 @@ public class VectorDocBuilder {
    */
   public static List<Map<String, Object>> fromEntity(
       EntityInterface entity, EmbeddingClient embeddingClient) {
-    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingClient);
+    return fromEntity(entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed));
+  }
+
+  /**
+   * Rebuild an entity's chunk docs reusing already-computed embeddings keyed by chunk index, so a
+   * docVersion-only mapping upgrade re-materializes the denormalized fields with <b>zero</b>
+   * embedding-provider cost (issue #862 versioned rollout). Callers must supply a vector for every
+   * chunk index the re-chunked body produces; a missing vector throws {@link IllegalStateException}
+   * so the service layer can fall back to a full re-embed.
+   */
+  public static List<Map<String, Object>> fromEntityReusingEmbeddings(
+      EntityInterface entity, Map<Integer, float[]> reuseEmbeddings) {
+    return fromEntity(
+        entity,
+        (index, textToEmbed) -> {
+          float[] vector = reuseEmbeddings.get(index);
+          if (vector == null) {
+            throw new IllegalStateException(
+                "No reusable embedding for chunk " + index + " of entity " + entity.getId());
+          }
+          return vector;
+        });
+  }
+
+  private static List<Map<String, Object>> fromEntity(
+      EntityInterface entity, ChunkEmbeddingSource embeddingSource) {
+    List<Map<String, Object>> docs = buildChunkFields(entity, embeddingSource);
     if (entity instanceof GlossaryTerm term) {
       List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
       if (!relatedTermDocs.isEmpty()) {
@@ -165,6 +222,11 @@ public class VectorDocBuilder {
   /** One embedding-field map per body chunk. See {@link #fromEntity} for the doc shape. */
   public static List<Map<String, Object>> buildChunkFields(
       EntityInterface entity, EmbeddingClient embeddingClient) {
+    return buildChunkFields(entity, (index, textToEmbed) -> embeddingClient.embed(textToEmbed));
+  }
+
+  private static List<Map<String, Object>> buildChunkFields(
+      EntityInterface entity, ChunkEmbeddingSource embeddingSource) {
     EntityReference reference = entity.getEntityReference();
     String entityType = reference == null ? null : reference.getType();
     ChunkContext ctx =
@@ -179,13 +241,13 @@ public class VectorDocBuilder {
             TextChunkManager.chunk(buildSemanticBodyText(entity, entityType)));
     List<Map<String, Object>> docs = new ArrayList<>(ctx.chunks().size());
     for (int index = 0; index < ctx.chunks().size(); index++) {
-      docs.add(buildChunkDoc(ctx, index, embeddingClient));
+      docs.add(buildChunkDoc(ctx, index, embeddingSource));
     }
     return docs;
   }
 
   private static Map<String, Object> buildChunkDoc(
-      ChunkContext ctx, int index, EmbeddingClient embeddingClient) {
+      ChunkContext ctx, int index, ChunkEmbeddingSource embeddingSource) {
     int chunkCount = ctx.chunks().size();
     String semanticChunk =
         index < ctx.semanticChunks().size() ? ctx.semanticChunks().get(index) : "";
@@ -194,7 +256,7 @@ public class VectorDocBuilder {
         String.format(
             "%s%s | chunk %d/%d", ctx.metaLight(), ctx.chunks().get(index), index + 1, chunkCount);
     Map<String, Object> fields = new HashMap<>();
-    fields.put("embedding", embeddingClient.embed(textToEmbed));
+    fields.put("embedding", embeddingSource.embeddingFor(index, textToEmbed));
     fields.put("textToLLMContext", textToLLMContext);
     fields.put("textToEmbed", textToEmbed);
     fields.put("chunkIndex", index);
@@ -206,18 +268,45 @@ public class VectorDocBuilder {
   }
 
   /**
-   * Copies onto each chunk doc the fields the vector KNN query filters on (see
-   * VectorSearchQueryBuilder): {@code entityType}, {@code deleted}, the identity fields the read
-   * side returns, and {@code tags}/{@code domains}/{@code tier}. Chunk docs live in a dedicated
-   * index, so unlike the legacy entity-doc path these fields must be materialized here.
+   * Materialize onto each chunk doc the keyword, filter and identity fields it needs to be
+   * self-sufficient (issues #862/#858). Chunk docs live in a dedicated {@code dynamic:false} index
+   * co-aliased with the entity indices, so unlike the legacy entity-doc path every field the read
+   * side scores, filters or displays on must be copied here:
+   *
+   * <ul>
+   *   <li>KNN filter fields ({@code entityType}, {@code deleted}, {@code tags}/{@code domains}/
+   *       {@code tier}) — the original chunk-doc contract.
+   *   <li>Lexical parity: {@code description} (capped), {@code fqnParts}, {@code synonyms} and
+   *       {@code columns.name} so the shard-fair keyword clauses match on the best-semantic chunk,
+   *       not only on chunk 0's spliced entity doc.
+   *   <li>Filter parity: {@code owners}, {@code serviceType}, {@code service}/{@code database}/
+   *       {@code databaseSchema} and {@code certification} so NLQ filters on those facets no longer
+   *       exclude every chunk doc.
+   * </ul>
+   *
+   * <p>Every field here is already covered by the fingerprint (via {@code metaLight}/{@code body}),
+   * so denormalizing them does not change the fingerprint; the {@link #CHUNK_DOC_VERSION} marker is
+   * what drives the additive backfill.
    */
   private static void addFilterFields(
       Map<String, Object> fields, EntityInterface entity, String entityType) {
     fields.put("entityType", entityType);
     fields.put("deleted", Boolean.TRUE.equals(entity.getDeleted()));
+    fields.put("docVersion", CHUNK_DOC_VERSION);
     putIfPresent(fields, "name", entity.getName());
     putIfPresent(fields, "fullyQualifiedName", entity.getFullyQualifiedName());
     putIfPresent(fields, "displayName", entity.getDisplayName());
+    putIfPresent(fields, "serviceType", extractServiceType(entity));
+
+    String description = removeHtml(entity.getDescription());
+    if (!description.isBlank()) {
+      fields.put("description", capText(description, MAX_CHUNK_DESCRIPTION_CHARS));
+    }
+    Set<String> fqnParts = fqnParts(entity.getFullyQualifiedName());
+    if (!fqnParts.isEmpty()) {
+      fields.put("fqnParts", new ArrayList<>(fqnParts));
+    }
+
     List<Map<String, Object>> tags = tagFqnObjects(entity);
     if (!tags.isEmpty()) {
       fields.put("tags", tags);
@@ -229,6 +318,102 @@ public class VectorDocBuilder {
     String tier = extractTierLabel(entity);
     if (tier != null) {
       fields.put("tier", Map.of("tagFQN", tier));
+    }
+    String certification = extractCertificationLabel(entity);
+    if (certification != null) {
+      fields.put("certification", Map.of("tagLabel", Map.of("tagFQN", certification)));
+    }
+    List<Map<String, Object>> owners = ownerNameObjects(entity);
+    if (!owners.isEmpty()) {
+      fields.put("owners", owners);
+    }
+    addReferenceField(fields, entity, "service", "getService");
+    addReferenceField(fields, entity, "database", "getDatabase");
+    addReferenceField(fields, entity, "databaseSchema", "getDatabaseSchema");
+
+    if (entity instanceof GlossaryTerm term
+        && term.getSynonyms() != null
+        && !term.getSynonyms().isEmpty()) {
+      fields.put("synonyms", new ArrayList<>(term.getSynonyms()));
+    }
+    if (entity instanceof Table table) {
+      List<Map<String, Object>> columns = columnNameObjects(table.getColumns());
+      if (!columns.isEmpty()) {
+        fields.put("columns", columns);
+      }
+    }
+  }
+
+  private static String capText(String text, int maxChars) {
+    return text.length() <= maxChars ? text : text.substring(0, maxChars);
+  }
+
+  /**
+   * Mirror of {@code SearchIndex#getFQNParts}: the hierarchical FQN parts minus the entity's own
+   * name, so a query for a parent (service/database/schema) name matches chunk docs the same way it
+   * matches entity docs.
+   */
+  private static Set<String> fqnParts(String fqn) {
+    if (fqn == null || fqn.isBlank()) {
+      return Collections.emptySet();
+    }
+    String[] parts = FullyQualifiedName.split(fqn);
+    String entityName = parts[parts.length - 1];
+    Set<String> result = new LinkedHashSet<>();
+    for (String part : FullyQualifiedName.getAllParts(fqn)) {
+      if (!part.equals(entityName)) {
+        result.add(part);
+      }
+    }
+    return result;
+  }
+
+  private static List<Map<String, Object>> ownerNameObjects(EntityInterface entity) {
+    List<Map<String, Object>> owners = new ArrayList<>();
+    List<EntityReference> ownerRefs =
+        entity.getOwners() != null ? entity.getOwners() : Collections.emptyList();
+    for (EntityReference owner : ownerRefs) {
+      if (owner.getName() != null) {
+        owners.add(Map.of("name", owner.getName()));
+      }
+    }
+    return owners;
+  }
+
+  private static List<Map<String, Object>> columnNameObjects(List<Column> columns) {
+    if (columns == null || columns.isEmpty()) {
+      return Collections.emptyList();
+    }
+    List<Map<String, Object>> result = new ArrayList<>(columns.size());
+    for (Column column : columns) {
+      if (column.getName() != null) {
+        result.add(Map.of("name", column.getName()));
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Reflectively read a container reference ({@code getService}/{@code getDatabase}/
+   * {@code getDatabaseSchema}) and copy its {@code name}/{@code displayName} onto the chunk doc, so
+   * NLQ service/database/schema filters match. The getter is only present on the entity types that
+   * have it; absence is a no-op.
+   */
+  private static void addReferenceField(
+      Map<String, Object> fields, EntityInterface entity, String key, String getter) {
+    try {
+      Method method = entity.getClass().getMethod(getter);
+      Object result = method.invoke(entity);
+      if (result instanceof EntityReference ref) {
+        Map<String, Object> value = new HashMap<>();
+        putIfPresent(value, "name", ref.getName());
+        putIfPresent(value, "displayName", ref.getDisplayName());
+        if (!value.isEmpty()) {
+          fields.put(key, value);
+        }
+      }
+    } catch (Exception ignored) {
+      // Entity type has no such reference; nothing to denormalize.
     }
   }
 
