@@ -90,7 +90,7 @@ public abstract class EmbeddingClient {
    */
   public boolean isAvailable() {
     synchronized (circuitLock) {
-      return circuitState != CircuitState.OPEN || cooldownElapsed();
+      return circuitState == CircuitState.CLOSED || cooldownElapsed();
     }
   }
 
