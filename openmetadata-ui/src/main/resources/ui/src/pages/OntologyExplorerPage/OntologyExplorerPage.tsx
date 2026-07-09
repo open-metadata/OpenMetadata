@@ -83,7 +83,7 @@ const OntologyExplorerPage: React.FC = () => {
   const statsRow = (
     <Box
       align="center"
-      className="tw:mt-1"
+      className="tw:mt-3"
       data-testid="ontology-explorer-stats"
       gap={2}
       wrap="wrap">

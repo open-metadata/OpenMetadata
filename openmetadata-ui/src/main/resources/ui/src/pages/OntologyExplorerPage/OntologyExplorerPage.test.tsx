@@ -22,6 +22,23 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, 'data-testid': testId }) => (
       <span data-testid={testId}>{children}</span>
     )),
+  Box: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        className,
+        'data-testid': testId,
+      }: {
+        children?: React.ReactNode;
+        className?: string;
+        'data-testid'?: string;
+      }) => (
+        <div className={className} data-testid={testId}>
+          {children}
+        </div>
+      )
+    ),
   Card: jest
     .fn()
     .mockImplementation(({ children }: { children: React.ReactNode }) => (
@@ -82,5 +99,13 @@ describe('OntologyExplorerPage', () => {
     expect(screen.getByTestId('beta-badge')).toHaveTextContent('label.beta');
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
+  });
+
+  it('spaces the stats row 12px below the header', () => {
+    render(<OntologyExplorerPage />);
+
+    expect(screen.getByTestId('ontology-explorer-stats')).toHaveClass(
+      'tw:mt-3'
+    );
   });
 });
