@@ -199,6 +199,30 @@ public class WorkflowInstanceStateRepository
     }
   }
 
+  /**
+   * Marks all states of a workflow instance as SUPERSEDED with the given reason. Used when the
+   * running instance is intentionally terminated because a newer approval run replaced it, so
+   * the audit trail shows "replaced" rather than "failed".
+   */
+  public void markInstanceStatesAsSuperseded(UUID workflowInstanceId, String reason) {
+    try {
+      List<WorkflowInstanceState> instanceStates = listAllStatesForInstance(workflowInstanceId);
+
+      for (WorkflowInstanceState state : instanceStates) {
+        WorkflowInstanceState updatedState =
+            state.withStatus(WorkflowInstance.WorkflowStatus.SUPERSEDED).withException(reason);
+
+        getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedState), state.getId());
+      }
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark states as superseded for instance {}: {}",
+          workflowInstanceId,
+          e.getMessage());
+    }
+  }
+
   public List<WorkflowInstanceState> listAllStatesForInstance(UUID workflowInstanceId) {
     List<WorkflowInstanceState> states = new ArrayList<>();
     List<String> jsons =

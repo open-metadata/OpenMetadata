@@ -7,7 +7,9 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.common.engine.api.delegate.event.FlowableEngineEntityEvent;
@@ -32,6 +34,44 @@ public class WorkflowFailureListener implements FlowableEventListener {
 
   public static final String WORKFLOW_FAILURE_LISTENER_STAGE = "workflowFailureListener";
 
+  private static final Set<String> INTENTIONAL_CANCELLATION_CAUSES =
+      Set.of(
+          "Cleanup before redeployment",
+          "Cleanup old workflow version",
+          "Terminated due to conflicting workflow instance",
+          // Main-branch supersede path via CreateTask.supersedePriorApprovalTask →
+          // WorkflowHandler.terminateWorkflowInstance → deleteProcessInstance. Reason string
+          // mirrors CreateTask.SUPERSEDED_BY_NEWER_RUN — keep in sync.
+          "Superseded by a newer approval workflow run for the same entity");
+
+  private static final String DRAFT_TASK_CANCEL_CAUSE_PREFIX = "Workflow-managed draft task ";
+
+  // Callers that intentionally terminate a running process (supersede path) record the process
+  // instance id here BEFORE firing the terminate end event. Recorded on the same thread that runs
+  // the Flowable command, so PROCESS_COMPLETED_WITH_ERROR_END_EVENT dispatched during
+  // deleteProcessInstanceExecutionEntity can consume it. ThreadLocal (not a process variable)
+  // avoids reading a variable off an execution that Flowable is tearing down.
+  private static final ThreadLocal<Set<String>> INTENTIONALLY_TERMINATED_PROCESS_IDS =
+      ThreadLocal.withInitial(HashSet::new);
+
+  public static void markProcessIntentionallyTerminated(String processInstanceId) {
+    if (processInstanceId != null) {
+      INTENTIONALLY_TERMINATED_PROCESS_IDS.get().add(processInstanceId);
+    }
+  }
+
+  private static boolean consumeIntentionalTerminationFlag(String processInstanceId) {
+    boolean intentional = false;
+    if (processInstanceId != null) {
+      Set<String> pending = INTENTIONALLY_TERMINATED_PROCESS_IDS.get();
+      intentional = pending.remove(processInstanceId);
+      if (pending.isEmpty()) {
+        INTENTIONALLY_TERMINATED_PROCESS_IDS.remove();
+      }
+    }
+    return intentional;
+  }
+
   @Override
   public void onEvent(FlowableEvent event) {
     switch (event.getType()) {
@@ -40,21 +80,10 @@ public class WorkflowFailureListener implements FlowableEventListener {
         storeFailureInDatabase(event, "JOB_EXECUTION_FAILURE");
         break;
       case PROCESS_COMPLETED_WITH_ERROR_END_EVENT:
-        LOG.error("[WorkflowFailure] PROCESS_COMPLETED_WITH_ERROR: {}", event);
-        storeFailureInDatabase(event, "PROCESS_ERROR");
+        handleProcessCompletedWithErrorEndEvent(event);
         break;
       case PROCESS_CANCELLED:
-        if (event instanceof FlowableCancelledEvent cancelledEvent
-            && ("Cleanup before redeployment".equals(cancelledEvent.getCause())
-                || "Terminated due to conflicting workflow instance"
-                    .equals(cancelledEvent.getCause()))) {
-          LOG.debug(
-              "[WorkflowFailure] Ignoring expected PROCESS_CANCELLED: {}",
-              cancelledEvent.getCause());
-          break;
-        }
-        LOG.error("[WorkflowFailure] PROCESS_CANCELLED: {}", event);
-        storeFailureInDatabase(event, "PROCESS_CANCELLED");
+        handleProcessCancelled(event);
         break;
       default:
         if (event instanceof FlowableExceptionEvent exceptionEvent) {
@@ -62,6 +91,55 @@ public class WorkflowFailureListener implements FlowableEventListener {
         }
         break;
     }
+  }
+
+  private void handleProcessCompletedWithErrorEndEvent(FlowableEvent event) {
+    String processInstanceId = getProcessInstanceId(event);
+    if (consumeIntentionalTerminationFlag(processInstanceId)) {
+      // Supersede path: caller (e.g. terminateTaskProcessInstance) fired the terminate end event
+      // on purpose. Skip failure logging + DB write here; the process-level "end" execution
+      // listener (WorkflowInstanceListener) reads the terminationReason variable set by the same
+      // caller and stamps status=SUPERSEDED as the single writer of terminal status.
+      LOG.debug(
+          "[WorkflowFailure] Ignoring intentional termination for processInstanceId={}",
+          processInstanceId);
+      return;
+    }
+    LOG.error("[WorkflowFailure] PROCESS_COMPLETED_WITH_ERROR: {}", event);
+    storeFailureInDatabase(event, "PROCESS_ERROR");
+  }
+
+  private void handleProcessCancelled(FlowableEvent event) {
+    if (event instanceof FlowableCancelledEvent cancelledEvent) {
+      String cause = causeToString(cancelledEvent.getCause());
+      if (isIntentionalCancellationCause(cause)) {
+        // Silent break — matches original behavior for cleanup/redeploy paths where no
+        // WorkflowInstance row needs updating (either it never existed, e.g. redeploy cleanup,
+        // or it's a runtime process that WorkflowInstanceListener will finalize on the "end"
+        // execution listener firing during deleteProcessInstance).
+        LOG.debug("[WorkflowFailure] Ignoring expected PROCESS_CANCELLED: {}", cause);
+        // Also consume any intentional-termination flag so we don't leak across pooled async
+        // job executor threads if the caller marked the process before delegating to delete.
+        consumeIntentionalTerminationFlag(getProcessInstanceId(event));
+        return;
+      }
+    }
+    LOG.error("[WorkflowFailure] PROCESS_CANCELLED: {}", event);
+    storeFailureInDatabase(event, "PROCESS_CANCELLED");
+  }
+
+  private boolean isIntentionalCancellationCause(String cause) {
+    boolean intentional = false;
+    if (cause != null) {
+      intentional =
+          INTENTIONAL_CANCELLATION_CAUSES.contains(cause)
+              || cause.startsWith(DRAFT_TASK_CANCEL_CAUSE_PREFIX);
+    }
+    return intentional;
+  }
+
+  private String causeToString(Object cause) {
+    return cause == null ? null : cause.toString();
   }
 
   private void handleFlowableException(FlowableExceptionEvent exceptionEvent) {

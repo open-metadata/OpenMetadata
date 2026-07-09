@@ -17,6 +17,8 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.TERMINATION_DRAFT_TASK_DELETED;
+import static org.openmetadata.service.governance.workflows.Workflow.TERMINATION_REASON_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -65,6 +67,7 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.WorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -1118,6 +1121,9 @@ public class CreateTask implements TaskListener {
               requestedTaskId,
               processInstanceId,
               terminationMessageName);
+          WorkflowFailureListener.markProcessIntentionallyTerminated(processInstanceId);
+          runtimeService.setVariable(
+              processInstanceId, TERMINATION_REASON_VARIABLE, TERMINATION_DRAFT_TASK_DELETED);
           runtimeService.messageEventReceived(terminationMessageName, execution.getId());
           return;
         }
@@ -1127,6 +1133,9 @@ public class CreateTask implements TaskListener {
           "[CreateTask] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
           requestedTaskId,
           processInstanceId);
+      // Fallback path routes through deleteProcessInstance which dispatches PROCESS_CANCELLED
+      // with `terminationReason` as the cause; WorkflowFailureListener's cancellation whitelist
+      // matches the "Workflow-managed draft task ..." prefix and stays silent.
       runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
     } catch (FlowableObjectNotFoundException e) {
       LOG.debug(

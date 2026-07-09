@@ -135,6 +135,21 @@ public class WorkflowInstanceListener implements JavaDelegate {
     // Capture all variables including any failure indicators
     java.util.Map<String, Object> variables = new java.util.HashMap<>(execution.getVariables());
 
+    Object terminationReason = variables.get(Workflow.TERMINATION_REASON_VARIABLE);
+    if (terminationReason instanceof String reasonStr && !reasonStr.isBlank()) {
+      // Supersede path: caller (e.g. WorkflowHandler.terminateTask) set terminationReason before
+      // firing the terminate end event. Bypass updateWorkflowInstance's status recomputation
+      // (which would recompute FINISHED/FAILURE from states) and mark the instance SUPERSEDED
+      // via a dedicated writer so it isn't clobbered.
+      workflowInstanceRepository.markInstanceAsSuperseded(workflowInstanceId, reasonStr);
+      LOG.debug(
+          "[WORKFLOW_INSTANCE_SUPERSEDED] Workflow: {}, InstanceId: {}, Reason: {} - Marked as SUPERSEDED",
+          workflowDefinitionName,
+          workflowInstanceId,
+          reasonStr);
+      return;
+    }
+
     // Determine final status based on what happened during execution
     String status = "FINISHED"; // Default
     if (Boolean.TRUE.equals(variables.get(Workflow.FAILURE_VARIABLE))) {

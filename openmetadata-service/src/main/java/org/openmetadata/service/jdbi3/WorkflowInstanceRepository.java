@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -12,6 +13,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
@@ -96,6 +98,31 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
         workflowInstance
             .withStatus(WorkflowInstance.WorkflowStatus.FAILURE)
             .withException(reason)
+            .withEndedAt(System.currentTimeMillis());
+
+    getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
+  }
+
+  /**
+   * Marks a workflow instance as SUPERSEDED - used when a running instance is intentionally
+   * terminated because a newer instance replaced it (or an equivalent graceful termination
+   * such as a workflow-managed draft task being deleted before materialization). Preserves the
+   * audit trail without marking the instance as a failure.
+   */
+  public void markInstanceAsSuperseded(UUID workflowInstanceId, String reason) {
+    WorkflowInstance workflowInstance =
+        JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);
+
+    Map<String, Object> variables = workflowInstance.getVariables();
+    if (variables == null) {
+      variables = new HashMap<>();
+    }
+    variables.put(Workflow.TERMINATION_REASON_VARIABLE, reason);
+
+    WorkflowInstance updatedInstance =
+        workflowInstance
+            .withStatus(WorkflowInstance.WorkflowStatus.SUPERSEDED)
+            .withVariables(variables)
             .withEndedAt(System.currentTimeMillis());
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);

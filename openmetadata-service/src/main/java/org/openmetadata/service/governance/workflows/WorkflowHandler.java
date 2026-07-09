@@ -1378,6 +1378,15 @@ public class WorkflowHandler {
               .messageEventSubscriptionName(messageName)
               .singleResult();
       if (execution != null) {
+        // Mark the process as intentionally superseded before firing the terminate end event.
+        // The ThreadLocal flag suppresses WorkflowFailureListener's ERROR log; the process
+        // variable is read by WorkflowInstanceListener on the process-end execution listener to
+        // stamp status=SUPERSEDED on the WorkflowInstance row.
+        WorkflowFailureListener.markProcessIntentionallyTerminated(task.getProcessInstanceId());
+        runtimeService.setVariable(
+            task.getProcessInstanceId(),
+            Workflow.TERMINATION_REASON_VARIABLE,
+            Workflow.TERMINATION_SUPERSEDED_BY_NEWER_INSTANCE);
         runtimeService.messageEventReceived(messageName, execution.getId());
         LOG.debug("Terminated task {} using message '{}'", customTaskId, messageName);
       } else {
@@ -1676,9 +1685,12 @@ public class WorkflowHandler {
    */
   public void terminateWorkflowInstance(
       UUID workflowInstanceId, String mainWorkflowName, String reason) {
-    // Mark the audit record FAILED first, then delete the Flowable process. The two are guarded
-    // independently so a failure in either step is logged on its own and never prevents the other.
-    markWorkflowInstanceFailedQuietly(workflowInstanceId, reason);
+    // Mark the audit record SUPERSEDED first, then delete the Flowable process. The two are
+    // guarded independently so a failure in either step is logged on its own and never prevents
+    // the other. Superseded (not FAILED) is the correct terminal status — the instance was
+    // intentionally replaced by a newer run for the same entity; the WorkflowFailureListener's
+    // PROCESS_CANCELLED whitelist also skips its ERROR log for this reason string.
+    markWorkflowInstanceSupersededQuietly(workflowInstanceId, reason);
     deleteMainProcessInstanceQuietly(workflowInstanceId, mainWorkflowName, reason);
   }
 
@@ -1704,7 +1716,7 @@ public class WorkflowHandler {
     }
   }
 
-  private void markWorkflowInstanceFailedQuietly(UUID workflowInstanceId, String reason) {
+  private void markWorkflowInstanceSupersededQuietly(UUID workflowInstanceId, String reason) {
     try {
       WorkflowInstanceStateRepository workflowInstanceStateRepository =
           (WorkflowInstanceStateRepository)
@@ -1712,11 +1724,11 @@ public class WorkflowHandler {
       WorkflowInstanceRepository workflowInstanceRepository =
           (WorkflowInstanceRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-      workflowInstanceStateRepository.markInstanceStatesAsFailed(workflowInstanceId, reason);
-      workflowInstanceRepository.markInstanceAsFailed(workflowInstanceId, reason);
+      workflowInstanceStateRepository.markInstanceStatesAsSuperseded(workflowInstanceId, reason);
+      workflowInstanceRepository.markInstanceAsSuperseded(workflowInstanceId, reason);
     } catch (Exception e) {
       LOG.warn(
-          "Failed to mark superseded workflow instance {} as FAILED: {}",
+          "Failed to mark superseded workflow instance {} as SUPERSEDED: {}",
           workflowInstanceId,
           e.getMessage());
     }

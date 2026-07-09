@@ -27,6 +27,10 @@ public class Workflow {
   public static final String GLOBAL_NAMESPACE = "global";
   public static final String SUCCESSFUL_RESULT = "success";
   public static final String FAILURE_RESULT = "failure";
+  public static final String TERMINATION_REASON_VARIABLE = "terminationReason";
+  public static final String TERMINATION_SUPERSEDED_BY_NEWER_INSTANCE =
+      "SUPERSEDED_BY_NEWER_INSTANCE";
+  public static final String TERMINATION_DRAFT_TASK_DELETED = "DRAFT_TASK_DELETED";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
   private final WorkflowDefinition workflowDefinition;
