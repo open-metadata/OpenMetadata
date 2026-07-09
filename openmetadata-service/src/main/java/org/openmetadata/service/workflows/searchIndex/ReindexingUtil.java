@@ -103,8 +103,14 @@ public class ReindexingUtil {
         }
         List<EsLineageData> lineage =
             prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
+        boolean hasStyle =
+            prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId);
+        // No prefetched data: an entry would equal empty(), the sink's fallback on a miss.
+        if (lineage == null && !hasStyle) {
+          continue;
+        }
         DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
-            prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId)
+            hasStyle
                 ? DocBuildContext.ServiceStylePrefetch.prefetched(
                     prefetchedServiceStyles.get(entityId))
                 : DocBuildContext.ServiceStylePrefetch.notPrefetched();

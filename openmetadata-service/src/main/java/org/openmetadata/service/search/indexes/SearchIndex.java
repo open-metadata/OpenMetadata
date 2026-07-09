@@ -426,6 +426,14 @@ public interface SearchIndex {
     return result;
   }
 
+  /** Whether {@code service} points at a service type that carries a {@code style} field. */
+  static boolean serviceReferenceSupportsStyle(EntityReference service) {
+    return service != null
+        && service.getId() != null
+        && !nullOrEmpty(service.getType())
+        && Entity.entityHasField(service.getType(), FIELD_STYLE);
+  }
+
   private static void populatePrefetchedServiceStyles(
       List<? extends EntityInterface> entities, Map<UUID, Optional<Style>> result) {
     Map<UUID, UUID> serviceIdByEntityId = new HashMap<>();
@@ -436,10 +444,7 @@ public interface SearchIndex {
         continue;
       }
       EntityReference service = entity.getService();
-      if (service != null
-          && service.getId() != null
-          && !nullOrEmpty(service.getType())
-          && Entity.entityHasField(service.getType(), FIELD_STYLE)) {
+      if (serviceReferenceSupportsStyle(service)) {
         serviceIdByEntityId.put(entityId, service.getId());
         serviceIdsByType
             .computeIfAbsent(service.getType(), ignored -> new HashSet<>())

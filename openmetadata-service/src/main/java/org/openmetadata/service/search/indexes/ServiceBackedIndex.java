@@ -1,9 +1,7 @@
 package org.openmetadata.service.search.indexes;
 
-import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.FIELD_STYLE;
 
-import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 import org.openmetadata.schema.EntityInterface;
@@ -45,19 +43,10 @@ public interface ServiceBackedIndex extends SearchIndex {
     if (entity instanceof EntityInterface ei) {
       EntityReference service = ei.getService();
       if (service != null) {
-        EntityReference serviceWithDisplayName = getEntityWithDisplayName(service);
-        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch = ctx.serviceStylePrefetch();
-        Optional<Style> serviceStyle =
-            serviceStylePrefetch.prefetched()
-                ? serviceStylePrefetch.style()
-                : getServiceStyle(service);
-        if (serviceStyle.isPresent()) {
-          Map<String, Object> serviceDoc = new HashMap<>(JsonUtils.getMap(serviceWithDisplayName));
-          serviceDoc.put(FIELD_STYLE, serviceStyle.get());
-          doc.put("service", serviceDoc);
-        } else {
-          doc.put("service", serviceWithDisplayName);
-        }
+        // Always a Map so the field has one shape regardless of style.
+        Map<String, Object> serviceDoc = JsonUtils.getMap(getEntityWithDisplayName(service));
+        resolveServiceStyle(service, ctx).ifPresent(style -> serviceDoc.put(FIELD_STYLE, style));
+        doc.put("service", serviceDoc);
       }
     }
     Object serviceType = getIndexServiceType();
@@ -66,11 +55,14 @@ public interface ServiceBackedIndex extends SearchIndex {
     }
   }
 
+  /** Prefetched style wins; otherwise fall back to a per-entity lookup. */
+  private Optional<Style> resolveServiceStyle(EntityReference service, DocBuildContext ctx) {
+    DocBuildContext.ServiceStylePrefetch prefetch = ctx.serviceStylePrefetch();
+    return prefetch.prefetched() ? prefetch.style() : getServiceStyle(service);
+  }
+
   default Optional<Style> getServiceStyle(EntityReference service) {
-    if (service == null
-        || service.getId() == null
-        || nullOrEmpty(service.getType())
-        || !Entity.entityHasField(service.getType(), FIELD_STYLE)) {
+    if (!SearchIndex.serviceReferenceSupportsStyle(service)) {
       return Optional.empty();
     }
     try {

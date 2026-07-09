@@ -1832,6 +1832,7 @@ public class SearchRepository {
             entityType, entity.getId().toString(), changeDescription, indexMapping, entity);
         propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
         propagateCertificationTags(entityType, entity, changeDescription);
+        propagateServiceStyle(entityType, entity, changeDescription);
         propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
         propagated++;
       } catch (Exception e) {
