@@ -10,27 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Folder } from '../../../generated/entity/data/folder';
 
-import { FC, ReactElement } from 'react';
-
-export type PillarTone = 'info' | 'warning' | 'success';
-
-export interface PillarRecentItem {
-  title: string;
-  meta: string[];
-  icon?: ReactElement;
-}
-
-export interface ContextKnowledgePillarCardProps {
-  icon: FC<{ className?: string }>;
-  title: string;
-  subtitle: string;
-  stat: string;
-  statSub: string;
-  statSubSecondary?: string;
-  recent: PillarRecentItem[];
-  cta: string;
+export interface DashboardFoldersCardProps {
+  folders: Folder[];
   isLoading?: boolean;
-  onClick: () => void;
-  dataTestId?: string;
 }
