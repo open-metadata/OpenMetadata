@@ -1378,19 +1378,7 @@ public class WorkflowHandler {
               .messageEventSubscriptionName(messageName)
               .singleResult();
       if (execution != null) {
-        // terminationReason on the execution silences the failure listener and stamps SUPERSEDED.
-        runtimeService.setVariable(
-            task.getProcessInstanceId(),
-            Workflow.TERMINATION_REASON_VARIABLE,
-            Workflow.TERMINATION_SUPERSEDED_BY_NEWER_INSTANCE);
-        try {
-          runtimeService.messageEventReceived(messageName, execution.getId());
-        } catch (RuntimeException messageFailure) {
-          // setVariable committed in its own tx; roll it back so a later genuine failure isn't
-          // silently suppressed by a leftover terminationReason.
-          removeTerminationReasonQuietly(runtimeService, task.getProcessInstanceId());
-          throw messageFailure;
-        }
+        runtimeService.messageEventReceived(messageName, execution.getId());
         LOG.debug("Terminated task {} using message '{}'", customTaskId, messageName);
       } else {
         LOG.warn(
@@ -1401,18 +1389,6 @@ public class WorkflowHandler {
       }
     } catch (Exception e) {
       LOG.error("Error terminating task {}", task.getId(), e);
-    }
-  }
-
-  private static void removeTerminationReasonQuietly(
-      RuntimeService runtimeService, String processInstanceId) {
-    try {
-      runtimeService.removeVariable(processInstanceId, Workflow.TERMINATION_REASON_VARIABLE);
-    } catch (RuntimeException removeFailure) {
-      LOG.debug(
-          "Could not remove terminationReason for processInstanceId={}: {}",
-          processInstanceId,
-          removeFailure.getMessage());
     }
   }
 

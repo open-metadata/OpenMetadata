@@ -49,44 +49,41 @@ public class WorkflowInstanceListener implements JavaDelegate {
             eventName);
       }
     } catch (Exception exc) {
-      LOG.error(
-          "[WORKFLOW_INSTANCE_ERROR] Workflow: {}, ProcessInstance: {}, Event: {} - Failed to process workflow instance. Error: {}",
+      LOG.warn(
+          "[WORKFLOW_INSTANCE_ERROR] Workflow: {}, ProcessInstance: {}, Event: {}: {}",
           workflowName,
           processInstanceId,
           eventName,
-          exc.getMessage(),
-          exc);
+          exc.getMessage());
 
-      // CRITICAL: Even on failure, we must record the state in the database
       if ("end".equals(eventName) && workflowInstanceRepository != null) {
         try {
           String businessKey = execution.getProcessInstanceBusinessKey();
           if (businessKey != null && !businessKey.isEmpty()) {
             UUID workflowInstanceId = UUID.fromString(businessKey);
             java.util.Map<String, Object> errorVariables = new java.util.HashMap<>();
-            errorVariables.put("status", "FAILURE");
+            errorVariables.put(
+                STATUS_VARIABLE_KEY, WorkflowInstance.WorkflowStatus.FAILURE.value());
             errorVariables.put("error", exc.getMessage());
             errorVariables.put("errorClass", exc.getClass().getSimpleName());
             workflowInstanceRepository.updateWorkflowInstance(
                 workflowInstanceId, System.currentTimeMillis(), errorVariables);
-            LOG.warn(
-                "[WORKFLOW_INSTANCE_FAILED] Workflow: {}, ProcessInstance: {}, InstanceId: {} - Workflow marked as FAILED in database",
+            LOG.debug(
+                "[WORKFLOW_INSTANCE_FAILED] Workflow: {}, InstanceId: {}",
                 workflowName,
-                processInstanceId,
                 workflowInstanceId);
           } else {
-            LOG.error(
-                "[WORKFLOW_INSTANCE_NO_KEY] Workflow: {}, ProcessInstance: {} - Cannot update workflow status, business key is missing",
+            LOG.warn(
+                "[WORKFLOW_INSTANCE_NO_KEY] Workflow: {}, ProcessInstance: {}",
                 workflowName,
                 processInstanceId);
           }
         } catch (Exception updateExc) {
-          LOG.error(
-              "[WORKFLOW_INSTANCE_DB_ERROR] Workflow: {}, ProcessInstance: {} - Failed to record workflow failure in database. Error: {}",
+          LOG.warn(
+              "[WORKFLOW_INSTANCE_DB_ERROR] Workflow: {}, ProcessInstance: {}: {}",
               workflowName,
               processInstanceId,
-              updateExc.getMessage(),
-              updateExc);
+              updateExc.getMessage());
         }
       }
     }
@@ -139,34 +136,15 @@ public class WorkflowInstanceListener implements JavaDelegate {
     // Capture all variables including any failure indicators
     java.util.Map<String, Object> variables = new java.util.HashMap<>(execution.getVariables());
 
-    String supersedeReason = readSupersedeReason(variables);
-    if (supersedeReason != null) {
-      // Caller set terminationReason before firing the terminate end event; skip status
-      // recomputation and stamp SUPERSEDED via a dedicated writer that can't be clobbered.
-      workflowInstanceRepository.markInstanceAsSuperseded(workflowInstanceId, supersedeReason);
-      LOG.debug(
-          "[WORKFLOW_INSTANCE_SUPERSEDED] Workflow: {}, InstanceId: {}, Reason: {} - Marked as SUPERSEDED",
-          workflowDefinitionName,
-          workflowInstanceId,
-          supersedeReason);
-    } else {
-      WorkflowInstance.WorkflowStatus status = computeFinalStatus(variables);
-      variables.put(STATUS_VARIABLE_KEY, status.value());
-      workflowInstanceRepository.updateWorkflowInstance(
-          workflowInstanceId, System.currentTimeMillis(), variables);
-      logFinalStatus(workflowDefinitionName, workflowInstanceId, status);
-    }
-  }
-
-  private String readSupersedeReason(java.util.Map<String, Object> variables) {
-    String reason = null;
-    Object candidate = variables.get(Workflow.TERMINATION_REASON_VARIABLE);
-    // Flowable variables are typed as Object at this boundary; pattern-match to accept only a
-    // non-blank String reason and reject anything else defensively.
-    if (candidate instanceof String candidateStr && !candidateStr.isBlank()) {
-      reason = candidateStr;
-    }
-    return reason;
+    WorkflowInstance.WorkflowStatus status = computeFinalStatus(variables);
+    variables.put(STATUS_VARIABLE_KEY, status.value());
+    workflowInstanceRepository.updateWorkflowInstance(
+        workflowInstanceId, System.currentTimeMillis(), variables);
+    LOG.debug(
+        "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {}",
+        workflowDefinitionName,
+        workflowInstanceId,
+        status);
   }
 
   private WorkflowInstance.WorkflowStatus computeFinalStatus(
@@ -179,26 +157,6 @@ public class WorkflowInstanceListener implements JavaDelegate {
       status = WorkflowInstance.WorkflowStatus.EXCEPTION;
     }
     return status;
-  }
-
-  private void logFinalStatus(
-      String workflowDefinitionName,
-      UUID workflowInstanceId,
-      WorkflowInstance.WorkflowStatus status) {
-    if (status == WorkflowInstance.WorkflowStatus.FAILURE
-        || status == WorkflowInstance.WorkflowStatus.EXCEPTION) {
-      LOG.warn(
-          "[WORKFLOW_INSTANCE_COMPLETED_WITH_ERRORS] Workflow: {}, InstanceId: {}, Status: {} - Workflow completed with errors",
-          workflowDefinitionName,
-          workflowInstanceId,
-          status);
-    } else {
-      LOG.debug(
-          "[WORKFLOW_INSTANCE_COMPLETED] Workflow: {}, InstanceId: {}, Status: {} - Workflow completed successfully",
-          workflowDefinitionName,
-          workflowInstanceId,
-          status);
-    }
   }
 
   private String getMainWorkflowDefinitionNameFromTrigger(String triggerWorkflowDefinitionName) {

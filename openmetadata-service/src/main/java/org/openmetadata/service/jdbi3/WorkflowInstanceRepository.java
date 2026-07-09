@@ -13,7 +13,6 @@ import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.schema.governance.workflows.WorkflowInstanceState;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.resources.governance.WorkflowInstanceResource;
 
 public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<WorkflowInstance> {
@@ -112,7 +111,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     if (variables == null) {
       variables = new HashMap<>();
     }
-    variables.put(Workflow.TERMINATION_REASON_VARIABLE, reason);
+    variables.put(TERMINATION_REASON_VARIABLE_KEY, reason);
 
     WorkflowInstance updatedInstance =
         workflowInstance
@@ -122,4 +121,6 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
 
     getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
   }
+
+  private static final String TERMINATION_REASON_VARIABLE_KEY = "terminationReason";
 }

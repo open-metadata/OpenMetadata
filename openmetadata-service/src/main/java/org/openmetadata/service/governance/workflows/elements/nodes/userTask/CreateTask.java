@@ -18,8 +18,6 @@ import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAME
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
-import static org.openmetadata.service.governance.workflows.Workflow.TERMINATION_DRAFT_TASK_DELETED;
-import static org.openmetadata.service.governance.workflows.Workflow.TERMINATION_REASON_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -1119,23 +1117,7 @@ public class CreateTask implements TaskListener {
               requestedTaskId,
               processInstanceId,
               terminationMessageName);
-          runtimeService.setVariable(
-              processInstanceId, TERMINATION_REASON_VARIABLE, TERMINATION_DRAFT_TASK_DELETED);
-          try {
-            runtimeService.messageEventReceived(terminationMessageName, execution.getId());
-          } catch (RuntimeException messageFailure) {
-            // Roll back the variable so a leftover terminationReason can't silently suppress a
-            // future genuine failure on the same process instance.
-            try {
-              runtimeService.removeVariable(processInstanceId, TERMINATION_REASON_VARIABLE);
-            } catch (RuntimeException ignore) {
-              LOG.debug(
-                  "[CreateTask] Could not remove terminationReason for '{}': {}",
-                  processInstanceId,
-                  ignore.getMessage());
-            }
-            throw messageFailure;
-          }
+          runtimeService.messageEventReceived(terminationMessageName, execution.getId());
           return;
         }
       }
