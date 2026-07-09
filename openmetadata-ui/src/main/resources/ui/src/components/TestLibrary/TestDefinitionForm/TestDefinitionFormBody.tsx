@@ -85,159 +85,157 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     [handleActiveField]
   );
 
-  const nameField: FieldProp = {
-    name: 'name',
-    label: t('label.name'),
-    type: FieldTypes.TEXT,
-    required: true,
-    id: 'root/name',
-    placeholder: t('label.enter-entity-name', {
-      entity: t('label.test-definition'),
-    }),
-    rules: {
-      required: t('message.field-text-is-required', {
-        fieldText: t('label.name'),
+  const primaryFields: FieldProp[] = [
+    {
+      name: 'name',
+      label: t('label.name'),
+      type: FieldTypes.TEXT,
+      required: true,
+      id: 'root/name',
+      placeholder: t('label.enter-entity-name', {
+        entity: t('label.test-definition'),
       }),
-    },
-    props: {
-      'data-testid': 'test-definition-name',
-      isDisabled: isEditMode || isReadOnlyField,
-    } as FieldProp['props'],
-  };
-
-  const displayNameField: FieldProp = {
-    name: 'displayName',
-    label: t('label.display-name'),
-    type: FieldTypes.TEXT,
-    required: false,
-    id: 'root/displayName',
-    placeholder: t('label.enter-entity-name', {
-      entity: t('label.display-name'),
-    }),
-    props: {
-      'data-testid': 'display-name',
-    } as FieldProp['props'],
-  };
-
-  const descriptionField: FieldProp = {
-    name: 'description',
-    label: t('label.description'),
-    type: FieldTypes.TEXTAREA,
-    required: false,
-    id: 'root/description',
-    placeholder: t('label.enter-entity-description', {
-      entity: t('label.test-definition'),
-    }),
-    props: {
-      'data-testid': 'description',
-    } as FieldProp['props'],
-  };
-
-  const entityTypeField: FieldProp = {
-    name: 'entityType',
-    label: t('label.entity-type'),
-    type: FieldTypes.SELECT,
-    required: true,
-    id: 'root/entityType',
-    placeholder: t('label.select-field', { field: t('label.entity-type') }),
-    rules: {
-      required: t('message.field-text-is-required', {
-        fieldText: t('label.entity-type'),
-      }),
-    },
-    props: {
-      'data-testid': 'entity-type',
-      isDisabled: isReadOnlyField,
-      options: toOptions(Object.values(EntityType)),
-    } as FieldProp['props'],
-  };
-
-  const testPlatformsField: FieldProp = {
-    name: 'testPlatforms',
-    label: t('label.test-platform-plural'),
-    type: FieldTypes.MULTI_SELECT,
-    required: true,
-    id: 'root/testPlatforms',
-    placeholder: t('label.select-field', {
-      field: t('label.test-platform-plural'),
-    }),
-    rules: {
-      required: t('message.field-text-is-required', {
-        fieldText: t('label.test-platform-plural'),
-      }),
-    },
-    props: {
-      'data-testid': 'test-platforms',
-      isDisabled: isReadOnlyField,
-      options: toOptions(Object.values(TestPlatform)),
-    } as FieldProp['props'],
-  };
-
-  const dataQualityDimensionField: FieldProp = {
-    name: 'dataQualityDimension',
-    label: t('label.data-quality-dimension'),
-    type: FieldTypes.SELECT,
-    required: false,
-    id: 'root/dataQualityDimension',
-    placeholder: t('label.select-field', {
-      field: t('label.data-quality-dimension'),
-    }),
-    props: {
-      'data-testid': 'data-quality-dimension',
-      options: toOptions(Object.values(DataQualityDimensions)),
-    } as FieldProp['props'],
-  };
-
-  const supportedServicesField: FieldProp = {
-    name: 'supportedServices',
-    label: t('label.supported-service-plural'),
-    type: FieldTypes.MULTI_SELECT,
-    required: false,
-    id: 'root/supportedServices',
-    helperText: t('message.supported-services-help'),
-    helperTextType: HelperTextType.TOOLTIP,
-    placeholder: t('message.empty-means-all-services'),
-    props: {
-      'data-testid': 'supported-services',
-      isDisabled: isReadOnlyField,
-      options: toOptions(Object.values(DatabaseServiceType)),
-    } as FieldProp['props'],
-  };
-
-  const supportedDataTypesField: FieldProp = {
-    name: 'supportedDataTypes',
-    label: t('label.supported-data-type-plural'),
-    type: FieldTypes.MULTI_SELECT,
-    required: false,
-    id: 'root/supportedDataTypes',
-    placeholder: t('label.select-field', {
-      field: t('label.supported-data-type-plural'),
-    }),
-    rules: {
-      validate: (value?: FormSelectItem[]) => {
-        const platforms = (form.getValues('testPlatforms') ??
-          []) as FormSelectItem[];
-        const hasOpenMetadata = platforms.some(
-          (platform) =>
-            (typeof platform === 'object' ? platform?.id : platform) ===
-            TestPlatform.OpenMetadata
-        );
-        let result: string | boolean = true;
-        if (hasOpenMetadata && (value ?? []).length === 0) {
-          result = t('message.field-text-is-required', {
-            fieldText: t('label.supported-data-type-plural'),
-          });
-        }
-
-        return result;
+      rules: {
+        required: t('message.field-text-is-required', {
+          fieldText: t('label.name'),
+        }),
       },
+      props: {
+        'data-testid': 'test-definition-name',
+        isDisabled: isEditMode || isReadOnlyField,
+      } as FieldProp['props'],
     },
-    props: {
-      'data-testid': 'supported-data-types',
-      isDisabled: isReadOnlyField,
-      options: toOptions(Object.values(DataType)),
-    } as FieldProp['props'],
-  };
+    {
+      name: 'displayName',
+      label: t('label.display-name'),
+      type: FieldTypes.TEXT,
+      required: false,
+      id: 'root/displayName',
+      placeholder: t('label.enter-entity-name', {
+        entity: t('label.display-name'),
+      }),
+      props: {
+        'data-testid': 'display-name',
+      } as FieldProp['props'],
+    },
+    {
+      name: 'description',
+      label: t('label.description'),
+      type: FieldTypes.TEXTAREA,
+      required: false,
+      id: 'root/description',
+      placeholder: t('label.enter-entity-description', {
+        entity: t('label.test-definition'),
+      }),
+      props: {
+        'data-testid': 'description',
+      } as FieldProp['props'],
+    },
+  ];
+
+  const classificationFields: FieldProp[] = [
+    {
+      name: 'entityType',
+      label: t('label.entity-type'),
+      type: FieldTypes.SELECT,
+      required: true,
+      id: 'root/entityType',
+      placeholder: t('label.select-field', { field: t('label.entity-type') }),
+      rules: {
+        required: t('message.field-text-is-required', {
+          fieldText: t('label.entity-type'),
+        }),
+      },
+      props: {
+        'data-testid': 'entity-type',
+        isDisabled: isReadOnlyField,
+        options: toOptions(Object.values(EntityType)),
+      } as FieldProp['props'],
+    },
+    {
+      name: 'testPlatforms',
+      label: t('label.test-platform-plural'),
+      type: FieldTypes.MULTI_SELECT,
+      required: true,
+      id: 'root/testPlatforms',
+      placeholder: t('label.select-field', {
+        field: t('label.test-platform-plural'),
+      }),
+      rules: {
+        required: t('message.field-text-is-required', {
+          fieldText: t('label.test-platform-plural'),
+        }),
+      },
+      props: {
+        'data-testid': 'test-platforms',
+        isDisabled: isReadOnlyField,
+        options: toOptions(Object.values(TestPlatform)),
+      } as FieldProp['props'],
+    },
+    {
+      name: 'dataQualityDimension',
+      label: t('label.data-quality-dimension'),
+      type: FieldTypes.SELECT,
+      required: false,
+      id: 'root/dataQualityDimension',
+      placeholder: t('label.select-field', {
+        field: t('label.data-quality-dimension'),
+      }),
+      props: {
+        'data-testid': 'data-quality-dimension',
+        options: toOptions(Object.values(DataQualityDimensions)),
+      } as FieldProp['props'],
+    },
+    {
+      name: 'supportedServices',
+      label: t('label.supported-service-plural'),
+      type: FieldTypes.MULTI_SELECT,
+      required: false,
+      id: 'root/supportedServices',
+      helperText: t('message.supported-services-help'),
+      helperTextType: HelperTextType.TOOLTIP,
+      placeholder: t('message.empty-means-all-services'),
+      props: {
+        'data-testid': 'supported-services',
+        isDisabled: isReadOnlyField,
+        options: toOptions(Object.values(DatabaseServiceType)),
+      } as FieldProp['props'],
+    },
+    {
+      name: 'supportedDataTypes',
+      label: t('label.supported-data-type-plural'),
+      type: FieldTypes.MULTI_SELECT,
+      required: false,
+      id: 'root/supportedDataTypes',
+      placeholder: t('label.select-field', {
+        field: t('label.supported-data-type-plural'),
+      }),
+      rules: {
+        validate: (value?: FormSelectItem[]) => {
+          const platforms = (form.getValues('testPlatforms') ??
+            []) as FormSelectItem[];
+          const hasOpenMetadata = platforms.some(
+            (platform) =>
+              (typeof platform === 'object' ? platform?.id : platform) ===
+              TestPlatform.OpenMetadata
+          );
+          let result: string | boolean = true;
+          if (hasOpenMetadata && (value ?? []).length === 0) {
+            result = t('message.field-text-is-required', {
+              fieldText: t('label.supported-data-type-plural'),
+            });
+          }
+
+          return result;
+        },
+      },
+      props: {
+        'data-testid': 'supported-data-types',
+        isDisabled: isReadOnlyField,
+        options: toOptions(Object.values(DataType)),
+      } as FieldProp['props'],
+    },
+  ];
 
   const enabledField: FieldProp = {
     name: 'enabled',
@@ -269,7 +267,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         </div>
       )}
 
-      <FormFields fields={[nameField, displayNameField, descriptionField]} />
+      <FormFields fields={primaryFields} />
 
       <div
         className="tw:flex tw:flex-col tw:gap-1.5"
@@ -301,15 +299,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         )}
       </div>
 
-      <FormFields
-        fields={[
-          entityTypeField,
-          testPlatformsField,
-          dataQualityDimensionField,
-          supportedServicesField,
-          supportedDataTypesField,
-        ]}
-      />
+      <FormFields fields={classificationFields} />
 
       <div
         className="tw:flex tw:flex-col tw:gap-3"
