@@ -18,11 +18,11 @@ import { FC } from 'react';
 import { ReactComponent as GovernanceIcon } from '../../../assets/svg/ic-governance.svg';
 import { ROUTES } from '../../../constants/constants';
 
-// The governance base crumb icon renders at 20x20 per Figma (node 11297-9818),
-// overriding the core breadcrumb's coupled icon size (14px at size="xs") with an
-// important size so only the base icon grows — chevron/text keep the xs sizing.
+// The governance base crumb icon renders at 18x18 (~30% larger than the core
+// breadcrumb's coupled 14px at size="xs"), via an important size so only the base
+// icon grows — chevron/text keep the xs sizing.
 const GovernanceCrumbIcon: FC<{ className?: string }> = ({ className }) => (
-  <GovernanceIcon className={classNames(className, 'tw:size-5!')} />
+  <GovernanceIcon className={classNames(className, 'tw:size-4.5!')} />
 );
 
 /**
