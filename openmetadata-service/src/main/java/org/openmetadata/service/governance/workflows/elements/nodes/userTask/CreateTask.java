@@ -17,6 +17,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
 import static org.openmetadata.service.governance.workflows.Workflow.TERMINATION_DRAFT_TASK_DELETED;
 import static org.openmetadata.service.governance.workflows.Workflow.TERMINATION_REASON_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
@@ -67,7 +68,6 @@ import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.governance.workflows.WorkflowFailureListener;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
@@ -94,8 +94,6 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class CreateTask implements TaskListener {
   static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
-  private static final String SUPERSEDED_BY_NEWER_RUN =
-      "Superseded by a newer approval workflow run for the same entity";
   private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
   private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;
   private static final long MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 250L;
@@ -1121,7 +1119,6 @@ public class CreateTask implements TaskListener {
               requestedTaskId,
               processInstanceId,
               terminationMessageName);
-          WorkflowFailureListener.markProcessIntentionallyTerminated(processInstanceId);
           runtimeService.setVariable(
               processInstanceId, TERMINATION_REASON_VARIABLE, TERMINATION_DRAFT_TASK_DELETED);
           runtimeService.messageEventReceived(terminationMessageName, execution.getId());
@@ -1133,9 +1130,7 @@ public class CreateTask implements TaskListener {
           "[CreateTask] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
           requestedTaskId,
           processInstanceId);
-      // Fallback path routes through deleteProcessInstance which dispatches PROCESS_CANCELLED
-      // with `terminationReason` as the cause; WorkflowFailureListener's cancellation whitelist
-      // matches the "Workflow-managed draft task ..." prefix and stays silent.
+      // Reason string matches WorkflowFailureListener's "Workflow-managed draft task " prefix.
       runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
     } catch (FlowableObjectNotFoundException e) {
       LOG.debug(

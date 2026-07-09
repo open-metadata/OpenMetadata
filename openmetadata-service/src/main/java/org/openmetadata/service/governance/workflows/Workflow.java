@@ -31,6 +31,10 @@ public class Workflow {
   public static final String TERMINATION_SUPERSEDED_BY_NEWER_INSTANCE =
       "SUPERSEDED_BY_NEWER_INSTANCE";
   public static final String TERMINATION_DRAFT_TASK_DELETED = "DRAFT_TASK_DELETED";
+  // Cause string passed to deleteProcessInstance when a newer approval run replaces an older one.
+  // Whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays silent for supersede.
+  public static final String SUPERSEDED_BY_NEWER_RUN =
+      "Superseded by a newer approval workflow run for the same entity";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
   private final WorkflowDefinition workflowDefinition;

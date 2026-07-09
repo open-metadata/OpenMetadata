@@ -6,11 +6,15 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.flowable.engine.delegate.DelegateExecution;
 import org.flowable.engine.delegate.JavaDelegate;
+import org.openmetadata.schema.governance.workflows.WorkflowInstance;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.WorkflowInstanceRepository;
 
 @Slf4j
 public class WorkflowInstanceListener implements JavaDelegate {
+
+  private static final String STATUS_VARIABLE_KEY = "status";
+
   @Override
   public void execute(DelegateExecution execution) {
     String workflowName = getProcessDefinitionKeyFromId(execution.getProcessDefinitionId());
@@ -135,35 +139,54 @@ public class WorkflowInstanceListener implements JavaDelegate {
     // Capture all variables including any failure indicators
     java.util.Map<String, Object> variables = new java.util.HashMap<>(execution.getVariables());
 
-    Object terminationReason = variables.get(Workflow.TERMINATION_REASON_VARIABLE);
-    if (terminationReason instanceof String reasonStr && !reasonStr.isBlank()) {
-      // Supersede path: caller (e.g. WorkflowHandler.terminateTask) set terminationReason before
-      // firing the terminate end event. Bypass updateWorkflowInstance's status recomputation
-      // (which would recompute FINISHED/FAILURE from states) and mark the instance SUPERSEDED
-      // via a dedicated writer so it isn't clobbered.
-      workflowInstanceRepository.markInstanceAsSuperseded(workflowInstanceId, reasonStr);
+    String supersedeReason = readSupersedeReason(variables);
+    if (supersedeReason != null) {
+      // Caller set terminationReason before firing the terminate end event; skip status
+      // recomputation and stamp SUPERSEDED via a dedicated writer that can't be clobbered.
+      workflowInstanceRepository.markInstanceAsSuperseded(workflowInstanceId, supersedeReason);
       LOG.debug(
           "[WORKFLOW_INSTANCE_SUPERSEDED] Workflow: {}, InstanceId: {}, Reason: {} - Marked as SUPERSEDED",
           workflowDefinitionName,
           workflowInstanceId,
-          reasonStr);
-      return;
+          supersedeReason);
+    } else {
+      WorkflowInstance.WorkflowStatus status = computeFinalStatus(variables);
+      variables.put(STATUS_VARIABLE_KEY, status.value());
+      workflowInstanceRepository.updateWorkflowInstance(
+          workflowInstanceId, System.currentTimeMillis(), variables);
+      logFinalStatus(workflowDefinitionName, workflowInstanceId, status);
     }
+  }
 
-    // Determine final status based on what happened during execution
-    String status = "FINISHED"; // Default
+  private String readSupersedeReason(java.util.Map<String, Object> variables) {
+    String reason = null;
+    Object candidate = variables.get(Workflow.TERMINATION_REASON_VARIABLE);
+    // Flowable variables are typed as Object at this boundary; pattern-match to accept only a
+    // non-blank String reason and reject anything else defensively.
+    if (candidate instanceof String candidateStr && !candidateStr.isBlank()) {
+      reason = candidateStr;
+    }
+    return reason;
+  }
+
+  private WorkflowInstance.WorkflowStatus computeFinalStatus(
+      java.util.Map<String, Object> variables) {
+    WorkflowInstance.WorkflowStatus status = WorkflowInstance.WorkflowStatus.FINISHED;
     if (Boolean.TRUE.equals(variables.get(Workflow.FAILURE_VARIABLE))) {
-      status = "FAILURE";
+      status = WorkflowInstance.WorkflowStatus.FAILURE;
     } else if (variables.containsKey(Workflow.EXCEPTION_VARIABLE)
         && variables.get(Workflow.EXCEPTION_VARIABLE) != null) {
-      status = "EXCEPTION";
+      status = WorkflowInstance.WorkflowStatus.EXCEPTION;
     }
-    variables.put("status", status);
+    return status;
+  }
 
-    workflowInstanceRepository.updateWorkflowInstance(
-        workflowInstanceId, System.currentTimeMillis(), variables);
-
-    if ("FAILURE".equals(status) || "EXCEPTION".equals(status)) {
+  private void logFinalStatus(
+      String workflowDefinitionName,
+      UUID workflowInstanceId,
+      WorkflowInstance.WorkflowStatus status) {
+    if (status == WorkflowInstance.WorkflowStatus.FAILURE
+        || status == WorkflowInstance.WorkflowStatus.EXCEPTION) {
       LOG.warn(
           "[WORKFLOW_INSTANCE_COMPLETED_WITH_ERRORS] Workflow: {}, InstanceId: {}, Status: {} - Workflow completed with errors",
           workflowDefinitionName,

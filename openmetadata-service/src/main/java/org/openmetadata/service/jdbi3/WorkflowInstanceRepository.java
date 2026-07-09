@@ -103,12 +103,7 @@ public class WorkflowInstanceRepository extends EntityTimeSeriesRepository<Workf
     getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedInstance), workflowInstanceId);
   }
 
-  /**
-   * Marks a workflow instance as SUPERSEDED - used when a running instance is intentionally
-   * terminated because a newer instance replaced it (or an equivalent graceful termination
-   * such as a workflow-managed draft task being deleted before materialization). Preserves the
-   * audit trail without marking the instance as a failure.
-   */
+  /** Marks a workflow instance as SUPERSEDED when a newer run replaces it. */
   public void markInstanceAsSuperseded(UUID workflowInstanceId, String reason) {
     WorkflowInstance workflowInstance =
         JsonUtils.readValue(timeSeriesDao.getById(workflowInstanceId), WorkflowInstance.class);

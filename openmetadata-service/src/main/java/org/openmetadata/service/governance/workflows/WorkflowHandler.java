@@ -1378,11 +1378,7 @@ public class WorkflowHandler {
               .messageEventSubscriptionName(messageName)
               .singleResult();
       if (execution != null) {
-        // Mark the process as intentionally superseded before firing the terminate end event.
-        // The ThreadLocal flag suppresses WorkflowFailureListener's ERROR log; the process
-        // variable is read by WorkflowInstanceListener on the process-end execution listener to
-        // stamp status=SUPERSEDED on the WorkflowInstance row.
-        WorkflowFailureListener.markProcessIntentionallyTerminated(task.getProcessInstanceId());
+        // terminationReason on the execution silences the failure listener and stamps SUPERSEDED.
         runtimeService.setVariable(
             task.getProcessInstanceId(),
             Workflow.TERMINATION_REASON_VARIABLE,
@@ -1685,11 +1681,9 @@ public class WorkflowHandler {
    */
   public void terminateWorkflowInstance(
       UUID workflowInstanceId, String mainWorkflowName, String reason) {
-    // Mark the audit record SUPERSEDED first, then delete the Flowable process. The two are
-    // guarded independently so a failure in either step is logged on its own and never prevents
-    // the other. Superseded (not FAILED) is the correct terminal status — the instance was
-    // intentionally replaced by a newer run for the same entity; the WorkflowFailureListener's
-    // PROCESS_CANCELLED whitelist also skips its ERROR log for this reason string.
+    // Two steps guarded independently — a failure in one is logged on its own, never blocks the
+    // other. Reason string is whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays
+    // silent.
     markWorkflowInstanceSupersededQuietly(workflowInstanceId, reason);
     deleteMainProcessInstanceQuietly(workflowInstanceId, mainWorkflowName, reason);
   }
