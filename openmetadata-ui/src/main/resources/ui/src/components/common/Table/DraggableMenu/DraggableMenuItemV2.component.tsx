@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Typography } from '@openmetadata/ui-core-components';
+import { Box, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { Eye, EyeOff } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC, useCallback, useMemo } from 'react';
@@ -76,8 +76,10 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
       id={value}
       textValue={label}
       onPress={() => onSelect(value, !isItemSelected)}>
-      <div
-        className="tw:flex tw:w-full tw:items-center tw:gap-2"
+      <Box
+        align="center"
+        className="tw:w-full"
+        gap={2}
         ref={(node) => {
           drop(dragPreview(node));
         }}>
@@ -93,16 +95,14 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
           />
         </span>
 
-        <Typography as="span" className="tw:text-sm">
-          {label}
-        </Typography>
+        <Typography>{label}</Typography>
 
         {isItemSelected ? (
           <Eye aria-label="eye" className="tw:ml-auto tw:size-4" />
         ) : (
           <EyeOff aria-label="eye-invisible" className="tw:ml-auto tw:size-4" />
         )}
-      </div>
+      </Box>
     </Dropdown.Item>
   );
 };

@@ -581,7 +581,6 @@ const TableV2 = <T extends object>(
                       <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
                         <Typography
                           className="tw:text-tertiary"
-                          size="text-sm"
                           weight="medium">
                           {t('label.column')}
                         </Typography>
