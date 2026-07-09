@@ -167,9 +167,7 @@ test.describe(
         await expect(schedule).toContainText('Every day');
 
         await schedule.hover();
-        await expect(page.locator('.ant-tooltip-inner')).toContainText(
-          'Every day'
-        );
+        await expect(page.getByRole('tooltip')).toContainText('Every day');
       });
 
       await test.step('First progress frame flips the card to running', async () => {

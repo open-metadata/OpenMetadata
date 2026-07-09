@@ -97,11 +97,14 @@ const computeTarget = (
  * stays monotonic so the bar never moves backwards.
  */
 const computeProgressPct = (agent: Agent, update: ProgressUpdate): number => {
-  const total = sumKnownCounterTotals(update.globalCounters);
+  const counters = update.globalCounters ?? [];
+  const total = sumKnownCounterTotals(counters);
   let raw = agent.pct;
   if (total !== null && total > 0) {
-    const done = sumGlobalCounters(update.globalCounters ?? []);
-    raw = Math.min(100, Math.round((done / total) * 100));
+    raw = Math.min(
+      100,
+      Math.round((sumGlobalCounters(counters) / total) * 100)
+    );
   }
 
   return Math.max(raw, agent.pct);

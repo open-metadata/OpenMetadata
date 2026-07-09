@@ -11,7 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Card } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   AlertTriangle,
@@ -21,7 +27,6 @@ import {
   Database01,
   Terminal,
 } from '@untitledui/icons';
-import { Tooltip } from 'antd';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
@@ -110,12 +115,14 @@ const AgentCard: FC<AgentCardProps> = ({
             <Icon height={18} width={18} />
           </span>
           <div className="tw:min-w-0">
-            <Tooltip title={agent.name}>
-              <div
-                className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight"
-                data-testid="pipeline-name">
-                {agent.name}
-              </div>
+            <Tooltip placement="top" title={agent.name}>
+              <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
+                <span
+                  className="tw:block tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight"
+                  data-testid="pipeline-name">
+                  {agent.name}
+                </span>
+              </TooltipTrigger>
             </Tooltip>
             <div
               className="tw:mt-px tw:text-xs tw:text-quaternary"
@@ -123,13 +130,15 @@ const AgentCard: FC<AgentCardProps> = ({
               {t(getAgentTypeLabelKey(agent.type))}
             </div>
             {showSchedule && (
-              <Tooltip title={scheduleText}>
-                <div
-                  className="tw:mt-px tw:flex tw:min-w-0 tw:items-center tw:gap-1 tw:text-xs tw:font-semibold tw:text-secondary"
-                  data-testid="agent-schedule">
-                  <Calendar className="tw:shrink-0" size={12} />
-                  <span className="tw:truncate">{scheduleText}</span>
-                </div>
+              <Tooltip placement="top" title={scheduleText}>
+                <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
+                  <span
+                    className="tw:mt-px tw:flex tw:min-w-0 tw:items-center tw:gap-1 tw:text-xs tw:font-semibold tw:text-secondary"
+                    data-testid="agent-schedule">
+                    <Calendar className="tw:shrink-0" size={12} />
+                    <span className="tw:truncate">{scheduleText}</span>
+                  </span>
+                </TooltipTrigger>
               </Tooltip>
             )}
           </div>
