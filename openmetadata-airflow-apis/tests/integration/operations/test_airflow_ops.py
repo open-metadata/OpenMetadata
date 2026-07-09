@@ -82,8 +82,8 @@ try:
     from airflow.providers.standard.operators.bash import BashOperator
 except ImportError:
     from airflow.operators.bash import BashOperator
-from flask import Flask
 
+from flask import Flask
 from openmetadata_managed_apis.operations.delete import delete_dag_id
 from openmetadata_managed_apis.operations.deploy import DagDeployer
 from openmetadata_managed_apis.operations.kill_all import kill_all
@@ -403,7 +403,9 @@ class TestAirflowOps(TestCase):
         trigger_payload, trigger_status = trigger(dag_id="my_new_dag", run_id=None)
 
         self.assertEqual(trigger_status, 200)
-        self.assertIn("Workflow [my_new_dag] has been triggered", trigger_payload["message"])
+        self.assertIn(
+            "Workflow [my_new_dag] has been triggered", trigger_payload["message"]
+        )
 
         # Delete it
         res = delete_dag_id("my_new_dag")

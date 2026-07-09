@@ -20,11 +20,9 @@ import traceback
 from datetime import datetime
 from typing import Dict, List, Literal, Optional, Union, cast
 
-from great_expectations.checkpoint import (
-    ActionContext,  # type: ignore
-    CheckpointResult,  # type: ignore
-    ValidationAction,  # type: ignore
-)
+from great_expectations.checkpoint import ActionContext  # type: ignore
+from great_expectations.checkpoint import CheckpointResult  # type: ignore
+from great_expectations.checkpoint import ValidationAction  # type: ignore
 from great_expectations.core.batch import Batch
 from great_expectations.core.expectation_validation_result import (
     ExpectationSuiteValidationResultMeta,

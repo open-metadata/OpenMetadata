@@ -284,11 +284,13 @@ class TableauClient:
         """
         validation = validators.url(self.config.siteName)
         if validation:
-            raise ValueError(f"""
+            raise ValueError(
+                f"""
             The site url "{self.config.siteName}" is in incorrect format.
             If "https://xxx.tableau.com/#/site/MarketingTeam/home" represents the homepage url for your tableau site,
             the "MarketingTeam" from the url should be entered in the Site Name and Site Url fields.
-            """)
+            """
+            )
         return True
 
     def test_get_datamodels(self):

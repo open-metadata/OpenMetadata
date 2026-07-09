@@ -88,7 +88,9 @@ class UnityCatalogIncrementalTableProcessor:
         query: str,
         catalog: str,
         start_timestamp: int,
-        row_to_schema_table: Callable[[Any], Optional[Tuple[str, str]]],  # noqa: UP006, UP045
+        row_to_schema_table: Callable[
+            [Any], Optional[Tuple[str, str]]
+        ],  # noqa: UP006, UP045
         context: str,
     ) -> SchemaToTables:
         """Execute a query and bucket its rows into a {schema: {table, ...}} map.
@@ -98,7 +100,9 @@ class UnityCatalogIncrementalTableProcessor:
         """
         table_map: SchemaToTables = {}
         try:
-            rows = self.connection.execute(text(query.format(catalog=catalog, start_timestamp=start_timestamp)))
+            rows = self.connection.execute(
+                text(query.format(catalog=catalog, start_timestamp=start_timestamp))
+            )
             for row in rows or []:
                 schema_table = row_to_schema_table(row)
                 if schema_table:
@@ -115,7 +119,9 @@ class UnityCatalogIncrementalTableProcessor:
         return table_map
 
     @staticmethod
-    def _split_full_name(full_name: Optional[str]) -> Optional[Tuple[str, str]]:  # noqa: UP045, UP006
+    def _split_full_name(
+        full_name: Optional[str],
+    ) -> Optional[Tuple[str, str]]:  # noqa: UP045, UP006
         """Split a `catalog.schema.table` name into its (schema, table) parts."""
         result = None
         if full_name and full_name.count(".") == 2:

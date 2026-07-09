@@ -126,7 +126,10 @@ class TestFactoryRegistrations:
         )
 
     def test_hana_registration(self):
-        assert table_metric_computer_factory._constructs.get(Dialects.Hana) is SAPHanaTableMetricComputer
+        assert (
+            table_metric_computer_factory._constructs.get(Dialects.Hana)
+            is SAPHanaTableMetricComputer
+        )
 
 
 class TestDialectStringValidation:
@@ -446,7 +449,10 @@ class TestSAPHanaTableMetricComputer:
 
 class TestExasolTableMetricComputer:
     def test_exasol_registration(self):
-        assert table_metric_computer_factory._constructs.get(Dialects.Exasol) is ExasolTableMetricComputer
+        assert (
+            table_metric_computer_factory._constructs.get(Dialects.Exasol)
+            is ExasolTableMetricComputer
+        )
 
     def test_compute_returns_result(self):
         session = _build_mock_session()
@@ -480,7 +486,9 @@ class TestExasolTableMetricComputer:
         mock_result = MagicMock()
         mock_result.rowCount = 0
         session.execute.return_value.first.return_value = mock_result
-        computer = _build_computer(session, ExasolTableMetricComputer, table_type=TableType.View)
+        computer = _build_computer(
+            session, ExasolTableMetricComputer, table_type=TableType.View
+        )
         with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
             result = computer.compute()
             assert result == "fallback"
@@ -488,7 +496,10 @@ class TestExasolTableMetricComputer:
 
 class TestTeradataTableMetricComputer:
     def test_teradata_registration(self):
-        assert table_metric_computer_factory._constructs.get(Dialects.Teradata) is TeradataTableMetricComputer
+        assert (
+            table_metric_computer_factory._constructs.get(Dialects.Teradata)
+            is TeradataTableMetricComputer
+        )
 
     def test_compute_returns_result(self):
         session = _build_mock_session()
@@ -522,7 +533,9 @@ class TestTeradataTableMetricComputer:
         mock_result = MagicMock()
         mock_result.rowCount = 0
         session.execute.return_value.first.return_value = mock_result
-        computer = _build_computer(session, TeradataTableMetricComputer, table_type=TableType.View)
+        computer = _build_computer(
+            session, TeradataTableMetricComputer, table_type=TableType.View
+        )
         with patch.object(BaseTableMetricComputer, "compute", return_value="fallback"):
             result = computer.compute()
             assert result == "fallback"
@@ -536,12 +549,20 @@ class TestTeradataTableMetricComputer:
         session.execute.return_value.first.return_value = mock_result
         computer = _build_computer(session, SAPHanaTableMetricComputer)
         computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
-        assert "TEST_SCHEMA" in sql, f"WHERE clause must use uppercased schema name, got: {sql}"
-        assert "TEST_TABLE" in sql, f"WHERE clause must use uppercased table name, got: {sql}"
-        assert "test_schema" not in sql.split("FROM")[1] if "FROM" in sql else True, (
-            "Lowercase schema name must not appear in WHERE clauses"
+        sql = str(
+            session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
         )
+        assert (
+            "TEST_SCHEMA" in sql
+        ), f"WHERE clause must use uppercased schema name, got: {sql}"
+        assert (
+            "TEST_TABLE" in sql
+        ), f"WHERE clause must use uppercased table name, got: {sql}"
+        assert (
+            "test_schema" not in sql.split("FROM")[1] if "FROM" in sql else True
+        ), "Lowercase schema name must not appear in WHERE clauses"
 
     def test_compute_returns_result_when_create_time_is_none(self):
         """LEFT JOIN means CREATE_TIME can be NULL (table in M_TABLES but not TABLES).
@@ -552,7 +573,9 @@ class TestTeradataTableMetricComputer:
         mock_result.createDateTime = None
         session.execute.return_value.first.return_value = mock_result
         computer = _build_computer(session, SAPHanaTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value="fallback") as base_compute:
+        with patch.object(
+            BaseTableMetricComputer, "compute", return_value="fallback"
+        ) as base_compute:
             result = computer.compute()
             assert result is mock_result
             base_compute.assert_not_called()
@@ -565,17 +588,27 @@ class TestTeradataTableMetricComputer:
         session.execute.return_value.first.return_value = mock_result
         computer = _build_computer(session, SAPHanaTableMetricComputer)
         computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
+        sql = str(
+            session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
         sql_upper = sql.upper()
         normalized_sql = " ".join(sql_upper.split())
         sql_without_quotes = normalized_sql.replace('"', "")
         assert "WITH " in normalized_sql, f"Expected WITH clause in query, got: {sql}"
-        assert sql_without_quotes.count(" AS (") >= 2, f"Expected two CTE definitions in query, got: {sql}"
-        assert "FROM SYS.M_TABLES" in sql_without_quotes, f"Expected M_TABLES source in query, got: {sql}"
-        assert "FROM SYS.TABLES" in sql_without_quotes, f"Expected TABLES source in query, got: {sql}"
-        assert "LEFT OUTER JOIN" in normalized_sql or "LEFT JOIN" in normalized_sql, (
-            f"TABLES CTE must be LEFT JOINed, got: {sql}"
-        )
+        assert (
+            sql_without_quotes.count(" AS (") >= 2
+        ), f"Expected two CTE definitions in query, got: {sql}"
+        assert (
+            "FROM SYS.M_TABLES" in sql_without_quotes
+        ), f"Expected M_TABLES source in query, got: {sql}"
+        assert (
+            "FROM SYS.TABLES" in sql_without_quotes
+        ), f"Expected TABLES source in query, got: {sql}"
+        assert (
+            "LEFT OUTER JOIN" in normalized_sql or "LEFT JOIN" in normalized_sql
+        ), f"TABLES CTE must be LEFT JOINed, got: {sql}"
 
     def test_compute_returns_none_for_nonexistent_table(self):
         """When table absent from HANA system views, compute returns None and
@@ -584,10 +617,18 @@ class TestTeradataTableMetricComputer:
         session.execute.return_value.first.return_value = None
         computer = _build_computer(session, SAPHanaTableMetricComputer)
         result = computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
+        sql = str(
+            session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
         assert result is None
-        assert "TEST_SCHEMA" in sql, f"Nonexistent-table lookup must use uppercased schema, got: {sql}"
-        assert "TEST_TABLE" in sql, f"Nonexistent-table lookup must use uppercased table, got: {sql}"
+        assert (
+            "TEST_SCHEMA" in sql
+        ), f"Nonexistent-table lookup must use uppercased schema, got: {sql}"
+        assert (
+            "TEST_TABLE" in sql
+        ), f"Nonexistent-table lookup must use uppercased table, got: {sql}"
 
     def test_compute_includes_column_count_and_names(self):
         """Result query must include columnCount and columnNames labels."""
@@ -597,7 +638,11 @@ class TestTeradataTableMetricComputer:
         session.execute.return_value.first.return_value = mock_result
         computer = _build_computer(session, SAPHanaTableMetricComputer)
         computer.compute()
-        sql = str(session.execute.call_args[0][0].compile(compile_kwargs={"literal_binds": True}))
+        sql = str(
+            session.execute.call_args[0][0].compile(
+                compile_kwargs={"literal_binds": True}
+            )
+        )
         assert "columnCount" in sql, f"Query must select columnCount, got: {sql}"
         assert "columnNames" in sql, f"Query must select columnNames, got: {sql}"
 
@@ -623,7 +668,9 @@ class TestTrinoTableMetricComputer:
         session.execute.return_value = iter([summary_row])
 
         computer = _build_computer(session, TrinoTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=500)):
+        with patch.object(
+            BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=500)
+        ):
             result = computer.compute()
         assert result.rowCount == 500
 
@@ -632,7 +679,9 @@ class TestTrinoTableMetricComputer:
         session.execute.return_value = iter([])
 
         computer = _build_computer(session, TrinoTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=100)):
+        with patch.object(
+            BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=100)
+        ):
             result = computer.compute()
         assert result.rowCount == 100
 
@@ -649,9 +698,18 @@ class TestTrinoTableMetricComputer:
         assert "name" in result.columnNames
 
     def test_trino_presto_athena_registrations(self):
-        assert table_metric_computer_factory._constructs[Dialects.Trino] is TrinoTableMetricComputer
-        assert table_metric_computer_factory._constructs[Dialects.Presto] is TrinoTableMetricComputer
-        assert table_metric_computer_factory._constructs[Dialects.Athena] is TrinoTableMetricComputer
+        assert (
+            table_metric_computer_factory._constructs[Dialects.Trino]
+            is TrinoTableMetricComputer
+        )
+        assert (
+            table_metric_computer_factory._constructs[Dialects.Presto]
+            is TrinoTableMetricComputer
+        )
+        assert (
+            table_metric_computer_factory._constructs[Dialects.Athena]
+            is TrinoTableMetricComputer
+        )
 
 
 class TestHiveTableMetricComputer:
@@ -683,7 +741,10 @@ class TestHiveTableMetricComputer:
         assert result.rowCount == 200
 
     def test_hive_registration(self):
-        assert table_metric_computer_factory._constructs[Dialects.Hive] is HiveTableMetricComputer
+        assert (
+            table_metric_computer_factory._constructs[Dialects.Hive]
+            is HiveTableMetricComputer
+        )
 
 
 class TestImpalaTableMetricComputer:
@@ -716,7 +777,9 @@ class TestImpalaTableMetricComputer:
         session.execute.return_value.fetchall.return_value = [row]
 
         computer = _build_computer(session, ImpalaTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=0)):
+        with patch.object(
+            BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=0)
+        ):
             result = computer.compute()
         assert result.rowCount == 0
 
@@ -725,12 +788,17 @@ class TestImpalaTableMetricComputer:
         session.execute.return_value.fetchall.return_value = []
 
         computer = _build_computer(session, ImpalaTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=50)):
+        with patch.object(
+            BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=50)
+        ):
             result = computer.compute()
         assert result.rowCount == 50
 
     def test_impala_registration(self):
-        assert table_metric_computer_factory._constructs[Dialects.Impala] is ImpalaTableMetricComputer
+        assert (
+            table_metric_computer_factory._constructs[Dialects.Impala]
+            is ImpalaTableMetricComputer
+        )
 
 
 class TestDatabricksTableMetricComputer:
@@ -749,10 +817,14 @@ class TestDatabricksTableMetricComputer:
         session.execute.return_value.first.return_value = None
 
         computer = _build_computer(session, DatabricksTableMetricComputer)
-        with patch.object(BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=5000)):
+        with patch.object(
+            BaseTableMetricComputer, "compute", return_value=MagicMock(rowCount=5000)
+        ):
             result = computer.compute()
         assert result.rowCount == 5000
 
     def test_databricks_registration(self):
-        assert table_metric_computer_factory._constructs[Dialects.Databricks] is DatabricksTableMetricComputer
-
+        assert (
+            table_metric_computer_factory._constructs[Dialects.Databricks]
+            is DatabricksTableMetricComputer
+        )

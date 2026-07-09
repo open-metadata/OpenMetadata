@@ -34,18 +34,40 @@ def _socket_optname(name: str) -> int:
 
 def build_keepalive_socket_options() -> list[tuple[int, int, int | bytes]]:
     """TCP keepalive socket options, guarded for platform differences."""
-    options = list(HTTPConnection.default_socket_options) + [(socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)]
+    options = list(HTTPConnection.default_socket_options) + [
+        (socket.SOL_SOCKET, socket.SO_KEEPALIVE, 1)
+    ]
 
     if hasattr(socket, "TCP_KEEPIDLE"):
-        options.append((socket.IPPROTO_TCP, _socket_optname("TCP_KEEPIDLE"), _KEEPALIVE_IDLE_SECONDS))
+        options.append(
+            (
+                socket.IPPROTO_TCP,
+                _socket_optname("TCP_KEEPIDLE"),
+                _KEEPALIVE_IDLE_SECONDS,
+            )
+        )
     elif hasattr(socket, "TCP_KEEPALIVE"):
-        options.append((socket.IPPROTO_TCP, _socket_optname("TCP_KEEPALIVE"), _KEEPALIVE_IDLE_SECONDS))
+        options.append(
+            (
+                socket.IPPROTO_TCP,
+                _socket_optname("TCP_KEEPALIVE"),
+                _KEEPALIVE_IDLE_SECONDS,
+            )
+        )
 
     if hasattr(socket, "TCP_KEEPINTVL"):
-        options.append((socket.IPPROTO_TCP, _socket_optname("TCP_KEEPINTVL"), _KEEPALIVE_INTERVAL_SECONDS))
+        options.append(
+            (
+                socket.IPPROTO_TCP,
+                _socket_optname("TCP_KEEPINTVL"),
+                _KEEPALIVE_INTERVAL_SECONDS,
+            )
+        )
 
     if hasattr(socket, "TCP_KEEPCNT"):
-        options.append((socket.IPPROTO_TCP, _socket_optname("TCP_KEEPCNT"), _KEEPALIVE_PROBE_COUNT))
+        options.append(
+            (socket.IPPROTO_TCP, _socket_optname("TCP_KEEPCNT"), _KEEPALIVE_PROBE_COUNT)
+        )
 
     return options
 
@@ -63,18 +85,26 @@ def build_transport_retry() -> Retry:
     )
 
 
-_KEEPALIVE_SOCKET_OPTIONS: list[tuple[int, int, int | bytes]] = build_keepalive_socket_options()
+_KEEPALIVE_SOCKET_OPTIONS: list[
+    tuple[int, int, int | bytes]
+] = build_keepalive_socket_options()
 
 
 class KeepAliveRetryAdapter(HTTPAdapter):
     """HTTPAdapter that enables TCP keepalive on every pooled connection."""
 
     def init_poolmanager(
-        self, connections: int, maxsize: int, block: bool = DEFAULT_POOLBLOCK, **pool_kwargs: Any
+        self,
+        connections: int,
+        maxsize: int,
+        block: bool = DEFAULT_POOLBLOCK,
+        **pool_kwargs: Any
     ) -> None:
         """Build the pool manager with keepalive socket options applied."""
         pool_kwargs["socket_options"] = _KEEPALIVE_SOCKET_OPTIONS
-        self.poolmanager = PoolManager(num_pools=connections, maxsize=maxsize, block=block, **pool_kwargs)
+        self.poolmanager = PoolManager(
+            num_pools=connections, maxsize=maxsize, block=block, **pool_kwargs
+        )
 
     def proxy_manager_for(self, proxy: str, **proxy_kwargs: object) -> PoolManager:
         """Apply keepalive socket options to proxied connections too."""

@@ -241,23 +241,25 @@ class MssqlUnitTest(TestCase):
             mock_mssql_config["source"],
             self.config.workflowConfig.openMetadataServerConfig,
         )
-        self.mssql.context.get().__dict__["database_service"] = (
-            MOCK_DATABASE_SERVICE.name.root
-        )
+        self.mssql.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.thread_id = self.mssql.context.get_current_thread_id()
         self.mssql._inspector_map[self.thread_id] = types.SimpleNamespace()
-        self.mssql._inspector_map[self.thread_id].get_columns = (
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_columns = (
             lambda table_name, schema_name, table_type, db_name: MOCK_COLUMN_VALUE
         )
-        self.mssql._inspector_map[self.thread_id].get_pk_constraint = (
-            lambda table_name, schema_name: []
-        )
-        self.mssql._inspector_map[self.thread_id].get_unique_constraints = (
-            lambda table_name, schema_name: []
-        )
-        self.mssql._inspector_map[self.thread_id].get_foreign_keys = (
-            lambda table_name, schema_name: []
-        )
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_pk_constraint = lambda table_name, schema_name: []
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_unique_constraints = lambda table_name, schema_name: []
+        self.mssql._inspector_map[
+            self.thread_id
+        ].get_foreign_keys = lambda table_name, schema_name: []
 
     def test_yield_database(self):
         assert EXPECTED_DATABASE == [
@@ -265,13 +267,15 @@ class MssqlUnitTest(TestCase):
             for either in self.mssql.yield_database(MOCK_DATABASE.name.root)
         ]
 
-        self.mssql.context.get().__dict__["database_service"] = (
-            MOCK_DATABASE_SERVICE.name.root
-        )
+        self.mssql.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
 
     @mssql_dialet.db_plus_owner
-    def mock_function(self, connection, tablename, dbname, owner, schema, **kw):  # pylint: disable=unused-argument
+    def mock_function(
+        self, connection, tablename, dbname, owner, schema, **kw
+    ):  # pylint: disable=unused-argument
         # Mock function for testing
         return schema
 
@@ -292,9 +296,9 @@ class MssqlUnitTest(TestCase):
             )
         ]
 
-        self.mssql.context.get().__dict__["database_schema"] = (
-            MOCK_DATABASE_SCHEMA.name.root
-        )
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
     def test_yield_table(self):
         assert EXPECTED_TABLE == [
@@ -311,9 +315,9 @@ class MssqlUnitTest(TestCase):
             excludes=["sp_exclude"]
         )
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.mssql.context.get().__dict__["database_schema"] = (
-            MOCK_DATABASE_SCHEMA.name.root
-        )
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
 
         mock_engine = MagicMock()
         self.mssql.engine = mock_engine
@@ -388,9 +392,9 @@ class TestUpdateMssqlIschemaNames:
         target = {}
         update_mssql_ischema_names(target)
         for type_key in self.EXPECTED_MSSQL_TYPES:
-            assert type_key in target, (
-                f"'{type_key}' was not added by update_mssql_ischema_names"
-            )
+            assert (
+                type_key in target
+            ), f"'{type_key}' was not added by update_mssql_ischema_names"
 
     def test_all_added_types_are_not_none(self):
         target = {}
@@ -450,12 +454,12 @@ class TestUpdateMssqlIschemaNames:
 
     def _setup_stored_procedure_context(self):
         self.mssql.context.get().__dict__["database"] = MOCK_DATABASE.name.root
-        self.mssql.context.get().__dict__["database_schema"] = (
-            MOCK_DATABASE_SCHEMA.name.root
-        )
-        self.mssql.context.get().__dict__["database_service"] = (
-            MOCK_DATABASE_SERVICE.name.root
-        )
+        self.mssql.context.get().__dict__[
+            "database_schema"
+        ] = MOCK_DATABASE_SCHEMA.name.root
+        self.mssql.context.get().__dict__[
+            "database_service"
+        ] = MOCK_DATABASE_SERVICE.name.root
         self.mssql.stored_procedure_desc_map = {}
         self.mssql.encrypted_procedures_cache = {}
 

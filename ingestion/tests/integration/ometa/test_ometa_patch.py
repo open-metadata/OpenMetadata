@@ -462,7 +462,9 @@ class TestOMetaPatch:
         assert updated_again_col.tags[0].tagFQN.root == "PII.Sensitive"
         assert updated_again_col.tags[1].tagFQN.root == "Tier.Tier2"
 
-    def test_patch_column_tags_retries_on_concurrent_modification(self, metadata, patch_table):
+    def test_patch_column_tags_retries_on_concurrent_modification(
+        self, metadata, patch_table
+    ):
         """A concurrent modification between the SDK's read and its If-Match write must be
         retried (refetch + reapply), not silently lost. This exercises the optimistic-
         concurrency path on column-tag patching that guards a tag from landing on the wrong
@@ -483,7 +485,9 @@ class TestOMetaPatch:
                 )
             return original_patch(*args, **kwargs)
 
-        with mock.patch.object(metadata, "patch", side_effect=patch_with_concurrent_writer):
+        with mock.patch.object(
+            metadata, "patch", side_effect=patch_with_concurrent_writer
+        ):
             updated: Table = metadata.patch_column_tags(
                 entity=patch_table,
                 column_tags=[ColumnTag(column_fqn=column_fqn, tag_label=PII_TAG_LABEL)],
@@ -492,9 +496,9 @@ class TestOMetaPatch:
         assert state["injected"], "the concurrent writer should have run"
         assert updated is not None, "patch must converge after retrying the stale write"
         updated_col = find_column_in_table(column_name="another", table=updated)
-        assert any(tag.tagFQN.root == "PII.Sensitive" for tag in (updated_col.tags or [])), (
-            "column tag must persist after the optimistic-lock retry"
-        )
+        assert any(
+            tag.tagFQN.root == "PII.Sensitive" for tag in (updated_col.tags or [])
+        ), "column tag must persist after the optimistic-lock retry"
 
     def test_patch_column_falls_back_when_etag_unusable(self, metadata, patch_table):
         """If the client-derived If-Match can never match the server (e.g. a future
@@ -513,7 +517,9 @@ class TestOMetaPatch:
                 force=True,
             )
 
-        assert updated is not None, "patch must persist via the last-write-wins fallback"
+        assert (
+            updated is not None
+        ), "patch must persist via the last-write-wins fallback"
         updated_col = find_column_in_table(column_name="another", table=updated)
         assert updated_col.description.root == "fallback-persisted description"
 

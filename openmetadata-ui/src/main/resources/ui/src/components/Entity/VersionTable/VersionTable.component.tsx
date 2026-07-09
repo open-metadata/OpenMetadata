@@ -16,16 +16,16 @@ import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined } from 'lodash';
 import { Key, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import {
-  getFrequentlyJoinedColumns,
-  searchInColumns,
-} from 'src/utils/EntityUtils';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../../constants/Table.constants';
 import { TableConstraint } from '../../../generated/api/data/createTable';
 import { SearchIndexField } from '../../../generated/entity/data/searchIndex';
 import { Column } from '../../../generated/entity/data/table';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import {
+  getFrequentlyJoinedColumns,
+  searchInColumns,
+} from '../../../utils/EntityUtils';
 import { getFilterTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getAllRowKeysByKeyName,

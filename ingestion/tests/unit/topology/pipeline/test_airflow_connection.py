@@ -578,19 +578,31 @@ class TestGcpTokenRefreshIntegration:
 class TestDetectFlavor:
     def test_mwaa_auth_wins_regardless_of_host(self):
         auth = MwaaAuthentication.model_construct(mwaaConfig=MagicMock())
-        assert detect_flavor("https://abc.composer.googleusercontent.com", auth) is AirflowFlavor.MWAA
+        assert (
+            detect_flavor("https://abc.composer.googleusercontent.com", auth)
+            is AirflowFlavor.MWAA
+        )
 
     def test_gcp_auth_wins_regardless_of_host(self):
         auth = GcpServiceAccount.model_construct(credentials=MagicMock())
-        assert detect_flavor("https://my-airflow.corp.example.com", auth) is AirflowFlavor.COMPOSER
+        assert (
+            detect_flavor("https://my-airflow.corp.example.com", auth)
+            is AirflowFlavor.COMPOSER
+        )
 
     def test_composer_host_with_access_token(self):
         auth = AccessToken(token="t")
-        assert detect_flavor("https://abc.composer.googleusercontent.com", auth) is AirflowFlavor.COMPOSER
+        assert (
+            detect_flavor("https://abc.composer.googleusercontent.com", auth)
+            is AirflowFlavor.COMPOSER
+        )
 
     def test_mwaa_host_with_basic_auth(self):
         auth = BasicAuth(username="u", password="p")
-        assert detect_flavor("https://abc.airflow.us-east-1.amazonaws.com", auth) is AirflowFlavor.MWAA
+        assert (
+            detect_flavor("https://abc.airflow.us-east-1.amazonaws.com", auth)
+            is AirflowFlavor.MWAA
+        )
 
     @pytest.mark.parametrize(
         "host",
@@ -606,7 +618,10 @@ class TestDetectFlavor:
 
     def test_unknown_host_falls_back_to_self_hosted(self):
         auth = BasicAuth(username="u", password="p")
-        assert detect_flavor("https://internal.example.com", auth) is AirflowFlavor.SELF_HOSTED
+        assert (
+            detect_flavor("https://internal.example.com", auth)
+            is AirflowFlavor.SELF_HOSTED
+        )
 
     def test_none_host_with_generic_auth_is_self_hosted(self):
         assert detect_flavor(None, MagicMock()) is AirflowFlavor.SELF_HOSTED
@@ -666,7 +681,9 @@ class TestComposerProbe:
         "metadata.ingestion.source.pipeline.airflow.api.diagnostics._detect_composer_iap_model",
         return_value="composer_managed",
     )
-    def test_env_visible_via_management_api_names_env_and_role(self, _mock_model, _mock_management):
+    def test_env_visible_via_management_api_names_env_and_role(
+        self, _mock_model, _mock_management
+    ):
         """The SA can see the env through the Management API but Airflow rejects it -> name the env and the missing role."""
         auth = GcpServiceAccount.model_construct(credentials=MagicMock())
         hint = diagnose(
@@ -688,7 +705,9 @@ class TestComposerProbe:
         "metadata.ingestion.source.pipeline.airflow.api.diagnostics._detect_composer_iap_model",
         return_value=None,
     )
-    def test_no_project_access_produces_generic_permission_hint(self, _mock_model, _mock_management):
+    def test_no_project_access_produces_generic_permission_hint(
+        self, _mock_model, _mock_management
+    ):
         """Neither probe succeeds -> the SA most likely has no IAM access at all."""
         auth = GcpServiceAccount.model_construct(credentials=MagicMock())
         hint = diagnose(
@@ -706,9 +725,18 @@ class TestComposerRegionFromHost:
     @pytest.mark.parametrize(
         "host,expected",
         [
-            ("https://e3e45d4d271b4596a8dd9a4426cb1c52-dot-us-east4.composer.googleusercontent.com", "us-east4"),
-            ("https://abc-dot-europe-west1.composer.googleusercontent.com", "europe-west1"),
-            ("https://abc-dot-us-east4.composer.googleusercontent.com/api/v1/health", "us-east4"),
+            (
+                "https://e3e45d4d271b4596a8dd9a4426cb1c52-dot-us-east4.composer.googleusercontent.com",
+                "us-east4",
+            ),
+            (
+                "https://abc-dot-europe-west1.composer.googleusercontent.com",
+                "europe-west1",
+            ),
+            (
+                "https://abc-dot-us-east4.composer.googleusercontent.com/api/v1/health",
+                "us-east4",
+            ),
             # Wrong hostname format → None (no -dot-region segment)
             ("https://composer.googleusercontent.com", None),
             ("https://internal.example.com", None),
@@ -787,7 +815,10 @@ class TestProbeComposerManagementApi:
             "airflowUri": self.HOST,
         }
         config.update(overrides.pop("config_overrides", {}))
-        return {"name": "projects/my-project/locations/us-east4/environments/prod-airflow", "config": config}
+        return {
+            "name": "projects/my-project/locations/us-east4/environments/prod-airflow",
+            "config": config,
+        }
 
     @patch(
         "metadata.ingestion.source.pipeline.airflow.api.diagnostics._mint_access_token_for_diagnostic",
@@ -820,7 +851,9 @@ class TestProbeComposerManagementApi:
             _probe_composer_management_api,
         )
 
-        env = self._env(config_overrides={"airflowUri": "https://different-host.example.com"})
+        env = self._env(
+            config_overrides={"airflowUri": "https://different-host.example.com"}
+        )
         mock_get.return_value = MagicMock(
             status_code=200,
             json=MagicMock(return_value={"environments": [env]}),
@@ -877,7 +910,12 @@ class TestProbeComposerManagementApi:
         )
 
         # Host without -dot-<region> segment → can't extract region → bail out
-        assert _probe_composer_management_api("https://composer.googleusercontent.com", self._auth(), True) is None
+        assert (
+            _probe_composer_management_api(
+                "https://composer.googleusercontent.com", self._auth(), True
+            )
+            is None
+        )
 
 
 class TestComposerIapModelDetection:
@@ -893,7 +931,12 @@ class TestComposerIapModelDetection:
                 "Location": "https://accounts.google.com/o/oauth2/auth?client_id=foo.apps.googleusercontent.com&response_type=code"
             },
         )
-        assert _detect_composer_iap_model("https://abc.composer.googleusercontent.com", True) == "classic"
+        assert (
+            _detect_composer_iap_model(
+                "https://abc.composer.googleusercontent.com", True
+            )
+            == "classic"
+        )
 
     @patch("requests.get")
     def test_managed_when_signin_redirect(self, mock_get):
@@ -903,9 +946,16 @@ class TestComposerIapModelDetection:
 
         mock_get.return_value = MagicMock(
             status_code=302,
-            headers={"Location": "https://us-east4.composer.cloud.google.com/_signin?continue=..."},
+            headers={
+                "Location": "https://us-east4.composer.cloud.google.com/_signin?continue=..."
+            },
         )
-        assert _detect_composer_iap_model("https://abc.composer.googleusercontent.com", True) == "composer_managed"
+        assert (
+            _detect_composer_iap_model(
+                "https://abc.composer.googleusercontent.com", True
+            )
+            == "composer_managed"
+        )
 
     @patch("requests.get", side_effect=requests.exceptions.ConnectionError("dns"))
     def test_none_on_probe_failure(self, _mock_get):
@@ -913,7 +963,12 @@ class TestComposerIapModelDetection:
             _detect_composer_iap_model,
         )
 
-        assert _detect_composer_iap_model("https://abc.composer.googleusercontent.com", True) is None
+        assert (
+            _detect_composer_iap_model(
+                "https://abc.composer.googleusercontent.com", True
+            )
+            is None
+        )
 
 
 class TestMwaaProbe:
@@ -994,7 +1049,11 @@ class TestSelfHostedProbe:
             original_error=Exception("conn"),
         )
         assert hint is not None
-        assert "dns" in hint.lower() or "tcp" in hint.lower() or "reachable" in hint.lower()
+        assert (
+            "dns" in hint.lower()
+            or "tcp" in hint.lower()
+            or "reachable" in hint.lower()
+        )
 
     @patch("requests.get")
     def test_html_root_suggests_api_backend(self, mock_get):
@@ -1018,7 +1077,9 @@ class TestDiagnoseSwallowsExceptions:
         side_effect=RuntimeError("boom"),
     )
     def test_returns_none_when_probe_raises(self, _mock_detect):
-        result = diagnose("https://x", MagicMock(), verify=True, original_error=Exception("orig"))
+        result = diagnose(
+            "https://x", MagicMock(), verify=True, original_error=Exception("orig")
+        )
         assert result is None
 
 
@@ -1035,7 +1096,9 @@ class TestDecoratedCheckAccess:
 
         client = MagicMock()
         client.get_version.return_value = {"version": "2.8.0"}
-        result = _decorated_check_access(client, "https://airflow.example.com", None, True)
+        result = _decorated_check_access(
+            client, "https://airflow.example.com", None, True
+        )
         assert result == {"version": "2.8.0"}
 
     def test_failure_with_hint_raises_source_connection_exception(self):
@@ -1047,7 +1110,9 @@ class TestDecoratedCheckAccess:
         )
 
         client = MagicMock()
-        client.get_version.side_effect = ValueError("Expecting value: line 2 column 1 (char 1)")
+        client.get_version.side_effect = ValueError(
+            "Expecting value: line 2 column 1 (char 1)"
+        )
 
         with (
             patch(

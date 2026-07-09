@@ -986,7 +986,9 @@ class ExasolTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             return super().compute()
         return res
 
@@ -1018,7 +1020,9 @@ class TeradataTableMetricComputer(BaseTableMetricComputer):
         res = self.runner._session.execute(query).first()
         if not res:
             return None
-        if res.rowCount is None or (res.rowCount == 0 and self._entity.tableType == TableType.View):
+        if res.rowCount is None or (
+            res.rowCount == 0 and self._entity.tableType == TableType.View
+        ):
             return super().compute()
         return res
 
@@ -1213,4 +1217,6 @@ table_metric_computer_factory.register(Dialects.Trino, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Presto, TrinoTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Hive, HiveTableMetricComputer)
 table_metric_computer_factory.register(Dialects.Impala, ImpalaTableMetricComputer)
-table_metric_computer_factory.register(Dialects.Databricks, DatabricksTableMetricComputer)
+table_metric_computer_factory.register(
+    Dialects.Databricks, DatabricksTableMetricComputer
+)

@@ -145,8 +145,12 @@ class UnitycatalogSource(
         self._owner_cache: dict[str, Optional[EntityReferenceList]] = {}  # noqa: UP045
 
         self.incremental = incremental_configuration
-        self.incremental_table_processor: UnityCatalogIncrementalTableProcessor | None = None
-        self.context.get_global().deleted_tables = []  # pyright: ignore[reportAttributeAccessIssue]
+        self.incremental_table_processor: UnityCatalogIncrementalTableProcessor | None = (
+            None
+        )
+        self.context.get_global().deleted_tables = (
+            []
+        )  # pyright: ignore[reportAttributeAccessIssue]
         if self.incremental.enabled:
             logger.info(
                 "Starting Incremental Metadata Extraction.\n\t Considering Table changes from %s",
@@ -186,8 +190,12 @@ class UnitycatalogSource(
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: UnityCatalogConnection = config.serviceConnection.root.config
         if not isinstance(connection, UnityCatalogConnection):
-            raise InvalidSourceException(f"Expected UnityCatalogConnection, but got {connection}")
-        incremental_config = IncrementalConfig.create(config.sourceConfig.config.incremental, pipeline_name, metadata)  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue, reportOptionalMemberAccess]
+            raise InvalidSourceException(
+                f"Expected UnityCatalogConnection, but got {connection}"
+            )
+        incremental_config = IncrementalConfig.create(
+            config.sourceConfig.config.incremental, pipeline_name, metadata
+        )  # pyright: ignore[reportArgumentType, reportAttributeAccessIssue, reportOptionalMemberAccess]
         return cls(config, metadata, incremental_config)
 
     def get_database_names(self) -> Iterable[str]:
@@ -211,7 +219,9 @@ class UnitycatalogSource(
                 self._catalog_cache[catalog.name] = catalog
             except Exception as exc:
                 logger.debug(traceback.format_exc())
-                logger.warning(f"Failed to fetch configured catalog [{configured_catalog}]: {exc}")
+                logger.warning(
+                    f"Failed to fetch configured catalog [{configured_catalog}]: {exc}"
+                )
             self._set_incremental_table_processor(configured_catalog)
             yield configured_catalog
         else:
@@ -251,13 +261,17 @@ class UnitycatalogSource(
     def _set_incremental_table_processor(self, catalog: str) -> None:
         """Prepare the changed/deleted table maps for incremental extraction of a catalog."""
         if self.incremental.enabled:
-            self.incremental_table_processor = UnityCatalogIncrementalTableProcessor.create(self.sql_connection)
+            self.incremental_table_processor = (
+                UnityCatalogIncrementalTableProcessor.create(self.sql_connection)
+            )
             self.incremental_table_processor.set_table_map(
                 catalog=catalog,
                 start_timestamp=self.incremental.start_timestamp,  # pyright: ignore[reportArgumentType]
             )
 
-    def yield_database(self, database_name: str) -> Iterable[Either[CreateDatabaseRequest]]:
+    def yield_database(
+        self, database_name: str
+    ) -> Iterable[Either[CreateDatabaseRequest]]:
         """
         From topology.
         Prepare a database request and pass it to the sink
@@ -337,7 +351,9 @@ class UnitycatalogSource(
         yield Either(right=schema_request)
         self.register_record_schema_request(schema_request=schema_request)
 
-    def get_tables_name_and_type(self) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
+    def get_tables_name_and_type(
+        self,
+    ) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
         """
         Handle table and views.
 
@@ -360,7 +376,9 @@ class UnitycatalogSource(
             ):
                 yield from self._process_table(table, catalog_name, schema_name)
 
-    def _get_incremental_tables(self, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
+    def _get_incremental_tables(
+        self, catalog_name: str, schema_name: str
+    ) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
         """Record deleted tables and yield only the tables changed since the watermark."""
         processor = self.incremental_table_processor
         if processor is None:
@@ -382,7 +400,9 @@ class UnitycatalogSource(
             )
         for table_name in changed:
             try:
-                table = self.client.tables.get(f"{catalog_name}.{schema_name}.{table_name}")
+                table = self.client.tables.get(
+                    f"{catalog_name}.{schema_name}.{table_name}"
+                )
             except Exception as exc:
                 self.status.failed(
                     StackTraceError(
@@ -394,7 +414,9 @@ class UnitycatalogSource(
                 continue
             yield from self._process_table(table, catalog_name, schema_name)
 
-    def _process_table(self, table: Any, catalog_name: str, schema_name: str) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
+    def _process_table(
+        self, table: Any, catalog_name: str, schema_name: str
+    ) -> Iterable[Tuple[str, TableType]]:  # noqa: UP006
         """Apply filtering and table-type detection, then yield the table to the topology."""
         try:
             table_name = table.name
@@ -408,7 +430,11 @@ class UnitycatalogSource(
             )
             if filter_by_table(
                 self.config.sourceConfig.config.tableFilterPattern,  # pyright: ignore[reportAttributeAccessIssue, reportOptionalMemberAccess]
-                (table_fqn if self.config.sourceConfig.config.useFqnForFiltering else table_name),  # pyright: ignore[reportAttributeAccessIssue, reportArgumentType, reportOptionalMemberAccess]
+                (
+                    table_fqn
+                    if self.config.sourceConfig.config.useFqnForFiltering
+                    else table_name
+                ),  # pyright: ignore[reportAttributeAccessIssue, reportArgumentType, reportOptionalMemberAccess]
             ):
                 self.status.filter(
                     table_fqn,  # pyright: ignore[reportArgumentType]
@@ -423,7 +449,9 @@ class UnitycatalogSource(
                     table_type = TableType.MaterializedView
                 elif table.table_type.value.lower() == TableType.External.value.lower():
                     table_type = TableType.External
-            self.context.get().table_data = table  # pyright: ignore[reportAttributeAccessIssue]
+            self.context.get().table_data = (
+                table  # pyright: ignore[reportAttributeAccessIssue]
+            )
             yield table_name, table_type
         except Exception as exc:
             table_identifier = getattr(table, "name", "<unknown>")
@@ -632,9 +660,13 @@ class UnitycatalogSource(
         """
         if self.incremental.enabled:
             if not self.context.get().__dict__.get("database"):
-                raise ValueError("No Database found in the context. We cannot run the table deletion.")
+                raise ValueError(
+                    "No Database found in the context. We cannot run the table deletion."
+                )
             if self.source_config.markDeletedTables:
-                logger.info(f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]")  # pyright: ignore[reportAttributeAccessIssue]
+                logger.info(
+                    f"Mark Deleted Tables set to True. Processing database [{self.context.get().database}]"
+                )  # pyright: ignore[reportAttributeAccessIssue]
                 yield from delete_entity_by_name(
                     self.metadata,
                     entity_type=Table,
@@ -644,7 +676,9 @@ class UnitycatalogSource(
         else:
             yield from super().mark_tables_as_deleted()
 
-    def add_complex_datatype_descriptions(self, column: Column, column_json: ColumnJson):
+    def add_complex_datatype_descriptions(
+        self, column: Column, column_json: ColumnJson
+    ):
         """
         Method to add descriptions to complex datatypes
         """

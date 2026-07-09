@@ -16,9 +16,9 @@ import traceback
 from typing import Callable
 
 from flask import Blueprint, Response, request
+from markupsafe import escape
 from openmetadata_managed_apis.api.response import ApiResponse
 from openmetadata_managed_apis.utils.logger import routes_logger
-from markupsafe import escape
 from pydantic import ValidationError
 
 from metadata.automations.execute_runner import execute

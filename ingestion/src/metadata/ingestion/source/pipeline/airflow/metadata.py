@@ -288,7 +288,9 @@ class AirflowSource(PipelineServiceSource):
                 )
                 .filter(DagRun.dag_id == dag_id)
                 .order_by(db_date_column.desc())
-                .limit(self.config.serviceConnection.root.config.numberOfStatus)  # pyright: ignore[reportAttributeAccessIssue]
+                .limit(
+                    self.config.serviceConnection.root.config.numberOfStatus
+                )  # pyright: ignore[reportAttributeAccessIssue]
                 .all()
             )
 
@@ -394,7 +396,9 @@ class AirflowSource(PipelineServiceSource):
                     task_statuses = [
                         TaskStatus(
                             name=task.task_id,
-                            executionStatus=STATUS_MAP.get(task.state or "", StatusType.Pending.value),
+                            executionStatus=STATUS_MAP.get(
+                                task.state or "", StatusType.Pending.value
+                            ),
                             startTime=datetime_to_ts(task.start_date),
                             endTime=datetime_to_ts(
                                 task.end_date
@@ -588,13 +592,21 @@ class AirflowSource(PipelineServiceSource):
                         # If we can't query is_paused, assume the pipeline is active
                         pipeline_state = PipelineState.Active.value
 
-                    raw_data = self._resolve_dag_data(serialized_dag[1], serialized_dag[0], serialized_dag[3])
+                    raw_data = self._resolve_dag_data(
+                        serialized_dag[1], serialized_dag[0], serialized_dag[3]
+                    )
                     if raw_data is None:
-                        logger.warning("No serialized data available for dag %s, skipping", serialized_dag[0])
+                        logger.warning(
+                            "No serialized data available for dag %s, skipping",
+                            serialized_dag[0],
+                        )
                         continue
                     data = raw_data.get("dag")
                     if data is None:
-                        logger.warning("Missing 'dag' key in serialized data for dag %s, skipping", serialized_dag[0])
+                        logger.warning(
+                            "Missing 'dag' key in serialized data for dag %s, skipping",
+                            serialized_dag[0],
+                        )
                         continue
                     dag = AirflowDagDetails(
                         dag_id=serialized_dag[0],

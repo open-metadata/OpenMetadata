@@ -161,7 +161,9 @@ class OpenMetadataValidationAction(ValidationAction):
 
         if expectation_suite_identifier:
             expectation_suite_name = expectation_suite_identifier.expectation_suite_name  # type: ignore
-            self.expectation_suite = self.data_context.get_expectation_suite(expectation_suite_name)
+            self.expectation_suite = self.data_context.get_expectation_suite(
+                expectation_suite_name
+            )
 
         check_point_spec = self._get_checkpoint_batch_spec(data_asset)
         table_entity = None

@@ -82,14 +82,24 @@ class TagRegistry:
         self._lock = threading.Lock()
 
     def _intern_tag_label_locked(
-        self, *, classification_name: str, tag_name: str, label_type: LabelType, state: State
+        self,
+        *,
+        classification_name: str,
+        tag_name: str,
+        label_type: LabelType,
+        state: State,
     ) -> TagLabel:
         """Return the shared ``TagLabel`` for the given key. Caller must hold ``self._lock``."""
         key = _TagLabelKey(classification_name, tag_name, label_type, state)
         cached = self._tag_label_cache.get(key)
         if cached is not None:
             return cached
-        tag_fqn = cast("str", fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name))
+        tag_fqn = cast(
+            "str",
+            fqn.build(
+                None, Tag, classification_name=classification_name, tag_name=tag_name
+            ),
+        )
         cached = TagLabel(  # pyright: ignore[reportCallIssue]
             tagFQN=TagFQN(tag_fqn),
             labelType=label_type,
@@ -113,7 +123,10 @@ class TagRegistry:
     ) -> None:
         """Register a tag <-> entity association."""
         if not tag_name or not tag_name.strip():
-            logger.debug("TagRegistry: skipping empty tag for classification %s", classification_name)
+            logger.debug(
+                "TagRegistry: skipping empty tag for classification %s",
+                classification_name,
+            )
             return
 
         with self._lock:
@@ -164,11 +177,19 @@ class TagRegistry:
 
         with self._lock:
             self._cleared_scopes.add(scope_fqn)
-            kept = {k: v for k, v in self._labels_by_entity.items() if k != scope_fqn and not k.startswith(prefix)}
+            kept = {
+                k: v
+                for k, v in self._labels_by_entity.items()
+                if k != scope_fqn and not k.startswith(prefix)
+            }
             dropped = len(self._labels_by_entity) - len(kept)
             self._labels_by_entity = kept
         if dropped:
-            logger.debug("TagRegistry: cleared scope %s (%d entity labels dropped)", scope_fqn, dropped)
+            logger.debug(
+                "TagRegistry: cleared scope %s (%d entity labels dropped)",
+                scope_fqn,
+                dropped,
+            )
 
     def is_known(self, tag_fqn: str) -> bool:
         """Return True if the tag FQN has been recorded (case-sensitive match)."""
@@ -183,7 +204,9 @@ class TagRegistry:
         if self.is_known(tag_fqn):
             return True
 
-        logger.debug("TagRegistry: cache miss for %s; fetching from OpenMetadata.", tag_fqn)
+        logger.debug(
+            "TagRegistry: cache miss for %s; fetching from OpenMetadata.", tag_fqn
+        )
         try:
             entity = self._metadata.get_by_name(entity=Tag, fqn=tag_fqn)
         except Exception:
@@ -192,7 +215,8 @@ class TagRegistry:
 
         if entity is None:
             logger.warning(
-                "TagRegistry: tag %s not found in OpenMetadata; labels referencing it will be skipped.", tag_fqn
+                "TagRegistry: tag %s not found in OpenMetadata; labels referencing it will be skipped.",
+                tag_fqn,
             )
             return False
 

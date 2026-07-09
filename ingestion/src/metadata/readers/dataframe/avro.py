@@ -93,7 +93,9 @@ class AvroDataFrameReader(DataFrameReader):
                 if isinstance(writer_schema, dict):
                     writer_schema = json.dumps(reader.writer_schema)
 
-                return parse_avro_schema(schema=writer_schema, cls=Column)  # pyright: ignore[reportArgumentType]
+                return parse_avro_schema(
+                    schema=writer_schema, cls=Column
+                )  # pyright: ignore[reportArgumentType]
         except Exception as warn:
             logger.warning(f"Error reading Avro schema: {warn}")
             logger.debug(traceback.format_exc())

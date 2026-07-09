@@ -69,9 +69,9 @@ class TestTypeMap:
 
     def test_all_values_are_types(self):
         for type_name, type_cls in _type_map.items():
-            assert isinstance(type_cls, type) or callable(type_cls), (
-                f"_type_map['{type_name}'] is not a type or callable: {type_cls}"
-            )
+            assert isinstance(type_cls, type) or callable(
+                type_cls
+            ), f"_type_map['{type_name}'] is not a type or callable: {type_cls}"
 
 
 class TestDatabricksBaseDefaultScheme:
@@ -86,7 +86,9 @@ class TestDatabricksBaseDefaultScheme:
             hostPort = "host:443"  # noqa: N815
             token = "secret"
 
-        result = DatabricksBaseTableParameter._get_service_connection_config(FakeConfig())
+        result = DatabricksBaseTableParameter._get_service_connection_config(
+            FakeConfig()
+        )
         assert result is not None
         assert "databricks+connector" not in result
 

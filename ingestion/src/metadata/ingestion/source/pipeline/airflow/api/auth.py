@@ -115,7 +115,9 @@ def build_gcp_token_callback(gcp_credentials) -> TokenCallback:
             )
 
         credentials.refresh(AuthRequest())  # type: ignore
-        expiry = getattr(credentials, "expiry", None) or (datetime.now(timezone.utc) + timedelta(minutes=55))
+        expiry = getattr(credentials, "expiry", None) or (
+            datetime.now(timezone.utc) + timedelta(minutes=55)
+        )
         return (credentials.token, expiry)  # type: ignore
 
     return _callback

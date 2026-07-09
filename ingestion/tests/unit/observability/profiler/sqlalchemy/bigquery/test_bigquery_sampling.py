@@ -23,7 +23,10 @@ from metadata.generated.schema.security.credentials.gcpValues import (
 )
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.entityReference import EntityReference
-from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig, SampleConfigType
+from metadata.generated.schema.type.samplingConfig import (
+    ProfileSampleConfig,
+    SampleConfigType,
+)
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
@@ -128,8 +131,13 @@ class SampleTest(TestCase):
             table_type=TableType.Regular,
         )
         query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)
-        expected_query = "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT)"
-        assert expected_query.casefold() == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        expected_query = (
+            "SELECT users_1.id \nFROM users AS users_1 TABLESAMPLE system(50.0 PERCENT)"
+        )
+        assert (
+            expected_query.casefold()
+            == str(query.compile(compile_kwargs={"literal_binds": True})).casefold()
+        )
 
     def test_sampling_for_views(self, sampler_mock):
         """

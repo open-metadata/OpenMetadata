@@ -23,10 +23,7 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-)
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 from metadata.sampler.sqlalchemy.snowflake.sampler import SnowflakeSampler
 

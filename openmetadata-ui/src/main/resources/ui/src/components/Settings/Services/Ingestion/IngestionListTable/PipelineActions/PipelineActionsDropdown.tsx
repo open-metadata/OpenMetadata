@@ -66,16 +66,16 @@ function PipelineActionsDropdown({
     id = '',
   } = useMemo(() => ingestion, [ingestion]);
 
-  const { editPermission, deletePermission, triggerPermission } = useMemo(() => {
-    const pipelinePermission = ingestionPipelinePermissions?.[name];
+  const { editPermission, deletePermission, triggerPermission } =
+    useMemo(() => {
+      const pipelinePermission = ingestionPipelinePermissions?.[name];
 
-    return {
-      editPermission: pipelinePermission?.[Operation.EditAll],
-      deletePermission: pipelinePermission?.[Operation.Delete],
-      triggerPermission:
-        pipelinePermission?.[Operation.Trigger] ?? false,
-    };
-  }, [ingestionPipelinePermissions, name]);
+      return {
+        editPermission: pipelinePermission?.[Operation.EditAll],
+        deletePermission: pipelinePermission?.[Operation.Delete],
+        triggerPermission: pipelinePermission?.[Operation.Trigger] ?? false,
+      };
+    }, [ingestionPipelinePermissions, name]);
 
   const handleTriggerIngestion = useCallback(
     async (id: string, displayName: string) => {
