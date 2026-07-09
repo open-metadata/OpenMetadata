@@ -2430,6 +2430,16 @@
           "minimumShouldMatch": "2<70%"
         },
         {
+          "name": "partialName",
+          "purpose": "Substring and prefix matches via name and displayName edge n-grams so partial-name queries still surface the entity.",
+          "fields": [
+            "displayName.ngram",
+            "name.ngram"
+          ],
+          "matchType": "standard",
+          "weight": 16.0
+        },
+        {
           "name": "structuralContext",
           "purpose": "Secondary asset structure such as columns, fields, parent names, and FQN parts.",
           "fields": [

@@ -19,6 +19,11 @@ import org.openmetadata.schema.api.search.StopWordsByLanguage;
 
 public final class SearchRankingHelper {
   private static final Pattern TOKEN_SPLITTER = Pattern.compile("[^\\p{L}\\p{N}]+");
+  // Significant-token extraction only removes stop words on word boundaries, so it must split on
+  // whitespace alone. Splitting on every non-alphanumeric char (TOKEN_SPLITTER) would break
+  // identifier queries like "sample_data" into "sample data", which then fails to match the
+  // keyword fqnParts/name compound tokens that keep the identifier intact.
+  private static final Pattern WHITESPACE_SPLITTER = Pattern.compile("\\s+");
 
   private SearchRankingHelper() {}
 
@@ -87,7 +92,7 @@ public final class SearchRankingHelper {
 
     LinkedHashSet<String> seenTokens = new LinkedHashSet<>();
     List<String> tokens = new ArrayList<>();
-    for (String token : TOKEN_SPLITTER.split(query.trim())) {
+    for (String token : WHITESPACE_SPLITTER.split(query.trim())) {
       String normalizedToken = token.toLowerCase(Locale.ROOT);
       if (isSignificantToken(normalizedToken, stopWords) && seenTokens.add(normalizedToken)) {
         tokens.add(normalize ? normalizedToken : token);
@@ -195,6 +200,9 @@ public final class SearchRankingHelper {
     if (stageName.contains("exact")) {
       return exactNameFields(configuredFields, stage.getFields());
     }
+    if (stageName.contains("partial") || stageName.contains("ngram")) {
+      return ngramNameFields(configuredFields, stage.getFields());
+    }
     if (stageName.contains("close") || stageName.contains("name")) {
       return closeNameFields(configuredFields, stage.getFields());
     }
@@ -228,6 +236,17 @@ public final class SearchRankingHelper {
     LinkedHashSet<String> fields = new LinkedHashSet<>();
     for (String field : configuredFields) {
       if (isPrimaryNameField(field) && !field.endsWith(".keyword") && !field.endsWith(".ngram")) {
+        fields.add(field);
+      }
+    }
+    return withFallback(fields, fallback);
+  }
+
+  private static List<String> ngramNameFields(
+      List<String> configuredFields, List<String> fallback) {
+    LinkedHashSet<String> fields = new LinkedHashSet<>();
+    for (String field : configuredFields) {
+      if (field.endsWith(".ngram") && isPrimaryNameField(field)) {
         fields.add(field);
       }
     }

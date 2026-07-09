@@ -36,6 +36,27 @@ class SearchRankingHelperTest {
   }
 
   @Test
+  void significantQueryTextPreservesUnderscoreAndDottedIdentifiers() {
+    RankingConfiguration ranking =
+        new RankingConfiguration()
+            .withStopWordsByLanguage(
+                new StopWordsByLanguage().withAdditionalProperty("en", List.of("in")));
+
+    // Identifier queries must stay intact so they still match the keyword fqnParts parts and the
+    // om_analyzer compound tokens. Splitting "sample_data" into "sample data" made the ranked
+    // query miss every asset whose FQN carries the service/database identifier.
+    assertEquals("sample_data", SearchRankingHelper.significantQueryText("sample_data", ranking));
+    assertEquals(
+        "sample_data.ecommerce",
+        SearchRankingHelper.significantQueryText("sample_data.ecommerce", ranking));
+
+    // Stop-word removal still applies, but only on whitespace boundaries.
+    assertEquals(
+        "provider_address texas",
+        SearchRankingHelper.significantQueryText("provider_address in texas", ranking));
+  }
+
+  @Test
   void exactMatchTextsPreserveCaseAndIncludeLowercaseVariants() {
     RankingConfiguration ranking =
         new RankingConfiguration()
@@ -128,5 +149,43 @@ class SearchRankingHelperTest {
 
     assertEquals(RankingStage.MatchType.FUZZY, fuzzyName.getMatchType());
     assertEquals(List.of("displayName", "name"), fuzzyName.getFields());
+  }
+
+  @Test
+  void resolveRankingDerivesPartialNameStageFromNgramFields() {
+    SearchSettings settings =
+        new SearchSettings()
+            .withDefaultConfiguration(
+                new AssetTypeConfiguration()
+                    .withRanking(
+                        new RankingConfiguration()
+                            .withEnabled(true)
+                            .withStages(
+                                List.of(
+                                    new RankingStage()
+                                        .withName("partialName")
+                                        .withFields(List.of("name.ngram"))
+                                        .withMatchType(RankingStage.MatchType.STANDARD)))));
+
+    RankingConfiguration resolved =
+        SearchRankingHelper.resolveRanking(
+            settings,
+            new AssetTypeConfiguration()
+                .withSearchFields(
+                    List.of(
+                        new FieldBoost().withField("name"),
+                        new FieldBoost().withField("name.ngram"),
+                        new FieldBoost().withField("displayName.ngram"),
+                        new FieldBoost().withField("description"))));
+
+    RankingStage partialName =
+        resolved.getStages().stream()
+            .filter(stage -> "partialName".equals(stage.getName()))
+            .findFirst()
+            .orElseThrow();
+
+    // The partial-name stage must keep the n-gram fields that every other stage drops; without
+    // them substring queries like "ord" silently stop matching "orders_fact".
+    assertEquals(List.of("name.ngram", "displayName.ngram"), partialName.getFields());
   }
 }
