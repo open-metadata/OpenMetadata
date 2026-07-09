@@ -2,6 +2,7 @@ package org.openmetadata.it.drive;
 
 import static org.awaitility.Awaitility.await;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -220,6 +221,50 @@ class ContextFileIT {
             Response.Status.BAD_REQUEST.getStatusCode(), orderByResponse.getStatus(), body);
         assertTrue(body.contains("Invalid cursor for orderBy pagination"));
       }
+    }
+  }
+
+  @Test
+  void testListArchivedFilesFilteredByUpdatedBy(TestNamespace ns) throws HttpResponseException {
+    RestClient adminRest = RestClient.admin();
+
+    ContextFile file =
+        createFile(
+            adminRest,
+            new CreateContextFile()
+                .withName(ns.prefix("archived"))
+                .withProcessingStatus(ProcessingStatus.Uploaded));
+    // Archiving is a soft-delete; the archiver is recorded in updatedBy (admin here, who deletes).
+    adminRest.delete(FILE_PATH, file.getId());
+    String archiver = getFileIncludeAll(adminRest, file.getId()).getUpdatedBy();
+
+    // Scoped to the archiver: the archived file is returned.
+    List<String> byArchiver =
+        listFileIds(adminRest, FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + archiver);
+    assertTrue(
+        byArchiver.contains(file.getId().toString()),
+        "updatedBy filter must include files archived by that user");
+
+    // Scoped to a different user: the archived file is excluded.
+    List<String> byOther =
+        listFileIds(
+            adminRest, FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + ns.prefix("nobody"));
+    assertFalse(
+        byOther.contains(file.getId().toString()),
+        "updatedBy filter must exclude files archived by a different user");
+
+    // Without the filter the archived file is still listed (proves the filter, not the delete,
+    // scopes).
+    List<String> unfiltered = listFileIds(adminRest, FILE_PATH + "?include=deleted&limit=1000");
+    assertTrue(
+        unfiltered.contains(file.getId().toString()),
+        "Unfiltered archive list must still contain the archived file");
+  }
+
+  private ContextFile getFileIncludeAll(RestClient rest, UUID id) {
+    try (Response response = rest.rawGet(FILE_PATH + "/" + id + "?include=all")) {
+      assertEquals(200, response.getStatus());
+      return JsonUtils.readValue(response.readEntity(String.class), ContextFile.class);
     }
   }
 

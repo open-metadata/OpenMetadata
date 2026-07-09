@@ -20,6 +20,7 @@ import {
 } from '../../utils/common';
 import {
   ContextCenterFolder,
+  createDisposableArchivedDocument,
   getDocumentRowByName,
   getDocumentSearchInput,
   getFolderExpandBtn,
@@ -33,11 +34,12 @@ import {
   waitForDocumentInArchive,
   waitForDocumentPermanentlyDeleted,
 } from '../../utils/ContextCenterUtil';
-import { test as base } from '../fixtures/pages';
+import { test } from '../fixtures/pages';
 
-const test = base;
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
+const ARCHIVE_PAGE_SIZE = 15;
+const totalDocs = ARCHIVE_PAGE_SIZE + 3;
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
@@ -48,7 +50,13 @@ test.describe('Context Center - Archive Page', () => {
   const documentFileName = `archive-test-${uuid()}.txt`;
 
   test.beforeAll(async ({ browser }) => {
+    const namePrefix = `archive-lazy-load-${uuid()}`;
     const { apiContext, afterAction } = await createNewPage(browser);
+
+    const uploads = Array.from({ length: 18 }, (_, i) =>
+      createDisposableArchivedDocument(apiContext, `${namePrefix}-${i}`)
+    );
+   await Promise.all(uploads);
 
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
@@ -515,6 +523,69 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
       await waitForDocumentInArchive(apiContext, documentId);
       await navigateToArchive(page);
       await expect(page.getByTestId(`archive-row-${documentId}`)).toBeVisible();
+    });
+  });
+});
+
+// ─── Suite: Archive lazy-loading (infinite scroll) ──────────────────────────
+
+test.describe('Context Center - Archive Page Lazy Loading', () => {
+
+  test.beforeEach(async ({ page }) => {
+    await redirectToHomePage(page);
+  });
+
+  test('archive page lazy-loads more rows on scroll within its own scroll container', async ({
+    page,
+  }) => {
+    test.slow();
+
+    const archiveView = page.getByTestId('archive-view');
+
+    await test.step('navigate to archive and wait for the initial page of results', async () => {
+      const listResPromise = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/contextCenter/drive/files') &&
+          res.url().includes('include=deleted') &&
+          res.request().method() === 'GET'
+      );
+      await navigateToArchive(page);
+      const listRes = await listResPromise;
+      expect(listRes.status()).toBe(200);
+
+      const body = await listRes.json();
+      expect(body.paging?.total).toBeGreaterThanOrEqual(totalDocs);
+      expect(body.data.length).toBeLessThanOrEqual(ARCHIVE_PAGE_SIZE);
+    });
+
+    await expect(archiveView).toBeVisible();
+
+    const getRowCount = () =>
+      archiveView.locator('[data-testid^="archive-row-"]').count();
+
+    const initialRowCount = await getRowCount();
+    expect(initialRowCount).toBeLessThanOrEqual(ARCHIVE_PAGE_SIZE);
+
+    await test.step('scrolling to the bottom of the archive list fetches more rows (after= request) and appends them', async () => {
+      const moreResPromise = page.waitForResponse(
+        (res) =>
+          res.url().includes('/api/v1/contextCenter/drive/files') &&
+          res.url().includes('after=') &&
+          res.request().method() === 'GET'
+      );
+
+      await archiveView.hover();
+      await page.mouse.wheel(0, 5000);
+
+      const moreRes = await moreResPromise;
+      expect(moreRes.status()).toBe(200);
+
+      await expect
+        .poll(() => getRowCount(), {
+          message: 'row count did not grow after scrolling to load more',
+          timeout: 15000,
+        })
+        .toBeGreaterThan(initialRowCount);
     });
   });
 });
