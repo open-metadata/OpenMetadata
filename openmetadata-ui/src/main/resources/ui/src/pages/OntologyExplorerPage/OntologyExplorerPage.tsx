@@ -22,7 +22,10 @@ import {
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import {
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
+} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -42,10 +45,16 @@ const OntologyExplorerPage: React.FC = () => {
     setIsStatsLoading(loading);
   }, []);
 
+  // The base crumb is chosen explicitly by mode: the governance crumb (→ Glossary)
+  // in AI mode, the home crumb (→ app root) in classic mode, so classic keeps the
+  // original navigation target.
   const breadcrumb = (
     <HeaderBreadcrumb
       noMargin
-      items={[getGlossaryHomeCrumb(t), { label: t('label.ontology-explorer') }]}
+      items={[
+        isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+        { label: t('label.ontology-explorer') },
+      ]}
       showHome={false}
     />
   );

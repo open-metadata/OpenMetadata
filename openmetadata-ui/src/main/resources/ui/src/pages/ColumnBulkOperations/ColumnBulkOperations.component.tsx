@@ -12,7 +12,10 @@
  */
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import {
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
+} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { useIsAiMode } from '../../hooks/useAppMode';
@@ -23,7 +26,7 @@ const ColumnBulkOperations = () => {
   const isAiMode = useIsAiMode();
 
   const breadcrumbItems = [
-    getGlossaryHomeCrumb(t),
+    isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
     { label: t('label.column-bulk-operations') },
   ];
 

@@ -12,6 +12,7 @@
  */
 
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import { HomeLine } from '@untitledui/icons';
 import { TFunction } from 'i18next';
 import { ReactComponent as GovernanceIcon } from '../../../assets/svg/ic-governance.svg';
 import { ROUTES } from '../../../constants/constants';
@@ -30,4 +31,17 @@ export const getGlossaryHomeCrumb = (
   ariaLabel: t('label.glossary'),
   icon: GovernanceIcon,
   href: ROUTES.GLOSSARY,
+});
+
+/**
+ * Icon-only base crumb linking back to the app root. Classic (AI-off) headers
+ * use this as their first item (with `showHome={false}`), mirroring the
+ * governance crumb so the base crumb is chosen explicitly per mode rather than
+ * relying on HeaderBreadcrumb's default home crumb.
+ */
+export const getHomeCrumb = (t: TFunction): Omit<BreadcrumbItemType, 'id'> => ({
+  label: null,
+  ariaLabel: t('label.home'),
+  icon: HomeLine,
+  href: ROUTES.HOME,
 });
