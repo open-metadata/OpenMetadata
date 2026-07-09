@@ -67,6 +67,7 @@ import {
 } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { ensureComboboxMenuOpen } from '../../../../utils/formPureUtils';
+import { unwrapSelectValues } from '../../../../utils/ParameterForm/ParameterFieldsUtils';
 import RichTextEditor from '../../../common/RichTextEditor/RichTextEditor';
 import SelectionCardGroup from '../../../common/SelectionCardGroup/SelectionCardGroup';
 import TagSuggestion from '../../../common/TagSuggestion/TagSuggestion';
@@ -150,6 +151,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const useDynamicAssertionValue = useWatch({
     control: form.control,
     name: 'useDynamicAssertion',
+  });
+  const dimensionColumnsValue = useWatch({
+    control: form.control,
+    name: 'dimensionColumns',
   });
 
   const selectedTableFqn = fqnFromSelectItem(
@@ -270,25 +275,46 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   }, [pipelineSchedules]);
 
   const columnOptions: FormSelectItem[] = useMemo(() => {
-    let result: FormSelectItem[] = [];
-    if (selectedTableData?.columns) {
-      result = selectedTableData.columns.map((column) => ({
+    const result: FormSelectItem[] = (selectedTableData?.columns ?? []).map(
+      (column) => ({
         id: column.name,
         label: getEntityName(column),
-      }));
+      })
+    );
+
+    // In edit mode the drawer is often opened without a `table` prop (incident
+    // manager, data-quality page, result tab), so the table's columns are
+    // fetched asynchronously. Keep the prefilled column selectable before that
+    // fetch resolves; otherwise the react-aria Select receives a selectedKey
+    // absent from its options and blanks the field.
+    if (
+      selectedColumn &&
+      !result.some((option) => option.id === selectedColumn)
+    ) {
+      result.push({ id: selectedColumn, label: selectedColumn });
     }
 
     return result;
-  }, [selectedTableData]);
+  }, [selectedTableData, selectedColumn]);
 
   const dimensionColumnOptions: FormSelectItem[] = useMemo(() => {
-    let result = columnOptions;
-    if (selectedColumn) {
-      result = columnOptions.filter((option) => option.id !== selectedColumn);
-    }
+    const result = selectedColumn
+      ? columnOptions.filter((option) => option.id !== selectedColumn)
+      : [...columnOptions];
+
+    // Same async-prefill guard as `columnOptions`: preserve already-selected
+    // dimension columns whose metadata hasn't loaded yet so the multi-select
+    // does not drop them.
+    const knownIds = new Set(result.map((option) => option.id));
+    (unwrapSelectValues(dimensionColumnsValue) ?? []).forEach((id) => {
+      if (id !== selectedColumn && !knownIds.has(id)) {
+        knownIds.add(id);
+        result.push({ id, label: id });
+      }
+    });
 
     return result;
-  }, [columnOptions, selectedColumn]);
+  }, [columnOptions, selectedColumn, dimensionColumnsValue]);
 
   const fetchTables = useCallback(
     async (searchValue = '') => {
@@ -785,7 +811,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const testTypeField: FieldProp = {
     name: 'testTypeId',
     label: t('label.select-test-type'),
-    type: FieldTypes.SELECT,
+    // AUTOCOMPLETE (searchable combobox) rather than a plain SELECT: the test
+    // definitions load async, and an already-open react-aria Select never
+    // refreshes its collection when `items` arrive late — leaving the dropdown
+    // permanently empty if opened too early. Autocomplete re-derives its list on
+    // every render (and filters as you type), so late options show up.
+    type: FieldTypes.AUTOCOMPLETE,
     required: true,
     rules: {
       required: t('label.select-test-type'),
@@ -796,10 +827,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     placeholder: t('label.select-test-type'),
     props: {
       'data-testid': 'test-type',
-      popoverClassName: 'test-type-popover',
       isDisabled: isEditMode,
       options: testTypeOptions,
-      onSelectionChange: (key?: string | number | null) =>
+      onItemInserted: (key?: string | number | null) =>
         handleActiveField(key ? `root/${key}` : 'root/testType'),
     },
   };

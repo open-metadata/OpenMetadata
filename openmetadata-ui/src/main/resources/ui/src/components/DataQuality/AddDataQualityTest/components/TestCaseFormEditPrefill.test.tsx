@@ -152,45 +152,26 @@ const renderDrawer = (props: Partial<TestCaseFormDrawerProps>) =>
 const PARAM_FIELD_TIMEOUT = { timeout: 5000 };
 
 /**
- * FINDING (real, currently-unfixed prefill bug — not introduced by this
- * test file, not fixed here per task instructions):
+ * NOTE on the table-less edit path (historically a suspected prefill race):
  *
  * When `TestCaseFormDrawer` is opened in edit mode WITHOUT a `table` prop —
- * exactly how `DataQualityTab.tsx` (the "Edit" action on the Data Quality
- * tab of a table's profiler page) invokes it — the parameter fields can
- * fail to render at all, even though `testTypeId` prefills and displays
- * correctly.
+ * how `DataQualityTab.tsx`, `IncidentManagerDetailPage.tsx`, and
+ * `TestCaseResultTab.tsx` invoke it — the table's columns load asynchronously
+ * via `getTableDetailsByFQN`, so `selectedTableData` transitions
+ * undefined -> table after mount.
  *
- * Root cause (TestCaseFormBody.tsx):
- *   - `fetchTestDefinitions` is a `useCallback` keyed on
- *     `[selectedTestLevel, selectedTableData, table]`.
- *   - The effect at ~line 463 (`if (selectedTestLevel) { fetchTestDefinitions();
- *     ...; setSelectedTestDefinition(undefined); }`) re-fires and
- *     unconditionally resets `selectedTestDefinition` to `undefined`
- *     whenever `fetchTestDefinitions` changes identity — including when
- *     `selectedTableData` transitions from `undefined` to the fetched table
- *     (i.e. after `getTableDetailsByFQN` resolves, which only happens when
- *     no `table` prop is supplied).
- *   - The effect at ~line 504 (`setSelectedTestDefinition(testDefinitions.find(...))`)
- *     is the only thing that re-derives `selectedTestDefinition`, but it is
- *     keyed on `[selectedTestTypeFqn, testDefinitions]` — NOT on
- *     `selectedTableData`. If the `selectedTableData` update (and its
- *     resulting reset) lands in a render where `testTypeId` was already
- *     prefilled and `testDefinitions` already resolved once, the reset can
- *     be the last word with nothing left to re-trigger the derivation,
- *     leaving `selectedTestDefinition` stuck at `undefined` and
- *     `showParameterFields` permanently `false` for that mount.
+ * A prior concern was that this transition could re-fire the effect that
+ * resets `selectedTestDefinition` to `undefined` (via `fetchTestDefinitions`
+ * changing identity) with nothing left to re-derive it, leaving
+ * `showParameterFields` stuck `false` and the parameter fields never
+ * rendering. Case 9's "renders parameter fields after the async table
+ * resolves (no table prop)" exercises exactly that ordering and passes — the
+ * parameters do render — so that race does not manifest on the natural path.
  *
- * This test file works around it by passing an explicit `table` prop
- * (matching how `TableProfilerProvider.tsx` invokes the drawer, and how the
- * existing `TestCaseFormBody.test.tsx` suite always renders) so
- * `selectedTableData` is stable from the first render and the reset/derive
- * race never triggers. Cases 3, 4, and 6 don't render generic
- * `ParameterFields`-driven param inputs gated by `selectedTestDefinition`
- * (case 3 has an empty `parameterDefinition`, case 4 is tableDiff's own
- * field set, case 6 has no assertions on `parameter-*` fields), so they are
- * unaffected and are left rendering through the `getTableDetailsByFQN` path
- * to also exercise that fetch.
+ * Most cases below still pass an explicit `table` prop (matching
+ * `TableProfilerProvider.tsx` and the existing `TestCaseFormBody.test.tsx`
+ * suite) to keep the matrix focused on per-type prefill display rather than
+ * the async-load ordering, which case 9 covers on its own.
  */
 
 describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
@@ -850,6 +831,98 @@ describe('TestCaseFormEditPrefill (render-level regression matrix)', () => {
 
         expect(within(trigger).getByText('created_at')).toBeInTheDocument();
       });
+    });
+  });
+
+  describe('9. Column-level edit without table prop (async columns)', () => {
+    const TABLE_FQN = 'service.db.schema.customers';
+
+    const definition = {
+      id: 'def-col-set-async',
+      name: 'columnValuesToBeInSet',
+      fullyQualifiedName: 'columnValuesToBeInSet',
+      parameterDefinition: [
+        {
+          name: 'allowedValues',
+          displayName: 'Allowed Values',
+          dataType: TestDataType.Set,
+        },
+      ],
+    } as unknown as TestDefinition;
+
+    const testCase = {
+      id: 'tc-9',
+      name: 'email_domain_in_set_async',
+      entityLink: `<#E::table::${TABLE_FQN}::columns::email_domain>`,
+      testDefinition: {
+        id: 'def-col-set-async',
+        fullyQualifiedName: 'columnValuesToBeInSet',
+      },
+      parameterValues: [
+        {
+          name: 'allowedValues',
+          value: JSON.stringify(['gmail.com']),
+        },
+      ],
+      tags: [],
+    } as unknown as TestCase;
+
+    beforeEach(() => {
+      mockGetTestDefinitionById.mockResolvedValue(definition);
+      mockGetListTestDefinitions.mockResolvedValue({
+        data: [definition],
+        paging: { total: 1 },
+      } as never);
+    });
+
+    // Regression guard: opened without a `table` prop (incident manager,
+    // data-quality page, result tab), the table's columns load asynchronously
+    // via getTableDetailsByFQN. The saved `selectedColumn` is prefilled
+    // immediately, so with the fetch still pending the column-options list is
+    // empty. TestCaseFormBody folds the prefilled column into `columnOptions`
+    // so the react-aria Select keeps the selection; without that, the trigger
+    // renders the placeholder because its selectedKey has no matching option.
+    it('keeps the prefilled column visible while columns are still loading', async () => {
+      // Never-resolving fetch pins the "columns not loaded yet" window open.
+      mockGetTableDetailsByFQN.mockReturnValue(
+        new Promise(() => undefined) as never
+      );
+
+      renderDrawer({ testCase });
+
+      const columnSelect = await screen.findByTestId('selectedColumn');
+      await waitFor(() => {
+        const trigger = within(columnSelect).getByRole('button');
+
+        expect(within(trigger).getByText('email_domain')).toBeInTheDocument();
+      });
+    });
+
+    // Guards the table-less param-render path: opened in edit mode without a
+    // `table` prop, `selectedTableData` transitions undefined -> table when
+    // getTableDetailsByFQN resolves. The parameter fields (gated on
+    // `selectedTestDefinition`) must still render after that transition — i.e.
+    // the resolve must not leave `selectedTestDefinition` reset to undefined.
+    it('renders parameter fields after the async table resolves (no table prop)', async () => {
+      mockGetTableDetailsByFQN.mockResolvedValue({
+        id: 'table-9',
+        name: 'customers',
+        fullyQualifiedName: TABLE_FQN,
+        columns: [
+          { name: 'id', dataType: 'BIGINT' },
+          { name: 'email_domain', dataType: 'VARCHAR' },
+        ],
+      } as unknown as Table);
+
+      renderDrawer({ testCase });
+
+      const row0 = await screen.findByTestId(
+        'parameter-allowedValues-0',
+        {},
+        PARAM_FIELD_TIMEOUT
+      );
+
+      expect(row0.querySelector('input')).toHaveValue('gmail.com');
     });
   });
 });

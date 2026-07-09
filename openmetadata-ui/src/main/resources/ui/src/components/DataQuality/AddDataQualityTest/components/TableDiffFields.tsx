@@ -110,7 +110,7 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
   const rows = useWatch({
     control: form.control,
     name: fieldName as never,
-  }) as Array<{ value?: string }> | undefined;
+  }) as Array<{ value?: string | FormSelectItem }> | undefined;
 
   const hasSeededRef = useRef(false);
   useEffect(() => {
@@ -122,17 +122,35 @@ const ColumnArrayField: React.FC<ColumnArrayFieldProps> = ({
 
   const selectedColumns = useMemo(() => getSelectedColumnNames(rows), [rows]);
 
-  const options: FormSelectItem[] = useMemo(
-    () =>
-      (columns ?? []).map((column) => ({
-        id: column.name,
-        label: getEntityName(column),
-        isDisabled:
-          selectedColumns.has(column.name) ||
-          (excludedColumns?.has(column.name) ?? false),
-      })),
-    [columns, selectedColumns, excludedColumns]
-  );
+  const options: FormSelectItem[] = useMemo(() => {
+    const base: FormSelectItem[] = (columns ?? []).map((column) => ({
+      id: column.name,
+      label: getEntityName(column),
+      isDisabled:
+        selectedColumns.has(column.name) ||
+        (excludedColumns?.has(column.name) ?? false),
+    }));
+    const knownIds = new Set(base.map((option) => option.id));
+
+    // Keep any already-selected value whose column metadata hasn't loaded yet
+    // (the second table's columns are fetched asynchronously in edit mode).
+    // Without this the react-aria Select receives a selectedKey absent from its
+    // options, drops the selection, and blanks the prefilled value.
+    (rows ?? []).forEach((row) => {
+      const selected = row?.value;
+      if (
+        selected &&
+        typeof selected !== 'string' &&
+        selected.id &&
+        !knownIds.has(selected.id)
+      ) {
+        knownIds.add(selected.id);
+        base.push({ id: selected.id, label: selected.label ?? selected.id });
+      }
+    });
+
+    return base;
+  }, [columns, selectedColumns, excludedColumns, rows]);
 
   return (
     <div>
@@ -252,6 +270,7 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
     [debounceFetchTableData]
   );
 
+  const fetchedTable2ColumnsRef = useRef<string>();
   useEffect(() => {
     if (!table2Fqn) {
       setTable2Columns(undefined);
@@ -265,17 +284,60 @@ const TableDiffFields: React.FC<TableDiffFieldsProps> = ({
 
     if (selectedTable) {
       setTable2Columns(selectedTable._source.columns);
+
+      return;
     }
+
+    // Edit mode: `table2` is prefilled but absent from the wildcard search
+    // `tableList` (no targeted search ran), so its columns never populate and
+    // the second table's key-column selects render empty. Fetch that specific
+    // table by FQN so the prefilled key columns can display.
+    if (fetchedTable2ColumnsRef.current === table2Fqn) {
+      return;
+    }
+    fetchedTable2ColumnsRef.current = table2Fqn;
+
+    let active = true;
+    searchQuery({
+      query: `*${table2Fqn}*`,
+      pageNumber: 1,
+      pageSize: PAGE_SIZE_LARGE,
+      searchIndex: SearchIndex.TABLE,
+      fetchSource: true,
+      includeFields: ['name', 'fullyQualifiedName', 'displayName', 'columns'],
+    })
+      .then((response) => {
+        const hit = (response.hits.hits as TableHit[]).find(
+          (item) => item._source.fullyQualifiedName === table2Fqn
+        );
+        if (active && hit) {
+          setTable2Columns(hit._source.columns);
+        }
+      })
+      .catch(() => undefined);
+
+    return () => {
+      active = false;
+    };
   }, [table2Fqn, tableList]);
 
   const previousTable2FqnRef = useRef<string | undefined>(table2Fqn);
   useEffect(() => {
     if (previousTable2FqnRef.current !== table2Fqn) {
+      // Only clear the second table's key columns on a genuine table -> table
+      // swap. During the edit-mode prefill `table2` can transition
+      // undefined -> <fqn> (and briefly back) after mount; resetting on those
+      // would wipe the prefilled `table2.keyColumns`. Requiring both a previous
+      // and a current table restricts the reset to a real user switch.
+      const isTableSwap =
+        Boolean(previousTable2FqnRef.current) && Boolean(table2Fqn);
       previousTable2FqnRef.current = table2Fqn;
-      form.setValue(
-        paramFieldName(TABLE2_KEY_COLUMNS) as never,
-        [{ value: undefined }] as never
-      );
+      if (isTableSwap) {
+        form.setValue(
+          paramFieldName(TABLE2_KEY_COLUMNS) as never,
+          [{ value: undefined }] as never
+        );
+      }
     }
   }, [table2Fqn, form]);
 
