@@ -748,23 +748,13 @@ const MetricListPage = () => {
             data-testid="metric-actions"
           />
           <Dropdown.Popover className="metric-actions-menu">
-            <Dropdown.Menu
-              aria-label={t('label.action-plural')}
-              className="tw:px-1.5 tw:py-1.5"
-              selectionMode="none"
-              onAction={(key) => {
-                if (key === 'export') {
-                  handleExport();
-                } else if (key === 'import') {
-                  handleImport();
-                }
-              }}>
-              <Dropdown.Item
-                unstyled
+            <div className="metric-actions-menu-content">
+              <button
+                aria-busy={isExporting}
                 className="metric-actions-menu-item"
-                id="export"
-                isDisabled={isExporting}
-                textValue={t('label.export')}>
+                disabled={isExporting}
+                type="button"
+                onClick={handleExport}>
                 <span className="metric-actions-icon">
                   <Download01 size={18} />
                 </span>
@@ -776,12 +766,11 @@ const MetricListPage = () => {
                     {t('message.metrics-export-description')}
                   </span>
                 </span>
-              </Dropdown.Item>
-              <Dropdown.Item
-                unstyled
+              </button>
+              <button
                 className="metric-actions-menu-item"
-                id="import"
-                textValue={t('label.import')}>
+                type="button"
+                onClick={handleImport}>
                 <span className="metric-actions-icon">
                   <UploadCloud01 size={18} />
                 </span>
@@ -793,13 +782,11 @@ const MetricListPage = () => {
                     {t('message.metrics-import-description')}
                   </span>
                 </span>
-              </Dropdown.Item>
-              <Dropdown.Separator />
-              <Dropdown.Item
-                unstyled
+              </button>
+              <span className="metric-actions-separator" />
+              <button
                 className="metric-actions-menu-item metric-actions-menu-item-danger"
-                id="delete"
-                textValue={t('label.delete')}>
+                type="button">
                 <span className="metric-actions-icon">
                   <Trash01 size={18} />
                 </span>
@@ -811,8 +798,8 @@ const MetricListPage = () => {
                     {t('message.metrics-delete-collection-description')}
                   </span>
                 </span>
-              </Dropdown.Item>
-            </Dropdown.Menu>
+              </button>
+            </div>
           </Dropdown.Popover>
         </Dropdown.Root>
       )}

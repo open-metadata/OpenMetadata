@@ -47,6 +47,12 @@
   min-width: 360px;
 }
 
+.metric-actions-menu-content {
+  display: flex;
+  flex-direction: column;
+  padding: 6px;
+}
+
 .metric-actions-menu-item {
   align-items: flex-start;
   background: transparent;
@@ -60,8 +66,7 @@
   text-align: left;
   width: 100%;
 
-  &:hover,
-  &[data-focused] {
+  &:hover {
     background: @grey-36;
   }
 }
@@ -96,6 +101,12 @@
   font-weight: @font-regular;
   line-height: 18px;
   margin-top: 2px;
+}
+
+.metric-actions-separator {
+  background: @grey-15;
+  height: 1px;
+  margin: 6px 0;
 }
 
 .metric-actions-menu-item-danger {
