@@ -22,16 +22,22 @@ const DOC = 'Documentation body for the title field.';
 const Demo = ({ showFieldDocs = false }: { showFieldDocs?: boolean }) => {
   const form = useForm({ defaultValues: { title: '' } });
 
+  // The field-doc popover is anchored to the right of the focused field
+  // (placement="right top"), matching how the real forms render it inside a
+  // constrained modal/drawer. Cap the form width here so the popover has room
+  // to show on the right instead of being pushed off the full-width canvas.
   return (
-    <HookForm form={form} showFieldDocs={showFieldDocs}>
-      {getField({
-        name: 'title',
-        label: 'Title',
-        id: 'title',
-        type: FieldTypes.TEXT,
-        doc: DOC,
-      })}
-    </HookForm>
+    <div style={{ maxWidth: 420 }}>
+      <HookForm form={form} showFieldDocs={showFieldDocs}>
+        {getField({
+          name: 'title',
+          label: 'Title',
+          id: 'title',
+          type: FieldTypes.TEXT,
+          doc: DOC,
+        })}
+      </HookForm>
+    </div>
   );
 };
 

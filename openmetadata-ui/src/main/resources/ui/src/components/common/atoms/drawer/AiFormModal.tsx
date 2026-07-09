@@ -147,7 +147,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                     theme="light"
                   />
                   <Box direction="col">
-                    <Typography size="text-md" weight="semibold">
+                    <Typography size="text-md" weight="medium">
                       {title}
                     </Typography>
                     {subtitle && (
