@@ -1121,7 +1121,21 @@ public class CreateTask implements TaskListener {
               terminationMessageName);
           runtimeService.setVariable(
               processInstanceId, TERMINATION_REASON_VARIABLE, TERMINATION_DRAFT_TASK_DELETED);
-          runtimeService.messageEventReceived(terminationMessageName, execution.getId());
+          try {
+            runtimeService.messageEventReceived(terminationMessageName, execution.getId());
+          } catch (RuntimeException messageFailure) {
+            // Roll back the variable so a leftover terminationReason can't silently suppress a
+            // future genuine failure on the same process instance.
+            try {
+              runtimeService.removeVariable(processInstanceId, TERMINATION_REASON_VARIABLE);
+            } catch (RuntimeException ignore) {
+              LOG.debug(
+                  "[CreateTask] Could not remove terminationReason for '{}': {}",
+                  processInstanceId,
+                  ignore.getMessage());
+            }
+            throw messageFailure;
+          }
           return;
         }
       }
