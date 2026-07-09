@@ -113,9 +113,7 @@ describe('useAuthenticatedFile', () => {
       expect.any(Error),
       'server.unexpected-error'
     );
-    expect(mockShowErrorToast.mock.calls[0][0]).not.toEqual(
-      expect.any(String)
-    );
+    expect(mockShowErrorToast.mock.calls[0][0]).not.toEqual(expect.any(String));
     expect(result.current.isLoading).toBe(false);
   });
 
