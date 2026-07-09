@@ -239,7 +239,7 @@ public final class TableDataQualityPage extends PageObject {
     return value;
   }
 
-  /** Deletes the test case through the action menu + "DELETE" confirm dialog. */
+  /** Deletes the test case through the action menu and confirmation button. */
   public TableDataQualityPage deleteTestCase(final String testCaseName) {
     byTestId("action-dropdown-" + testCaseName).click();
     byTestId("delete-" + testCaseName).click();

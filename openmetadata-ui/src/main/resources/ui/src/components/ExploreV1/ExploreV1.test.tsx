@@ -143,15 +143,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const Divider = () => <hr />;
 
   const Toggle = ({
+    excludeFromTabOrder,
     isSelected,
+    isReadOnly,
     onChange,
     ...props
   }: {
+    excludeFromTabOrder?: boolean;
     isSelected?: boolean;
+    isReadOnly?: boolean;
     onChange?: (value: boolean) => void;
   } & Record<string, unknown>) => (
     <input
       checked={isSelected}
+      readOnly={isReadOnly}
+      tabIndex={excludeFromTabOrder ? -1 : undefined}
       type="checkbox"
       onChange={(e) => onChange?.(e.target.checked)}
       {...props}
