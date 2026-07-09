@@ -48,7 +48,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
         const assetData = await listAssetsByFqn(entityFqn, AssetType.Inline);
         if (!isCancelled?.()) {
           setAttachments(
-            assetData.data.map((asset) => ({
+            assetData.map((asset) => ({
               id: asset.id,
               name: asset.fileName,
               size: asset.size ?? 0,
@@ -148,7 +148,10 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
       dataTestId="attachment-widget"
       isExpandDisabled={false}
       title={t('label.attachment-plural')}>
-      {content}
+      {attachments.length === 0 ? 
+      <Typography className="tw:text-utility-gray-400" size="text-sm">
+          {t('label.no-entity', { entity: t('label.attachment-plural') })}
+        </Typography> :content}
     </WidgetCard>
   );
 };

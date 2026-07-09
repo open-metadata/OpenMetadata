@@ -126,6 +126,23 @@ describe('useAuthenticatedFile', () => {
       await result.current.downloadFile('report.pdf');
     });
 
+    expect(mockDownloadAsset).toHaveBeenCalledTimes(1);
+    expect(mockShowErrorToast).toHaveBeenCalledWith(
+      expect.any(Error),
+      'server.unexpected-error'
+    );
+    expect(result.current.isLoading).toBe(false);
+  });
+
+  it('shows an AxiosError-shaped toast when downloadAsset resolves falsy', async () => {
+    mockDownloadAsset.mockResolvedValue(undefined as unknown as Blob);
+    const url = attachmentUrl('attachment-id-falsy');
+    const { result } = renderHook(() => useAuthenticatedFile(url));
+
+    await act(async () => {
+      await result.current.downloadFile('report.pdf');
+    });
+
     expect(mockShowErrorToast).toHaveBeenCalledWith(
       expect.any(Error),
       'server.unexpected-error'
@@ -156,5 +173,19 @@ describe('useAuthenticatedFile', () => {
     });
 
     expect(result.current.isLoading).toBe(false);
+  });
+
+  it('de-dupes concurrent downloads for the same url', async () => {
+    const url = attachmentUrl('attachment-id-dedupe');
+    const { result } = renderHook(() => useAuthenticatedFile(url));
+
+    await act(async () => {
+      await Promise.all([
+        result.current.downloadFile('report.pdf'),
+        result.current.downloadFile('report.pdf'),
+      ]);
+    });
+
+    expect(mockDownloadAsset).toHaveBeenCalledTimes(1);
   });
 });

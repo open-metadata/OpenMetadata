@@ -203,7 +203,7 @@ export const listAssetsByFqn = async (
   assetType: AssetType = AssetType.External,
   params?: ListParams
 ) => {
-  const response = await APIClient.get<PagingResponse<Asset[]>>(
+  const response = await APIClient.get<Asset[]>(
     `/attachments/fqn/${encodeURIComponent(fqn)}/${assetType}`,
     { params }
   );
