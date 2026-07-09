@@ -786,14 +786,38 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
 
                     {/* Section 4: Linked Data Assets */}
                     <div className="tw:flex tw:flex-col tw:gap-2">
-                      <Typography
-                        className="tw:text-tertiary"
-                        size="text-xs"
-                        weight="semibold">
-                        {`${t('label.linked-data-asset-plural')} (${
-                          linkedAssets.length
-                        })`}
-                      </Typography>
+                      <Box align="center" justify="between">
+                        <Typography
+                          className="tw:text-tertiary"
+                          size="text-xs"
+                          weight="semibold">
+                          {`${t('label.linked-data-asset-plural')} (${
+                            linkedAssets.length
+                          })`}
+                        </Typography>
+                        {!isViewOnly && (
+                          <DataAssetSelectList
+                            placeholder={t('label.search-assets-to-link')}
+                            popoverAlign="right"
+                            popoverClassName="tw:h-100"
+                            renderTrigger={({ open }) => (
+                              <Button
+                                className="tw:px-2.5 tw:py-1.5"
+                                color="link-color"
+                                iconLeading={Plus}
+                                size="sm"
+                                onPress={open}>
+                                {t('label.link-an-entity', {
+                                  entity: t('label.asset'),
+                                })}
+                              </Button>
+                            )}
+                            searchIndex={SearchIndex.DATA_ASSET}
+                            value={linkedAssets}
+                            onChange={handleAssetChange}
+                          />
+                        )}
+                      </Box>
 
                       {isViewOnly ? (
                         <LinkedAssetsReadOnly assets={linkedAssets} />
@@ -826,25 +850,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                               })}
                             </div>
                           )}
-                          <DataAssetSelectList
-                            placeholder={t('label.search-assets-to-link')}
-                            popoverClassName="tw:h-100"
-                            renderTrigger={({ open }) => (
-                              <Button
-                                className="tw:px-2.5 tw:py-1.5"
-                                color="tertiary"
-                                iconLeading={Plus}
-                                size="sm"
-                                onPress={open}>
-                                {t('label.link-an-entity', {
-                                  entity: t('label.asset'),
-                                })}
-                              </Button>
-                            )}
-                            searchIndex={SearchIndex.DATA_ASSET}
-                            value={linkedAssets}
-                            onChange={handleAssetChange}
-                          />
                         </>
                       )}
                     </div>

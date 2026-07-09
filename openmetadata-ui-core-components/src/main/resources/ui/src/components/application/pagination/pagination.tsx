@@ -59,7 +59,7 @@ const compactPageControlClassName =
 
 const compactIconButtonClassName = cx(
   compactControlClassName,
-  'tw:border tw:border-primary tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeuomorphic tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
+  'tw:cursor-pointer tw:border tw:border-primary tw:bg-primary tw:text-fg-quaternary tw:shadow-xs-skeuomorphic tw:outline-focus-ring tw:transition tw:duration-100 tw:ease-linear',
   'tw:hover:bg-primary_hover tw:disabled:cursor-not-allowed tw:disabled:text-fg-disabled'
 );
 
@@ -74,12 +74,12 @@ const compactPageItemClassName = ({ isSelected }: { isSelected: boolean }) =>
 
 const compactPageInputClassName = cx(
   compactPageControlClassName,
-  'tw:w-[30px] tw:min-w-[30px] tw:border tw:border-primary tw:bg-primary tw:px-0 tw:text-center tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary tw:shadow-xs tw:outline-none',
+  'tw:min-w-6 tw:border tw:border-primary tw:bg-primary tw:px-0 tw:text-center tw:text-xs tw:font-normal tw:leading-[18px] tw:text-secondary tw:shadow-xs tw:outline-none',
   'tw:focus-visible:outline-none'
 );
 
 const compactRowsPerPageSelectClassName =
-  'tw:w-[44px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:outline-none! tw:[&>button]:focus-visible:outline-none! tw:[&>button]:focus-visible:ring-0 tw:[&>button]:focus-visible:ring-offset-0 tw:[&>button>span]:h-6 tw:[&>button>span]:gap-1 tw:[&>button>span]:px-1 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
+  'tw:w-[42px] tw:shrink-0 tw:gap-0 tw:[&>button]:h-6 tw:[&>button]:rounded-lg tw:[&>button]:outline-none! tw:[&>button]:focus-visible:outline-none! tw:[&>button]:focus-visible:ring-0 tw:[&>button]:focus-visible:ring-offset-0 tw:[&>button>span]:h-6 tw:[&>button>span]:gap-1 tw:[&>button>span]:px-1 tw:[&>button>span]:py-0 tw:[&>button>span>section]:min-w-0 tw:[&>button>span>section]:gap-0 tw:[&>button>span>section>p]:min-w-4 tw:[&>button>span>section>p]:text-center tw:[&>button>span>section>p]:text-xs tw:[&>button>span>section>p]:leading-[18px] tw:[&>button>span>svg]:size-3';
 
 const compactRowsPerPageItemClassName =
   'tw:px-0 tw:[&>div]:h-8 tw:[&>div]:px-2 tw:[&>div]:py-0 tw:[&>div]:outline-none! tw:[&[data-focused]>div]:bg-primary_hover tw:[&[data-selected]>div]:bg-primary tw:[&>div>div]:min-w-0 tw:[&>div>div>span]:text-xs tw:[&>div>div>span]:leading-[18px]';
@@ -416,6 +416,8 @@ export const PaginationCardWithControls = ({
   const totalPages = Math.max(total, 1);
   const currentPage = Math.min(Math.max(page, 1), totalPages);
   const [pageInput, setPageInput] = useState(String(currentPage));
+  // Add one character of room so the current input value does not clip.
+  const pageInputWidth = `${Math.max(pageInput.length, 2) + 1}ch`;
   const pageSizeItems = useMemo(
     () =>
       pageSizeOptions.map((option) => ({
@@ -486,13 +488,13 @@ export const PaginationCardWithControls = ({
     <Pagination.Root
       {...props}
       className={cx(
-        'tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:bg-primary tw:px-4 tw:py-1 tw:shadow-[0px_-1px_2px_rgba(0,0,0,0.05)]',
+        'tw:relative tw:z-[1] tw:m-0 tw:flex tw:w-full tw:rounded-b-xl tw:border-x tw:border-b tw:border-gray-blue-100 tw:bg-primary tw:px-4 tw:py-3 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
         className
       )}
       page={currentPage}
       total={totalPages}
       onPageChange={handlePageChange}>
-      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:items-center tw:justify-between tw:gap-6">
+      <div className="tw:m-0 tw:flex tw:w-full tw:max-w-full tw:flex-wrap tw:items-center tw:justify-between tw:gap-x-5 tw:gap-y-3">
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
           <span className={compactTextClassName}>Page</span>
           <input
@@ -501,6 +503,7 @@ export const PaginationCardWithControls = ({
             inputMode="numeric"
             max={totalPages}
             min={1}
+            style={{ width: pageInputWidth }}
             type="text"
             value={pageInput}
             onBlur={commitPageInput}
@@ -510,7 +513,7 @@ export const PaginationCardWithControls = ({
           <span className={compactTextClassName}>of {totalPages}</span>
         </div>
 
-        <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-2 tw:py-3">
+        <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-2 tw:px-1">
           <Pagination.PrevTrigger asChild>
             <button
               className={compactIconButtonClassName}
@@ -522,7 +525,7 @@ export const PaginationCardWithControls = ({
 
           <Pagination.Context>
             {({ pages }) => (
-              <div className="tw:flex tw:items-center tw:gap-1">
+              <div className="tw:flex tw:min-w-0 tw:flex-wrap tw:items-center tw:gap-1">
                 {pages.map((page, index) =>
                   page.type === 'page' ? (
                     <Pagination.Item
@@ -555,9 +558,9 @@ export const PaginationCardWithControls = ({
         </div>
 
         <div className="tw:flex tw:shrink-0 tw:items-center tw:gap-[5px]">
-          <span className={compactTextClassName}>Rows per page</span>
+          <span className={compactTextClassName}>Records</span>
           <Select
-            aria-label="Rows per page"
+            aria-label="Records"
             className={compactRowsPerPageSelectClassName}
             data-testid="rows-per-page-dropdown"
             fontSize="xs"
