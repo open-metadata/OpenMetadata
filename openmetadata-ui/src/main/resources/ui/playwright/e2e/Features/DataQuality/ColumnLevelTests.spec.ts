@@ -22,6 +22,7 @@ import {
   clickCreateTestCaseButton,
   clickEditTestCaseButton,
   clickUpdateButton,
+  selectTestType,
   visitCreateTestCasePanelFromEntityPage,
 } from '../../../utils/dataQuality';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -98,13 +99,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type and wait for documentation panel
-        await page.click('[id="root/testType"]');
-        const testTypeOption = page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first();
-        await expect(testTypeOption).toBeVisible();
-        await testTypeOption.click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -195,12 +190,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -288,12 +278,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -376,12 +361,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -416,21 +396,20 @@ test.describe(
           `Edit ${testCase.name}`
         );
 
-        await page.getByRole('button', { name: 'plus' }).click();
+        await page.getByTestId('add-allowedValues').click();
         await page.fill('#testCaseFormV1_params_allowedValues_2_value', 'open');
-        await page.click('#testCaseFormV1_params_matchEnum');
-        await page
-          .locator('#testCaseFormV1_params_matchEnum[aria-checked="false"]')
-          .waitFor({ state: 'attached' });
+        // The react-aria Toggle's label intercepts clicks on the hidden input,
+        // and the input reflects state via `checked`, not `aria-checked`.
+        await page.getByTestId('parameter-matchEnum').click();
         await expect(
           page.locator('#testCaseFormV1_params_matchEnum')
-        ).toHaveAttribute('aria-checked', 'false');
+        ).not.toBeChecked();
         await clickUpdateButton(page);
 
         await clickEditTestCaseButton(page, testCase.name);
         await expect(
           page.locator('#testCaseFormV1_params_matchEnum')
-        ).toHaveAttribute('aria-checked', 'false');
+        ).not.toBeChecked();
 
         await page.getByTestId('cancel-btn').click();
       });
@@ -493,12 +472,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -524,7 +498,7 @@ test.describe(
           `Edit ${testCase.name}`
         );
 
-        await page.getByRole('button', { name: 'plus' }).click();
+        await page.getByTestId('add-forbiddenValues').click();
         await page.fill(
           '#testCaseFormV1_params_forbiddenValues_2_value',
           '-9999'
@@ -592,12 +566,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -682,12 +651,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -780,12 +744,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -888,12 +847,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -996,12 +950,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1104,12 +1053,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1212,12 +1156,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1321,12 +1260,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1425,12 +1359,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1518,12 +1447,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         await expect(
           page.locator(`[data-id="${testCase.type}"]`)
         ).toBeVisible();
@@ -1612,12 +1536,7 @@ test.describe(
           .fill(testCase.name);
 
         // Select test type
-        await page.click('[id="root/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: testCase.label })
-          .first()
-          .click();
+        await selectTestType(page, testCase.label);
         // Todo: uncomment below assertion after adding docs for columnValuesToBeAtExpectedLocation test case -> @ShaileshParmar11
         // await expect(page.locator(`[data-id="${testCase.type}"]`)).toBeVisible();
 

@@ -29,6 +29,20 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
 /**
+ * Selects a test type from the "Select Test Type" field. The field is a
+ * searchable autocomplete, so we type the label to filter the list before
+ * picking the option — relying on the option being present in the full
+ * (scrollable, height-capped) list is brittle and regresses whenever the
+ * field's rendering changes. `label` is the test type's display name, which is
+ * also what the option is matched by.
+ */
+export const selectTestType = async (page: Page, label: string) => {
+  await page.click('[id="root\\/testType"]');
+  await page.fill('[id="root\\/testType"]', label);
+  await page.getByRole('option').filter({ hasText: label }).first().click();
+};
+
+/**
  * Matches the batched `dataQualityReport` POST the dashboard now fires instead
  * of one GET per widget. The per-aggregation filter (`q`, `index`, ...) lives in
  * the POST body, so pass `bodyToken` (a raw, non-URL-encoded substring) to assert
@@ -109,7 +123,7 @@ export const clickUpdateButton = async (page: Page) => {
       response.url().includes('/api/v1/dataQuality/testCases') &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-btn').click();
+  await page.getByTestId('create-btn').click();
   const response = await updateTestCaseResponse;
 
   expect(response.status()).toBe(200);
