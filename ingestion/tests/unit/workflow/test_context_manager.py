@@ -1,3 +1,7 @@
+from metadata.workflow.context.app_metadata_context import (
+    AppMetadataContext,
+    AppMetadataContextFieldsEnum,
+)
 from metadata.workflow.context.context_manager import ContextManager, ContextsEnum
 from metadata.workflow.context.workflow_context import (
     WorkflowContext,
@@ -47,3 +51,19 @@ def test_thread_safety():
     # The final value should be one of the set values
     final_value = ContextManager.get_context_attr(ContextsEnum.WORKFLOW, WorkflowContextFieldsEnum.SERVICE_NAME)
     assert final_value in {f"service_{i}" for i in range(10)}
+
+
+def test_app_metadata_context_registered():
+    ctx = ContextManager.get_context(ContextsEnum.APP_METADATA)
+    assert isinstance(ctx, AppMetadataContext)
+
+
+def test_app_metadata_dumps_under_app_metadata_key():
+    data = {"impact": {"proposed": 9, "autoApplied": 0, "awaitingReview": 9, "rejected": 0}}
+    ContextManager.set_context_attr(ContextsEnum.APP_METADATA, AppMetadataContextFieldsEnum.DATA, data)
+
+    dumped = ContextManager.dump_contexts()
+
+    assert dumped["appMetadata"]["data"] == data
+    # reset so we don't leak into other tests via the singleton
+    ContextManager.set_context_attr(ContextsEnum.APP_METADATA, AppMetadataContextFieldsEnum.DATA, None)
