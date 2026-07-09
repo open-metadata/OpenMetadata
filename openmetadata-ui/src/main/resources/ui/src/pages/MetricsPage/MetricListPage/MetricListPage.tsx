@@ -13,6 +13,7 @@
 import {
   Avatar,
   Badge,
+  Box,
   Button,
   Dialog,
   DialogTrigger,
@@ -538,8 +539,10 @@ const MetricListPage = () => {
       width: '320px',
       key: 'name',
       render: (_: string, record: Metric) => {
+        const hasMeta = Boolean(record.metricType || record.granularity);
+
         return (
-          <div className="metric-list-identity">
+          <Box align="center" gap={3}>
             <div className="metric-list-icon">
               <BarChartSquare02 />
             </div>
@@ -553,24 +556,26 @@ const MetricListPage = () => {
                 )}>
                 {getEntityName(record)}
               </Link>
-              <div className="metric-list-meta">
-                {record.metricType && (
-                  <Badge
-                    className={`metric-list-type-pill metric-list-type-${record.metricType.toLowerCase()}`}
-                    color="brand"
-                    size="sm"
-                    type="color">
-                    {record.metricType}
-                  </Badge>
-                )}
-                {record.granularity && (
-                  <span className="metric-list-granularity">
-                    {record.granularity}
-                  </span>
-                )}
-              </div>
+              {hasMeta && (
+                <div className="metric-list-meta">
+                  {record.metricType && (
+                    <Badge
+                      className={`metric-list-type-pill metric-list-type-${record.metricType.toLowerCase()}`}
+                      color="brand"
+                      size="sm"
+                      type="color">
+                      {record.metricType}
+                    </Badge>
+                  )}
+                  {record.granularity && (
+                    <span className="metric-list-granularity">
+                      {record.granularity}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          </Box>
         );
       },
     };
@@ -788,7 +793,7 @@ const MetricListPage = () => {
                             {t('message.metrics-import-description')}
                           </span>
                         </span>
-                      </button>      
+                      </button>
                     </div>
                   </Dropdown.Popover>
                 </Dropdown.Root>

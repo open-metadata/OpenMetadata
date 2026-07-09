@@ -3442,7 +3442,6 @@
     "metric-description": "Определите и каталогизируйте стандартизированные метрики в вашей организации.",
     "metric-relations-require-glossary-term": "Выберите термин глоссария для добавления связей.",
     "metric-tags-info": "Метрики связываются с терминами глоссария через теги.",
-    "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
     "metrics-delete-success": "Deleted {{count}} metrics successfully.",
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",

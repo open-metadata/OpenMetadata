@@ -3442,7 +3442,6 @@
     "metric-description": "Define and catalog standardized metrics across your organization.",
     "metric-relations-require-glossary-term": "Select a glossary term to add relationships.",
     "metric-tags-info": "Metrics link to glossary terms through tags.",
-    "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
     "metrics-delete-success": "Deleted {{count}} metrics successfully.",
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
