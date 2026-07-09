@@ -77,7 +77,7 @@ const HeaderShell = ({
         {breadcrumb}
         <Box align="center" direction="row" gap={4}>
           {leading}
-          <Box className="tw:min-w-0" direction="col" gap={1}>
+          <Box className="tw:min-w-0 tw:gap-0.5" direction="col">
             <Box align="center" direction="row" gap={2}>
               {renderTitle(title)}
               {badge}
