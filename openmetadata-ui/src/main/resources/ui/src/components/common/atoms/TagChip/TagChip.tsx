@@ -128,7 +128,7 @@ const TagChip: FC<TagChipProps> = ({
         </span>
       )}
       <Typography
-        className='tw:text-secondary'
+        className="tw:text-secondary"
         data-testid={labelDataTestId}
         ellipsis={showEllipsis}
         size={sizeStyles[size].typography}
@@ -147,9 +147,8 @@ const TagChip: FC<TagChipProps> = ({
           size="xs"
           onClick={(e: MouseEvent<HTMLButtonElement>) => {
             e.stopPropagation();
-            onDelete(e.nativeEvent)
-          }
-          }
+            onDelete(e.nativeEvent);
+          }}
         />
       )}
     </div>
