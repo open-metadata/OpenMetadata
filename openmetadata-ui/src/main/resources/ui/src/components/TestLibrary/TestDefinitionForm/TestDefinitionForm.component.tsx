@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HookForm } from '@openmetadata/ui-core-components';
+import { HookForm, Typography } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -202,10 +202,16 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     </HookForm>
   );
 
+  const drawerTitle = (
+    <Typography data-testid="form-heading" size="text-md" weight="medium">
+      {resolvedTitle}
+    </Typography>
+  );
+
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<TestDefinitionFormValues>({
       className: 'test-definition-form-drawer',
-      title: resolvedTitle,
+      title: drawerTitle,
       hookForm: form,
       form: drawerForm,
       width: '80vw',
