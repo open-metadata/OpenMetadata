@@ -103,6 +103,12 @@ ATHENA_ERRORS = ErrorPack(
         fix="Set s3StagingDir to an S3 path the principal can write to, or configure a query "
         "result location on the workgroup.",
     ),
+    # Athena raises this before the query runs, when it cannot even reach the bucket.
+    when(Matchers.contains("unable to verify/create output bucket")).diagnose(
+        "Query result bucket not usable",
+        fix="Athena cannot reach the bucket in s3StagingDir. Check that it exists in awsRegion "
+        "and that the identity has s3:ListBucket and s3:GetBucketLocation on it.",
+    ),
     when(Matchers.contains("writing to location")).diagnose(
         "Cannot write query results",
         fix="Athena could not write results to the staging location. Grant s3:PutObject on "

@@ -168,7 +168,43 @@ def test_get_tables_reports_a_caveat_when_no_database_can_be_probed():
 
     assert evidence.command == "glue:GetDatabases"
     assert evidence.caveat is not None
-    assert "No tables probed" in evidence.caveat.title
+    assert evidence.caveat.title == "No tables visible"
+
+
+def test_get_tables_skips_an_empty_leading_database():
+    # A catalog commonly leads with an empty 'default'; the probe must not stop there.
+    client = MagicMock()
+    tables = {"default": [{"TableList": []}], "ecommerce": [{"TableList": [{"Name": "orders"}]}]}
+    calls = {"n": 0}
+
+    def paginator(operation):
+        if operation == "get_databases":
+            return _paginator([{"DatabaseList": [{"Name": "default"}, {"Name": "ecommerce"}]}])
+        calls["n"] += 1
+        return _paginator(tables["default" if calls["n"] == 1 else "ecommerce"])
+
+    client.get_paginator.side_effect = paginator
+
+    evidence = _checks(client).get_tables()
+
+    assert evidence.summary == "1 table in database 'ecommerce'"
+    assert evidence.command == "glue:GetTables (DatabaseName=ecommerce)"
+    assert evidence.caveat is None
+
+
+def test_get_tables_warns_when_no_database_exposes_a_table():
+    client = _client(
+        {
+            "get_databases": [{"DatabaseList": [{"Name": "a"}, {"Name": "b"}]}],
+            "get_tables": [{"TableList": []}],
+        }
+    )
+
+    evidence = _checks(client).get_tables()
+
+    assert evidence.summary == "no tables in the first 2 databases"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No tables visible"
 
 
 def test_get_tables_failure_names_the_database_it_probed():

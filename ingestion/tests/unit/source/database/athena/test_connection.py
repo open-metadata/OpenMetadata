@@ -154,6 +154,13 @@ def test_error_pack_classifies_unwritable_result_location():
     assert diagnosis.title == "Cannot write query results"
 
 
+def test_error_pack_classifies_an_unusable_result_bucket():
+    error = RuntimeError("An error occurred (InvalidRequestException): Unable to verify/create output bucket my-bucket")
+    diagnosis = ATHENA_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Query result bucket not usable"
+
+
 def test_error_pack_classifies_unreachable_endpoint():
     error = RuntimeError('Could not connect to the endpoint URL: "https://athena.bad.amazonaws.com/"')
     diagnosis = ATHENA_ERRORS.classify(error)

@@ -39,6 +39,10 @@ if TYPE_CHECKING:
 # A check only needs to prove the catalog can be listed, not enumerate all of it.
 DEFAULT_LIST_LIMIT = 100
 
+# Catalogs commonly lead with an empty 'default' database, so the table probe keeps
+# looking past it - bounded, since each database costs a GetTables call.
+MAX_DATABASES_TO_PROBE = 10
+
 
 # Only what is specific to Glue: its IAM actions and its not-found code.
 # Authentication, region, endpoint and network failures come from AWS_ERRORS.
@@ -98,31 +102,41 @@ def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
 
 
 def list_tables(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
-    """Prove tables can be listed, probing the first database the catalog exposes.
+    """Prove tables can be listed, probing databases until one exposes a table.
 
-    With no database to probe this reports a caveat, not a failure: the empty
-    catalog is already flagged by ``list_databases``."""
+    Stopping at the first database would report zero tables for a healthy catalog
+    that merely leads with an empty one. Nothing here fails the step: an empty
+    catalog is already flagged by ``list_databases``, and Lake Formation returns an
+    empty list rather than an error when grants are missing."""
     command = "glue:GetDatabases"
     try:
-        databases = _paginate(client, "get_databases", "DatabaseList", 1)
+        databases = _paginate(client, "get_databases", "DatabaseList", MAX_DATABASES_TO_PROBE)
         if not databases:
-            return Evidence(
-                summary="no databases available to probe",
-                command=command,
-                caveat=Diagnosis(
-                    title="No tables probed",
-                    remediation="The catalog exposes no database to list tables from; create one, "
-                    "or verify the identity can see it.",
-                ),
-            )
-        database_name = databases[0]["Name"]
-        command = f"glue:GetTables (DatabaseName={database_name})"
-        tables = _paginate(client, "get_tables", "TableList", limit, DatabaseName=database_name)
+            return Evidence(summary="no databases available to probe", command=command, caveat=_no_tables_caveat())
+        for database in databases[:MAX_DATABASES_TO_PROBE]:
+            name = database["Name"]
+            command = f"glue:GetTables (DatabaseName={name})"
+            tables = _paginate(client, "get_tables", "TableList", limit, DatabaseName=name)
+            if tables:
+                shown = min(len(tables), limit)
+                summary = f"{_count(shown, 'table')} in database '{name}'" + _more_suffix(shown, len(tables) > limit)
+                return Evidence(summary=summary, command=command)
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
-    shown = min(len(tables), limit)
-    summary = f"{_count(shown, 'table')} in database '{database_name}'" + _more_suffix(shown, len(tables) > limit)
-    return Evidence(summary=summary, command=command)
+    probed = min(len(databases), MAX_DATABASES_TO_PROBE)
+    return Evidence(
+        summary=f"no tables in the first {_count(probed, 'database')}",
+        command=command,
+        caveat=_no_tables_caveat(),
+    )
+
+
+def _no_tables_caveat() -> Diagnosis:
+    return Diagnosis(
+        title="No tables visible",
+        remediation="No database exposed a table. Verify the identity's Glue permissions and any "
+        "Lake Formation DESCRIBE grants; ingestion would collect nothing as configured.",
+    )
 
 
 class GlueChecks:
