@@ -149,7 +149,8 @@ const isNoopEmptyArray = (value: unknown, initialValue: unknown): boolean =>
 
 export const buildEditPatch = (
   initialValues: TestDefinition,
-  values: TestDefinitionFormValues
+  values: TestDefinitionFormValues,
+  dirtyFields: Partial<Record<keyof TestDefinitionFormValues, unknown>> = {}
 ): Operation[] => {
   const normalizedRaw: Record<string, unknown> = {
     name: values.name,
@@ -166,12 +167,20 @@ export const buildEditPatch = (
   };
 
   const initialRecord = initialValues as unknown as Record<string, unknown>;
-  const definedRaw = Object.fromEntries(
-    Object.entries(normalizedRaw).filter(
-      ([key, value]) =>
-        value !== undefined && !isNoopEmptyArray(value, initialRecord[key])
-    )
-  );
+  const merged: Record<string, unknown> = { ...initialRecord };
 
-  return compare(initialValues, { ...initialValues, ...definedRaw });
+  Object.entries(normalizedRaw).forEach(([key, value]) => {
+    if (value === undefined) {
+      // A cleared field only emits a `remove` when the user actually touched it
+      // (a single-select set back to empty resolves to `undefined`); an untouched
+      // `undefined` is left as-is so unrelated fields don't produce spurious ops.
+      if (key in dirtyFields && key in initialRecord) {
+        delete merged[key];
+      }
+    } else if (!isNoopEmptyArray(value, initialRecord[key])) {
+      merged[key] = value;
+    }
+  });
+
+  return compare(initialValues, merged);
 };

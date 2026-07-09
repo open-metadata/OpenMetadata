@@ -23,7 +23,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
 import { FC, FocusEvent, lazy, useCallback } from 'react';
-import { useFieldArray } from 'react-hook-form';
+import { useFieldArray, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
@@ -58,6 +58,10 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     control,
     name: 'parameterDefinition',
   });
+
+  // The SQL editor is wired manually (not via getField); useWatch keeps its value
+  // reactive to form.reset and programmatic setValue, unlike a render-time getValues.
+  const sqlExpression = useWatch({ control, name: 'sqlExpression' });
 
   const handleActiveField = useCallback(
     (id?: string) => {
@@ -241,7 +245,10 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     required: false,
     id: 'root/enabled',
     formItemLayout: FormItemLayout.HORIZONTAL,
-    props: { 'data-testid': 'enabled-toggle' },
+    props: {
+      'data-testid': 'enabled-toggle',
+      isDisabled: isReadOnlyField,
+    } as FieldProp['props'],
   };
 
   return (
@@ -278,7 +285,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
             disabled
             className="tw:font-mono tw:text-xs tw:w-full"
             rows={8}
-            value={form.getValues('sqlExpression') ?? ''}
+            value={sqlExpression ?? ''}
           />
         ) : (
           <CodeEditor
@@ -286,7 +293,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
             showCopyButton
             className="custom-query-editor query-editor-h-200"
             mode={{ name: CSMode.SQL }}
-            value={form.getValues('sqlExpression') ?? ''}
+            value={sqlExpression ?? ''}
             onChange={(value: string) =>
               form.setValue('sqlExpression', value, { shouldDirty: true })
             }

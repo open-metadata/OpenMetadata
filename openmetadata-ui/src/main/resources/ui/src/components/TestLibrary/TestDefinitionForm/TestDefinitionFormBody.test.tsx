@@ -86,6 +86,14 @@ describe('TestDefinitionFormBody', () => {
     expect(screen.getByTestId('enabled-toggle')).toBeInTheDocument();
   });
 
+  it('disables the enabled toggle for a read-only definition in edit mode', () => {
+    render(<Harness isEditMode isReadOnlyField />);
+
+    expect(
+      screen.getByTestId('enabled-toggle').querySelector('input')
+    ).toBeDisabled();
+  });
+
   it('renders an Add Parameter control when not read-only', () => {
     render(<Harness />);
 

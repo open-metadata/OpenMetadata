@@ -187,5 +187,37 @@ describe('transformTestDefinitionFormData', () => {
         { op: 'replace', path: '/description', value: '' },
       ]);
     });
+
+    it('emits a remove op when a touched optional select is cleared', () => {
+      const initial = {
+        id: '1',
+        name: 'n',
+        dataQualityDimension: 'Accuracy',
+      } as never;
+
+      const patch = buildEditPatch(
+        initial,
+        { name: 'n', dataQualityDimension: undefined },
+        { dataQualityDimension: true }
+      );
+
+      expect(patch).toEqual([{ op: 'remove', path: '/dataQualityDimension' }]);
+    });
+
+    it('leaves an untouched optional select alone (no spurious remove)', () => {
+      const initial = {
+        id: '1',
+        name: 'n',
+        dataQualityDimension: 'Accuracy',
+      } as never;
+
+      const patch = buildEditPatch(
+        initial,
+        { name: 'n', dataQualityDimension: undefined },
+        {}
+      );
+
+      expect(patch).toEqual([]);
+    });
   });
 });

@@ -80,7 +80,11 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       if (!initialValues) {
         return;
       }
-      const patch = buildEditPatch(initialValues, values);
+      const patch = buildEditPatch(
+        initialValues,
+        values,
+        form.formState.dirtyFields
+      );
       if (patch.length === 0) {
         onSuccess();
 
@@ -94,7 +98,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       );
       onSuccess(result);
     },
-    [initialValues, onSuccess, t]
+    [form, initialValues, onSuccess, t]
   );
 
   const submitCreate = useCallback(
@@ -220,6 +224,14 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
       onClose: handleDismiss,
       onSubmit: () => submitAndClose(),
     });
+
+  // react-hook-form applies defaultValues only on first render; re-seed the form
+  // when the target entity changes (edit a different definition, or create↔edit)
+  // so a persistently mounted form never shows stale values.
+  useEffect(() => {
+    form.reset(buildFormDefaults(initialValues));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [initialValues?.id]);
 
   useEffect(() => {
     if (isModalVariant) {
