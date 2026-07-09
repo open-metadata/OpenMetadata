@@ -48,6 +48,18 @@ class SearchRankingHelperTest {
   }
 
   @Test
+  void exactMatchTextsStripSingleSurroundingQuotePair() {
+    assertEquals(
+        List.of(
+            "customer orders",
+            "customer_orders",
+            "customer-orders",
+            "customer.orders",
+            "customerorders"),
+        SearchRankingHelper.exactMatchTexts("\"customer orders\""));
+  }
+
+  @Test
   void exactMatchTextsIncludeRawVariantsBeforeStopwordStrippedVariants() {
     RankingConfiguration ranking =
         new RankingConfiguration()

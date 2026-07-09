@@ -75,11 +75,20 @@ public final class SearchRankingHelper {
       if (query == null || query.trim().isEmpty()) {
         continue;
       }
-      String trimmed = query.trim();
+      String trimmed = stripSurroundingQuotes(query.trim());
+      if (trimmed.isEmpty()) {
+        continue;
+      }
       addExactTextVariants(values, trimmed);
       addExactTextVariants(values, trimmed.toLowerCase(Locale.ROOT));
     }
     return new ArrayList<>(values);
+  }
+
+  private static String stripSurroundingQuotes(String query) {
+    return query.length() >= 2 && query.charAt(0) == '"' && query.charAt(query.length() - 1) == '"'
+        ? query.substring(1, query.length() - 1).trim()
+        : query;
   }
 
   private static void addExactTextVariants(LinkedHashSet<String> values, String query) {
