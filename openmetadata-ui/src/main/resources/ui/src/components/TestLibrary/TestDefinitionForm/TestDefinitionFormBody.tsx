@@ -22,7 +22,7 @@ import {
   HelperTextType,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
-import { FC, FocusEvent, lazy, useCallback } from 'react';
+import { FC, FocusEvent, Fragment, lazy, useCallback } from 'react';
 import { useFieldArray, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { CSMode } from '../../../enums/codemirror.enum';
@@ -251,6 +251,11 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     } as FieldProp['props'],
   };
 
+  const renderFields = (fieldProps: FieldProp[]) =>
+    fieldProps.map((field) => (
+      <Fragment key={field.name}>{getField(field)}</Fragment>
+    ));
+
   return (
     <div
       className="new-form-style tw:flex tw:flex-col tw:gap-5"
@@ -268,9 +273,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         </div>
       )}
 
-      {getField(nameField)}
-      {getField(displayNameField)}
-      {getField(descriptionField)}
+      {renderFields([nameField, displayNameField, descriptionField])}
 
       <div
         className="tw:flex tw:flex-col tw:gap-1.5"
@@ -302,11 +305,13 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         )}
       </div>
 
-      {getField(entityTypeField)}
-      {getField(testPlatformsField)}
-      {getField(dataQualityDimensionField)}
-      {getField(supportedServicesField)}
-      {getField(supportedDataTypesField)}
+      {renderFields([
+        entityTypeField,
+        testPlatformsField,
+        dataQualityDimensionField,
+        supportedServicesField,
+        supportedDataTypesField,
+      ])}
 
       <div
         className="tw:flex tw:flex-col tw:gap-3"
