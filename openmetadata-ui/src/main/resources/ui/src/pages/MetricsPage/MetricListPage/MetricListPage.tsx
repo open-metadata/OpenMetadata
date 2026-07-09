@@ -788,23 +788,7 @@ const MetricListPage = () => {
                             {t('message.metrics-import-description')}
                           </span>
                         </span>
-                      </button>
-                      <span className="metric-actions-separator" />
-                      <button
-                        className="metric-actions-menu-item metric-actions-menu-item-danger"
-                        type="button">
-                        <span className="metric-actions-icon">
-                          <Trash01 size={18} />
-                        </span>
-                        <span>
-                          <span className="metric-actions-title">
-                            {t('label.delete')}
-                          </span>
-                          <span className="metric-actions-description">
-                            {t('message.metrics-delete-collection-description')}
-                          </span>
-                        </span>
-                      </button>
+                      </button>      
                     </div>
                   </Dropdown.Popover>
                 </Dropdown.Root>
