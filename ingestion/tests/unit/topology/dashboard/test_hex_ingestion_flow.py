@@ -105,12 +105,12 @@ class TestHexIngestionFlow(TestCase):
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
     @patch.object(OpenMetadata, "__init__", lambda x, y: None)
-    def test_complete_ingestion_workflow(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_complete_ingestion_workflow(self, mock_create_connection, mock_run_test_connection):
         """Test complete ingestion workflow from config to metadata storage"""
+        mock_run_test_connection.return_value = None
         # Setup mocks
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         sample_projects = create_sample_projects(5)
         mock_client.get_projects = MagicMock(return_value=sample_projects)
@@ -173,9 +173,26 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_ingestion_with_filter_pattern(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    @patch.object(OpenMetadata, "__init__", lambda x, y: None)
+    def test_owned_connection_closed_when_test_connection_fails(self, mock_create_connection, mock_run_test_connection):
+        """A failing test-connection in __init__ must close the owned connection."""
+        mock_run_test_connection.side_effect = RuntimeError("cannot connect")
+
+        metadata = MagicMock()
+        with self.assertRaises(RuntimeError):
+            HexSource.create(
+                config_dict=self.config["source"],
+                metadata=metadata,
+                pipeline_name="test_pipeline",
+            )
+
+        mock_create_connection.return_value.close.assert_called_once()
+
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def test_ingestion_with_filter_pattern(self, mock_create_connection, mock_run_test_connection):
         """Test ingestion with dashboard filter pattern"""
+        mock_run_test_connection.return_value = None
         # Update config with filter pattern
         config = self.config.copy()
         config["source"]["sourceConfig"]["config"]["dashboardFilterPattern"] = {
@@ -183,7 +200,7 @@ class TestHexIngestionFlow(TestCase):
         }
 
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # Create projects with specific names
         projects = [
@@ -223,11 +240,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_ingestion_with_errors(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_ingestion_with_errors(self, mock_create_connection, mock_run_test_connection):
         """Test ingestion handling errors gracefully"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # Create projects where some will cause errors
         projects = [
@@ -279,11 +296,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_incremental_ingestion(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_incremental_ingestion(self, mock_create_connection, mock_run_test_connection):
         """Test incremental ingestion with state management"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # First run - 3 projects
         initial_projects = create_sample_projects(3)
@@ -318,11 +335,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_large_dataset_performance(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_large_dataset_performance(self, mock_create_connection, mock_run_test_connection):
         """Test performance with large dataset"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # Create 1000 projects
         large_dataset = create_sample_projects(1000)
@@ -362,11 +379,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_memory_usage_validation(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_memory_usage_validation(self, mock_create_connection, mock_run_test_connection):
         """Test memory usage with batch processing"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # Process in batches to validate memory efficiency
         batch_size = 100
@@ -411,11 +428,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_owner_and_tag_extraction(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_owner_and_tag_extraction(self, mock_create_connection, mock_run_test_connection):
         """Test extraction of owners and tags during ingestion"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # Create project with rich metadata
         project = Project(
@@ -494,11 +511,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_empty_dashboard_list(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_empty_dashboard_list(self, mock_create_connection, mock_run_test_connection):
         """Test handling of empty dashboard list"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
         mock_client.get_projects = MagicMock(return_value=[])
 
         metadata = MagicMock()
@@ -512,11 +529,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_malformed_api_responses(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_malformed_api_responses(self, mock_create_connection, mock_run_test_connection):
         """Test handling of malformed API responses"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # Create projects with missing/invalid data
         malformed_projects = [
@@ -560,11 +577,11 @@ class TestHexIngestionFlow(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_partial_failures_during_batch(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_partial_failures_during_batch(self, mock_create_connection, mock_run_test_connection):
         """Test partial failures during batch processing"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         projects = create_sample_projects(10)
         mock_client.get_projects = MagicMock(return_value=projects)
@@ -616,11 +633,11 @@ class TestHexIngestionWithLineage(TestCase):
 
     @patch("metadata.ingestion.source.dashboard.dashboard_service.run_test_connection")
     @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
-    def test_ingestion_with_lineage(self, mock_get_connection, mock_test_connection):
-        mock_test_connection.return_value = None
+    def test_ingestion_with_lineage(self, mock_create_connection, mock_run_test_connection):
         """Test complete ingestion with lineage data"""
+        mock_run_test_connection.return_value = None
         mock_client = MagicMock()
-        mock_get_connection.return_value.client = mock_client
+        mock_create_connection.return_value.client = mock_client
 
         # Create projects
         projects = create_sample_projects(3)

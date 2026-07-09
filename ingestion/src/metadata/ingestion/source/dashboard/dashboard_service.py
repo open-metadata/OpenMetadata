@@ -256,7 +256,11 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         self.source_config: DashboardServiceMetadataPipeline = self.config.sourceConfig.config
         self._connection = create_connection(self.service_connection)
         self.client = self._connection.client if self._connection else get_connection(self.service_connection)
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @property
     def name(self) -> str:

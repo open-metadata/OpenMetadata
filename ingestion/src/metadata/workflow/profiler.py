@@ -12,6 +12,8 @@
 Workflow definition for the profiler
 """
 
+import traceback
+
 from metadata.ingestion.api.steps import Processor, Sink
 from metadata.ingestion.source.connections import test_connection_common
 from metadata.profiler.processor.processor import ProfilerProcessor
@@ -72,9 +74,14 @@ class ProfilerWorkflow(IngestionWorkflow):
         @retry_with_docker_host(config=self.config.source)
         def main(self):
             service_config = self.config.source.serviceConnection.root.config
-            ssl_manager = check_ssl_and_init(service_config)
-            if isinstance(ssl_manager, SSLManager):
-                service_config = ssl_manager.setup_ssl(service_config)
+            try:
+                # To be cleaned up as part of https://github.com/open-metadata/OpenMetadata/issues/15913
+                ssl_manager = check_ssl_and_init(service_config)
+                if isinstance(ssl_manager, SSLManager):
+                    service_config = ssl_manager.setup_ssl(service_config)
+            except Exception:
+                logger.debug("Failed to setup SSL for the connection")
+                logger.debug(traceback.format_exc())
 
             test_connection_common(self.metadata, None, service_config)
 
