@@ -110,7 +110,7 @@ public abstract class EmbeddingClient {
 
   private void guardCircuit() {
     synchronized (circuitLock) {
-      if (circuitState == CircuitState.OPEN) {
+      if (circuitState != CircuitState.CLOSED) {
         rejectOrProbe();
       }
     }
@@ -122,6 +122,8 @@ public abstract class EmbeddingClient {
           String.format(
               "Embedding provider %s is unavailable (circuit open): %s", getModelId(), openCause));
     }
+    openDeadlineNanos =
+        System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(openCooldownMillis(false));
     circuitState = CircuitState.HALF_OPEN;
     LOG.info("Embedding provider {} circuit half-open; probing recovery", getModelId());
   }
@@ -159,7 +161,8 @@ public abstract class EmbeddingClient {
   private void openCircuit(RuntimeException failure, boolean permanent) {
     long cooldownMillis = openCooldownMillis(permanent);
     openDeadlineNanos = System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(cooldownMillis);
-    openCause = failure.getMessage();
+    openCause =
+        failure.getMessage() != null ? failure.getMessage() : failure.getClass().getSimpleName();
     if (circuitState != CircuitState.OPEN) {
       Metrics.counter(CIRCUIT_OPENED_METRIC, "model", getModelId()).increment();
       LOG.warn(
