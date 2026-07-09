@@ -116,7 +116,7 @@ const RichTextEditorPreviewerNew: FC<PreviewerProp> = ({
       dir={i18n.dir()}>
       <div
         className={classNames('markdown-parser', textVariant, {
-          'is-clamped': !readMore && isOverflowing,
+          'is-clamped': !readMore && isOverflowing && enableSeeMoreVariant,
         })}
         data-testid="markdown-parser"
         ref={contentRef}
