@@ -55,6 +55,22 @@ public class SearchClusterMetricsTest {
         "no off-heap headroom degrades to serial rather than OOMKilling");
   }
 
+  @Test
+  void boundsQueueSizeToHeapBudget() {
+    assertEquals(
+        10000,
+        SearchClusterMetrics.boundQueueSizeToHeap(10000, 4L * 1024 * 1024 * 1024),
+        "4 GB heap has room for the full queue");
+    assertEquals(
+        2621,
+        SearchClusterMetrics.boundQueueSizeToHeap(10000, 1024L * 1024 * 1024),
+        "1 GB heap / 100 KB entity caps the queue well below 10000");
+    assertEquals(
+        1000,
+        SearchClusterMetrics.boundQueueSizeToHeap(10000, 128L * 1024 * 1024),
+        "tiny heap floors at 1000 rather than zero");
+  }
+
   @BeforeEach
   void setUp() {
     MockitoAnnotations.openMocks(this);

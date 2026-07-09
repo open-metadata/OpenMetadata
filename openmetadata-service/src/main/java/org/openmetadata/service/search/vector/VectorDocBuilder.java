@@ -120,6 +120,9 @@ public class VectorDocBuilder {
    */
   public static List<Map<String, Object>> fromEntity(
       EntityInterface entity, EmbeddingClient embeddingClient) {
+    if (embeddingClient == null || !embeddingClient.isAvailable()) {
+      return List.of();
+    }
     List<Map<String, Object>> docs = buildChunkFields(entity, embeddingClient);
     if (entity instanceof GlossaryTerm term) {
       List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
