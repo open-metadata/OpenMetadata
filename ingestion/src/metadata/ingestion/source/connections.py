@@ -144,10 +144,10 @@ def test_connection_common(metadata: OpenMetadata, connection_obj, service_conne
         with owned:
             result = owned.test_connection(metadata)
     else:
-        # Non-migrated / custom connector: legacy module-level test_connection
+        # Non-migrated / custom connector: legacy module-level test_connection.
+        # Migrated connectors go through create_connection above, so the function
+        # resolved here always takes the legacy (metadata, client, connection) args.
         test_connection_fn = get_test_connection_fn(service_connection)
-        try:
-            result = test_connection_fn(metadata)
-        except TypeError:
-            result = test_connection_fn(metadata, connection_obj, service_connection)
+        client = connection_obj if connection_obj is not None else get_connection(service_connection)
+        result = test_connection_fn(metadata, client, service_connection)
     raise_test_connection_exception(result)
