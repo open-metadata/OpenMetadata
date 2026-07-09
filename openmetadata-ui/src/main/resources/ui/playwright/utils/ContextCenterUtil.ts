@@ -799,7 +799,6 @@ export const readDraftStore = async (
   }
 };
 
-
 /**
  * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
  * since this repo has no binary image fixtures under playwright/test-data/.

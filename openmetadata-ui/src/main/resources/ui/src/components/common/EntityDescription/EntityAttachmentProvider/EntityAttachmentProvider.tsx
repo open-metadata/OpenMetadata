@@ -14,12 +14,12 @@ import type { EditorView } from '@tiptap/pm/view';
 import { AxiosError } from 'axios';
 import { isString, isUndefined, noop } from 'lodash';
 import {
-    createContext,
-    MutableRefObject,
-    ReactNode,
-    useContext,
-    useRef,
-    useState
+  createContext,
+  MutableRefObject,
+  ReactNode,
+  useContext,
+  useRef,
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../enums/entity.enum';

@@ -87,7 +87,9 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
       false) ||
     Boolean(currentUser?.isAdmin);
 
-  const memoriesTitle = `${t('label.memory-plural')}${!isLoading && memories.length > 0 ? ` (${memories.length})` : ''}`;
+  const memoriesTitle = `${t('label.memory-plural')}${
+    !isLoading && memories.length > 0 ? ` (${memories.length})` : ''
+  }`;
 
   const memoriesContent = (
     <>
@@ -157,9 +159,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
       <WidgetCard
         dataTestId="extracted-memories-card"
         isExpandDisabled={isLoading}
-        title={
-          memoriesTitle
-        }>
+        title={memoriesTitle}>
         {memoriesContent}
       </WidgetCard>
     );

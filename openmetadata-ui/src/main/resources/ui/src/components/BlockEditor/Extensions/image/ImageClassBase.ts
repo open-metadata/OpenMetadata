@@ -74,14 +74,18 @@ class ImageClassBase {
           );
         }
 
-        const response = await uploadAsset(file,  EntityLink.getEntityLink(
+        const response = await uploadAsset(
+          file,
+          EntityLink.getEntityLink(
             entityType,
             entityFqn,
             entityType === EntityType.KNOWLEDGE_PAGE ? undefined : 'description'
-          ), AssetType.Inline);
+          ),
+          AssetType.Inline
+        );
 
         return response.url;
-      }
+      },
     };
   }
 

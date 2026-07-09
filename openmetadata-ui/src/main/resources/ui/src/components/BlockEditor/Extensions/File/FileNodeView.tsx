@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Popover, PopoverTrigger, Tabs } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  Popover,
+  PopoverTrigger,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
@@ -168,7 +173,9 @@ const FileNodeView: FC<NodeViewProps> = ({
       data-type="file-attachment"
       data-url={url}>
       <div className={classNames(isMedia ? 'media-content' : 'file-content')}>
-        <PopoverTrigger isOpen={isPopupVisible} onOpenChange={handlePopoverVisibleChange}>
+        <PopoverTrigger
+          isOpen={isPopupVisible}
+          onOpenChange={handlePopoverVisibleChange}>
           <Button
             className="tw:relative tw:block tw:w-full tw:p-0 tw:bg-transparent tw:shadow-none tw:ring-0 hover:tw:bg-transparent tw:[&>span]:flex"
             data-testid="add-image-container">
@@ -184,7 +191,9 @@ const FileNodeView: FC<NodeViewProps> = ({
             )}
             {renderContent()}
           </Button>
-          <Popover className="om-image-node-popover tw:w-96 tw:p-4" placement="bottom">
+          <Popover
+            className="om-image-node-popover tw:w-96 tw:p-4"
+            placement="bottom">
             <PopoverContent
               deleteNode={deleteNode}
               fileType={fileType}

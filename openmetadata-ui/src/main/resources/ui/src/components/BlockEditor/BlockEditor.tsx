@@ -19,13 +19,13 @@ import { forwardRef, useEffect, useImperativeHandle, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   EDITOR_OPTIONS,
-  TEXT_TYPES
+  TEXT_TYPES,
 } from '../../constants/BlockEditor.constants';
 import blockEditorExtensionsClassBase from '../../utils/BlockEditorExtensionsClassBase';
 import { formatClientContent } from '../../utils/BlockEditorPureUtils';
 import {
   formatServerContent,
-  setEditorContent
+  setEditorContent,
 } from '../../utils/BlockEditorUtils';
 import Banner from '../common/Banner/Banner';
 import { useEntityAttachment } from '../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
@@ -35,7 +35,7 @@ import {
   BlockEditorProps,
   BlockEditorRef,
   EditorSlotsRef,
-  FileType
+  FileType,
 } from './BlockEditor.interface';
 import EditorSlots from './EditorSlots';
 import './Extensions/File/file-node.less';

@@ -99,7 +99,7 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
         <Button color="tertiary-destructive" size="xs" onPress={handleDelete}>
           {t('label.delete')}
         </Button>
-        <Box align='center' gap={3}>
+        <Box align="center" gap={3}>
           <Button
             color="tertiary"
             size="xs"
@@ -107,7 +107,11 @@ const EmbedLinkElement: FC<ImagePopoverContentProps> = ({
             {t('label.close')}
           </Button>
           {isAssetsUrl ? null : (
-            <Button className='tw:capitalize' color="primary" size="xs" type="submit">
+            <Button
+              className="tw:capitalize"
+              color="primary"
+              size="xs"
+              type="submit">
               {t('label.embed-file-type', { fileType })}
             </Button>
           )}

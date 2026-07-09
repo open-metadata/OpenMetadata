@@ -32,10 +32,7 @@ import {
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
-import {
-  getEditor,
-  waitForAutoSave,
-} from '../../utils/KnowledgeCenter';
+import { getEditor, waitForAutoSave } from '../../utils/KnowledgeCenter';
 import { test as base } from '../fixtures/pages';
 
 const test = base;
@@ -205,7 +202,7 @@ test.describe('Context Center - Article Attachments', () => {
     await test.step('insert image via URL embed', async () => {
       const editor = await getEditor(page, true);
       await editor.click();
-      await page.getByRole('paragraph').last().click()
+      await page.getByRole('paragraph').last().click();
       await page.keyboard.press('Enter');
       await insertImageViaUrl(
         page,
