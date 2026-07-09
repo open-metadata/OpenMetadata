@@ -62,7 +62,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
     <Popover
       isNonModal
       isOpen
-      className="tw:w-[300px] tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
+      className="tw:w-75 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
       offset={offset}
       placement="right top"
       triggerRef={anchorRef}>

@@ -87,12 +87,16 @@ export interface FieldPropsMap {
   hideDropdown?: boolean;
   allowUrl?: boolean;
   backgroundColor?: string;
+  'aria-label'?: string;
   children?: ReactNode;
   colors?: string[];
   'data-testid'?: string;
   defaultCamera?: 'environment' | 'user';
   defaultIcon?: { component: FC };
   disabled?: boolean;
+  // react-aria field components (Select, Autocomplete, TextField, ...) use
+  // `isDisabled`; it is forwarded to them via `...rest` in render-field-element.
+  isDisabled?: boolean;
   filterOption?: (option: FormSelectItem, searchText: string) => boolean;
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   emptyStateLabel?: string;
