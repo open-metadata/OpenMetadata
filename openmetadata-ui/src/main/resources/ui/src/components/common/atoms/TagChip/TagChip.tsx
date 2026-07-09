@@ -122,21 +122,10 @@ const TagChip: FC<TagChipProps> = ({
         weight={variant === 'blueGray' ? 'regular' : 'medium'}>
         {label}
       </Typography>
-      {onDelete && (
-        <ButtonUtility
-          aria-label={t('label.remove')}
-          className={classNames(
-            'tw:ml-1 tw:size-auto tw:shrink-0 tw:rounded-none tw:p-0 tw:text-inherit tw:shadow-none tw:ring-0 tw:hover:bg-transparent tw:hover:text-inherit',
-            sizeStyles[size].deleteIcon
-          )}
-          icon={XClose}
-          isDisabled={disabled}
-          size="xs"
-          onClick={(e: MouseEvent<HTMLButtonElement>) =>
-            onDelete(e.nativeEvent)
-          }
-        />
-      )}
+          onClick={(e: MouseEvent<HTMLButtonElement>) => {
+            e.stopPropagation();
+            onDelete(e.nativeEvent);
+          }}
     </div>
   );
 };
