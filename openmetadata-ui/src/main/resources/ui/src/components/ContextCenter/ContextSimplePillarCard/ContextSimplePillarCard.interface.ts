@@ -10,27 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { FC, ReactNode } from 'react';
 
-import { FC, ReactElement } from 'react';
-
-export type PillarTone = 'info' | 'warning' | 'success';
-
-export interface PillarRecentItem {
+export interface ContextSimplePillarCardProps {
   title: string;
-  meta: string[];
-  icon?: ReactElement;
-}
-
-export interface ContextKnowledgePillarCardProps {
-  icon: FC<{ className?: string }>;
-  title: string;
-  subtitle: string;
-  stat: string;
-  statSub: string;
-  statSubSecondary?: string;
-  recent: PillarRecentItem[];
-  cta: string;
   isLoading?: boolean;
-  onClick: () => void;
+  isEmpty?: boolean;
+  emptyMessage?: string;
   dataTestId?: string;
+  children: ReactNode;
+  icon: FC;
 }
