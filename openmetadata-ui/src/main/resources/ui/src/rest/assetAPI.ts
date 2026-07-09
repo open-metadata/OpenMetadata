@@ -241,7 +241,7 @@ export const listArchivedContextFiles = async (
 ): Promise<PagingResponse<ContextFile[]>> => {
   const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
-    { params: { include: 'deleted', limit: 15, orderBy: 'DESC', ...params } }
+    { params: { include: 'deleted', orderBy: 'DESC', ...params } }
   );
 
   return response.data;

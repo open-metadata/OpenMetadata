@@ -27,6 +27,7 @@ import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
@@ -50,7 +51,9 @@ const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
-  const { paging, pageSize, handlePagingChange } = usePaging();
+  const { paging, pageSize, handlePagingChange } = usePaging(
+    ARCHIVE_PAGE_SIZE
+  );
   const [items, setItems] = useState<ArchiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [isLoadingMore, setIsLoadingMore] = useState(false);
