@@ -137,13 +137,16 @@ const ArchiveView: FC<ArchiveViewProps> = ({
   onRestore,
   onScrollEnd,
 }) => {
-  const handleScroll = (e: UIEvent<HTMLDivElement>) => {
-    const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
-    if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
-      onScrollEnd?.();
-    }
-  };
 
+    const handleScroll = (e: UIEvent<HTMLDivElement>) => {
+      if (isLoadingMore) {
+        return;
+      }
+      const { scrollHeight, scrollTop, clientHeight } = e.currentTarget;
+      if (scrollHeight - scrollTop - clientHeight < SCROLL_THRESHOLD) {
+        onScrollEnd?.();
+      }
+    };
   if (isLoading) {
     return (
       <Card className="tw:flex tw:flex-col">
