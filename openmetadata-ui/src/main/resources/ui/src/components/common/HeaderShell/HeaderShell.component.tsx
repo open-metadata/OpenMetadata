@@ -14,7 +14,12 @@
 import { Box, Card, Typography } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isValidElement } from 'react';
-import { HeaderShellProps } from './HeaderShell.interface';
+import { HeaderShellPadding, HeaderShellProps } from './HeaderShell.interface';
+
+const PADDING_CLASS: Record<HeaderShellPadding, string> = {
+  default: 'tw:py-3',
+  comfortable: 'tw:py-4',
+};
 
 const renderTitle = (title: HeaderShellProps['title']) =>
   isValidElement(title) ? (
@@ -44,13 +49,15 @@ const HeaderShell = ({
   actions,
   footer,
   variant = 'flat',
+  padding = 'default',
   className,
   'data-testid': dataTestId = 'header-shell',
 }: HeaderShellProps) => {
   return (
     <Card
       className={classNames(
-        'tw:mb-5 tw:px-5 tw:py-3',
+        'tw:mb-5 tw:px-5',
+        PADDING_CLASS[padding],
         // Fixed light-blue header treatment per Figma — intentionally NOT the
         // dynamic brand-* tokens (those follow the deployment's primary color and
         // would tint this header pink on Collate). The gradient stops and the

@@ -15,6 +15,8 @@ import type { ReactNode } from 'react';
 
 export type HeaderShellVariant = 'flat' | 'gradient';
 
+export type HeaderShellPadding = 'default' | 'comfortable';
+
 export interface HeaderShellProps {
   /** Leading visual: featured icon tile, service logo, or avatar. */
   leading?: ReactNode;
@@ -34,6 +36,11 @@ export interface HeaderShellProps {
   footer?: ReactNode;
   /** Visual treatment. 'gradient' applies the brand-tinted card per Figma. */
   variant?: HeaderShellVariant;
+  /**
+   * Vertical padding of the header card. 'default' = 12px (py-3),
+   * 'comfortable' = 16px (py-4). Horizontal padding is 20px in both.
+   */
+  padding?: HeaderShellPadding;
   className?: string;
   'data-testid'?: string;
 }
