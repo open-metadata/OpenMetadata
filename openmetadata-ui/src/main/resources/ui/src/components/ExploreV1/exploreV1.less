@@ -39,8 +39,10 @@
   }
 
   .explore-page-right-panel {
-    flex: 0 0 400px;
-    min-width: 0;
+    flex: 0 0 clamp(360px, 26vw, 440px);
+    max-width: 440px;
+    min-width: 360px;
+    overflow: auto;
   }
 
   .explore-icon {

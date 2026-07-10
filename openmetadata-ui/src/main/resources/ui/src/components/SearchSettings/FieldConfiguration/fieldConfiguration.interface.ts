@@ -13,8 +13,8 @@
 import {
   AllowedFieldField,
   FieldValueBoost,
+  SearchFieldMatchType as MatchType,
 } from '../../../generated/configuration/searchSettings';
-import { MatchType } from '../../../generated/settings/settings';
 import { EntitySearchSettingsState } from '../../../pages/SearchSettingsPage/searchSettings.interface';
 
 export interface FieldConfigurationProps {

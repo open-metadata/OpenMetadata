@@ -243,7 +243,8 @@ public final class TableDataQualityPage extends PageObject {
   public TableDataQualityPage deleteTestCase(final String testCaseName) {
     byTestId("action-dropdown-" + testCaseName).click();
     byTestId("delete-" + testCaseName).click();
-    page.locator("#deleteTextInput").fill("DELETE");
+    byTestId("confirm-button")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     page.waitForResponse(
         r ->
             r.url().contains("/api/v1/dataQuality/testCases/")
