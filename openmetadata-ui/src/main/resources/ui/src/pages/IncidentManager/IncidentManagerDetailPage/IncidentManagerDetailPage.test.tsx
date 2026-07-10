@@ -131,9 +131,15 @@ jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () =>
       <div data-testid="page-layout-v1">{children}</div>
     ))
 );
-jest.mock('../../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
+jest.mock('../../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 jest.mock(
   '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component',
   () => jest.fn().mockImplementation(() => <div>IncidentManagerPageHeader</div>)

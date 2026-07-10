@@ -40,6 +40,7 @@ export interface UseObservabilityAlertsReturn {
   handleAlertDelete: () => Promise<void>;
   handlePageSizeChange: (page: number) => void;
   handleSelectAlert: (alert?: EventSubscription) => void;
+  fetchAlerts: (params?: Partial<Paging>) => Promise<void>;
   loading: boolean;
   loadingCount: number;
   onPageChange: (params: PagingHandlerParams) => void;
@@ -59,6 +60,7 @@ export interface ObservabilityAlertActionsProps {
   alertPermission?: AlertPermission;
   loading: boolean;
   record: EventSubscription;
+  onEditAlert?: (alert: EventSubscription) => void;
   onSelectAlert: (alert: EventSubscription) => void;
 }
 
@@ -71,6 +73,7 @@ export interface ObservabilityAlertsTableProps {
   loadingCount: number;
   getAlertDetailsPath: (fqn: string) => string;
   onAddAlert: () => void;
+  onEditAlert?: (alert: EventSubscription) => void;
   onPageChange: (params: PagingHandlerParams) => void;
   onPageSizeChange: (pageSize: number) => void;
   onSelectAlert: (alert: EventSubscription) => void;

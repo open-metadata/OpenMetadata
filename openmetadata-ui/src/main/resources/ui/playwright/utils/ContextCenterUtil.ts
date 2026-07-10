@@ -296,7 +296,7 @@ export const softDeleteDocument = async (
 ): Promise<void> => {
   const docRow = page.getByTestId(docRowId);
   await expect(docRow).toBeVisible();
-  await docRow.locator('button[aria-label="Open menu"]').click();
+  await docRow.getByTestId('manage-button').click();
   await page.getByTestId('delete-btn').click();
 
   const deleteResPromise = page.waitForResponse(
@@ -532,12 +532,17 @@ export const scrollHierarchyToNode = async (
       .getAttribute('data-testid');
 
   let previousLastNode = '';
-  for (let attempt = 0; attempt < 50 && !(await node.isVisible()); attempt++) {
-    // Registered before the scroll so it can observe the fetch the scroll
+  // Require 3 consecutive unchanged readings before concluding end-of-list.
+  // A single unchanged reading can be a false positive when the scroll lands
+  // just before the next infinite-scroll fetch threshold.
+  let staleCount = 0;
+
+  for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
+    // Registered before the scroll so it can observe any fetch the scroll
     // triggers; only awaited below if the node list looks unchanged.
     const hierarchyResPromise = page
       .waitForResponse((res) => res.url().includes('/hierarchy'), {
-        timeout: 2000,
+        timeout: 5000,
       })
       .catch(() => null);
 
@@ -550,17 +555,23 @@ export const scrollHierarchyToNode = async (
     let lastNode = await getLastNode();
 
     if (lastNode === previousLastNode) {
-      // The last node may be unchanged because a hierarchy fetch triggered
-      // by this scroll is still in flight rather than the tree truly ending.
-      // Give it a short window to resolve before trusting the comparison.
+      // Wait for any in-flight hierarchy fetch to settle before re-reading.
       await hierarchyResPromise;
 
       lastNode = await getLastNode();
 
       if (lastNode === previousLastNode) {
-        break;
+        staleCount += 1;
+        if (staleCount >= 3) {
+          break;
+        }
+      } else {
+        staleCount = 0;
       }
+    } else {
+      staleCount = 0;
     }
+
     previousLastNode = lastNode ?? '';
   }
 
@@ -680,4 +691,108 @@ export const navigateToArticle = async (page: Page, articleFqn: string) => {
   await page.goto(articlePath);
   await getArticleResponse;
   await waitForAllLoadersToDisappear(page);
+};
+
+/** Returns the first table asset from ES, or undefined if none exist. */
+export const fetchFirstTable = async (page: Page) => {
+  const res = await page.request.get(
+    '/api/v1/search/query?q=*&index=table_search_index&from=0&size=1'
+  );
+  if (!res.ok()) {
+    return undefined;
+  }
+  const data = await res.json();
+
+  return data.hits?.hits?.[0]?._source;
+};
+
+export const patchMemory = async (
+  apiContext: APIRequestContext,
+  id: string,
+  patch: Record<string, unknown>[]
+) => {
+  const res = await apiContext.patch(`${MEMORIES_API}/${id}`, {
+    data: patch,
+    headers: { 'Content-Type': 'application/json-patch+json' },
+  });
+  expect(res.ok()).toBeTruthy();
+
+  return res.json();
+};
+
+export interface LoggedInUser {
+  id: string;
+  name: string;
+  displayName: string;
+}
+
+/** Identifies the currently authenticated user via their own session. */
+export const getLoggedInUser = async (
+  apiContext: APIRequestContext
+): Promise<LoggedInUser> => {
+  const res = await apiContext.get('/api/v1/users/loggedInUser');
+  expect(res.ok()).toBeTruthy();
+  const data = await res.json();
+
+  return {
+    id: data.id,
+    name: data.name,
+    displayName: data.displayName ?? data.name,
+  };
+};
+
+export const createMemoryViaApi = async (
+  apiContext: APIRequestContext,
+  overrides: Record<string, unknown>
+) => {
+  const res = await apiContext.post(MEMORIES_API, { data: overrides });
+  expect(res.status()).toBe(201);
+
+  return res.json();
+};
+
+/**
+ * Searches for a memory by a unique query string and returns its row locator.
+ * The list is paginated, so a memory created earlier in the suite may not be
+ * on the currently loaded page — searching re-queries page 1 and guarantees
+ * the row is present if it matches.
+ */
+export const searchAndGetMemoryRow = async (
+  page: Page,
+  query: string,
+  memoryId: string
+) => {
+  const searchResPromise = page.waitForResponse(
+    (res) =>
+      res.url().includes(MEMORIES_API) &&
+      res.url().includes('q=') &&
+      res.request().method() === 'GET'
+  );
+  await page.getByTestId('search-input').locator('input').fill(query);
+  await searchResPromise;
+  await waitForAllLoadersToDisappear(page);
+
+  return page.getByTestId(`memory-row-${memoryId}`);
+};
+export const readDraftStore = async (
+  page: Page
+): Promise<Record<string, unknown>> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'om-article-drafts'
+  );
+
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: { drafts?: Record<string, unknown> };
+    };
+
+    return (parsed?.state?.drafts as Record<string, unknown>) ?? {};
+  } catch {
+    return {};
+  }
 };

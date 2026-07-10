@@ -93,7 +93,6 @@ import {
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -109,10 +108,11 @@ import {
   getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
-import DeleteWidgetModal from '../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -252,7 +252,7 @@ const DomainDetails = ({
         setAssetCount(totalCount);
       } catch (error) {
         setAssetCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
@@ -276,7 +276,7 @@ const DomainDetails = ({
         setDataProductsCount(res.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.data-product-lowercase'),
@@ -305,7 +305,7 @@ const DomainDetails = ({
         setSubDomainsCount(totalCount);
       } catch (error) {
         setSubDomainsCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.sub-domain-lowercase'),
@@ -488,7 +488,7 @@ const DomainDetails = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -649,7 +649,7 @@ const DomainDetails = ({
         await addDomains(data as CreateDomain);
         fetchSubDomainsCount();
       } catch (error) {
-        showNotistackError(
+        showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
             ? t('server.entity-already-exist', {
                 entity: t('label.sub-domain'),
@@ -689,7 +689,7 @@ const DomainDetails = ({
       );
       setDomainPermission(response);
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -1103,7 +1103,7 @@ const DomainDetails = ({
       />
 
       {domain && (
-        <DeleteWidgetModal
+        <DeleteEntityModal
           afterDeleteAction={() => onDelete(domain.id)}
           allowSoftDelete={false}
           entityId={domain.id}
