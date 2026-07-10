@@ -18,13 +18,13 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Tag01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, KeyboardEvent, MouseEvent, ReactElement, useMemo } from 'react';
+import { FC, KeyboardEvent, MouseEvent, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { renderIcon } from '../../../../utils/IconUtils';
 
 export interface TagChipProps {
   label: string;
-  icon?: ReactElement;
+  icon?: string; // icon name (ICON_MAP) or image URL
   onDelete?: (e: Event) => void;
   size?: 'small' | 'medium' | 'large';
   variant?: 'filled' | 'outlined' | 'blueGray';
