@@ -5,8 +5,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
-import lombok.extern.slf4j.Slf4j;
 import java.util.function.Supplier;
+import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 
@@ -61,16 +61,7 @@ public abstract class EmbeddingClient {
     return permanent ? PERMANENT_COOLDOWN_MILLIS : TRANSIENT_COOLDOWN_MILLIS;
   }
 
-  public final float[] embed(String text) {
-    guardCircuit();
-    acquirePermit();
-    try {
-      float[] embedding = doEmbed(text);
-      recordSuccess();
-      return embedding;
-    } catch (RuntimeException failure) {
-      recordFailure(failure);
-      throw failure;
+  /**
    * Embed text that will be used as a search query. Defaults to treating a query like a document;
    * clients whose backend distinguishes query and document embeddings (e.g. Cohere on Bedrock)
    * override this.
@@ -88,15 +79,15 @@ public abstract class EmbeddingClient {
   }
 
   private float[] embedWithLimit(Supplier<float[]> embedder) {
+    guardCircuit();
+    acquirePermit();
     try {
-      concurrencyLimiter.acquire();
-    } catch (InterruptedException e) {
-      Thread.currentThread().interrupt();
-      throw new RuntimeException(
-          "Embedding generation was interrupted while waiting for permit", e);
-    }
-    try {
-      return embedder.get();
+      float[] embedding = embedder.get();
+      recordSuccess();
+      return embedding;
+    } catch (RuntimeException failure) {
+      recordFailure(failure);
+      throw failure;
     } finally {
       concurrencyLimiter.release();
     }
