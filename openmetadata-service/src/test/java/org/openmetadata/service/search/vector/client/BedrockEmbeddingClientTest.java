@@ -111,24 +111,18 @@ class BedrockEmbeddingClientTest {
   }
 
   @Test
-  void truncatesPreciselyFromReportedTokenCounts() {
-    String input = "x".repeat(18338);
-    String message =
-        "Too many input tokens. Max input tokens: 8192, request input token count: 18338";
+  void halvesOversizedInputForRetry() {
+    String input = "x".repeat(16384);
 
-    String truncated = BedrockEmbeddingClient.truncateForTokenLimit(input, message);
+    String shorter = BedrockEmbeddingClient.halveInput(input);
 
-    assertEquals(7372, truncated.length());
+    assertEquals(8192, shorter.length());
   }
 
   @Test
-  void truncationHalvesWhenTokenCountsAbsent() {
-    String input = "y".repeat(1000);
-
-    String truncated =
-        BedrockEmbeddingClient.truncateForTokenLimit(input, "some other validation error");
-
-    assertEquals(500, truncated.length());
+  void halveInputAlwaysShrinksAndNeverEmpties() {
+    assertEquals(1, BedrockEmbeddingClient.halveInput("ab").length());
+    assertEquals(1, BedrockEmbeddingClient.halveInput("a").length());
   }
 
   @Test
