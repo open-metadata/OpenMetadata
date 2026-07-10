@@ -15,10 +15,10 @@ Source connection handler
 
 from __future__ import annotations
 
+from dataclasses import replace
 from typing import TYPE_CHECKING
 from urllib.parse import quote_plus
 
-from botocore.exceptions import ClientError
 from sqlalchemy.engine import Engine
 from sqlalchemy.inspection import inspect
 
@@ -29,13 +29,17 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
+from metadata.core.connections.test_connection.aws import (
+    AWS_AUTHENTICATION_CODES,
+    AWS_ERRORS,
+    aws_error_code,
+)
 from metadata.core.connections.test_connection.checks.database import (
     DatabaseStep,
     list_schemas,
     run_sql,
 )
 from metadata.core.connections.test_connection.classifier import exception_chain
-from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
@@ -58,31 +62,17 @@ if TYPE_CHECKING:
 # databases cannot exhaust the test-connection timeout.
 MAX_SCHEMAS_TO_PROBE = 100
 
+DEFAULT_CATALOG = "AwsDataCatalog"
+
+# pyathena reflects through the Athena metadata API rather than SQL, so the shared
+# statement capture records nothing; the reported command is the API operation.
+LIST_DATABASES = "athena:ListDatabases"
+LIST_TABLE_METADATA = "athena:ListTableMetadata"
+
 
 def _message(error: BaseException) -> str:
     """The lower-cased text of the error and its cause chain."""
     return " ".join(str(current) for current in exception_chain(error)).lower()
-
-
-def _aws_error_code(error: BaseException) -> str | None:
-    """The botocore ``ClientError`` code anywhere in the cause chain.
-
-    pyathena wraps a botocore ``ClientError`` raised by the underlying AWS call;
-    SQLAlchemy then wraps that, so the actionable code (``AccessDeniedException``
-    and friends) only survives by walking the chain."""
-    code = None
-    for current in exception_chain(error):
-        if isinstance(current, ClientError):
-            code = current.response.get("Error", {}).get("Code")
-            break
-    return code
-
-
-def _aws_code(*codes: str) -> Matcher:
-    """Match a botocore ``ClientError`` code - the stable signal for an AWS-side
-    rejection, where the rendered message text varies."""
-    wanted = frozenset(codes)
-    return lambda error: _aws_error_code(error) in wanted
 
 
 def _all_of(*tokens: str) -> Matcher:
@@ -90,38 +80,23 @@ def _all_of(*tokens: str) -> Matcher:
     return lambda error: all(token in _message(error) for token in tokens)
 
 
+_AUTHORIZATION_CODES = frozenset({"AccessDeniedException", "AccessDenied"})
+
+
 def _authorization_error(error: BaseException) -> bool:
     """An IAM authorization failure - valid credentials, missing permission.
 
-    Athena/Glue raise ``AccessDeniedException`` and STS (assume-role) raises the
-    suffix-less ``AccessDenied``; both are authorization codes distinct from the
-    authentication ones, and AWS usually renders them "... is not authorized to
-    perform: ...". Match either the codes or the message so a missing-privilege
-    error is never read as a credential problem, whatever the wording."""
-    return _aws_error_code(error) in {"AccessDeniedException", "AccessDenied"} or "not authorized" in _message(error)
+    Athena/Glue raise ``AccessDeniedException``, STS raises ``AccessDenied``, and
+    AWS renders both as "... is not authorized to perform: ...". The message
+    fallback stands down for an authentication code, which AWS_ERRORS owns."""
+    code = aws_error_code(error)
+    return code in _AUTHORIZATION_CODES or (
+        code not in AWS_AUTHENTICATION_CODES and "not authorized" in _message(error)
+    )
 
 
-# Athena's transport is HTTPS to the regional AWS endpoint over botocore, so auth
-# and permission failures surface as botocore ``ClientError``s matched by
-# code/message, not driver errnos. The credential codes cover both the STS
-# assume-role handshake (which the checks run inside CheckAccess) and the Athena
-# query itself. NETWORK_ERRORS is folded in so a genuine DNS/socket failure to the
-# endpoint is typed rather than left raw.
+# Only what is specific to Athena; the rest comes from AWS_ERRORS.
 ATHENA_ERRORS = ErrorPack(
-    when(
-        _aws_code(
-            "UnrecognizedClientException",
-            "InvalidClientTokenId",
-            "InvalidSignatureException",
-            "SignatureDoesNotMatch",
-            "AuthFailure",
-            "ExpiredToken",
-            "ExpiredTokenException",
-        )
-    ).diagnose(
-        "Authentication failed",
-        fix="Check the AWS credentials (access key, secret, session token, or assume-role ARN).",
-    ),
     when(_authorization_error).diagnose(
         "Not authorized",
         fix="Grant the IAM principal the required Athena and Glue permissions "
@@ -136,17 +111,25 @@ ATHENA_ERRORS = ErrorPack(
         fix="Set s3StagingDir to an S3 path the principal can write to, or configure a query "
         "result location on the workgroup.",
     ),
+    # Athena raises this before the query runs, when it cannot even reach the bucket.
+    when(Matchers.contains("unable to verify/create output bucket")).diagnose(
+        "Query result bucket not usable",
+        fix="Athena cannot reach the bucket in s3StagingDir. Check that it exists in awsRegion "
+        "and that the identity has s3:ListBucket and s3:GetBucketLocation on it.",
+    ),
     when(Matchers.contains("writing to location")).diagnose(
         "Cannot write query results",
         fix="Athena could not write results to the staging location. Grant s3:PutObject on "
         "s3StagingDir, and if the bucket requires encryption, use a workgroup that sets "
         "server-side encryption on query results.",
     ),
+    # By message, not by type: pyathena renders EndpointConnectionError into the
+    # SQLAlchemy error it raises, so the original type does not survive the chain.
     when(Matchers.contains("could not connect to the endpoint")).diagnose(
         "Cannot reach the AWS Athena endpoint",
         fix="Check that awsRegion is correct and that the Athena endpoint is reachable from where ingestion runs.",
     ),
-).including(NETWORK_ERRORS)
+).including(AWS_ERRORS)
 
 
 class AthenaChecks:
@@ -181,6 +164,10 @@ class AthenaChecks:
     def _catalog_label(self) -> str:
         return f"catalog '{self.catalog_id}'" if self.catalog_id else "the default catalog (AwsDataCatalog)"
 
+    @property
+    def _catalog_name(self) -> str:
+        return self.catalog_id or DEFAULT_CATALOG
+
     def _targeted_schemas(self) -> list[str]:
         """The schemas the configured schemaFilterPattern would target, mirroring
         what the ingestion run will read.
@@ -211,7 +198,8 @@ class AthenaChecks:
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        command = f"{LIST_DATABASES} (CatalogName={self._catalog_name})"
+        return replace(list_schemas(self.client), command=command)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
@@ -225,6 +213,7 @@ class AthenaChecks:
         if not targeted:
             return Evidence(
                 summary=f"no schemas visible in {self._catalog_label}",
+                command=f"{LIST_DATABASES} (CatalogName={self._catalog_name})",
                 caveat=Diagnosis(
                     title="No schemas visible",
                     remediation=f"No databases were listable in {self._catalog_label}. Check the login's "
@@ -233,11 +222,16 @@ class AthenaChecks:
                 ),
             )
         inspector = inspect(self.client)
+        command = f"{LIST_TABLE_METADATA} (CatalogName={self._catalog_name})"
         readable = any(inspector.get_table_names(schema) for schema in targeted)
-        result = Evidence(summary=f"tables readable across {len(targeted)} targeted schema(s) of {self._catalog_label}")
+        result = Evidence(
+            summary=f"tables readable across {len(targeted)} targeted schema(s) of {self._catalog_label}",
+            command=command,
+        )
         if not readable:
             result = Evidence(
                 summary=f"no readable tables across {len(targeted)} targeted schema(s) of {self._catalog_label}",
+                command=command,
                 caveat=Diagnosis(
                     title="No readable tables",
                     remediation="No tables were readable in any targeted schema. AWS Lake Formation returns "
@@ -256,7 +250,10 @@ class AthenaChecks:
         inspector = inspect(self.client)
         visible = any(inspector.get_view_names(schema) for schema in targeted)
         summary = "views visible" if visible else "no views visible (not required)"
-        return Evidence(summary=f"{summary} across {len(targeted)} targeted schema(s)")
+        return Evidence(
+            summary=f"{summary} across {len(targeted)} targeted schema(s)",
+            command=f"{LIST_TABLE_METADATA} (CatalogName={self._catalog_name})",
+        )
 
 
 class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):

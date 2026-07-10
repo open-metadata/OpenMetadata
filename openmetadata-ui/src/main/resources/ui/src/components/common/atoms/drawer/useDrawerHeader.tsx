@@ -29,7 +29,11 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
       <SlideoutMenu.Header onClose={showCloseButton ? onClose : undefined}>
         <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">
           {typeof title === 'string' ? (
-            <Typography as="h4" data-testid="form-heading">
+            <Typography
+              as="h4"
+              data-testid="form-heading"
+              size="text-md"
+              weight="medium">
               {title}
             </Typography>
           ) : (
