@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 import { render } from '@testing-library/react';
-import { getTermQuery } from './SearchUtils';
-import {
-  getDeleteIcon,
-  getTagAssetsQueryFilter,
-  getUsageCountLink,
-} from './TagsUtils';
+import { getTermQuery } from './SearchPureUtils';
+import { getTagAssetsQueryFilter, getUsageCountLink } from './TagsPureUtils';
+import { getDeleteIcon } from './TagsUtils';
 
 describe('getDeleteIcon', () => {
   it('renders CheckOutlined icon when deleteTagId matches id and status is "success"', () => {

@@ -20,7 +20,7 @@ import {
 import { MemoryRouter } from 'react-router-dom';
 import FeedCardFooter from './FeedCardFooter';
 
-jest.mock('../../../../utils/FeedUtils', () => ({
+jest.mock('../../../../utils/FeedUtilsPure', () => ({
   getReplyText: jest.fn(),
 }));
 

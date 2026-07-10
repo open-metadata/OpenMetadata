@@ -20,9 +20,9 @@ import { useLocation, useNavigate } from 'react-router-dom';
 import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import CreateUserComponent from '../../components/Settings/Users/CreateUser/CreateUser.component';
+import { CreateUserFormData } from '../../components/Settings/Users/CreateUser/CreateUser.interface';
 import { GlobalSettingOptions } from '../../constants/GlobalSettings.constants';
 import { useLimitStore } from '../../context/LimitsProvider/useLimitsStore';
-import { CreateUser } from '../../generated/api/teams/createUser';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { createBot, getBotByName } from '../../rest/botsAPI';
 import { createUser, createUserWithPut } from '../../rest/userAPI';
@@ -33,8 +33,7 @@ import {
 } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
-import { getUserCreationErrorMessage } from '../../utils/Users.util';
-
+import { getUserCreationErrorMessage } from '../../utils/UsersPureUtils';
 const CreateUserPage = () => {
   const {
     state,
@@ -76,23 +75,24 @@ const CreateUserPage = () => {
    * Submit handler for new user form.
    * @param userData Data for creating new user
    */
-  const handleAddUserSave = async (userData: CreateUser) => {
+  const handleAddUserSave = async (userData: CreateUserFormData) => {
     setIsLoading(true);
+    const { allowImpersonation, ...userPayload } = userData;
     if (bot) {
-      const isBotExists = await checkBotInUse(userData.name);
+      const isBotExists = await checkBotInUse(userPayload.name);
       if (isBotExists) {
         showErrorToast(
           t('server.email-already-exist', {
             entity: t('label.bot-lowercase'),
-            name: userData.name,
+            name: userPayload.name,
           })
         );
       } else {
         try {
           // Create a user with isBot:true
           const userResponse = await createUserWithPut({
-            ...userData,
-            botName: userData.name,
+            ...userPayload,
+            botName: userPayload.name,
           });
 
           // Create a bot entity with botUser data
@@ -101,6 +101,7 @@ const CreateUserPage = () => {
             name: userResponse.name,
             displayName: userResponse.displayName,
             description: userResponse.description,
+            allowImpersonation,
           });
 
           // Update current count when Create / Delete operation performed
@@ -125,7 +126,7 @@ const CreateUserPage = () => {
       }
     } else {
       try {
-        await createUser(userData);
+        await createUser(userPayload);
         // Update current count when Create / Delete operation performed
         await getResourceLimit('user', true, true);
         goToUserListPage();

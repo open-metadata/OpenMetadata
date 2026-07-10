@@ -7,6 +7,7 @@ import com.fasterxml.jackson.annotation.JsonIgnore;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.MetadataOperation;
@@ -24,6 +25,13 @@ import org.springframework.expression.spel.support.SimpleEvaluationContext;
 @Slf4j
 public class CompiledRule extends Rule {
   private static final SpelExpressionParser EXPRESSION_PARSER = new SpelExpressionParser();
+
+  // Sensitive operations that must be granted by name - never matched by the ALL/EditAll/ViewAll
+  // subsumption. Impersonation lets a bot act as any user, so a broad god-mode policy must not
+  // grant it implicitly; enablement stays the admin-only allowImpersonation flag.
+  private static final Set<MetadataOperation> EXPLICIT_GRANT_ONLY_OPERATIONS =
+      Set.of(MetadataOperation.IMPERSONATE);
+
   @JsonIgnore private Expression expression;
 
   public CompiledRule(Rule rule) {
@@ -213,22 +221,31 @@ public class CompiledRule extends Rule {
   }
 
   private boolean matchOperation(MetadataOperation operation) {
+    boolean matched;
+    if (EXPLICIT_GRANT_ONLY_OPERATIONS.contains(operation)) {
+      matched = getOperations().contains(operation);
+    } else {
+      matched = matchesBySubsumption(operation) || getOperations().contains(operation);
+    }
+    return matched;
+  }
+
+  private boolean matchesBySubsumption(MetadataOperation operation) {
     List<MetadataOperation> operations = getOperations();
+    boolean matched = false;
     if (operations.contains(MetadataOperation.ALL)) {
       LOG.debug("matched all operations");
-      return true; // Match all operations
-    }
-    if (operations.contains(MetadataOperation.EDIT_ALL)
+      matched = true;
+    } else if (operations.contains(MetadataOperation.EDIT_ALL)
         && OperationContext.isEditOperation(operation)) {
       LOG.debug("matched editAll operations");
-      return true;
-    }
-    if (operations.contains(MetadataOperation.VIEW_ALL)
+      matched = true;
+    } else if (operations.contains(MetadataOperation.VIEW_ALL)
         && OperationContext.isViewOperation(operation)) {
       LOG.debug("matched viewAll operations");
-      return true;
+      matched = true;
     }
-    return getOperations().contains(operation);
+    return matched;
   }
 
   private boolean matchExpression(

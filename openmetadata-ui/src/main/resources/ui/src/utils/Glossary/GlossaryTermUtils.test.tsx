@@ -58,8 +58,8 @@ jest.mock(
   () => ({ __esModule: true, default: () => null })
 );
 
-jest.mock('../EntityUtils', () => ({
-  ...jest.requireActual('../EntityUtils'),
+jest.mock('../EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../EntityDisplayPureUtils'),
   getCountBadge: jest.fn().mockReturnValue(null),
 }));
 

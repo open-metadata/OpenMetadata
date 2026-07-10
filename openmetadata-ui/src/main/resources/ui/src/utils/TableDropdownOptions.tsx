@@ -21,7 +21,7 @@ import type { OperationPermission } from '../context/PermissionProvider/Permissi
 import { EntityType } from '../enums/entity.enum';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
-import { getEntityImportPath } from './EntityUtils';
+import { getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
 export const ExtraTableDropdownOptions = (

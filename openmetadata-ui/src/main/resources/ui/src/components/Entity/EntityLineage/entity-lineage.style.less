@@ -15,7 +15,6 @@
 
 @lineage-breadcrumb-panel: 50px;
 @lineage-toolbar-height: 12px;
-@lineage-card-header-height: 74px; // Card header in Flow Chart
 
 .custom-react-flow {
   .react-flow__node-input.selectable.selected {
@@ -92,7 +91,7 @@
 }
 
 .custom-node-column-lineage {
-  background: @background-primary;
+  background: var(--tw-color-utility-gray-blue-50);
   border: 10px solid;
   border-radius: 4px;
 
@@ -116,7 +115,7 @@
     }
 
     .custom-lineage-heading {
-      color: @white;
+      color: var(--tw-color-text-white);
     }
   }
 }
@@ -150,6 +149,21 @@
     .ant-input-affix-wrapper-focused {
       box-shadow: none;
     }
+  }
+
+  // 20px bottom spacing
+  height: calc(@asset-details-tab-pane-height - 20px);
+
+  .lineage-container {
+    height: calc(100% - 69px);
+    overflow-y: auto;
+  }
+
+  // lineage and it's children's always should be ltr
+  direction: ltr;
+
+  * {
+    direction: ltr;
   }
 }
 
@@ -193,7 +207,7 @@
 .custom-control-edit-button {
   display: block !important;
   border: 1px solid @border-color;
-  background-color: @background-primary;
+  background-color: var(--tw-color-utility-gray-blue-50);
 
   &.active {
     background-color: @primary-color;
@@ -218,7 +232,7 @@
   min-width: 230px;
   width: max-content;
   z-index: 20;
-  background-color: @white;
+  background-color: var(--tw-color-bg-primary);
   color: @text-color;
 }
 
@@ -228,7 +242,7 @@
 
 .entity-lineage.sidebar {
   height: calc(100% - @om-navbar-height);
-  background: @white;
+  background: var(--tw-color-bg-primary);
   position: absolute;
   top: 0;
   left: 0;
@@ -271,27 +285,6 @@
   }
 }
 
-// lineage
-.lineage-card {
-  .ant-card-body {
-    height: calc(
-      @asset-details-tab-pane-height - @lineage-card-header-height
-    ); // 280 for  DataAsset header
-  }
-
-  // lineage and it's children's always should be ltr
-  direction: ltr;
-
-  * {
-    direction: ltr;
-  }
-}
-.lineage-card-table {
-  .ant-card-body {
-    height: auto;
-  }
-}
-
 .full-screen-lineage {
   position: fixed;
   top: @om-navbar-height;
@@ -309,21 +302,14 @@
   }
 
   .lineage-card {
-    .ant-card-body {
-      // Navbar - breadcrumb
-      height: calc(100vh - @om-navbar-height - 140px);
-      // 120px for card header and breadcrumb + bottom padding 20px
-      overflow-y: auto;
-    }
+    // Navbar - breadcrumb - bottom spacing
+    height: calc(100vh - @om-navbar-height - 36px - 20px);
+    overflow-y: auto;
   }
 
   .entity-panel-container {
     top: calc(@lineage-breadcrumb-panel + @lineage-toolbar-height);
     margin-top: 0;
-  }
-
-  .lineage-container {
-    height: 100%;
   }
 }
 
@@ -344,7 +330,7 @@
 }
 
 .custom-edge-pipeline-button {
-  background-color: @background-primary;
+  background-color: var(--tw-color-utility-gray-blue-50);
   color: @primary-color;
 
   &.green {

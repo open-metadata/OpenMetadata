@@ -16,7 +16,7 @@ import { ProviderType } from '../generated/entity/bot';
 import type { Classification } from '../generated/entity/classification/classification';
 import type { Tag } from '../generated/entity/classification/tag';
 import type { ChangeDescription } from '../generated/entity/type';
-import { getEntityVersionByField } from './EntityVersionUtils';
+import { getEntityVersionByField } from './EntityVersionUtilsPure';
 import { t } from './i18next/LocalUtil';
 
 export const getDeleteButtonData = (

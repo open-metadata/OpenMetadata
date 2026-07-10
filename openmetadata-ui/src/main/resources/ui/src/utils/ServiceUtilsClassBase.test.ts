@@ -12,14 +12,13 @@
  */
 import { ExplorePageTabs } from '../enums/Explore.enum';
 import { ServiceCategory } from '../enums/service.enum';
+import { ServiceType } from '../generated/entity/services/serviceType';
 import { ServicesType } from '../interface/service.interface';
+import { getTestConnectionName } from './ServicePureUtils';
 import serviceUtilClassBase, {
   ServiceUtilClassBase,
 } from './ServiceUtilClassBase';
 
-jest.mock('./EntityUtils', () => ({
-  getEntityName: jest.fn(),
-}));
 jest.mock('./ServiceIconUtils', () => ({
   getServiceLogo: jest.fn(),
 }));
@@ -70,7 +69,7 @@ jest.mock('./SearchServiceUtils', () => ({
 jest.mock('./SecurityServiceUtils', () => ({
   getSecurityConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));
-jest.mock('./ServiceUtils', () => ({ getTestConnectionName: jest.fn() }));
+jest.mock('./ServicePureUtils', () => ({ getTestConnectionName: jest.fn() }));
 jest.mock('./StorageServiceUtils', () => ({
   getStorageConfig: jest.fn().mockResolvedValue({ schema: {}, uiSchema: {} }),
 }));
@@ -118,6 +117,88 @@ describe('ServiceUtilClassBase', () => {
 
     expect(result).toEqual(ExplorePageTabs.TABLES);
   });
+
+  it.each([
+    {
+      connectionType: 'Snowflake',
+      serviceType: ServiceType.Database,
+      serviceName: 'snowflake_prod',
+      configData: {
+        type: 'Snowflake',
+        account: 'org-account',
+        username: 'openmetadata',
+        password: 'secret',
+      },
+    },
+    {
+      connectionType: 'Snowflake',
+      serviceType: ServiceType.Database,
+      serviceName: 'snowflake_keypair',
+      configData: {
+        type: 'Snowflake',
+        account: 'org-account',
+        username: 'openmetadata',
+        privateKey: 'pem',
+        snowflakePrivatekeyPassphrase: 'phrase',
+      },
+    },
+    {
+      connectionType: 'Mysql',
+      serviceType: ServiceType.Database,
+      serviceName: 'mysql_iam',
+      configData: {
+        type: 'Mysql',
+        hostPort: 'localhost:3306',
+        authType: {
+          awsConfig: {
+            awsAccessKeyId: 'access-key',
+            awsSecretAccessKey: 'secret-key',
+            awsRegion: 'us-east-1',
+          },
+        },
+      },
+    },
+    {
+      connectionType: 'Kinesis',
+      serviceType: ServiceType.Messaging,
+      serviceName: 'kinesis_prod',
+      configData: {
+        type: 'Kinesis',
+        awsConfig: {
+          awsAccessKeyId: 'access-key',
+          awsSecretAccessKey: 'secret-key',
+          awsRegion: 'us-east-1',
+        },
+      },
+    },
+  ])(
+    'builds backend test connection workflow payload for $connectionType $serviceName',
+    ({ connectionType, serviceType, serviceName, configData }) => {
+      (getTestConnectionName as jest.Mock).mockReturnValueOnce(
+        `${serviceName}_test_connection`
+      );
+
+      expect(
+        serviceUtilClassBase.getAddWorkflowData(
+          connectionType,
+          serviceType,
+          serviceName,
+          configData
+        )
+      ).toEqual({
+        name: `${serviceName}_test_connection`,
+        workflowType: 'TEST_CONNECTION',
+        request: {
+          connection: {
+            config: configData,
+          },
+          serviceType,
+          connectionType,
+          serviceName,
+        },
+      });
+    }
+  );
 
   describe('getExtraIngestionMenuItems', () => {
     it('returns empty array when called with only serviceCategory', () => {

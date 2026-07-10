@@ -12,7 +12,7 @@
  */
 import { LoadingState } from 'Models';
 import { Dispatch, DragEvent, ReactNode, SetStateAction } from 'react';
-import {
+import type {
   Connection,
   Edge,
   EdgeChange,
@@ -24,7 +24,10 @@ import {
 import { CSVExportResponse } from '../../components/Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { LineageConfig } from '../../components/Entity/EntityLineage/EntityLineage.interface';
 import { ExploreQuickFilterField } from '../../components/Explore/ExplorePage.interface';
-import { EntityLineageResponse } from '../../components/Lineage/Lineage.interface';
+import {
+  EntityLineageResponse,
+  LineageNodeType,
+} from '../../components/Lineage/Lineage.interface';
 import { SourceType } from '../../components/SearchedData/SearchedData.interface';
 import { ExportTypes } from '../../constants/Export.constants';
 import { EntityType } from '../../enums/entity.enum';
@@ -70,7 +73,7 @@ export interface LineageContextType {
   onNodesChange: (changes: NodeChange[]) => void;
   onEdgesChange: (changes: EdgeChange[]) => void;
   loadChildNodesHandler: (
-    node: SourceType,
+    node: LineageNodeType,
     direction: LineageDirection,
     depth: number
   ) => Promise<void>;

@@ -393,6 +393,13 @@ public interface EntityTimeSeriesDAO {
     return getById(getTimeSeriesTableName(), id.toString());
   }
 
+  @SqlQuery("SELECT EXISTS (SELECT 1 FROM <table> WHERE id = :id)")
+  boolean exists(@Define("table") String table, @Bind("id") String id);
+
+  default boolean existsById(UUID id) {
+    return exists(getTimeSeriesTableName(), id.toString());
+  }
+
   @SqlUpdate(value = "DELETE from <table> WHERE id = :id")
   void deleteById(@Define("table") String table, @Bind("id") String id);
 

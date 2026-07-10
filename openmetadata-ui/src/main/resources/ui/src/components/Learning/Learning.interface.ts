@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 
+import type { BadgeColors } from '@openmetadata/ui-core-components';
+
 export type ResourceCategory =
   | 'Discovery'
   | 'Administration'
@@ -18,6 +20,15 @@ export type ResourceCategory =
   | 'DataQuality'
   | 'Observability'
   | 'AI';
+
+export const CATEGORY_BADGE_COLORS: Record<ResourceCategory, BadgeColors> = {
+  Discovery: 'blue',
+  Administration: 'blue-light',
+  DataGovernance: 'indigo',
+  DataQuality: 'orange',
+  Observability: 'orange',
+  AI: 'purple',
+};
 
 export type ResourceType = 'Storylane' | 'Video' | 'Article';
 

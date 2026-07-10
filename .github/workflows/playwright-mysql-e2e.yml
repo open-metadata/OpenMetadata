@@ -43,6 +43,9 @@ jobs:
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     environment: test
+    permissions:
+      contents: read
+      id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
       # workers, retries). The production default of 5 active sessions per user would evict the

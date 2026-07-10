@@ -47,7 +47,7 @@ public final class ExternalServer {
     final int searchPort = parseInt(optional("OM_SEARCH_PORT", null), DEFAULT_SEARCH_PORT);
     final String searchScheme = optional("OM_SEARCH_SCHEME", "http");
 
-    return new ServerHandle(uri, client, searchHost, searchPort, searchScheme);
+    return new ServerHandle(uri, client, searchHost, searchPort, searchScheme, true);
   }
 
   public static boolean isEnabled() {

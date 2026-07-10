@@ -18,7 +18,7 @@ import {
 import {
   getMetricExpressionLanguageName,
   getSortedOptions,
-} from './MetricUtils';
+} from './MetricPureUtils';
 
 describe('getSortedOptions', () => {
   it('should sort options by granularity order if valueKey is granularity', () => {

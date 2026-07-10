@@ -272,8 +272,10 @@ public class LineageUtil {
       EntityReference fromEntity, EntityReference toEntity, LineageDetails lineageDetails) {
     IndexMapping destinationIndexMapping =
         Entity.getSearchRepository().getIndexMapping(toEntity.getType());
+    // Route to the staged rebuild index when a reindex is in flight so lineage edges written
+    // mid-reindex survive the final alias swap instead of being dropped with the old index.
     String destinationIndexName =
-        destinationIndexMapping.getIndexName(Entity.getSearchRepository().getClusterAlias());
+        Entity.getSearchRepository().getWriteIndexName(destinationIndexMapping);
     // For lineage from -> to (not stored) since the doc itself is the toEntity
     EsLineageData lineageData =
         buildEntityLineageData(fromEntity, toEntity, lineageDetails).withToEntity(null);

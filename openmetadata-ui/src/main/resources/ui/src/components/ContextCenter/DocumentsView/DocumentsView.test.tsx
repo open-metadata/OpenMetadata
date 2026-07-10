@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 import DocumentsView from './DocumentsView.component';
-import { DocFile } from './DocumentsView.interface';
 
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
@@ -164,12 +164,12 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   )),
 }));
 
-const mockFiles: DocFile[] = [
+const mockFiles: ContextFile[] = [
   {
     id: 'file-1',
     name: 'report.pdf',
     fileExtension: 'pdf',
-    sizeLabel: '2 MB',
+    fileSize: 2097152,
     updatedBy: 'alice',
     updatedAt: 1778756959299,
   },
@@ -177,7 +177,7 @@ const mockFiles: DocFile[] = [
     id: 'file-2',
     name: 'data.csv',
     fileExtension: 'csv',
-    sizeLabel: '500 KB',
+    fileSize: 512000,
   },
 ];
 
@@ -199,9 +199,9 @@ describe('DocumentsView', () => {
     render(<DocumentsView data={mockFiles} isLoading={false} />);
 
     expect(screen.getByText('report.pdf')).toBeInTheDocument();
-    expect(screen.getByText('2 MB')).toBeInTheDocument();
+    expect(screen.getByText('2.0 MB')).toBeInTheDocument();
     expect(screen.getByText('data.csv')).toBeInTheDocument();
-    expect(screen.getByText('500 KB')).toBeInTheDocument();
+    expect(screen.getByText('500.0 KB')).toBeInTheDocument();
   });
 
   it('renders uploadedBy and uploadedAt when provided', () => {

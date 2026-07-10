@@ -197,6 +197,14 @@ jest.mock('./LineageSkeleton.component', () => ({
   )),
 }));
 
+jest.mock('../../hooks/useLineageEdgeColors', () => ({
+  useLineageEdgeColors: () => ({
+    primary: '#1570ef',
+    columnHighlight: '#444ce7',
+    dqHighlight: '#d92d20',
+  }),
+}));
+
 jest.mock('reactflow', () => ({
   __esModule: true,
   default: jest.fn(
@@ -263,6 +271,9 @@ jest.mock('reactflow', () => ({
 jest.mock('../../utils/EntityLineageUtils', () => ({
   customEdges: {},
   nodeTypes: {},
+}));
+
+jest.mock('../../utils/EntityLineagePureUtils', () => ({
   dragHandle: jest.fn(),
   onNodeContextMenu: jest.fn(),
   onNodeMouseEnter: jest.fn(),

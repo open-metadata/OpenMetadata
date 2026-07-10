@@ -88,6 +88,11 @@ public class DatabaseRepository extends EntityRepository<Database> {
         "",
         "");
     supportsSearch = true;
+    // A recursive hard-delete of the parent database service removes database/schema/table docs
+    // from search (deleteOrUpdateChildren by service.id) and field_relationship / tag_usage via the
+    // root cleanup() FQN prefix, so the bulk path skips the per-entity search dispatch and
+    // FQN-satellite deletes for this subtree.
+    descendantsCoveredByAncestorCascade = true;
 
     // Register bulk field fetchers for efficient database operations
     fieldFetchers.put("databaseSchemas", this::fetchAndSetDatabaseSchemas);

@@ -82,7 +82,7 @@ jest.mock('../../utils/RouterUtils', () => ({
   getTeamsWithFqnPath: jest.fn(),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest.fn(),
 }));
 

@@ -54,8 +54,11 @@ import {
   getWorkflowInstanceStateById,
 } from '../../rest/workflowAPI';
 import { getPrioritizedViewPermission } from '../../utils/PermissionsUtils';
+import {
+  getCountLabel,
+  shouldTestConnection,
+} from '../../utils/ServicePureUtils';
 import serviceUtilClassBase from '../../utils/ServiceUtilClassBase';
-import { getCountLabel, shouldTestConnection } from '../../utils/ServiceUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import ServiceDetailsPage from './ServiceDetailsPage';
@@ -375,6 +378,13 @@ jest.mock(
       ))
 );
 
+// The hook owns the SSE connection; mock it so jsdom never opens a stream.
+jest.mock('../../components/ServiceAgents/hooks/useMetadataAgents', () => ({
+  useMetadataAgents: jest
+    .fn()
+    .mockReturnValue({ agents: [], discoveredCount: 0 }),
+}));
+
 jest.mock(
   '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component',
   () =>
@@ -436,9 +446,15 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
     ))
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div data-testid="loader">Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 // Additional missing component mocks
 jest.mock(
@@ -479,7 +495,7 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () =>
 );
 
 // Mock utils
-jest.mock('../../utils/ServiceUtils', () => ({
+jest.mock('../../utils/ServicePureUtils', () => ({
   getCountLabel: jest.fn().mockReturnValue('Databases'),
   getEntityTypeFromServiceCategory: jest.fn().mockReturnValue('database'),
   getResourceEntityFromServiceCategory: jest
@@ -504,7 +520,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
   getManageExtraOptions: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('Entity not found'),
 }));
 

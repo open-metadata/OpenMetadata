@@ -53,7 +53,7 @@ jest.mock('../../../../constants/constants', () => ({
     DATA_INSIGHT_WITH_TAB: '/data-insights/:tab',
   },
 }));
-jest.mock('../../../../utils/EntityUtils', () => {
+jest.mock('../../../../utils/EntityNameUtils', () => {
   return {
     getEntityName: jest
       .fn()

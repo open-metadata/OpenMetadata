@@ -12,7 +12,13 @@
  */
 
 import { Typography } from 'antd';
+import { startCase } from 'lodash';
 import ErrorPlaceHolder from '../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import {
+  LogViewerModalProps,
+  LogViewerStatusTone,
+} from '../components/common/LogViewerModal/LogViewerModal.interface';
+import { AgentStatus } from '../components/ServiceAgents/AgentsPage.interface';
 import {
   DATA_INSIGHTS_PIPELINE_DOCS,
   ELASTIC_SEARCH_RE_INDEX_PIPELINE_DOCS,
@@ -25,31 +31,6 @@ import { FormSubmitType } from '../enums/form.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import i18n, { Transi18next } from './i18next/LocalUtil';
-import {
-  getBreadCrumbsArray,
-  getDefaultFilterPropertyFieldsFromSchema,
-  getDefaultFilterPropertyValues,
-  getDefaultIngestionSchedule,
-  getIngestionHeadingName,
-  getIngestionStatusCountData,
-  getIngestionTypes,
-  getSettingsPathFromPipelineType,
-  getSupportedPipelineTypes,
-  getTypeAndStatusMenuItems,
-} from './IngestionConfigUtils';
-
-export {
-  getBreadCrumbsArray,
-  getDefaultFilterPropertyFieldsFromSchema,
-  getDefaultFilterPropertyValues,
-  getDefaultIngestionSchedule,
-  getIngestionHeadingName,
-  getIngestionStatusCountData,
-  getIngestionTypes,
-  getSettingsPathFromPipelineType,
-  getSupportedPipelineTypes,
-  getTypeAndStatusMenuItems,
-};
 
 const { t } = i18n;
 
@@ -199,4 +180,27 @@ export const getSuccessMessage = (
       </Typography.Text>
     </Typography.Text>
   );
+};
+
+const agentStatusToneMap: Record<AgentStatus, LogViewerStatusTone> = {
+  running: 'muted',
+  failed: 'error',
+  success: 'success',
+  queued: 'muted',
+  none: 'muted',
+};
+
+export const getLogViewerStatusFromAgentStatus = (
+  agentStatus?: AgentStatus
+): LogViewerModalProps['status'] | undefined => {
+  if (!agentStatus) {
+    return;
+  }
+
+  const status: LogViewerModalProps['status'] = {
+    label: startCase(agentStatus),
+    tone: agentStatus ? agentStatusToneMap[agentStatus] : 'muted',
+  };
+
+  return status;
 };

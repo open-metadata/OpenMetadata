@@ -53,6 +53,7 @@ const Tour = ({ steps }: { steps: TourSteps[] }) => {
             showCloseButton
             showNumber
             accentColor={theme.primaryColor ?? ''}
+            closeWithMask={false}
             inViewThreshold={200}
             lastStepNextButton={
               <Button

@@ -23,7 +23,7 @@ import org.slf4j.LoggerFactory;
 public final class SearchClusterResetExtension implements BeforeEachCallback {
 
   private static final Logger LOG = LoggerFactory.getLogger(SearchClusterResetExtension.class);
-  private static final Duration REBUILD_TIMEOUT = Duration.ofMinutes(5);
+  private static final Duration REBUILD_TIMEOUT = ReindexHelpers.reindexTimeout();
 
   @Override
   public void beforeEach(final ExtensionContext context) {
@@ -45,6 +45,10 @@ public final class SearchClusterResetExtension implements BeforeEachCallback {
    * leave an alias pointing at a dropped/staged index (still "present" but unqueryable), and a
    * non-recreate reindex won't rebuild a missing index or re-promote a swapped alias. A full
    * recreate restores a clean, queryable baseline regardless of the prior test's end state.
+   *
+   * <p>{@link ReindexHelpers#recreateAllAndWait} throws if the baseline never succeeds, so a
+   * still-broken cluster fails the test fast with a clear cause rather than as a misleading
+   * per-test assertion failure.
    */
   private void rebuildBaseline(final ServerHandle server) {
     LOG.info("Recreating all search indices to restore a clean baseline before test");

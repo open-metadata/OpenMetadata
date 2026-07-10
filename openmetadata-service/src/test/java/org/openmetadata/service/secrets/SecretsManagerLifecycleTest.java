@@ -176,6 +176,13 @@ public class SecretsManagerLifecycleTest {
   }
 
   @Test
+  void isNotFoundExceptionIsSpecificToMissingKeys() {
+    assertFalse(
+        secretsManager.isNotFoundException(new SecretsManagerException("a real backend failure")),
+        "a generic SecretsManagerException must not be classified as a missing key");
+  }
+
+  @Test
   void test_buildSecretId() {
     // cluster prefix adds the initial /
     assertEquals(

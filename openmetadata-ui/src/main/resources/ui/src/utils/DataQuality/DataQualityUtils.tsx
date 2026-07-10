@@ -62,36 +62,3 @@ export const getPieChartLabel = (label: string, value = 0) => {
     </>
   );
 };
-
-// Re-exports from DataQualityPureUtils (backward compat)
-export {
-  aggregateTestResultsByEntity,
-  buildDataQualityDashboardFilters,
-  buildMustEsFilterForDataProducts,
-  buildMustEsFilterForOwner,
-  buildMustEsFilterForTags,
-  buildMustEsFilterForTier,
-  buildTestCaseParams,
-  calculateTestCaseStatusCounts,
-  COLUMN_AGGREGATE_FIELD,
-  convertSearchSourceToTable,
-  createTestCaseParameters,
-  createUpdatedTestCasePatch,
-  filterTestCasesByTableAndColumn,
-  getColumnFilterEntityLink,
-  getColumnFilterOptions,
-  getColumnNameFromColumnFilterKey,
-  getDimensionIcon,
-  getEntityLinkForColumnFilter,
-  getSelectedOptionsFromKeys,
-  getServiceTypeForTestDefinition,
-  getTestCaseFiltersValue,
-  getTestCaseTabPath,
-  parseColumnAggregateBuckets,
-  transformToTestCaseStatusByDimension,
-  transformToTestCaseStatusObject,
-} from './DataQualityPureUtils';
-export type {
-  CreateUpdatedTestCasePatchArgs,
-  TestCaseCountByStatus,
-} from './DataQualityPureUtils';

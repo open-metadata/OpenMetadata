@@ -11,28 +11,25 @@
  *  limitations under the License.
  */
 
-import { Tooltip as MuiTooltip } from '@mui/material';
+import { Tooltip } from '@openmetadata/ui-core-components';
 import { Button, Popover, Tag, Typography } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, sortBy, uniqBy } from 'lodash';
 import { EntityTags } from 'Models';
 import { FunctionComponent, useCallback, useMemo, useState } from 'react';
+import { Focusable } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { LIST_SIZE, NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { TAG_START_WITH } from '../../../constants/Tag.constants';
 import { TagSource } from '../../../generated/type/tagLabel';
-import {
-  getTagName,
-  getTagRedirectLink,
-  getTagTooltip,
-} from '../../../utils/TagsUtils';
+import { getTagName, getTagRedirectLink } from '../../../utils/TagsPureUtils';
+import { getTagTooltip } from '../../../utils/TagsUtils';
 import TagChip from '../../common/atoms/TagChip/TagChip';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import TagsV1 from '../TagsV1/TagsV1.component';
 import './tags-viewer.less';
 import { DisplayType, TagsViewerProps } from './TagsViewer.interface';
-
 const TagsViewer: FunctionComponent<TagsViewerProps> = ({
   tags,
   sizeCap = LIST_SIZE,
@@ -59,37 +56,33 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
         const redirectLink = getTagRedirectLink(tag);
 
         return (
-          <MuiTooltip
-            enterDelay={500}
+          <Tooltip
+            arrow
+            delay={500}
             key={tag.tagFQN}
-            placement="bottom-start"
-            slotProps={{
-              tooltip: {
-                sx: {
-                  bgcolor: 'common.black',
-                  color: 'common.white',
-                },
-              },
-            }}
+            placement="top"
             title={getTagTooltip(tag.tagFQN, tag.description) ?? ''}>
-            <Link
-              className={classNames(
-                'w-full',
-                { 'diff-added tw-mx-1': tag?.added },
-                { 'diff-removed': tag?.removed }
-              )}
-              data-testid="tag-redirect-link"
-              to={redirectLink}>
-              <TagChip
-                data-testid="tags"
-                label={tagName}
-                labelDataTestId={`tag-${tag.tagFQN}`}
-                size="large"
-                tagColor={tag.style?.color}
-                variant="blueGray"
-              />
-            </Link>
-          </MuiTooltip>
+            <Focusable>
+              <Link
+                className={classNames(
+                  'tw:w-max',
+                  { 'diff-added tw-mx-1': tag?.added },
+                  { 'diff-removed': tag?.removed }
+                )}
+                data-testid="tag-redirect-link"
+                to={redirectLink}>
+                <TagChip
+                  data-testid="tags"
+                  icon={tag.style?.iconURL}
+                  label={tagName}
+                  labelDataTestId={`tag-${tag.tagFQN}`}
+                  size="small"
+                  tagColor={tag.style?.color}
+                  variant="blueGray"
+                />
+              </Link>
+            </Focusable>
+          </Tooltip>
         );
       }
 

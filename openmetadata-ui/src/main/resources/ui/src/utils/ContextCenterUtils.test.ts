@@ -12,14 +12,15 @@
  */
 import { AxiosError } from 'axios';
 import { ROUTES } from '../constants/constants';
+import type { ContextFile } from '../generated/entity/data/contextFile';
 import { PageType } from '../interface/knowledge-center.interface';
 import { downloadDriveFile } from '../rest/assetAPI';
 import {
-  assetToDocumentItem,
+  downloadBlob,
   formatBytes,
   handleAssetDownload,
   knowledgePageToArticleItem,
-} from './ContextCenterUtils';
+} from './ContextCenterPureUtils';
 import { showErrorToast } from './ToastUtils';
 
 jest.mock('./ToastUtils', () => ({
@@ -53,30 +54,6 @@ describe('formatBytes', () => {
 
   it('should format MB correctly', () => {
     expect(formatBytes(5 * 1024 * 1024)).toBe('5.0 MB');
-  });
-});
-
-describe('assetToDocumentItem', () => {
-  it('should transform ContextFile into UploadedDocumentItem', () => {
-    const asset = {
-      id: '1',
-      name: 'sample.pdf',
-      displayName: 'sample.pdf',
-      fileExtension: 'pdf',
-      fileSize: 2048,
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    };
-
-    expect(assetToDocumentItem(asset as any)).toEqual({
-      fileExtension: 'pdf',
-      id: '1',
-      name: 'sample.pdf',
-      sizeLabel: '2.0 KB',
-      status: 'processed',
-      updatedAt: 1778756959299,
-      updatedBy: 'admin',
-    });
   });
 });
 
@@ -133,9 +110,45 @@ describe('handleAssetDownload', () => {
 
   beforeEach(() => {
     jest.clearAllMocks();
+    jest.useFakeTimers();
 
     global.URL.createObjectURL = jest.fn(() => 'blob:url');
     global.URL.revokeObjectURL = jest.fn();
+  });
+
+  afterEach(() => {
+    jest.runOnlyPendingTimers();
+    jest.useRealTimers();
+    jest.restoreAllMocks();
+  });
+
+  it('should create a download link for a blob', () => {
+    const clickMock = jest.fn();
+    const removeMock = jest.fn();
+    const anchorElement = {
+      click: clickMock,
+      remove: removeMock,
+    } as unknown as HTMLAnchorElement;
+
+    const appendChildSpy = jest
+      .spyOn(document.body, 'appendChild')
+      .mockImplementation(() => ({} as unknown as Node));
+
+    jest.spyOn(document, 'createElement').mockReturnValue(anchorElement);
+
+    downloadBlob(mockBlob, 'download-name.pdf');
+
+    expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
+    expect(anchorElement.href).toBe('blob:url');
+    expect(anchorElement.download).toBe('download-name.pdf');
+    expect(appendChildSpy).toHaveBeenCalledWith(anchorElement);
+    expect(clickMock).toHaveBeenCalled();
+    expect(removeMock).toHaveBeenCalled();
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+    jest.runOnlyPendingTimers();
+
+    expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:url');
   });
 
   it('should download asset successfully', async () => {
@@ -143,27 +156,34 @@ describe('handleAssetDownload', () => {
 
     const clickMock = jest.fn();
     const removeMock = jest.fn();
+    const anchorElement = {
+      click: clickMock,
+      remove: removeMock,
+    } as unknown as HTMLAnchorElement;
 
     const appendChildSpy = jest
       .spyOn(document.body, 'appendChild')
       .mockImplementation(() => ({} as unknown as Node));
 
-    jest.spyOn(document, 'createElement').mockReturnValue({
-      click: clickMock,
-      remove: removeMock,
-    } as unknown as HTMLAnchorElement);
+    jest.spyOn(document, 'createElement').mockReturnValue(anchorElement);
 
-    await handleAssetDownload(mockFile as any);
+    await handleAssetDownload(mockFile as unknown as ContextFile);
 
     expect(downloadDriveFile).toHaveBeenCalledWith('123');
 
     expect(URL.createObjectURL).toHaveBeenCalledWith(mockBlob);
 
-    expect(appendChildSpy).toHaveBeenCalled();
+    expect(anchorElement.download).toBe('sample.pdf');
+
+    expect(appendChildSpy).toHaveBeenCalledWith(anchorElement);
 
     expect(clickMock).toHaveBeenCalled();
 
     expect(removeMock).toHaveBeenCalled();
+
+    expect(URL.revokeObjectURL).not.toHaveBeenCalled();
+
+    jest.runOnlyPendingTimers();
 
     expect(URL.revokeObjectURL).toHaveBeenCalledWith('blob:url');
   });
@@ -173,7 +193,7 @@ describe('handleAssetDownload', () => {
 
     (downloadDriveFile as jest.Mock).mockRejectedValue(error);
 
-    await handleAssetDownload(mockFile as any);
+    await handleAssetDownload(mockFile as unknown as ContextFile);
 
     expect(showErrorToast).toHaveBeenCalledWith(error as AxiosError);
   });

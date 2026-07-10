@@ -154,7 +154,6 @@ export type DataAssetsHeaderProps = {
   extraDropdownContent?: ManageButtonProps['extraDropdownContent'];
   onMetricUpdate?: (updatedData: Metric, key?: keyof Metric) => Promise<void>;
   isCustomizedView?: boolean;
-  canCreateTask?: boolean;
   disableRunAgentsButton?: boolean;
   afterTriggerAction?: VoidFunction;
   isAutoPilotWorkflowStatusLoading?: boolean;

@@ -309,7 +309,7 @@ jest.mock('../../../rest/metadataTypeAPI', () => ({
   }),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     permissions: {
       EditTags: true,
@@ -364,7 +364,7 @@ jest.mock('../../../utils/DataQuality/DataQualityUtils', () => ({
     ),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.displayName || entity?.name || ''),
@@ -407,7 +407,7 @@ jest.mock('../../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn: string) => fqn),
 }));
 
-jest.mock('../../../utils/TableUtils', () => ({
+jest.mock('../../../utils/TablePureUtils', () => ({
   flattenColumns: jest.fn().mockImplementation((columns) => columns || []),
   generateEntityLink: jest.fn().mockImplementation((fqn) => fqn),
   getDataTypeDisplay: jest.fn().mockReturnValue('VARCHAR'),

@@ -25,7 +25,7 @@ import { PAGE_SIZE } from '../../constants/constants';
 import { TABLE_SCROLL_VALUE } from '../../constants/Table.constants';
 import { TagSource } from '../../generated/type/tagLabel';
 import { useFqn } from '../../hooks/useFqn';
-import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtils';
+import { getCommonDiffsFromVersionData } from '../../utils/EntityVersionUtilsPure';
 import { getServiceMainTabColumns } from '../../utils/ServiceMainTabContentUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import { ServicePageData } from '../ServiceDetailsPage/ServiceDetailsPage.interface';

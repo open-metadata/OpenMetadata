@@ -45,11 +45,12 @@ public final class DataQualityListPage extends PageObject {
     return this;
   }
 
-  /** Clear the search bar. */
+  /** Clear the search bar by emptying it (the refactored search Input has no Ant clear icon). */
   public DataQualityListPage clearSearch() {
     page.waitForResponse(
         r -> r.url().contains(API_LIST),
-        () -> page.locator(".ant-input-clear-icon").first().click());
+        () ->
+            page.locator("[data-testid='test-case-container'] [data-testid='searchbar']").fill(""));
     return this;
   }
 
@@ -186,9 +187,7 @@ public final class DataQualityListPage extends PageObject {
 
   /** Open the page-size dropdown and assert the standard 3 options render. */
   public DataQualityListPage assertPageSizeOptionsCount(final int expected) {
-    byTestId("page-size-selection-dropdown").click();
-    page.locator(".ant-dropdown-menu")
-        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
+    openMenu(byTestId("page-size-selection-dropdown"), page.locator(".ant-dropdown-menu"));
     PlaywrightAssertions.assertThat(page.locator(".ant-dropdown-menu-item")).hasCount(expected);
     return this;
   }

@@ -24,7 +24,7 @@ import {
 import { AxiosError } from 'axios';
 import { isEmpty, isUndefined, startCase } from 'lodash';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { lazy, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FilterIcon } from '../../../../assets/svg/ic-feeds-filter.svg';
 import { AlertRecentEventFilters } from '../../../../enums/Alerts.enum';
@@ -37,26 +37,32 @@ import {
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getAlertEventsFromId } from '../../../../rest/alertsAPI';
 import {
-  getAlertEventsFilterLabels,
   getAlertRecentEventsFilterOptions,
   getAlertStatusIcon,
+} from '../../../../utils/Alerts/AlertsUtil';
+import {
+  getAlertEventsFilterLabels,
   getChangeEventDataFromTypedEvent,
   getLabelsForEventDetails,
-} from '../../../../utils/Alerts/AlertsUtil';
+} from '../../../../utils/Alerts/AlertsUtilPure';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../../utils/SearchClassBase';
 import { showErrorToast } from '../../../../utils/ToastUtils';
+import { withSuspenseFallback } from '../../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPreviousWithOffset from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset';
 import { PagingHandlerParams } from '../../../common/NextPreviousWithOffset/NextPreviousWithOffset.interface';
-import SchemaEditor from '../../../Database/SchemaEditor/SchemaEditor';
 import './alert-recent-events-tab.less';
 import {
   AlertEventDetailsToDisplay,
   AlertRecentEventsTabProps,
 } from './AlertRecentEventsTab.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const { Panel } = Collapse;
 

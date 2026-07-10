@@ -21,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { v4 as uuidv4 } from 'uuid';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { uploadDriveFile } from '../../../rest/assetAPI';
@@ -58,7 +59,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleDropFiles = (dropped: FileList) => {
     const newEntries: QueuedFile[] = Array.from(dropped).map((file) => ({
       file,
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       progress: 100,
       status: 'done',
     }));
@@ -69,7 +70,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleSizeLimitExceed = (oversized: FileList) => {
     const newEntries: QueuedFile[] = Array.from(oversized).map((file) => ({
       file,
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       progress: 0,
       sizeExceeded: true,
       status: 'error',

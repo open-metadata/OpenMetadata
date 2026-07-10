@@ -19,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -32,19 +31,22 @@ import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
-import { getClassificationTags, getGlossaryTags } from '../../utils/TagsUtils';
+import {
+  getClassificationTags,
+  getGlossaryTags,
+} from '../../utils/TagsPureUtils';
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
 import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
-import { useBreadcrumbs } from '../common/atoms/navigation/useBreadcrumbs';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
@@ -55,6 +57,7 @@ import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import { ColumnDef } from '../common/EntityListingTable/EntityListingTable.interface';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import AddDomainForm, {
@@ -63,13 +66,16 @@ import AddDomainForm, {
 } from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
+import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
-const DataProductListPage = () => {
+const DataProductListPage = ({
+  renderPageHeader,
+}: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -107,15 +113,13 @@ const DataProductListPage = () => {
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const refreshDataProducts = useCallback(() => {
@@ -156,19 +160,27 @@ const DataProductListPage = () => {
       loading: isLoading,
     });
 
-  const { breadcrumbs } = useBreadcrumbs({
-    items: [
+  const breadcrumbItems = useMemo(
+    () => [
       ...(isMarketplace
         ? [
             {
-              name: t('label.data-marketplace'),
-              url: ROUTES.DATA_MARKETPLACE,
+              label: t('label.data-marketplace'),
+              href: ROUTES.DATA_MARKETPLACE,
             },
           ]
         : []),
-      { name: t('label.data-product-plural'), url: dataProductBasePath },
+      {
+        label: t('label.data-product-plural'),
+        href: dataProductBasePath,
+      },
     ],
-  });
+    [dataProductBasePath, isMarketplace, t]
+  );
+
+  const headerBreadcrumb = (
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} />
+  );
 
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
@@ -177,6 +189,8 @@ const DataProductListPage = () => {
     addButtonLabelKey: 'label.add-data-product',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
+    variant: isAiMode ? 'search' : undefined,
+    breadcrumb: headerBreadcrumb,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -385,8 +399,17 @@ const DataProductListPage = () => {
 
   return (
     <>
-      {breadcrumbs}
-      {pageHeader}
+      {!renderPageHeader && !isAiMode && (
+        <HeaderBreadcrumb items={breadcrumbItems} />
+      )}
+      {renderPageHeader
+        ? renderPageHeader({
+            onAddClick: openDrawer,
+            createPermission: permissions.dataProduct?.Create || false,
+            count: dataProductListing.totalEntities,
+            breadcrumb: headerBreadcrumb,
+          })
+        : pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box

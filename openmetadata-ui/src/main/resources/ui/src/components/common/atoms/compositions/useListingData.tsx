@@ -13,7 +13,7 @@
 
 import { useCallback, useEffect } from 'react';
 import { SearchIndex } from '../../../../enums/search.enum';
-import { getAggregations } from '../../../../utils/ExploreUtils';
+import { getAggregations } from '../../../../utils/ExplorePureUtils';
 import { ExploreQuickFilterField } from '../../../Explore/ExplorePage.interface';
 import { useDataFetching } from '../data/useDataFetching';
 import { useSelectionState } from '../data/useSelectionState';
@@ -21,7 +21,6 @@ import { useUrlState } from '../data/useUrlState';
 import { usePaginationState } from '../pagination/usePaginationState';
 import { CellRenderer, ColumnConfig, ListingData } from '../shared/types';
 import { useActionHandlers } from './useActionHandlers';
-
 interface UseListingDataProps<T> {
   searchIndex: SearchIndex;
   baseFilter?: string;

@@ -10,17 +10,21 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Button from '@mui/material/Button';
-import Chip from '@mui/material/Chip';
-import MenuItem from '@mui/material/MenuItem';
-import ToggleButton from '@mui/material/ToggleButton';
+import {
+  Badge,
+  Button,
+  ButtonGroup,
+  ButtonGroupItem,
+  Card,
+  Dropdown,
+} from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/es/table';
-import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
 import QueryString from 'qs';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useEffect, useMemo, useRef } from 'react';
+import type { Key, Selection } from 'react-aria-components';
 import { flushSync } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import { Link, useLocation, useNavigate } from 'react-router-dom';
@@ -55,20 +59,18 @@ import {
   getLineageByEntityCount,
   getLineageDataByFQN,
 } from '../../rest/lineageAPI';
-import {
-  getEntityLinkFromType,
-  getEntityName,
-  highlightSearchText,
-} from '../../utils/EntityUtils';
-import { getQuickFilterQuery } from '../../utils/ExploreUtils';
+import { getEntityLinkFromType } from '../../utils/EntityLinkUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../utils/EntitySearchUtils';
+import { getQuickFilterQuery } from '../../utils/ExplorePureUtils';
 import Fqn from '../../utils/Fqn';
 import { Transi18next } from '../../utils/i18next/LocalUtil';
 import {
   getSearchNameEsQuery,
-  LINEAGE_IMPACT_OPTIONS,
   prepareDownstreamColumnLevelNodesFromDownstreamEdges,
   prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from '../../utils/Lineage/LineageUtils';
+} from '../../utils/Lineage/LineagePureUtils';
+import { LINEAGE_IMPACT_OPTIONS } from '../../utils/Lineage/LineageUtils';
 import { stringToHTML } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
@@ -77,7 +79,7 @@ import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder'
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
-import Table from '../common/Table/Table';
+import TableV2 from '../common/Table/TableV2';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
@@ -91,7 +93,6 @@ import {
   SourceType,
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
-import { StyledMenu, StyledToggleButtonGroup } from './LineageTable.styled';
 import { useLineageTableState } from './useLineageTableState';
 
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
@@ -130,7 +131,6 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
     handlePageSizeChange,
   } = usePaging(PAGE_SIZE_LARGE);
 
-  const [impactOnEl, setImpactOnEl] = useState<null | HTMLElement>(null);
   const paginationInfoKeyRef = useRef<string | null>(null);
 
   const { isFullScreen, nodeDepth, lineageDirection } = useMemo(() => {
@@ -262,7 +262,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           <>
             {t('label.upstream')}{' '}
             {lineageDirection === LineageDirection.Upstream && (
-              <Chip label={upstreamCount} size="small" variant="outlined" />
+              <Badge className="tw:ml-1" color="brand" size="xs">
+                {upstreamCount}
+              </Badge>
             )}
           </>
         ),
@@ -273,7 +275,9 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
           <>
             {t('label.downstream')}{' '}
             {lineageDirection === LineageDirection.Downstream && (
-              <Chip label={downstreamCount} size="small" variant="outlined" />
+              <Badge className="tw:ml-1" color="brand" size="xs">
+                {downstreamCount}
+              </Badge>
             )}
           </>
         ),
@@ -284,23 +288,27 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   const streamButtonGroup = useMemo(() => {
     return (
-      <StyledToggleButtonGroup
-        exclusive
-        size="small"
-        value={lineageDirection}
-        onChange={(_, value) => {
-          handlePageChange(1);
-          updateURLParams({ dir: value });
+      <ButtonGroup
+        disallowEmptySelection
+        selectedKeys={new Set([lineageDirection])}
+        selectionMode="single"
+        size="md"
+        onSelectionChange={(keys: Selection) => {
+          const value = [...(keys as Set<LineageDirection>)][0];
+          if (value) {
+            handlePageChange(1);
+            updateURLParams({ dir: value });
+          }
         }}>
         {radioGroupOptions.map((option) => (
-          <ToggleButton
-            className="font-semibold"
-            key={option.value}
-            value={option.value}>
+          <ButtonGroupItem
+            className="tw:selected:bg-brand-primary tw:selected:text-brand-secondary"
+            id={option.value}
+            key={option.value}>
             {option.label}
-          </ToggleButton>
+          </ButtonGroupItem>
         ))}
-      </StyledToggleButtonGroup>
+      </ButtonGroup>
     );
   }, [handlePageChange, lineageDirection, radioGroupOptions, updateURLParams]);
 
@@ -394,56 +402,50 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
       <div className="d-flex justify-between items-center w-full">
         <div>{streamButtonGroup}</div>
 
-        <Button
-          aria-controls={impactOnEl ? 'basic-menu' : undefined}
-          aria-expanded={impactOnEl ? 'true' : undefined}
-          aria-haspopup="true"
-          endIcon={<DropdownIcon />}
-          id="impact-on-dropdown"
-          startIcon={<TrendDownIcon />}
-          sx={{
-            fontWeight: 500,
-            '& .MuiButton-endIcon': {
-              svg: {
-                height: 12,
-              },
-            },
-          }}
-          onClick={(event) => setImpactOnEl(event.currentTarget)}>
-          <Transi18next
-            i18nKey="label.impact-on-area"
-            renderElement={<span className="m-l-xss text-primary" />}
-            values={{ area: t(`label.${impactLevel}`) }}
-          />
-        </Button>
-        <StyledMenu
-          anchorEl={impactOnEl}
-          open={Boolean(impactOnEl)}
-          onClose={() => setImpactOnEl(null)}>
-          {LINEAGE_IMPACT_OPTIONS.map((option) => (
-            <MenuItem
-              key={option.key}
-              selected={option.key === impactLevel}
-              onClick={() => {
+        <Dropdown.Root>
+          <Button color="tertiary" data-testid="impact-on-dropdown" size="sm">
+            <div className="tw:flex tw:items-center tw:gap-1">
+              <TrendDownIcon className="tw:size-4" />
+              <Transi18next
+                i18nKey="label.impact-on-area"
+                renderElement={
+                  <span className="tw:ml-1 tw:text-brand-secondary" />
+                }
+                values={{ area: t(`label.${impactLevel}`) }}
+              />
+              <DropdownIcon className="tw:size-3" />
+            </div>
+          </Button>
+          <Dropdown.Popover>
+            <Dropdown.Menu
+              aria-label={t('label.impact-on')}
+              selectedKeys={new Set([impactLevel])}
+              selectionMode="single"
+              onAction={(key: Key) => {
                 flushSync(() => {
-                  setSelectedImpactLevel(option.key);
+                  setSelectedImpactLevel(key as EImpactLevel);
                 });
                 clearQuickFilterValues();
                 handlePageChange(1);
-                setImpactOnEl(null);
-              }}>
-              {option.icon}
-              {option.label}
-            </MenuItem>
-          ))}
-        </StyledMenu>
+              }}
+              onSelectionChange={() => void 0}>
+              {LINEAGE_IMPACT_OPTIONS.map((option) => (
+                <Dropdown.Item
+                  icon={option.icon as FC<{ className?: string }>}
+                  id={option.key}
+                  key={option.key}
+                  label={option.label}
+                />
+              ))}
+            </Dropdown.Menu>
+          </Dropdown.Popover>
+        </Dropdown.Root>
       </div>
     );
   }, [
     clearQuickFilterValues,
     handlePageChange,
     impactLevel,
-    impactOnEl,
     setSelectedImpactLevel,
     streamButtonGroup,
   ]);
@@ -943,34 +945,37 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames(
-        { isFullScreen },
-        'lineage-card lineage-card-table'
-      )}
+      className={classNames({ isFullScreen }, 'lineage-card')}
       data-testid="lineage-card-table"
-      title={cardHeader}>
-      <Table
-        bordered
-        className="h-full"
-        columns={columns}
-        customPaginationProps={pagingProps}
-        dataSource={dataSource}
-        defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
-        entityType="impact_analysis"
-        extraTableFilters={extraTableFilters}
-        key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
-        loading={loading}
-        locale={{
-          emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
-        }}
-        pagination={false}
-        rowKey={
-          impactLevel === EImpactLevel.TableLevel
-            ? 'fullyQualifiedName'
-            : 'docId'
-        }
-        staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
-      />
+      variant="default">
+      <div className="lineage-card-head tw:border-b tw:border-secondary tw:px-6 tw:py-4">
+        {cardHeader}
+      </div>
+
+      <Card.Content className="tw:p-5 lineage-container">
+        <TableV2
+          bordered
+          className="h-full"
+          columns={columns}
+          customPaginationProps={pagingProps}
+          dataSource={dataSource}
+          defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
+          entityType="impact_analysis"
+          extraTableFilters={extraTableFilters}
+          key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
+          loading={loading}
+          locale={{
+            emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+          }}
+          pagination={false}
+          rowKey={
+            impactLevel === EImpactLevel.TableLevel
+              ? 'fullyQualifiedName'
+              : 'docId'
+          }
+          staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
+        />
+      </Card.Content>
     </Card>
   );
 };

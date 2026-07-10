@@ -11,13 +11,6 @@
  *  limitations under the License.
  */
 
-export {
-  getEmptyTextFromUserProfileItem,
-  getUserCreationErrorMessage,
-  getUserOnlineStatus,
-  isMaskedEmail,
-} from './UsersPureUtils';
-
 import { Popover, Skeleton, Space, Tag, Tooltip } from 'antd';
 import { ColumnsType } from 'antd/lib/table';
 import { isEmpty, isUndefined, uniqueId } from 'lodash';
@@ -26,7 +19,7 @@ import { ReactComponent as BotIcon } from '../assets/svg/bot.svg';
 import UserPopOverCard from '../components/common/PopOverCard/UserPopOverCard';
 import { TEXT_GREY_MUTED } from '../constants/constants';
 import { EntityReference, User } from '../generated/entity/teams/user';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { LIST_CAP } from './PermissionsUtils';
 import { getRoleWithFqnPath, getTeamsWithFqnPath } from './RouterUtils';

@@ -63,15 +63,23 @@ jest.mock(
     getJSONUISchema: jest.fn().mockReturnValue({}),
     getApplicationConfigurationComponent: jest
       .fn()
-      .mockReturnValue(({ onConfigSave, onCancel }: any) => (
-        <div>
-          FormBuilder
-          <button onClick={() => onConfigSave({ formData: {} })}>
-            Submit FormBuilder
-          </button>
-          <button onClick={onCancel}>Cancel FormBuilder</button>
-        </div>
-      )),
+      .mockReturnValue(
+        ({
+          onConfigSave,
+          onCancel,
+        }: {
+          onConfigSave: (data: { formData: Record<string, unknown> }) => void;
+          onCancel: () => void;
+        }) => (
+          <div>
+            FormBuilder
+            <button onClick={() => onConfigSave({ formData: {} })}>
+              Submit FormBuilder
+            </button>
+            <button onClick={onCancel}>Cancel FormBuilder</button>
+          </div>
+        )
+      ),
   })
 );
 
@@ -135,7 +143,7 @@ jest.mock('../../rest/applicationMarketPlaceAPI', () => ({
   ),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn(),
 }));
 jest.mock('../../utils/SchedularUtils', () => ({

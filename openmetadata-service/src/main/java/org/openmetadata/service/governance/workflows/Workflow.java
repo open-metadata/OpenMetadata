@@ -11,6 +11,7 @@ import org.openmetadata.service.governance.workflows.flowable.TriggerWorkflow;
 public class Workflow {
   public static final String INGESTION_PIPELINE_ID_VARIABLE = "ingestionPipelineId";
   public static final String RELATED_ENTITY_VARIABLE = "relatedEntity";
+  public static final String RELATED_ENTITY_ID_VARIABLE = "relatedEntityId";
   public static final String ENTITY_LIST_VARIABLE = "entityList";
   public static final String BATCH_SINK_PROCESSED_VARIABLE = "batchSinkProcessed";
   public static final String TRIGGERING_OBJECT_ID_VARIABLE = "triggeringObjectId";

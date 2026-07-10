@@ -32,7 +32,7 @@ import {
   getContainerDetailPageTabs,
   getContainerWidgetsFromKey,
 } from './ContainerDetailUtils';
-import { getTabLabelFromId } from './CustomizePage/CustomizePageUtils';
+import { getTabLabelFromId } from './CustomizePage/CustomizePagePureUtils';
 import i18n from './i18next/LocalUtil';
 
 export interface ContainerDetailPageTabProps {

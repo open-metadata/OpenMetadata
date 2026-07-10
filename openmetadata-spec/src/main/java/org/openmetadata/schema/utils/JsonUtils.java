@@ -25,8 +25,8 @@ import com.fasterxml.jackson.databind.JsonDeserializer;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.SerializationFeature;
-import com.fasterxml.jackson.databind.annotation.JsonDeserialize;
 import com.fasterxml.jackson.databind.json.JsonMapper;
+import com.fasterxml.jackson.databind.module.SimpleModule;
 import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
@@ -85,7 +85,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.exception.JsonParsingException;
-import org.openmetadata.schema.type.TagLabel;
 
 @Slf4j
 public final class JsonUtils {
@@ -129,10 +128,12 @@ public final class JsonUtils {
     // Java 21 optimized introspection/accessors for faster convertValue/read/write paths.
     OBJECT_MAPPER.registerModule(new BlackbirdModule());
 
-    // Accept TagLabel.appliedAt with or without fractional seconds. Python clients
-    // serialize datetimes with microsecond=0 as "…ssZ" (no fractional), which the
-    // strict global SimpleDateFormat("…SSSSSS'Z'") rejects.
-    OBJECT_MAPPER.addMixIn(TagLabel.class, TagLabelDateMixin.class);
+    // Accept any Date field with or without fractional seconds. Python clients serialize
+    // datetimes with microsecond=0 as "…ssZ" (no fractional), which the strict global
+    // SimpleDateFormat("…SSSSSS'Z'") rejects. Registering the lenient deserializer for all
+    // java.util.Date fields keeps deserialization tolerant while serialization stays on the
+    // microsecond format above.
+    OBJECT_MAPPER.registerModule(lenientDateModule());
 
     // Lenient ObjectMapper to ignore unknown properties
     OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
@@ -518,7 +519,11 @@ public final class JsonUtils {
   }
 
   public static Schema getJsonSchema(String schema) {
-    return schemaFactory.getSchema(schema);
+    // SchemaRegistry compiles schemas against shared dialect/metaschema caches that are not safe
+    // under concurrent compilation; serialize compilation to avoid transient failures.
+    synchronized (schemaFactory) {
+      return schemaFactory.getSchema(schema);
+    }
   }
 
   public static JsonNode valueToTree(Object object) {
@@ -915,17 +920,28 @@ public final class JsonUtils {
   }
 
   /**
-   * Tolerant Date deserializer for {@code TagLabel.appliedAt}. The global ObjectMapper uses
-   * {@code SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a
-   * 6-digit fractional. Python's {@code datetime.isoformat()} drops the fractional entirely
-   * when {@code microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the global
-   * format rejects.
+   * Jackson module that deserializes every {@link Date} field leniently, accepting ISO-8601 with
+   * or without fractional seconds as well as epoch milliseconds. Register it on any ObjectMapper
+   * that parses OpenMetadata request bodies so the strict {@link #DATE_TIME_FORMAT} (used for
+   * serialization) does not reject inputs lacking microseconds.
+   */
+  public static SimpleModule lenientDateModule() {
+    SimpleModule module = new SimpleModule("OpenMetadataLenientDateModule");
+    module.addDeserializer(Date.class, new LenientIsoDateDeserializer());
+    return module;
+  }
+
+  /**
+   * Tolerant Date deserializer. The global ObjectMapper serializes with {@code
+   * SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss.SSSSSS'Z'")}, which strictly requires a 6-digit
+   * fractional. Python's {@code datetime.isoformat()} drops the fractional entirely when {@code
+   * microsecond == 0}, producing {@code "2026-04-24T10:27:06Z"} that the strict format rejects.
    *
    * <p>This deserializer delegates everything to Jackson's normal path ({@link
    * DeserializationContext#parseDate}, which uses the same global format) so all forms that
-   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working.
-   * The only addition is: if the value is the bare-second form, pad the fractional with
-   * {@code .000000} so the global format accepts it.
+   * worked before — JSON numbers, numeric strings, the SDF "…SSSSSSZ" form — keep working. The
+   * only addition is: if the value is the bare-second form, pad the fractional with {@code
+   * .000000} so the global format accepts it.
    */
   public static final class LenientIsoDateDeserializer extends JsonDeserializer<Date> {
     @Override
@@ -994,10 +1010,5 @@ public final class JsonUtils {
       }
       return value.substring(0, 19) + ".000000Z";
     }
-  }
-
-  abstract static class TagLabelDateMixin {
-    @JsonDeserialize(using = LenientIsoDateDeserializer.class)
-    Date appliedAt;
   }
 }

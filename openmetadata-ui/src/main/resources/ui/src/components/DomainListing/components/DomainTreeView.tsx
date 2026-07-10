@@ -32,6 +32,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import {
   addFollower,
   getDomainByName,
@@ -40,6 +41,7 @@ import {
   removeFollower,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
@@ -79,6 +81,7 @@ const DomainTreeView = ({
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { userDomains, isDomainRestricted } = useDomainStore();
   const { permissions } = usePermissionProvider();
 
   const [hierarchy, setHierarchy] = useState<Domain[]>([]);
@@ -215,7 +218,12 @@ const DomainTreeView = ({
           // queryFilter
         );
 
-        const updatedTreeData = convertDomainsToTreeOptions(results);
+        const filteredResults =
+          isDomainRestricted && userDomains.length
+            ? filterDomainsToAllowed(results, userDomains)
+            : results;
+
+        const updatedTreeData = convertDomainsToTreeOptions(filteredResults);
         setHierarchy(updatedTreeData as Domain[]);
         selectDomain(updatedTreeData as Domain[]);
       } catch (error) {
@@ -229,7 +237,7 @@ const DomainTreeView = ({
         setIsHierarchyLoading(false);
       }
     },
-    [t]
+    [t, isDomainRestricted, userDomains]
   );
 
   const fetchDomainDetails = useCallback(
@@ -302,7 +310,11 @@ const DomainTreeView = ({
         currentOffset
       );
 
-      const domains = response.data ?? [];
+      const rawDomains = response.data ?? [];
+      const domains =
+        isDomainRestricted && userDomains.length
+          ? filterDomainsToAllowed(rawDomains, userDomains)
+          : rawDomains;
       const total = response.paging.total;
 
       setHierarchy((prev) => (isLoadMore ? [...prev, ...domains] : domains));

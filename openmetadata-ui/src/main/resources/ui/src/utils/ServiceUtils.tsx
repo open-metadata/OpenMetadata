@@ -31,32 +31,13 @@ import type { ServicesType } from '../interface/service.interface';
 import { searchService } from '../rest/serviceAPI';
 import { getDashboardURL } from './DashboardServiceUtils';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { MarkdownToHTMLConverter } from './FeedUtils';
+import { MarkdownToHTMLConverter } from './FeedUtilsPure';
 import { t } from './i18next/LocalUtil';
 import { getBrokers } from './MessagingServiceUtils';
 import { getSettingPath } from './RouterUtils';
 import {
   getSearchIndexFromService,
   getServiceRouteFromServiceType,
-} from './ServicePureUtils';
-
-export {
-  getActiveFieldNameForAppDocs,
-  getCountLabel,
-  getEntityTypeFromServiceCategory,
-  getIngestionName,
-  getReadableCountString,
-  getResourceEntityFromServiceCategory,
-  getSearchIndexForService,
-  getSearchIndexFromService,
-  getServiceCategoryFromEntityType,
-  getServiceDisplayNameQueryFilter,
-  getServiceNameQueryFilter,
-  getServiceRouteFromServiceType,
-  getServiceType,
-  getServiceTypesFromServiceCategory,
-  getTestConnectionName,
-  shouldTestConnection,
 } from './ServicePureUtils';
 
 export const getOptionalFields = (
@@ -174,18 +155,19 @@ export const getAddServiceEntityBreadcrumb = (
 ) => {
   return [
     {
-      name: startCase(serviceCategory),
-      url: getSettingPath(
+      label: startCase(serviceCategory),
+      href: getSettingPath(
         GlobalSettingsMenuCategory.SERVICES,
-        getServiceRouteFromServiceType(serviceCategory as ServiceTypes)
+        getServiceRouteFromServiceType(serviceCategory)
       ),
+      id: 'category',
     },
     {
-      name: t('label.add-new-entity', {
+      label: t('label.add-new-entity', {
         entity: t('label.service'),
       }),
-      url: '',
-      activeTitle: true,
+      href: '',
+      id: 'add-service',
     },
   ];
 };

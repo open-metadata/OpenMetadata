@@ -37,6 +37,13 @@ const defaultBaseURL = isH2Mode
 export default defineConfig({
   testDir: './playwright/e2e',
   outputDir: './playwright/output/test-results',
+  // Omit {projectName} and {platform} from snapshot filenames so a single
+  // reference image works on both macOS dev machines and Linux CI runners.
+  // Edge lines in the lineage PNG are pure bezier geometry (no text/fonts)
+  // and render identically across platforms; the threshold in toMatchSnapshot
+  // absorbs any minor anti-aliasing differences in the node-card text areas.
+  snapshotPathTemplate:
+    '{testDir}/{testFileDir}/__snapshots__/{testFileName}-snapshots/{arg}{ext}',
   /* Run tests in files in parallel */
   fullyParallel: true,
   /* Fail the build on CI if you accidentally left test.only in the source code. */
@@ -55,10 +62,16 @@ export default defineConfig({
       {
         useDetails: true,
         showError: true,
+        includeResults: ['skipped', 'fail', 'flaky'], // skip pass to reduce noice
+        showArtifactsLink: true,
       },
     ],
     ['blob'],
     ['json', { outputFile: './playwright/output/results.json' }],
+    [
+      '@flakiness/playwright',
+      { flakinessProject: 'OpenMetadata/OpenMetadata' },
+    ],
   ],
   /* Shared settings for all the projects below. See https://playwright.dev/docs/api/class-testoptions. */
   use: {
@@ -91,16 +104,16 @@ export default defineConfig({
       dependencies: ['setup'],
     },
     {
-      name: 'activity-feed-config',
-      testMatch: '**/activity-config.setup.ts',
-      dependencies: ['setup'],
-    },
-    {
       name: 'chromium',
       use: { ...devices['Desktop Chrome'] },
       // Added admin setup as a dependency. This will authorize the page with an admin user before running the test. doc: https://playwright.dev/docs/auth#multiple-signed-in-roles
-      dependencies: ['setup', 'entity-data-setup', 'activity-feed-config'],
-      grepInvert: [/@data-insight/, /@basic/, /@knowledge-graph/],
+      dependencies: ['setup', 'entity-data-setup'],
+      grepInvert: [
+        /@data-insight/,
+        /@basic/,
+        /@knowledge-graph/,
+        /@ontology-rdf/,
+      ],
       teardown: 'entity-data-teardown',
       testIgnore: [
         '**/nightly/**',
@@ -112,6 +125,8 @@ export default defineConfig({
         '**/SystemCertificationTags.spec.ts',
         '**/SearchRBAC.spec.ts',
         '**/SSOLogin.spec.ts',
+        '**/IntakeForm.spec.ts',
+        '**/DomainIsolation/**',
       ],
     },
     // Only register the h2 project when explicitly opted in. Always-on registration would force
@@ -167,6 +182,13 @@ export default defineConfig({
       teardown: 'entity-data-teardown',
     },
     {
+      name: 'Ontology RDF',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'entity-data-setup'],
+      grep: /ontology-rdf/,
+      teardown: 'entity-data-teardown',
+    },
+    {
       name: 'DataAssetRulesEnabled',
       testMatch: '**/DataAssetRulesEnabled.spec.ts',
       use: { ...devices['Desktop Chrome'] },
@@ -184,7 +206,7 @@ export default defineConfig({
       name: 'Basic',
       grep: [/@basic/],
       use: { ...devices['Desktop Chrome'] },
-      dependencies: ['setup'],
+      dependencies: ['setup', 'entity-data-setup'],
       fullyParallel: true,
     },
     {
@@ -194,11 +216,29 @@ export default defineConfig({
       use: { ...devices['Desktop Chrome'] },
       teardown: 'entity-data-teardown',
     },
+    // Domain isolation E2E suite (issue #24180). Runs in its own shard because several specs
+    // toggle the global `enableAccessControl` search setting; serial execution (workers: 1)
+    // prevents cross-file races on that shared setting.
+    {
+      name: 'DomainIsolation',
+      testMatch: '**/DomainIsolation/**',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup'],
+      fullyParallel: false,
+      workers: 1,
+    },
     // System Certification Tags tests modify global shared state (system tags like Gold, Silver, Bronze)
     // They must run in isolation after the main chromium project to avoid flakiness
     {
       name: 'SystemCertificationTags',
       testMatch: '**/SystemCertificationTags.spec.ts',
+      use: { ...devices['Desktop Chrome'] },
+      dependencies: ['setup', 'chromium'],
+      fullyParallel: false,
+    },
+    {
+      name: 'IntakeForm',
+      testMatch: '**/IntakeForm.spec.ts',
       use: { ...devices['Desktop Chrome'] },
       dependencies: ['setup', 'chromium'],
       fullyParallel: false,

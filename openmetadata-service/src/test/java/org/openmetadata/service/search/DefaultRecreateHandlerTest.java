@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anySet;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
@@ -30,6 +31,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearch
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.ReindexingMetrics;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 
 @ExtendWith(MockitoExtension.class)
 @DisplayName("DefaultRecreateHandler Tests")
@@ -109,6 +111,79 @@ class DefaultRecreateHandlerTest {
     }
 
     @Test
+    @DisplayName("Should stamp mapping version after successful promotion")
+    void testPromoteEntityIndexStampsMappingVersion() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old", Set.of("table", "table_search_index", "all"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all", "dataAsset"))
+                  .childAliases(List.of())
+                  .build());
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        entityMock.when(Entity::getCollectionDAO).thenReturn(mock(CollectionDAO.class));
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, true);
+      }
+
+      verify(tracker).updateMappingVersion("table");
+    }
+
+    @Test
+    @DisplayName("Should not stamp mapping version when promotion fails")
+    void testPromoteEntityIndexDoesNotStampOnFailure() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().promoteEntityIndex(context, false);
+      }
+
+      verify(tracker, never()).updateMappingVersion(anyString());
+    }
+
+    @Test
     @DisplayName(
         "Should promote partial data and record success metrics when failed reindex has documents")
     void testPromoteEntityIndexPromotesPartialData() {
@@ -120,7 +195,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(7L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(7L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -164,7 +239,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(-1L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(-1L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -424,7 +499,7 @@ class DefaultRecreateHandlerTest {
     @DisplayName("Should swallow staged index deletion failures after failed reindex")
     void testPromoteEntityIndexSwallowsDeleteFailure() {
       SearchClient client = mock(SearchClient.class);
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
       when(client.indexExists("table_search_index_rebuild_new")).thenReturn(true);
       doThrow(new IllegalStateException("delete failed"))
           .when(client)
@@ -583,7 +658,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(12L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(12L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -630,7 +705,7 @@ class DefaultRecreateHandlerTest {
       aliasState.put("table_search_index_rebuild_new", new HashSet<>());
 
       SearchClient client = aliasState.toMock();
-      when(client.getDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
+      when(client.getIndexedDocumentCount("table_search_index_rebuild_new")).thenReturn(0L);
 
       SearchRepository repo = mock(SearchRepository.class);
       when(repo.getSearchClient()).thenReturn(client);
@@ -688,6 +763,90 @@ class DefaultRecreateHandlerTest {
 
       assertFalse(aliasState.deletedIndices.contains("table_search_index_rebuild_old"));
       assertTrue(aliasState.indexAliases.get("table_search_index_rebuild_new").isEmpty());
+    }
+
+    @Test
+    @DisplayName("Should stamp mapping version after successful finalize promotion")
+    void testFinalizeReindexStampsMappingVersionOnSuccess() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put(
+          "table_search_index_rebuild_old", Set.of("table", "table_search_index", "all"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        entityMock.when(Entity::getCollectionDAO).thenReturn(mock(CollectionDAO.class));
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(tracker).updateMappingVersion("table");
+    }
+
+    @Test
+    @DisplayName("Should not stamp mapping version when finalize alias swap fails")
+    void testFinalizeReindexDoesNotStampWhenSwapFails() throws Exception {
+      AliasState aliasState = new AliasState();
+      aliasState.put("table_search_index_rebuild_old", Set.of("table"));
+      aliasState.put("table_search_index_rebuild_new", new HashSet<>());
+
+      SearchClient client = aliasState.toMock();
+      when(client.swapAliases(anySet(), anyString(), anySet(), anySet())).thenReturn(false);
+
+      SearchRepository repo = mock(SearchRepository.class);
+      when(repo.getSearchClient()).thenReturn(client);
+      when(repo.getClusterAlias()).thenReturn("");
+      when(repo.getIndexMapping("table"))
+          .thenReturn(
+              IndexMapping.builder()
+                  .indexName("table_search_index")
+                  .alias("table")
+                  .parentAliases(List.of("all"))
+                  .childAliases(List.of())
+                  .build());
+
+      IndexMappingVersionTracker tracker = mock(IndexMappingVersionTracker.class);
+      try (MockedStatic<Entity> entityMock = mockStatic(Entity.class);
+          MockedStatic<IndexMappingVersionTracker> trackerMock =
+              mockStatic(IndexMappingVersionTracker.class)) {
+        entityMock.when(Entity::getSearchRepository).thenReturn(repo);
+        trackerMock.when(() -> IndexMappingVersionTracker.create(any())).thenReturn(tracker);
+
+        EntityReindexContext context =
+            EntityReindexContext.builder()
+                .entityType("table")
+                .canonicalIndex("table_search_index")
+                .stagedIndex("table_search_index_rebuild_new")
+                .build();
+
+        new DefaultRecreateHandler().finalizeReindex(context, true);
+      }
+
+      verify(tracker, never()).updateMappingVersion(anyString());
     }
 
     @Test
@@ -1296,6 +1455,24 @@ class DefaultRecreateHandlerTest {
       assertTrue(json.contains("\"translog\":{"));
       assertTrue(json.contains("\"durability\":\"request\""));
       assertTrue(json.contains("\"sync_interval\":\"5s\""));
+    }
+
+    @Test
+    @DisplayName("Live refresh_interval '-1' is never applied as a live value (guard -> 1s)")
+    void liveRefreshDisabledIsOverriddenToDefault() {
+      // Misconfiguration: liveIndexSettings.refreshInterval is "-1" (refresh disabled) — e.g.
+      // copied from the bulk side or a stale saved config. Without the guard the revert would
+      // faithfully re-apply "-1" to the promoted index, leaving it unsearchable until a manual
+      // _refresh (the "reindex finishes but the page is empty" symptom). The revert must override
+      // it back to the near-real-time default.
+      org.openmetadata.schema.system.IndexSettings live =
+          new org.openmetadata.schema.system.IndexSettings().withRefreshInterval("-1");
+      org.openmetadata.schema.system.BulkIndexOverrides bulk =
+          new org.openmetadata.schema.system.BulkIndexOverrides().withRefreshInterval("-1");
+      String json = DefaultRecreateHandler.buildRevertJson(live, bulk);
+      assertNotNull(json);
+      assertTrue(json.contains("\"refresh_interval\":\"1s\""));
+      assertFalse(json.contains("\"refresh_interval\":\"-1\""));
     }
 
     @Test

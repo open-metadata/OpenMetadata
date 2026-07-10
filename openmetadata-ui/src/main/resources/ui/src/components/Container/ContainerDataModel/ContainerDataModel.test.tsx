@@ -97,12 +97,21 @@ jest.mock('../../../utils/GlossaryUtils', () => ({
   getGlossaryTermHierarchy: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockReturnValue({
     type: 'container',
     setDisplayedColumns: jest.fn(),
   }),
 }));
+
+jest.mock('../../../utils/TablePureUtils', () => {
+  const actual = jest.requireActual('../../../utils/TablePureUtils');
+
+  return {
+    ...actual,
+    pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
+  };
+});
 
 jest.mock('../../../utils/TableUtils', () => {
   const actual = jest.requireActual('../../../utils/TableUtils');
@@ -121,7 +130,6 @@ jest.mock('../../../utils/TableUtils', () => {
         'glossary',
       ]),
     handleUpdateTableColumnSelections: jest.fn(),
-    pruneEmptyChildren: jest.fn().mockImplementation((value) => value),
   };
 });
 

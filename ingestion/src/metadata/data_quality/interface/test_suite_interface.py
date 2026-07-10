@@ -15,7 +15,7 @@ supporting sqlalchemy abstraction layer
 """
 
 from abc import ABC, abstractmethod
-from typing import Optional, Set, Type  # noqa: UP035
+from typing import Optional, Set, Type, cast  # noqa: UP035
 
 from metadata.data_quality.api.models import TestCaseResultResponse
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
@@ -33,6 +33,7 @@ from metadata.generated.schema.tests.testCase import TestCase
 from metadata.generated.schema.tests.testDefinition import TestDefinition
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.sampler_interface import SamplerInterface
+from metadata.utils.entity_reference import require_entity_reference_id
 from metadata.utils.logger import test_suite_logger
 
 logger = test_suite_logger()
@@ -117,7 +118,14 @@ class TestSuiteInterface(ABC):
         )
 
         # get `column` or `table` type for validator import
-        entity_type: str = self.ometa_client.get_by_id(TestDefinition, test_case.testDefinition.id).entityType.value
+        test_definition_id = require_entity_reference_id(test_case.testDefinition, "Test definition")
+        test_definition = cast(
+            "TestDefinition",
+            self.ometa_client.get_by_id(TestDefinition, test_definition_id, nullable=False),
+        )
+        if test_definition.entityType is None:
+            raise ValueError(f"Test definition {test_definition_id.root} must include entityType")
+        entity_type: str = test_definition.entityType.value
 
         validator_builder = self._get_validator_builder(test_case, entity_type)
         validator_builder.set_runtime_params(runtime_params_setters)

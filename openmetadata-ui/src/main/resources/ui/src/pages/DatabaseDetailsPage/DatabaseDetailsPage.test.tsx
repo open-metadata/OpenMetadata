@@ -190,12 +190,15 @@ jest.mock('../../rest/feedsAPI', () => ({
   postThread: jest.fn().mockImplementation(() => Promise.resolve({})),
 }));
 
-jest.mock('../../utils/TableUtils', () => ({
+jest.mock('../../utils/TablePureUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('Medium - 45th pctile'),
   getTierTags: jest.fn().mockImplementation(() => ({})),
   getTagsWithoutTier: jest.fn().mockImplementation(() => []),
-  getTableExpandableConfig: jest.fn().mockReturnValue({}),
   extractColumnsFromData: jest.fn().mockReturnValue([]),
+}));
+
+jest.mock('../../utils/TableUtils', () => ({
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
 }));
 
 jest.mock('../../components/common/NextPrevious/NextPrevious', () => {

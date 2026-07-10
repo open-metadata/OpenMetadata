@@ -11,16 +11,6 @@
  *  limitations under the License.
  */
 
-/**
- * Backward-compatible re-export barrel + getEntityBreadcrumbs dispatcher.
- *
- * Implementations split into:
- *   - EntityDataBreadcrumbUtils.ts    — table, chart, API, container/drive helpers
- *   - EntityServiceBreadcrumbUtils.ts — service-type breadcrumbs (12 service categories)
- *   - EntityGovernanceBreadcrumbUtils.ts — glossary, domain, test, KPI, role, bot, etc.
- *   - EntityLinkUtils.ts              — getEntityLinkFromType
- */
-
 import { isUndefined } from 'lodash';
 import type { DataAssetsWithoutServiceField } from '../components/DataAssets/DataAssetsHeader/DataAssetsHeader.interface';
 import type { SearchedDataProps } from '../components/SearchedData/SearchedData.interface';
@@ -86,42 +76,6 @@ import {
   getServiceCategoryBreadcrumb,
 } from './EntityServiceBreadcrumbUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
-
-// Re-export all for backward compatibility
-export {
-  getBreadCrumbForAPICollection,
-  getBreadCrumbForAPIEndpoint,
-  getBreadcrumbForChart,
-  getBreadcrumbForEntitiesWithServiceOnly,
-  getBreadcrumbForEntityWithParent,
-  getBreadcrumbForTable,
-} from './EntityDataBreadcrumbUtils';
-export {
-  getBreadcrumbForApplication,
-  getBreadcrumbForBot,
-  getBreadcrumbForClassification,
-  getBreadcrumbForDataProduct,
-  getBreadcrumbForDomain,
-  getBreadcrumbForEventSubscription,
-  getBreadcrumbForGlossaryOrTerm,
-  getBreadcrumbForKnowledgePage,
-  getBreadCrumbForKpi,
-  getBreadcrumbForMetric,
-  getBreadcrumbForPersona,
-  getBreadcrumbForPolicy,
-  getBreadcrumbForRole,
-  getBreadcrumbForTag,
-  getBreadcrumbForTeam,
-  getBreadcrumbForTestCase,
-  getBreadcrumbForTestSuite,
-} from './EntityGovernanceBreadcrumbUtils';
-export { getEntityLinkFromType } from './EntityLinkUtils';
-export {
-  getBreadcrumbForDatabase,
-  getBreadcrumbForDatabaseSchema,
-  getBreadcrumbForDatabaseService,
-  getServiceCategoryBreadcrumb,
-} from './EntityServiceBreadcrumbUtils';
 
 export const getEntityBreadcrumbs = (
   entity:
@@ -316,6 +270,7 @@ export const getEntityBreadcrumbs = (
                       ]
                     )
                   : '',
+                isServiceBreadcrumb: true,
               },
             ]
           : []),
@@ -327,6 +282,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.DATABASE,
                   columnData.database?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.DATABASE,
               },
             ]
           : []),
@@ -338,6 +294,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.DATABASE_SCHEMA,
                   columnData.databaseSchema?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.DATABASE_SCHEMA,
               },
             ]
           : []),
@@ -349,6 +306,7 @@ export const getEntityBreadcrumbs = (
                   EntityType.TABLE,
                   columnData.table?.fullyQualifiedName ?? ''
                 ),
+                iconType: EntityType.TABLE,
               },
             ]
           : []),
@@ -357,6 +315,7 @@ export const getEntityBreadcrumbs = (
               {
                 name: entity.name,
                 url: '',
+                iconType: EntityType.TABLE_COLUMN,
               },
             ]
           : []),

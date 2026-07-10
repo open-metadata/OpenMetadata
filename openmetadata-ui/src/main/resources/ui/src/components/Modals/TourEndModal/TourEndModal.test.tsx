@@ -20,6 +20,10 @@ const mockProps = {
   visible: true,
 };
 
+jest.mock('../../..//utils/BrandData/BrandClassBase', () => ({
+  getMonogram: jest.fn(() => ({ src: 'mocked-logo.svg', svg: 'monogram-svg' })),
+}));
+
 describe('TourEndModal', () => {
   it('should render necessary elements', () => {
     render(<TourEndModal {...mockProps} />);

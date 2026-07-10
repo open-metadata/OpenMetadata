@@ -10,18 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export {
-  getSearchNameEsQuery,
-  prepareColumnLevelNodesFromEdges,
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from './LineagePureUtils';
 
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
-import { ChevronRight } from '@untitledui/icons';
+import {
+  BreadcrumbItemType,
+  Breadcrumbs,
+} from '@openmetadata/ui-core-components';
 import { ReactComponent as ColumnIcon } from '../../assets/svg/ic-column.svg';
 import { ReactComponent as TableIcon } from '../../assets/svg/ic-table-new.svg';
-import { CondensedBreadcrumb } from '../../components/CondensedBreadcrumb/CondensedBreadcrumb.component';
+import { NodeData } from '../../components/Lineage/Lineage.interface';
 import { EImpactLevel } from '../../components/LineageTable/LineageTable.interface';
 import i18n from '../i18next/LocalUtil';
 
@@ -29,12 +26,12 @@ export const LINEAGE_IMPACT_OPTIONS = [
   {
     label: i18n.t('label.asset-level'),
     key: EImpactLevel.TableLevel,
-    icon: <TableIcon />,
+    icon: TableIcon,
   },
   {
     label: i18n.t('label.column-level'),
     key: EImpactLevel.ColumnLevel,
-    icon: <ColumnIcon />,
+    icon: ColumnIcon,
   },
 ];
 
@@ -51,18 +48,26 @@ export const LINEAGE_DEPENDENCY_OPTIONS = [
   },
 ];
 
-export const getTruncatedPath = (path: string, className?: string) => {
+export const renderTruncatedPath = (path: string) => {
   if (!path) {
     return path;
   }
 
-  const parts = path.split('>');
+  const items: BreadcrumbItemType[] = path
+    .split('>')
+    .map((label, index) => ({ id: String(index), label: label.trim() }));
 
-  return (
-    <CondensedBreadcrumb
-      className={className}
-      items={parts}
-      separator={<ChevronRight className="right-arrow-icon" size={12} />}
-    />
+  return <Breadcrumbs items={items} maxItems={2} size="xs" type="text" />;
+};
+
+export const addBaseNodeDepthToNodes = (
+  baseNodeDepth: number,
+  nodes: Record<string, NodeData>
+): Record<string, NodeData> => {
+  return Object.fromEntries(
+    Object.entries(nodes).map(([key, nodeData]) => [
+      key,
+      { ...nodeData, nodeDepth: (nodeData.nodeDepth ?? 0) + baseNodeDepth },
+    ])
   );
 };

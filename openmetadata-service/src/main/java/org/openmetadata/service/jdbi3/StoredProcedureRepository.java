@@ -38,6 +38,10 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
         PATCH_FIELDS,
         UPDATE_FIELDS);
     supportsSearch = true;
+    // Covered by the database service / database / schema delete cascade (search by service.id,
+    // field_relationship / tag_usage by the root cleanup() FQN prefix) — see
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -209,6 +213,9 @@ public class StoredProcedureRepository extends EntityRepository<StoredProcedure>
 
   private void setDefaultFields(StoredProcedure storedProcedure) {
     EntityReference schemaRef = getContainer(storedProcedure.getId());
+    if (schemaRef == null || schemaRef.getId() == null) {
+      return;
+    }
     DatabaseSchema schema = Entity.getEntity(schemaRef, "", ALL);
     storedProcedure
         .withDatabaseSchema(schemaRef)

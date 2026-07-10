@@ -150,7 +150,7 @@ public final class ReindexEntitiesClient {
 
   private boolean docExists(final String alias, final String id) {
     final String body = "{\"size\":0,\"query\":{\"term\":{\"id.keyword\":\"" + id + "\"}}}";
-    final JsonNode response = search.post("/" + alias + "/_search", body);
+    final JsonNode response = search.search(alias, body);
     return response.path("hits").path("total").path("value").asLong() == 1;
   }
 }

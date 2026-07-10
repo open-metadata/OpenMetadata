@@ -34,10 +34,8 @@ import { Page, PageType } from '../../generated/system/ui/page';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useGridLayoutDirection } from '../../hooks/useGridLayoutDirection';
 import { getDocumentByFQN } from '../../rest/DocStoreAPI';
-import {
-  getLayoutFromCustomizedPage,
-  getWidgetsFromKey,
-} from '../../utils/CustomizePage/CustomizePageUtils';
+import { getWidgetsFromKey } from '../../utils/CustomizePage/CustomizePageDispatchUtils';
+import { getLayoutFromCustomizedPage } from '../../utils/CustomizePage/CustomizePageWidgetUtils';
 import dataMarketplaceClassBase from '../../utils/DataMarketplace/DataMarketplaceClassBase';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { WidgetConfig } from '../CustomizablePage/CustomizablePage.interface';

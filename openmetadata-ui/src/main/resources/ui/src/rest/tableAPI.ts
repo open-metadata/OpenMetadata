@@ -315,6 +315,8 @@ export const getTableColumnsByFQN = async (
 
 export interface SearchTableColumnsParams extends GetTableColumnsParams {
   q?: string; // Search query
+  tags?: string; // Comma-separated classification tag FQNs to filter columns by
+  glossaryTerms?: string; // Comma-separated glossary term FQNs to filter columns by
 }
 
 export const searchTableColumnsById = async (

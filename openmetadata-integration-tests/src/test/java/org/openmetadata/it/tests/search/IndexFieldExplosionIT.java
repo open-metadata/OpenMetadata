@@ -2,7 +2,6 @@ package org.openmetadata.it.tests.search;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.time.Duration;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
@@ -27,6 +26,7 @@ import org.openmetadata.schema.entity.type.CustomProperty;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.service.Entity;
 
 /**
  * Verifies the mapping field count stays bounded under load that historically caused
@@ -59,7 +59,7 @@ class IndexFieldExplosionIT {
     Apps.setDefaultClient(SdkClients.adminClient());
     // Recreate the baseline so the (cluster-alias-prefixed) indices exist/queryable even if a
     // prior search IT dropped or left them unswapped.
-    ReindexHelpers.recreateAllAndWait(server, Duration.ofMinutes(5));
+    ReindexHelpers.recreateAllAndWait(server, ReindexHelpers.reindexTimeout());
   }
 
   @Test
@@ -103,7 +103,7 @@ class IndexFieldExplosionIT {
       final CustomProperty property = new CustomProperty();
       property.setName("explosionCheck_" + runTag + "_" + i);
       property.setDescription("Field-explosion regression probe " + i);
-      property.setPropertyType(stringType.getEntityReference());
+      property.setPropertyType(stringType.getEntityReference().withType(Entity.TYPE));
       client
           .getHttpClient()
           .execute(HttpMethod.PUT, "/v1/metadata/types/" + tableType.getId(), property, Type.class);
