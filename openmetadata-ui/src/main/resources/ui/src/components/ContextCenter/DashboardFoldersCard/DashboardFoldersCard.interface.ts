@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,32 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Folder } from '../../../generated/entity/data/folder';
 
-@import (reference) '../../../../styles/variables.less';
-
-.lineage-layers-popover {
-  &.ant-popover-placement-right {
-    padding-left: 8px;
-  }
-
-  .ant-popover-arrow {
-    display: none;
-  }
-  .ant-popover-inner-content {
-    padding: 0;
-  }
-  .lineage-layer-button {
-    padding: 4px 12px;
-    width: 90px;
-    &.active {
-      color: @primary-color;
-      border-color: @primary-color;
-      z-index: 2;
-      background-color: @radio-button-checked-bg;
-    }
-  }
-  .layer-icon {
-    width: 20px;
-    height: 20px;
-  }
+export interface DashboardFoldersCardProps {
+  folders: Folder[];
+  isLoading?: boolean;
 }
