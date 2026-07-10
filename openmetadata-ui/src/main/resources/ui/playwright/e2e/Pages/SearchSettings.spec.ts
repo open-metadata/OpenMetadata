@@ -521,6 +521,7 @@ test.describe('Search Settings', () => {
       await page.reload();
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
+      await openMatchingFieldsPanel(page);
 
       await firstFieldContainer.click();
       await expect(highlightToggle).toHaveAttribute(
