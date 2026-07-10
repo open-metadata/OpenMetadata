@@ -37,7 +37,8 @@ class OpenSearchVectorServiceTest {
 
     when(mockClient.generic()).thenReturn(mockGenericClient);
 
-    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    when(mockEmbeddingClient.embedQuery(any(String.class)))
+        .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
     vectorService = new OpenSearchVectorService(mockClient, mockEmbeddingClient);
   }

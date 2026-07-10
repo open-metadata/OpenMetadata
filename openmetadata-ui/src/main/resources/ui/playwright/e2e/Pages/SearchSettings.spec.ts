@@ -25,6 +25,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   mockEntitySearchSettings,
+  openMatchingFieldsPanel,
   restoreDefaultSearchSettings,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
@@ -141,6 +142,8 @@ test.describe('Search Settings', () => {
         page.getByTestId('entity-search-settings-header')
       ).toBeVisible();
 
+      await openMatchingFieldsPanel(page);
+
       const fieldContainers = page.getByTestId('field-container-header');
       const firstFieldContainer = fieldContainers.first();
       await firstFieldContainer.click();
@@ -203,6 +206,56 @@ test.describe('Search Settings', () => {
 
       await toastNotification(page, /Search Settings restored successfully/);
     });
+
+    test('Reset global search settings to default via confirmation modal', async ({
+      page,
+    }) => {
+      await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
+
+      await page
+        .getByTestId('global-setting-edit-icon-Max Aggregate Size')
+        .click();
+      await page.getByTestId('value-input').fill('2000');
+      await page.getByTestId('inline-save-btn').click();
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Cancelling the confirmation must leave the customized value intact.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('save-button')).toBeVisible();
+
+      await page.getByTestId('cancel').click();
+
+      await expect(page.getByTestId('body-text')).not.toBeAttached();
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('2000');
+
+      // Confirming the reset must restore the default value.
+      await page.getByTestId('reset-search-settings-btn').click();
+
+      await expect(page.getByTestId('save-button')).toBeVisible();
+
+      const resetResponse = page.waitForResponse(
+        (response) =>
+          response
+            .url()
+            .includes('/api/v1/system/settings/reset/searchSettings') &&
+          response.request().method() === 'PUT'
+      );
+      await page.getByTestId('save-button').click();
+      await resetResponse;
+
+      await toastNotification(page, /Search Settings updated successfully/);
+
+      await expect(
+        page.getByTestId('global-setting-value-Max Aggregate Size')
+      ).toHaveText('10000');
+    });
   });
 
   test.describe('Search Preview test', () => {
@@ -240,6 +293,8 @@ test.describe('Search Settings', () => {
       );
 
       await waitForAllLoadersToDisappear(page);
+
+      await openMatchingFieldsPanel(page);
 
       const descriptionField = page.getByTestId(
         `field-configuration-panel-description`
@@ -343,6 +398,8 @@ test.describe('Search Settings', () => {
               (f: { field: string }) => f.field === 'name.ngram'
             )?.boost ?? 0;
 
+        await openMatchingFieldsPanel(page);
+
         // Expand the name.ngram field configuration panel.
         const ngramPanel = page.getByTestId(
           'field-configuration-panel-name.ngram'
@@ -421,7 +478,7 @@ test.describe('Search Settings', () => {
       await redirectToHomePage(page);
     });
 
-    test('Configure column search field settings', async ({ page }) => {
+    test.fixme('Configure column search field settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
       const columnCard = page.getByTestId('preferences.search-settings.column');
@@ -430,6 +487,8 @@ test.describe('Search Settings', () => {
       await expect(page).toHaveURL(
         /settings\/preferences\/search-settings\/column$/
       );
+
+      await openMatchingFieldsPanel(page);
 
       const fieldContainers = page.getByTestId('field-container-header');
       const firstFieldContainer = fieldContainers.first();

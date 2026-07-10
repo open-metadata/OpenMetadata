@@ -31,13 +31,19 @@ const dashboard = new DashboardClass();
 // Expand any tree node by its title testid (works for categories, service
 // types, services and entity-type leaves) and wait for the count query.
 const expandTreeNode = async (page: Page, titleTestId: string) => {
+  // Set up response listener BEFORE clicking. After #29642, ExploreTree skips
+  // setIsLoading on browse selections, so loader-based waiting is unreliable.
+  // Response-based waiting (the same pattern used in expandServiceInExploreTree
+  // etc.) anchors on the actual data fetch so children are fully rendered before
+  // we interact with them.
+  const res = page.waitForResponse('/api/v1/search/query?*index=dataAsset*');
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })
     .locator('.ant-tree-switcher svg')
     .first()
     .click();
-
+  await res;
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -225,13 +231,9 @@ test.describe(
       await expandServiceInExploreTree(page, table.serviceResponseData.name);
 
       await test.step('Selecting a service in the tree adds browse chips', async () => {
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page
           .getByTestId(`explore-tree-title-${table.serviceResponseData.name}`)
           .click();
-        await browseRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -239,11 +241,7 @@ test.describe(
       });
 
       await test.step('Removing the service-type chip clears the browse', async () => {
-        const removeRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('remove-browse-chip-serviceType').click();
-        await removeRes;
         await waitForAllLoadersToDisappear(page);
 
         await expect(
@@ -258,17 +256,24 @@ test.describe(
       test.slow();
 
       await test.step('Selecting a database service type narrows the browse tree directionally', async () => {
-        await expandTreeNode(page, 'Databases');
-
-        const browseRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
+        const serviceTitle = page.getByTestId(
+          `explore-tree-title-${table.service.serviceType.toLowerCase()}`
         );
-        await page
-          .getByTestId(
-            `explore-tree-title-${table.service.serviceType.toLowerCase()}`
-          )
-          .click();
-        await browseRes;
+
+        // The browse rebuild collapses the tree and can detach the row
+        // mid-click; retry expand → click until the chip confirms the select.
+        await expect(async () => {
+          if (!(await serviceTitle.isVisible())) {
+            await expandTreeNode(page, 'Databases');
+          }
+          await serviceTitle.click();
+          await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible(
+            {
+              timeout: 5000,
+            }
+          );
+        }).toPass({ timeout: 60000 });
+
         await waitForAllLoadersToDisappear(page);
 
         await expect(page.getByTestId('browse-chip-serviceType')).toBeVisible();
@@ -285,11 +290,7 @@ test.describe(
       });
 
       await test.step('Query-panel Clear restores the full browse estate', async () => {
-        const clearRes = page.waitForResponse(
-          '/api/v1/search/query?*index=dataAsset*'
-        );
         await page.getByTestId('clear-all-chips').click();
-        await clearRes;
         await waitForAllLoadersToDisappear(page);
 
         const url = new URL(page.url());
@@ -322,6 +323,76 @@ test.describe(
       await expect(
         dashboardLeaf.locator('..').locator('.explore-node-count')
       ).toBeVisible();
+    });
+
+    test('selecting a schema keeps the drilled path expanded and highlights it', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const serviceName = table.serviceResponseData.name;
+      const dbName = table.databaseResponseData.name;
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+
+      // Selecting a hierarchical node used to rebuild the tree from the static
+      // structure, collapsing the drilled path and clearing the highlight.
+      const browseRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId(`explore-tree-title-${schemaName}`).click();
+      await browseRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await test.step('the drilled path stays expanded (no collapse)', async () => {
+        expect(page.url()).toContain('browsePath');
+        await expect(
+          page.getByTestId(`explore-tree-title-${serviceName}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`explore-tree-title-${dbName}`)
+        ).toBeVisible();
+        await expect(
+          page.getByTestId(`explore-tree-title-${schemaName}`)
+        ).toBeVisible();
+      });
+
+      await test.step('the selected schema stays highlighted', async () => {
+        await expect(rootTreeNode(page, schemaName)).toHaveClass(
+          /ant-tree-treenode-selected/
+        );
+      });
+    });
+
+    test('selecting the Tables leaf highlights the leaf, not its parent schema', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const schemaName = table.schemaResponseData.name;
+
+      await drillToSchema(page);
+
+      // The schema expands to its entity-type leaves; clicking Tables stores the
+      // type in quickFilter and only the schema path in browsePath. The
+      // highlight used to snap back up to the schema because it was re-derived
+      // from browsePath, which omits the leaf's type.
+      await expect(page.getByTestId('explore-tree-title-table')).toBeVisible();
+
+      const browseRes = page.waitForResponse(
+        '/api/v1/search/query?*index=dataAsset*'
+      );
+      await page.getByTestId('explore-tree-title-table').click();
+      await browseRes;
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(rootTreeNode(page, 'table')).toHaveClass(
+        /ant-tree-treenode-selected/
+      );
+      await expect(rootTreeNode(page, schemaName)).not.toHaveClass(
+        /ant-tree-treenode-selected/
+      );
     });
   }
 );

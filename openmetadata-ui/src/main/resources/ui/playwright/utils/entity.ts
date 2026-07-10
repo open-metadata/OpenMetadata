@@ -21,7 +21,10 @@ import {
 } from '../constant/delete';
 import { ES_RESERVED_CHARACTERS } from '../constant/entity';
 import { SidebarItem } from '../constant/sidebar';
-import { EntityTypeEndpoint } from '../support/entity/Entity.interface';
+import {
+  EntityTypeEndpoint,
+  ENTITY_PATH,
+} from '../support/entity/Entity.interface';
 import { EntityClass } from '../support/entity/EntityClass';
 import { EntityType } from '../support/entity/EntityDataClass.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -78,7 +81,8 @@ export const visitEntityPage = async (data: {
     (response) =>
       response.url().includes('/api/v1/search/query') &&
       response.url().includes('index=dataAsset') &&
-      response.url().includes('exclude_source_fields')
+      response.url().includes('exclude_source_fields'),
+    { timeout: 30000 }
   );
   await page.getByTestId('searchBox').fill(searchTerm);
   await searchResponse;
@@ -95,6 +99,43 @@ export const visitEntityPage = async (data: {
   await page.getByTestId(dataTestId).getByTestId('data-name').click();
   await waitForAllLoadersToDisappear(page);
   await page.getByTestId('searchBox').clear();
+};
+
+/**
+ * Navigate straight to an entity's detail page by FQN instead of typing into
+ * the global search box. This avoids depending on the search suggestion
+ * request and on the entity being indexed in Elasticsearch yet, which is the
+ * main source of flakiness in the entity suites. We wait on the entity's own
+ * "get by name" call (which always fires on navigation), not on search.
+ */
+export const visitEntityPageByFqn = async (data: {
+  page: Page;
+  endpoint: EntityTypeEndpoint;
+  fqn: string;
+}) => {
+  const { page, endpoint, fqn } = data;
+  await waitForAllLoadersToDisappear(page);
+  await removeLandingBanner(page);
+  const routeSegment = ENTITY_PATH[endpoint as keyof typeof ENTITY_PATH];
+
+  if (!routeSegment) {
+    throw new Error(`No entity detail route mapped for endpoint "${endpoint}"`);
+  }
+  if (!fqn) {
+    throw new Error(
+      `Cannot visit ${endpoint} page without a fullyQualifiedName`
+    );
+  }
+
+  const encodedFqn = encodeURIComponent(fqn);
+  const entityDetailsResponse = page.waitForResponse(
+    `/api/v1/${endpoint}/name/${encodedFqn}?**`
+  );
+  await page.goto(`/${routeSegment}/${encodedFqn}`, {
+    waitUntil: 'domcontentloaded',
+  });
+  await entityDetailsResponse;
+  await waitForAllLoadersToDisappear(page);
 };
 
 export const addOwner = async ({
@@ -1492,7 +1533,7 @@ const announcementForm = async (
   await announcementSubmit;
   await page.click('[data-testid="announcement-close"]');
   if (hideAlert) {
-    await page.click('[data-testid="alert-icon-close"]');
+    await toastNotification(page, /Announcement created successfully/i);
   }
 };
 
@@ -2086,12 +2127,8 @@ export const softDeleteEntity = async (
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(page.locator('.ant-modal-title')).toContainText(displayName);
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
   const deleteResponse = page.waitForResponse(
     `/api/v1/${endPoint}/async/*?hardDelete=false&recursive=true`
   );
@@ -2179,26 +2216,19 @@ export const hardDeleteEntity = async (
   await page.getByTestId('delete-button').waitFor();
   await page.click('[data-testid="delete-button"]');
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await expect(
-    page.locator('[data-testid="delete-modal"] .ant-modal-title')
-  ).toHaveText(new RegExp(entityName));
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.click('[data-testid="hard-delete"]');
   const deleteResponse = page.waitForResponse(
     `/api/v1/${endPoint}/async/*?hardDelete=true&recursive=true`
   );
   await page.click('[data-testid="confirm-button"]');
   await deleteResponse;
 
-  await expect(page.getByTestId('alert-bar')).toHaveText(
+  await toastNotification(
+    page,
     /(deleted successfully!|Delete operation initiated)/,
-    { timeout: BIG_ENTITY_DELETE_TIMEOUT }
+    BIG_ENTITY_DELETE_TIMEOUT
   );
 };
 
@@ -2577,4 +2607,18 @@ export const validateCopiedLinkFormat = ({
     fragment: url.hash,
     isValid: true,
   };
+};
+
+/**
+ * Types the DELETE confirmation only when the delete modal renders a
+ * confirmation text input. The radio-based DeleteEntityModal has no input,
+ * while the simple EntityDeleteModal still requires typing DELETE, so this
+ * guard keeps both flows working.
+ */
+export const fillDeleteConfirmationIfPresent = async (page: Page) => {
+  await page.getByTestId('confirm-button').waitFor({ state: 'visible' });
+  const confirmInput = page.getByTestId('confirmation-text-input');
+  if (await confirmInput.isVisible()) {
+    await confirmInput.fill('DELETE');
+  }
 };

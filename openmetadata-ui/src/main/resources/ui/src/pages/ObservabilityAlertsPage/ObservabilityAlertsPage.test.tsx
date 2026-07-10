@@ -85,7 +85,19 @@ jest.mock('@openmetadata/ui-core-components', () => {
     Root: ({ children }: React.PropsWithChildren) => <div>{children}</div>,
   };
 
-  return { Table: MockTable, TableCard: MockTableCard };
+  const Passthrough = ({ children }: React.PropsWithChildren) => (
+    <div>{children}</div>
+  );
+
+  return {
+    Table: MockTable,
+    TableCard: MockTableCard,
+    Box: Passthrough,
+    Button: Passthrough,
+    Popover: Passthrough,
+    PopoverTrigger: Passthrough,
+    Typography: Passthrough,
+  };
 });
 
 const MOCK_DATA = [
@@ -157,11 +169,11 @@ jest.mock('../../components/common/NextPrevious/NextPrevious', () => ({
   default: jest.fn().mockImplementation(() => <div>NextPrevious</div>),
 }));
 
-jest.mock('../../components/common/DeleteWidget/DeleteWidgetModal', () => {
+jest.mock('../../components/common/DeleteWidget/DeleteEntityModal', () => {
   return jest
     .fn()
     .mockImplementation(({ visible }) =>
-      visible ? <p>DeleteWidgetModal</p> : null
+      visible ? <p>DeleteEntityModal</p> : null
     );
 });
 
@@ -302,7 +314,7 @@ describe('Observability Alerts Page Tests', () => {
 
     fireEvent.click(deleteButton);
 
-    const deleteModal = await screen.findByText('DeleteWidgetModal');
+    const deleteModal = await screen.findByText('DeleteEntityModal');
 
     expect(deleteModal).toBeInTheDocument();
   });

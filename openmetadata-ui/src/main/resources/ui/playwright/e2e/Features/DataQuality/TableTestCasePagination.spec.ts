@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
+import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { TableClass } from '../../../support/entity/TableClass';
 import { performAdminLogin } from '../../../utils/admin';
 import { redirectToHomePage } from '../../../utils/common';
@@ -27,7 +28,7 @@ const table = new TableClass();
 
 test.describe(
   'Table Data Quality tab pagination',
-  { tag: ['@Features', '@Observability'] },
+  { tag: ['@Features', '@Observability', PLAYWRIGHT_BASIC_TEST_TAG_OBJ.tag] },
   () => {
     test.beforeAll(
       'Create a table with test cases beyond the page size',

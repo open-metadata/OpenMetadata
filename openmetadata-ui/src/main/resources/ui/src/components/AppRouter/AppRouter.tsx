@@ -21,13 +21,13 @@ import { useAppMode } from '../../hooks/useAppMode';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
-import withSuspenseFallback from './withSuspenseFallback';
+import { withPageSuspenseFallback } from './withSuspenseFallback';
 
-const AuthenticatedApp = withSuspenseFallback(
+const AuthenticatedApp = withPageSuspenseFallback(
   lazy(() => import('./AuthenticatedApp'))
 );
 
-const AuthenticatedRoutes = withSuspenseFallback(
+const AuthenticatedRoutes = withPageSuspenseFallback(
   lazy(() =>
     import('./AuthenticatedRoutes').then((m) => ({
       default: m.AuthenticatedRoutes,
@@ -36,11 +36,11 @@ const AuthenticatedRoutes = withSuspenseFallback(
 );
 
 // Lazy-load infrequently-visited unauthenticated pages
-const AccessNotAllowedPage = withSuspenseFallback(
+const AccessNotAllowedPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/AccessNotAllowedPage/AccessNotAllowedPage'))
 );
 
-const LogoutPage = withSuspenseFallback(
+const LogoutPage = withPageSuspenseFallback(
   lazy(() =>
     import('../../pages/LogoutPage/LogoutPage').then((m) => ({
       default: m.LogoutPage,
@@ -48,15 +48,15 @@ const LogoutPage = withSuspenseFallback(
   )
 );
 
-const PageNotFound = withSuspenseFallback(
+const PageNotFound = withPageSuspenseFallback(
   lazy(() => import('../../pages/PageNotFound/PageNotFound'))
 );
 
-const SamlCallback = withSuspenseFallback(
+const SamlCallback = withPageSuspenseFallback(
   lazy(() => import('../../pages/SamlCallback'))
 );
 
-const SignUpPage = withSuspenseFallback(
+const SignUpPage = withPageSuspenseFallback(
   lazy(() => import('../../pages/SignUp/SignUpPage'))
 );
 

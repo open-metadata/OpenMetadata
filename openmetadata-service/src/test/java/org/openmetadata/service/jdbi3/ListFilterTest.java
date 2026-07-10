@@ -6,6 +6,7 @@ import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.Relationship;
 
 class ListFilterTest {
   @Test
@@ -138,6 +139,24 @@ class ListFilterTest {
         condition.contains(
                 "JSON_UNQUOTE(JSON_EXTRACT(json, '$.shareConfig.visibility')) = :memorySearchVisibility")
             || condition.contains("json->'shareConfig'->>'visibility' = :memorySearchVisibility"));
+
+  }
+
+  @Test
+  void getCondition_primaryEntityIdFiltersPillsByAppliedToEdge() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("primaryEntityId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("cm");
+    assertTrue(condition.contains("SELECT entity_relationship.toId"));
+    assertTrue(condition.contains("entity_relationship.fromId = :primaryEntityIdParam"));
+    assertTrue(condition.contains("entity_relationship.toEntity = 'contextMemory'"));
+    assertTrue(
+        condition.contains(
+            "entity_relationship.relation = "
+                + org.openmetadata.schema.type.Relationship.APPLIED_TO.ordinal()));
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111",
+        filter.getQueryParams().get("primaryEntityIdParam"));
   }
 
   @Test
@@ -341,5 +360,76 @@ class ListFilterTest {
     ListFilter delFilter = new ListFilter(Include.DELETED).addQueryParam("service", "aws_s3");
     String delCond = delFilter.getCondition("storage_container_entity");
     assertTrue(delCond.contains("storage_container_entity.deleted = TRUE"), delCond);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_bothBounds() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("taskStartTs", "1000");
+    filter.addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_startOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStartTs", "1000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertFalse(condition.contains("createdAt <="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_endOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+    assertFalse(condition.contains("createdAt >="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_absentWhenNoParams() {
+    String condition = new ListFilter().getCondition("task_entity");
+    assertFalse(condition.contains("createdAt"), condition);
+  }
+
+  @Test
+  void test_getFolderCondition_emptyWhenFolderIdAbsent() {
+    assertEquals("", new ListFilter(Include.ALL).getFolderCondition());
+  }
+
+  @Test
+  void test_getFolderCondition_emptyWhenFolderIdBlank() {
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", "");
+    assertEquals("", filter.getFolderCondition());
+  }
+
+  @Test
+  void test_getFolderCondition_buildsParameterizedContainsSubquery() {
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", "folder-123");
+
+    String expected =
+        "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+            + "WHERE entity_relationship.fromId = :folderIdParam "
+            + "AND entity_relationship.fromEntity = 'folder' "
+            + "AND entity_relationship.toEntity = 'contextFile' "
+            + "AND entity_relationship.relation = "
+            + Relationship.CONTAINS.ordinal()
+            + "))";
+
+    assertEquals(expected, filter.getFolderCondition());
+    assertEquals("folder-123", filter.getQueryParam("folderIdParam"));
+  }
+
+  @Test
+  void test_getFolderCondition_folderIdIsNotInlined_soNoInjection() {
+    String hostile = "x') OR 1=1 --";
+    ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", hostile);
+
+    String condition = filter.getFolderCondition();
+    assertFalse(condition.contains("OR 1=1"), condition);
+    assertTrue(condition.contains(":folderIdParam"), condition);
+    assertEquals(hostile, filter.getQueryParam("folderIdParam"));
   }
 }

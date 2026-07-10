@@ -1,0 +1,44 @@
+{
+  "framework": {
+    "name": "canada_aida",
+    "displayName": "Canada AIDA",
+    "description": "Artificial Intelligence and Data Act (Bill C-27) — Canada's federal AI regulation focused on high-impact systems.",
+    "reference": "Bill C-27",
+    "region": "Canada",
+    "source": "BuiltIn",
+    "enabled": false,
+    "assessmentCadence": "SemiAnnual",
+    "autoApply": {
+      "assetTypes": ["aiApplication", "llmModel"],
+      "regions": ["Canada"],
+      "riskClasses": ["High"],
+      "deploymentStages": []
+    }
+  },
+  "controls": [
+    {
+      "code": "aida-1",
+      "name": "aida-1",
+      "displayName": "High-impact System Designation",
+      "category": "Risk",
+      "description": "Designate whether the system meets the high-impact threshold under AIDA.",
+      "evidenceRequirements": ["Impact assessment", "Designation memo"]
+    },
+    {
+      "code": "aida-2",
+      "name": "aida-2",
+      "displayName": "Risk Management Measures",
+      "category": "Process",
+      "description": "Implement measures to mitigate risks of harm or biased output.",
+      "evidenceRequirements": ["Risk mitigation plan"]
+    },
+    {
+      "code": "aida-3",
+      "name": "aida-3",
+      "displayName": "Recordkeeping",
+      "category": "Process",
+      "description": "Keep records describing the system, its risks, and mitigations.",
+      "evidenceRequirements": ["System inventory", "Records register"]
+    }
+  ]
+}

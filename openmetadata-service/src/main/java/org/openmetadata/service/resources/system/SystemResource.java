@@ -22,9 +22,11 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.json.JsonPatch;
 import jakarta.json.JsonValue;
 import jakarta.validation.Valid;
+import jakarta.ws.rs.BadRequestException;
 import jakarta.ws.rs.Consumes;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
+import jakarta.ws.rs.NotFoundException;
 import jakarta.ws.rs.PATCH;
 import jakarta.ws.rs.POST;
 import jakarta.ws.rs.PUT;
@@ -32,6 +34,7 @@ import jakarta.ws.rs.Path;
 import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
@@ -40,8 +43,15 @@ import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.TimeoutException;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
@@ -89,6 +99,9 @@ import org.openmetadata.service.monitoring.LatencyPhase;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.LogicOps;
+import org.openmetadata.service.search.SearchIndexMappingsSeeder;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessAnalyzer;
+import org.openmetadata.service.search.fitness.SearchClusterFitnessReport;
 import org.openmetadata.service.secrets.masker.PasswordEntityMasker;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.JwtFilter;
@@ -110,6 +123,17 @@ import org.openmetadata.service.util.email.EmailUtil;
 @LatencyPhase
 public class SystemResource {
   public static final String COLLECTION_PATH = "/v1/system";
+  private static final String MAPPINGS_KEY = "mappings";
+  private static final String PROPERTIES_KEY = "properties";
+  private static final long SEARCH_FITNESS_TIMEOUT_SECONDS = 30;
+  private static final ExecutorService SEARCH_FITNESS_EXECUTOR =
+      Executors.newFixedThreadPool(
+          2,
+          runnable -> {
+            Thread thread = new Thread(runnable, "search-fitness-analyzer");
+            thread.setDaemon(true);
+            return thread;
+          });
   private final SystemRepository systemRepository;
   private final Authorizer authorizer;
   private OpenMetadataApplicationConfig applicationConfig;
@@ -300,6 +324,112 @@ public class SystemResource {
   }
 
   @GET
+  @Path("/settings/searchIndexMappings")
+  @Operation(
+      operationId = "listSearchIndexMappings",
+      summary = "List editable search index mappings",
+      description =
+          "List every editable entity type, grouped by search index mapping language. Entities "
+              + "without a saved override resolve from the bundled default mapping.")
+  public Map<String, List<String>> listSearchIndexMappings(
+      @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    return SearchIndexMappingsSeeder.availableMappings();
+  }
+
+  @GET
+  @Path("/settings/searchIndexMappings/{language}/{entityType}")
+  @Operation(
+      operationId = "getSearchIndexMapping",
+      summary = "Get the search index mapping for an entity in a language",
+      description =
+          "Get the stored, editable index mapping for an entity type and language. When "
+              + "'fallback' is true, returns the hardened default mapping if none is stored yet.")
+  public Map<String, Object> getSearchIndexMapping(
+      @Context SecurityContext securityContext,
+      @PathParam("language") String language,
+      @PathParam("entityType") String entityType,
+      @QueryParam("fallback") @DefaultValue("false") boolean fallback) {
+    authorizer.authorizeAdmin(securityContext);
+    Map<String, Object> mapping =
+        systemRepository.getSearchIndexMapping(
+            language.toLowerCase(Locale.ROOT), entityType, fallback);
+    if (mapping == null) {
+      throw new NotFoundException(
+          String.format(
+              "No stored search index mapping for language '%s' and entity '%s'",
+              language, entityType));
+    }
+    return mapping;
+  }
+
+  @PUT
+  @Path("/settings/searchIndexMappings/{language}/{entityType}")
+  @Operation(
+      operationId = "updateSearchIndexMapping",
+      summary = "Update the search index mapping for an entity in a language",
+      description =
+          "Persist an admin-edited index mapping for an entity type and language. The submitted "
+              + "mapping is field-safety hardened before storage. The change takes effect on the "
+              + "next reindex of that entity.")
+  public Response updateSearchIndexMapping(
+      @Context SecurityContext securityContext,
+      @PathParam("language") String language,
+      @PathParam("entityType") String entityType,
+      Map<String, Object> mapping) {
+    authorizer.authorizeAdmin(securityContext);
+    validateSearchIndexMappingRequest(language, entityType, mapping);
+    Settings updated =
+        systemRepository.upsertSearchIndexMapping(
+            language.toLowerCase(Locale.ROOT), entityType, mapping);
+    return Response.ok(updated).build();
+  }
+
+  @PUT
+  @Path("/settings/searchIndexMappings/reset/{language}/{entityType}")
+  @Operation(
+      operationId = "resetSearchIndexMapping",
+      summary = "Reset the search index mapping for an entity to its default",
+      description =
+          "Replace the stored mapping for an entity type and language with the hardened default "
+              + "derived from the bundled resource mapping. Applies on the next reindex.")
+  public Response resetSearchIndexMapping(
+      @Context SecurityContext securityContext,
+      @PathParam("language") String language,
+      @PathParam("entityType") String entityType) {
+    authorizer.authorizeAdmin(securityContext);
+    Settings reset =
+        systemRepository.resetSearchIndexMapping(language.toLowerCase(Locale.ROOT), entityType);
+    if (reset == null) {
+      throw new NotFoundException(
+          String.format("No default search index mapping for entity '%s'", entityType));
+    }
+    return Response.ok(reset).build();
+  }
+
+  private void validateSearchIndexMappingRequest(
+      String language, String entityType, Map<String, Object> mapping) {
+    if (!SearchIndexMappingsSeeder.supportedLanguages()
+        .contains(language.toLowerCase(Locale.ROOT))) {
+      throw new BadRequestException("Unsupported search index mapping language: " + language);
+    }
+    if (!SearchIndexMappingsSeeder.supportedEntityTypes().contains(entityType)) {
+      throw new BadRequestException("Unknown search index entity type: " + entityType);
+    }
+    if (!hasMappingProperties(mapping)) {
+      throw new BadRequestException("Index mapping must contain a 'mappings.properties' object");
+    }
+  }
+
+  private boolean hasMappingProperties(Map<String, Object> mapping) {
+    boolean valid = false;
+    if (mapping != null && mapping.get(MAPPINGS_KEY) instanceof Map<?, ?> mappings) {
+      valid = mappings.get(PROPERTIES_KEY) instanceof Map;
+    }
+    return valid;
+  }
+
+  @GET
   @Path("/search/nlq")
   @Operation(
       operationId = "",
@@ -317,6 +447,58 @@ public class SystemResource {
   public Response checkSearchSettings(
       @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
     return Response.ok().entity(isNlqEnabled).build();
+  }
+
+  @GET
+  @Path("/search/fitness")
+  @Hidden
+  @Operation(
+      operationId = "getSearchClusterFitness",
+      hidden = true,
+      summary = "Diagnose whether the search cluster is sized for current data",
+      description =
+          "Internal admin-only diagnostic. Returns a structured fitness report covering cluster "
+              + "status, per-index data footprint (size + average doc bytes), disk watermarks, "
+              + "heap/CPU, thread-pool rejections, circuit breaker trips, shard layout, and "
+              + "capacity recommendations. Not part of the public API surface.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "Search cluster fitness report",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = SearchClusterFitnessReport.class)))
+      })
+  public Response getSearchClusterFitness(
+      @Context UriInfo uriInfo, @Context SecurityContext securityContext) {
+    authorizer.authorizeAdmin(securityContext);
+    SearchClusterFitnessAnalyzer analyzer =
+        new SearchClusterFitnessAnalyzer(Entity.getSearchRepository());
+    SearchClusterFitnessReport report = computeFitnessWithTimeout(analyzer);
+    return Response.ok().entity(report).build();
+  }
+
+  private SearchClusterFitnessReport computeFitnessWithTimeout(
+      SearchClusterFitnessAnalyzer analyzer) {
+    Future<SearchClusterFitnessReport> future = SEARCH_FITNESS_EXECUTOR.submit(analyzer::analyze);
+    try {
+      return future.get(SEARCH_FITNESS_TIMEOUT_SECONDS, TimeUnit.SECONDS);
+    } catch (TimeoutException e) {
+      future.cancel(true);
+      throw new ServiceUnavailableException(
+          "Search cluster fitness analysis exceeded "
+              + SEARCH_FITNESS_TIMEOUT_SECONDS
+              + "s — the cluster is slow or unreachable. Try again or inspect the cluster directly.");
+    } catch (InterruptedException e) {
+      future.cancel(true);
+      Thread.currentThread().interrupt();
+      throw new UnhandledServerException("Search cluster fitness analysis was interrupted");
+    } catch (ExecutionException e) {
+      Throwable cause = e.getCause() != null ? e.getCause() : e;
+      throw new UnhandledServerException(
+          "Search cluster fitness analysis failed: " + cause.getMessage(), cause);
+    }
   }
 
   @GET

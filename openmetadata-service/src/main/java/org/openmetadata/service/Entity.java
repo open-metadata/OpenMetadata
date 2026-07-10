@@ -221,6 +221,9 @@ public final class Entity {
   public static final String PROMPT_TEMPLATE = "promptTemplate";
   public static final String AGENT_EXECUTION = "agentExecution";
   public static final String AI_GOVERNANCE_POLICY = "aiGovernancePolicy";
+  public static final String AI_GOVERNANCE_FRAMEWORK = "aiGovernanceFramework";
+  public static final String AI_FRAMEWORK_CONTROL = "aiFrameworkControl";
+  public static final String AUDIT_REPORT = "auditReport";
   public static final String MCP_SERVER = "mcpServer";
   public static final String MCP_EXECUTION = "mcpExecution";
   public static final String TEST_DEFINITION = "testDefinition";

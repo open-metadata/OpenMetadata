@@ -12,4 +12,4 @@
  */
 
 export { default } from './ColorPicker.component';
-export { default as MUIColorPicker } from './MUIColorPicker';
+export { default as ColorSwatchPicker } from './ColorSwatchPicker';

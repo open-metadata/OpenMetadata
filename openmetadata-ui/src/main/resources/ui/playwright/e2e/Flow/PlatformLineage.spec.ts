@@ -17,8 +17,11 @@ import { sidebarClick } from '../../utils/sidebar';
 import { test } from '../fixtures/pages';
 
 test('Verify Platform Lineage View', async ({ page }) => {
-  // Need to add more time for AUT and not for PR checks
-  test.slow(!process.env.PLAYWRIGHT_IS_OSS);
+  // Slow unconditionally: verifyExportLineagePNG waits up to 120s for the
+  // download event, so the outer test timeout must exceed that. The base
+  // 60s left PR runs (where PLAYWRIGHT_IS_OSS is set) unable to ever reach
+  // the download event — the test timed out mid-render every time.
+  test.slow();
 
   // Limit MAX_NODES to get PNG export in time
   const MAX_NODES = 200;
@@ -58,7 +61,7 @@ test('Verify Platform Lineage View', async ({ page }) => {
   await page.getByTestId('lineage-layer-btn').click();
 
   await page
-    .locator('[data-testid="lineage-layer-domain-btn"]:not(.MUI-selected)')
+    .locator('[data-testid="lineage-layer-domain-btn"]:not([data-selected])')
     .waitFor();
 
   const domainRes = page.waitForResponse(

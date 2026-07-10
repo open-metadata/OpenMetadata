@@ -11,37 +11,57 @@
  *  limitations under the License.
  */
 
-import { Avatar, SxProps, Theme } from '@mui/material';
-import { useMemo } from 'react';
+import { Avatar, Typography } from '@openmetadata/ui-core-components';
+import { ComponentProps, useMemo } from 'react';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
 import { User } from '../../../../generated/entity/teams/user';
 import { useUserProfile } from '../../../../hooks/user-profile/useUserProfile';
-import { getRandomColor } from '../../../../utils/ColorUtils';
+import {
+  getAvatarColorClass,
+  getFirstAlphanumeric,
+} from '../../../../utils/ColorUtils';
 import { userPermissions } from '../../../../utils/PermissionsUtils';
 import Loader from '../../Loader/Loader';
 
 type UserData = Pick<User, 'name' | 'displayName'>;
+type AvatarSize = NonNullable<ComponentProps<typeof Avatar>['size']>;
 
 interface ProfilePictureProps extends UserData {
-  size?: number;
+  size?: AvatarSize;
   isTeam?: boolean;
   avatarType?: 'solid' | 'outlined';
-  sx?: SxProps<Theme>;
 }
+
+// Typography size per ui-core avatar size (mirrors the library's own
+// `initials` sizing — we render a custom-colored initial, so we size it here).
+type TypographySize = NonNullable<ComponentProps<typeof Typography>['size']>;
+
+const AVATAR_INITIAL_SIZE: Record<AvatarSize, TypographySize> = {
+  xxs: 'text-xs',
+  xs: 'text-xs',
+  sm: 'text-sm',
+  md: 'text-md',
+  lg: 'text-lg',
+  xl: 'text-xl',
+  '2xl': 'display-xs',
+};
+
+const SMALL_LOADER_SIZES: AvatarSize[] = ['xxs', 'xs'];
 
 const ProfilePicture = ({
   name,
   displayName,
-  size = 36,
+  size = 'md',
   isTeam = false,
   avatarType = 'outlined',
-  sx,
 }: ProfilePictureProps) => {
   const { permissions } = usePermissionProvider();
-  const { color, character, backgroundColor } = getRandomColor(
-    displayName ?? name
-  );
+
+  const isSolid = avatarType === 'solid';
+  const avatarName = displayName ?? name;
+  const character = getFirstAlphanumeric(avatarName).toUpperCase();
+  const { container, text } = getAvatarColorClass(avatarName, isSolid);
 
   const viewUserPermission = useMemo(() => {
     return userPermissions.hasViewPermissions(ResourceEntity.USER, permissions);
@@ -53,42 +73,31 @@ const ProfilePicture = ({
     isTeam,
   });
 
-  const getAvatarStyles = (): SxProps<Theme> => ({
-    width: size,
-    height: size,
-    fontSize: size * 0.55,
-    color: avatarType === 'solid' ? '#fff' : color,
-    bgcolor: avatarType === 'solid' ? color : backgroundColor,
-    fontWeight: avatarType === 'solid' ? 400 : 500,
-    border: avatarType === 'solid' ? 'none' : `0.5px solid ${color}`,
-    ...sx,
-  });
-
-  if (profileURL) {
-    return (
-      <Avatar
-        src={profileURL}
-        sx={{
-          width: size,
-          height: size,
-          ...sx,
-        }}
+  const placeholder =
+    !profileURL && isPicLoading ? (
+      <Loader
+        size={SMALL_LOADER_SIZES.includes(size) ? 'x-small' : 'small'}
+        type={isSolid ? 'white' : 'default'}
       />
+    ) : (
+      <Typography
+        as="span"
+        className={text}
+        size={AVATAR_INITIAL_SIZE[size]}
+        weight={isSolid ? 'regular' : 'medium'}>
+        {character}
+      </Typography>
     );
-  }
 
-  if (isPicLoading) {
-    return (
-      <Avatar sx={getAvatarStyles()}>
-        <Loader
-          size={size >= 24 ? 'small' : 'x-small'}
-          type={avatarType === 'solid' ? 'white' : 'default'}
-        />
-      </Avatar>
-    );
-  }
-
-  return <Avatar sx={getAvatarStyles()}>{character}</Avatar>;
+  return (
+    <Avatar
+      className={container}
+      contrastBorder={false}
+      placeholder={placeholder}
+      size={size}
+      src={profileURL || undefined}
+    />
+  );
 };
 
 export default ProfilePicture;

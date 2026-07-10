@@ -157,6 +157,9 @@ export const GlobalSearchBar = () => {
 
   const handleClear = () => {
     setSearchValue('');
+    if (pathname === '/explore' || pathname.startsWith('/explore/')) {
+      navigate(getExplorePath({ search: '', isPersistFilters: true }));
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLInputElement>) => {

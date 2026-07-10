@@ -19,6 +19,7 @@ export interface ArchiveItem {
   type: ArchiveItemType;
   updatedBy?: string;
   updatedAt?: number;
+  fileExtension?: string;
 }
 
 export interface ArchiveViewProps {

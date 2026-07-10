@@ -14,7 +14,7 @@ Base class for ingesting dashboard services
 
 import traceback
 from abc import ABC, abstractmethod
-from typing import Any, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Set, Tuple, Union  # noqa: UP035
 
 from pydantic import BaseModel, Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -214,6 +214,28 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
     dashboard_source_state: Set = set()  # noqa: RUF012, UP006
     datamodel_source_state: Set = set()  # noqa: RUF012, UP006
     chart_source_state: Set = set()  # noqa: RUF012, UP006
+
+    def _declare_progress_groups(self, label: str, total: Optional[int]) -> None:  # noqa: UP045
+        """Declare the grouping axis (e.g. workspaces) as a global counter.
+
+        These group helpers drive ``self.progress_tracking.manual`` and therefore require
+        the connector to set ``progress_mode = ProgressMode.MANUAL`` (as PowerBI
+        does); calling them from a default AUTO source raises ``ProgressModeError``
+        and would double-count against the runner's own tracking."""
+        self.progress_tracking.manual.declare_groups(label, total)
+
+    def _open_group_progress(self, group: str, expected_by_type: Dict[str, Optional[int]]) -> None:  # noqa: UP006, UP045
+        """Open one child node per asset type under ``group`` so each type renders
+        as its own line; ``expected`` may be None for lazy (running) counts."""
+        self.progress_tracking.manual.open_group(group, expected_by_type)
+
+    def _advance_group_progress(self, group: str, asset_type: str) -> None:
+        """Record one processed asset of ``asset_type`` under ``group``."""
+        self.progress_tracking.manual.advance(group, asset_type)
+
+    def _close_group_progress(self, group: str) -> None:
+        """Count the finished group on its global counter and prune its subtree."""
+        self.progress_tracking.manual.close_group(group)
 
     @retry_with_docker_host()
     def __init__(
