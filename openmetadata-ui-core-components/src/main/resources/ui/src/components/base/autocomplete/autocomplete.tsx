@@ -9,6 +9,7 @@ import {
   sizes,
 } from '@/components/base/select/select';
 import { Typography } from '@/components/foundations/typography';
+import { useResizeObserver } from '@/hooks/use-resize-observer';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 import { SearchLg } from '@untitledui/icons';
@@ -493,6 +494,21 @@ export const AutocompleteBase = ({
 
   const triggerRef = useRef<HTMLDivElement>(null);
 
+  // Match the popover width to the trigger. The base Popover relies on
+  // `--trigger-width`, but react-aria only sets that on a trigger's own context
+  // popover — a standalone `<Popover triggerRef>` (as used here) never receives
+  // it, so the dropdown would otherwise collapse to its content width. Measure
+  // the trigger and set the width explicitly (same approach as MultiSelect).
+  const [popoverWidth, setPopoverWidth] = useState('');
+
+  const onResize = useCallback(() => {
+    if (triggerRef.current) {
+      setPopoverWidth(triggerRef.current.getBoundingClientRect().width + 'px');
+    }
+  }, [triggerRef]);
+
+  useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
+
   const selectContextValue = useMemo(
     () => ({ size: 'sm' as const, fontSize: 'sm' as const }),
     []
@@ -556,7 +572,11 @@ export const AutocompleteBase = ({
                   isInvalid={isInvalid}
                   placeholder={placeholder}
                   size="sm"
-                  onFocus={onFocus}
+                  onFocus={(event) => {
+                    onResize();
+                    onFocus?.(event);
+                  }}
+                  onPointerEnter={onResize}
                 />
               </div>
 
@@ -564,6 +584,7 @@ export const AutocompleteBase = ({
                 <Popover
                   className={popoverClassName}
                   size="md"
+                  style={{ width: popoverWidth }}
                   triggerRef={triggerRef}>
                   <AriaListBox
                     className="tw:size-full tw:outline-hidden"

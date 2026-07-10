@@ -62,15 +62,20 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
     <Popover
       isNonModal
       isOpen
-      className="tw:w-75 tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
+      className="tw:flex tw:max-h-[85vh] tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
       offset={offset}
       placement="right top"
       triggerRef={anchorRef}>
       {/* A plain container, not a Dialog — the doc popover must never take
           focus, or it would steal it from the field being edited. */}
-      <div aria-label="Field documentation" role="note">
+      <div
+        aria-label="Field documentation"
+        className="tw:flex tw:min-h-0 tw:flex-1 tw:flex-col"
+        role="note">
         {header != null && <div className="tw:px-4 tw:pt-4">{header}</div>}
-        <div className="tw:px-4 tw:pb-4 tw:pt-4">
+        {/* Body scrolls within the capped popover height; the header (if any)
+            stays pinned so long docs never push the popover off-screen. */}
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:px-4 tw:pb-4 tw:pt-4">
           <h4 className="tw:text-md tw:font-medium tw:text-primary tw:mb-1">
             {entry.label}
           </h4>
