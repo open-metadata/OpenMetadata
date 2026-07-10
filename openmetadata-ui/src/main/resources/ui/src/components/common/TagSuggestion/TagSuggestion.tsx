@@ -19,7 +19,15 @@ import {
 } from '@openmetadata/ui-core-components';
 import { debounce } from 'lodash';
 import { EntityTags } from 'Models';
-import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  FC,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+  type PointerEvent as ReactPointerEvent,
+} from 'react';
 import { useTranslation } from 'react-i18next';
 import { Tag } from '../../../generated/entity/classification/tag';
 import { TagSource } from '../../../generated/entity/data/container';
@@ -197,9 +205,22 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
     [value, onChange]
   );
 
-  const handleTriggerFocus = useCallback(() => {
-    ensureComboboxMenuOpen(() => containerRef.current?.querySelector('input'));
-  }, []);
+  // Force the menu open on a click of the field itself, but not on a click of
+  // its label. A label click focuses the input (opening it via focus would be
+  // surprising); gating on pointer target keeps click-to-open on the field
+  // while leaving the label inert. Pointer-driven (not onFocus) so it survives
+  // the focus-time re-render that would otherwise cancel the menu.
+  const handleFieldPointerDown = useCallback(
+    (event: ReactPointerEvent<HTMLDivElement>) => {
+      if ((event.target as HTMLElement).closest('label')) {
+        return;
+      }
+      ensureComboboxMenuOpen(() =>
+        containerRef.current?.querySelector('input')
+      );
+    },
+    []
+  );
 
   const displayOptions = useMemo<TagSelectItem[]>(
     () =>
@@ -210,7 +231,10 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
   );
 
   return (
-    <div data-testid="tag-suggestion" ref={containerRef}>
+    <div
+      data-testid="tag-suggestion"
+      ref={containerRef}
+      onPointerDown={handleFieldPointerDown}>
       <Autocomplete
         filterOption={() => true}
         isRequired={required}
@@ -241,7 +265,6 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
           );
         }}
         selectedItems={selectedItems}
-        onFocus={handleTriggerFocus}
         onItemCleared={handleItemCleared}
         onItemInserted={handleItemInserted}
         onSearchChange={handleSearchChange}>

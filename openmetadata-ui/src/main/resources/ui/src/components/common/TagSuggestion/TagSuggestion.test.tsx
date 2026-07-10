@@ -17,12 +17,19 @@ import { MOCK_GLOSSARY_OPTIONS, MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
 
 const mockGetTags = jest.fn();
 const mockFetchGlossaryList = jest.fn();
+const mockEnsureComboboxMenuOpen = jest.fn();
 
 jest.mock('../../../utils/TagClassBase', () => ({
   __esModule: true,
   default: {
     getTags: (...args: unknown[]) => mockGetTags(...args),
   },
+}));
+
+jest.mock('../../../utils/formPureUtils', () => ({
+  ...jest.requireActual('../../../utils/formPureUtils'),
+  ensureComboboxMenuOpen: (...args: unknown[]) =>
+    mockEnsureComboboxMenuOpen(...args),
 }));
 
 jest.mock('../../../utils/TagsUtils', () => ({
@@ -332,6 +339,24 @@ describe('TagSuggestion', () => {
     expect(mockOnChange.mock.calls[0][0][0].source).toBe(
       TagSource.Classification
     );
+  });
+
+  describe('menu open on field vs label pointer-down', () => {
+    it('force-opens the menu when the field itself is pressed', async () => {
+      render(<TagSuggestion label="Tags" onChange={mockOnChange} />);
+
+      fireEvent.pointerDown(screen.getByRole('combobox'));
+
+      expect(mockEnsureComboboxMenuOpen).toHaveBeenCalledTimes(1);
+    });
+
+    it('does not force-open the menu when the label is pressed', async () => {
+      render(<TagSuggestion label="Tags" onChange={mockOnChange} />);
+
+      fireEvent.pointerDown(screen.getByText('Tags'));
+
+      expect(mockEnsureComboboxMenuOpen).not.toHaveBeenCalled();
+    });
   });
 
   describe('when tagType is Glossary', () => {
