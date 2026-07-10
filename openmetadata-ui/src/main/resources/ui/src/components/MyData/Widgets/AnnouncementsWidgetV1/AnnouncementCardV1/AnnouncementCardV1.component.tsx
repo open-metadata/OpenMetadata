@@ -46,7 +46,7 @@ const AnnouncementCardV1 = ({
     title,
     userName,
   } = useMemo(() => {
-    const fqn = getEntityFQN(announcement.entityLink ?? '');
+    const fqn = getEntityFQN(announcement.entityLink ?? '') ?? '';
 
     return {
       title: announcement.displayName ?? announcement.name,
