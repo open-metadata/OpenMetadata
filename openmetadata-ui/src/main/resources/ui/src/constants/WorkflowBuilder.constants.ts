@@ -22,8 +22,8 @@ import { WORKFLOW_DATA_ASSETS_LIST } from '../utils/WorkflowsUtils';
 export enum ConditionValue {
   TRUE = 'TRUE',
   FALSE = 'FALSE',
-  APPROVE = 'APPROVE',
-  REJECT = 'REJECT',
+  APPROVE = 'approve',
+  REJECT = 'reject',
 }
 
 export enum SchedularOptions {
