@@ -14,17 +14,26 @@ package org.openmetadata.service.resources.ai;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.ai.FrameworkControlCoverage;
 import org.openmetadata.schema.api.ai.FrameworkCoverageResponse;
 import org.openmetadata.schema.api.ai.FrameworkCoverageSummary;
+import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
 import org.openmetadata.schema.entity.ai.FrameworkAutoApplyRules;
+import org.openmetadata.schema.entity.ai.GovernanceMetadata;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
+import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.type.AICompliance;
+import org.openmetadata.schema.type.AIComplianceRecord;
+import org.openmetadata.schema.type.ComplianceFramework;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.type.RemediationAction;
+import org.openmetadata.schema.type.RemediationStatus;
+import org.openmetadata.schema.type.ScopeAndDeployment;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
@@ -53,7 +62,6 @@ import org.openmetadata.service.util.EntityUtil;
  * in-scope assets' records. {@code assetsInScope} is the in-scope total.
  */
 @Slf4j
-@SuppressWarnings("unchecked")
 public final class FrameworkCoverageComputer {
 
   private static final int PAGE_SIZE = 1000;
@@ -81,17 +89,16 @@ public final class FrameworkCoverageComputer {
     int partialAssetCount = 0;
     int nonCompliantAssetCount = 0;
     for (AssetCompliance compliance : assetCompliance) {
-      Map<String, Object> record = compliance.record();
+      ComplianceRecordSnapshot record = compliance.record();
       if (record == null) {
         nonCompliantAssetCount++;
         continue;
       }
-      String status = String.valueOf(record.getOrDefault("status", "UnderReview"));
-      if ("Compliant".equals(status)) {
+      if ("Compliant".equals(record.status())) {
         compliantAssetCount++;
-      } else if ("PartiallyCompliant".equals(status)) {
+      } else if ("PartiallyCompliant".equals(record.status())) {
         partialAssetCount++;
-      } else if ("NonCompliant".equals(status) || "UnderReview".equals(status)) {
+      } else if ("NonCompliant".equals(record.status()) || "UnderReview".equals(record.status())) {
         nonCompliantAssetCount++;
       }
     }
@@ -126,18 +133,17 @@ public final class FrameworkCoverageComputer {
     int partial = 0;
     int nonCompliant = 0;
     for (AssetCompliance compliance : assetCompliance) {
-      Map<String, Object> record = compliance.record();
+      ComplianceRecordSnapshot record = compliance.record();
       if (record == null) {
         nonCompliant++;
         continue;
       }
-      if (hasEvidence(record)) {
+      if (record.hasEvidence()) {
         evidence++;
       }
-      String status = String.valueOf(record.getOrDefault("status", "UnderReview"));
-      if ("NonCompliant".equals(status) || "UnderReview".equals(status)) {
+      if ("NonCompliant".equals(record.status()) || "UnderReview".equals(record.status())) {
         nonCompliant++;
-      } else if ("PartiallyCompliant".equals(status)
+      } else if ("PartiallyCompliant".equals(record.status())
           || hasPendingRemediation(compliance.remediationActions(), frameworkName, controlCode)) {
         partial++;
       }
@@ -165,35 +171,28 @@ public final class FrameworkCoverageComputer {
   }
 
   private static AssetCompliance assetCompliance(EntityInterface asset, String frameworkName) {
-    Map<String, Object> raw = rawAsset(asset);
-    Map<String, Object> governance = governanceOf(raw);
+    GovernanceSnapshot governance = governance(asset);
     return new AssetCompliance(
-        findComplianceRecord(governance, frameworkName), remediationActions(raw, governance));
+        findComplianceRecord(governance.aiCompliance(), frameworkName),
+        governance.remediationActions());
   }
 
-  private static Map<String, Object> findComplianceRecord(
+  private static ComplianceRecordSnapshot findComplianceRecord(
       EntityInterface asset, String frameworkName) {
-    return findComplianceRecord(governanceOf(asset), frameworkName);
+    return findComplianceRecord(governance(asset).aiCompliance(), frameworkName);
   }
 
-  private static Map<String, Object> findComplianceRecord(
-      Map<String, Object> governance, String frameworkName) {
-    Map<String, Object> result = null;
-    if (governance != null) {
-      Object aiCompliance = governance.get("aiCompliance");
-      if (aiCompliance instanceof Map<?, ?> compliance) {
-        Object records = ((Map<String, Object>) compliance).get("complianceRecords");
-        if (records instanceof List<?> list) {
-          for (Object item : list) {
-            if (item instanceof Map<?, ?> record) {
-              Map<String, Object> recordMap = (Map<String, Object>) record;
-              Object recordFramework = recordMap.get("framework");
-              if (frameworkMatches(recordFramework, frameworkName)) {
-                result = recordMap;
-                break;
-              }
-            }
-          }
+  private static ComplianceRecordSnapshot findComplianceRecord(
+      AICompliance aiCompliance, String frameworkName) {
+    ComplianceRecordSnapshot result = null;
+    if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+      for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+        if (frameworkMatches(record.getFramework(), frameworkName)) {
+          result =
+              new ComplianceRecordSnapshot(
+                  record.getStatus() == null ? "UnderReview" : record.getStatus().value(),
+                  hasEvidence(record));
+          break;
         }
       }
     }
@@ -201,19 +200,17 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static boolean hasEvidence(Map<String, Object> record) {
-    Object verification = record.get("verification");
-    return verification instanceof Map<?, ?> v
-        && ((Map<String, Object>) v).get("certificateUrl") != null;
+  private static boolean hasEvidence(AIComplianceRecord record) {
+    return record.getVerification() != null && record.getVerification().getCertificateUrl() != null;
   }
 
   private static boolean hasPendingRemediation(
-      List<Map<String, Object>> remediationActions, String frameworkName, String controlCode) {
+      List<RemediationAction> remediationActions, String frameworkName, String controlCode) {
     boolean result = false;
-    for (Map<String, Object> action : remediationActions) {
-      if (frameworkMatches(action.get("frameworkRef"), frameworkName)
-          && controlMatches(action.get("controlCode"), controlCode)
-          && !"Done".equals(String.valueOf(action.get("status")))) {
+    for (RemediationAction action : remediationActions) {
+      if (frameworkMatches(action.getFrameworkRef(), frameworkName)
+          && controlMatches(action.getControlCode(), controlCode)
+          && action.getStatus() != RemediationStatus.Done) {
         result = true;
         break;
       }
@@ -222,67 +219,13 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static boolean controlMatches(Object actionControlCode, String controlCode) {
-    return actionControlCode instanceof String value && value.equalsIgnoreCase(controlCode);
+  private static boolean controlMatches(String actionControlCode, String controlCode) {
+    return actionControlCode != null && actionControlCode.equalsIgnoreCase(controlCode);
   }
 
-  private static boolean frameworkMatches(Object recordFramework, String frameworkName) {
-    boolean result = false;
-    if (recordFramework instanceof String value && value.equalsIgnoreCase(frameworkName)) {
-      result = true;
-    } else if (recordFramework instanceof Map<?, ?> ref) {
-      Object name = ((Map<String, Object>) ref).get("name");
-      if (name instanceof String nameStr && nameStr.equalsIgnoreCase(frameworkName)) {
-        result = true;
-      }
-    }
-
-    return result;
-  }
-
-  private static Map<String, Object> governanceOf(EntityInterface asset) {
-    return governanceOf(rawAsset(asset));
-  }
-
-  private static Map<String, Object> rawAsset(EntityInterface asset) {
-    Map<String, Object> result = null;
-    try {
-      result = JsonUtils.readValue(JsonUtils.pojoToJson(asset), Map.class);
-    } catch (Exception ignored) {
-      // Best-effort — empty entity state returns null
-    }
-
-    return result;
-  }
-
-  private static Map<String, Object> governanceOf(Map<String, Object> raw) {
-    Map<String, Object> result = null;
-    if (raw != null) {
-      Object governance = raw.get("governanceMetadata");
-      if (governance instanceof Map<?, ?> g) {
-        result = (Map<String, Object>) g;
-      }
-    }
-
-    return result;
-  }
-
-  private static List<Map<String, Object>> remediationActions(
-      Map<String, Object> raw, Map<String, Object> governance) {
-    List<Map<String, Object>> result = new ArrayList<>();
-    addRemediationActions(result, governance == null ? null : governance.get("remediationActions"));
-    addRemediationActions(result, raw == null ? null : raw.get("remediationActions"));
-    return result;
-  }
-
-  private static void addRemediationActions(List<Map<String, Object>> result, Object actions) {
-    if (actions instanceof List<?> list) {
-      for (Object action : list) {
-        if (action instanceof Map<?, ?> actionMap) {
-          result.add((Map<String, Object>) actionMap);
-        }
-      }
-    }
+  private static boolean frameworkMatches(
+      ComplianceFramework recordFramework, String frameworkName) {
+    return recordFramework != null && recordFramework.value().equalsIgnoreCase(frameworkName);
   }
 
   private static List<EntityInterface> collectInScopeAssets(AIGovernanceFramework framework) {
@@ -363,10 +306,10 @@ public final class FrameworkCoverageComputer {
     if (rules == null) {
       result = true;
     } else {
-      Map<String, Object> governance = governanceOf(entity);
+      GovernanceSnapshot governance = governance(entity);
       boolean regionsOk = matchesRegions(governance, rules);
       boolean riskOk = matchesRiskClasses(governance, rules);
-      boolean stageOk = matchesDeploymentStages(entity, rules);
+      boolean stageOk = matchesDeploymentStages(governance, rules);
       result = regionsOk && riskOk && stageOk;
     }
 
@@ -374,13 +317,13 @@ public final class FrameworkCoverageComputer {
   }
 
   private static boolean matchesRegions(
-      Map<String, Object> governance, FrameworkAutoApplyRules rules) {
+      GovernanceSnapshot governance, FrameworkAutoApplyRules rules) {
     boolean result;
     List<String> required = rules.getRegions();
     if (required == null || required.isEmpty()) {
       result = true;
     } else {
-      List<String> assetRegions = extractRegions(governance);
+      List<String> assetRegions = extractRegions(governance.aiCompliance());
       result = anyMatch(required, assetRegions);
     }
 
@@ -388,7 +331,7 @@ public final class FrameworkCoverageComputer {
   }
 
   private static boolean matchesRiskClasses(
-      Map<String, Object> governance, FrameworkAutoApplyRules rules) {
+      GovernanceSnapshot governance, FrameworkAutoApplyRules rules) {
     boolean result;
     List<String> required = rules.getRiskClasses();
     if (required == null || required.isEmpty()) {
@@ -402,41 +345,26 @@ public final class FrameworkCoverageComputer {
   }
 
   private static boolean matchesDeploymentStages(
-      EntityInterface entity, FrameworkAutoApplyRules rules) {
+      GovernanceSnapshot governance, FrameworkAutoApplyRules rules) {
     boolean result;
     List<String> required = rules.getDeploymentStages();
     if (required == null || required.isEmpty()) {
       result = true;
     } else {
-      String stage = extractDeploymentStage(entity);
+      String stage = governance.deploymentStage();
       result = stage != null && required.contains(stage);
     }
 
     return result;
   }
 
-  private static List<String> extractRegions(Map<String, Object> governance) {
+  private static List<String> extractRegions(AICompliance aiCompliance) {
     List<String> result = new ArrayList<>();
-    if (governance != null) {
-      Object aiCompliance = governance.get("aiCompliance");
-      if (aiCompliance instanceof Map<?, ?> compliance) {
-        Object records = ((Map<String, Object>) compliance).get("complianceRecords");
-        if (records instanceof List<?> list) {
-          for (Object item : list) {
-            if (item instanceof Map<?, ?> record) {
-              Object scope = ((Map<String, Object>) record).get("scopeAndDeployment");
-              if (scope instanceof Map<?, ?> s) {
-                Object regions = ((Map<String, Object>) s).get("deploymentRegions");
-                if (regions instanceof List<?> regionsList) {
-                  for (Object r : regionsList) {
-                    if (r instanceof String region) {
-                      result.add(region);
-                    }
-                  }
-                }
-              }
-            }
-          }
+    if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+      for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+        ScopeAndDeployment scope = record.getScopeAndDeployment();
+        if (scope != null && scope.getDeploymentRegions() != null) {
+          result.addAll(scope.getDeploymentRegions());
         }
       }
     }
@@ -444,31 +372,16 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static List<String> extractRiskClasses(Map<String, Object> governance) {
+  private static List<String> extractRiskClasses(GovernanceSnapshot governance) {
     List<String> result = new ArrayList<>();
-    if (governance != null) {
-      Object risk = governance.get("riskAssessment");
-      if (risk instanceof Map<?, ?> riskMap) {
-        Object level = ((Map<String, Object>) riskMap).get("riskLevel");
-        if (level instanceof String levelStr) {
-          result.add(levelStr);
-        }
-      }
-      Object aiCompliance = governance.get("aiCompliance");
-      if (aiCompliance instanceof Map<?, ?> compliance) {
-        Object records = ((Map<String, Object>) compliance).get("complianceRecords");
-        if (records instanceof List<?> list) {
-          for (Object item : list) {
-            if (item instanceof Map<?, ?> record) {
-              Object euAct = ((Map<String, Object>) record).get("euAIAct");
-              if (euAct instanceof Map<?, ?> euMap) {
-                Object cls = ((Map<String, Object>) euMap).get("riskClassification");
-                if (cls instanceof String clsStr) {
-                  result.add(clsStr);
-                }
-              }
-            }
-          }
+    if (governance.riskLevel() != null) {
+      result.add(governance.riskLevel());
+    }
+    AICompliance aiCompliance = governance.aiCompliance();
+    if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+      for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+        if (record.getEuAIAct() != null && record.getEuAIAct().getRiskClassification() != null) {
+          result.add(record.getEuAIAct().getRiskClassification().value());
         }
       }
     }
@@ -476,19 +389,50 @@ public final class FrameworkCoverageComputer {
     return result;
   }
 
-  private static String extractDeploymentStage(EntityInterface entity) {
-    String result = null;
-    try {
-      Map<String, Object> raw = JsonUtils.readValue(JsonUtils.pojoToJson(entity), Map.class);
-      Object stage = raw.get("developmentStage");
-      if (stage instanceof String stageStr) {
-        result = stageStr;
-      }
-    } catch (Exception ignored) {
-      // null is acceptable
+  private static GovernanceSnapshot governance(EntityInterface asset) {
+    GovernanceSnapshot result = GovernanceSnapshot.EMPTY;
+    if (asset instanceof AIApplication app) {
+      result = governance(app.getGovernanceMetadata(), enumValue(app.getDevelopmentStage()));
+    } else if (asset instanceof McpServer server) {
+      result = governance(server.getGovernanceMetadata(), enumValue(server.getDevelopmentStage()));
+    } else if (asset instanceof LLMModel llm) {
+      result = new GovernanceSnapshot(null, actions(llm.getRemediationActions()), null, null);
     }
-
     return result;
+  }
+
+  private static GovernanceSnapshot governance(
+      GovernanceMetadata governance, String deploymentStage) {
+    return governance == null
+        ? new GovernanceSnapshot(null, List.of(), null, deploymentStage)
+        : new GovernanceSnapshot(
+            governance.getAiCompliance(),
+            actions(governance.getRemediationActions()),
+            governance.getRiskAssessment() == null
+                ? null
+                : enumValue(governance.getRiskAssessment().getRiskLevel()),
+            deploymentStage);
+  }
+
+  private static GovernanceSnapshot governance(
+      McpGovernanceMetadata governance, String deploymentStage) {
+    return governance == null
+        ? new GovernanceSnapshot(null, List.of(), null, deploymentStage)
+        : new GovernanceSnapshot(
+            governance.getAiCompliance(),
+            actions(governance.getRemediationActions()),
+            governance.getRiskAssessment() == null
+                ? null
+                : enumValue(governance.getRiskAssessment().getRiskLevel()),
+            deploymentStage);
+  }
+
+  private static List<RemediationAction> actions(List<RemediationAction> actions) {
+    return actions == null ? List.of() : actions;
+  }
+
+  private static String enumValue(Object value) {
+    return value == null ? null : value.toString();
   }
 
   private static boolean anyMatch(List<String> required, List<String> assetValues) {
@@ -506,7 +450,18 @@ public final class FrameworkCoverageComputer {
   }
 
   private record AssetCompliance(
-      Map<String, Object> record, List<Map<String, Object>> remediationActions) {}
+      ComplianceRecordSnapshot record, List<RemediationAction> remediationActions) {}
+
+  private record ComplianceRecordSnapshot(String status, boolean hasEvidence) {}
+
+  private record GovernanceSnapshot(
+      AICompliance aiCompliance,
+      List<RemediationAction> remediationActions,
+      String riskLevel,
+      String deploymentStage) {
+    private static final GovernanceSnapshot EMPTY =
+        new GovernanceSnapshot(null, List.of(), null, null);
+  }
 
   private record ControlCoverage(int evidence, int partial, int nonCompliant) {}
 }

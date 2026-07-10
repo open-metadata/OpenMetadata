@@ -13,20 +13,24 @@
 package org.openmetadata.service.resources.ai;
 
 import java.util.ArrayList;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
-import java.util.Map;
 import java.util.UUID;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.ai.AIGovernancePolicyRuleResult;
 import org.openmetadata.schema.api.ai.AIGovernancePolicyViolation;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIGovernancePolicy;
+import org.openmetadata.schema.entity.ai.DataClassification;
+import org.openmetadata.schema.entity.ai.DataClassification__2;
+import org.openmetadata.schema.entity.ai.GovernanceMetadata;
 import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.type.AICompliance;
+import org.openmetadata.schema.type.AIComplianceRecord;
+import org.openmetadata.schema.type.AIEvidence;
 import org.openmetadata.schema.type.Include;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIGovernancePolicyRepository;
@@ -44,7 +48,6 @@ import org.openmetadata.service.util.EntityUtil;
  * referenced {@code AIGovernancePolicy} entries; this evaluator hardcodes a
  * useful baseline so the Policies tab has content to render today.
  */
-@SuppressWarnings("unchecked")
 final class PolicyEvaluator {
 
   private static final long FAIRNESS_FRESHNESS_MS = 90L * 24 * 60 * 60 * 1000;
@@ -60,25 +63,25 @@ final class PolicyEvaluator {
 
   static List<AIGovernancePolicyRuleResult> evaluate(EntityInterface entity, String entityType) {
     List<AIGovernancePolicyRuleResult> rules = new ArrayList<>();
-    rules.add(piiAccessRequiresDpia(entity, entityType));
-    rules.add(subgroupFairnessQuarterly(entity, entityType));
-    rules.add(humanOversight(entity, entityType));
-    rules.add(auditLogRetention(entity, entityType));
-    rules.add(driftThreshold(entity, entityType));
+    rules.add(piiAccessRequiresDpia(entity));
+    rules.add(subgroupFairnessQuarterly(entity));
+    rules.add(humanOversight(entity));
+    rules.add(auditLogRetention(entity));
+    rules.add(driftThreshold());
 
     return rules;
   }
 
-  private static AIGovernancePolicyRuleResult piiAccessRequiresDpia(
-      EntityInterface entity, String entityType) {
-    Map<String, Object> governance = governance(entity, entityType);
-    Map<String, Object> classification =
-        asMap(governance == null ? null : governance.get("dataClassification"));
+  private static AIGovernancePolicyRuleResult piiAccessRequiresDpia(EntityInterface entity) {
+    GovernanceSnapshot governance = governance(entity);
     boolean accessesPii =
-        classification != null && Boolean.TRUE.equals(classification.get("accessesPII"));
-    Map<String, Object> evidence = asMap(governance == null ? null : governance.get("evidence"));
-    Object dpia = evidence == null ? null : evidence.get("dpiaUrl");
-    String dpiaUrl = dpia instanceof String value && !value.isBlank() ? value : null;
+        governance.dataClassification() != null
+            && Boolean.TRUE.equals(governance.dataClassification().accessesPii());
+    AIEvidence evidence = governance.evidence();
+    String dpiaUrl =
+        evidence != null && evidence.getDpiaUrl() != null && !evidence.getDpiaUrl().isBlank()
+            ? evidence.getDpiaUrl()
+            : null;
     Status status;
     if (!accessesPii) {
       status = Status.NOT_APPLICABLE;
@@ -95,10 +98,9 @@ final class PolicyEvaluator {
         dpiaUrl == null ? (accessesPii ? "No DPIA on file" : "N/A") : dpiaUrl);
   }
 
-  private static AIGovernancePolicyRuleResult subgroupFairnessQuarterly(
-      EntityInterface entity, String entityType) {
-    Map<String, Object> governance = governance(entity, entityType);
-    String euRisk = euRiskClassification(governance);
+  private static AIGovernancePolicyRuleResult subgroupFairnessQuarterly(EntityInterface entity) {
+    GovernanceSnapshot governance = governance(entity);
+    String euRisk = euRiskClassification(governance.aiCompliance());
     boolean highRisk = "High".equals(euRisk) || "Unacceptable".equals(euRisk);
     Long lastEval = lastBiasEval(entity);
     Status status;
@@ -127,10 +129,9 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static AIGovernancePolicyRuleResult humanOversight(
-      EntityInterface entity, String entityType) {
-    Map<String, Object> governance = governance(entity, entityType);
-    Boolean oversight = humanOversightFromGovernance(governance);
+  private static AIGovernancePolicyRuleResult humanOversight(EntityInterface entity) {
+    GovernanceSnapshot governance = governance(entity);
+    Boolean oversight = humanOversightFromGovernance(governance.aiCompliance());
     Status status;
     String value;
     if (oversight == null) {
@@ -151,13 +152,15 @@ final class PolicyEvaluator {
         value);
   }
 
-  private static AIGovernancePolicyRuleResult auditLogRetention(
-      EntityInterface entity, String entityType) {
-    Map<String, Object> governance = governance(entity, entityType);
-    Map<String, Object> classification =
-        asMap(governance == null ? null : governance.get("dataClassification"));
-    Object retention = classification == null ? null : classification.get("dataRetentionPeriod");
-    String value = retention instanceof String s && !s.isBlank() ? s : null;
+  private static AIGovernancePolicyRuleResult auditLogRetention(EntityInterface entity) {
+    GovernanceSnapshot governance = governance(entity);
+    DataClassificationSnapshot classification = governance.dataClassification();
+    String value =
+        classification != null
+                && classification.dataRetentionPeriod() != null
+                && !classification.dataRetentionPeriod().isBlank()
+            ? classification.dataRetentionPeriod()
+            : null;
     Status status = value == null ? Status.BREACHED : Status.PASSING;
 
     return rule(
@@ -167,8 +170,7 @@ final class PolicyEvaluator {
         value == null ? "Not declared" : value);
   }
 
-  private static AIGovernancePolicyRuleResult driftThreshold(
-      EntityInterface entity, String entityType) {
+  private static AIGovernancePolicyRuleResult driftThreshold() {
     // No drift field exists at the entity level today. Phase 2 schema work
     // adds runtime drift metrics; until then this rule is N/A.
     Status status = Status.NOT_APPLICABLE;
@@ -195,51 +197,54 @@ final class PolicyEvaluator {
         .withValue(value);
   }
 
-  /**
-   * The three AI asset types expose governance state differently (AIApplication/McpServer
-   * carry a rich {@code governanceMetadata}; LLMModel only a detection/evidence shim), so
-   * {@code instanceof} dispatch projects each onto one normalized map the policy rules can
-   * evaluate uniformly without a type switch per rule.
-   */
-  private static Map<String, Object> governance(EntityInterface entity, String entityType) {
-    Map<String, Object> result = null;
+  private static GovernanceSnapshot governance(EntityInterface entity) {
+    GovernanceSnapshot result = GovernanceSnapshot.EMPTY;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
-      result =
-          (Map<String, Object>)
-              JsonUtils.getObjectMapper().convertValue(app.getGovernanceMetadata(), Map.class);
+      result = governance(app.getGovernanceMetadata());
     } else if (entity instanceof McpServer server && server.getGovernanceMetadata() != null) {
-      result =
-          (Map<String, Object>)
-              JsonUtils.getObjectMapper().convertValue(server.getGovernanceMetadata(), Map.class);
+      result = governance(server.getGovernanceMetadata());
     } else if (entity instanceof LLMModel llm) {
-      // LLM has no rich governance block; surface a shim so the rules can
-      // still inspect detection / evidence when present.
-      Map<String, Object> shim = new LinkedHashMap<>();
-      if (llm.getDetection() != null) {
-        shim.put(
-            "detection", JsonUtils.getObjectMapper().convertValue(llm.getDetection(), Map.class));
-      }
-      if (llm.getEvidence() != null) {
-        shim.put(
-            "evidence", JsonUtils.getObjectMapper().convertValue(llm.getEvidence(), Map.class));
-      }
-      if (!shim.isEmpty()) {
-        result = shim;
-      }
+      result = new GovernanceSnapshot(null, llm.getEvidence(), null);
     }
     return result;
   }
 
-  private static String euRiskClassification(Map<String, Object> governance) {
+  private static GovernanceSnapshot governance(GovernanceMetadata governance) {
+    return new GovernanceSnapshot(
+        governance.getAiCompliance(),
+        governance.getEvidence(),
+        dataClassification(governance.getDataClassification()));
+  }
+
+  private static GovernanceSnapshot governance(McpGovernanceMetadata governance) {
+    return new GovernanceSnapshot(
+        governance.getAiCompliance(),
+        governance.getEvidence(),
+        dataClassification(governance.getDataClassification()));
+  }
+
+  private static DataClassificationSnapshot dataClassification(
+      DataClassification dataClassification) {
+    return dataClassification == null
+        ? null
+        : new DataClassificationSnapshot(
+            dataClassification.getAccessesPII(), dataClassification.getDataRetentionPeriod());
+  }
+
+  private static DataClassificationSnapshot dataClassification(
+      DataClassification__2 dataClassification) {
+    return dataClassification == null
+        ? null
+        : new DataClassificationSnapshot(
+            dataClassification.getAccessesPII(), dataClassification.getDataRetentionPeriod());
+  }
+
+  private static String euRiskClassification(AICompliance aiCompliance) {
     String result = null;
-    Map<String, Object> aiCompliance =
-        asMap(governance == null ? null : governance.get("aiCompliance"));
-    if (aiCompliance != null && aiCompliance.get("complianceRecords") instanceof List<?> records) {
-      for (Object recordObj : records) {
-        Map<String, Object> record = asMap(recordObj);
-        Map<String, Object> eu = record == null ? null : asMap(record.get("euAIAct"));
-        if (eu != null && eu.get("riskClassification") != null) {
-          result = eu.get("riskClassification").toString();
+    if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+      for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+        if (record.getEuAIAct() != null && record.getEuAIAct().getRiskClassification() != null) {
+          result = record.getEuAIAct().getRiskClassification().value();
           break;
         }
       }
@@ -247,19 +252,23 @@ final class PolicyEvaluator {
     return result;
   }
 
-  private static Boolean humanOversightFromGovernance(Map<String, Object> governance) {
+  private static Boolean humanOversightFromGovernance(AICompliance aiCompliance) {
     Boolean result = null;
-    Map<String, Object> aiCompliance =
-        asMap(governance == null ? null : governance.get("aiCompliance"));
-    if (aiCompliance != null && aiCompliance.get("complianceRecords") instanceof List<?> records) {
-      for (Object recordObj : records) {
-        Map<String, Object> record = asMap(recordObj);
-        Map<String, Object> ethical =
-            record == null ? null : asMap(record.get("ethicalAssessment"));
-        Map<String, Object> accountability =
-            ethical == null ? null : asMap(ethical.get("accountabilityMeasures"));
-        if (accountability != null && accountability.get("subjectToHumanOversight") != null) {
-          result = Boolean.TRUE.equals(accountability.get("subjectToHumanOversight"));
+    if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+      for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+        if (record.getEthicalAssessment() != null
+            && record.getEthicalAssessment().getAccountabilityMeasures() != null
+            && record
+                    .getEthicalAssessment()
+                    .getAccountabilityMeasures()
+                    .getSubjectToHumanOversight()
+                != null) {
+          result =
+              Boolean.TRUE.equals(
+                  record
+                      .getEthicalAssessment()
+                      .getAccountabilityMeasures()
+                      .getSubjectToHumanOversight());
           break;
         }
       }
@@ -277,10 +286,6 @@ final class PolicyEvaluator {
 
   private static long relativeDays(long ms) {
     return ms / (24L * 60 * 60 * 1000);
-  }
-
-  private static Map<String, Object> asMap(Object value) {
-    return value instanceof Map<?, ?> ? (Map<String, Object>) value : null;
   }
 
   /**
@@ -407,4 +412,13 @@ final class PolicyEvaluator {
     }
     return null;
   }
+
+  private record GovernanceSnapshot(
+      AICompliance aiCompliance,
+      AIEvidence evidence,
+      DataClassificationSnapshot dataClassification) {
+    private static final GovernanceSnapshot EMPTY = new GovernanceSnapshot(null, null, null);
+  }
+
+  private record DataClassificationSnapshot(Boolean accessesPii, String dataRetentionPeriod) {}
 }

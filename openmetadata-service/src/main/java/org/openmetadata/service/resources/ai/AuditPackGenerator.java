@@ -17,18 +17,22 @@ import java.security.MessageDigest;
 import java.util.ArrayList;
 import java.util.Base64;
 import java.util.HexFormat;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AuditReport;
 import org.openmetadata.schema.entity.ai.AuditReportArtifact;
 import org.openmetadata.schema.entity.ai.AuditReportFormat;
 import org.openmetadata.schema.entity.ai.AuditReportManifest;
 import org.openmetadata.schema.entity.ai.AuditReportScope;
 import org.openmetadata.schema.entity.ai.AuditReportStatus;
+import org.openmetadata.schema.entity.ai.GovernanceMetadata;
+import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
+import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.type.AICompliance;
+import org.openmetadata.schema.type.AIComplianceRecord;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -282,56 +286,39 @@ public final class AuditPackGenerator {
 
   private static AuditPackPayload assemble(AuditReport report) {
     AuditPackPayload payload = new AuditPackPayload();
-    payload.body.put("reportId", report.getId() == null ? null : report.getId().toString());
-    payload.body.put("name", report.getName());
-    payload.body.put("scope", report.getScope() == null ? null : report.getScope().value());
-    payload.body.put("framework", report.getFramework());
-    payload.body.put("scopeTarget", report.getScopeTarget());
-    payload.body.put("asOfDate", report.getAsOfDate());
-    payload.body.put("generatedAt", System.currentTimeMillis());
-
-    List<Map<String, Object>> assets = new ArrayList<>();
+    List<AuditPackAsset> assets = new ArrayList<>();
     AuditReportScope scope =
         report.getScope() == null ? AuditReportScope.Estate : report.getScope();
     collectAssets(Entity.AI_APPLICATION, scope, report, assets);
     collectAssets(Entity.LLM_MODEL, scope, report, assets);
     collectAssets(Entity.MCP_SERVER, scope, report, assets);
 
-    payload.body.put("assets", assets);
+    payload.body =
+        new AuditPackDocument(
+            report.getId() == null ? null : report.getId().toString(),
+            report.getName(),
+            report.getScope() == null ? null : report.getScope().value(),
+            report.getFramework(),
+            report.getScopeTarget(),
+            report.getAsOfDate(),
+            System.currentTimeMillis(),
+            assets);
     payload.assetCount = assets.size();
     payload.complianceRecordCount = countComplianceRecords(assets);
     payload.frameworkCount = report.getFramework() == null ? 0 : 1;
     return payload;
   }
 
-  /**
-   * Asset entries are the normalized JSON maps assembled in {@link #collectAssets}, not
-   * typed POJOs, so the nested governance structure is walked with {@code instanceof}
-   * guards rather than getters.
-   */
-  @SuppressWarnings("unchecked")
-  private static int countComplianceRecords(List<Map<String, Object>> assets) {
+  private static int countComplianceRecords(List<AuditPackAsset> assets) {
     int total = 0;
-    for (Map<String, Object> asset : assets) {
-      Object governance = asset.get("governanceMetadata");
-      if (governance instanceof Map<?, ?> g) {
-        Object aiCompliance = ((Map<String, Object>) g).get("aiCompliance");
-        if (aiCompliance instanceof Map<?, ?> c) {
-          Object records = ((Map<String, Object>) c).get("complianceRecords");
-          if (records instanceof List<?> list) {
-            total += list.size();
-          }
-        }
-      }
+    for (AuditPackAsset asset : assets) {
+      total += asset.complianceRecordCount();
     }
     return total;
   }
 
   private static void collectAssets(
-      String entityType,
-      AuditReportScope scope,
-      AuditReport report,
-      List<Map<String, Object>> out) {
+      String entityType, AuditReportScope scope, AuditReport report, List<AuditPackAsset> out) {
     try {
       ListFilter filter = new ListFilter(Include.NON_DELETED);
       List<? extends EntityInterface> entities =
@@ -343,22 +330,19 @@ public final class AuditPackGenerator {
           }
         }
         if (scope == AuditReportScope.Domain && report.getScopeTarget() != null) {
-          Object domains = entity.getDomains();
-          if (!matchesDomain(domains, report.getScopeTarget().getId())) {
+          if (!matchesDomain(entity.getDomains(), report.getScopeTarget().getId())) {
             continue;
           }
         }
-        Map<String, Object> entry = new LinkedHashMap<>();
-        entry.put("entityType", entityType);
-        entry.put("id", entity.getId() == null ? null : entity.getId().toString());
-        entry.put("name", entity.getName());
-        entry.put("displayName", entity.getDisplayName());
-        entry.put("fullyQualifiedName", entity.getFullyQualifiedName());
-        Map<String, Object> entityMap =
-            JsonUtils.readValue(JsonUtils.pojoToJson(entity), Map.class);
-        entry.put("governanceMetadata", entityMap.get("governanceMetadata"));
-        entry.put("updatedAt", entity.getUpdatedAt());
-        out.add(entry);
+        out.add(
+            new AuditPackAsset(
+                entityType,
+                entity.getId() == null ? null : entity.getId().toString(),
+                entity.getName(),
+                entity.getDisplayName(),
+                entity.getFullyQualifiedName(),
+                governanceMetadata(entity),
+                entity.getUpdatedAt()));
       }
     } catch (Exception e) {
       LOG.debug("Audit pack scope walk for {} returned empty: {}", entityType, e.getMessage());
@@ -384,7 +368,7 @@ public final class AuditPackGenerator {
    * Domain-scoped packs filter on {@link EntityInterface#getDomains()}; {@code domains}
    * is a relationship field that stays null unless explicitly requested, so a Domain
    * pack loaded with {@code EMPTY_FIELDS} would match nothing. Estate/Asset scopes read
-   * only the always-present governance JSON and need no relationship fields.
+   * only the always-present governance fields and need no relationship fields.
    */
   private static EntityUtil.Fields fieldsForScope(String entityType, AuditReportScope scope) {
     EntityUtil.Fields result = EntityUtil.Fields.EMPTY_FIELDS;
@@ -394,17 +378,33 @@ public final class AuditPackGenerator {
     return result;
   }
 
-  @SuppressWarnings("unchecked")
-  private static boolean matchesDomain(Object domains, UUID targetDomainId) {
-    if (!(domains instanceof List<?> list)) {
+  private static Object governanceMetadata(EntityInterface entity) {
+    Object result = null;
+    if (entity instanceof AIApplication app) {
+      result = app.getGovernanceMetadata();
+    } else if (entity instanceof McpServer server) {
+      result = server.getGovernanceMetadata();
+    }
+    return result;
+  }
+
+  private static AICompliance aiCompliance(Object governanceMetadata) {
+    AICompliance result = null;
+    if (governanceMetadata instanceof GovernanceMetadata governance) {
+      result = governance.getAiCompliance();
+    } else if (governanceMetadata instanceof McpGovernanceMetadata governance) {
+      result = governance.getAiCompliance();
+    }
+    return result;
+  }
+
+  private static boolean matchesDomain(List<EntityReference> domains, UUID targetDomainId) {
+    if (domains == null) {
       return false;
     }
-    for (Object item : list) {
-      if (item instanceof Map<?, ?> ref) {
-        Object id = ((Map<String, Object>) ref).get("id");
-        if (id != null && id.toString().equals(targetDomainId.toString())) {
-          return true;
-        }
+    for (EntityReference domain : domains) {
+      if (domain != null && domain.getId() != null && domain.getId().equals(targetDomainId)) {
+        return true;
       }
     }
     return false;
@@ -420,10 +420,36 @@ public final class AuditPackGenerator {
   }
 
   private static final class AuditPackPayload {
-    Map<String, Object> body = new LinkedHashMap<>();
+    AuditPackDocument body;
     int assetCount;
     int frameworkCount;
     int controlCount;
     int complianceRecordCount;
+  }
+
+  private record AuditPackDocument(
+      String reportId,
+      String name,
+      String scope,
+      EntityReference framework,
+      EntityReference scopeTarget,
+      Long asOfDate,
+      long generatedAt,
+      List<AuditPackAsset> assets) {}
+
+  private record AuditPackAsset(
+      String entityType,
+      String id,
+      String name,
+      String displayName,
+      String fullyQualifiedName,
+      Object governanceMetadata,
+      Long updatedAt) {
+    private int complianceRecordCount() {
+      AICompliance aiCompliance = aiCompliance(governanceMetadata);
+      List<AIComplianceRecord> records =
+          aiCompliance == null ? null : aiCompliance.getComplianceRecords();
+      return records == null ? 0 : records.size();
+    }
   }
 }

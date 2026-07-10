@@ -15,7 +15,6 @@ package org.openmetadata.service.resources.ai;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
-import java.util.Map;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.ai.AIGovernanceAssetSummary;
 import org.openmetadata.service.Entity;
@@ -94,7 +93,7 @@ class DashboardRollupTest {
         .registrationStatus(registrationStatus)
         .euRisk(euRisk)
         .affectedUsers(affectedUsers)
-        .frameworkStatuses(Map.of());
+        .frameworkStatuses(List.of());
   }
 
   private List<String> names(List<AIGovernanceAssetSummary> assets) {

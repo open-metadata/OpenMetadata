@@ -14,15 +14,21 @@ package org.openmetadata.service.resources.ai;
 
 import java.util.ArrayList;
 import java.util.Comparator;
-import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.ai.AIGovernanceActivityEvent;
 import org.openmetadata.schema.api.ai.AIGovernanceActivityResponse;
+import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.GovernanceMetadata;
+import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
+import org.openmetadata.schema.entity.ai.McpServer;
+import org.openmetadata.schema.type.AICompliance;
+import org.openmetadata.schema.type.AIComplianceRecord;
+import org.openmetadata.schema.type.AIDetection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
@@ -39,7 +45,6 @@ import org.openmetadata.service.util.EntityUtil.Fields;
  * iteration can replace this with a real ChangeEvent stream filter.
  */
 @Slf4j
-@SuppressWarnings("unchecked")
 final class GovernanceActivity {
 
   private static final Set<String> SUPPORTED_TYPES =
@@ -125,13 +130,11 @@ final class GovernanceActivity {
     List<AIGovernanceActivityEvent> events = new ArrayList<>();
     String entityType =
         entity.getEntityReference() == null ? null : entity.getEntityReference().getType();
-    Map<String, Object> json =
-        (Map<String, Object>) JsonUtils.getObjectMapper().convertValue(entity, Map.class);
-    Map<String, Object> governance = governance(entityType, entity, json, reconstructHistory);
+    ActivityGovernance governance = governance(entity, reconstructHistory);
 
-    if (governance != null) {
-      Map<String, Object> detection = asMap(governance.get("detection"));
-      if (detection != null && detection.get("detectedAt") instanceof Number number) {
+    if (!governance.isEmpty()) {
+      AIDetection detection = governance.detection();
+      if (detection != null && detection.getDetectedAt() != null) {
         events.add(
             event(
                 entity,
@@ -139,12 +142,12 @@ final class GovernanceActivity {
                 "ShadowAIDetected",
                 String.format(
                     "Detected via %s",
-                    detection.get("source") == null ? "manual upload" : detection.get("source")),
-                number.longValue(),
-                governance.get("registeredBy")));
+                    detection.getSource() == null ? "manual upload" : detection.getSource()),
+                detection.getDetectedAt(),
+                governance.registeredBy()));
       }
 
-      Long registeredAt = numberToLong(governance.get("registeredAt"));
+      Long registeredAt = governance.registeredAt();
       if (registeredAt != null) {
         events.add(
             event(
@@ -153,10 +156,10 @@ final class GovernanceActivity {
                 "SubmittedForReview",
                 "Submitted to Risk Council for review",
                 registeredAt,
-                governance.get("registeredBy")));
+                governance.registeredBy()));
       }
 
-      Long approvedAt = numberToLong(governance.get("approvedAt"));
+      Long approvedAt = governance.approvedAt();
       if (approvedAt != null) {
         events.add(
             event(
@@ -165,21 +168,15 @@ final class GovernanceActivity {
                 "Approved",
                 "Approved by Risk Council",
                 approvedAt,
-                governance.get("approvedBy")));
+                governance.approvedBy()));
       }
 
-      Map<String, Object> aiCompliance = asMap(governance.get("aiCompliance"));
-      List<Object> records =
-          aiCompliance == null ? null : asList(aiCompliance.get("complianceRecords"));
-      if (records != null) {
-        for (Object recordObj : records) {
-          Map<String, Object> record = asMap(recordObj);
-          if (record == null) {
-            continue;
-          }
-          Long assessedAt = numberToLong(record.get("assessedAt"));
+      AICompliance aiCompliance = governance.aiCompliance();
+      if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+        for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+          Long assessedAt = record.getAssessedAt();
           if (assessedAt != null) {
-            String framework = String.valueOf(record.get("framework"));
+            String framework = enumValue(record.getFramework());
             events.add(
                 event(
                     entity,
@@ -187,11 +184,11 @@ final class GovernanceActivity {
                     "Assessed",
                     String.format("%s assessment completed", framework),
                     assessedAt,
-                    record.get("assessedBy")));
+                    record.getAssessedBy()));
           }
-          Long nextReview = numberToLong(record.get("nextReviewDate"));
+          Long nextReview = record.getNextReviewDate();
           if (nextReview != null) {
-            String framework = String.valueOf(record.get("framework"));
+            String framework = enumValue(record.getFramework());
             long loggedAt = assessedAt != null ? assessedAt : reviewFallback(governance, entity);
             events.add(
                 scheduledEvent(
@@ -246,8 +243,8 @@ final class GovernanceActivity {
     return event;
   }
 
-  private static long reviewFallback(Map<String, Object> governance, EntityInterface entity) {
-    Long registeredAt = governance == null ? null : numberToLong(governance.get("registeredAt"));
+  private static long reviewFallback(ActivityGovernance governance, EntityInterface entity) {
+    Long registeredAt = governance.registeredAt();
     long result;
     if (registeredAt != null) {
       result = registeredAt;
@@ -259,113 +256,128 @@ final class GovernanceActivity {
     return result;
   }
 
-  /**
-   * Projects an asset's governance state onto one normalized map that {@link #eventsFor} walks with
-   * {@code instanceof} guards. The three AI types differ in shape — AIApplication/McpServer carry a
-   * rich {@code governanceMetadata} subtree, while LLMModel exposes only a flat
-   * {@code governanceStatus} enum whose timeline is synthesized into an equivalent shim — so the map
-   * projection keeps the downstream timestamp extraction uniform without a per-type branch per event.
-   */
-  private static Map<String, Object> governance(
-      String entityType,
-      EntityInterface entity,
-      Map<String, Object> entityJson,
-      boolean reconstructHistory) {
-    Map<String, Object> result = null;
-    if (Entity.LLM_MODEL.equals(entityType)) {
-      Map<String, Object> shim = new LinkedHashMap<>();
-      if (entityJson.get("detection") != null) {
-        shim.put("detection", entityJson.get("detection"));
-      }
-      addLlmGovernanceTimeline(entity, entityJson, shim, reconstructHistory);
-      if (!shim.isEmpty()) {
-        result = shim;
-      }
-    } else {
-      result = asMap(entityJson.get("governanceMetadata"));
+  private static ActivityGovernance governance(EntityInterface entity, boolean reconstructHistory) {
+    ActivityGovernance result = ActivityGovernance.EMPTY;
+    if (entity instanceof AIApplication app) {
+      result = governance(app.getGovernanceMetadata());
+    } else if (entity instanceof McpServer server) {
+      result = governance(server.getGovernanceMetadata());
+    } else if (entity instanceof LLMModel llm) {
+      result = llmGovernance(llm, reconstructHistory);
     }
     return result;
   }
 
-  private static void addLlmGovernanceTimeline(
-      EntityInterface entity,
-      Map<String, Object> entityJson,
-      Map<String, Object> shim,
-      boolean reconstructHistory) {
-    Object status = entityJson.get("governanceStatus");
-    Object updatedAt = entityJson.get("updatedAt");
-    Object updatedBy = entityJson.get("updatedBy");
-    if (status != null && updatedAt instanceof Number) {
-      if ("PendingReview".equals(status.toString())) {
-        shim.put("registeredAt", updatedAt);
-        putIfNotNull(shim, "registeredBy", updatedBy);
-      } else if ("Approved".equals(status.toString())) {
-        shim.put("approvedAt", updatedAt);
-        putIfNotNull(shim, "approvedBy", updatedBy);
+  private static ActivityGovernance governance(GovernanceMetadata governance) {
+    return governance == null
+        ? ActivityGovernance.EMPTY
+        : new ActivityGovernance(
+            governance.getDetection(),
+            governance.getRegisteredBy(),
+            governance.getRegisteredAt(),
+            governance.getApprovedBy(),
+            governance.getApprovedAt(),
+            governance.getAiCompliance());
+  }
+
+  private static ActivityGovernance governance(McpGovernanceMetadata governance) {
+    return governance == null
+        ? ActivityGovernance.EMPTY
+        : new ActivityGovernance(
+            governance.getDetection(),
+            governance.getRegisteredBy(),
+            governance.getRegisteredAt(),
+            governance.getApprovedBy(),
+            governance.getApprovedAt(),
+            governance.getAiCompliance());
+  }
+
+  private static ActivityGovernance llmGovernance(LLMModel llm, boolean reconstructHistory) {
+    String registeredBy = null;
+    Long registeredAt = null;
+    String approvedBy = null;
+    Long approvedAt = null;
+    if (llm.getGovernanceStatus() != null && llm.getUpdatedAt() != null) {
+      if (llm.getGovernanceStatus() == LLMModel.GovernanceStatus.PENDING_REVIEW) {
+        registeredAt = llm.getUpdatedAt();
+        registeredBy = llm.getUpdatedBy();
+      } else if (llm.getGovernanceStatus() == LLMModel.GovernanceStatus.APPROVED) {
+        approvedAt = llm.getUpdatedAt();
+        approvedBy = llm.getUpdatedBy();
         if (reconstructHistory) {
-          addLlmSubmissionFromHistory(entity, shim);
+          LlmSubmission submission = llmSubmissionFromHistory(llm);
+          registeredAt = submission.registeredAt();
+          registeredBy = submission.registeredBy();
         }
       }
     }
+    return new ActivityGovernance(
+        llm.getDetection(), registeredBy, registeredAt, approvedBy, approvedAt, null);
   }
 
-  private static void addLlmSubmissionFromHistory(
-      EntityInterface entity, Map<String, Object> shim) {
-    if (entity == null || entity.getId() == null || shim.containsKey("registeredAt")) {
-      return;
+  private static LlmSubmission llmSubmissionFromHistory(LLMModel llm) {
+    LlmSubmission result = LlmSubmission.EMPTY;
+    if (llm == null || llm.getId() == null) {
+      return result;
     }
     try {
       EntityRepository<? extends EntityInterface> repository =
           Entity.getEntityRepository(Entity.LLM_MODEL);
-      List<Object> versions = repository.listVersions(entity.getId()).getVersions();
+      List<Object> versions = repository.listVersions(llm.getId()).getVersions();
       if (versions == null) {
-        return;
+        return result;
       }
       for (Object version : versions) {
-        Map<String, Object> versionJson = asVersionMap(version);
-        if (versionJson != null
-            && "PendingReview".equals(asString(versionJson.get("governanceStatus")))
-            && versionJson.get("updatedAt") instanceof Number) {
-          shim.put("registeredAt", versionJson.get("updatedAt"));
-          putIfNotNull(shim, "registeredBy", versionJson.get("updatedBy"));
-          return;
+        LLMModel versionModel = asLlmVersion(version);
+        if (versionModel != null
+            && versionModel.getGovernanceStatus() == LLMModel.GovernanceStatus.PENDING_REVIEW
+            && versionModel.getUpdatedAt() != null) {
+          result = new LlmSubmission(versionModel.getUpdatedBy(), versionModel.getUpdatedAt());
+          break;
         }
       }
     } catch (Exception error) {
       LOG.debug(
-          "Activity feed: unable to reconstruct LLM submission history for {}",
-          entity.getId(),
-          error);
+          "Activity feed: unable to reconstruct LLM submission history for {}", llm.getId(), error);
     }
+    return result;
   }
 
-  private static void putIfNotNull(Map<String, Object> map, String key, Object value) {
-    if (value != null) {
-      map.put(key, value);
+  private static LLMModel asLlmVersion(Object value) {
+    LLMModel result = null;
+    if (value instanceof LLMModel model) {
+      result = model;
+    } else if (value instanceof String json) {
+      result = JsonUtils.readValue(json, LLMModel.class);
+    } else if (value != null) {
+      result = JsonUtils.getObjectMapper().convertValue(value, LLMModel.class);
     }
+    return result;
   }
 
-  @SuppressWarnings("unchecked")
-  private static Map<String, Object> asVersionMap(Object value) {
-    if (value instanceof String json) {
-      return (Map<String, Object>) JsonUtils.readValue(json, Map.class);
-    }
-    return asMap(value);
-  }
-
-  private static Map<String, Object> asMap(Object value) {
-    return value instanceof Map<?, ?> ? (Map<String, Object>) value : null;
-  }
-
-  private static List<Object> asList(Object value) {
-    return value instanceof List<?> ? (List<Object>) value : null;
-  }
-
-  private static Long numberToLong(Object value) {
-    return value instanceof Number n ? n.longValue() : null;
-  }
-
-  private static String asString(Object value) {
+  private static String enumValue(Object value) {
     return value == null ? null : value.toString();
+  }
+
+  private record ActivityGovernance(
+      AIDetection detection,
+      String registeredBy,
+      Long registeredAt,
+      String approvedBy,
+      Long approvedAt,
+      AICompliance aiCompliance) {
+    private static final ActivityGovernance EMPTY =
+        new ActivityGovernance(null, null, null, null, null, null);
+
+    private boolean isEmpty() {
+      return detection == null
+          && registeredAt == null
+          && approvedAt == null
+          && aiCompliance == null;
+    }
+  }
+
+  private record LlmSubmission(String registeredBy, Long registeredAt) {
+    private static final LlmSubmission EMPTY = new LlmSubmission(null, null);
   }
 }
