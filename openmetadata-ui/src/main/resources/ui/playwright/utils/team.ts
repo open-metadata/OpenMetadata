@@ -140,6 +140,8 @@ export const hardDeleteTeam = async (page: Page, teamName: string) => {
 
   await page.getByTestId('delete-modal').waitFor();
 
+  await page.click('[data-testid="hard-delete"]');
+
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=true&recursive=true'
   );
