@@ -84,6 +84,7 @@ export const ConnectionConditionModal: React.FC<
     if (isApprovalTaskNode) {
       return ConditionValue.APPROVE;
     }
+
     return isDataCompletenessNode
       ? availableOptions[0]?.value || DEFAULT_QUALITY_BANDS[0].name
       : ConditionValue.TRUE;
