@@ -13,10 +13,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { TagSource } from '../../../generated/entity/data/container';
 import TagSuggestion from './TagSuggestion';
-import {
-  MOCK_GLOSSARY_OPTIONS,
-  MOCK_TAG_OPTIONS,
-} from './TagSuggestion.mock';
+import { MOCK_GLOSSARY_OPTIONS, MOCK_TAG_OPTIONS } from './TagSuggestion.mock';
 
 const mockGetTags = jest.fn();
 const mockFetchGlossaryList = jest.fn();
@@ -340,7 +337,7 @@ describe('TagSuggestion', () => {
   describe('when tagType is Glossary', () => {
     it('should query fetchGlossaryList and never getTags', async () => {
       render(
-        <TagSuggestion onChange={mockOnChange} tagType={TagSource.Glossary} />
+        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
       );
 
       const input = screen.getByRole('combobox');
@@ -356,7 +353,7 @@ describe('TagSuggestion', () => {
 
     it('should display glossary terms returned from the search', async () => {
       render(
-        <TagSuggestion onChange={mockOnChange} tagType={TagSource.Glossary} />
+        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
       );
 
       const input = screen.getByRole('combobox');
@@ -377,7 +374,7 @@ describe('TagSuggestion', () => {
 
     it('should stamp source Glossary on an inserted glossary term', async () => {
       render(
-        <TagSuggestion onChange={mockOnChange} tagType={TagSource.Glossary} />
+        <TagSuggestion tagType={TagSource.Glossary} onChange={mockOnChange} />
       );
 
       const input = screen.getByRole('combobox');
