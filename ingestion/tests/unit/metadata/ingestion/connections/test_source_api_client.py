@@ -56,10 +56,28 @@ def test_should_treat_token_as_id_when_segment_is_identifier(segment):
         "v1",  # api version, not an id
         "v2",
         "ab",  # too short, no digit
+        "ec2",  # digit-bearing but under the 4-char minimum, so preserved
     ],
 )
 def test_should_preserve_segment_when_not_an_identifier(segment):
     assert _is_id_segment(segment) is False
+
+
+@pytest.mark.parametrize(
+    "segment",
+    [
+        "oauth2",  # protocol/auth word
+        "utf8",  # encoding word
+        "log4j",  # library word
+        "s3api",  # service word
+        "v1beta1",  # compound version not matched by the exact ^v\\d+$ version guard
+    ],
+)
+def test_should_collapse_digit_bearing_static_word_as_accepted_tradeoff(segment):
+    # Documented, accepted trade-off (#29141): static path words containing a digit are
+    # collapsed to {id} to keep metric cardinality bounded. This pins the known behavior
+    # so a future change to _OPAQUE_ID_RE does not silently alter it.
+    assert _is_id_segment(segment) is True
 
 
 @pytest.mark.parametrize(

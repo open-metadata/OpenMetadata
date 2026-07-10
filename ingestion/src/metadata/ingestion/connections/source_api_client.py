@@ -46,6 +46,15 @@ _VERSION_RE = re.compile(r"^v\d+$", re.IGNORECASE)  # API version segment, e.g. 
 # Opaque identifier: an id-charset token of reasonable length that contains at least one
 # digit. Plain path words ("workbooks", "elements", "lineage", ...) have no digit and so
 # are preserved; version segments are excluded above.
+#
+# Known, accepted trade-off: this heuristic also collapses static path words (length >= 4)
+# that happen to contain a digit (e.g. "oauth2", "utf8", "log4j", "s3api", or compound
+# versions like "v1beta1" that _VERSION_RE's exact "^v\d+$" does not cover). Those get merged
+# under a shared "{id}" metric key, which reduces metric granularity but never affects
+# correctness. Bounding cardinality is the explicit goal here (see issue #29141): the
+# ingestion_pipeline index is fully protected by "dynamic: false" regardless, so slightly
+# over-collapsing is preferable to an unbounded key space. Tighten the pattern (or add a
+# static-segment allowlist) only if finer per-endpoint metrics are needed.
 _OPAQUE_ID_RE = re.compile(r"^(?=.{4,}$)(?=.*\d)[A-Za-z0-9._~-]+$")
 
 
