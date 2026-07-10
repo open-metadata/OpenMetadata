@@ -859,7 +859,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 "BigQuery dataset listing failed (%s); progress schema total will reconcile during the walk.",
                 exc,
             )
-            counts = None
+            return None
         return counts
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
