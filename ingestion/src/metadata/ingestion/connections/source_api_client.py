@@ -54,10 +54,7 @@ def _is_id_segment(part: str) -> bool:
     if _VERSION_RE.match(part):
         return False
     return bool(
-        _UUID_RE.match(part)
-        or _NUMERIC_RE.match(part)
-        or _HEX_TOKEN_RE.match(part)
-        or _OPAQUE_ID_RE.match(part)
+        _UUID_RE.match(part) or _NUMERIC_RE.match(part) or _HEX_TOKEN_RE.match(part) or _OPAQUE_ID_RE.match(part)
     )
 
 
@@ -70,9 +67,7 @@ def normalize_api_path(path: str) -> str:
     Example: ``/workbooks/3f2a.../lineage/elements/ab12`` -> ``/workbooks/{id}/lineage/elements/{id}``
     """
     cleaned_parts = [
-        "{id}" if _is_id_segment(part) else part
-        for part in path.split("?", maxsplit=1)[0].split("/")
-        if part
+        "{id}" if _is_id_segment(part) else part for part in path.split("?", maxsplit=1)[0].split("/") if part
     ]
     return "/" + "/".join(cleaned_parts) if cleaned_parts else "/"
 
