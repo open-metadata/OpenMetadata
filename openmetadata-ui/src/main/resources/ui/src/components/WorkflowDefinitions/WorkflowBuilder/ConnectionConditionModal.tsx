@@ -47,8 +47,13 @@ export const ConnectionConditionModal: React.FC<
 
   const isDataCompletenessNode =
     sourceNode?.data?.subType === NodeSubType.DataCompletenessTask;
+  const isApprovalTaskNode =
+    sourceNode?.data?.subType === NodeSubType.UserApprovalTask;
 
   const availableOptions = useMemo(() => {
+    if (isApprovalTaskNode) {
+      return AVAILABLE_OPTIONS.APPROVAL_CONDITION_VALUES;
+    }
     if (!isDataCompletenessNode) {
       return AVAILABLE_OPTIONS.CONDITION_VALUES;
     }
@@ -73,13 +78,16 @@ export const ConnectionConditionModal: React.FC<
     }
 
     return AVAILABLE_OPTIONS.CONDITION_VALUES;
-  }, [isDataCompletenessNode, sourceNode?.data]);
+  }, [isApprovalTaskNode, isDataCompletenessNode, sourceNode?.data]);
 
   const defaultValue = useMemo(() => {
+    if (isApprovalTaskNode) {
+      return ConditionValue.APPROVE;
+    }
     return isDataCompletenessNode
       ? availableOptions[0]?.value || DEFAULT_QUALITY_BANDS[0].name
       : ConditionValue.TRUE;
-  }, [isDataCompletenessNode, availableOptions]);
+  }, [isApprovalTaskNode, isDataCompletenessNode, availableOptions]);
 
   const [conditions, setConditions] = useState<ConnectionCondition[]>(() => {
     if (initialConditions && initialConditions.length > 0) {

@@ -1179,6 +1179,16 @@ public class TaskWorkflowHandler {
 
   private String resolveWorkflowResult(
       Task task, String transitionId, TaskResolutionType resolutionType) {
+    // Ask the deployed BPMN first — a running Flowable process instance evaluates outbound flows
+    // against its frozen process definition, so we must write whichever condition string that
+    // deployment expects (post-v210 approve/reject on fresh deploys; legacy true/false on
+    // pre-v210 in-flight instances). Only fall back to the caller-supplied transitionId or the
+    // WorkflowDefinition entity when BPMN inspection cannot decide (e.g. custom transitions).
+    String deployedBpmnResult = resolveResultFromDeployedBpmn(task, resolutionType);
+    if (deployedBpmnResult != null) {
+      return deployedBpmnResult;
+    }
+
     if (transitionId != null) {
       return transitionId;
     }
@@ -1194,13 +1204,24 @@ public class TaskWorkflowHandler {
       return defaultTransitionId;
     }
 
-    if (task != null
-        && (TaskEntityType.RecognizerFeedbackApproval == task.getType()
-            || TaskEntityType.DataQualityReview == task.getType())) {
-      return isPositiveResolution(resolutionType) ? "true" : "false";
-    }
-
     return defaultWorkflowResult(resolutionType);
+  }
+
+  /**
+   * For a task backed by a still-running Flowable process, ask the deployed BPMN what condition
+   * value (e.g. "approve" vs the legacy "true") would fire the outbound flow matching the given
+   * resolution. This shields running pre-2.0 workflow instances from the v210 migration that
+   * rewrites WorkflowDefinition entity edges to the new approve/reject scheme without being able
+   * to retroactively update Flowable's frozen process definitions.
+   */
+  private String resolveResultFromDeployedBpmn(Task task, TaskResolutionType resolutionType) {
+    String result = null;
+    if (task != null && task.getId() != null && resolutionType != null) {
+      result =
+          WorkflowHandler.getInstance()
+              .getExpectedResultForActiveTask(task.getId(), isPositiveResolution(resolutionType));
+    }
+    return result;
   }
 
   /**

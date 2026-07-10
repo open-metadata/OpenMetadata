@@ -16,9 +16,11 @@ import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
@@ -31,6 +33,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
@@ -52,6 +55,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -1562,11 +1566,122 @@ public class MigrationUtil {
     public void runRecognizerFeedbackTaskTypeMigration() {
       int seededDefaults = ensureDefaultTaskWorkflows();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int rewrittenApprovalEdges = migrateUserApprovalTaskEdgeConditions();
 
       LOG.info(
-          "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}",
+          "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}, rewrittenApprovalEdges={}",
           seededDefaults,
-          rewrittenRecognizerFeedbackTasks);
+          rewrittenRecognizerFeedbackTasks,
+          rewrittenApprovalEdges);
+    }
+
+    /**
+     * Rewrite outbound edges from {@code userApprovalTask} nodes across every WorkflowDefinition
+     * so they use the Task V2 condition scheme ({@code approve}/{@code reject}) instead of the
+     * legacy boolean strings ({@code true}/{@code false}) previously injected by the v1105
+     * MigrationUtil. Existing running Flowable process instances are unaffected — they continue to
+     * execute against their frozen deployed BPMN, and TaskWorkflowHandler falls back to the
+     * deployed BPMN's condition scheme at resolve time.
+     *
+     * <p>Idempotent: WorkflowDefinitions with no legacy conditions on approval outbound edges are
+     * skipped. Duplicate edges (both {@code true} and {@code approve} present after prior migration
+     * runs) are collapsed to a single {@code approve}/{@code reject} edge.
+     */
+    private int migrateUserApprovalTaskEdgeConditions() {
+      int migrated = 0;
+      try {
+        List<WorkflowDefinition> workflowDefinitions =
+            workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+        for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
+          if (rewriteApprovalEdgesInPlace(workflowDefinition)
+              && persistMigratedApprovalEdges(workflowDefinition)) {
+            migrated++;
+          }
+        }
+      } catch (RuntimeException e) {
+        LOG.error(
+            "[v200] Failed to iterate WorkflowDefinition rows for approval-edge migration: {}",
+            e.getMessage(),
+            e);
+      }
+      return migrated;
+    }
+
+    private boolean persistMigratedApprovalEdges(WorkflowDefinition workflowDefinition) {
+      boolean persisted = false;
+      try {
+        workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
+        workflowDefinition.setUpdatedAt(System.currentTimeMillis());
+        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        LOG.info(
+            "[v200] Migrated approval-edge conditions on workflow '{}'",
+            workflowDefinition.getName());
+        persisted = true;
+      } catch (RuntimeException e) {
+        LOG.error(
+            "[v200] Failed to persist approval-edge condition migration for workflow '{}': {}",
+            workflowDefinition.getName(),
+            e.getMessage());
+      }
+      return persisted;
+    }
+
+    private boolean rewriteApprovalEdgesInPlace(WorkflowDefinition workflowDefinition) {
+      Set<String> approvalNodeNames = collectApprovalNodeNames(workflowDefinition.getNodes());
+      List<EdgeDefinition> edges = workflowDefinition.getEdges();
+      boolean modified = false;
+      if (!approvalNodeNames.isEmpty() && edges != null) {
+        List<EdgeDefinition> rewritten = rewriteEdges(edges, approvalNodeNames);
+        modified = !rewritten.equals(edges);
+        if (modified) {
+          workflowDefinition.setEdges(rewritten);
+        }
+      }
+      return modified;
+    }
+
+    private Set<String> collectApprovalNodeNames(List<WorkflowNodeDefinitionInterface> nodes) {
+      Set<String> approvalNodeNames = new HashSet<>();
+      if (nodes != null) {
+        for (WorkflowNodeDefinitionInterface node : nodes) {
+          if (USER_APPROVAL_TASK_SUBTYPE.equals(node.getSubType())) {
+            approvalNodeNames.add(node.getName());
+          }
+        }
+      }
+      return approvalNodeNames;
+    }
+
+    private List<EdgeDefinition> rewriteEdges(
+        List<EdgeDefinition> edges, Set<String> approvalNodeNames) {
+      List<EdgeDefinition> rewritten = new ArrayList<>(edges.size());
+      Set<String> seenApprovalEdgeKeys = new HashSet<>();
+      for (EdgeDefinition edge : edges) {
+        EdgeDefinition next = rewriteApprovalEdge(edge, approvalNodeNames);
+        if (approvalNodeNames.contains(edge.getFrom())) {
+          String dedupKey = edge.getFrom() + "->" + edge.getTo() + ":" + next.getCondition();
+          if (!seenApprovalEdgeKeys.add(dedupKey)) {
+            continue;
+          }
+        }
+        rewritten.add(next);
+      }
+      return rewritten;
+    }
+
+    private EdgeDefinition rewriteApprovalEdge(EdgeDefinition edge, Set<String> approvalNodeNames) {
+      String condition = edge.getCondition();
+      if (approvalNodeNames.contains(edge.getFrom()) && condition != null) {
+        if (Workflow.LEGACY_APPROVE_CONDITION.equals(condition)) {
+          condition = Workflow.APPROVE_CONDITION;
+        } else if (Workflow.LEGACY_REJECT_CONDITION.equals(condition)) {
+          condition = Workflow.REJECT_CONDITION;
+        }
+      }
+      return new EdgeDefinition()
+          .withFrom(edge.getFrom())
+          .withTo(edge.getTo())
+          .withCondition(condition);
     }
 
     private int ensureDefaultTaskWorkflows() {

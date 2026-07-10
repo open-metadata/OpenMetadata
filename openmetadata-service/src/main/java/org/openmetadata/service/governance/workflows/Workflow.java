@@ -27,6 +27,10 @@ public class Workflow {
   public static final String GLOBAL_NAMESPACE = "global";
   public static final String SUCCESSFUL_RESULT = "success";
   public static final String FAILURE_RESULT = "failure";
+  public static final String APPROVE_CONDITION = "approve";
+  public static final String REJECT_CONDITION = "reject";
+  public static final String LEGACY_APPROVE_CONDITION = "true";
+  public static final String LEGACY_REJECT_CONDITION = "false";
   private final TriggerWorkflow triggerWorkflow;
   private final MainWorkflow mainWorkflow;
   private final WorkflowDefinition workflowDefinition;
