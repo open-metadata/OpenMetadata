@@ -178,7 +178,7 @@ const DataProductListPage = () => {
     initialSearchQuery: dataProductListing.urlState.searchQuery,
   });
 
-  const [view, setView] = useState<ViewMode>('table');
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
@@ -325,7 +325,7 @@ const DataProductListPage = () => {
       );
     }
 
-    if (view === 'table') {
+    if (view === ViewMode.Table) {
       return (
         <>
           <EntityListingTable

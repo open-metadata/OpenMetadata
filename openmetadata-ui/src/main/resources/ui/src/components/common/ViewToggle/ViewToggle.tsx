@@ -19,7 +19,11 @@ import { Grid01, Menu01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/data-flow.svg';
 
-export type ViewMode = 'table' | 'card' | 'tree';
+export enum ViewMode {
+  Table = 'table',
+  Card = 'card',
+  Tree = 'tree',
+}
 
 interface ViewToggleProps {
   value: ViewMode;
@@ -27,16 +31,16 @@ interface ViewToggleProps {
   views?: ViewMode[];
 }
 
-const DEFAULT_VIEWS: ViewMode[] = ['table', 'card'];
+const DEFAULT_VIEWS: ViewMode[] = [ViewMode.Table, ViewMode.Card];
 
 const getIconElement = (mode: ViewMode, isActive: boolean) => {
   const iconClass = `tw:size-4 ${isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'}`;
   switch (mode) {
-    case 'card':
+    case ViewMode.Card:
       return <Grid01 className={iconClass} />;
-    case 'tree':
+    case ViewMode.Tree:
       return <WorkflowIcon aria-label="Tree view" className={iconClass} />;
-    case 'table':
+    case ViewMode.Table:
     default:
       return <Menu01 className={iconClass} />;
   }

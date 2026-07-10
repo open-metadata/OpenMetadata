@@ -170,8 +170,8 @@ const DomainListPage = () => {
     initialSearchQuery: domainListing.urlState.searchQuery,
   });
 
-  const [view, setView] = useState<ViewMode>('table');
-  const isTreeView = view === 'tree';
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
   useEffect(() => {
@@ -257,7 +257,7 @@ const DomainListPage = () => {
       );
     }
 
-    if (view === 'table') {
+    if (view === ViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -338,7 +338,7 @@ const DomainListPage = () => {
             <Box className="tw:ml-auto" />
             <ViewToggle
               value={view}
-              views={['table', 'card', 'tree']}
+              views={[ViewMode.Table, ViewMode.Card, ViewMode.Tree]}
               onChange={setView}
             />
             {deleteIconButton}

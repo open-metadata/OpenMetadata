@@ -75,7 +75,7 @@ const SubDomainsTable = ({
     initialSearchQuery: subdomainListing.urlState.searchQuery,
   });
 
-  const [view, setView] = useState<ViewMode>('table');
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
@@ -150,7 +150,7 @@ const SubDomainsTable = ({
       );
     }
 
-    if (view === 'table') {
+    if (view === ViewMode.Table) {
       return (
         <>
           <EntityListingTable

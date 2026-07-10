@@ -131,7 +131,7 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const [view, setView] = useState<ViewMode>('table');
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
 
   const { search } = useSearch({
     searchPlaceholder: t('label.search-entity', {
@@ -360,7 +360,7 @@ export const LearningResourcesPage: React.FC = () => {
             {filterSelectionDisplay}
           </Box>
 
-          {view === 'table' && (
+          {view === ViewMode.Table && (
             <>
               <Table
                 stickyHeader
@@ -407,7 +407,7 @@ export const LearningResourcesPage: React.FC = () => {
             </>
           )}
 
-          {view === 'card' && (
+          {view === ViewMode.Card && (
             <>
               <Box
                 className="tw:min-h-0 tw:flex-1 tw:overflow-auto tw:p-3"
