@@ -1,9 +1,14 @@
 package org.openmetadata.service.search.elasticsearch;
 
+import es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore;
+import es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Operator;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.Query;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.QueryStringQuery;
 import es.co.elastic.clients.elasticsearch._types.query_dsl.TextQueryType;
+import es.co.elastic.clients.json.JsonData;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -20,6 +25,22 @@ public class ElasticQueryBuilder {
     return Query.of(q -> q.term(t -> t.field(field).value(value)));
   }
 
+  public static Query termQuery(String field, String value, Float boost, String queryName) {
+    return Query.of(
+        q ->
+            q.term(
+                t -> {
+                  t.field(field).value(value);
+                  if (boost != null) {
+                    t.boost(boost);
+                  }
+                  if (queryName != null) {
+                    t.queryName(queryName);
+                  }
+                  return t;
+                }));
+  }
+
   public static Query termQuery(String field, boolean value) {
     return Query.of(q -> q.term(t -> t.field(field).value(value)));
   }
@@ -34,6 +55,22 @@ public class ElasticQueryBuilder {
 
   public static Query matchPhraseQuery(String field, String value) {
     return Query.of(q -> q.matchPhrase(m -> m.field(field).query(value)));
+  }
+
+  public static Query matchPhraseQuery(String field, String value, Float boost, String queryName) {
+    return Query.of(
+        q ->
+            q.matchPhrase(
+                m -> {
+                  m.field(field).query(value);
+                  if (boost != null) {
+                    m.boost(boost);
+                  }
+                  if (queryName != null) {
+                    m.queryName(queryName);
+                  }
+                  return m;
+                }));
   }
 
   public static Query wildcardQuery(String field, String value) {
@@ -101,6 +138,85 @@ public class ElasticQueryBuilder {
                     if (operator == Operator.Or) {
                       m.minimumShouldMatch("2<70%");
                     }
+                  }
+                  return m;
+                }));
+  }
+
+  public static Query multiMatchQuery(
+      String query,
+      Map<String, Float> fields,
+      TextQueryType type,
+      Operator operator,
+      String tieBreaker,
+      String fuzziness,
+      String minimumShouldMatch,
+      Float boost,
+      String queryName) {
+    return multiMatchQuery(
+        query,
+        fields,
+        type,
+        operator,
+        tieBreaker,
+        fuzziness,
+        minimumShouldMatch,
+        boost,
+        queryName,
+        null);
+  }
+
+  public static Query multiMatchQuery(
+      String query,
+      Map<String, Float> fields,
+      TextQueryType type,
+      Operator operator,
+      String tieBreaker,
+      String fuzziness,
+      String minimumShouldMatch,
+      Float boost,
+      String queryName,
+      String analyzer) {
+    List<String> fieldList = new ArrayList<>();
+    fields.forEach(
+        (field, fieldBoost) -> {
+          if (fieldBoost != null && fieldBoost != 1.0f) {
+            fieldList.add(field + "^" + fieldBoost);
+          } else {
+            fieldList.add(field);
+          }
+        });
+    return Query.of(
+        q ->
+            q.multiMatch(
+                m -> {
+                  m.query(query);
+                  m.fields(fieldList);
+                  if (type != null) {
+                    m.type(type);
+                  }
+                  if (operator != null) {
+                    m.operator(operator);
+                  }
+                  if (tieBreaker != null) {
+                    m.tieBreaker(Double.parseDouble(tieBreaker));
+                  }
+                  if (fuzziness != null && !fuzziness.equals("0")) {
+                    m.fuzziness(fuzziness);
+                    m.prefixLength(1);
+                    m.maxExpansions(10);
+                  }
+                  if (minimumShouldMatch != null) {
+                    m.minimumShouldMatch(minimumShouldMatch);
+                  }
+                  if (boost != null) {
+                    m.boost(boost);
+                  }
+                  if (queryName != null) {
+                    m.queryName(queryName);
+                  }
+                  if (analyzer != null) {
+                    m.analyzer(analyzer);
                   }
                   return m;
                 }));
@@ -178,6 +294,17 @@ public class ElasticQueryBuilder {
     return new BoolQueryBuilder();
   }
 
+  public static Query disMaxQuery(List<Query> queries, double tieBreaker) {
+    return Query.of(
+        q ->
+            q.disMax(
+                d -> {
+                  d.queries(queries);
+                  d.tieBreaker(tieBreaker);
+                  return d;
+                }));
+  }
+
   public static class BoolQueryBuilder {
     private final List<Query> must = new ArrayList<>();
     private final List<Query> should = new ArrayList<>();
@@ -252,16 +379,16 @@ public class ElasticQueryBuilder {
                         u -> {
                           u.field(field);
                           if (gte != null) {
-                            u.gte(es.co.elastic.clients.json.JsonData.of(gte));
+                            u.gte(JsonData.of(gte));
                           }
                           if (lte != null) {
-                            u.lte(es.co.elastic.clients.json.JsonData.of(lte));
+                            u.lte(JsonData.of(lte));
                           }
                           if (gt != null) {
-                            u.gt(es.co.elastic.clients.json.JsonData.of(gt));
+                            u.gt(JsonData.of(gt));
                           }
                           if (lt != null) {
-                            u.lt(es.co.elastic.clients.json.JsonData.of(lt));
+                            u.lt(JsonData.of(lt));
                           }
                           return u;
                         })));
@@ -277,9 +404,9 @@ public class ElasticQueryBuilder {
 
   public static Query functionScoreQuery(
       Query query,
-      java.util.List<es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore> functions,
-      es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScoreMode scoreMode,
-      es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionBoostMode boostMode,
+      List<FunctionScore> functions,
+      FunctionScoreMode scoreMode,
+      FunctionBoostMode boostMode,
       Float boost) {
     return Query.of(
         q ->
@@ -302,20 +429,48 @@ public class ElasticQueryBuilder {
                 }));
   }
 
-  public static es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore weightFunction(
-      Query filter, double weight) {
-    return es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore.of(
-        f -> f.filter(filter).weight(weight));
+  public static Query functionScoreQuery(
+      Query query,
+      List<FunctionScore> functions,
+      FunctionScoreMode scoreMode,
+      FunctionBoostMode boostMode,
+      Float boost,
+      Double maxBoost) {
+    return Query.of(
+        q ->
+            q.functionScore(
+                fs -> {
+                  fs.query(query);
+                  if (!functions.isEmpty()) {
+                    fs.functions(functions);
+                  }
+                  if (scoreMode != null) {
+                    fs.scoreMode(scoreMode);
+                  }
+                  if (boostMode != null) {
+                    fs.boostMode(boostMode);
+                  }
+                  if (boost != null) {
+                    fs.boost(boost);
+                  }
+                  if (maxBoost != null) {
+                    fs.maxBoost(maxBoost);
+                  }
+                  return fs;
+                }));
   }
 
-  public static es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore
-      fieldValueFactorFunction(
-          Query filter,
-          String field,
-          Double factor,
-          Double missing,
-          es.co.elastic.clients.elasticsearch._types.query_dsl.FieldValueFactorModifier modifier) {
-    return es.co.elastic.clients.elasticsearch._types.query_dsl.FunctionScore.of(
+  public static FunctionScore weightFunction(Query filter, double weight) {
+    return FunctionScore.of(f -> f.filter(filter).weight(weight));
+  }
+
+  public static FunctionScore fieldValueFactorFunction(
+      Query filter,
+      String field,
+      Double factor,
+      Double missing,
+      FieldValueFactorModifier modifier) {
+    return FunctionScore.of(
         f -> {
           f.filter(filter);
           f.fieldValueFactor(

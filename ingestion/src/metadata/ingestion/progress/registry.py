@@ -31,6 +31,12 @@ import time
 from dataclasses import dataclass, field
 from typing import Dict, List, Mapping, Optional, Tuple  # noqa: UP035
 
+from metadata.ingestion.progress._render import (
+    _render_joined,
+    format_eta,
+    snapshot_to_progress_payload,
+)
+
 DEFAULT_ACTIVE_LEAF_CAP = 20
 
 
@@ -185,6 +191,75 @@ class ProgressRegistry:
         """``(type, done, total)`` per declared global counter, insertion order."""
         with self._lock:
             return [(type_, c.done, c.total) for type_, c in self._global.items()]
+
+    def eta_seconds(self) -> Optional[int]:  # noqa: UP045
+        """Overall run ETA in seconds from the driver counter's cumulative rate:
+        ``elapsed * (total - done) / done``. ``None`` during warm-up (``done ==
+        0``), when there is no driver, when the driver is complete (``done >=
+        total``), or before elapsed time is available."""
+        driver = self._driver_counter()
+        result = None
+        if driver is not None:
+            _, done, total = driver
+            elapsed = self.elapsed_seconds()
+            if done > 0 and total is not None and done < total and elapsed is not None and elapsed > 0:
+                result = round(elapsed * (total - done) / done)
+        return result
+
+    def _driver_counter(
+        self,
+        counters: "Optional[List[Tuple[str, int, Optional[int]]]]" = None,  # noqa: UP006,UP045
+    ) -> "Optional[Tuple[str, int, Optional[int]]]":  # noqa: UP006,UP045
+        """The ETA driver: the last-declared global counter that has a known
+        total (finest-grained real unit of work), or ``None`` when no counter
+        declares a total."""
+        pool = self.global_counters() if counters is None else counters
+        driver = None
+        for counter in pool:
+            if counter[2] is not None:
+                driver = counter
+        return driver
+
+    def render_cli(self) -> str:
+        """Human progress report: global-counter header (with ETA on the driver
+        line) plus the active-scope tree."""
+        snapshot = self.snapshot()
+        counters = self.global_counters()
+        header = self._render_header(counters)
+        if snapshot is None:
+            return header if counters else ""
+        lines: List[str] = []  # noqa: UP006
+        _render_joined(snapshot, [], lines)
+        tree = "\n".join(lines)
+        return f"{header}\n{tree}" if tree else header
+
+    def _render_header(self, counters: "List[Tuple[str, int, Optional[int]]]") -> str:  # noqa: UP006,UP045
+        lines: List[str] = []  # noqa: UP006
+        driver = self._driver_counter(counters)
+        eta = self.eta_seconds()
+        for type_, done, total in counters:
+            line = f"{type_} {done}/{total}" if total is not None else f"{type_} {done}"
+            if eta is not None and driver is not None and type_ == driver[0]:
+                line = f"{line}  {format_eta(eta)}"
+            lines.append(line)
+        assets = self.assets_ingested()
+        if assets > 0:
+            lines.append(f"Ingested: {assets:,} assets")
+        return "\n".join(lines)
+
+    def sse_payload(self) -> Optional[dict]:  # noqa: UP045
+        """Bare ``progressNode`` tree (validates against ``ProgressUpdate``,
+        which is ``extra='forbid'``). The run-root ``processed`` carries the
+        monotonic asset total; ``expected`` is unknown (no global count)."""
+        snapshot = self.snapshot()
+        result = None
+        if snapshot is not None:
+            tree = snapshot_to_progress_payload(snapshot)
+            if tree is not None:
+                tree["processed"] = self.assets_ingested()
+                tree["expected"] = None
+                result = tree
+        return result
 
     def close(self, path: List[str]) -> None:  # noqa: UP006
         """Remove the node at ``path`` from its parent's children once its work
