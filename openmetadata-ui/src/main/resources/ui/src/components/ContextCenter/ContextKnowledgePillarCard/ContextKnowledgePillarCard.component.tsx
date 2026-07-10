@@ -160,7 +160,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           <FeaturedIcon
             className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
             color="brand"
-            icon={<Icon className='tw:size-5' />}
+            icon={<Icon className="tw:size-5" />}
             size="sm"
             theme="light"
           />

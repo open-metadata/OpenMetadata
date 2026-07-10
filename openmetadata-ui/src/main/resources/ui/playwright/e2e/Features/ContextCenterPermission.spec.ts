@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -1511,7 +1511,7 @@ test.describe('Context Center Permissions', () => {
       createAllPage,
       browser,
     }) => {
-       test.slow();
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1532,7 +1532,7 @@ test.describe('Context Center Permissions', () => {
       editAllPage,
       browser,
     }) => {
-       test.slow();
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1547,7 +1547,7 @@ test.describe('Context Center Permissions', () => {
       await expect(row.getByTestId('delete-btn')).not.toBeVisible();
 
       await test.step('can restore a disposable archived document', async () => {
-         test.slow();
+        test.slow();
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
           browser
         );
@@ -1587,7 +1587,7 @@ test.describe('Context Center Permissions', () => {
       deleteAllPage,
       browser,
     }) => {
-       test.slow();
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1604,7 +1604,7 @@ test.describe('Context Center Permissions', () => {
       await expect(row.getByTestId('delete-btn')).toBeVisible();
 
       await test.step('can delete a disposable archived document', async () => {
-         test.slow();
+        test.slow();
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
           browser
         );
@@ -1643,7 +1643,7 @@ test.describe('Context Center Permissions', () => {
       allPermissionPage,
       browser,
     }) => {
-       test.slow();
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );

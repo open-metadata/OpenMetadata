@@ -102,10 +102,8 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
                   className="tw:flex-1 tw:min-w-0"
                   gap={3}
                   justify="between">
-                  <Box align="center" className='tw:min-w-0' gap={2}>
-                    <FolderIcon
-                      className="tw:size-4 tw:shrink-0 tw:text-quaternary"
-                    />
+                  <Box align="center" className="tw:min-w-0" gap={2}>
+                    <FolderIcon className="tw:size-4 tw:shrink-0 tw:text-quaternary" />
                     <div className="tw:min-w-0">
                       <Typography
                         ellipsis

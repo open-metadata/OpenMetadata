@@ -272,13 +272,9 @@ const ContextCenterDashboardPage: FC = () => {
         const metaParts = [owner, time].filter(Boolean);
         const icon =
           article.pageType === PageType.QUICK_LINK ? (
-            <QuickLinkIcon
-              className="tw:size-4 tw:text-quaternary tw:shrink-0"
-            />
+            <QuickLinkIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
           ) : (
-            <FileIcon
-              className="tw:size-4 tw:text-quaternary tw:shrink-0"
-            />
+            <FileIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
           );
 
         return {
@@ -445,9 +441,7 @@ const ContextCenterDashboardPage: FC = () => {
               {recentlyViewedItems.map((item) => (
                 <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
                   {item.pageType === PageType.QUICK_LINK ? (
-                    <QuickLinkIcon
-                      className="tw:size-4 tw:text-quaternary tw:shrink-0"
-                    />
+                    <QuickLinkIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
                   ) : (
                     <FileIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
                   )}
