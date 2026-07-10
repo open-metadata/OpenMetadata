@@ -11,8 +11,10 @@
  *  limitations under the License.
  */
 
-import { Button, ButtonGroup, useTheme } from '@mui/material';
-import { defaultColors } from '@openmetadata/ui-core-components';
+import {
+  ButtonGroup,
+  ButtonGroupItem,
+} from '@openmetadata/ui-core-components';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../../assets/svg/data-flow.svg';
@@ -29,20 +31,13 @@ interface UseViewToggleConfig {
  *
  * @description
  * Provides view mode state management and toggle button UI in a single hook.
- * Manages table/card view switching with MUI ButtonGroup, proper styling,
- * and brand colors for active states.
+ * Manages table/card/tree view switching with ButtonGroup from ui-core-components.
  *
  * @param config.defaultView - Initial view mode ('table' | 'card')
  *
  * @example
  * ```typescript
  * const { view, viewToggle } = useViewToggle({ defaultView: 'table' });
- *
- * // Use in layout:
- * <Box sx={{ display: 'flex', gap: 2 }}>
- *   {filters}
- *   {viewToggle}
- * </Box>
  *
  * // Conditional rendering:
  * {view === 'table' ? <DataTable /> : <CardView />}
@@ -55,8 +50,6 @@ export const useViewToggle = ({
   defaultView = 'table',
   views,
 }: UseViewToggleConfig = {}) => {
-  const theme = useTheme();
-
   const availableViews = useMemo<ViewMode[]>(
     () => (views && views.length > 0 ? views : ['table', 'card']),
     [views]
@@ -68,10 +61,8 @@ export const useViewToggle = ({
       : availableViews[0];
   }, [availableViews, defaultView]);
 
-  // State management
   const [view, setView] = useState<ViewMode>(initialView);
 
-  // State change functions
   const setTableView = useCallback(() => {
     setView('table');
   }, []);
@@ -84,76 +75,53 @@ export const useViewToggle = ({
     setView('tree');
   }, []);
 
-  // Computed state
   const isTableView = view === 'table';
   const isCardView = view === 'card';
   const isTreeView = view === 'tree';
 
-  const renderIcon = useCallback((mode: ViewMode) => {
+  const getIconElement = useCallback((mode: ViewMode, isActive: boolean) => {
+    const iconClass = `tw:size-4 ${isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'}`;
     switch (mode) {
       case 'card':
-        return <Grid01 size={16} />;
+        return <Grid01 className={iconClass} />;
       case 'tree':
-        return <WorkflowIcon aria-label="Tree view" height={16} width={16} />;
+        return (
+          <WorkflowIcon aria-label="Tree view" className={iconClass} />
+        );
       case 'table':
       default:
-        return <Menu01 size={16} />;
+        return <Menu01 className={iconClass} />;
     }
   }, []);
 
   const viewToggle = useMemo(
     () => (
       <ButtonGroup
-        size="small"
-        sx={{
-          '& .MuiButton-root': {
-            padding: '6px',
-            minWidth: 'auto',
-            '&:first-of-type': {
-              borderTopLeftRadius: '4px',
-              borderBottomLeftRadius: '4px',
-              borderTopRightRadius: '0px',
-              borderBottomRightRadius: '0px',
-            },
-            '&:last-of-type': {
-              borderTopLeftRadius: '0px',
-              borderBottomLeftRadius: '0px',
-              borderTopRightRadius: '4px',
-              borderBottomRightRadius: '4px',
-            },
-          },
-        }}
-        variant="outlined">
+        selectedKeys={new Set([view])}
+        size="sm"
+        onSelectionChange={(keys) => {
+          const selected = Array.from(keys as Set<string>)[0] as ViewMode;
+          if (selected) {
+            setView(selected);
+          }
+        }}>
         {availableViews.map((mode) => {
           const isActive = view === mode;
 
           return (
-            <Button
+            <ButtonGroupItem
+              aria-label={mode}
+              className={isActive ? '!tw:bg-brand-primary' : ''}
               data-testid={`${mode}-view-toggle`}
+              iconLeading={getIconElement(mode, isActive)}
+              id={mode}
               key={mode}
-              sx={{
-                backgroundColor: isActive
-                  ? `${defaultColors.blue[50]} !important`
-                  : 'transparent',
-                color: isActive
-                  ? theme.palette.allShades?.brand?.[600]
-                  : 'inherit',
-                '& svg': {
-                  color: isActive
-                    ? theme.palette.allShades?.brand?.[600]
-                    : 'inherit',
-                },
-              }}
-              title={mode}
-              variant="outlined"
-              onClick={() => setView(mode)}>
-              {renderIcon(mode)}
-            </Button>
+            />
           );
         })}
       </ButtonGroup>
     ),
-    [availableViews, renderIcon, setView, theme, view]
+    [availableViews, getIconElement, setView, view]
   );
 
   return {
