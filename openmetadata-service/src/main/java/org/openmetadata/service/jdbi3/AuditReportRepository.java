@@ -88,6 +88,9 @@ public class AuditReportRepository extends EntityRepository<AuditReport> {
               recordChange(
                   "failureReason", original.getFailureReason(), updated.getFailureReason()));
       compareAndUpdate(
+          "runningOn",
+          () -> recordChange("runningOn", original.getRunningOn(), updated.getRunningOn()));
+      compareAndUpdate(
           "artifacts",
           () -> recordChange("artifacts", original.getArtifacts(), updated.getArtifacts(), true));
       compareAndUpdate(

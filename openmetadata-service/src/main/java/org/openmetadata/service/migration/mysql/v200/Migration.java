@@ -2,6 +2,7 @@ package org.openmetadata.service.migration.mysql.v200;
 
 import static org.openmetadata.service.jdbi3.locator.ConnectionType.MYSQL;
 import static org.openmetadata.service.migration.utils.v1130.MigrationUtil.addTableColumnSearchSettings;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskOperationToApplicationBotPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCreateTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskAuthorPolicyToDataConsumerRole;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskRuleToDataConsumerPolicy;
@@ -43,6 +44,7 @@ public class Migration extends MigrationProcessImpl {
     addTaskAuthorPolicyToDataConsumerRole(collectionDAO);
     addCreateTaskRuleToDataConsumerPolicy(collectionDAO);
     addTaskRuleToDataConsumerPolicy(collectionDAO);
+    addCreateTaskOperationToApplicationBotPolicy(collectionDAO);
     SearchIndexMappingsSeeder.seedIfAbsent();
 
     // Wrap WorkflowHandler init + task workflow steps so a handler failure logs and continues
