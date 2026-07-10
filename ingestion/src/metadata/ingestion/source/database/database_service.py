@@ -591,7 +591,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         schema_fqn = fqn.build(
             self.metadata,
             entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
             database_name=database_name,
             schema_name=schema_name,
         )
@@ -605,7 +605,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         stored_procedure_fqn = fqn.build(
             self.metadata,
             entity_type=StoredProcedure,
-            service_name=self.context.get().database_service,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
             procedure_name=stored_procedure_name,

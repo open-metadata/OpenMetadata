@@ -260,10 +260,14 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         if schemas_by_database is None:
             totals.mark_reconcilable(DatabaseSchema.__name__)
         else:
+            # Catalog identifiers are case-insensitive: the walk's scope key keeps the
+            # configured/SDK-listed casing while the view returns catalog_name in its
+            # own casing, so match case-insensitively to avoid seeding a spurious 0.
+            schemas_by_lower = {db.lower(): schemas for db, schemas in schemas_by_database.items()}
             for database_name in database_names:
                 kept = [
                     schema_name
-                    for schema_name in schemas_by_database.get(database_name, [])
+                    for schema_name in schemas_by_lower.get(database_name.lower(), [])
                     if not self._is_schema_filtered(database_name, schema_name)
                 ]
                 totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))

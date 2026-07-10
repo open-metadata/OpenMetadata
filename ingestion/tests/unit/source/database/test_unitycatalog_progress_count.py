@@ -54,6 +54,14 @@ def test_declare_progress_totals_seeds_database_and_schema(unitycatalog_source):
     assert counters["DatabaseSchema"] == (0, 3)
 
 
+def test_declare_progress_totals_matches_catalog_case_insensitively(unitycatalog_source):
+    unitycatalog_source._filtered_database_names_for_totals = lambda: ["MyCatalog"]
+    unitycatalog_source._schema_names_by_database = lambda: {"mycatalog": ["s1", "s2"]}
+    unitycatalog_source._is_schema_filtered = lambda db, sch: False
+    unitycatalog_source.declare_progress_totals(TotalsDeclarer(unitycatalog_source.progress_tracking.registry))
+    assert _counters(unitycatalog_source)["DatabaseSchema"] == (0, 2)
+
+
 def test_declare_progress_totals_applies_schema_filter(unitycatalog_source):
     unitycatalog_source._filtered_database_names_for_totals = lambda: ["db1"]
     unitycatalog_source._schema_names_by_database = lambda: {"db1": ["keep", "drop"]}

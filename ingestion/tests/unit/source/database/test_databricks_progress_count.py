@@ -54,6 +54,14 @@ def test_declare_progress_totals_seeds_database_and_schema(databricks_source):
     assert counters["DatabaseSchema"] == (0, 3)
 
 
+def test_declare_progress_totals_matches_catalog_case_insensitively(databricks_source):
+    databricks_source._filtered_database_names_for_totals = lambda: ["MyCatalog"]
+    databricks_source._schema_names_by_database = lambda: {"mycatalog": ["s1", "s2"]}
+    databricks_source._is_schema_filtered = lambda db, sch: False
+    databricks_source.declare_progress_totals(TotalsDeclarer(databricks_source.progress_tracking.registry))
+    assert _counters(databricks_source)["DatabaseSchema"] == (0, 2)
+
+
 def test_declare_progress_totals_applies_schema_filter(databricks_source):
     databricks_source._filtered_database_names_for_totals = lambda: ["db1"]
     databricks_source._schema_names_by_database = lambda: {"db1": ["keep", "drop"]}

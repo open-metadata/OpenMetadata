@@ -650,7 +650,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         ]
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
-        project_id = self.context.get().database
+        project_id = self.context.get().database  # pyright: ignore[reportAttributeAccessIssue]
         for schema_name in self.get_raw_database_schema_names():
             schema_fqn = fqn.build(
                 self.metadata,
@@ -812,12 +812,12 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         current database). Honors a single configured ``databaseSchema``. Reuses the
         walk's client when set, else builds a lightweight project-scoped client so
         the totals hook (which runs before ``set_inspector``) can still list."""
-        configured_schema = self.service_connection.__dict__.get("databaseSchema")
+        configured_schema = getattr(self.service_connection, "databaseSchema", None)
         if configured_schema:
             yield configured_schema
         else:
             client = self.client or get_bigquery_client_for_project(project_id, self.service_connection)
-            for dataset in client.list_datasets(project_id):
+            for dataset in client.list_datasets(project_id):  # pyright: ignore[reportAttributeAccessIssue]
                 yield dataset.dataset_id
 
     def _kept_schema_counts(self, project_ids: List[str]) -> Optional[Dict[str, int]]:  # noqa: UP006,UP045
@@ -865,7 +865,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 database_fqn = fqn.build(
                     self.metadata,
                     entity_type=Database,
-                    service_name=self.context.get().database_service,
+                    service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
                     database_name=project_id,
                 )
                 self.status.filter(database_fqn, "Database Filtered out")

@@ -342,7 +342,7 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
                     database_fqn = fqn.build(
                         self.metadata,
                         entity_type=Database,
-                        service_name=self.context.get().database_service,
+                        service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
                         database_name=new_database,
                     )
                     self.status.filter(database_fqn, "Database Filtered Out")
