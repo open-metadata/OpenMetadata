@@ -11,7 +11,7 @@ from typing import Any, Union
 
 from pydantic import Field
 
-from .base import BaseContext, BaseContextFieldsEnum  # noqa: TID252
+from metadata.workflow.context.base import BaseContext, BaseContextFieldsEnum
 
 
 class AppMetadataContextFieldsEnum(BaseContextFieldsEnum):
