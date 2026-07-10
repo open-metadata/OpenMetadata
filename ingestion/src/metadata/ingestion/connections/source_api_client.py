@@ -71,7 +71,7 @@ def normalize_api_path(path: str) -> str:
     """
     cleaned_parts = [
         "{id}" if _is_id_segment(part) else part
-        for part in path.split("?")[0].split("/")
+        for part in path.split("?", maxsplit=1)[0].split("/")
         if part
     ]
     return "/" + "/".join(cleaned_parts) if cleaned_parts else "/"
