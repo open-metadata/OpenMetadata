@@ -49,6 +49,13 @@
     padding-top: 4px;
   }
 
+  .explore-search-card-breadcrumbs {
+    a,
+    span[aria-current='page'] {
+      font-size: 12px;
+    }
+  }
+
   .description-text {
     margin-bottom: 6px;
     font-size: 13px;
@@ -113,4 +120,62 @@
   .score {
     color: @primary-heading-color;
   }
+}
+
+.ranking-details-container {
+  background-color: @white;
+  border: 1px solid @border-color-4;
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  margin-top: 8px;
+  padding: 8px 12px;
+}
+
+.ranking-details-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.ranking-details-title {
+  color: @text-color;
+  font-size: 12px;
+  font-weight: 600;
+  line-height: 18px;
+}
+
+.ranking-details-score {
+  color: @text-grey-muted;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.ranking-stage-list {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ranking-stage-item {
+  display: grid;
+  grid-template-columns: minmax(88px, max-content) minmax(0, 1fr);
+  column-gap: 8px;
+  row-gap: 2px;
+  align-items: baseline;
+}
+
+.ranking-score-explanation {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.ranking-score-contributor {
+  display: grid;
+  grid-template-columns: 56px minmax(0, 1fr);
+  gap: 8px;
+  align-items: baseline;
 }

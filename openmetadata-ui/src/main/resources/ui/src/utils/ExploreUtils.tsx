@@ -32,7 +32,7 @@ import {
   postAggregateFieldOptions,
 } from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
-import { getCountBadge } from './EntityDisplayUtils';
+import { getCountBadge } from './EntityDisplayPureUtils';
 import { getCombinedQueryFilterObject } from './ExplorePage/ExplorePageUtils';
 import {
   findActiveSearchIndex,
@@ -114,11 +114,15 @@ export const generateTabItems = (
           className="d-flex items-center justify-between"
           data-testid={`${lowerCase(tabDetail.label)}-tab`}>
           <div className="explore-tab-label">
-            <span className="explore-icon d-flex m-r-xs">
+            <span className="d-flex m-r-xs">
               <Icon
-                className={classNames(tabDetail.iconClassName, {
-                  'text-primary': tabSearchIndex === searchIndex,
-                })}
+                className={classNames(
+                  'tw:h-4 tw:w-4',
+                  tabDetail.iconClassName,
+                  {
+                    'text-primary': tabSearchIndex === searchIndex,
+                  }
+                )}
               />
             </span>
             <Typography.Text
@@ -168,6 +172,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
   onNlqAppliedFilters,
+  showRankingDetails,
 }: {
   searchQueryParam: string;
   tabsInfo: Record<ExploreSearchIndex, TabsInfoData>;
@@ -188,6 +193,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
   onNlqAppliedFilters?: (filters?: QueryFilterInterface) => void;
+  showRankingDetails?: boolean;
 }) => {
   const combinedQueryFilter = getCombinedQueryFilterObject(
     updatedQuickFilters,
@@ -206,7 +212,6 @@ export const fetchEntityData = async ({
         queryFilter: combinedQueryFilter,
         searchIndex: SearchIndex.DATA_ASSET,
         includeDeleted: showDeleted,
-        trackTotalHits: true,
         fetchSource: false,
         filters: '',
       };
@@ -249,6 +254,10 @@ export const fetchEntityData = async ({
           pageNumber: page,
           pageSize: size,
           includeDeleted: showDeleted,
+          // Results query backs the count badge and pagination total
+          // (searchResults.hits.total.value); without this ES caps it at 10000.
+          trackTotalHits: true,
+          explain: showRankingDetails,
           excludeSourceFields: [
             'columns',
             'queries',
@@ -317,6 +326,8 @@ export const fetchEntityData = async ({
         pageNumber: page,
         pageSize: size,
         includeDeleted: showDeleted,
+        trackTotalHits: true,
+        explain: showRankingDetails,
         excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       };
 

@@ -102,6 +102,8 @@ export const LINK_ONTOLOGY_COLOR = '#F79009';
 export const ONTOLOGY_PARTICLE_COLOR = '#FDB022';
 export const COVERAGE_GAP_COLOR = '#F04438';
 export const LABEL_COLOR = '#EAF0FB';
+/** Dark text drawn on the orange glossary-term pill laid over ontology-mode assets. */
+export const TERM_BADGE_TEXT_COLOR = '#0E1430';
 
 export const STAGE_BACKDROP =
   'radial-gradient(130% 120% at 28% 0%, #182747 0%, #0C1326 52%, #060A16 100%)';

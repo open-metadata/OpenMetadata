@@ -13,16 +13,29 @@
 
 import { Input, Typography } from 'antd';
 import classNames from 'classnames';
-import { FC, useCallback, useState } from 'react';
+import { FC, lazy, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ActivityEvent } from '../../../generated/entity/activity/activityEvent';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import UserPopOverCard from '../../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../../common/ProfilePicture/ProfilePicture';
-import ActivityFeedCardNew from '../ActivityFeedCardNew/ActivityFeedcardNew.component';
-import ActivityFeedEditorNew from '../ActivityFeedEditor/ActivityFeedEditorNew';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { useActivityFeedProvider } from '../ActivityFeedProvider/ActivityFeedProvider';
 import './feed-panel-body-v1.less';
+
+const UserPopOverCard = withSuspenseFallback(
+  lazy(() => import('../../common/PopOverCard/UserPopOverCard'))
+);
+
+const ProfilePicture = withSuspenseFallback(
+  lazy(() => import('../../common/ProfilePicture/ProfilePicture'))
+);
+
+const ActivityFeedCardNew = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedCardNew/ActivityFeedcardNew.component'))
+);
+
+const ActivityFeedEditorNew = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditorNew'))
+);
 
 interface ActivityPanelBodyProps {
   activity: ActivityEvent;

@@ -29,7 +29,7 @@ const outlineBorders: Record<FeaturedIconColor, string> = {
 
 const styles = sortCx({
   light: {
-    base: 'tw:rounded-full',
+    base: 'tw:rounded-full tw:dark:text-fg-white',
     sizes: {
       sm: 'tw:size-8',
       md: 'tw:size-10',
@@ -37,11 +37,15 @@ const styles = sortCx({
       xl: 'tw:size-14',
     },
     colors: {
-      brand: 'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand',
-      error: 'tw:bg-error-secondary tw:text-featured-icon-light-fg-error',
-      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
-      success: 'tw:bg-success-secondary tw:text-featured-icon-light-fg-success',
-      warning: 'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning',
+      brand:
+        'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand tw:dark:bg-brand-solid',
+      error:
+        'tw:bg-error-secondary tw:text-featured-icon-light-fg-error tw:dark:bg-error-solid',
+      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray tw:dark:bg-secondary-solid',
+      success:
+        'tw:bg-success-secondary tw:text-featured-icon-light-fg-success tw:dark:bg-success-solid',
+      warning:
+        'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning tw:dark:bg-warning-solid',
     },
   },
 

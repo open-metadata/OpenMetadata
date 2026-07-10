@@ -15,13 +15,14 @@ import {
   Box,
   Button,
   Card,
+  Dot,
   FeaturedIcon,
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ArrowNarrowRight, TrendUp01 } from '@untitledui/icons';
-import { FC } from 'react';
-import { PILLAR_TONE_TEXT_CLASS } from '../../../constants/ContextCenter.constants';
+import { ArrowNarrowRight } from '@untitledui/icons';
+import classNames from 'classnames';
+import { FC, Fragment } from 'react';
 import {
   ContextKnowledgePillarCardProps,
   PillarRecentItem,
@@ -36,25 +37,43 @@ function RecentItem({
 }) {
   return (
     <Box align="center" className="tw:py-1.5" gap={2}>
-      <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+      {item.icon ? (
+        item.icon
+      ) : (
+        <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+      )}
       <Box
         align="center"
         className="tw:min-w-0 tw:flex-1"
         gap={4}
         justify="between">
-        <Typography
-          ellipsis
-          as="span"
-          className="tw:min-w-0 tw:flex-1 tw:text-secondary"
-          size="text-xs">
-          {item.title}
-        </Typography>
-        <Typography
-          as="span"
-          className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
-          size="text-xs">
-          {item.meta}
-        </Typography>
+        <div className="tw:min-w-40">
+          <Typography
+            ellipsis
+            className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+            size="text-xs"
+            weight="medium">
+            {item.title}
+          </Typography>
+        </div>
+        <Box align="center" gap={1}>
+          {item.meta.map((metaItem, index) => (
+            <Fragment key={`${index}-${metaItem}`}>
+              <div className="tw:max-w-20">
+                <Typography
+                  ellipsis
+                  className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                  size="text-xs">
+                  {metaItem}
+                </Typography>
+              </div>
+
+              {index < item.meta.length - 1 && (
+                <Dot className="tw:text-quaternary" size="micro" />
+              )}
+            </Fragment>
+          ))}
+        </Box>
       </Box>
     </Box>
   );
@@ -113,8 +132,6 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   stat,
   statSub,
   statSubSecondary,
-  trend,
-  tone,
   recent,
   cta,
   isLoading = false,
@@ -132,7 +149,10 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
 
   return (
     <Card
-      className="tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-blue-200 tw:hover:-translate-y-px"
+      className={classNames(
+        'tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between',
+        'tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px'
+      )}
       data-testid={dataTestId}
       onClick={onClick}>
       <div>
@@ -149,7 +169,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
               as="div"
               className="tw:text-primary"
               size="text-sm"
-              weight="medium">
+              weight="semibold">
               {title}
             </Typography>
             <Typography as="div" className="tw:text-quaternary" size="text-xs">
@@ -168,20 +188,6 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           </Typography>
           <Typography as="span" className="tw:text-quaternary" size="text-xs">
             {statSubLabel}
-          </Typography>
-        </Box>
-
-        <Box
-          inline
-          align="center"
-          className={`tw:mb-4 tw:mt-1 ${PILLAR_TONE_TEXT_CLASS[tone]}`}
-          gap={1}>
-          <TrendUp01 className="tw:size-3 tw:stroke-2" />
-          <Typography
-            as="span"
-            className={PILLAR_TONE_TEXT_CLASS[tone]}
-            size="text-xs">
-            {trend}
           </Typography>
         </Box>
 

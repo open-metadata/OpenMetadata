@@ -12,13 +12,15 @@
  */
 
 import { render, screen } from '@testing-library/react';
-import { Form } from 'antd';
-import { DEFAULT_FORM_VALUE } from '../../constants/Tags.constant';
-import { Classification } from '../../generated/entity/classification/classification';
-import { Tag } from '../../generated/entity/classification/tag';
+import { useForm } from 'react-hook-form';
 import TagsForm from './TagsForm';
+import { TagFormValues } from './TagsPage.interface';
 
 jest.mock('@openmetadata/ui-core-components', () => {
+  const { FieldTypes, HelperTextType } = jest.requireActual(
+    '@openmetadata/ui-core-components'
+  );
+
   const GridItem = ({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   );
@@ -27,7 +29,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
   GridComponent.Item = GridItem;
 
+  const Toggle = ({
+    isSelected,
+    onChange,
+    isDisabled,
+    className,
+    ...rest
+  }: {
+    isSelected?: boolean;
+    onChange?: (val: boolean) => void;
+    isDisabled?: boolean;
+    className?: string;
+  } & Record<string, unknown>) => (
+    <button
+      aria-checked={isSelected}
+      className={className}
+      disabled={isDisabled}
+      role="switch"
+      onClick={() => onChange?.(!isSelected)}
+      {...rest}
+    />
+  );
+
   return {
+    FieldTypes,
+    HelperTextType,
+    Box: ({ children }: { children: React.ReactNode }) => <div>{children}</div>,
+    Avatar: () => <div data-testid="avatar" />,
+    FormItemLabel: ({ label }: { label: React.ReactNode }) => (
+      <label>{label}</label>
+    ),
     Tooltip: ({
       children,
       title,
@@ -46,29 +77,74 @@ jest.mock('@openmetadata/ui-core-components', () => {
       children: React.ReactNode;
       className?: string;
     }) => <button className={className}>{children}</button>,
-    Toggle: ({
-      id,
-      isSelected,
-      onChange,
-      isDisabled,
-      className,
-    }: {
-      id?: string;
-      isSelected?: boolean;
-      onChange?: (val: boolean) => void;
-      isDisabled?: boolean;
-      className?: string;
-    }) => (
-      <button
-        aria-checked={isSelected}
-        className={className}
-        disabled={isDisabled}
-        id={id}
-        role="switch"
-        onClick={() => onChange?.(!isSelected)}
-      />
+    HintText: ({ children }: { children: React.ReactNode }) => (
+      <span>{children}</span>
     ),
+    Toggle,
     Grid: GridComponent,
+    HookForm: ({
+      children,
+      onSubmit,
+    }: {
+      children: React.ReactNode;
+      onSubmit?: (e: React.FormEvent) => void;
+    } & Record<string, unknown>) => (
+      <form data-testid="tags-form" onSubmit={onSubmit}>
+        {children}
+      </form>
+    ),
+    FormField: ({
+      name,
+      children,
+    }: {
+      name: string;
+      children: (controller: {
+        field: {
+          value: unknown;
+          onChange: (value: unknown) => void;
+          onBlur: () => void;
+        };
+        fieldState: { invalid: boolean; error?: { message?: string } };
+      }) => React.ReactNode;
+    }) =>
+      children({
+        field: {
+          value: name === 'mutuallyExclusive' ? false : '',
+          onChange: jest.fn(),
+          onBlur: jest.fn(),
+        },
+        fieldState: { invalid: false },
+      }),
+    getField: (fieldProp: {
+      id?: string;
+      name: string;
+      label: React.ReactNode;
+      type: string;
+      props?: Record<string, unknown>;
+    }) => {
+      const testId =
+        (fieldProp.props?.['data-testid'] as string) ?? fieldProp.name;
+
+      if (fieldProp.type === FieldTypes.SWITCH) {
+        return (
+          <div key={fieldProp.id}>
+            <label>{fieldProp.label}</label>
+            <Toggle
+              data-testid={testId}
+              isDisabled={fieldProp.props?.disabled as boolean}
+              isSelected={false}
+            />
+          </div>
+        );
+      }
+
+      return (
+        <div key={fieldProp.id}>
+          <label>{fieldProp.label}</label>
+          <input readOnly data-testid={testId} value="" />
+        </div>
+      );
+    },
   };
 });
 
@@ -78,8 +154,8 @@ jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   });
 });
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
-  ...jest.requireActual('../../utils/EntityDisplayUtils'),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayPureUtils'),
   getCountBadge: jest.fn().mockReturnValue(''),
 }));
 jest.mock('../../utils/StringUtils', () => ({
@@ -110,6 +186,16 @@ jest.mock('../../rest/domainAPI', () => ({
 
 const mockSubmit = jest.fn();
 
+const TEST_INITIAL_VALUES = {
+  id: '',
+  name: '',
+  displayName: '',
+  description: '',
+  autoClassificationConfig: {
+    enabled: false,
+  },
+};
+
 // Create a wrapper component to use the form hook
 const TestWrapper = ({
   showMutuallyExclusive = false,
@@ -118,18 +204,13 @@ const TestWrapper = ({
   showMutuallyExclusive?: boolean;
   isClassification?: boolean;
 }) => {
-  const [formRef] = Form.useForm<Classification | Tag | undefined>();
+  const form = useForm<TagFormValues>();
 
   return (
     <TagsForm
       isEditing
-      formRef={formRef}
-      initialValues={{
-        ...DEFAULT_FORM_VALUE,
-        autoClassificationConfig: {
-          enabled: false,
-        },
-      }}
+      form={form}
+      initialValues={TEST_INITIAL_VALUES}
       isClassification={isClassification}
       isSystemTag={false}
       isTier={false}
@@ -168,16 +249,13 @@ describe('TagForm component', () => {
   });
 
   it('Form component should render Mutually Exclusive field when showMutuallyExclusive is true', async () => {
-    const { container } = render(
-      <TestWrapper isClassification showMutuallyExclusive />
+    render(<TestWrapper isClassification showMutuallyExclusive />);
+
+    const mutuallyExclusiveButton = await screen.findByTestId(
+      'mutually-exclusive-button'
     );
 
-    // Check for the Form.Item with id that contains mutuallyExclusive
-    const mutuallyExclusiveFormItem = container.querySelector(
-      '#tags_mutuallyExclusive'
-    );
-
-    expect(mutuallyExclusiveFormItem).toBeInTheDocument();
+    expect(mutuallyExclusiveButton).toBeInTheDocument();
   });
 
   it('Form component should not render Mutually Exclusive field when showMutuallyExclusive is false', async () => {

@@ -24,10 +24,6 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { FieldProp, FieldTypes } from '../../../interface/FormUtils.interface';
 import { getField } from '../../../utils/formUtils';
-import {
-  showNotistackError,
-  showNotistackSuccess,
-} from '../../../utils/NotistackUtils';
 import DatePicker from '../../common/DatePicker/DatePicker';
 import './announcement-modal.less';
 
@@ -37,7 +33,6 @@ interface Props {
   entityFQN: string;
   onCancel: () => void;
   onSave: () => void;
-  showToastInSnackbar?: boolean;
 }
 
 export interface CreateAnnouncement {
@@ -53,7 +48,6 @@ const AddAnnouncementModal: FC<Props> = ({
   onSave,
   entityType,
   entityFQN,
-  showToastInSnackbar = false,
 }) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const { t } = useTranslation();
@@ -68,9 +62,7 @@ const AddAnnouncementModal: FC<Props> = ({
     const endTimeMs = endTime.toMillis();
 
     if (startTimeMs >= endTimeMs) {
-      showToastInSnackbar
-        ? showNotistackError(t('message.announcement-invalid-start-time'))
-        : showErrorToast(t('message.announcement-invalid-start-time'));
+      showErrorToast(t('message.announcement-invalid-start-time'));
     } else {
       try {
         setIsLoading(true);
@@ -82,17 +74,11 @@ const AddAnnouncementModal: FC<Props> = ({
           endTime: endTimeMs,
         });
         if (data) {
-          showToastInSnackbar
-            ? showNotistackSuccess(
-                t('message.announcement-created-successfully')
-              )
-            : showSuccessToast(t('message.announcement-created-successfully'));
+          showSuccessToast(t('message.announcement-created-successfully'));
         }
         onSave();
       } catch (error) {
-        showToastInSnackbar
-          ? showNotistackError(error as AxiosError)
-          : showErrorToast(error as AxiosError);
+        showErrorToast(error as AxiosError);
       } finally {
         setIsLoading(false);
       }

@@ -364,25 +364,27 @@ test.describe.serial('Settings Navigation Page Tests', () => {
     // Default order renders Data Quality above Incident Manager
     expect(await isDataQualityBelowIncidentManager()).toBe(false);
 
-    const dataQualityBox = await dataQualityItem.boundingBox();
-    const incidentManagerBox = await incidentManagerItem.boundingBox();
+    // Drag Data Quality just below Incident Manager, retrying until the tree reorders
+    await expect(async () => {
+      const dataQualityBox = await dataQualityItem.boundingBox();
+      const incidentManagerBox = await incidentManagerItem.boundingBox();
 
-    expect(dataQualityBox).not.toBeNull();
-    expect(incidentManagerBox).not.toBeNull();
+      expect(dataQualityBox).not.toBeNull();
+      expect(incidentManagerBox).not.toBeNull();
 
-    // Drag Data Quality just below Incident Manager to reorder within the group
-    await dataQualityItem.dragTo(incidentManagerItem, {
-      sourcePosition: {
-        x: (dataQualityBox?.width ?? 0) / 2,
-        y: (dataQualityBox?.height ?? 0) / 2,
-      },
-      targetPosition: {
-        x: (incidentManagerBox?.width ?? 0) / 2,
-        y: (incidentManagerBox?.height ?? 0) / 2 + 10,
-      },
-    });
+      await dataQualityItem.dragTo(incidentManagerItem, {
+        sourcePosition: {
+          x: (dataQualityBox?.width ?? 0) / 2,
+          y: (dataQualityBox?.height ?? 0) / 2,
+        },
+        targetPosition: {
+          x: (incidentManagerBox?.width ?? 0) / 2,
+          y: (incidentManagerBox?.height ?? 0) / 2 + 10,
+        },
+      });
 
-    await expect.poll(isDataQualityBelowIncidentManager).toBe(true);
+      expect(await isDataQualityBelowIncidentManager()).toBe(true);
+    }).toPass({ timeout: 30_000 });
     await expect(page.getByTestId('save-button')).toBeEnabled();
 
     const saveResponse = page.waitForResponse(

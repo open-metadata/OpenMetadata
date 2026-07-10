@@ -46,6 +46,7 @@ jest.mock('../../../../utils/CuratedAssetsPureUtils', () => ({
 }));
 
 jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
+  __esModule: true,
   default: {
     curatedAssetsWidgetDefaultValues: {
       x: 0,
@@ -58,6 +59,8 @@ jest.mock('../../../../utils/CustomizeMyDataPageClassBase', () => ({
         queryFilter: '{}',
       },
     },
+    getLandingPageWidgetEntityIconUrl: jest.fn().mockReturnValue(undefined),
+    getLandingPageWidgetServiceIconUrl: jest.fn().mockReturnValue(undefined),
   },
 }));
 
@@ -346,12 +349,22 @@ describe('CuratedAssetsWidget', () => {
       expect(mockHandleLayoutUpdate).toHaveBeenCalledWith([
         {
           i: 'test-widget',
+          x: 2,
+          y: 0,
+          w: 1,
+          h: 3,
+          static: false,
           config: { title: 'Test Widget' },
         },
       ]);
       expect(mockHandleSaveLayout).toHaveBeenCalledWith([
         {
           i: 'test-widget',
+          x: 2,
+          y: 0,
+          w: 1,
+          h: 3,
+          static: false,
           config: { title: 'Test Widget' },
         },
       ]);

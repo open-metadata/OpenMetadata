@@ -35,22 +35,22 @@ const variantStyles: Record<
   }
 > = {
   success: {
-    root: 'tw:border-utility-success-300 tw:bg-success-25',
+    root: 'tw:border-utility-success-300 tw:bg-success-primary',
     iconColor: 'success',
     defaultIcon: CheckCircle,
   },
   warning: {
-    root: 'tw:border-utility-warning-300 tw:bg-warning-25',
+    root: 'tw:border-utility-warning-300 tw:bg-warning-primary',
     iconColor: 'warning',
     defaultIcon: AlertTriangle,
   },
   error: {
-    root: 'tw:border-utility-error-300 tw:bg-error-25',
+    root: 'tw:border-utility-error-300 tw:bg-error-primary',
     iconColor: 'error',
     defaultIcon: AlertCircle,
   },
   brand: {
-    root: 'tw:border-utility-blue-300 tw:bg-blue-25',
+    root: 'tw:border-utility-blue-300 tw:bg-utility-blue-50',
     iconColor: 'brand',
     defaultIcon: InfoCircle,
   },
@@ -128,7 +128,6 @@ export const Alert = ({
         radius={iconRadius}
         shape={iconShape}
         size={iconSize}
-        theme="light"
       />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:text-sm">
