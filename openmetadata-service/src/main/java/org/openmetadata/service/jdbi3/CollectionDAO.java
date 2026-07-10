@@ -841,7 +841,7 @@ public interface CollectionDAO {
     // both `:serviceHash` (already used by the prefix LIKE in <sqlCondition>) and
     // `:serviceHashChild` (the `.%.%` companion) so the SQL just plugs them in.
     // Deferred join: resolve the page index-only on (name, id) in the derived table, then fetch
-    // ce.json by primary key for only the paged rows, so the json blob never enters the filesort.
+    // c.json by primary key for only the paged rows, so the json blob never enters the filesort.
     @SqlQuery(
         value =
             "SELECT c.json FROM <table> c "
@@ -9179,7 +9179,7 @@ public interface CollectionDAO {
       boolean includeEmptyTestSuite =
           Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
       if (!includeEmptyTestSuite) {
-        groupBy = String.format("GROUP BY %s.id", getTableName());
+        groupBy = String.format("GROUP BY %s.name, %s.id", getTableName(), getTableName());
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
@@ -9203,7 +9203,7 @@ public interface CollectionDAO {
       boolean includeEmptyTestSuite =
           Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
       if (!includeEmptyTestSuite) {
-        groupBy = String.format("GROUP BY %s.id", getTableName());
+        groupBy = String.format("GROUP BY %s.name, %s.id", getTableName(), getTableName());
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",

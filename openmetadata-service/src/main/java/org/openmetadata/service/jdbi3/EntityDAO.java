@@ -724,7 +724,7 @@ public interface EntityDAO<T extends EntityInterface> {
   // Deferred join (see listBefore/listAfter above): resolve the cursor page index-only on (name,
   // id) in the derived table (groupBy collapses any JOIN fan-out to one id per row), then fetch
   // json by primary key for only the paged rows so the json blob never enters the filesort. Callers
-  // must group on the id/name/id key, not on <table>.json.
+  // must group on the (name, id) key, not on <table>.json.
   @ConnectionAwareSqlQuery(
       value =
           "SELECT <table>.json FROM <table> "
