@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import Icon from '@ant-design/icons';
+import { Toggle } from '@openmetadata/ui-core-components';
 import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
@@ -53,6 +54,7 @@ const SearchPreview = ({
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
+  const [showRankingDetails, setShowRankingDetails] = useState(false);
   const {
     currentPage,
     pageSize,
@@ -83,6 +85,7 @@ const SearchPreview = ({
             index: entityType as SearchIndex,
             query: searchTerm,
             queryFilter: '',
+            explain: showRankingDetails,
             searchSettings: searchConfig,
           });
 
@@ -98,7 +101,14 @@ const SearchPreview = ({
         }
       }
     },
-    [currentPage, pageSize, searchConfig, entityType, handlePagingChange]
+    [
+      currentPage,
+      pageSize,
+      searchConfig,
+      entityType,
+      handlePagingChange,
+      showRankingDetails,
+    ]
   );
 
   const renderSearchResults = () => {
@@ -112,20 +122,31 @@ const SearchPreview = ({
 
     return (
       <>
-        {data.map(({ _score, _source, _id = '', highlight }) => (
-          <ExploreSearchCard
-            showEntityIcon
-            className="search-card"
-            classNameForBreadcrumb="breadcrumb-width"
-            data-testid="searched-data-card"
-            highlight={highlight}
-            id={_id}
-            key={_source.fullyQualifiedName}
-            score={_score}
-            showTags={false}
-            source={_source}
-          />
-        ))}
+        {data.map(
+          ({
+            _score,
+            _source,
+            _id = '',
+            highlight,
+            _explanation,
+            matched_queries,
+          }) => (
+            <ExploreSearchCard
+              showEntityIcon
+              className="search-card"
+              classNameForBreadcrumb="breadcrumb-width"
+              data-testid="searched-data-card"
+              highlight={highlight}
+              id={_id}
+              key={_source.fullyQualifiedName}
+              matchedQueries={showRankingDetails ? matched_queries : undefined}
+              score={showRankingDetails ? _score : undefined}
+              scoreExplanation={showRankingDetails ? _explanation : undefined}
+              showTags={false}
+              source={_source}
+            />
+          )
+        )}
         {showPagination && (
           <NextPrevious
             isNumberBased
@@ -169,7 +190,7 @@ const SearchPreview = ({
     if (searchConfig && Object.keys(searchConfig).length > 0) {
       fetchAssets({ searchTerm: searchValue, page: currentPage });
     }
-  }, [searchConfig, currentPage]);
+  }, [searchConfig, currentPage, showRankingDetails]);
 
   return (
     <div className="search-preview">
@@ -182,6 +203,16 @@ const SearchPreview = ({
           </Typography.Text>
         </Col>
         <Col>
+          <Typography.Text className="m-r-xs">
+            {t('label.ranking-detail-plural')}
+          </Typography.Text>
+          <Toggle
+            aria-label={t('label.ranking-detail-plural')}
+            className="m-r-md"
+            data-testid="ranking-details-switch"
+            isSelected={showRankingDetails}
+            onChange={setShowRankingDetails}
+          />
           <Button
             className="restore-defaults-btn font-semibold"
             data-testid="restore-defaults-btn"
