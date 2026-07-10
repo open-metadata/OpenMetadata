@@ -89,16 +89,21 @@ export const useAuthenticatedImage = (src: string) => {
 
     try {
       const objectUrl = await request;
-      if (isStale()) {
-        return;
-      }
-      if (objectUrl.startsWith('blob:')) {
+      const isBlob = objectUrl.startsWith('blob:');
+      if (isBlob) {
         acquireBlobUrl(objectUrl);
+      }
+      if (isStale()) {
+        if (isBlob) {
+          releaseBlobUrl(objectUrl);
+        }
+
+        return;
       }
       if (objectUrlRef.current) {
         releaseBlobUrl(objectUrlRef.current);
       }
-      objectUrlRef.current = objectUrl.startsWith('blob:') ? objectUrl : null;
+      objectUrlRef.current = isBlob ? objectUrl : null;
       setImageSrc(objectUrl);
     } catch (error) {
       if (!isStale()) {

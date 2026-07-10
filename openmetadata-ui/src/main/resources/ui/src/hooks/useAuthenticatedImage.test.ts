@@ -254,5 +254,6 @@ describe('useAuthenticatedImage', () => {
     });
 
     expect(result.current.imageSrc).toBe(blobB);
+    expect(revokeObjectURLMock).toHaveBeenCalledWith(blobA);
   });
 });
