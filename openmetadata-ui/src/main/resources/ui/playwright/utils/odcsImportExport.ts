@@ -36,6 +36,10 @@ export const openODCSImportDropdown = async (page: Page) => {
     });
   } else {
     await manageButton.click();
+    await page.getByTestId('contract-action-dropdown').waitFor({
+      state: 'visible',
+      timeout: 10000,
+    });
   }
 };
 
