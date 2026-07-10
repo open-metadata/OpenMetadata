@@ -13,11 +13,10 @@
 import {
   Box,
   ButtonUtility,
-  Card,
   FileIcon,
   getReadableFileSize,
   Skeleton,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -115,9 +114,11 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
     return (
       <div className="tw:flex tw:flex-col tw:gap-2">
         {attachments.map((item) => (
-          <Card
-            className="tw:flex tw:items-center tw:gap-3 tw:p-2"
+          <Box
+            align='center'
+            className="tw:p-2 tw:border-b tw:border-secondary tw:last:border-0"
             data-testid={`attachment-item-${item.id}`}
+            gap={3}
             key={item.id}>
             <FileIcon
               className="tw:h-6 tw:w-6 tw:shrink-0"
@@ -141,7 +142,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
                 onClick={() => handleDownload(item)}
               />
             </div>
-          </Card>
+          </Box>
         ))}
       </div>
     );
