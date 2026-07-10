@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, Page, test as base } from '@playwright/test';
+import { test as base, expect, Page } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { GlobalSettingOptions } from '../../constant/settings';
 import { TableClass } from '../../support/entity/TableClass';
@@ -478,7 +478,7 @@ test.describe('Search Settings', () => {
       await redirectToHomePage(page);
     });
 
-    test.fixme('Configure column search field settings', async ({ page }) => {
+    test('Configure column search field settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
       const columnCard = page.getByTestId('preferences.search-settings.column');
