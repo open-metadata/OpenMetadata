@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import java.util.function.Consumer;
+import java.util.function.Supplier;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.GovernanceMetadata;
 import org.openmetadata.schema.entity.ai.LLMModel;
@@ -26,12 +28,19 @@ import org.openmetadata.schema.type.EntityStatus;
  * Governance dashboard reads.
  *
  * <p>Forward: when the workflow (or the intake resource) moves {@code entityStatus}
- * to an approval-flow state, the registration status is updated to match.
+ * to an approval-flow state, the registration status is updated to match. On an
+ * {@code Approved} transition the approver ({@code approvedBy}/{@code approvedAt}) is
+ * stamped from {@code updatedBy} when not already set, so workflow-driven approvals
+ * record who approved just like the REST {@code approve()} path.
  * Reverse: when {@code entityStatus} is unset (existing or freshly seeded assets),
  * it is derived from the registration status so the asset converges to a consistent
  * state on its next save without a separate backfill migration. Shadow AI
  * ({@code Unregistered}) and {@code Registered} assets are left untouched in both
  * directions.
+ *
+ * <p>{@code Draft}, {@code Deprecated}, and {@code Archived} are lifecycle states that
+ * sit outside the registration approval flow — they have no registration-status
+ * equivalent and are intentionally left untouched in both directions.
  */
 final class AIAssetStatusSync {
   private static final String STATUS_PENDING_APPROVAL = "PendingApproval";
@@ -44,9 +53,15 @@ final class AIAssetStatusSync {
   static void sync(AIApplication app) {
     EntityStatus status = app.getEntityStatus();
     if (isApprovalStatus(status)) {
-      governanceMetadata(app)
-          .setRegistrationStatus(
-              GovernanceMetadata.RegistrationStatus.fromValue(registrationFor(status)));
+      GovernanceMetadata governance = governanceMetadata(app);
+      governance.setRegistrationStatus(
+          GovernanceMetadata.RegistrationStatus.fromValue(registrationFor(status)));
+      stampApprover(
+          status,
+          app.getUpdatedBy(),
+          governance::getApprovedBy,
+          governance::setApprovedBy,
+          governance::setApprovedAt);
     } else if (isUnset(status)) {
       EntityStatus derived = entityStatusFor(registrationOf(app));
       if (derived != null) {
@@ -58,9 +73,15 @@ final class AIAssetStatusSync {
   static void sync(McpServer server) {
     EntityStatus status = server.getEntityStatus();
     if (isApprovalStatus(status)) {
-      governanceMetadata(server)
-          .setRegistrationStatus(
-              McpGovernanceMetadata.RegistrationStatus.fromValue(registrationFor(status)));
+      McpGovernanceMetadata governance = governanceMetadata(server);
+      governance.setRegistrationStatus(
+          McpGovernanceMetadata.RegistrationStatus.fromValue(registrationFor(status)));
+      stampApprover(
+          status,
+          server.getUpdatedBy(),
+          governance::getApprovedBy,
+          governance::setApprovedBy,
+          governance::setApprovedAt);
     } else if (isUnset(status)) {
       EntityStatus derived = entityStatusFor(registrationOf(server));
       if (derived != null) {
@@ -89,6 +110,23 @@ final class AIAssetStatusSync {
 
   private static boolean isUnset(EntityStatus status) {
     return status == null || status == EntityStatus.UNPROCESSED;
+  }
+
+  /**
+   * Stamps the approver on an {@code Approved} transition when not already set. The two AI
+   * governance-metadata POJOs share no supertype, so callers pass method references to their
+   * respective approver getter/setters rather than the metadata object itself.
+   */
+  private static void stampApprover(
+      EntityStatus status,
+      String updatedBy,
+      Supplier<String> currentApprovedBy,
+      Consumer<String> setApprovedBy,
+      Consumer<Long> setApprovedAt) {
+    if (status == EntityStatus.APPROVED && currentApprovedBy.get() == null && updatedBy != null) {
+      setApprovedBy.accept(updatedBy);
+      setApprovedAt.accept(System.currentTimeMillis());
+    }
   }
 
   private static String registrationFor(EntityStatus status) {
