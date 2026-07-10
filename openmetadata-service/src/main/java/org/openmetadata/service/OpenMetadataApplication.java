@@ -139,6 +139,7 @@ import org.openmetadata.service.monitoring.JettyQoSIntegration;
 import org.openmetadata.service.monitoring.UserMetricsServlet;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.CollectionRegistry;
+import org.openmetadata.service.resources.ai.AuditPackGenerator;
 import org.openmetadata.service.resources.audit.AuditLogResource;
 import org.openmetadata.service.resources.csv.CsvAsyncJobResource;
 import org.openmetadata.service.resources.csv.CsvDocumentationResource;
@@ -312,6 +313,10 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Initialize Workflow Handler
     WorkflowHandler.initialize(catalogConfig);
+
+    // Recover AI audit-report jobs interrupted by a prior pod restart: re-queue Queued
+    // reports and reclaim orphaned Running ones so they don't hang forever.
+    AuditPackGenerator.recoverInterruptedReports();
 
     // Init Settings Cache after repositories and Fernet (needed for database access and encryption)
     SettingsCache.initialize(catalogConfig);
