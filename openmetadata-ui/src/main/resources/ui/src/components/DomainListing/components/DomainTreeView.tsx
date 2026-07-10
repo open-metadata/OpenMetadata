@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import type { Selection } from '@openmetadata/ui-core-components';
+import type { Key, Selection } from '@openmetadata/ui-core-components';
 import {
   Avatar,
   Badge,
@@ -742,6 +742,18 @@ const DomainTreeView = ({
     [fetchDomainDetails, navigate, updateExpansionForFqn]
   );
 
+  const handleAction = useCallback(
+    (key: Key) => {
+      const keyStr = String(key);
+
+      if (keyStr.endsWith(LOAD_MORE_ITEM_SUFFIX)) {
+        const parentFqn = keyStr.slice(0, -LOAD_MORE_ITEM_SUFFIX.length);
+        loadDomains(parentFqn, true);
+      }
+    },
+    [loadDomains]
+  );
+
   const handleScroll = useCallback(
     (event: React.UIEvent<HTMLDivElement>) => {
       if (
@@ -797,12 +809,16 @@ const DomainTreeView = ({
                 <Avatar size="xs" {...getEntityAvatarProps(node)} />
                 <Typography
                   className="tw:text-primary"
-                  weight="regular"
-                  size="text-sm">
+                  size="text-sm"
+                  weight="regular">
                   {getEntityName(node)}
                 </Typography>
                 {hasChildren && (
-                  <Badge color="gray" className="tw:px-3" size="xs" type="pill-color">
+                  <Badge
+                    className="tw:px-3"
+                    color="gray"
+                    size="xs"
+                    type="pill-color">
                     {childrenCount}
                   </Badge>
                 )}
@@ -816,14 +832,7 @@ const DomainTreeView = ({
                 key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
                 textValue={t('label.load-more')}>
                 <Tree.ItemContent showExpandIcon={false}>
-                  <div
-                    className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
-                    role="button"
-                    tabIndex={-1}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      loadDomains(identifier, true);
-                    }}>
+                  <div className="tw:flex tw:items-center tw:gap-2 tw:text-brand-primary tw:text-sm">
                     {loadingChildren[identifier] ? (
                       <Loader size="small" />
                     ) : (
@@ -864,9 +873,7 @@ const DomainTreeView = ({
     }
 
     return (
-      <Typography
-        className="tw:text-secondary tw:mt-2"
-        size="text-sm">
+      <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
         {t('label.no-entity-selected', {
           entity: t('label.domain'),
         })}
@@ -893,9 +900,7 @@ const DomainTreeView = ({
 
     if (hierarchy.length === 0) {
       return (
-        <Typography
-          className="tw:text-secondary tw:mt-2"
-          size="text-sm">
+        <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
           {t('label.no-entity-available', {
             entity: t('label.domain-plural'),
           })}
@@ -913,6 +918,7 @@ const DomainTreeView = ({
             selectedFqn ? new Set([selectedFqn]) : new Set<string>()
           }
           selectionMode="single"
+          onAction={handleAction}
           onExpandedChange={handleExpandedChange}
           onSelectionChange={handleSelectionChange}>
           {renderTreeItems(hierarchy)}
