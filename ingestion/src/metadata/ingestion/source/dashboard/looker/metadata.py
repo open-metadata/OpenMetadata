@@ -431,7 +431,11 @@ class LookerSource(DashboardServiceSource):
                 # Store the models for later processing of standalone views
                 self._all_lookml_models = all_lookml_models
 
-                explore_total = sum(len(model.explores) if model.explores else 0 for model in all_lookml_models)
+                explore_total = sum(
+                    len(model.explores)
+                    for model in all_lookml_models
+                    if model.explores and not filter_by_datamodel(self.source_config.dataModelFilterPattern, model.name)
+                )
                 manual = self.progress_tracking.manual
                 manual.set_total(DashboardDataModel.__name__, explore_total)
                 manual.mark_reconcilable(DashboardDataModel.__name__)

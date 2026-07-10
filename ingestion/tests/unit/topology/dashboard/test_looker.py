@@ -48,6 +48,7 @@ from metadata.generated.schema.type.entityLineage import EntitiesEdge, LineageDe
 from metadata.generated.schema.type.entityLineage import Source as LineageSource
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.entityReferenceList import EntityReferenceList
+from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.generated.schema.type.usageDetails import UsageDetails, UsageStats
 from metadata.generated.schema.type.usageRequest import UsageRequest
 from metadata.ingestion.api.steps import InvalidSourceException
@@ -936,6 +937,30 @@ class LookerUnitTest(TestCase):
         counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
         self.assertEqual(counter.total, 3)
         self.assertTrue(counter.reconcilable)
+
+    def test_list_datamodels_excludes_filtered_models_from_total(self):
+        """
+        Check that list_datamodels excludes explores belonging to models
+        filtered out by dataModelFilterPattern when computing the
+        DashboardDataModel progress total, matching what
+        fetch_lookml_explores actually yields.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["^m2$"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
 
     def test_get_dashboards_list_declares_dashboard_total(self):
         """
