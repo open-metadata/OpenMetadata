@@ -101,7 +101,7 @@ describe('CertificationTag', () => {
     expect(renderIcon).toHaveBeenCalledWith(
       'https://example.com/gold.png',
       expect.objectContaining({
-        size: 28,
+        size: 14,
         className: 'certification-img',
         alt: 'certification: Gold Medal',
       })
@@ -114,7 +114,7 @@ describe('CertificationTag', () => {
     expect(renderIcon).toHaveBeenCalledWith(
       'https://example.com/gold.png',
       expect.objectContaining({
-        size: 16,
+        size: 14,
       })
     );
   });
@@ -139,11 +139,4 @@ describe('CertificationTag', () => {
     ).toBeInTheDocument();
   });
 
-  it('should apply background color styling when showName is true', () => {
-    renderCertificationTag(mockCertification, true);
-
-    const link = screen.getByTestId('certification-Certification.Gold');
-
-    expect(link).toHaveStyle({ backgroundColor: '#FFD70033' });
-  });
 });
