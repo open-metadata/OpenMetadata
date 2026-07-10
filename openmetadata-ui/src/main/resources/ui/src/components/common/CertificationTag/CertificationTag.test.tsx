@@ -138,5 +138,4 @@ describe('CertificationTag', () => {
       screen.getByTestId('default-certification-icon')
     ).toBeInTheDocument();
   });
-
 });
