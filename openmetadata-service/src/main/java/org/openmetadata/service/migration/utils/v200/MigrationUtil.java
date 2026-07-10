@@ -7,6 +7,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
+import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addOperationsToPolicyRule;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -356,6 +357,23 @@ public class MigrationUtil {
       LOG.error(
           "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
     }
+  }
+
+  /**
+   * Backfill the {@code CreateTask} operation onto an existing tenant's {@code ApplicationBotPolicy}.
+   * The operation is added to the seed JSON in this release but seed policies are
+   * create-if-not-exists, so without this migration upgraded deployments would leave application
+   * bots (e.g. the AI automation bot) unable to file suggestions as task entities — {@link
+   * org.openmetadata.service.resources.tasks.TaskResource} rejects the create with 403. Idempotent:
+   * {@link org.openmetadata.service.migration.utils.v160.MigrationUtil#addOperationsToPolicyRule}
+   * skips the operation when it is already present.
+   */
+  public static void addCreateTaskOperationToApplicationBotPolicy(CollectionDAO collectionDAO) {
+    addOperationsToPolicyRule(
+        "ApplicationBotPolicy",
+        "ApplicationBotRule-Allow",
+        List.of(MetadataOperation.CREATE_TASK),
+        collectionDAO);
   }
 
   private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {

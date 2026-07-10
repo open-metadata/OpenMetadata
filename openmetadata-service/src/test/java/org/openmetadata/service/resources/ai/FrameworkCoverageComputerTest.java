@@ -15,10 +15,11 @@ package org.openmetadata.service.resources.ai;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.FrameworkControlCoverage;
+import org.openmetadata.schema.api.ai.FrameworkCoverageResponse;
 import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
@@ -33,7 +34,6 @@ import org.openmetadata.schema.type.Verification;
 class FrameworkCoverageComputerTest {
 
   @Test
-  @SuppressWarnings("unchecked")
   void computeReportsPerControlStatusFromMatchingRemediationActions() {
     AIGovernanceFramework framework = new AIGovernanceFramework().withName("EU_AI_Act");
     List<AIFrameworkControl> controls = List.of(control("art-10"), control("art-14"));
@@ -42,18 +42,19 @@ class FrameworkCoverageComputerTest {
             compliantApplication("claimsCopilot", remediation("art-10", RemediationStatus.Open)),
             compliantApplication("financeCopilot"));
 
-    Map<String, Object> coverage = FrameworkCoverageComputer.compute(framework, controls, assets);
-    List<Map<String, Object>> controlRows = (List<Map<String, Object>>) coverage.get("controls");
+    FrameworkCoverageResponse coverage =
+        FrameworkCoverageComputer.compute(framework, controls, assets);
+    List<FrameworkControlCoverage> controlRows = coverage.getControls();
 
-    Map<String, Object> dataGovernanceControl = controlRow(controlRows, "art-10");
-    assertEquals("Partial", dataGovernanceControl.get("status"));
-    assertEquals(1, dataGovernanceControl.get("affectedAssetCount"));
-    assertEquals(2, dataGovernanceControl.get("evidenceCount"));
+    FrameworkControlCoverage dataGovernanceControl = controlRow(controlRows, "art-10");
+    assertEquals(FrameworkControlCoverage.Status.PARTIAL, dataGovernanceControl.getStatus());
+    assertEquals(1, dataGovernanceControl.getAffectedAssetCount());
+    assertEquals(2, dataGovernanceControl.getEvidenceCount());
 
-    Map<String, Object> oversightControl = controlRow(controlRows, "art-14");
-    assertEquals("Met", oversightControl.get("status"));
-    assertEquals(0, oversightControl.get("affectedAssetCount"));
-    assertEquals(2, oversightControl.get("evidenceCount"));
+    FrameworkControlCoverage oversightControl = controlRow(controlRows, "art-14");
+    assertEquals(FrameworkControlCoverage.Status.MET, oversightControl.getStatus());
+    assertEquals(0, oversightControl.getAffectedAssetCount());
+    assertEquals(2, oversightControl.getEvidenceCount());
   }
 
   private AIFrameworkControl control(String code) {
@@ -91,9 +92,10 @@ class FrameworkCoverageComputerTest {
         .withStatus(status);
   }
 
-  private Map<String, Object> controlRow(List<Map<String, Object>> controls, String code) {
+  private FrameworkControlCoverage controlRow(
+      List<FrameworkControlCoverage> controls, String code) {
     return controls.stream()
-        .filter(control -> code.equals(control.get("code")))
+        .filter(control -> code.equals(control.getCode()))
         .findFirst()
         .orElseThrow();
   }
