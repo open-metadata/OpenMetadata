@@ -3465,7 +3465,6 @@
     "metric-description": "組織全体で標準化された指標を定義し、カタログ化します。",
     "metric-relations-require-glossary-term": "関係を追加するには、用語集の用語を選択してください。",
     "metric-tags-info": "メトリクスはタグを通じて用語集の用語にリンクされます。",
-    "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
     "metrics-delete-success": "Deleted {{count}} metrics successfully.",
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",

@@ -3465,7 +3465,6 @@
     "metric-description": "조직 전반에 걸쳐 표준화된 지표를 정의하고 카탈로그화하세요.",
     "metric-relations-require-glossary-term": "관계를 추가하려면 용어집 용어를 선택하세요.",
     "metric-tags-info": "메트릭은 태그를 통해 용어집 용어에 연결됩니다.",
-    "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
     "metrics-delete-success": "Deleted {{count}} metrics successfully.",
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",

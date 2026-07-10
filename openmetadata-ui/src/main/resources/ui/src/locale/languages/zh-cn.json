@@ -3465,7 +3465,6 @@
     "metric-description": "在整个组织中定义和编目标准化指标。",
     "metric-relations-require-glossary-term": "选择术语表术语以添加关系。",
     "metric-tags-info": "指标通过标签链接到术语表术语。",
-    "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
     "metrics-delete-success": "Deleted {{count}} metrics successfully.",
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",

@@ -3465,7 +3465,6 @@
     "metric-description": "आपल्या संस्थेमध्ये मानकीकृत मेट्रिक्स परिभाषित करा आणि सूचीबद्ध करा.",
     "metric-relations-require-glossary-term": "संबंध जोडण्यासाठी शब्दकोश संज्ञा निवडा.",
     "metric-tags-info": "मेट्रिक्स टॅग्जद्वारे शब्दकोश संज्ञांशी जोडले जातात.",
-    "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
     "metrics-delete-success": "Deleted {{count}} metrics successfully.",
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
