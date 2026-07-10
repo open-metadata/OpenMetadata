@@ -646,35 +646,20 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return [
             schema_name
             for schema_name in self.get_raw_database_schema_names()
-            if not filter_by_schema(
-                self.source_config.schemaFilterPattern,
-                (
-                    fqn.build(
-                        self.metadata,
-                        entity_type=DatabaseSchema,
-                        service_name=self.context.get().database_service,
-                        database_name=project_id,
-                        schema_name=schema_name,
-                    )
-                    if self.source_config.useFqnForFiltering
-                    else schema_name
-                ),
-            )
+            if not self._is_schema_filtered(project_id, schema_name)
         ]
 
     def _get_filtered_schema_names(self, return_fqn: bool = False, add_to_status: bool = True) -> Iterable[str]:
+        project_id = self.context.get().database
         for schema_name in self.get_raw_database_schema_names():
             schema_fqn = fqn.build(
                 self.metadata,
                 entity_type=DatabaseSchema,
                 service_name=self.context.get().database_service,
-                database_name=self.context.get().database,
+                database_name=project_id,
                 schema_name=schema_name,
             )
-            if filter_by_schema(
-                self.source_config.schemaFilterPattern,
-                schema_fqn if self.source_config.useFqnForFiltering else schema_name,
-            ):
+            if self._is_schema_filtered(project_id, schema_name):
                 if add_to_status:
                     self.status.filter(schema_fqn, "Schema Filtered Out")
                 continue
@@ -902,10 +887,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                 service_name=self.context.get().database_service,
                 database_name=project_id,
             )
-            if filter_by_database(
-                self.source_config.databaseFilterPattern,
-                database_fqn if self.source_config.useFqnForFiltering else project_id,
-            ):
+            if self._is_database_filtered(project_id):
                 self.status.filter(database_fqn, "Database Filtered out")
             else:
                 try:
