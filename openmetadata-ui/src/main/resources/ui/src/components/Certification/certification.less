@@ -70,14 +70,11 @@
 
       .certification-card-content {
         display: flex;
-        align-items: center;
+        align-items: flex-start;
         gap: 12px;
 
         img {
-          width: 40px;
-          height: 40px;
-          object-fit: contain;
-          flex-shrink: 0;
+          margin-top: 4px;
         }
       }
     }
@@ -88,6 +85,8 @@
   }
 
   .certification-icon {
-    padding: 6px;
+    svg {
+      margin-top: 4px;
+    }
   }
 }
