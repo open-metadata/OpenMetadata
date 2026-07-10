@@ -296,7 +296,7 @@ export const softDeleteDocument = async (
 ): Promise<void> => {
   const docRow = page.getByTestId(docRowId);
   await expect(docRow).toBeVisible();
-  await docRow.locator('button[aria-label="Open menu"]').click();
+  await docRow.getByTestId('manage-button').click();
   await page.getByTestId('delete-btn').click();
 
   const deleteResPromise = page.waitForResponse(

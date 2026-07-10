@@ -3653,72 +3653,75 @@ test.describe.fixme('Domain asset dryRun — add confirmation', () => {
   });
 });
 
-test.describe.fixme('Domain assets — glossary and inherited glossary term', () => {
-  test.slow(true);
+test.describe.fixme(
+  'Domain assets — glossary and inherited glossary term',
+  () => {
+    test.slow(true);
 
-  let assetDomain: Domain;
-  let assetGlossary: Glossary;
-  let inheritedTerm: GlossaryTerm;
+    let assetDomain: Domain;
+    let assetGlossary: Glossary;
+    let inheritedTerm: GlossaryTerm;
 
-  test.beforeAll(
-    'Setup domain with glossary and inherited term',
-    async ({ browser }) => {
-      const { apiContext, afterAction } = await performAdminLogin(browser);
+    test.beforeAll(
+      'Setup domain with glossary and inherited term',
+      async ({ browser }) => {
+        const { apiContext, afterAction } = await performAdminLogin(browser);
 
-      assetDomain = new Domain();
-      assetGlossary = new Glossary();
+        assetDomain = new Domain();
+        assetGlossary = new Glossary();
 
-      await assetDomain.create(apiContext);
-      await assetGlossary.create(apiContext);
+        await assetDomain.create(apiContext);
+        await assetGlossary.create(apiContext);
 
-      await assetGlossary.patch(apiContext, [
-        {
-          op: 'add',
-          path: '/domains/0',
-          value: {
-            id: assetDomain.responseData.id,
-            type: 'domain',
-            name: assetDomain.responseData.name,
-            displayName: assetDomain.responseData.displayName,
+        await assetGlossary.patch(apiContext, [
+          {
+            op: 'add',
+            path: '/domains/0',
+            value: {
+              id: assetDomain.responseData.id,
+              type: 'domain',
+              name: assetDomain.responseData.name,
+              displayName: assetDomain.responseData.displayName,
+            },
           },
-        },
-      ]);
+        ]);
 
-      inheritedTerm = new GlossaryTerm(assetGlossary);
-      await inheritedTerm.create(apiContext);
+        inheritedTerm = new GlossaryTerm(assetGlossary);
+        await inheritedTerm.create(apiContext);
 
+        await afterAction();
+      }
+    );
+
+    test.afterAll('Cleanup', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+      await inheritedTerm.delete(apiContext);
+      await assetGlossary.delete(apiContext);
+      await assetDomain.delete(apiContext);
       await afterAction();
-    }
-  );
+    });
 
-  test.afterAll('Cleanup', async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
-    await inheritedTerm.delete(apiContext);
-    await assetGlossary.delete(apiContext);
-    await assetDomain.delete(apiContext);
-    await afterAction();
-  });
+    test.beforeEach('Visit home page', async ({ page }) => {
+      await redirectToHomePage(page);
+    });
 
-  test.beforeEach('Visit home page', async ({ page }) => {
-    await redirectToHomePage(page);
-  });
+    test('Assets tab lists the assigned glossary and its inherited term', async ({
+      page,
+    }) => {
+      await sidebarClick(page, SidebarItem.DOMAIN);
+      await waitForAllLoadersToDisappear(page);
 
-  test('Assets tab lists the assigned glossary and its inherited term', async ({
-    page,
-  }) => {
-    await sidebarClick(page, SidebarItem.DOMAIN);
-    await waitForAllLoadersToDisappear(page);
+      await goToAssetsTab(page, assetDomain.data);
 
-    await goToAssetsTab(page, assetDomain.data);
+      const glossaryCard = page.getByTestId(
+        `table-data-card_${assetGlossary.responseData.fullyQualifiedName}`
+      );
+      const inheritedTermCard = page.getByTestId(
+        `table-data-card_${inheritedTerm.responseData.fullyQualifiedName}`
+      );
 
-    const glossaryCard = page.getByTestId(
-      `table-data-card_${assetGlossary.responseData.fullyQualifiedName}`
-    );
-    const inheritedTermCard = page.getByTestId(
-      `table-data-card_${inheritedTerm.responseData.fullyQualifiedName}`
-    );
-
-    await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
-    await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
-  });
-});
+      await expect(glossaryCard).toBeVisible({ timeout: 30_000 });
+      await expect(inheritedTermCard).toBeVisible({ timeout: 30_000 });
+    });
+  }
+);
