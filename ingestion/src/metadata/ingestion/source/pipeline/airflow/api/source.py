@@ -48,6 +48,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.pipeline.airflow.api.models import AirflowApiDagDetails
 from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 from metadata.utils import fqn
@@ -91,6 +92,11 @@ class AirflowApiSource(PipelineServiceSource):
             except Exception as exc:
                 logger.debug(traceback.format_exc())
                 logger.warning(f"Error building DAG details for {dag_data.get('dag_id')}: {exc}")
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        count = self.connection.get_dags_count()
+        if isinstance(count, int) and count > 0:
+            totals.set_total("Pipeline", count)
 
     def get_pipeline_name(self, pipeline_details: AirflowApiDagDetails) -> str:
         return pipeline_details.dag_id
