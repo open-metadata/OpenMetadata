@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  ButtonGroup,
-  ButtonGroupItem,
-} from '@openmetadata/ui-core-components';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../../assets/svg/data-flow.svg';
@@ -80,14 +77,14 @@ export const useViewToggle = ({
   const isTreeView = view === 'tree';
 
   const getIconElement = useCallback((mode: ViewMode, isActive: boolean) => {
-    const iconClass = `tw:size-4 ${isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'}`;
+    const iconClass = `tw:size-4 ${
+      isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'
+    }`;
     switch (mode) {
       case 'card':
         return <Grid01 className={iconClass} />;
       case 'tree':
-        return (
-          <WorkflowIcon aria-label="Tree view" className={iconClass} />
-        );
+        return <WorkflowIcon aria-label="Tree view" className={iconClass} />;
       case 'table':
       default:
         return <Menu01 className={iconClass} />;
@@ -97,6 +94,7 @@ export const useViewToggle = ({
   const viewToggle = useMemo(
     () => (
       <ButtonGroup
+        disallowEmptySelection
         selectedKeys={new Set([view])}
         size="sm"
         onSelectionChange={(keys) => {
@@ -111,7 +109,7 @@ export const useViewToggle = ({
           return (
             <ButtonGroupItem
               aria-label={mode}
-              className={isActive ? '!tw:bg-brand-primary' : ''}
+              className={isActive ? 'tw:bg-brand-primary!' : ''}
               data-testid={`${mode}-view-toggle`}
               iconLeading={getIconElement(mode, isActive)}
               id={mode}
