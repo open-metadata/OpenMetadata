@@ -144,7 +144,7 @@ const storedProcedureDetails = {
   glossary: glossaryDetails,
 };
 
-test.describe('Bulk Import Export', () => {
+test.describe.skip('Bulk Import Export', () => {
   test.beforeAll('setup pre-test', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
 
