@@ -357,6 +357,24 @@ describe('TagSuggestion', () => {
 
       expect(mockEnsureComboboxMenuOpen).not.toHaveBeenCalled();
     });
+
+    it('reopens the menu after a tag is inserted so a following Escape closes the menu, not the drawer', async () => {
+      render(<TagSuggestion onChange={mockOnChange} />);
+
+      fireEvent.mouseDown(screen.getByRole('combobox'));
+
+      await waitFor(() => {
+        expect(
+          screen.getByTestId('tag-option-PersonalData.Personal')
+        ).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('tag-option-PersonalData.Personal'));
+
+      // mouseDown (not pointerDown) doesn't hit the field handler, so this call
+      // comes from the insertion path re-opening the menu.
+      expect(mockEnsureComboboxMenuOpen).toHaveBeenCalledTimes(1);
+    });
   });
 
   describe('when tagType is Glossary', () => {

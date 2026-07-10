@@ -194,6 +194,13 @@ const TagSuggestion: FC<TagSuggestionProps> = ({
       onChange?.([...value, newTag]);
       searchDebounced.cancel();
       fetchOptions('');
+      // Keep the menu open after a selection so more tags can be added in a
+      // row. The refetch above re-renders and can close the menu; re-open it
+      // (only while the input is still focused) so a subsequent Escape closes
+      // the menu rather than escaping the surrounding drawer.
+      ensureComboboxMenuOpen(() =>
+        containerRef.current?.querySelector('input')
+      );
     },
     [value, onChange, searchDebounced, tagType]
   );
