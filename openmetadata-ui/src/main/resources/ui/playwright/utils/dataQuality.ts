@@ -43,6 +43,18 @@ export const selectTestType = async (page: Page, label: string) => {
 };
 
 /**
+ * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
+ * heading. This is a deterministic outside-click that closes the react-aria
+ * combobox popover without the ambiguity of a page-level Escape — which, when
+ * the menu happens to already be closed, would bubble up and dismiss the whole
+ * drawer.
+ */
+export const dismissTagSuggestions = async (page: Page) => {
+  await page.getByTestId('form-heading').click();
+  await expect(page.locator('[role="listbox"]')).toBeHidden();
+};
+
+/**
  * Matches the batched `dataQualityReport` POST the dashboard now fires instead
  * of one GET per widget. The per-aggregation filter (`q`, `index`, ...) lives in
  * the POST body, so pass `bodyToken` (a raw, non-URL-encoded substring) to assert

@@ -33,6 +33,7 @@ import {
   uuid,
 } from '../../../utils/common';
 import {
+  dismissTagSuggestions,
   ObservabilityFeature,
   selectAddObservabilityFeature,
   selectTestType,
@@ -218,7 +219,7 @@ test.describe(
           .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
         // Add glossary terms to test case
         await page.click('[data-testid="glossary-terms-selector"] input');
         const glossarySearchResponse = page.waitForResponse(
@@ -235,7 +236,7 @@ test.describe(
           )
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
         await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
@@ -279,7 +280,7 @@ test.describe(
           .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one
         await page
@@ -303,7 +304,7 @@ test.describe(
           )
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
@@ -431,7 +432,7 @@ test.describe(
           .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
 
         // Add glossary terms to column test case
         await page.click('[data-testid="glossary-terms-selector"] input');
@@ -449,7 +450,7 @@ test.describe(
           )
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
 
         await submitTestCaseForm(page);
 
@@ -485,7 +486,7 @@ test.describe(
           .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one for column test case
         await page
@@ -509,7 +510,7 @@ test.describe(
           )
           .click();
 
-        await page.keyboard.press('Escape');
+        await dismissTagSuggestions(page);
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
