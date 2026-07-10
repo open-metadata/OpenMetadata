@@ -561,5 +561,18 @@ class OpenSearchVectorServiceTest {
     assertTrue(body.contains("\"columns\""), "new columns field present");
     assertTrue(body.contains("\"description\""), "new description field present");
     assertTrue(body.contains("chunkDocVersion"), "_meta.chunkDocVersion bumped");
+
+    // databaseSchema must map both name and displayName (like service/database):
+    // buildDenormalizedFields
+    // copies both onto the chunk doc, so mapping only `name` would leave displayName unindexed.
+    com.fasterxml.jackson.databind.JsonNode schema =
+        new com.fasterxml.jackson.databind.ObjectMapper()
+            .readTree(body)
+            .path("properties")
+            .path("databaseSchema")
+            .path("properties");
+    assertTrue(schema.has("name"), "databaseSchema.name mapped");
+    assertTrue(
+        schema.has("displayName"), "databaseSchema.displayName mapped (matches service/database)");
   }
 }

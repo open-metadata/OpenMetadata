@@ -339,24 +339,25 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private boolean createChunkIndexIfAbsent() {
     String indexName = getChunkIndexName();
-    boolean ensured = false;
     try {
       boolean exists = client.indices().exists(e -> e.index(indexName)).value();
       if (!exists) {
         executeGenericRequest("PUT", "/" + indexName, buildChunkIndexMapping());
         LOG.info("Created dedicated vector chunk index {}", indexName);
-      } else {
-        // The alias is normally attached at creation, but an index left over from a partial or
-        // manual setup may miss it — and reads via the alias would then silently skip all chunk
-        // docs. The alias PUT is idempotent.
-        executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
-        applyChunkMappingUpgradeIfStale(indexName);
+        return true;
       }
-      ensured = true;
+      // The alias is normally attached at creation, but an index left over from a partial or manual
+      // setup may miss it — and reads via the alias would then silently skip all chunk docs. The
+      // alias PUT is idempotent. Only report "ensured" once the mapping is at the current version
+      // so
+      // a failed upgrade does not latch (and so docs are not stamped with the new docVersion into a
+      // still-stale mapping).
+      executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
+      return applyChunkMappingUpgradeIfStale(indexName);
     } catch (Exception e) {
       LOG.error("Failed to ensure chunk index {}: {}", indexName, e.getMessage());
+      return false;
     }
-    return ensured;
   }
 
   /**
@@ -366,14 +367,18 @@ public class OpenSearchVectorService implements VectorIndexService {
    * {@code dynamic:false} index and safe pre-backfill: old docs simply lack the new fields until a
    * Search Reindex re-materializes them (the reindex reuses embeddings, so there is no re-embed
    * cost — see {@link #updateEntityEmbeddingChunks(EntityInterface, String)}).
+   *
+   * @return {@code true} when the index is (already or now) at the current version; {@code false}
+   *     when the upgrade could not be applied, so the caller leaves the index un-ensured and the
+   *     PUT is retried on the next write rather than silently proceeding with a stale mapping.
    */
-  private void applyChunkMappingUpgradeIfStale(String indexName) {
+  private boolean applyChunkMappingUpgradeIfStale(String indexName) {
     try {
       String mappingJson = executeGenericRequest("GET", "/" + indexName + "/_mapping", null);
       JsonNode mappings = MAPPER.readTree(mappingJson).path(indexName).path("mappings");
       int existingVersion = mappings.path("_meta").path("chunkDocVersion").asInt(0);
       if (existingVersion >= VectorDocBuilder.CHUNK_DOC_VERSION) {
-        return;
+        return true;
       }
       executeGenericRequest("PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody());
       LOG.info(
@@ -382,8 +387,14 @@ public class OpenSearchVectorService implements VectorIndexService {
           indexName,
           existingVersion,
           VectorDocBuilder.CHUNK_DOC_VERSION);
+      return true;
     } catch (Exception e) {
-      LOG.warn("Failed to check/upgrade chunk index {} mapping: {}", indexName, e.getMessage());
+      LOG.error(
+          "Failed to upgrade chunk index {} mapping; leaving it un-ensured to retry on the next "
+              + "write rather than stamping docs with the new docVersion into a stale mapping: {}",
+          indexName,
+          e.getMessage());
+      return false;
     }
   }
 
@@ -469,7 +480,10 @@ public class OpenSearchVectorService implements VectorIndexService {
     properties.set("owners", nestedNameKeyword());
     properties.set("service", nameDisplayNameObject());
     properties.set("database", nameDisplayNameObject());
-    properties.set("databaseSchema", objectKeyword("name"));
+    // Map name+displayName like service/database: buildDenormalizedFields copies both onto the
+    // chunk doc, so mapping only `name` would leave the denormalized displayName in _source but
+    // unindexed (dynamic:false), silently unfilterable and inconsistent with the entity index.
+    properties.set("databaseSchema", nameDisplayNameObject());
     properties.set("columns", columnsMapping());
     properties.set(
         "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
