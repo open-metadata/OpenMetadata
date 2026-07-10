@@ -15,10 +15,10 @@ import {
   Button,
   ButtonGroup,
   ButtonGroupItem,
+  Card,
   Dropdown,
 } from '@openmetadata/ui-core-components';
 import { ColumnsType } from 'antd/es/table';
-import Card from 'antd/lib/card/Card';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, map, sortBy } from 'lodash';
@@ -79,7 +79,7 @@ import NoDataPlaceholder from '../common/ErrorWithPlaceholder/NoDataPlaceholder'
 import { PagingHandlerParams } from '../common/NextPrevious/NextPrevious.interface';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import EntityPopOverCard from '../common/PopOverCard/EntityPopOverCard';
-import Table from '../common/Table/Table';
+import TableV2 from '../common/Table/TableV2';
 import TierTag from '../common/TierTag';
 import TableTags from '../Database/TableTags/TableTags.component';
 import CustomControlsComponent from '../Entity/EntityLineage/CustomControls.component';
@@ -94,6 +94,7 @@ import {
 } from '../SearchedData/SearchedData.interface';
 import { EImpactLevel } from './LineageTable.interface';
 import { useLineageTableState } from './useLineageTableState';
+
 const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
   const { selectedQuickFilters, setSelectedQuickFilters, updateEntityData } =
     useLineageProvider();
@@ -944,34 +945,37 @@ const LineageTable: FC<{ entity: SourceType }> = ({ entity }) => {
 
   return (
     <Card
-      className={classNames(
-        { isFullScreen },
-        'lineage-card lineage-card-table'
-      )}
+      className={classNames({ isFullScreen }, 'lineage-card')}
       data-testid="lineage-card-table"
-      title={cardHeader}>
-      <Table
-        bordered
-        className="h-full"
-        columns={columns}
-        customPaginationProps={pagingProps}
-        dataSource={dataSource}
-        defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
-        entityType="impact_analysis"
-        extraTableFilters={extraTableFilters}
-        key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
-        loading={loading}
-        locale={{
-          emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
-        }}
-        pagination={false}
-        rowKey={
-          impactLevel === EImpactLevel.TableLevel
-            ? 'fullyQualifiedName'
-            : 'docId'
-        }
-        staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
-      />
+      variant="default">
+      <div className="lineage-card-head tw:border-b tw:border-secondary tw:px-6 tw:py-4">
+        {cardHeader}
+      </div>
+
+      <Card.Content className="tw:p-5 lineage-container">
+        <TableV2
+          bordered
+          className="h-full"
+          columns={columns}
+          customPaginationProps={pagingProps}
+          dataSource={dataSource}
+          defaultVisibleColumns={IMPACT_ANALYSIS_DEFAULT_VISIBLE_COLUMNS}
+          entityType="impact_analysis"
+          extraTableFilters={extraTableFilters}
+          key={`lineage-table-${impactLevel}-${lineageDirection}-${nodeDepth}`}
+          loading={loading}
+          locale={{
+            emptyText: <NoDataPlaceholder size={SIZE.LARGE} />,
+          }}
+          pagination={false}
+          rowKey={
+            impactLevel === EImpactLevel.TableLevel
+              ? 'fullyQualifiedName'
+              : 'docId'
+          }
+          staticVisibleColumns={IMPACT_ANALYSIS_STATIC_COLUMNS}
+        />
+      </Card.Content>
     </Card>
   );
 };

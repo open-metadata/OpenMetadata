@@ -52,6 +52,10 @@ class BaseConnection(ABC, Generic[S, C]):
     service_connection: S
     _client: Optional[C]  # noqa: UP045
 
+    # Per-step test-connection timeout used when the caller passes none. Connectors
+    # with slower steps override this attribute instead of ``test_connection``.
+    step_timeout_seconds: int = STEP_TIMEOUT_SECONDS
+
     def __init__(self, service_connection: S) -> None:
         self.service_connection = service_connection
         self._client = None
@@ -79,17 +83,18 @@ class BaseConnection(ABC, Generic[S, C]):
         self,
         metadata: OpenMetadata,
         automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = STEP_TIMEOUT_SECONDS,  # noqa: UP045
+        timeout_seconds: Optional[int] = None,  # noqa: UP045
     ) -> TestConnectionResult:
         """
-        Test the connection to the service through the test-connection runner.
-        The timeout is applied per step.
+        Test the connection through the runner. The timeout is applied per step,
+        defaulting to the connector's ``step_timeout_seconds`` when not passed.
         """
         # Every service connection config carries a `type` enum, but `S` is an
         # unbound TypeVar so the access can't be proven statically.
         service_type = self.service_connection.type.value  # pyright: ignore[reportAttributeAccessIssue]
+        effective_timeout = timeout_seconds if timeout_seconds is not None else self.step_timeout_seconds
         try:
-            result = TestConnectionRunner(self.checks(), service_type, timeout_seconds).run(
+            result = TestConnectionRunner(self.checks(), service_type, effective_timeout).run(
                 metadata, automation_workflow
             )
         finally:

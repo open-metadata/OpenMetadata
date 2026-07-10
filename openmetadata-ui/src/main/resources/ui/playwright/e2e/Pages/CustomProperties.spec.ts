@@ -105,7 +105,10 @@ import {
 } from '../../utils/entity';
 import { getEntityFqn } from '../../utils/entityPanel';
 import { navigateToExploreAndSelectEntity } from '../../utils/explore';
-import { setSliderValue } from '../../utils/searchSettingUtils';
+import {
+  openMatchingFieldsPanel,
+  setSliderValue,
+} from '../../utils/searchSettingUtils';
 import {
   settingClick,
   SettingOptionsType,
@@ -3378,6 +3381,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
 
         await waitForAllLoadersToDisappear(page);
 
+        await openMatchingFieldsPanel(page);
+
         const customPropertyField = page.getByTestId(
           `field-configuration-panel-extension.${dashboardSearchPropertyName}`
         );
@@ -3504,6 +3509,8 @@ ALL_ENTITIES.forEach(({ key, makeInstance }) => {
         await pipelineCard.click();
 
         await waitForAllLoadersToDisappear(page);
+
+        await openMatchingFieldsPanel(page);
 
         const customPropertyField = page.getByTestId(
           `field-configuration-panel-extension.${pipelineSearchPropertyName}`

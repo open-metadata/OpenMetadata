@@ -78,7 +78,6 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
-import { getEntityDeleteMessage } from '../../../utils/EntityDisplayPureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -105,6 +104,7 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -122,7 +122,6 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { DataProductMetadataModal } from '../DataProductMetadataModal';
@@ -969,13 +968,14 @@ const DataProductsDetailsPage = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(dataProduct.name, '')}
-        entityName={dataProduct.name}
-        entityType="Glossary"
-        visible={isDelete}
+      <DeleteModal
+        entityTitle={dataProduct.name}
+        message={t('message.delete-entity-message', {
+          entity: dataProduct.name,
+        })}
+        open={isDelete}
         onCancel={() => setIsDelete(false)}
-        onConfirm={onDelete}
+        onDelete={onDelete}
       />
 
       <AssetSelectionDrawer
