@@ -1059,3 +1059,10 @@ class TableauUnitTest(TestCase):
         assert registry._global["Dashboard"].total == 7
         assert registry._global["Chart"].reconcilable is True
         assert registry._global["DashboardDataModel"].reconcilable is True
+
+    def test_yield_dashboard_tracks_progress(self):
+        self.tableau.progress_tracking.manual.set_total(Dashboard.__name__, 3)
+
+        list(self.tableau.yield_dashboard(MOCK_DASHBOARD))
+
+        assert self.tableau.progress_tracking.registry._global["Dashboard"].done == 1

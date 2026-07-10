@@ -262,6 +262,7 @@ class TableauSource(DashboardServiceSource):
                 project=data_model.projectName or self.get_project_name(dashboard_details=dashboard_details),
             )
             yield Either(right=data_model_request)
+            self.progress_tracking.manual.track(DashboardDataModel.__name__)
             self.register_record_datamodel(datamodel_request=data_model_request)
 
         except Exception as exc:
@@ -342,6 +343,7 @@ class TableauSource(DashboardServiceSource):
                 owners=self.get_owner_ref(dashboard_details=dashboard_details),
             )
             yield Either(right=dashboard_request)
+            self.progress_tracking.manual.track(Dashboard.__name__)
             self.register_record(dashboard_request=dashboard_request)
         except Exception as exc:
             yield Either(
@@ -748,6 +750,7 @@ class TableauSource(DashboardServiceSource):
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 )
                 yield Either(right=chart_request)
+                self.progress_tracking.manual.track(Chart.__name__)
                 self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
