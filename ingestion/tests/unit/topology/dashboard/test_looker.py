@@ -936,3 +936,21 @@ class LookerUnitTest(TestCase):
         counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
         self.assertEqual(counter.total, 3)
         self.assertTrue(counter.reconcilable)
+
+    def test_get_dashboards_list_declares_dashboard_total(self):
+        """
+        Check that get_dashboards_list declares the Dashboard progress total
+        from the name-filtered dashboard list, and marks Chart reconcilable.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertEqual(registry._global["Dashboard"].total, 2)
+        self.assertTrue(registry._global["Chart"].reconcilable)

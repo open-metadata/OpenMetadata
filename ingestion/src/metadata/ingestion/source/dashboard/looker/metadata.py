@@ -130,7 +130,11 @@ from metadata.readers.file.base import Reader
 from metadata.readers.file.credentials import get_credentials_from_url
 from metadata.readers.file.local import LocalReader
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_chart, filter_by_datamodel
+from metadata.utils.filters import (
+    filter_by_chart,
+    filter_by_dashboard,
+    filter_by_datamodel,
+)
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
@@ -1184,12 +1188,25 @@ class LookerSource(DashboardServiceSource):
         if not self.source_config.includeOwners:
             logger.debug("Skipping owner information as includeOwners is False")
         try:
-            return list(self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS)))
+            dashboards = list(self.client.all_dashboards(fields=",".join(LIST_DASHBOARD_FIELDS)))
+            kept = [
+                dashboard
+                for dashboard in dashboards
+                if not filter_by_dashboard(
+                    self.source_config.dashboardFilterPattern,
+                    self.get_dashboard_name(dashboard),
+                )
+            ]
+            manual = self.progress_tracking.manual
+            manual.set_total(Dashboard.__name__, len(kept))
+            manual.mark_reconcilable(Chart.__name__)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Wild error trying to obtain dashboard list {err}")
             # If we cannot list the dashboards, let's blow up
             raise err  # noqa: TRY201
+        else:
+            return dashboards
 
     def get_dashboard_name(self, dashboard: DashboardBase) -> str:
         """
