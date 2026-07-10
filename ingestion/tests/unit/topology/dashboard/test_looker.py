@@ -14,8 +14,9 @@ Test looker source
 
 import uuid
 from datetime import datetime, timedelta
+from types import SimpleNamespace
 from unittest import TestCase
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 from looker_sdk.sdk.api40.methods import Looker40SDK
 from looker_sdk.sdk.api40.models import Dashboard as LookerDashboard
@@ -912,3 +913,26 @@ class LookerUnitTest(TestCase):
         list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
         assert len(self.looker.chart_source_state) == 1
         assert any("looker_source_test" in fqn for fqn in self.looker.chart_source_state)
+
+    def test_list_datamodels_declares_datamodel_total(self):
+        """
+        Check that list_datamodels declares the DashboardDataModel progress
+        total from the explore navigation, and marks it reconcilable so
+        standalone views can grow it later.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 3)
+        self.assertTrue(counter.reconcilable)

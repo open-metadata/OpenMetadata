@@ -109,6 +109,7 @@ from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import (
     DashboardServiceSource,
     DashboardUsage,
@@ -194,6 +195,7 @@ class LookerSource(DashboardServiceSource):
     config: WorkflowSource
     metadata: OpenMetadata
     client: Looker40SDK
+    progress_mode = ProgressMode.MANUAL
 
     def __init__(
         self,
@@ -424,6 +426,11 @@ class LookerSource(DashboardServiceSource):
 
                 # Store the models for later processing of standalone views
                 self._all_lookml_models = all_lookml_models
+
+                explore_total = sum(len(model.explores) if model.explores else 0 for model in all_lookml_models)
+                manual = self.progress_tracking.manual
+                manual.set_total(DashboardDataModel.__name__, explore_total)
+                manual.mark_reconcilable(DashboardDataModel.__name__)
 
                 # Finally, iterate through them to ingest Explores and Views
                 yield from self.fetch_lookml_explores(all_lookml_models)
