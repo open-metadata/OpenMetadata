@@ -279,34 +279,6 @@
               "type": "integer",
               "minimum": 1,
               "default": 1000
-            },
-            "queryLevelCollapseEnabled": {
-              "description": "Emit a query-level collapse{parentId, inner_hits} on the hybrid body so each entity yields one fully-scored best chunk plus its top-N chunks in a single response. Requires OpenSearch >= 3.2; set false on older clusters to fall back to the pipeline collapse response processor.",
-              "type": "boolean",
-              "default": true
-            },
-            "collapseInnerHitsSize": {
-              "description": "Number of top chunks per entity returned under the collapse inner_hits (consumed by AskCollate to build richer context).",
-              "type": "integer",
-              "minimum": 1,
-              "default": 3
-            },
-            "chunkLexicalCoverageEnabled": {
-              "description": "Let denormalized chunk docs participate in the lexical (keyword) sub-query so keyword and best-chunk semantic evidence fuse on one doc. Kill switch: set false to exclude chunk docs from the lexical leg and revert to pre-#862 ranking without a redeploy.",
-              "type": "boolean",
-              "default": true
-            },
-            "textToEmbedCoverageBoost": {
-              "description": "Constant-score boost for the per-term textToEmbed coverage clause, giving body-content keyword locality on each chunk. Set to 0 to disable the clause.",
-              "type": "number",
-              "minimum": 0.0,
-              "default": 2.0
-            },
-            "entityPreferenceEpsilon": {
-              "description": "Tiny should-clause boost applied to entity docs (exists(id)) so an entity doc deterministically wins an exact tie against its own chunk 0. Cannot satisfy the query alone. Set to 0 to disable.",
-              "type": "number",
-              "minimum": 0.0,
-              "default": 0.01
             }
           },
           "additionalProperties": false
