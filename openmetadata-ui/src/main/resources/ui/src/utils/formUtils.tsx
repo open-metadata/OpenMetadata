@@ -44,15 +44,17 @@ import { ColorSwatchPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
+import DomainTreeSelect from '../components/common/DomainTreeSelect/DomainTreeSelect';
+import { DomainTreeSelectProps } from '../components/common/DomainTreeSelect/DomainTreeSelect.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
+import GlossaryTermTreeSelect, {
+  GlossaryTermTreeSelectProps,
+} from '../components/common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
 import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import MUIDomainSelect from '../components/common/MUIDomainSelect/MUIDomainSelect';
-import { MUIDomainSelectProps } from '../components/common/MUIDomainSelect/MUIDomainSelect.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
-import MUIGlossaryTagSuggestion from '../components/common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion';
 import MUITextField from '../components/common/MUITextField/MUITextField';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
@@ -337,8 +339,8 @@ export const getField = (field: FieldProp) => {
 
       return (
         <Form.Item {...formProps}>
-          <MUIGlossaryTagSuggestion
-            {...(props as unknown as AntDTagSuggestionProps)}
+          <GlossaryTermTreeSelect
+            {...(props as unknown as GlossaryTermTreeSelectProps)}
             label={muiLabel}
             placeholder={placeholder}
             required={isRequired}
@@ -382,8 +384,8 @@ export const getField = (field: FieldProp) => {
 
       return (
         <Form.Item {...formProps}>
-          <MUIDomainSelect
-            {...(props as unknown as MUIDomainSelectProps)}
+          <DomainTreeSelect
+            {...(props as unknown as DomainTreeSelectProps)}
             label={muiLabel as string}
             placeholder={placeholder}
             required={isRequired}

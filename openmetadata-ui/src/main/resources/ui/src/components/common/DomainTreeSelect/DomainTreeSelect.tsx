@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,39 +11,46 @@
  *  limitations under the License.
  */
 
+import {
+  TreeSelect,
+  TreeSelectDataResponse,
+  TreeSelectNode,
+} from '@openmetadata/ui-core-components';
 import { FC, useCallback, useMemo } from 'react';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { listDomainHierarchy, searchDomains } from '../../../rest/domainAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { TreeDataResponse, TreeNode } from '../atoms/asyncTreeSelect/types';
-import MUIAsyncTreeSelect from '../MUIAsyncTreeSelect/MUIAsyncTreeSelect';
-import { MUIDomainSelectProps } from './MUIDomainSelect.interface';
+import { DomainTreeSelectProps } from './DomainTreeSelect.interface';
 
-const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
+const toTreeSelectNode = (
+  domain: EntityReference
+): TreeSelectNode<EntityReference> => ({
+  id: domain.id,
+  label: getEntityName(domain),
+  value: domain.fullyQualifiedName ?? domain.id,
+  data: domain,
+});
+
+const DomainTreeSelect: FC<DomainTreeSelectProps> = ({
   label,
   placeholder,
   helperText,
   required = false,
   disabled = false,
   error = false,
-  fullWidth = true,
-  size = 'small',
   multiple = false,
   value,
   onChange,
   hasPermission = true,
-  onBlur,
-  onFocus,
   'data-testid': dataTestId,
 }) => {
   const convertDomainToTreeNode = useCallback(
-    (domain: Domain | EntityReference): TreeNode => {
-      const hasChildren =
-        'children' in domain &&
-        domain.children &&
-        Array.isArray(domain.children) &&
-        domain.children.length > 0;
+    (domain: Domain | EntityReference): TreeSelectNode<EntityReference> => {
+      const children =
+        'children' in domain && Array.isArray(domain.children)
+          ? domain.children
+          : undefined;
 
       return {
         id: domain.id,
@@ -56,12 +63,9 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
           fullyQualifiedName: domain.fullyQualifiedName,
           type: 'domain',
         } as EntityReference,
-        hasChildren,
         lazyLoad: false,
-        children: hasChildren
-          ? domain.children?.map(convertDomainToTreeNode)
-          : undefined,
         allowSelection: hasPermission,
+        children: children?.map(convertDomainToTreeNode),
       };
     },
     [hasPermission]
@@ -72,38 +76,37 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
       searchTerm,
     }: {
       searchTerm?: string;
-    }): Promise<TreeDataResponse> => {
+    }): Promise<TreeSelectDataResponse<EntityReference>> => {
       try {
         if (searchTerm) {
           const domains = await searchDomains(searchTerm, 1);
 
-          return {
-            nodes: domains.map(convertDomainToTreeNode),
-            hasMore: false,
-          };
-        } else {
-          const response = await listDomainHierarchy({
-            limit: 1000,
-            fields: 'children,owners',
-          });
-
-          return {
-            nodes: response.data.map(convertDomainToTreeNode),
-            hasMore: false,
-          };
+          return { nodes: domains.map(convertDomainToTreeNode) };
         }
-      } catch (error) {
-        // eslint-disable-next-line no-console
-        console.error('Error fetching domains:', error);
 
-        return { nodes: [], hasMore: false };
+        const response = await listDomainHierarchy({
+          limit: 1000,
+          fields: 'children,owners',
+        });
+
+        return { nodes: response.data.map(convertDomainToTreeNode) };
+      } catch (err) {
+        // eslint-disable-next-line no-console
+        console.error('Error fetching domains:', err);
+
+        return { nodes: [] };
       }
     },
     [convertDomainToTreeNode]
   );
 
   const handleChange = useCallback(
-    (selectedNodes: TreeNode | TreeNode[] | null) => {
+    (
+      selectedNodes:
+        | TreeSelectNode<EntityReference>
+        | TreeSelectNode<EntityReference>[]
+        | null
+    ) => {
       if (!onChange) {
         return;
       }
@@ -115,10 +118,7 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
       }
 
       if (Array.isArray(selectedNodes)) {
-        const selectedDomains = selectedNodes.map(
-          (node) => node.data as EntityReference
-        );
-        onChange(selectedDomains);
+        onChange(selectedNodes.map((node) => node.data as EntityReference));
       } else {
         onChange(selectedNodes.data as EntityReference);
       }
@@ -128,35 +128,23 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
 
   const selectedValue = useMemo(() => {
     if (!value) {
-      return undefined;
+      return null;
     }
 
-    if (Array.isArray(value)) {
-      return value.map((domain) => ({
-        id: domain.id,
-        label: getEntityName(domain),
-        value: domain.fullyQualifiedName ?? domain.id,
-      }));
-    }
-
-    return {
-      id: value.id,
-      label: getEntityName(value),
-      value: value.fullyQualifiedName ?? value.id,
-    };
+    return Array.isArray(value)
+      ? value.map(toTreeSelectNode)
+      : toTreeSelectNode(value);
   }, [value]);
 
   return (
-    <MUIAsyncTreeSelect
+    <TreeSelect
       searchable
       cascadeSelection={false}
       data-testid={dataTestId}
-      debounceMs={300}
       disabled={disabled}
-      error={error}
       fetchData={fetchData}
-      fullWidth={fullWidth}
-      helperText={helperText}
+      hint={helperText}
+      isInvalid={error}
       label={label}
       lazyLoad={false}
       loadingMessage="Loading domains..."
@@ -167,13 +155,10 @@ const MUIDomainSelect: FC<MUIDomainSelectProps> = ({
       searchPlaceholder="Search domains..."
       showCheckbox={multiple}
       showIcon={false}
-      size={size}
       value={selectedValue}
-      onBlur={onBlur}
       onChange={handleChange}
-      onFocus={onFocus}
     />
   );
 };
 
-export default MUIDomainSelect;
+export default DomainTreeSelect;
