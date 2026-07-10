@@ -42,7 +42,8 @@
         "openLineageSettings",
         "mcpConfiguration",
         "glossaryTermRelationSettings",
-        "aiSettings"
+        "aiSettings",
+        "searchIndexMappings"
       ]
     }
   },
@@ -121,6 +122,9 @@
         },
         {
           "$ref": "../configuration/aiSettings.json"
+        },
+        {
+          "$ref": "../configuration/searchIndexMappings.json"
         }
       ]
     }

@@ -37,6 +37,7 @@ import {
   User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
+import classNames from 'classnames';
 import { cloneDeep, isUndefined, toString, uniqBy } from 'lodash';
 import { FC, useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -58,6 +59,7 @@ import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import { EntityReference } from '../../../generated/entity/type';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import { useEntityRules } from '../../../hooks/useEntityRules';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -89,7 +91,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   onToggleRightPanel,
   onVoteChange,
   onFollowChange,
-  onSave,
   onSetThreadLink,
   fetchKnowledgePageHierarchy,
   onUpdate,
@@ -99,6 +100,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const { fqn } = useFqn();
   const { entityRules } = useEntityRules(EntityType.KNOWLEDGE_PAGE);
   const { currentUser } = useApplicationStore();
+  const { removeDraft } = useArticleDraftStore();
   const USERId = currentUser?.id ?? '';
   const [isFollowLoading, setIsFollowLoading] = useState(false);
   const [voteLoading, setVoteLoading] = useState<QueryVoteType | null>(null);
@@ -108,12 +110,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   const recentlyViewed =
     recentlyViewedQuickLinks as unknown as RecentlyViewedQuickLinks['data'];
 
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
   const breadcrumbItems = useMemo(
     () => [
-      {
-        label: t('label.context-center'),
-        href: contextCenterClassBase.getContextCenterPath(),
-      },
+      contextCenterClassBase.getContextCenterRootBreadcrumb(t),
       {
         label: t('label.article-plural'),
         href: contextCenterClassBase.getArticlesListPath(),
@@ -173,6 +174,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     setIsDeleting(true);
     try {
       await deleteKnowledgePage(knowledgePage.id);
+      removeDraft(knowledgePage.id);
       updateKnowledgeCenterRecentViewed(
         recentlyViewed.filter((page) => page.id !== knowledgePage.id)
       );
@@ -184,7 +186,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     } finally {
       setIsDeleting(false);
     }
-  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy]);
+  }, [knowledgePage, recentlyViewed, fetchKnowledgePageHierarchy, removeDraft]);
 
   const handleVersionClick = () => {
     navigate(contextCenterClassBase.getArticleVersionPath(fqn, version));
@@ -288,23 +290,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     }
   }, [contentChangeState]);
 
-  const showSaveButton =
-    Boolean(onSave) &&
-    contentChangeState === ContentChangeState.UN_SAVED &&
-    (permissions.EditAll ||
-      permissions.EditDescription ||
-      permissions.EditDisplayName);
-
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
+  const headerCardClassName = contextCenterClassBase.getHeaderCardClassName();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb
-      showHome
-      className={breadcrumbClassName}
-      items={breadcrumbItems}
-    />
+    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   if (!knowledgePage && !tabs) {
@@ -334,7 +324,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       data-testid="article-detail-header">
       {!breadcrumbInsideCard && breadcrumbEl}
 
-      <Card className="tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3" style={cardStyle}>
+      <Card
+        className={classNames(
+          'tw:mb-0 tw:p-6 tw:pb-0 tw:pr-3',
+          headerCardClassName
+        )}>
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         {/* Row 1: title + meta + actions */}
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-6">
@@ -496,12 +490,6 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           <div className="tw:flex tw:items-center tw:gap-3 tw:shrink-0">
             {contentChangeIcon}
 
-            {showSaveButton && (
-              <Button color="primary" size="sm" onClick={onSave}>
-                {t('label.save')}
-              </Button>
-            )}
-
             <Tooltip title={t('label.version-plural')}>
               <TooltipTrigger>
                 <Button
@@ -602,7 +590,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             <CopyLinkButton
               className="tw:w-8 tw:h-8"
               color="secondary"
-              testId="share-btn"
+              testId="copy-btn"
               url={window.location.href}>
               <Copy06 height={20} width={20} />
             </CopyLinkButton>

@@ -16,13 +16,19 @@ import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
@@ -32,6 +38,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +69,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
@@ -99,6 +107,115 @@ public class MigrationUtil {
       };
 
   private MigrationUtil() {}
+
+  public static void backfillSearchRankingSettings() {
+    Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+    if (searchSettings == null) {
+      LOG.warn(
+          "Search settings not found in database. "
+              + "Default settings will be loaded on next startup with ranking settings.");
+    } else {
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
+      AssetTypeConfiguration defaultConfiguration =
+          defaultSettings != null ? defaultSettings.getDefaultConfiguration() : null;
+
+      if (currentSettings == null) {
+        LOG.warn("Stored searchSettings could not be loaded; skipping ranking settings backfill");
+      } else if (defaultConfiguration == null || defaultConfiguration.getRanking() == null) {
+        LOG.warn("Default ranking settings not found in packaged searchSettings.json");
+      } else {
+        AssetTypeConfiguration currentDefaultConfiguration =
+            currentSettings.getDefaultConfiguration();
+        if (currentDefaultConfiguration == null) {
+          currentSettings.setDefaultConfiguration(defaultConfiguration);
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled default search configuration with ranking settings");
+        } else if (currentDefaultConfiguration.getRanking() == null) {
+          currentDefaultConfiguration.setRanking(defaultConfiguration.getRanking());
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled search ranking settings into stored searchSettings");
+        } else if (mergeMissingDefaultRankingStages(
+            currentDefaultConfiguration.getRanking(), defaultConfiguration.getRanking())) {
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled missing search ranking stages into stored searchSettings");
+        } else {
+          LOG.info("Search ranking settings already exist in stored searchSettings");
+        }
+      }
+    }
+  }
+
+  private static boolean mergeMissingDefaultRankingStages(
+      RankingConfiguration currentRanking, RankingConfiguration defaultRanking) {
+    if (currentRanking == null
+        || defaultRanking == null
+        || Boolean.FALSE.equals(currentRanking.getEnabled())) {
+      return false;
+    }
+
+    List<RankingStage> defaultStages = listOrEmpty(defaultRanking.getStages());
+    if (defaultStages.isEmpty()) {
+      return false;
+    }
+
+    List<RankingStage> currentStages = new ArrayList<>(listOrEmpty(currentRanking.getStages()));
+    Set<String> currentStageNames = new HashSet<>();
+    for (RankingStage stage : currentStages) {
+      if (!nullOrEmpty(stage.getName())) {
+        currentStageNames.add(stage.getName());
+      }
+    }
+
+    boolean merged = false;
+    for (int index = 0; index < defaultStages.size(); index++) {
+      RankingStage defaultStage = defaultStages.get(index);
+      if (nullOrEmpty(defaultStage.getName())
+          || currentStageNames.contains(defaultStage.getName())) {
+        continue;
+      }
+      currentStages.add(rankingStageInsertIndex(currentStages, defaultStages, index), defaultStage);
+      currentStageNames.add(defaultStage.getName());
+      merged = true;
+      LOG.info("Backfilled missing search ranking stage: {}", defaultStage.getName());
+    }
+
+    if (merged) {
+      currentRanking.setStages(currentStages);
+    }
+    return merged;
+  }
+
+  private static int rankingStageInsertIndex(
+      List<RankingStage> currentStages, List<RankingStage> defaultStages, int defaultStageIndex) {
+    for (int index = defaultStageIndex - 1; index >= 0; index--) {
+      int currentIndex = rankingStageIndex(currentStages, defaultStages.get(index).getName());
+      if (currentIndex >= 0) {
+        return currentIndex + 1;
+      }
+    }
+
+    for (int index = defaultStageIndex + 1; index < defaultStages.size(); index++) {
+      int currentIndex = rankingStageIndex(currentStages, defaultStages.get(index).getName());
+      if (currentIndex >= 0) {
+        return currentIndex;
+      }
+    }
+
+    return currentStages.size();
+  }
+
+  private static int rankingStageIndex(List<RankingStage> stages, String stageName) {
+    if (nullOrEmpty(stageName)) {
+      return -1;
+    }
+    for (int index = 0; index < stages.size(); index++) {
+      if (stageName.equals(stages.get(index).getName())) {
+        return index;
+      }
+    }
+    return -1;
+  }
 
   /**
    * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on
@@ -189,6 +306,55 @@ public class MigrationUtil {
           DATA_CONSUMER_POLICY,
           ex.getMessage(),
           ex);
+    }
+  }
+
+  private static final String TASK_RULE_NAME = "DataConsumerPolicy-TaskRule";
+
+  /**
+   * Backfill the per-entity {@code CreateTask}/{@code EditTask} grant onto an existing tenant's
+   * {@code DataConsumerPolicy}. The rule is added to the seed JSON in this release but seed
+   * policies are create-if-not-exists, so without this migration upgraded deployments would lose
+   * the ability for non-admin users to file or patch task threads (the new authorization wired into
+   * {@link org.openmetadata.service.resources.feeds.FeedResource} would reject them with 403).
+   */
+  public static void addTaskRuleToDataConsumerPolicy(CollectionDAO collectionDAO) {
+    PolicyRepository repository = (PolicyRepository) Entity.getEntityRepository(Entity.POLICY);
+    try {
+      Policy policy = repository.findByName(DATA_CONSUMER_POLICY, Include.NON_DELETED);
+      if (policy.getRules() == null) {
+        policy.setRules(new ArrayList<>());
+      }
+      boolean ruleExists = false;
+      for (Rule rule : policy.getRules()) {
+        if (TASK_RULE_NAME.equals(rule.getName())) {
+          ruleExists = true;
+          break;
+        }
+      }
+      if (!ruleExists) {
+        Rule taskRule =
+            new Rule()
+                .withName(TASK_RULE_NAME)
+                .withDescription(
+                    "Allow authenticated users to file and edit tasks (data access requests,"
+                        + " suggestions, etc.) against any entity. Restrict this rule (e.g. with"
+                        + " an isOwner condition) to limit who can file or edit tasks on which"
+                        + " entities.")
+                .withResources(List.of("all"))
+                .withOperations(List.of(MetadataOperation.CREATE_TASK, MetadataOperation.EDIT_TASK))
+                .withEffect(Rule.Effect.ALLOW);
+        policy.getRules().add(taskRule);
+        collectionDAO
+            .policyDAO()
+            .update(policy.getId(), policy.getFullyQualifiedName(), JsonUtils.pojoToJson(policy));
+        LOG.info("Added {} rule to {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY);
+      }
+    } catch (EntityNotFoundException ex) {
+      LOG.warn("{} not found, skipping TaskRule backfill", DATA_CONSUMER_POLICY);
+    } catch (Exception ex) {
+      LOG.error(
+          "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
     }
   }
 

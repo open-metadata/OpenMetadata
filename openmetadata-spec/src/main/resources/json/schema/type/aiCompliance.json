@@ -318,6 +318,191 @@
         }
       },
       "required": ["framework", "status"]
+    },
+    "aiDetection": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.AIDetection",
+      "description": "Origin of a Shadow AI detection. Populated when an asset was auto-discovered (outbound API traffic, SSO logs, connector audits, etc.) rather than registered through the intake wizard.",
+      "additionalProperties": false,
+      "properties": {
+        "source": {
+          "type": "string",
+          "description": "How this AI asset was detected",
+          "enum": [
+            "OutboundApiTraffic",
+            "SSOLogs",
+            "ConnectorAudit",
+            "ManualUpload",
+            "Other"
+          ],
+          "javaEnums": [
+            {"name": "OutboundApiTraffic"},
+            {"name": "SSOLogs"},
+            {"name": "ConnectorAudit"},
+            {"name": "ManualUpload"},
+            {"name": "Other"}
+          ],
+          "javaType": "org.openmetadata.schema.type.AIDetectionSource"
+        },
+        "sourceDetails": {
+          "type": "string",
+          "description": "Free-text detail about the detection (e.g. 'api.openai.com from #marketing-eng workspace')"
+        },
+        "detectedAt": {
+          "$ref": "basic.json#/definitions/timestamp",
+          "description": "When the detection was recorded"
+        },
+        "suspectedUser": {
+          "type": "string",
+          "description": "Likely user driving this AI usage, when known"
+        },
+        "suspectedTeam": {
+          "type": "string",
+          "description": "Likely team or workspace driving this AI usage"
+        },
+        "volume7d": {
+          "type": "string",
+          "description": "Human-readable 7-day volume estimate (e.g. '~1,820 calls / 7d')"
+        },
+        "flags": {
+          "type": "array",
+          "description": "Heuristic flags associated with this detection",
+          "items": {
+            "type": "string",
+            "enum": [
+              "PiiWithoutDpa",
+              "NoOwner",
+              "NewDeployment",
+              "OrgWideEnable",
+              "PrivilegedData"
+            ],
+            "javaEnums": [
+              {"name": "PiiWithoutDpa"},
+              {"name": "NoOwner"},
+              {"name": "NewDeployment"},
+              {"name": "OrgWideEnable"},
+              {"name": "PrivilegedData"}
+            ],
+            "javaType": "org.openmetadata.schema.type.AIDetectionFlag"
+          }
+        },
+        "severity": {
+          "type": "string",
+          "description": "Triage severity assigned to this detection",
+          "enum": ["High", "Medium", "Low"],
+          "javaEnums": [
+            {"name": "High"},
+            {"name": "Medium"},
+            {"name": "Low"}
+          ],
+          "javaType": "org.openmetadata.schema.type.AIDetectionSeverity"
+        }
+      }
+    },
+    "aiEvidence": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.AIEvidence",
+      "description": "Supporting documentation URLs for AI governance evidence packs (DPIA, model card, fairness analysis, etc.)",
+      "additionalProperties": false,
+      "properties": {
+        "dpiaUrl": {
+          "type": "string",
+          "description": "Data Protection Impact Assessment URL"
+        },
+        "fairnessEvidenceUrl": {
+          "type": "string",
+          "description": "URL to fairness / subgroup analysis evidence"
+        },
+        "modelCardUrl": {
+          "type": "string",
+          "description": "Model card URL"
+        },
+        "technicalDocsUrl": {
+          "type": "string",
+          "description": "Technical documentation URL"
+        },
+        "additional": {
+          "type": "array",
+          "description": "Additional evidence references",
+          "items": {
+            "type": "object",
+            "additionalProperties": false,
+            "properties": {
+              "label": {"type": "string"},
+              "url": {"type": "string"},
+              "framework": {"$ref": "#/definitions/complianceFramework"},
+              "addedBy": {"type": "string"},
+              "addedAt": {"$ref": "basic.json#/definitions/timestamp"}
+            }
+          }
+        }
+      }
+    },
+    "remediationAction": {
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.RemediationAction",
+      "description": "A structured remediation action with assignee, due date, priority, and status. Replaces the legacy string-array remediationRequired on AIComplianceRecord.",
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "$ref": "basic.json#/definitions/uuid",
+          "description": "Stable identifier of this remediation action"
+        },
+        "label": {
+          "type": "string",
+          "description": "Short description of the remediation action"
+        },
+        "frameworkRef": {
+          "$ref": "#/definitions/complianceFramework",
+          "description": "Framework that requires this remediation"
+        },
+        "controlCode": {
+          "type": "string",
+          "description": "Control identifier within the framework (e.g. 'art-10')"
+        },
+        "assignee": {
+          "$ref": "entityReference.json",
+          "description": "User or team accountable for completing the action"
+        },
+        "dueDate": {
+          "$ref": "basic.json#/definitions/timestamp",
+          "description": "Target completion date"
+        },
+        "priority": {
+          "type": "string",
+          "enum": ["High", "Medium", "Low"],
+          "javaEnums": [
+            {"name": "High"},
+            {"name": "Medium"},
+            {"name": "Low"}
+          ],
+          "javaType": "org.openmetadata.schema.type.RemediationPriority"
+        },
+        "status": {
+          "type": "string",
+          "enum": ["Open", "InProgress", "Done", "Deferred"],
+          "javaEnums": [
+            {"name": "Open"},
+            {"name": "InProgress"},
+            {"name": "Done"},
+            {"name": "Deferred"}
+          ],
+          "javaType": "org.openmetadata.schema.type.RemediationStatus"
+        },
+        "createdAt": {
+          "$ref": "basic.json#/definitions/timestamp"
+        },
+        "createdBy": {
+          "type": "string"
+        },
+        "completedAt": {
+          "$ref": "basic.json#/definitions/timestamp"
+        },
+        "notes": {
+          "type": "string"
+        }
+      },
+      "required": ["id", "label", "status"]
     }
   },
   "properties": {

@@ -30,6 +30,7 @@ import {
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
+  getAgentCard,
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -158,9 +159,9 @@ class PostgresIngestionClass extends ServiceBaseClass {
 
         // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
         await page.waitForTimeout(3000);
-        await page.click(
-          `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-        );
+        await getAgentCard(page, response.data[0].name)
+          .getByTestId('more-actions')
+          .click();
 
         await page.getByTestId('run-button').click();
 

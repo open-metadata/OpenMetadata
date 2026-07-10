@@ -11,14 +11,13 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Dropdown } from '@openmetadata/ui-core-components';
 import {
-  ChevronDown,
-  File05,
-  File06,
-  Sun,
-  UploadCloud02,
-} from '@untitledui/icons';
+  Box,
+  Button,
+  Dropdown,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { ChevronDown, File06, Sun, UploadCloud02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,31 +25,37 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
-import AlertBar from '../../../components/AlertBar/AlertBar';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
+import ContextSimplePillarCard from '../../../components/ContextCenter/ContextSimplePillarCard/ContextSimplePillarCard.component';
+import DashboardFoldersCard from '../../../components/ContextCenter/DashboardFoldersCard/DashboardFoldersCard.component';
 import UploadDocumentModal from '../../../components/ContextCenter/UploadDocumentModal/UploadDocumentModal.component';
 import {
   QuickLinkFormModal,
   QuickLinkFormModalFormData,
 } from '../../../components/KnowledgeCenter/QuickLinkFormModal/QuickLinkFormModal';
 import {
+  MOST_CITED_MEMORIES_LIMIT,
   RECENT_DASHBOARD_ARTICLES_LIMIT,
   RECENT_DASHBOARD_DOCUMENTS_LIMIT,
+  RECENT_DASHBOARD_MEMORIES_LIMIT,
 } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
+import { Folder } from '../../../generated/entity/data/folder';
 import LimitWrapper from '../../../hoc/LimitWrapper';
-import { useAlertStore } from '../../../hooks/useAlertStore';
+import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
   CreateKnowledgePage,
   KnowledgePage,
   PageType,
+  RecentlyViewedQuickLinks,
 } from '../../../interface/knowledge-center.interface';
 import { listContextFiles, listFolders } from '../../../rest/assetAPI';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
@@ -68,9 +73,11 @@ import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 const ContextCenterDashboardPage: FC = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
-  const { alert } = useAlertStore();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
+  const {
+    preferences: { recentlyViewedQuickLinks },
+  } = useCurrentUserPreferences();
 
   const [isUploadModalOpen, setIsUploadModalOpen] = useState(false);
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
@@ -78,17 +85,24 @@ const ContextCenterDashboardPage: FC = () => {
   const [articlesCount, setArticlesCount] = useState(0);
   const [documents, setDocuments] = useState<ContextFile[]>([]);
   const [documentsCount, setDocumentsCount] = useState(0);
-  const [folderCount, setFolderCount] = useState(0);
+  const [folders, setFolders] = useState<Folder[]>([]);
   const [memories, setMemories] = useState<
-    Array<{ title: string; meta: string }>
+    Array<{ title: string; meta: string[] }>
   >([]);
   const [memoriesCount, setMemoriesCount] = useState(0);
+  const [mostCitedMemories, setMostCitedMemories] = useState<ContextMemory[]>(
+    []
+  );
   const [isArticlesLoading, setIsArticlesLoading] = useState(true);
   const [isDocumentsLoading, setIsDocumentsLoading] = useState(true);
+  const [isFoldersLoading, setIsFoldersLoading] = useState(true);
   const [isMemoriesLoading, setIsMemoriesLoading] = useState(true);
+  const [isMostCitedLoading, setIsMostCitedLoading] = useState(true);
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+
+  const folderCount = folders.length;
 
   const hasCreatePermission = useMemo(
     () => permissions.Create,
@@ -167,11 +181,14 @@ const ContextCenterDashboardPage: FC = () => {
   }, []);
 
   const fetchFolders = useCallback(async () => {
+    setIsFoldersLoading(true);
     try {
-      const folders = await listFolders();
-      setFolderCount(folders.length);
+      const response = await listFolders();
+      setFolders(response);
     } catch (err) {
       showErrorToast(err as AxiosError);
+    } finally {
+      setIsFoldersLoading(false);
     }
   }, []);
 
@@ -179,20 +196,37 @@ const ContextCenterDashboardPage: FC = () => {
     setIsMemoriesLoading(true);
     try {
       const response = await getListContextMemories({
-        limit: 3,
-        sort: 'updatedAt',
+        limit: RECENT_DASHBOARD_MEMORIES_LIMIT,
+        sortBy: 'updatedAt',
+        sortOrder: 'desc',
       });
       setMemoriesCount(response.paging.total ?? response.data.length);
       setMemories(
         response.data.map((m) => ({
           title: m.title ?? m.name,
-          meta: `cited ${m.usageCount}×`,
+          meta: [`cited ${m.usageCount}×`],
         }))
       );
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsMemoriesLoading(false);
+    }
+  }, []);
+
+  const fetchMostCitedMemories = useCallback(async () => {
+    setIsMostCitedLoading(true);
+    try {
+      const response = await getListContextMemories({
+        limit: MOST_CITED_MEMORIES_LIMIT,
+        sortBy: 'usageCount',
+        sortOrder: 'desc',
+      });
+      setMostCitedMemories(response.data);
+    } catch (err) {
+      showErrorToast(err as AxiosError);
+    } finally {
+      setIsMostCitedLoading(false);
     }
   }, []);
 
@@ -212,12 +246,14 @@ const ContextCenterDashboardPage: FC = () => {
     fetchDocuments();
     fetchFolders();
     fetchMemories();
+    fetchMostCitedMemories();
     fetchPermission();
   }, [
     fetchRecentArticles,
     fetchDocuments,
     fetchFolders,
     fetchMemories,
+    fetchMostCitedMemories,
     fetchPermission,
   ]);
 
@@ -244,7 +280,7 @@ const ContextCenterDashboardPage: FC = () => {
 
         return {
           icon,
-          meta: metaParts.join(' · '),
+          meta: metaParts,
           title: getEntityName(article),
         };
       }),
@@ -259,16 +295,37 @@ const ContextCenterDashboardPage: FC = () => {
           getShortRelativeTime(doc.updatedAt),
         ].filter(Boolean);
 
-        return { title: getEntityName(doc), meta: metaParts.join(' · ') };
+        return { title: getEntityName(doc), meta: metaParts };
       }),
     [documents]
+  );
+
+  const recentlyViewedItems = useMemo(() => {
+    const recentlyViewed = (recentlyViewedQuickLinks ??
+      []) as unknown as RecentlyViewedQuickLinks['data'];
+
+    return recentlyViewed.map((page) => ({
+      id: page.id,
+      title: getEntityName(page),
+      pageType: page.pageType,
+      time: page.timestamp ? getShortRelativeTime(page.timestamp) : '',
+    }));
+  }, [recentlyViewedQuickLinks]);
+
+  const mostCitedItems = useMemo(
+    () =>
+      mostCitedMemories.map((memory) => ({
+        id: memory.id,
+        title: memory.title ?? getEntityName(memory),
+        citedCount: memory.usageCount ?? 0,
+      })),
+    [mostCitedMemories]
   );
 
   return (
     <div
       className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
-      {alert && <AlertBar message={alert.message} type={alert.type} />}
       <ContextCenterHeader
         actionsSlot={
           <Box align="center" className="tw:shrink-0" gap={3}>
@@ -309,10 +366,6 @@ const ContextCenterDashboardPage: FC = () => {
         }
         breadcrumbs={[
           {
-            label: t('label.context-center'),
-            href: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
             label: t('label.dashboard'),
           },
         ]}
@@ -322,17 +375,17 @@ const ContextCenterDashboardPage: FC = () => {
       />
 
       <Box
-        className="tw:h-full"
+        className="tw:h-full tw:min-h-0"
         data-testid="dashboard-detail-card"
         direction="col"
-        gap={6}>
-        <div className="tw:grid tw:grid-cols-3 tw:gap-4">
+        gap={5}>
+        <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:shrink-0">
           <ContextKnowledgePillarCard
             cta={t('label.view-all-entity', {
               entity: t('label.article-plural'),
             })}
             dataTestId="article-detail-card"
-            icon={File05}
+            icon={File06}
             isLoading={isArticlesLoading}
             recent={articlesRecentItems}
             stat={String(articlesCount)}
@@ -376,6 +429,102 @@ const ContextCenterDashboardPage: FC = () => {
               navigate(contextCenterClassBase.getMemoriesListPath())
             }
           />
+        </div>
+
+        <div className="tw:grid tw:grid-cols-3 tw:gap-4 tw:flex-1 tw:min-h-0">
+          <ContextSimplePillarCard
+            dataTestId="recently-viewed-card"
+            emptyMessage={t('message.no-recently-viewed-data')}
+            icon={File06}
+            isEmpty={recentlyViewedItems.length === 0}
+            title={t('label.recently-viewed')}>
+            <Box className="tw:p-5 tw:pt-0" direction="col">
+              {recentlyViewedItems.map((item) => (
+                <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
+                  {item.pageType === PageType.QUICK_LINK ? (
+                    <QuickLinkIcon
+                      className="tw:text-quaternary tw:shrink-0"
+                      height={13}
+                      width={13}
+                    />
+                  ) : (
+                    <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                  )}
+
+                  <Box
+                    align="center"
+                    className="tw:min-w-0 tw:flex-1"
+                    gap={4}
+                    justify="between">
+                    <div className="tw:min-w-40">
+                      <Typography
+                        ellipsis
+                        className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+                        size="text-xs"
+                        weight="medium">
+                        {item.title}
+                      </Typography>
+                    </div>
+
+                    <div className="tw:max-w-20">
+                      <Typography
+                        ellipsis
+                        className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                        size="text-xs">
+                        {item.time}
+                      </Typography>
+                    </div>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </ContextSimplePillarCard>
+
+          <DashboardFoldersCard
+            folders={folders}
+            isLoading={isFoldersLoading}
+          />
+
+          <ContextSimplePillarCard
+            dataTestId="most-cited-memories-card"
+            emptyMessage={t('label.no-entity', {
+              entity: t('label.memory-plural'),
+            })}
+            icon={Sun}
+            isEmpty={mostCitedItems.length === 0}
+            isLoading={isMostCitedLoading}
+            title={t('label.most-cited')}>
+            <Box className="tw:p-5 tw:pt-0" direction="col">
+              {mostCitedItems.map((item) => (
+                <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
+                  <Sun className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                  <Box
+                    align="center"
+                    className="tw:min-w-0 tw:flex-1"
+                    gap={4}
+                    justify="between">
+                    <div className="tw:min-w-40">
+                      <Typography
+                        ellipsis
+                        className="tw:min-w-0 tw:flex-1 tw:text-secondary"
+                        size="text-xs"
+                        weight="medium">
+                        {item.title}
+                      </Typography>
+                    </div>
+                    <div>
+                      <Typography
+                        ellipsis
+                        className="tw:text-quaternary tw:shrink-0 tw:whitespace-nowrap"
+                        size="text-xs">
+                        {t('label.cited-n-times', { count: item.citedCount })}
+                      </Typography>
+                    </div>
+                  </Box>
+                </Box>
+              ))}
+            </Box>
+          </ContextSimplePillarCard>
         </div>
       </Box>
 

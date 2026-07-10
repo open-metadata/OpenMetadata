@@ -46,6 +46,7 @@ import {
 } from '../../../../rest/csvAPI';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import './csv-jobs-tray.less';
+import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 
 const ACTIVE_STATUSES: CsvAsyncJobStatus[] = [
   'QUEUED',
@@ -84,8 +85,6 @@ const getJobPercent = (job: CsvAsyncJob) => {
 
   return total > 0 ? Math.round((progress / total) * 100) : 0;
 };
-
-export const CSV_JOBS_REFRESH_EVENT = 'csv-jobs-refresh';
 
 export const CsvJobsTray = () => {
   const { t } = useTranslation();

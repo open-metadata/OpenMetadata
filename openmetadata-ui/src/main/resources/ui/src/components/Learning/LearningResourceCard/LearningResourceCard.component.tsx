@@ -160,7 +160,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                     color={getCategoryColor(category)}
                     key={category}
                     size="sm"
-                    type="pill-color">
+                    type="color">
                     {getCategoryLabel(category)}
                   </Badge>
                 ))}
@@ -185,7 +185,7 @@ export const LearningResourceCard: React.FC<LearningResourceCardProps> = ({
                             color={getCategoryColor(category)}
                             key={category}
                             size="sm"
-                            type="pill-color">
+                            type="color">
                             {getCategoryLabel(category)}
                           </Badge>
                         ))}

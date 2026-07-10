@@ -46,6 +46,7 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
+import { deleteEntity } from '../../../../rest/miscAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
@@ -55,9 +56,9 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
-import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
@@ -74,6 +75,42 @@ import {
   TestCasePermission,
 } from '../ProfilerDashboard/profilerDashboard.interface';
 import './data-quality-tab.less';
+
+const COLUMN_LAYOUT: Record<
+  string,
+  { minWidth: number; maxWidth?: number; fixed?: 'right' }
+> = {
+  status: { minWidth: 110 },
+  reason: { minWidth: 200 },
+  lastRun: { minWidth: 170 },
+  name: { minWidth: 150, maxWidth: 220 },
+  table: { minWidth: 300, maxWidth: 360 },
+  column: { minWidth: 110 },
+  incident: { minWidth: 130 },
+  actions: { minWidth: 90, fixed: 'right' },
+};
+
+// Per-column min-widths give the table an intrinsic width so the core Table's
+// built-in horizontal scroll engages on narrow viewports; long-identifier
+// columns (name/table) are capped with maxWidth. The actions column is pinned to
+// the right; its opaque background (matching the header/row state) is applied via
+// className (bg-secondary header, bg-primary body, group-hover/selected) so it
+// stays consistent with the rest of the row instead of looking detached.
+const getColumnLayoutStyle = (
+  id: string,
+  zIndex: number
+): React.CSSProperties => {
+  const column = COLUMN_LAYOUT[id];
+
+  return {
+    minWidth: column?.minWidth,
+    maxWidth: column?.maxWidth,
+    ...(column?.fixed === 'right'
+      ? { position: 'sticky', right: 0, zIndex }
+      : {}),
+  };
+};
+
 const DataQualityTab: React.FC<DataQualityTabProps> = ({
   isLoading = false,
   testCases,
@@ -100,6 +137,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   >([]);
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
+  const [isDeletingTestCase, setIsDeletingTestCase] = useState(false);
   const [isPermissionLoading, setIsPermissionLoading] = useState(true);
   const [testCasePermissions, setTestCasePermissions] = useState<
     TestCasePermission[]
@@ -211,6 +249,28 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
     }
   };
 
+  const handleDeleteTestCase = async () => {
+    const entityId = selectedTestCase?.data?.id;
+    if (!entityId) {
+      return;
+    }
+    setIsDeletingTestCase(true);
+    try {
+      await deleteEntity('dataQuality/testCases', entityId, true, true);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: getEntityName(selectedTestCase?.data),
+        })
+      );
+      afterDeleteAction?.();
+      handleCancel();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeletingTestCase(false);
+    }
+  };
+
   const handleStatusSubmit = (value: TestCaseResolutionStatus) => {
     setTestCaseStatus((prev) => {
       return prev.map((item) => {
@@ -281,7 +341,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         : []),
       { id: 'column', name: t('label.column'), allowsSorting: true },
       { id: 'incident', name: t('label.incident') },
-      { id: 'actions', name: '' },
+      { id: 'actions', name: t('label.action-plural') },
     ];
 
     return cols;
@@ -408,7 +468,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         title={result.result}>
         <TooltipTrigger>
           <Typography
-            className="tw:m-0 tw:max-w-54 tw:line-clamp-2 tw:break-all tw:overflow-hidden"
+            className="tw:m-0 tw:max-w-54 tw:line-clamp-2 tw:break-all tw:overflow-hidden tw:whitespace-normal"
             data-testid={`reason-text-${record.name}`}
             size="text-sm">
             {result.result}
@@ -561,25 +621,39 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       : null;
 
     return (
-      <Table.Row id={record.id ?? record.name ?? ''} key={record.id}>
-        <Table.Cell className="tw:w-35 tw:overflow-hidden">
+      <Table.Row
+        className="tw:group"
+        id={record.id ?? record.name ?? ''}
+        key={record.id}>
+        <Table.Cell
+          className="tw:whitespace-nowrap"
+          style={getColumnLayoutStyle('status', 1)}>
           {renderStatusCell(record.testCaseResult, record.name ?? '')}
         </Table.Cell>
-        <Table.Cell className="tw:max-w-60 tw:overflow-hidden">
+        <Table.Cell
+          className="tw:whitespace-nowrap"
+          style={getColumnLayoutStyle('reason', 1)}>
           {renderReasonCell(record.testCaseResult, record)}
         </Table.Cell>
-        <Table.Cell className="tw:w-50 tw:overflow-hidden">
-          <DateTimeDisplay timestamp={record.testCaseResult?.timestamp} />
+        <Table.Cell
+          className="tw:whitespace-nowrap"
+          style={getColumnLayoutStyle('lastRun', 1)}>
+          <DateTimeDisplay
+            size="compact"
+            timestamp={record.testCaseResult?.timestamp}
+          />
         </Table.Cell>
-        <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
-          <div
+        <Table.Cell
+          className="tw:whitespace-nowrap"
+          style={getColumnLayoutStyle('name', 1)}>
+          <Box
             data-testid={record.name}
-            role="presentation"
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
             <Link
-              className="break-word"
+              className="tw:block tw:min-w-0 tw:truncate"
               state={{ breadcrumbData }}
+              title={getEntityName(record)}
               to={{
                 pathname:
                   observabilityRouterClassBase.getTestCaseDetailPagePath(
@@ -588,17 +662,17 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               }}>
               {getEntityName(record)}
             </Link>
-          </div>
+          </Box>
         </Table.Cell>
         {showTableColumn && (
-          <Table.Cell className="tw:max-w-50 tw:overflow-hidden">
-            <div
-              role="presentation"
+          <Table.Cell style={getColumnLayoutStyle('table', 1)}>
+            <Box
               onClick={(e) => e.stopPropagation()}
               onPointerDown={(e) => e.stopPropagation()}>
               <Link
-                className="break-word"
+                className="break-word tw:min-w-0"
                 data-testid="table-link"
+                title={tableFqn}
                 to={getEntityDetailsPath(
                   EntityType.TABLE,
                   tableFqn,
@@ -607,33 +681,39 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                 )}>
                 {tableFqn}
               </Link>
-            </div>
+            </Box>
           </Table.Cell>
         )}
-        <Table.Cell className="tw:max-w-20 tw:overflow-hidden">
+        <Table.Cell
+          className="tw:whitespace-nowrap"
+          style={getColumnLayoutStyle('column', 1)}>
           {columnName ? (
-            <p className="tw:m-0 tw:max-w-30" data-testid={columnName}>
+            <p
+              className="tw:m-0 tw:max-w-30 tw:text-primary"
+              data-testid={columnName}>
               {columnName}
             </p>
           ) : (
             '--'
           )}
         </Table.Cell>
-        <Table.Cell className="tw:max-w-30 tw:overflow-hidden">
-          <div
-            role="presentation"
+        <Table.Cell
+          className="tw:whitespace-nowrap"
+          style={getColumnLayoutStyle('incident', 1)}>
+          <Box
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
             {renderIncidentCell(record)}
-          </div>
+          </Box>
         </Table.Cell>
-        <Table.Cell className="tw:max-w-20 tw:overflow-hidden">
-          <div
-            role="presentation"
+        <Table.Cell
+          className="tw:whitespace-nowrap tw:bg-primary tw:group-hover:bg-secondary tw:group-selected:bg-secondary"
+          style={getColumnLayoutStyle('actions', 1)}>
+          <Box
             onClick={(e) => e.stopPropagation()}
             onPointerDown={(e) => e.stopPropagation()}>
             {renderActionsCell(record)}
-          </div>
+          </Box>
         </Table.Cell>
       </Table.Row>
     );
@@ -729,9 +809,16 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
             {(col) => (
               <Table.Head
                 allowsSorting={col.allowsSorting}
+                className={
+                  COLUMN_LAYOUT[col.id]?.fixed === 'right'
+                    ? 'tw:bg-secondary'
+                    : undefined
+                }
                 id={col.id}
+                isRowHeader={col.id === 'name'}
                 key={col.id}
                 label={col.name}
+                style={getColumnLayoutStyle(col.id, 2)}
               />
             )}
           </Table.Header>
@@ -828,15 +915,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onConfirm={handleConfirmClick}
         />
       ) : (
-        <DeleteWidgetModal
-          isRecursiveDelete
-          afterDeleteAction={afterDeleteAction}
-          allowSoftDelete={false}
-          entityId={selectedTestCase?.data?.id ?? ''}
-          entityName={getEntityName(selectedTestCase?.data)}
-          entityType={EntityType.TEST_CASE}
-          visible={selectedTestCase?.action === 'DELETE'}
+        <DeleteModal
+          entityTitle={getEntityName(selectedTestCase?.data)}
+          isDeleting={isDeletingTestCase}
+          message={t('message.delete-entity-message', {
+            entity: getEntityName(selectedTestCase?.data),
+          })}
+          open={selectedTestCase?.action === 'DELETE'}
           onCancel={handleCancel}
+          onDelete={handleDeleteTestCase}
         />
       )}
     </div>

@@ -12,6 +12,14 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import {
+  Control,
+  FieldValues,
+  FormProvider,
+  useController,
+  useForm,
+  useFormContext,
+} from 'react-hook-form';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
@@ -75,7 +83,7 @@ jest.mock('../../../components/common/PopOverCard/UserPopOverCard', () =>
 );
 
 jest.mock(
-  '../../../components/DataAssets/DataAssetAsyncSelectList/DataAssetSelectList',
+  '../../../components/DataAssets/DataAssetSelectList/DataAssetSelectList',
   () => jest.fn(() => <div data-testid="data-asset-select-list" />)
 );
 
@@ -114,6 +122,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   BadgeWithButton: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
   Button: jest.fn(
     ({
       children,
@@ -140,6 +151,90 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     }
   ),
   Dot: jest.fn(() => <span />),
+  FieldTypes: { TEXT: 'text', SELECT: 'select' },
+  FormField: ({
+    control,
+    name,
+    children,
+  }: {
+    control: Control<FieldValues>;
+    name: string;
+    children: (controller: unknown) => React.ReactNode;
+  }) => {
+    const controller = useController({ control, name });
+
+    return <>{children(controller)}</>;
+  },
+  FormItemLabel: jest.fn(({ label }: { label: React.ReactNode }) => (
+    <label>{label}</label>
+  )),
+  getField: (fieldProp: {
+    name: string;
+    label: React.ReactNode;
+    type: string;
+    props?: Record<string, unknown>;
+  }) => {
+    const MockField = () => {
+      const { control } = useFormContext();
+      const { field } = useController({ control, name: fieldProp.name });
+      const testId = fieldProp.props?.['data-testid'] as string | undefined;
+
+      if (fieldProp.type === 'select') {
+        const options =
+          (fieldProp.props?.options as { id: string; label: string }[]) ?? [];
+
+        return (
+          <div>
+            <label>{fieldProp.label}</label>
+            <select
+              data-testid={testId}
+              value={field.value?.id ?? ''}
+              onChange={(e) => {
+                const next = options.find((opt) => opt.id === e.target.value);
+                field.onChange(next ?? null);
+              }}>
+              <option value="" />
+              {options.map((opt) => (
+                <option key={opt.id} value={opt.id}>
+                  {opt.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        );
+      }
+
+      return (
+        <div>
+          <label>{fieldProp.label}</label>
+          <input
+            data-testid={testId}
+            value={field.value ?? ''}
+            onChange={(e) => field.onChange(e.target.value)}
+          />
+        </div>
+      );
+    };
+
+    return <MockField />;
+  },
+  HookForm: ({
+    form,
+    children,
+    className,
+    onSubmit,
+  }: {
+    form: ReturnType<typeof useForm>;
+    children: React.ReactNode;
+    className?: string;
+    onSubmit?: (e: React.FormEvent) => void;
+  }) => (
+    <FormProvider {...form}>
+      <form className={className} onSubmit={onSubmit}>
+        {children}
+      </form>
+    </FormProvider>
+  ),
   Input: jest.fn(
     ({
       'data-testid': testId,

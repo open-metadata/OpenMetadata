@@ -16,8 +16,10 @@ import SpriteText from 'three-spritetext';
 import {
   COVERAGE_GAP_COLOR,
   LABEL_COLOR,
+  LINK_ONTOLOGY_COLOR,
   PRIMARY_EMPHASIS,
   PRIMARY_TYPE_BY_LEVEL,
+  TERM_BADGE_TEXT_COLOR,
 } from './KnowledgeGraph3D.constants';
 import {
   avatarCanvas,
@@ -140,6 +142,31 @@ const nodeTexture = (node: GraphNode3D): THREE.CanvasTexture => {
   return texture;
 };
 
+/**
+ * Ontology mode: the orange glossary-term pill laid over an asset node,
+ * showing the primary term plus a "+N" count of any others. Ported from the
+ * reference `_nodeObject` term badge.
+ */
+const buildTermBadge = (
+  term: string,
+  termCount: number,
+  size: number
+): SpriteText => {
+  const text = termCount > 1 ? `${term}  +${termCount - 1}` : term;
+  const badge = new SpriteText(text);
+  badge.color = TERM_BADGE_TEXT_COLOR;
+  badge.backgroundColor = hexRgba(LINK_ONTOLOGY_COLOR, 0.96);
+  badge.padding = 2.2;
+  badge.borderRadius = 3;
+  badge.textHeight = Math.max(2.9, size * 0.26);
+  badge.fontWeight = '700';
+  badge.position.set(0, size * 0.72 + 3.5, 0);
+  badge.material.depthWrite = false;
+  badge.renderOrder = 4;
+
+  return badge;
+};
+
 const buildCoverageRings = (group: THREE.Group, size: number): void => {
   const radius = size * 0.64;
   [0, Math.PI / 2].forEach((rotation) => {
@@ -205,6 +232,10 @@ export const buildNodeObject = (
     label.material.depthWrite = false;
     label.renderOrder = 3;
     group.add(label);
+  }
+
+  if (node.term) {
+    group.add(buildTermBadge(node.term, node.termCount ?? 1, size));
   }
 
   if (options.gaps && node.type === 'table' && !node.mapped) {

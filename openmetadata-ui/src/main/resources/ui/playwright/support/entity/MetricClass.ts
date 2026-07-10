@@ -13,7 +13,7 @@
 import { APIRequestContext, Page } from '@playwright/test';
 import { Operation } from 'fast-json-patch';
 import { uuid } from '../../utils/common';
-import { visitEntityPage } from '../../utils/entity';
+import { visitEntityPageByFqn } from '../../utils/entity';
 import { EntityTypeEndpoint, ResponseDataType } from './Entity.interface';
 import { EntityClass } from './EntityClass';
 
@@ -103,14 +103,12 @@ export class MetricClass extends EntityClass {
   }
 
   async visitEntityPage(page: Page) {
-    const metricName = this.entityResponseData.name ?? this.entity.name;
-    const searchTerm =
-      this.entityResponseData?.['fullyQualifiedName'] ?? metricName;
-
-    await visitEntityPage({
+    await visitEntityPageByFqn({
       page,
-      searchTerm,
-      dataTestId: `${metricName}-${metricName}`,
+      endpoint: this.endpoint,
+      // A metric is a top-level entity, so its FQN is just its name. Fall back
+      // to the created name when entityResponseData has not been populated yet.
+      fqn: this.entityResponseData?.fullyQualifiedName ?? this.entity.name,
     });
   }
 

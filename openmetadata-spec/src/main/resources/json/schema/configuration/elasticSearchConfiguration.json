@@ -103,6 +103,49 @@
       "description": "Index factory name",
       "type": "string"
     },
+    "searchIndexingLimits": {
+      "description": "Limits applied while building search documents so that field values can never be rejected by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override to tune without changing infrastructure settings.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.service.configuration.elasticsearch.SearchIndexingLimits",
+      "properties": {
+        "enableMappingHardening": {
+          "description": "Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails into index mappings at creation time so documents cannot be rejected. When false, mappings are created as-is.",
+          "type": "boolean",
+          "default": true
+        },
+        "keywordMaxBytes": {
+          "description": "Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe character count derived from this (value/4). The hard Lucene limit is 32766 bytes.",
+          "type": "integer",
+          "minimum": 4,
+          "default": 32766
+        },
+        "mappingDepthLimit": {
+          "description": "Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 20
+        },
+        "nestedObjectsLimit": {
+          "description": "Maximum number of nested-type objects allowed in a single document before Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors index.mapping.nested_objects.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 10000
+        },
+        "totalFieldsLimit": {
+          "description": "Maximum total fields per index. Mirrors index.mapping.total_fields.limit.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 1000
+        },
+        "maxColumns": {
+          "description": "Maximum number of flattened columns or schema fields indexed for a single data asset. Items beyond this are dropped from the search document.",
+          "type": "integer",
+          "minimum": 1,
+          "default": 10000
+        }
+      },
+      "additionalProperties": false
+    },
     "aws": {
       "description": "AWS IAM authentication configuration for OpenSearch. IAM auth must be explicitly enabled. When enabled, uses standard AWS environment variables or configured credentials.",
       "type": "object",

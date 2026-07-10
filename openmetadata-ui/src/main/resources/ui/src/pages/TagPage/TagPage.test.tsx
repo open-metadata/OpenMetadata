@@ -221,8 +221,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
-  return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
+  return jest.fn().mockImplementation(() => <div>DeleteModal</div>);
 });
 
 jest.mock(

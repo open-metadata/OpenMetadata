@@ -81,9 +81,11 @@ const TestCaseStatusAreaChartWidget = ({
               {title}
             </Typography>
             <Typography
-              as="h4"
-              className="chart-widget-value chart-widget-link-underline"
-              data-testid="total-value">
+              as="p"
+              className="chart-widget-link-underline"
+              data-testid="total-value"
+              size="text-xl"
+              weight="semibold">
               {latestValue}
             </Typography>
           </div>

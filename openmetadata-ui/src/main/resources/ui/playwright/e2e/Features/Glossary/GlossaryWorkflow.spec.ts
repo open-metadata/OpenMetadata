@@ -21,6 +21,7 @@ import {
   getApiContext,
   redirectToHomePage,
 } from '../../../utils/common';
+import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import {
   openAddGlossaryTermModal,
   performExpandAll,
@@ -651,9 +652,8 @@ test('should delete parent term and cascade delete children', async ({
 
     await expect(page.locator('[role="dialog"]')).toBeVisible();
 
-    await page.getByTestId('confirmation-text-input').fill('DELETE');
-
     const deleteRes = page.waitForResponse('/api/v1/glossaryTerms/async/*');
+    await fillDeleteConfirmationIfPresent(page);
     await page.getByTestId('confirm-button').click();
     await deleteRes;
 
