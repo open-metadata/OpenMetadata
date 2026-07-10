@@ -867,7 +867,9 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         ``DatabaseSchema`` (filtered dataset count) counters upfront. When dataset
         listing fails for any project, mark the schema counter reconcilable so the
         walk fills its total instead."""
-        filtered_projects = [project_id for project_id in self.project_ids if not self._is_database_filtered(project_id)]
+        filtered_projects = [
+            project_id for project_id in self.project_ids if not self._is_database_filtered(project_id)
+        ]
         totals.set_total(Database.__name__, len(filtered_projects))
         kept_by_project = self._kept_schema_counts(filtered_projects)
         if kept_by_project is None:
