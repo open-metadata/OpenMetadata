@@ -693,14 +693,14 @@ test.describe('Impact Analysis', () => {
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.sourceColumn })
+          .getByRole('gridcell', { name: col.sourceColumn })
       ).toBeVisible();
 
       // assert target column
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.targetColumn })
+          .getByRole('gridcell', { name: col.targetColumn })
       ).toBeVisible();
     }
   });
@@ -783,14 +783,14 @@ test.describe('Impact Analysis', () => {
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.sourceColumn })
+          .getByRole('gridcell', { name: col.sourceColumn })
       ).toBeVisible();
 
       // assert target column
       await expect(
         page
           .locator(`[data-row-key="${col.rowKey}"]`)
-          .getByRole('cell', { name: col.targetColumn })
+          .getByRole('gridcell', { name: col.targetColumn })
       ).toBeVisible();
     }
   });
@@ -806,7 +806,7 @@ test.describe('Impact Analysis', () => {
     const firstAssetLink = lineageCardTable
       .locator('tbody tr')
       .first()
-      .getByRole('cell')
+      .locator('td')
       .first()
       .getByRole('link');
 
@@ -1111,10 +1111,9 @@ test.describe('Impact Analysis', () => {
     ];
 
     for (const columnName of expectedColumns) {
-      const columnHeader = page.getByRole('columnheader', {
-        name: columnName,
-        exact: true,
-      });
+      const columnHeader = page
+        .locator('thead th')
+        .filter({ hasText: new RegExp(`^${columnName}$`) });
       await expect(columnHeader).toBeVisible();
     }
   });
