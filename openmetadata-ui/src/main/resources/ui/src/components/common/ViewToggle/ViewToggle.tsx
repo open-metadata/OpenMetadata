@@ -11,10 +11,7 @@
  *  limitations under the License.
  */
 
-import {
-  ButtonGroup,
-  ButtonGroupItem,
-} from '@openmetadata/ui-core-components';
+import { ButtonGroup, ButtonGroupItem } from '@openmetadata/ui-core-components';
 import { Grid01, Menu01 } from '@untitledui/icons';
 import { FC } from 'react';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/data-flow.svg';
@@ -34,7 +31,9 @@ interface ViewToggleProps {
 const DEFAULT_VIEWS: ViewMode[] = [ViewMode.Table, ViewMode.Card];
 
 const getIconElement = (mode: ViewMode, isActive: boolean) => {
-  const iconClass = `tw:size-4 ${isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'}`;
+  const iconClass = `tw:size-4 ${
+    isActive ? 'tw:text-fg-brand-primary' : 'tw:text-fg-secondary'
+  }`;
   switch (mode) {
     case ViewMode.Card:
       return <Grid01 className={iconClass} />;
@@ -55,6 +54,7 @@ const ViewToggle: FC<ViewToggleProps> = ({
 
   return (
     <ButtonGroup
+      disallowEmptySelection
       selectedKeys={new Set([value])}
       size="sm"
       onSelectionChange={(keys) => {
