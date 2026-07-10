@@ -232,13 +232,19 @@ export const bulkDeleteDriveFiles = async (
   return response.data;
 };
 
-export const listArchivedContextFiles = async (): Promise<ContextFile[]> => {
-  const response = await APIClient.get<{ data: ContextFile[] }>(
+export type ListArchivedContextFilesParams = ListParams & {
+  updatedBy?: string;
+};
+
+export const listArchivedContextFiles = async (
+  params: ListArchivedContextFilesParams = {}
+): Promise<PagingResponse<ContextFile[]>> => {
+  const response = await APIClient.get<PagingResponse<ContextFile[]>>(
     '/contextCenter/drive/files',
-    { params: { include: 'deleted', limit: 1000 } }
+    { params: { include: 'deleted', orderBy: 'DESC', ...params } }
   );
 
-  return response.data.data ?? [];
+  return response.data;
 };
 
 export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
