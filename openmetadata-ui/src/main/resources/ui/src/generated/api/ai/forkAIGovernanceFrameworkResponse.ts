@@ -11,122 +11,128 @@
  *  limitations under the License.
  */
 /**
- * An asynchronously-generated evidence pack scoped to a framework, domain, or single AI
- * asset. Bundles compliance records, control coverage, workflow history, remediation
- * snapshot, and per-asset documents into machine-readable JSON (and optionally PDF) for
- * auditors and regulators.
+ * Response returned after forking an AI Governance Framework.
  */
-export interface AuditReport {
+export interface ForkAIGovernanceFrameworkResponse {
     /**
-     * Generated artifacts available for download
+     * Summaries of controls copied into the forked framework.
      */
-    artifacts?: Artifact[];
+    copiedControls: CopiedAIFrameworkControl[];
     /**
-     * Snapshot date — the pack assembles state as it was at this time
+     * Number of controls copied into the forked framework.
      */
-    asOfDate?: number;
+    copiedControlsCount: number;
     /**
-     * Change that led to this version of the entity
+     * The newly-created forked framework.
+     */
+    framework: AIGovernanceFramework;
+}
+
+/**
+ * Summary of a framework control copied into the forked framework.
+ */
+export interface CopiedAIFrameworkControl {
+    /**
+     * Stable short code for the copied control.
+     */
+    code?: string;
+    name?: string;
+}
+
+/**
+ * The newly-created forked framework.
+ *
+ * Workspace-level AI governance framework configuration. A framework is a library of
+ * controls that drives compliance assessments. Enabling a framework auto-applies it to
+ * in-scope AI assets via the autoApply rules.
+ */
+export interface AIGovernanceFramework {
+    assessmentCadence?: AssessmentCadence;
+    autoApply?:         AutoApplyRules;
+    /**
+     * Change that led to this version
      */
     changeDescription?: ChangeDescription;
-    /**
-     * When job execution finished (success or failure)
-     */
-    completedAt?: number;
     /**
      * When true, indicates the entity has been soft deleted
      */
     deleted?: boolean;
     /**
-     * Free-text description / notes attached to this report
+     * Description of what this framework covers.
      */
     description?: string;
     /**
-     * Display name for the audit report
+     * Display name (e.g. 'EU AI Act').
      */
     displayName?: string;
     /**
-     * Domains the audit report belongs to
+     * Domains this framework belongs to
      */
     domains?: EntityReference[];
     /**
-     * Custom extension JSON
+     * Whether this framework is enabled in the workspace. Disabled frameworks remain in the
+     * library but do not auto-apply.
+     */
+    enabled?: boolean;
+    /**
+     * Entity extension data with custom attributes
      */
     extension?: any;
     /**
-     * Stack/message if status=Failed
+     * When source is 'ForkedFrom', the framework this was forked from.
      */
-    failureReason?: string;
-    format:         ReportFormat;
+    forkedFrom?: EntityReference;
     /**
-     * Framework this audit pack is scoped to (omit for an estate-wide multi-framework pack)
-     */
-    framework?: EntityReference;
-    /**
-     * FQN that uniquely identifies the audit report
+     * Fully qualified name of the framework.
      */
     fullyQualifiedName?: string;
     /**
-     * Link to this entity
+     * Link to this resource
      */
     href?: string;
     /**
-     * Unique identifier
+     * Unique identifier of the AI Governance Framework.
      */
     id: string;
     /**
-     * Whether to include normally-redacted evidence (DPIAs, model cards, etc.)
-     */
-    includeRedacted?: boolean;
-    /**
-     * Change that led to this version of the entity
+     * Change that led to this version
      */
     incrementalChangeDescription?: ChangeDescription;
-    manifest?:                     Manifest;
+    lifeCycle?:                    LifeCycle;
     /**
-     * Unique short name for this report
+     * Name that identifies this framework (e.g. eu_ai_act).
      */
     name: string;
     /**
-     * Owners of this audit report
+     * Next certification or assessment deadline.
+     */
+    nextDeadline?: number;
+    /**
+     * Owners of this framework configuration.
      */
     owners?: EntityReference[];
     /**
-     * When the report was requested
+     * External reference for the framework (e.g. 'Reg EU 2024/1689', 'AI 100-1', 'ISO/IEC
+     * 42001:2023').
      */
-    requestedAt?: number;
+    reference?: string;
     /**
-     * User who requested the report
+     * Geographic jurisdiction this framework covers (e.g. 'European Union', 'United States',
+     * 'Global').
      */
-    requestedBy?: EntityReference;
+    region?:     string;
+    source?:     FrameworkSource;
+    sourceHash?: string;
     /**
-     * Deterministic hash of the request parameters (scope, target, framework, format, asOfDate,
-     * includeRedacted). Backs an indexed lookup so a retried submission dedupes to the
-     * in-flight report instead of generating the same pack twice.
+     * Users or teams responsible for this framework's assessments.
      */
-    requestSignature?: string;
+    stewards?: EntityReference[];
     /**
-     * Identifier of the server node that claimed and is running this job. Used to detect and
-     * recover jobs orphaned by a pod restart.
-     */
-    runningOn?: string;
-    scope:      ReportScope;
-    /**
-     * Reference to the domain or asset when scope is not Estate
-     */
-    scopeTarget?: EntityReference;
-    /**
-     * When job execution started
-     */
-    startedAt?: number;
-    status:     ReportStatus;
-    /**
-     * Tags for this audit report
+     * Tags for this framework.
      */
     tags?: TagLabel[];
     /**
-     * Last update time corresponding to the new version of the entity in Unix epoch time
-     * milliseconds
+     * Last update time in Unix epoch milliseconds
      */
     updatedAt?: number;
     /**
@@ -140,35 +146,40 @@ export interface AuditReport {
 }
 
 /**
- * Single generated artifact (JSON bundle, PDF, etc.)
+ * How often this framework requires reassessment of in-scope assets
  */
-export interface Artifact {
-    /**
-     * SHA-256 checksum of the artifact
-     */
-    checksum?: string;
-    /**
-     * Resolvable URL to download the artifact
-     */
-    downloadUrl?: string;
-    format?:      ReportFormat;
-    /**
-     * Artifact size in bytes
-     */
-    sizeBytes?: number;
+export enum AssessmentCadence {
+    Annual = "Annual",
+    Monthly = "Monthly",
+    Quarterly = "Quarterly",
+    SemiAnnual = "SemiAnnual",
 }
 
 /**
- * Artifact format(s) to generate
+ * Predicate that determines which AI assets this framework automatically applies to. An
+ * asset is in-scope when its attributes match every populated rule (empty list = match any).
  */
-export enum ReportFormat {
-    Both = "Both",
-    JSON = "Json",
-    PDF = "Pdf",
+export interface AutoApplyRules {
+    /**
+     * AI asset types this framework applies to (aiApplication, llmModel, mcpServer)
+     */
+    assetTypes?: string[];
+    /**
+     * Deployment stages this framework applies to (Production, Staging, Development, etc.)
+     */
+    deploymentStages?: string[];
+    /**
+     * Deployment regions this framework applies to (EU, US, UK, APAC, CA, LATAM, MENA)
+     */
+    regions?: string[];
+    /**
+     * Risk classifications this framework applies to (Unacceptable, High, Limited, Minimal)
+     */
+    riskClasses?: string[];
 }
 
 /**
- * Change that led to this version of the entity
+ * Change that led to this version
  *
  * Description of the change.
  */
@@ -233,7 +244,7 @@ export interface FieldChange {
 }
 
 /**
- * Domains the audit report belongs to
+ * Domains this framework belongs to
  *
  * This schema defines the EntityReferenceList type used for referencing an entity.
  * EntityReference is used for capturing relationships from one entity to another. For
@@ -245,11 +256,9 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
- * Framework this audit pack is scoped to (omit for an estate-wide multi-framework pack)
+ * When source is 'ForkedFrom', the framework this was forked from.
  *
- * User who requested the report
- *
- * Reference to the domain or asset when scope is not Estate
+ * User, Pipeline, Query that created,updated or accessed the data asset
  */
 export interface EntityReference {
     /**
@@ -295,45 +304,54 @@ export interface EntityReference {
 }
 
 /**
- * Top-level inventory included in the pack
+ * This schema defines Life Cycle Properties.
  */
-export interface Manifest {
+export interface LifeCycle {
     /**
-     * Number of AI assets in scope
+     * Access Details about accessed aspect of the data asset
      */
-    assetCount?: number;
+    accessed?: AccessDetails;
     /**
-     * Total compliance records included
+     * Access Details about created aspect of the data asset
      */
-    complianceRecordCount?: number;
+    created?: AccessDetails;
     /**
-     * Total controls evaluated
+     * Access Details about updated aspect of the data asset
      */
-    controlCount?: number;
-    /**
-     * Number of frameworks covered
-     */
-    frameworkCount?: number;
+    updated?: AccessDetails;
 }
 
 /**
- * Breadth of the audit pack
+ * Access Details about accessed aspect of the data asset
+ *
+ * Access details of an entity
+ *
+ * Access Details about created aspect of the data asset
+ *
+ * Access Details about updated aspect of the data asset
  */
-export enum ReportScope {
-    Asset = "Asset",
-    Domain = "Domain",
-    Estate = "Estate",
+export interface AccessDetails {
+    /**
+     * User, Pipeline, Query that created,updated or accessed the data asset
+     */
+    accessedBy?: EntityReference;
+    /**
+     * Any process that accessed the data asset that is not captured in OpenMetadata.
+     */
+    accessedByAProcess?: string;
+    /**
+     * Timestamp of data asset accessed for creation, update, read.
+     */
+    timestamp: number;
 }
 
 /**
- * Current state of the audit pack job
+ * Where the framework definition came from
  */
-export enum ReportStatus {
-    Cancelled = "Cancelled",
-    Completed = "Completed",
-    Failed = "Failed",
-    Queued = "Queued",
-    Running = "Running",
+export enum FrameworkSource {
+    BuiltIn = "BuiltIn",
+    Custom = "Custom",
+    ForkedFrom = "ForkedFrom",
 }
 
 /**
