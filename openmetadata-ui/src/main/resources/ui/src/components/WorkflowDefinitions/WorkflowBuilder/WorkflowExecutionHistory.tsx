@@ -78,7 +78,13 @@ export const WorkflowExecutionHistory: React.FC = () => {
       GLOBAL_RELATED_ENTITY_VARIABLE
     ] as string | undefined;
 
-    let content = <Typography size="text-sm">{NO_DATA_PLACEHOLDER}</Typography>;
+    const placeholder = (
+      <Typography data-testid="related-entity-placeholder" size="text-sm">
+        {NO_DATA_PLACEHOLDER}
+      </Typography>
+    );
+
+    let content = placeholder;
 
     if (entityLinkString) {
       try {
@@ -93,17 +99,23 @@ export const WorkflowExecutionHistory: React.FC = () => {
           );
 
           content = entityPath ? (
-            <Link title={entityFqn} to={entityPath}>
+            <Link
+              data-testid="related-entity-link"
+              title={entityFqn}
+              to={entityPath}>
               {displayName}
             </Link>
           ) : (
-            <Typography size="text-sm" title={entityFqn}>
+            <Typography
+              data-testid="related-entity-name"
+              size="text-sm"
+              title={entityFqn}>
               {displayName}
             </Typography>
           );
         }
       } catch {
-        content = <Typography size="text-sm">{NO_DATA_PLACEHOLDER}</Typography>;
+        content = placeholder;
       }
     }
 
