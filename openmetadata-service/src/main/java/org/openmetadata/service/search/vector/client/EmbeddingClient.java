@@ -3,6 +3,7 @@ package org.openmetadata.service.search.vector.client;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.Semaphore;
+import java.util.function.Supplier;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
 
@@ -25,7 +26,24 @@ public abstract class EmbeddingClient {
 
   protected abstract float[] doEmbed(String text);
 
+  /**
+   * Embed text that will be used as a search query. Defaults to treating a query like a document;
+   * clients whose backend distinguishes query and document embeddings (e.g. Cohere on Bedrock)
+   * override this.
+   */
+  protected float[] doEmbedQuery(String text) {
+    return doEmbed(text);
+  }
+
   public final float[] embed(String text) {
+    return embedWithLimit(() -> doEmbed(text));
+  }
+
+  public final float[] embedQuery(String text) {
+    return embedWithLimit(() -> doEmbedQuery(text));
+  }
+
+  private float[] embedWithLimit(Supplier<float[]> embedder) {
     try {
       concurrencyLimiter.acquire();
     } catch (InterruptedException e) {
@@ -34,7 +52,7 @@ public abstract class EmbeddingClient {
           "Embedding generation was interrupted while waiting for permit", e);
     }
     try {
-      return doEmbed(text);
+      return embedder.get();
     } finally {
       concurrencyLimiter.release();
     }

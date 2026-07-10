@@ -12,11 +12,24 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import jakarta.ws.rs.core.UriInfo;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.schema.api.ai.CopiedAIFrameworkControl;
+import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkRequest;
+import org.openmetadata.schema.api.ai.ForkAIGovernanceFrameworkResponse;
+import org.openmetadata.schema.api.ai.FrameworkCoverageResponse;
+import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.entity.ai.AIGovernanceFramework;
+import org.openmetadata.schema.entity.ai.FrameworkSource;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.AIGovernanceFrameworkResource;
+import org.openmetadata.service.resources.ai.FrameworkCoverageComputer;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -24,6 +37,7 @@ import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 @Repository
 public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernanceFramework> {
   private static final String FIELDS = "stewards,autoApply";
+  private static final int CONTROL_PAGE_SIZE = 1000;
 
   public AIGovernanceFrameworkRepository() {
     super(
@@ -60,6 +74,101 @@ public class AIGovernanceFrameworkRepository extends EntityRepository<AIGovernan
   @Override
   public void storeRelationships(AIGovernanceFramework framework) {
     // Relationships stored as part of the JSON
+  }
+
+  public FrameworkCoverageResponse getCoverage(UriInfo uriInfo, AIGovernanceFramework framework) {
+    AIFrameworkControlRepository controlRepo = controlRepository();
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    List<AIFrameworkControl> allControls = listControls(uriInfo, controlRepo, "", filter);
+    String frameworkName = framework.getName();
+    List<AIFrameworkControl> controls = new ArrayList<>();
+    for (AIFrameworkControl control : allControls) {
+      if (control.getFramework() != null
+          && frameworkName.equals(control.getFramework().getName())) {
+        controls.add(control);
+      }
+    }
+
+    return FrameworkCoverageComputer.compute(framework, controls);
+  }
+
+  public ForkAIGovernanceFrameworkResponse fork(
+      UriInfo uriInfo,
+      AIGovernanceFramework source,
+      ForkAIGovernanceFrameworkRequest request,
+      String user) {
+    AIGovernanceFramework created =
+        create(uriInfo, forkedFramework(source, request, user), user, null);
+    AIFrameworkControlRepository controlRepo = controlRepository();
+    ListFilter controlFilter = new ListFilter(Include.NON_DELETED);
+    if (source.getFullyQualifiedName() != null) {
+      controlFilter.addQueryParam("framework", source.getFullyQualifiedName());
+    }
+
+    List<CopiedAIFrameworkControl> copiedControls = new ArrayList<>();
+    long now = System.currentTimeMillis();
+    for (AIFrameworkControl control : listControls(uriInfo, controlRepo, FIELDS, controlFilter)) {
+      control.setId(UUID.randomUUID());
+      control.setFullyQualifiedName(null);
+      control.setVersion(null);
+      control.setFramework(created.getEntityReference());
+      control.setUpdatedAt(now);
+      control.setUpdatedBy(user);
+      controlRepo.create(uriInfo, control, user, null);
+      copiedControls.add(
+          new CopiedAIFrameworkControl().withCode(control.getCode()).withName(control.getName()));
+    }
+
+    return new ForkAIGovernanceFrameworkResponse()
+        .withFramework(created)
+        .withCopiedControlsCount(copiedControls.size())
+        .withCopiedControls(copiedControls);
+  }
+
+  private AIGovernanceFramework forkedFramework(
+      AIGovernanceFramework source, ForkAIGovernanceFrameworkRequest request, String user) {
+    String newName =
+        request != null && request.getName() != null && !request.getName().isBlank()
+            ? request.getName()
+            : source.getName() + "_fork";
+    AIGovernanceFramework copy = new AIGovernanceFramework();
+    copy.setId(UUID.randomUUID());
+    copy.setName(newName);
+    copy.setDisplayName(
+        request != null && request.getDisplayName() != null
+            ? request.getDisplayName()
+            : "Fork of "
+                + (source.getDisplayName() == null ? source.getName() : source.getDisplayName()));
+    copy.setDescription(source.getDescription());
+    copy.setReference(source.getReference());
+    copy.setRegion(source.getRegion());
+    copy.setSource(FrameworkSource.ForkedFrom);
+    copy.setForkedFrom(source.getEntityReference());
+    copy.setEnabled(false);
+    copy.setAssessmentCadence(source.getAssessmentCadence());
+    copy.setAutoApply(source.getAutoApply());
+    copy.setUpdatedAt(System.currentTimeMillis());
+    copy.setUpdatedBy(user);
+    return copy;
+  }
+
+  private List<AIFrameworkControl> listControls(
+      UriInfo uriInfo, AIFrameworkControlRepository controlRepo, String fields, ListFilter filter) {
+    List<AIFrameworkControl> result = new ArrayList<>();
+    String after = null;
+    do {
+      ResultList<AIFrameworkControl> page =
+          controlRepo.listAfter(
+              uriInfo, controlRepo.getFields(fields), filter, CONTROL_PAGE_SIZE, after);
+      result.addAll(page.getData());
+      after = page.getPaging() == null ? null : page.getPaging().getAfter();
+    } while (after != null);
+
+    return result;
+  }
+
+  private static AIFrameworkControlRepository controlRepository() {
+    return (AIFrameworkControlRepository) Entity.getEntityRepository(Entity.AI_FRAMEWORK_CONTROL);
   }
 
   @Override
