@@ -8,6 +8,8 @@ import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.AwsSessionCredentials;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.awscore.retry.AwsRetryStrategy;
+import software.amazon.awssdk.core.client.config.ClientOverrideConfiguration;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sts.StsClient;
 import software.amazon.awssdk.services.sts.auth.StsAssumeRoleCredentialsProvider;
@@ -16,7 +18,25 @@ import software.amazon.awssdk.services.sts.model.AssumeRoleRequest;
 @Slf4j
 public class AwsCredentialsUtil {
 
+  private static final int MAX_RETRY_ATTEMPTS = 10;
+
   private AwsCredentialsUtil() {}
+
+  /**
+   * Client override that retries throttling errors (HTTP 429 / ThrottlingException) with
+   * exponential backoff and full jitter. Bedrock returns 429 when several OpenMetadata clusters
+   * share the same regional quota, and the SDK's default of 4 attempts is often not enough under
+   * that contention.
+   */
+  public static ClientOverrideConfiguration throttleResilientOverrideConfiguration() {
+    // ponytail: fixed attempt ceiling; wire to LLMConfiguration if operators need per-quota tuning.
+    return ClientOverrideConfiguration.builder()
+        .retryStrategy(
+            AwsRetryStrategy.standardRetryStrategy().toBuilder()
+                .maxAttempts(MAX_RETRY_ATTEMPTS)
+                .build())
+        .build();
+  }
 
   public static AwsCredentialsProvider buildCredentialsProvider(AWSBaseConfig config) {
     AwsCredentialsProvider baseProvider = buildBaseProvider(config);
