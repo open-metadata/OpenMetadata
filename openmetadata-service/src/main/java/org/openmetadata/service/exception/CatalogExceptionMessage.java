@@ -383,6 +383,11 @@ public final class CatalogExceptionMessage {
         "Can't move Glossary term %s to its child Glossary term %s", term, newParent);
   }
 
+  public static String invalidPageMove(String page, String newParent) {
+    return String.format(
+        "Can't move page %s to itself or to its descendant page %s", page, newParent);
+  }
+
   public static String invalidContainerMove(String container, String newParent) {
     return String.format(
         "Can't move Container %s to itself or to its descendant Container %s",
