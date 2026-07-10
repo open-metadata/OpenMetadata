@@ -450,7 +450,10 @@ const AddDomainForm = ({
     name: 'color',
   });
 
-  const coverImageField = useMemo(() => domainClassBase.getCoverImageField(), []);
+  const coverImageField = useMemo(
+    () => domainClassBase.getCoverImageField(),
+    []
+  );
 
   const createPermission = useMemo(() => {
     const resourceEntity =

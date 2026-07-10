@@ -16,7 +16,7 @@ import {
   FileIcon,
   getReadableFileSize,
   Skeleton,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { Download01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -115,7 +115,7 @@ const AttachmentWidget: FC<AttachmentWidgetProps> = ({ entityFqn }) => {
       <div className="tw:flex tw:flex-col tw:gap-2">
         {attachments.map((item) => (
           <Box
-            align='center'
+            align="center"
             className="tw:p-2 tw:border-b tw:border-secondary tw:last:border-0"
             data-testid={`attachment-item-${item.id}`}
             gap={3}
