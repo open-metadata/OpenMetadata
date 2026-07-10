@@ -887,13 +887,13 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def get_database_names(self) -> Iterable[str]:
         for project_id in self.project_ids:
-            database_fqn = fqn.build(
-                self.metadata,
-                entity_type=Database,
-                service_name=self.context.get().database_service,
-                database_name=project_id,
-            )
             if self._is_database_filtered(project_id):
+                database_fqn = fqn.build(
+                    self.metadata,
+                    entity_type=Database,
+                    service_name=self.context.get().database_service,
+                    database_name=project_id,
+                )
                 self.status.filter(database_fqn, "Database Filtered out")
             else:
                 try:
