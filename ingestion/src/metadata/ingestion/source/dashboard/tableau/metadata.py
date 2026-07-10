@@ -139,7 +139,7 @@ class TableauSource(DashboardServiceSource):
         manual = self.progress_tracking.manual
         try:
             manual.set_total(Dashboard.__name__, self.client.get_workbook_count())
-        except Exception as exc:  # noqa: BLE001
+        except Exception as exc:
             logger.warning("Could not prefetch Tableau workbook count for progress: %s", exc)
             manual.mark_reconcilable(Dashboard.__name__)
         manual.mark_reconcilable(Chart.__name__)
