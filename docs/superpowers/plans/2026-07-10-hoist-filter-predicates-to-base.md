@@ -73,8 +73,17 @@ from metadata.generated.schema.type.filterPattern import FilterPattern
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 
 
+class _StubSource(DatabaseServiceSource):
+    """Concrete stand-in for the ABC so the base predicates can be unit-tested
+    directly. Clearing ``__abstractmethods__`` lets ``object.__new__`` build a
+    bare instance without implementing the 11 unrelated abstract methods."""
+
+
+_StubSource.__abstractmethods__ = frozenset()
+
+
 def _source(use_fqn, database_pattern=None, schema_pattern=None):
-    source = object.__new__(DatabaseServiceSource)
+    source = object.__new__(_StubSource)
     source.metadata = MagicMock()
     source.context = MagicMock()
     source.context.get.return_value = SimpleNamespace(database_service="svc")
@@ -123,8 +132,8 @@ def test_schema_fqn_matching_depends_on_use_fqn_flag():
 - [ ] **Step 2: Run the test to verify it fails**
 
 Run: `cd ingestion && ../env/bin/python -m pytest tests/unit/source/database/test_base_filter_predicates.py -q`
-Expected: FAIL — `AttributeError: 'DatabaseServiceSource' object has no attribute '_is_database_filtered'`.
-(If instead it errors with "Can't instantiate abstract class" on `object.__new__`, that means the ABC guard blocked it — it should NOT, since `object.__new__` bypasses `ABCMeta.__call__`, the same pattern `test_snowflake_progress_count.py` uses. If it does, report BLOCKED.)
+Expected: FAIL — `AttributeError: '_StubSource' object has no attribute '_is_database_filtered'`.
+(The `_StubSource` subclass with `__abstractmethods__` cleared lets `object.__new__` build a bare base instance; the failure must be the missing predicate, not an instantiation error.)
 
 - [ ] **Step 3: Add the `filter_by_database` import**
 
