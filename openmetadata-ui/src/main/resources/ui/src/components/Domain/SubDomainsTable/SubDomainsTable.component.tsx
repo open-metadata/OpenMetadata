@@ -13,7 +13,7 @@
 
 import { Box, Card } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
-import { useCallback, useEffect, useMemo } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -24,7 +24,9 @@ import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTab
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../../common/atoms/navigation/useViewToggle';
+import ViewToggle, {
+  ViewMode,
+} from '../../common/ViewToggle/ViewToggle';
 import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
@@ -73,7 +75,7 @@ const SubDomainsTable = ({
     initialSearchQuery: subdomainListing.urlState.searchQuery,
   });
 
-  const { view, viewToggle } = useViewToggle();
+  const [view, setView] = useState<ViewMode>('table');
   const { renderDomainCard } = useDomainCardTemplates();
 
   const { columns: subDomainColumns, renderCell: renderSubDomainCell } =
@@ -205,7 +207,7 @@ const SubDomainsTable = ({
             {search}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            {viewToggle}
+            <ViewToggle value={view} onChange={setView} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

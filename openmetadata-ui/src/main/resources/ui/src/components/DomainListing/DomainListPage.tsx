@@ -37,7 +37,9 @@ import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
+import ViewToggle, {
+  ViewMode,
+} from '../common/ViewToggle/ViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
@@ -168,9 +170,8 @@ const DomainListPage = () => {
     initialSearchQuery: domainListing.urlState.searchQuery,
   });
 
-  const { view, viewToggle, isTreeView } = useViewToggle({
-    views: ['table', 'card', 'tree'],
-  });
+  const [view, setView] = useState<ViewMode>('table');
+  const isTreeView = view === 'tree';
   const { renderDomainCard } = useDomainCardTemplates();
 
   useEffect(() => {
@@ -335,7 +336,11 @@ const DomainListPage = () => {
             {search}
             {!isTreeView && quickFilters}
             <Box className="tw:ml-auto" />
-            {viewToggle}
+            <ViewToggle
+              value={view}
+              views={['table', 'card', 'tree']}
+              onChange={setView}
+            />
             {deleteIconButton}
           </Box>
           {!isTreeView && filterSelectionDisplay}

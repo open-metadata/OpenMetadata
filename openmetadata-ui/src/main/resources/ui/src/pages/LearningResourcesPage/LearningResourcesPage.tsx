@@ -28,7 +28,9 @@ import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
 import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
 import { useSearch } from '../../components/common/atoms/navigation/useSearch';
-import { useViewToggle } from '../../components/common/atoms/navigation/useViewToggle';
+import ViewToggle, {
+  ViewMode,
+} from '../../components/common/ViewToggle/ViewToggle';
 import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -129,7 +131,7 @@ export const LearningResourcesPage: React.FC = () => {
     handlePlayerClose,
   } = useLearningResourceActions({ onRefetch: refetch });
 
-  const { view, viewToggle } = useViewToggle({ defaultView: 'table' });
+  const [view, setView] = useState<ViewMode>('table');
 
   const { search } = useSearch({
     searchPlaceholder: t('label.search-entity', {
@@ -353,7 +355,7 @@ export const LearningResourcesPage: React.FC = () => {
               {search}
               {quickFilters}
               <Box className="tw:flex-1" />
-              {viewToggle}
+              <ViewToggle value={view} onChange={setView} />
             </Box>
             {filterSelectionDisplay}
           </Box>

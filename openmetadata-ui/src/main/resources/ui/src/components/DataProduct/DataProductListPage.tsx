@@ -49,7 +49,9 @@ import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
+import ViewToggle, {
+  ViewMode,
+} from '../common/ViewToggle/ViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
@@ -176,7 +178,7 @@ const DataProductListPage = () => {
     initialSearchQuery: dataProductListing.urlState.searchQuery,
   });
 
-  const { view, viewToggle } = useViewToggle();
+  const [view, setView] = useState<ViewMode>('table');
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
@@ -395,7 +397,7 @@ const DataProductListPage = () => {
             {search}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            {viewToggle}
+            <ViewToggle value={view} onChange={setView} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}
