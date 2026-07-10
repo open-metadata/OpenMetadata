@@ -310,6 +310,29 @@ describe('TestCaseFormBody', () => {
     expect(await screen.findByTestId('topDimensions')).toBeInTheDocument();
   });
 
+  it('reveals dimension columns and top dimensions in edit mode for a plain column test so dimensions can be added later', async () => {
+    await act(async () => {
+      renderBody({ isEditMode: true }, { testLevel: TestLevel.COLUMN });
+    });
+
+    expect(await screen.findByTestId('dimensionColumns')).toBeInTheDocument();
+    expect(await screen.findByTestId('topDimensions')).toBeInTheDocument();
+  });
+
+  it('does not reveal dimension columns for a plain column test in create mode', async () => {
+    await act(async () => {
+      renderBody();
+    });
+
+    await act(async () => {
+      formRef?.setValue('testLevel', TestLevel.COLUMN);
+    });
+
+    expect(await screen.findByTestId('selectedColumn')).toBeInTheDocument();
+    expect(screen.queryByTestId('dimensionColumns')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('topDimensions')).not.toBeInTheDocument();
+  });
+
   it('renders the inline error alert and dismisses it', async () => {
     const onErrorDismiss = jest.fn();
     await act(async () => {

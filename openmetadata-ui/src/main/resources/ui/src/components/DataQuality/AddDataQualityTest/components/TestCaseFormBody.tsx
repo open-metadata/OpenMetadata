@@ -826,6 +826,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     label: t('label.select-entity', { entity: t('label.dimension-plural') }),
     type: FieldTypes.MULTI_SELECT,
     id: 'root/dimensionColumns',
+    doc: fieldDocs.dimensionColumns ?? t('message.doc-field-dimension-columns'),
     placeholder: t('label.select-entity', {
       entity: t('label.dimension-plural'),
     }),
@@ -842,6 +843,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     label: t('label.top-dimension-plural'),
     type: FieldTypes.NUMBER,
     id: 'root/topDimensions',
+    doc: fieldDocs.topDimensions ?? t('message.doc-field-top-dimensions'),
     placeholder: '5',
     props: {
       'data-testid': 'topDimensions',
@@ -1061,10 +1063,12 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
           {selectedTestLevel === TestLevel.COLUMN &&
             getField(selectedColumnField)}
 
-          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
+          {(testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
+            (isEditMode && selectedTestLevel === TestLevel.COLUMN)) &&
             getField(dimensionColumnsField)}
 
-          {testLevelFieldValue === TestLevel.COLUMN_DIMENSION &&
+          {(testLevelFieldValue === TestLevel.COLUMN_DIMENSION ||
+            (isEditMode && selectedTestLevel === TestLevel.COLUMN)) &&
             getField(topDimensionsField)}
         </div>
       )}

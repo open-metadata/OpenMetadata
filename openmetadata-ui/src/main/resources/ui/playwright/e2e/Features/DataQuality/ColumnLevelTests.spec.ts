@@ -71,6 +71,11 @@ test.describe(
         .click();
 
       await test.step('Create', async () => {
+        // A plain Column Level test must NOT expose the dimension fields in
+        // create mode — those belong to the dedicated "Column + Dimension" card.
+        await expect(page.getByTestId('dimensionColumns')).toBeHidden();
+        await expect(page.getByTestId('topDimensions')).toBeHidden();
+
         // Click column dropdown and wait for documentation panel to be visible
         await page.click('[id="root/column"]');
         await expect(page.locator('[data-id="column"]')).toBeVisible();
@@ -121,6 +126,20 @@ test.describe(
         await expect(page.locator('[id="root/name"]')).toHaveValue(
           testCase.name
         );
+
+        // Regression: editing a column-level test must expose the dimension
+        // fields so a dimension can be added after creation (parity with the
+        // legacy edit modal). Add a dimension here to prove it round-trips.
+        await expect(page.getByTestId('dimensionColumns')).toBeVisible();
+        await expect(page.getByTestId('topDimensions')).toBeVisible();
+
+        await page.click('[id="root/dimensionColumns"]');
+        const dimensionOption = page.getByRole('option').first();
+        await expect(dimensionOption).toBeVisible();
+        await dimensionOption.click();
+        // Close the multi-select dropdown before touching other fields.
+        await page.keyboard.press('Escape');
+        await expect(page.locator('[role="listbox"]')).not.toBeVisible();
 
         await page.locator('[id="root/displayName"]').clear();
         await page.fill('[id="root/displayName"]', testCase.displayName);
