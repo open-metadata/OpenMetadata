@@ -10,9 +10,15 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button as MUIButton, useTheme } from '@mui/material';
+import {
+  Button,
+  Input,
+  Tag,
+  TagGroup,
+  TagList,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
-import { Button, Empty, Select, Space, Tree } from 'antd';
+import { Tree } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import {
@@ -50,7 +56,6 @@ import {
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
-import { TagRenderer } from '../TagRenderer/TagRenderer';
 import './domain-selectable.less';
 import {
   DomainSelectableTreeProps,
@@ -64,15 +69,12 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   onCancel,
   isMultiple = false,
   initialDomains,
-  dropdownRef,
-  handleDropdownChange,
   isClearable = true,
-  open,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
+  const [searchValue, setSearchValue] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
@@ -237,30 +239,17 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           disabled: true,
           className: 'load-more-node',
           title: (
-            <MUIButton
-              startIcon={isLoadingMore ? null : <Plus />}
-              sx={{
-                p: 0,
-                ml: 7,
-                cursor: 'pointer',
-                fontSize: '14px',
-                color: theme.palette.primary.main,
-                fontWeight: theme.typography.fontWeightMedium,
-                textTransform: 'none',
-                '&:hover': {
-                  color: theme.palette.primary.dark,
-                  backgroundColor: 'transparent',
-                },
-              }}
-              variant="text"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLoadMore?.(parentFqn);
-              }}>
-              {isLoadingMore ? <Loader size="small" /> : t('label.load-more')}
-            </MUIButton>
+            <div onClick={(e) => e.stopPropagation()}>
+              <Button
+                color="link-color"
+                iconLeading={isLoadingMore ? undefined : Plus}
+                size="sm"
+                onPress={() => handleLoadMore?.(parentFqn)}>
+                {isLoadingMore ? <Loader size="small" /> : t('label.load-more')}
+              </Button>
+            </div>
           ),
-        } as TreeListItem);
+        });
       }
 
       return processedItems;
@@ -523,16 +512,16 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       return <Loader />;
     } else if (treeData.length === 0) {
       return (
-        <Empty
-          description={t('label.no-entity-available', {
+        <div className="tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
+          {t('label.no-entity-available', {
             entity: t('label.domain-plural'),
           })}
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        </div>
       );
     } else {
       return (
         <div
+          className="domain-custom-dropdown-class"
           ref={scrollContainerRef}
           style={{ maxHeight: 200, overflowY: 'auto' }}
           onScroll={handleScroll}>
@@ -579,15 +568,20 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   useEffect(() => {
     if (visible) {
       setSearchTerm('');
+      setSearchValue('');
       fetchAPI();
     }
   }, [visible]);
 
-  const handleSelectChange = (selectedFqns: string[]) => {
-    const selectedData = selectedFqns
-      .map((fqn) => domainMapper[fqn])
-      .filter(Boolean);
-    setSelectedDomains(selectedData);
+  const handleRemoveDomains = (keys: Set<Key>) => {
+    setSelectedDomains((prev) =>
+      prev.filter((domain) => !keys.has(domain.fullyQualifiedName as string))
+    );
+  };
+
+  const handleSearchChange = (searchText: string) => {
+    setSearchValue(searchText);
+    onSearch(searchText);
   };
 
   useEffect(() => {
@@ -603,73 +597,51 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
   return (
     <div data-testid="domain-selectable-tree" style={{ width: '339px' }}>
-      <div style={{ borderRadius: '5px', width: '100px' }}>
-        <Select
-          className="custom-domain-edit-select"
-          dropdownRender={() => treeContent}
-          dropdownStyle={{ maxHeight: 'fit-content' }}
-          filterOption={false}
-          maxTagCount={3}
-          maxTagPlaceholder={(omittedValues) => (
-            <span className="max-tag-text">
-              {t('label.plus-count-more', { count: omittedValues.length })}
-            </span>
-          )}
-          mode={isMultiple ? 'multiple' : undefined}
-          open={open}
-          options={domains.map((domain) => ({
-            value: domain?.fullyQualifiedName,
-            label: domain?.name,
-          }))}
-          placeholder="Select a domain"
-          popupClassName="domain-custom-dropdown-class"
-          ref={dropdownRef}
-          tagRender={TagRenderer}
-          value={
-            selectedDomains
-              ?.map((domain) => domain?.fullyQualifiedName)
-              .filter(Boolean) as string[]
-          }
-          onChange={handleSelectChange}
-          onDropdownVisibleChange={handleDropdownChange}
-          onSearch={onSearch}
+      <Input
+        className="custom-domain-edit-select"
+        inputDataTestId="domain-search-input"
+        placeholder={t('label.select-entity', {
+          entity: t('label.domain'),
+        })}
+        value={searchValue}
+        onChange={handleSearchChange}
+      />
+      {selectedDomains.length > 0 && (
+        <TagGroup
+          className="tw:mt-2 tw:flex tw:flex-wrap tw:gap-1"
+          label={t('label.domain-plural')}
+          size="sm"
+          onRemove={handleRemoveDomains}>
+          <TagList
+            className="tw:flex tw:flex-wrap tw:gap-1"
+            items={selectedDomains
+              .filter((domain) => domain?.fullyQualifiedName)
+              .map((domain) => ({
+                id: domain.fullyQualifiedName as string,
+                label: domain.name,
+              }))}>
+            {(item) => <Tag id={item.id}>{item.label}</Tag>}
+          </TagList>
+        </TagGroup>
+      )}
+      <div className="tw:mt-2">{treeContent}</div>
+      <div className="tw:mt-3 tw:flex tw:justify-end tw:gap-2">
+        <Button
+          className="profile-edit-save tw:size-7.5 tw:p-0!"
+          data-testid="user-profile-domain-edit-save"
+          iconLeading={<ClosePopoverIcon height={24} />}
+          size="sm"
+          onPress={onCancel}
+        />
+        <Button
+          className="profile-edit-cancel tw:size-7.5 tw:p-0!"
+          data-testid="user-profile-domain-edit-cancel"
+          iconLeading={<SavePopoverIcon height={24} />}
+          isLoading={isSubmitLoading}
+          size="sm"
+          onPress={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}
         />
       </div>
-      <Space className="d-flex" size={8}>
-        <Button
-          className="profile-edit-save"
-          data-testid="user-profile-domain-edit-save"
-          icon={<ClosePopoverIcon height={24} />}
-          size="small"
-          style={{
-            width: '30px',
-            height: '30px',
-            background: '#0950C5',
-            position: 'absolute',
-            bottom: '20px',
-            right: '58px',
-          }}
-          type="primary"
-          onClick={onCancel}
-        />
-        <Button
-          className="profile-edit-cancel"
-          data-testid="user-profile-domain-edit-cancel"
-          icon={<SavePopoverIcon height={24} />}
-          loading={isSubmitLoading}
-          size="small"
-          style={{
-            width: '30px',
-            height: '30px',
-            background: '#0950C5',
-            position: 'absolute',
-            bottom: '20px',
-            right: '20px',
-          }}
-          type="primary"
-          onClick={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}
-        />
-      </Space>
     </div>
   );
 };
