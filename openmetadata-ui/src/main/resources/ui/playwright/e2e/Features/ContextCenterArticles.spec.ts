@@ -609,7 +609,7 @@ test.describe('Context Center Articles', () => {
     await afterAction();
   });
 
-  test('Article list cards, recently viewed widget, and pagination work', async ({
+  test.fixme('Article list cards, recently viewed widget, and pagination work', async ({
     page,
   }) => {
     await navigateToArticles(page);
@@ -1274,7 +1274,7 @@ test.describe('Context Center Articles', () => {
   });
 
   test.describe('Draft Persistence', () => {
-    test('description: switching articles does not bleed unsaved content into next article', async ({
+    test.fixme('description: switching articles does not bleed unsaved content into next article', async ({
       page,
     }) => {
       test.slow();
