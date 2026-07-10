@@ -8,7 +8,7 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""send_progress_update maps ProgressReporter.eta_seconds into the SSE payload."""
+"""send_progress_update maps ProgressRegistry.eta_seconds into the SSE payload."""
 
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
@@ -16,13 +16,13 @@ from unittest.mock import MagicMock, patch
 from metadata.generated.schema.entity.services.ingestionPipelines.progressUpdate import (
     ProgressUpdateType,
 )
-from metadata.utils.progress_registry import ProgressRegistry
+from metadata.ingestion.progress.registry import ProgressRegistry
 from metadata.workflow.workflow_status_mixin import WorkflowStatusMixin
 
 
 class _FakeStep:
     def __init__(self, registry: ProgressRegistry) -> None:
-        self._progress_registry = registry
+        self._progress_tracking = SimpleNamespace(registry=registry)
 
 
 class _Harness(WorkflowStatusMixin):
@@ -46,7 +46,7 @@ class TestEstimatedSecondsRemaining:
     def test_maps_eta_seconds_into_payload(self):
         reg = ProgressRegistry()
         metadata = MagicMock()
-        with patch("metadata.utils.progress_registry.time.monotonic") as clock:
+        with patch("metadata.ingestion.progress.registry.time.monotonic") as clock:
             clock.return_value = 0.0
             reg.open([], "Database", None)
             reg.set_total("DatabaseSchema", 10)
