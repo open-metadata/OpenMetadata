@@ -254,6 +254,32 @@ class TestClientBuildDagDetails:
         assert result.tasks[0].class_ref["class_name"] == "PythonOperator"
 
 
+# ── Client: DAG Count ────────────────────────────────────────────────────
+
+
+class TestClientGetDagsCount:
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_total_entries(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": [{"dag_id": "d1"}], "total_entries": 42}
+
+        assert client.get_dags_count() == 42
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_when_total_entries_absent(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.return_value = {"dags": []}
+
+        assert client.get_dags_count() is None
+
+    @patch("metadata.ingestion.source.pipeline.airflow.api.client.TrackedREST")
+    def test_returns_none_on_request_error(self, mock_rest_cls):
+        client, mock_rest = _make_client(mock_rest_cls)
+        mock_rest.get.side_effect = RequestsConnectionError("boom")
+
+        assert client.get_dags_count() is None
+
+
 # ── Client: Date Field ───────────────────────────────────────────────────
 
 
