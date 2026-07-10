@@ -63,3 +63,11 @@ export const writeAppMode = (mode: string): void =>
   useAppModeStore.getState().setMode(mode);
 
 export const clearAppMode = (): void => useAppModeStore.getState().reset();
+
+/**
+ * True when a non-default app mode is active (e.g. Collate's AI mode).
+ * OM core stays mode-agnostic, so this is a generic "a custom mode is on"
+ * check rather than naming a specific mode. Defaults to false whenever the
+ * active mode is the default.
+ */
+export const useIsAiMode = (): boolean => useAppMode() !== DEFAULT_APP_MODE;
