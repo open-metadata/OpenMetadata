@@ -146,7 +146,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             global_profiler_config,
                         )
                         observed += 1
-                        self.progress_tracking.manual.track(Table.__name__)
+                        self.progress_tracking.manual.track_asset(Table.__name__)
                         yield Either(
                             right=ProfilerSourceAndEntity(
                                 profiler_source=profiler_source,

@@ -49,3 +49,4 @@ class TestMetadataExtProgress:
 
         assert len(records) == 2
         assert source.progress_tracking.registry.global_counters() == [("Table", 2, 2)]
+        assert source.progress_tracking.registry.assets_ingested() == 2

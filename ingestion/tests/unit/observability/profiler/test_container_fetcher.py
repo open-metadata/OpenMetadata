@@ -224,3 +224,4 @@ class TestStorageFetcherProgress:
 
         assert len(records) == 3
         assert registry.global_counters() == [("Container", 3, 3)]
+        assert registry.assets_ingested() == 3

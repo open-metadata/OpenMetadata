@@ -318,7 +318,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
 
                 for table in self._get_table_entities(database):
                     observed += 1
-                    self.progress.track(Table.__name__)
+                    self.progress.track_asset(Table.__name__)
                     yield Either(
                         left=None,
                         right=ProfilerSourceAndEntity(
@@ -453,7 +453,7 @@ class StorageFetcherStrategy(FetcherStrategy):
             containers = list(self._get_container_entities())
             self.progress.set_total(Container.__name__, len(containers))
             for container in containers:
-                self.progress.track(Container.__name__)
+                self.progress.track_asset(Container.__name__)
                 yield Either(
                     left=None,
                     right=ProfilerSourceAndEntity(

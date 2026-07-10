@@ -805,6 +805,7 @@ class TestDatabaseFetcherProgress:
 
         assert len(records) == 2
         assert registry.global_counters() == [("Table", 2, 2)]
+        assert registry.assets_ingested() == 2
 
     def test_seed_visible_before_reconcile(self):
         capture = {}
@@ -828,6 +829,7 @@ class TestDatabaseFetcherProgress:
 
         assert len(records) == 1
         assert registry.global_counters() == [("Table", 1, 1)]
+        assert registry.assets_ingested() == 1
 
     def test_multi_database_aggregates_into_single_table_counter(self):
         """Each database seeds and reconciles its own scope, but they all
@@ -847,6 +849,7 @@ class TestDatabaseFetcherProgress:
 
         assert len(records) == 4
         assert registry.global_counters() == [("Table", 4, 4)]
+        assert registry.assets_ingested() == 4
 
     def test_partial_db_failure_walks_back_phantom_seed(self):
         """A failure creating the profiler source for db1 must not leave its
@@ -876,3 +879,4 @@ class TestDatabaseFetcherProgress:
         assert len(errors) == 1
         assert "connection failed for db1" in errors[0].left.error
         assert registry.global_counters() == [("Table", 2, 2)]
+        assert registry.assets_ingested() == 2
