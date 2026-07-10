@@ -10,11 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Box,
-  ButtonUtility,
-  Divider,
-} from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Divider } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
 import { OwnerType } from '../../../enums/user.enum';
