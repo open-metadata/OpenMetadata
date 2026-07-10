@@ -6,6 +6,7 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addCre
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskAuthorPolicyToDataConsumerRole;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTaskRuleToDataConsumerPolicy;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillSearchRankingSettings;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
@@ -33,6 +34,7 @@ public class Migration extends MigrationProcessImpl {
     // Reprocessing of an already-applied 1.13.0 with no new SQL skips
     // runDataMigration() per PR #26571, so this dual-invoke is required to
     // close that path. The helper is idempotent — safe on every run.
+    backfillSearchRankingSettings();
     addTableColumnSearchSettings();
     migrateSuggestionsToTaskEntity(handle, POSTGRES);
     migrateThreadTasksToTaskEntity(handle, POSTGRES);
