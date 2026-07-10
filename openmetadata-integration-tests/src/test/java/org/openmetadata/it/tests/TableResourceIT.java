@@ -2038,7 +2038,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         select * from public.sales;
         """;
     createRequest.setSchemaDefinition(updatedQuery);
-    createEntity(createRequest);
+    client.tables().createOrUpdate(createRequest);
 
     Table fetchedAfterUpdate = client.tables().get(table.getId().toString(), "schemaDefinition");
     assertEquals(updatedQuery, fetchedAfterUpdate.getSchemaDefinition());
