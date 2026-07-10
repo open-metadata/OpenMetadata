@@ -17,13 +17,16 @@ import {
   Dropdown,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, File06, Sun, UploadCloud02 } from '@untitledui/icons';
+import { ChevronDown } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
+import { ReactComponent as MemoryIcon } from '../../../assets/svg/common/memories.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
 import ContextKnowledgePillarCard from '../../../components/ContextCenter/ContextKnowledgePillarCard/ContextKnowledgePillarCard.component';
@@ -275,7 +278,11 @@ const ContextCenterDashboardPage: FC = () => {
               width={13}
             />
           ) : (
-            <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+            <FileIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={14}
+              width={14}
+            />
           );
 
         return {
@@ -331,7 +338,7 @@ const ContextCenterDashboardPage: FC = () => {
           <Box align="center" className="tw:shrink-0" gap={3}>
             <Button
               color="secondary"
-              iconLeading={UploadCloud02}
+              iconLeading={UploadIcon}
               size="sm"
               onClick={() => setIsUploadModalOpen(true)}>
               {t('label.upload-file')}
@@ -385,7 +392,7 @@ const ContextCenterDashboardPage: FC = () => {
               entity: t('label.article-plural'),
             })}
             dataTestId="article-detail-card"
-            icon={File06}
+            icon={FileIcon}
             isLoading={isArticlesLoading}
             recent={articlesRecentItems}
             stat={String(articlesCount)}
@@ -418,7 +425,7 @@ const ContextCenterDashboardPage: FC = () => {
               entity: t('label.memory-plural'),
             })}
             dataTestId="memory-detail-card"
-            icon={Sun}
+            icon={MemoryIcon}
             isLoading={isMemoriesLoading}
             recent={memories}
             stat={String(memoriesCount)}
@@ -435,7 +442,7 @@ const ContextCenterDashboardPage: FC = () => {
           <ContextSimplePillarCard
             dataTestId="recently-viewed-card"
             emptyMessage={t('message.no-recently-viewed-data')}
-            icon={File06}
+            icon={FileIcon}
             isEmpty={recentlyViewedItems.length === 0}
             title={t('label.recently-viewed')}>
             <Box className="tw:p-5 tw:pt-0" direction="col">
@@ -448,7 +455,7 @@ const ContextCenterDashboardPage: FC = () => {
                       width={13}
                     />
                   ) : (
-                    <File06 className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                    <FileIcon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
                   )}
 
                   <Box
@@ -490,14 +497,14 @@ const ContextCenterDashboardPage: FC = () => {
             emptyMessage={t('label.no-entity', {
               entity: t('label.memory-plural'),
             })}
-            icon={Sun}
+            icon={MemoryIcon}
             isEmpty={mostCitedItems.length === 0}
             isLoading={isMostCitedLoading}
             title={t('label.most-cited')}>
             <Box className="tw:p-5 tw:pt-0" direction="col">
               {mostCitedItems.map((item) => (
                 <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                  <Sun className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                  <MemoryIcon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
                   <Box
                     align="center"
                     className="tw:min-w-0 tw:flex-1"
