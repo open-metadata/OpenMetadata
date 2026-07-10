@@ -90,6 +90,14 @@ export * from './base/video-player/play-button-icon';
 export * from './application/form-field/form-field.types';
 export * from './application/form-field/form-item-label';
 export * from './application/form-field/fields/icon-picker-field';
+export * from './application/form-field/field-doc-popover';
+export {
+  FieldDocProvider,
+  useActiveFieldDoc,
+  useFieldDoc,
+  useFieldDocRegistry,
+} from './application/form-field/field-doc-context';
+export type { FieldDocEntry } from './application/form-field/field-doc-context';
 export {
   Field,
   FormFields,
