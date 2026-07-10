@@ -25,6 +25,7 @@ import {
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   mockEntitySearchSettings,
+  openMatchingFieldsPanel,
   restoreDefaultSearchSettings,
   setSliderValue,
 } from '../../utils/searchSettingUtils';
@@ -140,6 +141,8 @@ test.describe('Search Settings', () => {
       await expect(
         page.getByTestId('entity-search-settings-header')
       ).toBeVisible();
+
+      await openMatchingFieldsPanel(page);
 
       const fieldContainers = page.getByTestId('field-container-header');
       const firstFieldContainer = fieldContainers.first();
@@ -291,6 +294,8 @@ test.describe('Search Settings', () => {
 
       await waitForAllLoadersToDisappear(page);
 
+      await openMatchingFieldsPanel(page);
+
       const descriptionField = page.getByTestId(
         `field-configuration-panel-description`
       );
@@ -393,6 +398,8 @@ test.describe('Search Settings', () => {
               (f: { field: string }) => f.field === 'name.ngram'
             )?.boost ?? 0;
 
+        await openMatchingFieldsPanel(page);
+
         // Expand the name.ngram field configuration panel.
         const ngramPanel = page.getByTestId(
           'field-configuration-panel-name.ngram'
@@ -480,6 +487,8 @@ test.describe('Search Settings', () => {
       await expect(page).toHaveURL(
         /settings\/preferences\/search-settings\/column$/
       );
+
+      await openMatchingFieldsPanel(page);
 
       const fieldContainers = page.getByTestId('field-container-header');
       const firstFieldContainer = fieldContainers.first();
