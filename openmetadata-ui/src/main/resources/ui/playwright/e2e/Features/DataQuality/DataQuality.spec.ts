@@ -35,6 +35,7 @@ import {
 import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
+  selectTestType,
 } from '../../../utils/dataQuality';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -193,12 +194,7 @@ test.describe(
           '[data-testid="test-case-name"] input',
           NEW_TABLE_TEST_CASE.name
         );
-        await page.click('[id="root\\/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: NEW_TABLE_TEST_CASE.label })
-          .first()
-          .click();
+        await selectTestType(page, NEW_TABLE_TEST_CASE.label);
         await page.fill(
           '#testCaseFormV1_params_columnName',
           NEW_TABLE_TEST_CASE.field
@@ -407,12 +403,7 @@ test.describe(
           '[data-testid="test-case-name"] input',
           NEW_COLUMN_TEST_CASE.name
         );
-        await page.click('[id="root\\/testType"]');
-        await page
-          .getByRole('option')
-          .filter({ hasText: NEW_COLUMN_TEST_CASE.label })
-          .first()
-          .click();
+        await selectTestType(page, NEW_COLUMN_TEST_CASE.label);
         await page.fill(
           '#testCaseFormV1_params_minLength',
           NEW_COLUMN_TEST_CASE.min
