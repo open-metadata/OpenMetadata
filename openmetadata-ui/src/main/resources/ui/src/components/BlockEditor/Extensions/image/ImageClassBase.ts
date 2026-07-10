@@ -62,7 +62,6 @@ class ImageClassBase {
     | BlockEditorAttachmentProps
     | undefined {
     return {
-      allowImageUpload: true,
       onImageUpload: async (
         file: File,
         entityType?: EntityType,
@@ -83,6 +82,10 @@ class ImageClassBase {
           ),
           AssetType.Inline
         );
+
+        if (!response.url) {
+          return Promise.reject(i18n.t('label.failed-to-upload-file'));
+        }
 
         return response.url;
       },

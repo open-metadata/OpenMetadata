@@ -210,4 +210,49 @@ describe('useAuthenticatedImage', () => {
 
     expect(mockDownloadAsset).toHaveBeenCalledTimes(1);
   });
+
+  it('ignores a stale request that resolves after src has changed to a newer attachment', async () => {
+    const srcA = attachmentSrc('attachment-id-a');
+    const srcB = attachmentSrc('attachment-id-b');
+    const blobA = 'blob:http://localhost/blob-a';
+    const blobB = 'blob:http://localhost/blob-b';
+
+    let resolveA: (blob: Blob) => void = () => undefined;
+    const deferredA = new Promise<Blob>((resolve) => {
+      resolveA = resolve;
+    });
+
+    mockDownloadAsset.mockImplementation((id: string) =>
+      id === 'attachment-id-a' ? deferredA : Promise.resolve(new Blob(['b']))
+    );
+    mockGetAttachmentId.mockImplementation((src: string) =>
+      src === srcA ? 'attachment-id-a' : 'attachment-id-b'
+    );
+    createObjectURLMock.mockImplementation((blob: Blob) =>
+      blob === undefined ? BLOB_URL : blobB
+    );
+
+    const { result, rerender } = renderHook(
+      ({ src }) => useAuthenticatedImage(src),
+      { initialProps: { src: srcA } }
+    );
+
+    rerender({ src: srcB });
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.imageSrc).toBe(blobB);
+
+    createObjectURLMock.mockReturnValueOnce(blobA);
+    await act(async () => {
+      resolveA(new Blob(['a']));
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(result.current.imageSrc).toBe(blobB);
+  });
 });

@@ -41,22 +41,27 @@ export const useAuthenticatedImage = (src: string) => {
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const isMounted = useRef(true);
   const objectUrlRef = useRef<string | null>(null);
+  const latestSrcRef = useRef(src);
 
-  const fetchImage = async () => {
-    if (!src?.includes('/api/v1/attachments/')) {
-      setImageSrc(src);
+  const fetchImage = async (requestedSrc: string) => {
+    if (!requestedSrc?.includes('/api/v1/attachments/')) {
+      if (latestSrcRef.current === requestedSrc) {
+        setImageSrc(requestedSrc);
+      }
 
       return;
     }
 
-    setIsLoading(true);
+    if (latestSrcRef.current === requestedSrc) {
+      setIsLoading(true);
+    }
 
     // Check if there's already a request in flight for this src
-    let request = pendingRequests.get(src);
+    let request = pendingRequests.get(requestedSrc);
     if (!request) {
       request = (async () => {
         try {
-          const attachmentId = getAttachmentId(src);
+          const attachmentId = getAttachmentId(requestedSrc);
           if (!attachmentId) {
             throw new Error('Invalid attachment URL');
           }
@@ -70,33 +75,37 @@ export const useAuthenticatedImage = (src: string) => {
 
           return objectUrl;
         } catch (error) {
-          return src; // Fallback to original src
+          return requestedSrc; // Fallback to original src
         } finally {
-          pendingRequests.delete(src);
+          pendingRequests.delete(requestedSrc);
         }
       })();
 
-      pendingRequests.set(src, request);
+      pendingRequests.set(requestedSrc, request);
     }
+
+    const isStale = () =>
+      !isMounted.current || latestSrcRef.current !== requestedSrc;
 
     try {
       const objectUrl = await request;
-      if (isMounted.current) {
-        if (objectUrl.startsWith('blob:')) {
-          acquireBlobUrl(objectUrl);
-        }
-        if (objectUrlRef.current) {
-          releaseBlobUrl(objectUrlRef.current);
-        }
-        objectUrlRef.current = objectUrl.startsWith('blob:') ? objectUrl : null;
-        setImageSrc(objectUrl);
+      if (isStale()) {
+        return;
       }
+      if (objectUrl.startsWith('blob:')) {
+        acquireBlobUrl(objectUrl);
+      }
+      if (objectUrlRef.current) {
+        releaseBlobUrl(objectUrlRef.current);
+      }
+      objectUrlRef.current = objectUrl.startsWith('blob:') ? objectUrl : null;
+      setImageSrc(objectUrl);
     } catch (error) {
-      if (isMounted.current) {
-        setImageSrc(src);
+      if (!isStale()) {
+        setImageSrc(requestedSrc);
       }
     } finally {
-      if (isMounted.current) {
+      if (!isStale()) {
         setIsLoading(false);
       }
     }
@@ -111,7 +120,8 @@ export const useAuthenticatedImage = (src: string) => {
   }, []);
 
   useEffect(() => {
-    fetchImage();
+    latestSrcRef.current = src;
+    fetchImage(src);
 
     return () => {
       if (objectUrlRef.current) {

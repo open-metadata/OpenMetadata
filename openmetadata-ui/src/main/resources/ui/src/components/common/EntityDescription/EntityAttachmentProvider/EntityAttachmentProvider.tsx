@@ -64,8 +64,9 @@ export const EntityAttachmentProvider = ({
   allowFileUpload = false,
 }: EntityAttachmentProps) => {
   const { t } = useTranslation();
-  const { onImageUpload = noop, allowImageUpload = false } =
+  const { onImageUpload = noop } =
     imageClassBase.getBlockEditorAttachmentProps() ?? {};
+  const allowImageUpload = allowFileUpload;
   const [errorMessage, setErrorMessage] = useState<string>();
   const isPopoverOpenRef = useRef<boolean>(false);
 
