@@ -10,10 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Autocomplete, SelectItemType } from '@openmetadata/ui-core-components';
+import { Select, SelectItemType } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
-import type { FC, ReactNode } from 'react';
-import { useMemo } from 'react';
+import type { FC } from 'react';
 
 const OMFieldSelect: FC<FieldProps> = ({
   items,
@@ -22,36 +21,31 @@ const OMFieldSelect: FC<FieldProps> = ({
   readonly,
   placeholder,
 }) => {
-  const selectItems: SelectItemType[] = useMemo(
-    () => items.map((item) => ({ id: item.key, label: item.label })),
-    [items]
-  );
-
-  const selectedLabel = selectedKey
-    ? selectItems.find((i) => i.id === selectedKey)?.label ?? selectedKey
-    : undefined;
-
-  const selectedItemsValue = useMemo(
-    () =>
-      selectedKey
-        ? [{ id: selectedKey, label: selectedLabel ?? selectedKey }]
-        : [],
-    [selectedKey, selectedLabel]
-  );
+  const selectItems: SelectItemType[] = items.map((item) => ({
+    id: item.key,
+    label: item.label,
+  }));
 
   return (
-    <Autocomplete
-      icon={null}
+    <Select.ComboBox
       isDisabled={readonly}
       items={selectItems}
-      placeholder={selectedLabel ?? placeholder ?? 'Select field'}
-      renderTag={(): ReactNode => null}
-      selectedItems={selectedItemsValue}
-      onItemInserted={(key) => setField(String(key))}>
+      placeholder={placeholder ?? 'Select field'}
+      selectedKey={selectedKey ?? undefined}
+      shortcut={false}
+      showSearchIcon={false}
+      size="sm"
+      onSelectionChange={(key) => {
+        if (key) {
+          setField(String(key));
+        }
+      }}>
       {(item) => (
-        <Autocomplete.Item id={item.id} key={item.id} label={item.label} />
+        <Select.Item id={item.id} key={item.id}>
+          {item.label}
+        </Select.Item>
       )}
-    </Autocomplete>
+    </Select.ComboBox>
   );
 };
 
