@@ -21,10 +21,13 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Copy06, Trash01 } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
@@ -46,11 +49,13 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
 
   return (
     <Dropdown.Root>
-      <Tooltip title={t('label.manage-entity', { entity: t('label.memory') })}>
-        <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1" />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="manage-button"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.memory') })}
+      />
       <Dropdown.Popover className="tw:w-36">
         <Dropdown.Menu
           onAction={(key) => {
@@ -60,9 +65,11 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <Trash01
+              <TrashIcon
                 aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
+                className="tw:shrink-0 tw:text-error-primary"
+                height={20}
+                width={20}
               />
               <Typography
                 ellipsis
@@ -256,10 +263,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
           {(memory.usageCount !== undefined ||
             memory.lastUsedAt !== undefined) && (
             <Box align="center" className="tw:mt-1" gap={1}>
-              <Clock
-                className="tw:text-utility-gray-500"
-                size={12}
-                strokeWidth={1.5}
+              <ClockIcon
+                className="tw:text-quaternary"
+                height={16}
+                width={16}
               />
               <Typography
                 className="tw:text-quaternary tw:whitespace-nowrap"
@@ -279,8 +286,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
         {/* Actions — always visible */}
         <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-          <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
-            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+          <CopyLinkButton url={memoryUrl}>
+            <CopyIcon aria-hidden="true" height={20} width={20} />
           </CopyLinkButton>
           {canActOnMemory && canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
@@ -288,7 +295,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid="edit-memory-btn"
-                  icon={<EditNewIcon height={16} width={16} />}
+                  icon={<EditIcon height={20} width={20} />}
                   size="sm"
                   onClick={() => onEditMemory(memory)}
                 />

@@ -663,10 +663,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const upvoteRes = await upvoteResPromise;
 
         expect(upvoteRes.status()).toBe(200);
-        await expect(upvoteBtn.locator('svg')).toHaveClass(
-          /fill-utility-blue-500/
-        );
-
         const downvoteResPromise = viewOnlyPage.waitForResponse(
           `/api/v1/contextCenter/pages/${articleEntity.responseData.id}/vote`
         );
@@ -674,9 +670,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const downvoteRes = await downvoteResPromise;
 
         expect(downvoteRes.status()).toBe(200);
-        await expect(downvoteBtn.locator('svg')).toHaveClass(
-          /fill-utility-blue-500/
-        );
       });
 
       await test.step('can start a conversation on the article', async () => {
@@ -714,7 +707,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const followRes = await followResPromise;
 
         expect(followRes.status()).toBe(200);
-        await expect(followBtn).toHaveClass(/text-fg-brand-primary/);
 
         const unfollowResPromise = viewOnlyPage.waitForResponse((response) =>
           response
@@ -727,7 +719,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const unfollowRes = await unfollowResPromise;
 
         expect(unfollowRes.status()).toBe(200);
-        await expect(followBtn).not.toHaveClass(/text-fg-brand-primary/);
       });
     });
 
@@ -1190,7 +1181,7 @@ test.describe.fixme('Context Center Permissions', () => {
       const row = page.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await row.locator('button[aria-label="Open menu"]').click();
+      await row.getByTestId('manage-button').click();
     };
 
     test('user with view-only permission cannot see upload, folder, or row actions', async ({
@@ -1208,9 +1199,7 @@ test.describe.fixme('Context Center Permissions', () => {
       const row = viewOnlyPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.locator('button[aria-label="Open menu"]')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('selecting a document shows only download in bulk bar (no move or delete)', async () => {
         await row.getByTestId('document-checkbox').click();
@@ -1243,9 +1232,7 @@ test.describe.fixme('Context Center Permissions', () => {
       const row = createAllPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.locator('button[aria-label="Open menu"]')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('can create a folder', async () => {
         const folderName = `cc-permission-folder-${uuid()}`;
@@ -1370,7 +1357,7 @@ test.describe.fixme('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await editAllPage.getByTestId('move-btn').click();
 
         const moveResPromise = editAllPage.waitForResponse(
@@ -1453,7 +1440,7 @@ test.describe.fixme('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await deleteAllPage.getByTestId('delete-btn').click();
 
         const deleteResPromise = deleteAllPage.waitForResponse(

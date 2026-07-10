@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "סווג אוטומטית, תעד ובדוק את איכות הנכסים שלך באמצעות בינה מלאכותית.",
     "collate-ai-widget-description": "סקירה של הנתונים שנוצרו על ידי Collate AI עבור השירות. <0>למד עוד</0>.",
     "column-bulk-operations-description": "נהל וערוך מטא-דאטה עבור עמודות מרובות בבת אחת. חפש, סנן ועדכן שמות תצוגה, תיאורים, תגיות ומונחי מילון במקום אחד.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "סנן שושלת לפי תגיות עמודות או שמות. השתמש ב-'tag:שםתגית' לסינון תגיות או פשוט הזן את שם העמודה.",
     "column-name-pattern-placeholder": "הזן תבנית regex לסינון עמודות (לדוגמה, id_*, *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: מייצג את זמן רענון הנתונים המתאים ל-<0>{{data}}</0>",

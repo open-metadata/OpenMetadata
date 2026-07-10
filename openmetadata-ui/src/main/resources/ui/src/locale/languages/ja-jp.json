@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "AI を使ってアセットの自動ティア付け、ドキュメント化、品質チェックを行います。",
     "collate-ai-widget-description": "Collate AI によって生成されたデータの概要。<0>詳細を見る。</0>",
     "column-bulk-operations-description": "複数の列のメタデータを一度に管理および編集します。データ資産全体で表示名、説明、タグ、用語集の用語を検索、フィルタリング、更新します。",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "カラムタグまたは名前でリネージをフィルタリングします。タグフィルタリングには 'tag:タグ名' を使用するか、カラム名を入力してください。",
     "column-name-pattern-placeholder": "正規表現パターンを入力して列をフィルタリングします (例: id*、*date)",
     "column-name-sla-description": "<0>{{label}}</0>: <0>{{data}}</0>に対応するデータ更新時刻を表します",

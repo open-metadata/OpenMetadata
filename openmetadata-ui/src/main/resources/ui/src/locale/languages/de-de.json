@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "Klassifizieren, dokumentieren und prüfen Sie Ihre Assets automatisch mit KI.",
     "collate-ai-widget-description": "Übersicht über die von der Collate AI für den Dienst generierten Daten. <0>Mehr erfahren.</0>",
     "column-bulk-operations-description": "Verwalten und bearbeiten Sie Metadaten für mehrere Spalten gleichzeitig. Suchen, filtern und aktualisieren Sie Anzeigenamen, Beschreibungen, Tags und Glossarbegriffe in Ihren Datenbeständen.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "Filtern Sie die Herkunft nach Spalten-Tags oder Namen. Verwenden Sie 'tag:TagName' für Tag-Filterung oder geben Sie einfach den Spaltennamen ein.",
     "column-name-pattern-placeholder": "Geben Sie ein Regex-Muster ein, um Spalten zu filtern (z. B. ID*, *Datum).",
     "column-name-sla-description": "<0>{{label}}</0>: Stellt die Datenaktualisierungszeit entsprechend <0>{{data}}</0> dar",

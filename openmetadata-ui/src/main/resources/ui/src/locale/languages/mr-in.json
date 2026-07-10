@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "AI सह तुमचे अ‍ॅसेट स्वयं-टियर करा, दस्तऐवजीकरण करा आणि गुणवत्ता तपासा.",
     "collate-ai-widget-description": "सेवेसाठी कोलेट एआय द्वारे तयार केलेल्या डेटाचे विहंगावलोकन. <0>अधिक जाणून घ्या.</0>",
     "column-bulk-operations-description": "एकाच वेळी अनेक स्तंभांचा मेटाडेटा व्यवस्थापित करा आणि संपादित करा. आपल्या डेटा असेट्समध्ये प्रदर्शन नावे, वर्णने, टॅग्ज आणि शब्दकोश संज्ञा शोधा, फिल्टर करा आणि अद्यतनित करा.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "स्तंभ टॅग किंवा नावांनुसार वंशावली फिल्टर करा. टॅग फिल्टरिंगसाठी 'tag:टॅगनाव' वापरा किंवा फक्त स्तंभाचे नाव प्रविष्ट करा.",
     "column-name-pattern-placeholder": "स्तंभ फिल्टर करण्यासाठी regex नमुना प्रविष्ट करा (उदा., id_*, *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: <0>{{data}}</0> शी संबंधित डेटा रिफ्रेश वेळ दर्शवते",
