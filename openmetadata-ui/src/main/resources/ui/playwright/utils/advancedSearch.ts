@@ -179,7 +179,7 @@ export const selectOption = async (
     'button[aria-haspopup="listbox"]'
   );
 
-  await expect(comboboxInput.or(triggerButton)).toBeVisible();
+  await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
 
   if (await comboboxInput.isVisible()) {
     if (isSearchable) {
