@@ -77,6 +77,7 @@ from metadata.ingestion.source.database.bigquery.helper import (
     clear_constraint_cache,
     clear_constraint_cache_for_schema,
     clone_connection_for_project,
+    get_bigquery_client_for_project,
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
@@ -834,12 +835,15 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def _raw_dataset_names(self, project_id: str) -> Iterable[str]:
         """Dataset IDs for ``project_id``, context-free (does not read the walk's
-        current database). Honors a single configured ``databaseSchema``."""
+        current database). Honors a single configured ``databaseSchema``. Reuses the
+        walk's client when set, else builds a lightweight project-scoped client so
+        the totals hook (which runs before ``set_inspector``) can still list."""
         configured_schema = self.service_connection.__dict__.get("databaseSchema")
         if configured_schema:
             yield configured_schema
         else:
-            for dataset in self.client.list_datasets(project_id):
+            client = self.client or get_bigquery_client_for_project(project_id, self.service_connection)
+            for dataset in client.list_datasets(project_id):
                 yield dataset.dataset_id
 
     def _kept_schema_counts(self, project_ids: List[str]) -> Optional[Dict[str, int]]:  # noqa: UP006,UP045

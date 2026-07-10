@@ -13,7 +13,7 @@
 listing fails."""
 
 from types import SimpleNamespace
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -99,3 +99,26 @@ def test_raw_dataset_names_lists_from_client(bigquery_source):
     ]
     assert list(bigquery_source._raw_dataset_names("p1")) == ["d1", "d2"]
     bigquery_source.client.list_datasets.assert_called_once_with("p1")
+
+
+def test_declare_progress_totals_builds_client_when_walk_has_not(bigquery_source):
+    """At declare time the walk has not run set_inspector yet, so self.client is
+    None; the totals path must build its own client and still seed schema totals
+    instead of silently degrading to reconcile."""
+    bigquery_source.client = None
+    bigquery_source.service_connection = SimpleNamespace()
+    bigquery_source.project_ids = ["p1"]
+    bigquery_source._is_database_filtered = lambda p: False
+    bigquery_source._is_schema_filtered = lambda p, s: False
+    fake_client = MagicMock()
+    fake_client.list_datasets.return_value = [
+        SimpleNamespace(dataset_id="d1"),
+        SimpleNamespace(dataset_id="d2"),
+    ]
+    with patch.object(bigquery_metadata, "get_bigquery_client_for_project", return_value=fake_client) as build_client:
+        bigquery_source.declare_progress_totals(TotalsDeclarer(bigquery_source.progress_tracking.registry))
+    build_client.assert_called_once_with("p1", bigquery_source.service_connection)
+    fake_client.list_datasets.assert_called_once_with("p1")
+    counters = _counters(bigquery_source)
+    assert counters["Database"] == (0, 1)
+    assert counters["DatabaseSchema"] == (0, 2)
