@@ -44,6 +44,13 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   // before the Cohere-side `truncate` directive runs, so oversized text must be capped client-side.
   private static final int COHERE_MAX_INPUT_CHARS = 2048;
 
+  // Titan text-embedding models accept at most 8192 input tokens and — unlike Cohere — expose no
+  // request-side truncate directive, so oversized text throws a ValidationException (issue #4930).
+  // Capping at 16384 chars keeps even token-dense input (~2 chars/token worst case) under the limit
+  // while staying well above the 380-word chunk bound, so normal text is never truncated.
+  // ponytail: char/token ratio is empirical — lower this knob if a denser corpus still overflows.
+  private static final int TITAN_MAX_INPUT_CHARS = 16384;
+
   private static final BedrockEmbeddingFamily DEFAULT_FAMILY = BedrockEmbeddingFamily.TITAN_V2;
 
   private static final List<FamilyMatcher> FAMILY_MATCHERS =
@@ -60,11 +67,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
    * adding one constant plus a {@link FamilyMatcher} entry.
    */
   enum BedrockEmbeddingFamily {
-    TITAN_V1(OptionalInt.of(TITAN_V1_FIXED_DIMENSION)) {
+    TITAN_V1(OptionalInt.of(TITAN_V1_FIXED_DIMENSION), TITAN_MAX_INPUT_CHARS) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
-        payload.put(FIELD_INPUT_TEXT, text);
+        payload.put(FIELD_INPUT_TEXT, capToLimit(text, maxInputChars()));
         return payload;
       }
 
@@ -73,11 +80,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         return root.get(FIELD_EMBEDDING);
       }
     },
-    TITAN_V2(OptionalInt.empty()) {
+    TITAN_V2(OptionalInt.empty(), TITAN_MAX_INPUT_CHARS) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
-        payload.put(FIELD_INPUT_TEXT, text);
+        payload.put(FIELD_INPUT_TEXT, capToLimit(text, maxInputChars()));
         payload.put(FIELD_DIMENSIONS, dimension);
         payload.put(FIELD_NORMALIZE, true);
         return payload;
@@ -88,11 +95,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         return root.get(FIELD_EMBEDDING);
       }
     },
-    COHERE(OptionalInt.of(COHERE_FIXED_DIMENSION)) {
+    COHERE(OptionalInt.of(COHERE_FIXED_DIMENSION), COHERE_MAX_INPUT_CHARS) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
-        payload.putArray(FIELD_TEXTS).add(capToCohereLimit(text));
+        payload.putArray(FIELD_TEXTS).add(capToLimit(text, maxInputChars()));
         payload.put(
             FIELD_INPUT_TYPE,
             isQuery ? COHERE_INPUT_TYPE_SEARCH_QUERY : COHERE_INPUT_TYPE_SEARCH_DOCUMENT);
@@ -107,9 +114,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
     };
 
     private final OptionalInt fixedDimension;
+    private final int maxInputChars;
 
-    BedrockEmbeddingFamily(OptionalInt fixedDimension) {
+    BedrockEmbeddingFamily(OptionalInt fixedDimension, int maxInputChars) {
       this.fixedDimension = fixedDimension;
+      this.maxInputChars = maxInputChars;
     }
 
     abstract ObjectNode buildRequest(String text, int dimension, boolean isQuery);
@@ -120,10 +129,14 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       return fixedDimension;
     }
 
-    private static String capToCohereLimit(String text) {
+    int maxInputChars() {
+      return maxInputChars;
+    }
+
+    private static String capToLimit(String text, int maxChars) {
       String capped = text;
-      if (text != null && text.length() > COHERE_MAX_INPUT_CHARS) {
-        capped = text.substring(0, COHERE_MAX_INPUT_CHARS);
+      if (text != null && text.length() > maxChars) {
+        capped = text.substring(0, maxChars);
       }
       return capped;
     }

@@ -93,6 +93,24 @@ class BedrockEmbeddingClientTest {
   }
 
   @Test
+  void titanCapsOversizedInputToStayUnderTokenLimit() throws Exception {
+    String oversized = "x".repeat(20000);
+
+    JsonNode v1 = buildPayload(BedrockEmbeddingFamily.TITAN_V1, oversized, 1536, false);
+    JsonNode v2 = buildPayload(BedrockEmbeddingFamily.TITAN_V2, oversized, 512, false);
+
+    assertEquals(16384, v1.get("inputText").asText().length());
+    assertEquals(16384, v2.get("inputText").asText().length());
+  }
+
+  @Test
+  void titanLeavesInputWithinLimitUntouched() throws Exception {
+    JsonNode payload = buildPayload(BedrockEmbeddingFamily.TITAN_V2, "short text", 512, false);
+
+    assertEquals("short text", payload.get("inputText").asText());
+  }
+
+  @Test
   void titanQueryRequestIsIdenticalToDocumentRequest() throws Exception {
     JsonNode document = buildPayload(BedrockEmbeddingFamily.TITAN_V2, "hello world", 512, false);
     JsonNode query = buildPayload(BedrockEmbeddingFamily.TITAN_V2, "hello world", 512, true);
