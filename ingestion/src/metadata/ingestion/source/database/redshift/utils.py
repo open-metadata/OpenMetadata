@@ -54,7 +54,7 @@ ischema_names.update(
     {
         "string": sqltypes.VARCHAR,
         "char": sqltypes.CHAR,
-        "tinyint": sqltypes.SMALLINT,
+        "tinyint": create_sqlalchemy_type("TINYINT"),
         "double": sqltypes.DOUBLE_PRECISION,
     }
 )

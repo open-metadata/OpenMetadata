@@ -488,7 +488,7 @@ class TestRedshiftExternalTableTypeMapping(unittest.TestCase):
             "string": "VARCHAR",
             "double": "DOUBLE",
             "char": "CHAR",
-            "tinyint": "SMALLINT",
+            "tinyint": "TINYINT",
         }
 
         for external_type, expected_om_type in expected.items():
@@ -498,7 +498,9 @@ class TestRedshiftExternalTableTypeMapping(unittest.TestCase):
                     ischema_names,
                     f"'{external_type}' is not registered in ischema_names",
                 )
-                resolved = ColumnTypeParser.get_column_type(ischema_names[external_type].__name__)
+                # Resolve an instantiated type, matching how the dialect passes
+                # column types into the parser during reflection.
+                resolved = ColumnTypeParser.get_column_type(ischema_names[external_type]())
                 self.assertEqual(
                     resolved,
                     expected_om_type,
