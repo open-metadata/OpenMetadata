@@ -1,0 +1,43 @@
+{
+  "$id": "https://open-metadata.org/schema/api/ai/aiGovernanceIntakeChecksResponse.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "IntakeChecksResponse",
+  "description": "AI governance intake checks for an asset.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.ai.IntakeChecksResponse",
+  "definitions": {
+    "intakeCheck": {
+      "javaType": "org.openmetadata.schema.api.ai.IntakeCheck",
+      "description": "Single AI governance intake check result.",
+      "type": "object",
+      "properties": {
+        "name": {
+          "type": "string",
+          "description": "Check name."
+        },
+        "passing": {
+          "type": "boolean",
+          "description": "Whether the check passes."
+        },
+        "evidenceRef": {
+          "type": "string",
+          "description": "Evidence reference associated with the check."
+        }
+      },
+      "required": ["name", "passing"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "checks": {
+      "description": "Computed intake checks.",
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/intakeCheck"
+      },
+      "default": []
+    }
+  },
+  "required": ["checks"],
+  "additionalProperties": false
+}

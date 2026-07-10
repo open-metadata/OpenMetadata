@@ -2373,6 +2373,132 @@
     ],
     "highlightFields": [],
     "aggregations": [],
+    "ranking": {
+      "enabled": true,
+      "algorithm": "nameFirstLexicalThenSignals",
+      "stages": [
+        {
+          "name": "exactName",
+          "purpose": "Exact identity match on name, displayName, or fullyQualifiedName.",
+          "fields": [
+            "displayName.keyword",
+            "name.keyword",
+            "fullyQualifiedName"
+          ],
+          "matchType": "exact",
+          "weight": 100.0
+        },
+        {
+          "name": "phraseName",
+          "purpose": "Exact phrase identity match on analyzed name fields.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "phrase",
+          "weight": 70.0
+        },
+        {
+          "name": "closeName",
+          "purpose": "Close identity match after removing weak query words such as 'in' or 'of'.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "tokenCoverage",
+          "weight": 40.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "fuzzyName",
+          "purpose": "Typo-tolerant identity fallback for short name searches.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "fuzzy",
+          "weight": 24.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "partialName",
+          "purpose": "Substring and prefix matches via name and displayName edge n-grams so partial-name queries still surface the entity.",
+          "fields": [
+            "displayName.ngram",
+            "name.ngram"
+          ],
+          "matchType": "standard",
+          "weight": 16.0
+        },
+        {
+          "name": "structuralContext",
+          "purpose": "Secondary asset structure such as columns, fields, parent names, and FQN parts.",
+          "fields": [
+            "fqnParts"
+          ],
+          "matchType": "standard",
+          "weight": 12.0
+        },
+        {
+          "name": "descriptionContext",
+          "purpose": "Broad descriptive text match used after identity and structural matches.",
+          "fields": [
+            "description"
+          ],
+          "matchType": "standard",
+          "weight": 4.0
+        }
+      ],
+      "stopWords": [],
+      "stopWordsByLanguage": {
+        "en": [
+          "a",
+          "an",
+          "and",
+          "are",
+          "as",
+          "at",
+          "by",
+          "for",
+          "from",
+          "in",
+          "into",
+          "is",
+          "of",
+          "on",
+          "or",
+          "the",
+          "to",
+          "with"
+        ],
+        "ru": [],
+        "zh": [],
+        "jp": [],
+        "ja": []
+      },
+      "disMaxTieBreaker": 0.05,
+      "signals": {
+        "purpose": "Use Tier, Usage, and Votes only to break ties between similarly relevant results.",
+        "boostMode": "sum",
+        "scoreMode": "sum",
+        "maxBoost": 2.0,
+        "fields": [
+          "tier.tagFQN",
+          "usageSummary.weeklyStats.count",
+          "usageSummary.weeklyStats.percentileRank",
+          "totalVotes"
+        ]
+      }
+    },
     "matchTypeBoostMultipliers": {
       "exactMatchMultiplier": 2.0,
       "phraseMatchMultiplier": 1.5,

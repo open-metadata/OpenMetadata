@@ -153,9 +153,10 @@ class SearchScoringIT {
     RelevancyFixtures.createTable(schema, marker + "a", marker, null);
     awaitIndexed(marker, 1);
 
-    final SearchSettings settings =
+    SearchSettings settings =
         SearchSettingsTestHelper.copyOf(SearchSettingsTestHelper.currentSettings(server));
     SearchSettingsTestHelper.clearBoosts(settings, TABLE_INDEX);
+    settings = SearchSettingsTestHelper.withRankingDisabled(settings, TABLE_INDEX);
     SearchSettingsTestHelper.addAssetFieldValueBoost(
         settings, TABLE_INDEX, USAGE_COUNT_FIELD, 7.0, null, 5.0);
 
@@ -176,8 +177,9 @@ class SearchScoringIT {
 
   private static SearchSettings twoBoostSettings(
       final SearchSettings base, final AssetTypeConfiguration.ScoreMode scoreMode) {
-    final SearchSettings settings = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings settings = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.clearBoosts(settings, TABLE_INDEX);
+    settings = SearchSettingsTestHelper.withRankingDisabled(settings, TABLE_INDEX);
     SearchSettingsTestHelper.addAssetTermBoost(
         settings, TABLE_INDEX, TIER_FIELD, TIER_1, TERM_BOOST);
     SearchSettingsTestHelper.addAssetFieldValueBoost(
@@ -190,8 +192,9 @@ class SearchScoringIT {
 
   private static SearchSettings tierOnly(
       final SearchSettings base, final AssetTypeConfiguration.BoostMode boostMode) {
-    final SearchSettings settings = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings settings = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.clearBoosts(settings, TABLE_INDEX);
+    settings = SearchSettingsTestHelper.withRankingDisabled(settings, TABLE_INDEX);
     SearchSettingsTestHelper.addAssetTermBoost(
         settings, TABLE_INDEX, TIER_FIELD, TIER_1, TERM_BOOST);
     SearchSettingsTestHelper.setScoreMode(
@@ -206,8 +209,9 @@ class SearchScoringIT {
       final FieldValueBoost.Modifier modifier,
       final String highId,
       final String lowId) {
-    final SearchSettings settings = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings settings = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.clearBoosts(settings, TABLE_INDEX);
+    settings = SearchSettingsTestHelper.withRankingDisabled(settings, TABLE_INDEX);
     SearchSettingsTestHelper.addAssetFieldValueBoost(
         settings, TABLE_INDEX, USAGE_COUNT_FIELD, 1.0, modifier, 0.0);
     SearchSettingsTestHelper.setScoreMode(
