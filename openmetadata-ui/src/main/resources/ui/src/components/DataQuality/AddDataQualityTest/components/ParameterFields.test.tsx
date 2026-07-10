@@ -35,15 +35,27 @@ jest.mock('@untitledui/icons', () => ({
 const renderWithForm = (
   definition: TestDefinition,
   table?: Table,
-  onSubmit?: (values: FormValues) => void
+  onSubmit?: (values: FormValues) => void,
+  testDefinitionDoc?: string
 ) => {
   const Wrapper = () => {
     const form = useForm<FormValues>();
     const handleSubmit = onSubmit ?? jest.fn();
 
     return (
-      <HookForm form={form} onSubmit={form.handleSubmit(handleSubmit)}>
-        <ParameterFields definition={definition} form={form} table={table} />
+      <HookForm
+        form={form}
+        renderFieldDoc={(markdown) => (
+          <div data-testid="field-doc-content">{markdown}</div>
+        )}
+        showFieldDocs={Boolean(testDefinitionDoc)}
+        onSubmit={form.handleSubmit(handleSubmit)}>
+        <ParameterFields
+          definition={definition}
+          form={form}
+          table={table}
+          testDefinitionDoc={testDefinitionDoc}
+        />
         <button type="submit">submit</button>
       </HookForm>
     );
@@ -334,5 +346,34 @@ describe('ParameterFields', () => {
 
     expect(screen.getByText('Forbidden Values')).toBeInTheDocument();
     expect(screen.getAllByRole('textbox')).toHaveLength(1);
+  });
+
+  it('surfaces the test definition doc in the field doc popover on focus', async () => {
+    const definition = {
+      name: 'tableColumnCountToBeBetween',
+      parameterDefinition: [
+        {
+          name: 'min',
+          displayName: 'Min',
+          dataType: TestDataType.String,
+          description: 'The per-parameter description (should be overridden).',
+        },
+      ],
+    } as TestDefinition;
+
+    renderWithForm(
+      definition,
+      undefined,
+      undefined,
+      'Selected test definition doc'
+    );
+
+    fireEvent.focus(screen.getByTestId('parameter-min'));
+
+    // The parameter popover shows the selected test definition's doc (matching
+    // the classic drawer), not the individual parameter description.
+    expect(await screen.findByTestId('field-doc-content')).toHaveTextContent(
+      'Selected test definition doc'
+    );
   });
 });
