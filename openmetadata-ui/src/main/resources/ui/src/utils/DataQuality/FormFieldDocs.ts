@@ -20,7 +20,8 @@ import { SupportedLocales } from '../i18next/LocalUtil.interface';
  * per-field "Form Hint" popover can render the same source instead of a
  * duplicated set of translation strings.
  */
-const SECTION_REGEX = /\$\$section[\s\S]*?\$\(id="([^"]+)"\)\s*([\s\S]*?)\n\$\$/g;
+const SECTION_REGEX =
+  /\$\$section[\s\S]*?\$\(id="([^"]+)"\)\s*([\s\S]*?)\n\$\$/g;
 
 export const parseFormFieldDocs = (
   markdown: string
