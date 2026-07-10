@@ -486,9 +486,7 @@ describe('LineageTable', () => {
 
     render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    const table = document.querySelector('.ant-spin-container');
-
-    expect(table).toBeInTheDocument();
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
   });
 
   it('should handle error state when API calls fail', async () => {
@@ -540,9 +538,7 @@ describe('LineageTable', () => {
   it('should render table with pagination props', () => {
     render(<LineageTable entity={mockEntity} />, { wrapper: MemoryRouter });
 
-    const table = document.querySelector('.ant-table');
-
-    expect(table).toBeInTheDocument();
+    expect(document.querySelector('table')).toBeInTheDocument();
   });
 
   describe('LineageTable Hooks Integration', () => {

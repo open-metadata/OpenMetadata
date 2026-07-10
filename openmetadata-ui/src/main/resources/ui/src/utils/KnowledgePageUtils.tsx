@@ -70,7 +70,7 @@ export const addToKnowledgeCenterRecentViewed = (
         .sort(arraySorterByKey<RecentViewedKnowledgePage>('timestamp', true));
       arrData.unshift(entityData);
 
-      if (arrData.length > 5) {
+      if (arrData.length > 10) {
         arrData.pop();
       }
       recentlyViewed = arrData;

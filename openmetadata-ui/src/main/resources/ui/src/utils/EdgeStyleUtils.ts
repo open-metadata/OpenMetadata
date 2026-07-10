@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import type { Edge } from 'reactflow';
 
 export interface EdgeStyle {
@@ -19,7 +18,14 @@ export interface EdgeStyle {
   strokeWidth: number;
 }
 
+export interface LineageEdgeColors {
+  primary: string;
+  columnHighlight: string;
+  dqHighlight: string;
+}
+
 const edgeStyleCache = new Map<string, EdgeStyle>();
+let cachedColorSignature = '';
 
 function calculateEdgeStyle(
   edge: Edge,
@@ -27,32 +33,28 @@ function calculateEdgeStyle(
   hasTracedContext: boolean,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
+  colors: LineageEdgeColors,
   isColumnLineage: boolean,
   isColumnHighlighted: boolean,
   isEdgeHovered?: boolean
 ): EdgeStyle {
-  let stroke = isEdgeHovered
-    ? theme.palette.primary.main
-    : 'rgba(177, 177, 183)';
+  let stroke = isEdgeHovered ? colors.primary : 'rgba(177, 177, 183)';
   let opacity = 1;
   const strokeWidth = 2;
 
   if (isNodeTraced) {
-    stroke = theme.palette.primary.main;
+    stroke = colors.primary;
   } else if (hasTracedContext) {
     opacity = 0.3;
   }
 
   if (isColumnLineage && isColumnHighlighted) {
-    stroke = selectedColumn
-      ? theme.palette.allShades.indigo[600]
-      : theme.palette.primary.main;
+    stroke = selectedColumn ? colors.columnHighlight : colors.primary;
     opacity = 1;
   }
 
   if (dqHighlightedEdges.has(edge.id)) {
-    stroke = theme.palette.allShades.error[600];
+    stroke = colors.dqHighlight;
     opacity = 1;
   }
 
@@ -81,12 +83,21 @@ export function computeEdgeStyle(
   tracedColumns: Set<string>,
   dqHighlightedEdges: Set<string>,
   selectedColumn: string | undefined,
-  theme: Theme,
+  colors: LineageEdgeColors,
   isColumnLineage: boolean,
   sourceHandle?: string | null,
   targetHandle?: string | null,
   isEdgeHovered?: boolean
 ): EdgeStyle {
+  // Cache keys don't encode colors, so drop cached styles when the resolved
+  // colors change (e.g. the user updates the brand/custom theme) to avoid
+  // repainting stale strokes.
+  const colorSignature = `${colors.primary}|${colors.columnHighlight}|${colors.dqHighlight}`;
+  if (colorSignature !== cachedColorSignature) {
+    edgeStyleCache.clear();
+    cachedColorSignature = colorSignature;
+  }
+
   const fromEntityId = edge.data?.edge?.fromEntity?.id;
   const toEntityId = edge.data?.edge?.toEntity?.id;
 
@@ -128,7 +139,7 @@ export function computeEdgeStyle(
     hasTracedContext,
     dqHighlightedEdges,
     selectedColumn,
-    theme,
+    colors,
     isColumnLineage,
     isColumnHighlighted,
     isEdgeHovered
