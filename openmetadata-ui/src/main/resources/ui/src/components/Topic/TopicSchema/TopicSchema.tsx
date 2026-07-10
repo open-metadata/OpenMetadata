@@ -59,7 +59,9 @@ import {
 } from '../../../utils/TablePureUtils';
 import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import { getTableExpandableConfig } from '../../../utils/TableUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../../AppRouter/withSuspenseFallback';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -76,7 +78,8 @@ import {
 } from './TopicSchema.interface';
 
 const SchemaEditor = withSuspenseFallback(
-  lazy(() => import('../../Database/SchemaEditor/SchemaEditor'))
+  lazy(() => import('../../Database/SchemaEditor/SchemaEditor')),
+  TAB_CONTENT_FALLBACK
 );
 
 const ModalWithMarkdownEditor = withSuspenseFallback(

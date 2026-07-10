@@ -118,6 +118,7 @@ const ExplorePageV1: FC<unknown> = () => {
   const [searchHitCounts, setSearchHitCounts] = useState<SearchHitCounts>();
 
   const [isLoading, setIsLoading] = useState(true);
+  const [showRankingDetails, setShowRankingDetails] = useState(false);
 
   const { queryFilter } = useAdvanceSearch();
 
@@ -352,6 +353,7 @@ const ExplorePageV1: FC<unknown> = () => {
       page: currentPage,
       size: currentPageSize,
       searchIndex,
+      showRankingDetails,
     });
   }, [
     parsedSearch.quickFilter,
@@ -364,6 +366,7 @@ const ExplorePageV1: FC<unknown> = () => {
     currentPage,
     currentPageSize,
     searchIndex,
+    showRankingDetails,
   ]);
 
   // Latest-key ref drives the stale-response guard below. The cache-hit path fires a
@@ -511,6 +514,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        showRankingDetails,
       }).then(commitCacheIfFresh);
 
       return;
@@ -541,6 +545,7 @@ const ExplorePageV1: FC<unknown> = () => {
         setUpdatedAggregations: captureSetUpdatedAggregations,
         setShowIndexNotFoundAlert: captureSetShowIndexNotFoundAlert,
         onNlqAppliedFilters: handleNlqAppliedFilters,
+        showRankingDetails,
       });
       commitCacheIfFresh();
     } finally {
@@ -578,6 +583,7 @@ const ExplorePageV1: FC<unknown> = () => {
       searchIndex={searchIndex}
       searchResults={isTourOpen ? tourMockSearchResults : searchResults}
       showDeleted={showDeleted}
+      showRankingDetails={showRankingDetails}
       sortOrder={sortOrder}
       sortValue={sortValue}
       tabItems={tabItems}
@@ -586,6 +592,7 @@ const ExplorePageV1: FC<unknown> = () => {
       onChangePageSize={handlePageSizeChange}
       onChangeSearchIndex={handleSearchIndexChange}
       onChangeShowDeleted={handleShowDeletedChange}
+      onChangeShowRankingDetails={setShowRankingDetails}
       onChangeSortOder={(sortOrderVal) => {
         handleSortOrderChange(sortOrderVal);
       }}

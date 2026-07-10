@@ -47,6 +47,7 @@ class SearchRelevancyPreviewIT {
   private static final String NAME_FIELD = "name";
   private static final String DESCRIPTION_FIELD = "description";
   private static final String USAGE_COUNT_FIELD = "usageSummary.weeklyStats.count";
+  private static final double USAGE_SIGNAL_FACTOR = 0.001;
   private static final Duration INDEXED_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
   private static final Duration RANK_POLL = Duration.ofSeconds(3);
 
@@ -91,7 +92,8 @@ class SearchRelevancyPreviewIT {
     awaitIndexed(marker, 2);
 
     final SearchSettings boosted = SearchSettingsTestHelper.copyOf(currentSettings());
-    SearchSettingsTestHelper.addGlobalFieldValueBoost(boosted, USAGE_COUNT_FIELD, 50.0);
+    SearchSettingsTestHelper.addGlobalFieldValueBoost(
+        boosted, USAGE_COUNT_FIELD, USAGE_SIGNAL_FACTOR);
 
     // Usage rolls into usageSummary asynchronously, so poll until the numeric boost takes effect.
     Awaitility.await("usage field-value boost ranks the heavily-used table first")
@@ -118,15 +120,17 @@ class SearchRelevancyPreviewIT {
 
     final SearchSettings base = currentSettings();
 
-    final SearchSettings nameOnly = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings nameOnly = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(nameOnly, TABLE_INDEX, NAME_FIELD, 5.0);
+    nameOnly = SearchSettingsTestHelper.withRankingDisabled(nameOnly, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, query, TABLE_INDEX, nameOnly, 10))
         .as("searching only 'name' must return only the table whose name carries the token")
         .containsExactly(tokenInName.getId().toString());
 
-    final SearchSettings descriptionOnly = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings descriptionOnly = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(
         descriptionOnly, TABLE_INDEX, DESCRIPTION_FIELD, 5.0);
+    descriptionOnly = SearchSettingsTestHelper.withRankingDisabled(descriptionOnly, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, query, TABLE_INDEX, descriptionOnly, 10))
         .as("searching only 'description' must return only the table whose description carries it")
         .containsExactly(tokenInDescription.getId().toString());
@@ -187,16 +191,18 @@ class SearchRelevancyPreviewIT {
 
     final SearchSettings base = currentSettings();
 
-    final SearchSettings exact = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings exact = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(
         exact, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.EXACT);
+    exact = SearchSettingsTestHelper.withRankingDisabled(exact, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, exact, 10))
         .as("matchType=exact must match only the whole-keyword name, not the prefixed sibling")
         .containsExactly(exactTable.getId().toString());
 
-    final SearchSettings standard = SearchSettingsTestHelper.copyOf(base);
+    SearchSettings standard = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(
         standard, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.STANDARD);
+    standard = SearchSettingsTestHelper.withRankingDisabled(standard, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, standard, 10))
         .as("matchType=standard must match both the exact and the prefixed name")
         .hasSize(2);

@@ -13,6 +13,8 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.ai.AIApplication;
@@ -37,6 +39,48 @@ class AIAssetStatusSyncTest {
     assertEquals(
         GovernanceMetadata.RegistrationStatus.PENDING_APPROVAL,
         inReview.getGovernanceMetadata().getRegistrationStatus());
+  }
+
+  @Test
+  void forwardSync_stampsApproverFromUpdatedByOnApproval() {
+    AIApplication approved =
+        new AIApplication().withEntityStatus(EntityStatus.APPROVED).withUpdatedBy("risk-council");
+    AIAssetStatusSync.sync(approved);
+    assertEquals("risk-council", approved.getGovernanceMetadata().getApprovedBy());
+    assertNotNull(approved.getGovernanceMetadata().getApprovedAt());
+  }
+
+  @Test
+  void forwardSync_preservesExistingApprover() {
+    AIApplication approved =
+        new AIApplication()
+            .withEntityStatus(EntityStatus.APPROVED)
+            .withUpdatedBy("governance-bot")
+            .withGovernanceMetadata(
+                new GovernanceMetadata().withApprovedBy("alice").withApprovedAt(123L));
+    AIAssetStatusSync.sync(approved);
+    assertEquals("alice", approved.getGovernanceMetadata().getApprovedBy());
+    assertEquals(123L, approved.getGovernanceMetadata().getApprovedAt());
+  }
+
+  @Test
+  void sync_leavesDraftAndDeprecatedUntouched() {
+    AIApplication draft = new AIApplication().withEntityStatus(EntityStatus.DRAFT);
+    AIAssetStatusSync.sync(draft);
+    assertNull(draft.getGovernanceMetadata());
+    assertEquals(EntityStatus.DRAFT, draft.getEntityStatus());
+
+    AIApplication deprecated =
+        new AIApplication()
+            .withEntityStatus(EntityStatus.DEPRECATED)
+            .withGovernanceMetadata(
+                new GovernanceMetadata()
+                    .withRegistrationStatus(GovernanceMetadata.RegistrationStatus.APPROVED));
+    AIAssetStatusSync.sync(deprecated);
+    assertEquals(EntityStatus.DEPRECATED, deprecated.getEntityStatus());
+    assertEquals(
+        GovernanceMetadata.RegistrationStatus.APPROVED,
+        deprecated.getGovernanceMetadata().getRegistrationStatus());
   }
 
   @Test

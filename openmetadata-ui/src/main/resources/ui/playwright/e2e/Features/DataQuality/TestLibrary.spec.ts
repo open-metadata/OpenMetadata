@@ -18,6 +18,7 @@ import {
   toastNotification,
   uuid,
 } from '../../../utils/common';
+import { fillDeleteConfirmationIfPresent } from '../../../utils/entity';
 import { findSystemTestDefinition } from '../../../utils/testCases';
 
 const TEST_DEFINITION_NAME = `AaroCustomTestDefinition${uuid()}`;
@@ -278,8 +279,6 @@ test.describe(
           page.getByText(`Delete ${UPDATE_TEST_DEFINITION_DISPLAY_NAME}`)
         ).toBeVisible();
 
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
         // Wait for API call
         const deleteTestDefinitionResponse = page.waitForResponse(
           (response) =>
@@ -288,6 +287,7 @@ test.describe(
         );
 
         // Click confirm delete
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteTestDefinitionResponse;
@@ -763,14 +763,13 @@ test.describe(
           page.getByText(`Delete ${createdTestDisplayName}`)
         ).toBeVisible();
 
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
         const deleteResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
             response.request().method() === 'DELETE'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteResponse;
@@ -1107,14 +1106,13 @@ test.describe(
 
         await expect(page.locator('.ant-modal')).toBeVisible();
 
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
-
         const deleteResponse = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testDefinitions') &&
             response.request().method() === 'DELETE'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const response = await deleteResponse;
@@ -1276,7 +1274,6 @@ test.describe(
           .click();
 
         await expect(page.locator('.ant-modal')).toBeVisible();
-        await page.getByTestId('confirmation-text-input').fill('DELETE');
 
         // Set up both DELETE and the subsequent GET response waits BEFORE clicking
         const deleteResponse = page.waitForResponse(
@@ -1291,6 +1288,7 @@ test.describe(
             response.request().method() === 'GET'
         );
 
+        await fillDeleteConfirmationIfPresent(page);
         await page.getByTestId('confirm-button').click();
 
         const deleteResult = await deleteResponse;

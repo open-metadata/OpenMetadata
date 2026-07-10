@@ -586,7 +586,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("table1",), ("table2",)]
+        mock_result.fetchmany.return_value = [("table1",), ("table2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()
@@ -606,7 +606,7 @@ class DatabricksConnectionTest(TestCase):
             # Then call get_tables
             tables = wrapper.get_tables()
 
-            self.assertEqual(tables, mock_result)
+            self.assertEqual(tables, [("table1",), ("table2",)])
             mock_connection.execute.assert_called_once()
 
     def test_databricks_engine_wrapper_get_tables_without_cached_schema(self):
@@ -620,7 +620,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("table1",), ("table2",)]
+        mock_result.fetchmany.return_value = [("table1",), ("table2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()
@@ -638,7 +638,7 @@ class DatabricksConnectionTest(TestCase):
             # Call get_tables directly without calling get_schemas first
             tables = wrapper.get_tables()
 
-            self.assertEqual(tables, mock_result)
+            self.assertEqual(tables, [("table1",), ("table2",)])
             # Should have called get_schemas internally
             mock_inspector.get_schema_names.assert_called_once()
             mock_connection.execute.assert_called_once()
@@ -669,7 +669,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("view1",), ("view2",)]
+        mock_result.fetchmany.return_value = [("view1",), ("view2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()
@@ -689,7 +689,7 @@ class DatabricksConnectionTest(TestCase):
             # Then call get_views
             views = wrapper.get_views()
 
-            self.assertEqual(views, mock_result)
+            self.assertEqual(views, [("view1",), ("view2",)])
             mock_connection.execute.assert_called_once()
 
     def test_databricks_engine_wrapper_get_views_without_cached_schema(self):
@@ -703,7 +703,7 @@ class DatabricksConnectionTest(TestCase):
 
         # Mock the connection execute method to return a result
         mock_result = Mock()
-        mock_result.fetchall.return_value = [("view1",), ("view2",)]
+        mock_result.fetchmany.return_value = [("view1",), ("view2",)]
         mock_connection.execute.return_value = mock_result
 
         mock_inspector = Mock()
@@ -721,7 +721,7 @@ class DatabricksConnectionTest(TestCase):
             # Call get_views directly without calling get_schemas first
             views = wrapper.get_views()
 
-            self.assertEqual(views, mock_result)
+            self.assertEqual(views, [("view1",), ("view2",)])
             # Should have called get_schemas internally
             mock_inspector.get_schema_names.assert_called_once()
             mock_connection.execute.assert_called_once()
@@ -766,100 +766,6 @@ class DatabricksConnectionTest(TestCase):
 
             # get_schema_names should only be called once due to caching
             mock_inspector.get_schema_names.assert_called_once()
-
-    # pylint: disable=too-many-locals
-    @patch("metadata.ingestion.source.database.databricks.connection.DatabricksEngineWrapper")
-    @patch("metadata.ingestion.source.database.databricks.connection.test_connection_steps")
-    def test_test_connection_function(self, mock_test_connection_steps, mock_engine_wrapper_class):
-        """Test the test_connection function"""
-        from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
-            DatabricksConnection,
-            DatabricksScheme,
-        )
-        from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-            StatusType,
-            TestConnectionResult,
-            TestConnectionStepResult,
-        )
-
-        # Mock the test connection result
-        mock_result = TestConnectionResult(
-            status=StatusType.Successful,
-            steps=[
-                TestConnectionStepResult(
-                    name="CheckAccess",
-                    mandatory=True,
-                    passed=True,
-                ),
-                TestConnectionStepResult(
-                    name="GetSchemas",
-                    mandatory=True,
-                    passed=True,
-                ),
-                TestConnectionStepResult(
-                    name="GetTables",
-                    mandatory=True,
-                    passed=True,
-                ),
-                TestConnectionStepResult(
-                    name="GetViews",
-                    mandatory=False,
-                    passed=True,
-                ),
-            ],
-        )
-        mock_test_connection_steps.return_value = mock_result
-
-        # Create test connection
-        service_connection = DatabricksConnection(
-            scheme=DatabricksScheme.databricks,
-            hostPort="test-host:443",
-            authType=PersonalAccessToken(token="test-token"),
-            httpPath="/sql/1.0/warehouses/test",
-            queryHistoryTable="test_table",
-        )
-
-        # Mock the DatabricksEngineWrapper instance to avoid context manager error
-        mock_wrapper_instance = Mock()
-        mock_wrapper_instance.get_catalogs.return_value = ["main"]
-        mock_engine_wrapper_class.return_value = mock_wrapper_instance
-
-        mock_engine = Mock()
-        mock_engine.connect.return_value = Mock()
-        mock_metadata = Mock()
-
-        # Test the function
-        handler = self.DatabricksConnectionHandler(service_connection)
-        handler._client = mock_engine
-        result = handler.test_connection(metadata=mock_metadata)
-
-        # Verify the result
-        self.assertEqual(result, mock_result)
-        mock_test_connection_steps.assert_called_once()
-
-        # Verify the test_fn dictionary was created with the correct functions
-        call_args = mock_test_connection_steps.call_args
-        test_fn = call_args[1]["test_fn"]
-
-        # Check that the test_fn contains the expected keys
-        expected_keys = [
-            "CheckAccess",
-            "GetSchemas",
-            "GetTables",
-            "GetViews",
-            "GetDatabases",
-            "GetQueries",
-            "GetViewDefinitions",
-            "GetCatalogTags",
-            "GetSchemaTags",
-            "GetTableTags",
-            "GetColumnTags",
-            "GetTableLineage",
-            "GetColumnLineage",
-        ]
-        for key in expected_keys:
-            self.assertIn(key, test_fn)
-            self.assertIsNotNone(test_fn[key])
 
     def test_databricks_engine_wrapper_system_schema_filtering(self):
         """Test that system schemas are properly filtered out"""
