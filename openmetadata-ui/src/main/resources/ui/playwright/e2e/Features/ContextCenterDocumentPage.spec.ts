@@ -534,7 +534,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
-    await row.locator('button[aria-label="Open menu"]').click();
+    await row.getByTestId('manage-button').click();
     await expect(page.getByTestId('delete-btn')).toBeVisible();
     await page.getByTestId('delete-btn').click();
 
@@ -631,7 +631,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
-    await row.locator('button[aria-label="Open menu"]').click();
+    await row.getByTestId('manage-button').click();
     await expect(page.getByTestId('move-btn')).toBeVisible();
     await page.getByTestId('move-btn').click();
 
@@ -683,7 +683,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
 
-    await row.locator('button[aria-label="Open menu"]').click();
+    await row.getByTestId('manage-button').click();
     await expect(page.getByTestId('move-btn')).toBeVisible();
     await page.getByTestId('move-btn').click();
 
@@ -702,7 +702,7 @@ test.describe('Context Center - Documents Page', () => {
       getDocumentRowByName(page, fileName).getByTestId('document-folder-name')
     ).toHaveText(folderName);
 
-    await row.locator('button[aria-label="Open menu"]').click();
+    await row.getByTestId('manage-button').click();
     await expect(page.getByTestId('move-btn')).toBeVisible();
     await page.getByTestId('move-btn').click();
 
@@ -999,7 +999,7 @@ test.describe('Context Center - Documents Page', () => {
     const row = getDocumentRowByName(page, fileName);
     await expect(row).toBeVisible();
     await row.scrollIntoViewIfNeeded();
-    await row.locator('button[aria-label="Open menu"]').click();
+    await row.getByTestId('manage-button').click();
     await expect(page.getByTestId('move-btn')).toBeVisible();
     await page.getByTestId('move-btn').click();
 
@@ -1104,7 +1104,7 @@ test.describe('Context Center - Documents Page', () => {
 
     const inFolderRow = getDocumentRowByName(page, docInFolderName);
     await inFolderRow.scrollIntoViewIfNeeded();
-    await inFolderRow.locator('button[aria-label="Open menu"]').click();
+    await inFolderRow.getByTestId('manage-button').click();
     await expect(page.getByTestId('move-btn')).toBeVisible();
     const moveButton = page.getByTestId('move-btn');
 
@@ -1219,7 +1219,7 @@ test.describe('Context Center - Documents Page', () => {
       folderBName
     );
 
-    await uploadedRow.locator('button[aria-label="Open menu"]').click();
+    await uploadedRow.getByTestId('manage-button').click();
     await expect(page.getByTestId('delete-btn')).toBeVisible();
     await page.getByTestId('delete-btn').click();
 

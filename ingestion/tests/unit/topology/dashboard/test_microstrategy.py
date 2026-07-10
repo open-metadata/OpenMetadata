@@ -111,11 +111,11 @@ class MicroStrategyUnitTest(TestCase):
     """
 
     @patch("metadata.ingestion.source.dashboard.microstrategy.metadata.MicrostrategySource.test_connection")
-    @patch("metadata.ingestion.source.dashboard.microstrategy.connection.get_connection")
-    def __init__(self, methodName, get_connection, test_connection) -> None:  # noqa: N803
+    @patch("metadata.ingestion.source.dashboard.dashboard_service.create_connection")
+    def __init__(self, methodName, create_connection, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
-        get_connection.return_value = False
+        create_connection.return_value.client = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_micro_config)
         self.microstrategy = MicrostrategySource.create(
             mock_micro_config["source"],
