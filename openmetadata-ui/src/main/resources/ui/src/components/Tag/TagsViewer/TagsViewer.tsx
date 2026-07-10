@@ -73,6 +73,7 @@ const TagsViewer: FunctionComponent<TagsViewerProps> = ({
                 to={redirectLink}>
                 <TagChip
                   data-testid="tags"
+                  icon={tag.style?.iconURL}
                   label={tagName}
                   labelDataTestId={`tag-${tag.tagFQN}`}
                   size="small"

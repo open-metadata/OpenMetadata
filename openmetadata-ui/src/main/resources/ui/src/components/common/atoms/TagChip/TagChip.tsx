@@ -11,11 +11,12 @@
  *  limitations under the License.
  */
 
-import { ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import { Box, ButtonUtility, Typography } from '@openmetadata/ui-core-components';
 import { Tag01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, KeyboardEvent, MouseEvent, ReactElement } from 'react';
+import { FC, KeyboardEvent, MouseEvent, ReactElement, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import { renderIcon } from '../../../../utils/IconUtils';
 
 export interface TagChipProps {
   label: string;
@@ -81,10 +82,12 @@ const TagChip: FC<TagChipProps> = ({
   ...otherProps
 }) => {
   const { t } = useTranslation();
-  const defaultIcon = showIcon ? (
-    <Tag01 size={sizeStyles[size].icon} />
-  ) : undefined;
-  const chipIcon = icon ?? defaultIcon;
+
+  const chipIcon = useMemo(() => icon ? renderIcon(icon, {
+    size: 12,
+    style: { marginRight: 4, flexShrink: 0 },
+  }) :  <Tag01 size={sizeStyles[size].icon} />
+    , [icon,]);
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (
@@ -98,10 +101,12 @@ const TagChip: FC<TagChipProps> = ({
   };
 
   return (
-    <div
+    <Box
+      inline
+      align='center'
       aria-disabled={disabled}
       className={classNames(
-        'tw:inline-flex tw:min-w-0 tw:items-center tw:whitespace-nowrap tw:transition-all tw:duration-150',
+        'tw:min-w-0 tw:whitespace-nowrap tw:transition-all tw:duration-150',
         sizeStyles[size].root,
         variantStyles[variant],
         {
@@ -122,10 +127,10 @@ const TagChip: FC<TagChipProps> = ({
           style={{ backgroundColor: tagColor }}
         />
       )}
-      {chipIcon && (
-        <span className="tw:mr-1 tw:inline-flex tw:shrink-0 tw:items-center">
+      {showIcon && chipIcon && (
+        <Box inline align='center' className="tw:mr-1 tw:shrink-0">
           {chipIcon}
-        </span>
+        </Box>
       )}
       <Typography
         className="tw:text-secondary"
@@ -151,7 +156,7 @@ const TagChip: FC<TagChipProps> = ({
           }}
         />
       )}
-    </div>
+    </Box>
   );
 };
 
