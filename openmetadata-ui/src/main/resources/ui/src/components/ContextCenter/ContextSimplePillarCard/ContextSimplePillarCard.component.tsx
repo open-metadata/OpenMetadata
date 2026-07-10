@@ -60,7 +60,7 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
             <Skeleton height="14px" variant="rounded" width="60%" />
             <Skeleton height="14px" variant="rounded" width="70%" />
           </Box>
-        ) : !isEmpty ? (
+        ) : isEmpty ? (
           <div className="tw:px-4">
             <Typography
               as="p"

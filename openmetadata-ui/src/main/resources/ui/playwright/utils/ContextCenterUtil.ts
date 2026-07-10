@@ -377,11 +377,16 @@ export async function waitForDocumentInArchive(
       `/api/v1/contextCenter/drive/files/${documentId}?include=all`
     );
 
-    if (response.ok()) {
-      const file = await response.json();
-      if (file.deleted === true) {
-        return;
-      }
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling for document ${documentId} in archive: ${response.status()} ${body}`
+      );
+    }
+
+    const file = await response.json();
+    if (file.deleted === true) {
+      return;
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
@@ -407,6 +412,13 @@ export async function waitForDocumentPermanentlyDeleted(
 
     if (response.status() === 404) {
       return;
+    }
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling for permanent deletion of document ${documentId}: ${response.status()} ${body}`
+      );
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
