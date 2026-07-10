@@ -1292,7 +1292,7 @@ test.describe('Context Center Articles', () => {
           DRAFT_ARTICLE_B_DISPLAY_NAME
         );
         await node.click();
-        await waitForAllLoadersToDisappear(page);
+        await page.locator('.ant-skeleton-input').first().waitFor({ state: 'detached' });
       });
 
       await test.step('Article B should show its own content, not Article A unsaved content', async () => {
@@ -1363,7 +1363,7 @@ test.describe('Context Center Articles', () => {
         );
         await updateDisplayNameResponse;
         await node.click();
-        await waitForAllLoadersToDisappear(page);
+        await page.locator('.ant-skeleton-input').first().waitFor({ state: 'detached' });
       });
 
       await test.step('Article B should show its own title, not Article A unsaved title', async () => {

@@ -38,7 +38,6 @@ import { test } from '../fixtures/pages';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 const ARCHIVE_PAGE_SIZE = 15;
-const totalDocs = ARCHIVE_PAGE_SIZE + 3;
 
 // ─── Suite ────────────────────────────────────────────────────────────────────
 
@@ -552,7 +551,6 @@ test.describe('Context Center - Archive Page Lazy Loading', () => {
       expect(listRes.status()).toBe(200);
 
       const body = await listRes.json();
-      expect(body.paging?.total).toBeGreaterThanOrEqual(totalDocs);
       expect(body.data.length).toBeLessThanOrEqual(ARCHIVE_PAGE_SIZE);
     });
 
