@@ -22,6 +22,7 @@ from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
     ProjectItem,
+    RequestOptions,
     Server,
     TableauAuth,
     ViewItem,
@@ -199,6 +200,13 @@ class TableauClient:
         except Exception as e:
             logger.debug(f"Failed to get project parents by id: {str(e)}")  # noqa: RUF010
         return None
+
+    def get_workbook_count(self) -> int:
+        """Total workbooks available server-side via the pagination summary — a
+        single page-size-1 request, no full workbook materialization. This is the
+        pre-filter denominator for Dashboard progress."""
+        _, pagination_item = self.tableau_server.workbooks.get(RequestOptions(pagesize=1))
+        return pagination_item.total_available
 
     def get_workbooks(self, include_owners: bool = True) -> Iterable[TableauDashboard]:
         """

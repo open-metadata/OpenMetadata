@@ -226,3 +226,16 @@ class TestTableauClientOwner(TestCase):
 
         with self.assertRaises(TableauOwnersNotFound):
             self.client.test_get_owners(include_owners=False)
+
+
+def test_get_workbook_count_reads_total_available():
+    """Test that get_workbook_count reads total_available from the pagination summary"""
+    client = TableauClient.__new__(TableauClient)
+    pagination = SimpleNamespace(total_available=42)
+    client.tableau_server = SimpleNamespace(
+        workbooks=SimpleNamespace(get=MagicMock(return_value=([], pagination)))
+    )
+
+    assert client.get_workbook_count() == 42
+    called_opts = client.tableau_server.workbooks.get.call_args.args[0]
+    assert called_opts.pagesize == 1
