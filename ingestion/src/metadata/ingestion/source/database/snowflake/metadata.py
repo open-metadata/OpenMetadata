@@ -76,6 +76,7 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
     IncrementalConfig,
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.snowflake.constants import (
     DEFAULT_STREAM_COLUMNS,
     PROCEDURE_TYPE_URL_MAP,
@@ -216,8 +217,6 @@ class SnowflakeSource(
     """
 
     service_connection: SnowflakeConnection
-
-    progress_tracking_enabled = True
 
     def __init__(
         self,
@@ -482,17 +481,17 @@ class SnowflakeSource(
         filter_name = schema_fqn if self.source_config.useFqnForFiltering and schema_fqn else schema_name
         return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
 
-    def _declare_progress_totals(self) -> None:
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
         """Seed the run-level ``Database`` and ``DatabaseSchema`` global counters
         upfront. ``Database`` is the filtered DB count; ``DatabaseSchema`` is the
         post-filter schema count per database from the account-wide SHOW. When
         that SHOW is unavailable, the schema counter is marked reconcilable so the
         walk fills its total instead."""
         database_names = self._filtered_database_names()
-        self.progress.set_total(Database.__name__, len(database_names))
+        totals.set_total(Database.__name__, len(database_names))
         schemas_by_database = self._schema_names_by_database()
         if schemas_by_database is None:
-            self.progress.set_reconcilable(DatabaseSchema.__name__)
+            totals.mark_reconcilable(DatabaseSchema.__name__)
         else:
             for database_name in database_names:
                 kept = [
@@ -500,11 +499,9 @@ class SnowflakeSource(
                     for schema_name in schemas_by_database.get(database_name, [])
                     if not self._is_schema_filtered(database_name, schema_name)
                 ]
-                self.progress.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
+                totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
 
     def get_database_names(self) -> Iterable[str]:
-        if self.progress_tracking_enabled:
-            self._declare_progress_totals()
         for database_name in self._filtered_database_names():
             try:
                 self.set_inspector(database_name=database_name)
