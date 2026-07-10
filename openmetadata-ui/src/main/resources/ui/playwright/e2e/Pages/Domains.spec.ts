@@ -115,7 +115,7 @@ const test = base.extend<{
   },
 });
 
-test.describe.skip('Domains', () => {
+test.describe.fixme('Domains', () => {
   test.slow(true);
 
   test.beforeAll('Setup pre-requests', async ({ browser }) => {
@@ -1702,7 +1702,7 @@ test.describe.skip('Domains', () => {
   });
 });
 
-test.describe.skip('Domain Rename Comprehensive Tests', () => {
+test.describe.fixme('Domain Rename Comprehensive Tests', () => {
   test.slow(true);
 
   test.beforeEach('Visit home page', async ({ page }) => {
@@ -2725,7 +2725,7 @@ test.describe.skip('Domain Rename Comprehensive Tests', () => {
   });
 });
 
-test.describe.skip('Domains Rbac', () => {
+test.describe.fixme('Domains Rbac', () => {
   test.slow(true);
 
   let domain1: Domain;
@@ -2877,7 +2877,7 @@ test.describe.skip('Domains Rbac', () => {
   });
 });
 
-test.describe.skip('Data Consumer Domain Ownership', () => {
+test.describe.fixme('Data Consumer Domain Ownership', () => {
   test.slow(true);
 
   let classification: ClassificationClass;
@@ -2976,7 +2976,7 @@ test.describe.skip('Data Consumer Domain Ownership', () => {
   });
 });
 
-test.describe.skip('Domain Access with hasDomain() Rule', () => {
+test.describe.fixme('Domain Access with hasDomain() Rule', () => {
   test.slow(true);
 
   let testResources: {
@@ -3045,7 +3045,7 @@ test.describe.skip('Domain Access with hasDomain() Rule', () => {
   });
 });
 
-test.describe.skip('Domain Access with noDomain() Rule', () => {
+test.describe.fixme('Domain Access with noDomain() Rule', () => {
   test.slow(true);
 
   let testResources: {
@@ -3119,7 +3119,7 @@ test.describe.skip('Domain Access with noDomain() Rule', () => {
   });
 });
 
-test.describe.skip('Domain Tree View Functionality', () => {
+test.describe.fixme('Domain Tree View Functionality', () => {
   let subDomain: SubDomain;
   const domain = EntityDataClass.domain1;
   const domainDisplayName = domain.responseData.displayName;
@@ -3392,7 +3392,7 @@ test.describe.skip('Domain Tree View Functionality', () => {
   });
 });
 
-test.describe.skip('Domain asset dryRun — add confirmation', () => {
+test.describe.fixme('Domain asset dryRun — add confirmation', () => {
   test.slow(true);
 
   const openDomainAssetsAddModal = async (page: Page, domain: Domain) => {
@@ -3653,7 +3653,7 @@ test.describe.skip('Domain asset dryRun — add confirmation', () => {
   });
 });
 
-test.describe.skip('Domain assets — glossary and inherited glossary term', () => {
+test.describe.fixme('Domain assets — glossary and inherited glossary term', () => {
   test.slow(true);
 
   let assetDomain: Domain;

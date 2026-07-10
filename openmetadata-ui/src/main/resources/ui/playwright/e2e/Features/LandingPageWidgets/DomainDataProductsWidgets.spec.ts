@@ -91,7 +91,7 @@ base.afterAll('Cleanup', async ({ browser }) => {
   await afterAction();
 });
 
-test.describe.skip('Domain and Data Product Asset Counts', () => {
+test.describe.fixme('Domain and Data Product Asset Counts', () => {
   test.slow(); // Slow Test
   test.beforeEach(async ({ page }, testInfo) => {
     await redirectToHomePage(page, false);
