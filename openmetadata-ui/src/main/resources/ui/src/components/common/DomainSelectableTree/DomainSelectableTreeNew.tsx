@@ -78,7 +78,6 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
   const [searchValue, setSearchValue] = useState<string>('');
-  const [isTreeOpen, setIsTreeOpen] = useState<boolean>(true);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
@@ -104,6 +103,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   const pagingRef = useRef(INITIAL_PAGING_STATE);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
   const selectionInitializedRef = useRef<boolean>(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     pagingRef.current = paging;
@@ -582,9 +582,9 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     if (visible) {
       setSearchTerm('');
       setSearchValue('');
-      setIsTreeOpen(true);
       selectionInitializedRef.current = false;
       fetchAPI();
+      searchInputRef.current?.focus();
     }
   }, [visible]);
 
@@ -606,29 +606,17 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   const handleSearchChange = useCallback(
     (searchText: string) => {
       setSearchValue(searchText);
-      setIsTreeOpen(true);
       onSearch(searchText);
     },
     [onSearch]
   );
 
-  const handleToggleTree = useCallback(
+  const handleBoxClick = useCallback(
     (event: React.MouseEvent<HTMLDivElement>) => {
       if ((event.target as HTMLElement).closest('button')) {
         return;
       }
-      setIsTreeOpen((prev) => !prev);
-    },
-    []
-  );
-
-  const handleBoxKeyDown = useCallback(
-    (event: React.KeyboardEvent<HTMLDivElement>) => {
-      const isToggleKey = event.key === 'Enter' || event.key === ' ';
-      if (event.target === event.currentTarget && isToggleKey) {
-        event.preventDefault();
-        setIsTreeOpen((prev) => !prev);
-      }
+      searchInputRef.current?.focus();
     },
     []
   );
@@ -669,15 +657,11 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   return (
     <div data-testid="domain-selectable-tree" style={{ width: '339px' }}>
       <div
-        aria-expanded={isTreeOpen}
         className="custom-domain-edit-select tw:flex tw:cursor-text tw:flex-col tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:px-2.5 tw:py-1.5 tw:focus-within:border-brand"
         data-testid="domain-search-input-wrapper"
-        role="button"
-        tabIndex={0}
-        onClick={handleToggleTree}
-        onKeyDown={handleBoxKeyDown}>
-        <div className="tw:flex tw:min-w-0 tw:flex-nowrap tw:items-center tw:gap-1">
-          {selectedTagItems.length > 0 && (
+        onClick={handleBoxClick}>
+        {selectedTagItems.length > 0 && (
+          <div className="tw:flex tw:flex-nowrap tw:items-center tw:gap-1 tw:overflow-hidden">
             <TagGroup
               className="tw:flex tw:min-w-0 tw:flex-nowrap tw:gap-1"
               label={t('label.domain-plural')}
@@ -695,32 +679,33 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
                 )}
               </TagList>
             </TagGroup>
+          </div>
+        )}
+        <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+          {hiddenTagCount > 0 && (
+            <Typography
+              className="tw:shrink-0 tw:text-brand-secondary"
+              data-testid="domain-tag-more-count"
+              size="text-xs"
+              weight="medium">
+              {t('label.plus-count-more', { count: hiddenTagCount })}
+            </Typography>
           )}
           <Input
             className="tw:min-w-16 tw:flex-1"
             inputClassName="tw:p-0!"
             inputDataTestId="domain-search-input"
-            placeholder={
-              selectedTagItems.length > 0
-                ? ''
-                : t('label.select-entity', { entity: t('label.domain') })
-            }
+            placeholder={t('label.select-entity', {
+              entity: t('label.domain'),
+            })}
+            ref={searchInputRef}
             value={searchValue}
             wrapperClassName="tw:bg-transparent! tw:shadow-none! tw:ring-0!"
             onChange={handleSearchChange}
           />
         </div>
-        {hiddenTagCount > 0 && (
-          <Typography
-            className="tw:text-brand-secondary"
-            data-testid="domain-tag-more-count"
-            size="text-xs"
-            weight="medium">
-            {t('label.plus-count-more', { count: hiddenTagCount })}
-          </Typography>
-        )}
       </div>
-      {isTreeOpen && <div className="tw:mt-2">{treeContent}</div>}
+      <div className="tw:mt-2">{treeContent}</div>
       <div className="tw:mt-3 tw:flex tw:justify-end tw:gap-2">
         <Button
           className="profile-edit-save tw:size-7.5 tw:p-0!"
