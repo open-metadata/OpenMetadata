@@ -22,7 +22,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import {
   ForwardedRef,
@@ -33,7 +33,8 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { FOLDER_FILES_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { Folder } from '../../../generated/entity/data/folder';
@@ -275,7 +276,11 @@ const DocumentFolderView = (
         <div className="tw:flex tw:items-center tw:justify-between tw:mb-5 tw:shrink-0">
           <div className="tw:flex tw:items-center tw:gap-3">
             <div className="tw:p-3 tw:rounded-lg tw:bg-gray-blue-50 tw:leading-0">
-              <FolderIcon className="tw:text-tertiary" height={20} width={20} />
+              <FolderIcon
+                className="tw:text-quaternary"
+                height={20}
+                width={20}
+              />
             </div>
             <div>
               <Typography size="text-md" weight="semibold">
@@ -358,7 +363,13 @@ const DocumentFolderView = (
                           ellipsis
                           className="tw:flex-1 tw:min-w-0 tw:text-left tw:p-0 tw:text-primary tw:justify-start tw:font-normal!"
                           color="tertiary"
-                          iconLeading={FolderIcon}
+                          iconLeading={
+                            <FolderIcon
+                              className="tw:text-quaternary"
+                              height={14}
+                              width={14}
+                            />
+                          }
                           size="sm"
                           onClick={(e: MouseEvent) => {
                             e.stopPropagation();
@@ -385,7 +396,7 @@ const DocumentFolderView = (
                               className="tw:opacity-0 tw:absolute tw:right-0 tw:group-hover/folder-row:opacity-100"
                               color="tertiary"
                               data-testid={`delete-folder-btn-${folder.id}`}
-                              icon={Trash01}
+                              icon={<TrashIcon height={18} width={18} />}
                               size="xs"
                               tooltip={t('label.delete')}
                               onClick={(e: MouseEvent) => {

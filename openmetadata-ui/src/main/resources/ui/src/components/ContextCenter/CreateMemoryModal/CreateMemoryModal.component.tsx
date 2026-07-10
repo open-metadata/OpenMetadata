@@ -43,7 +43,6 @@ import {
   Lock01,
   Plus,
   Share07,
-  Trash01,
   X,
 } from '@untitledui/icons';
 import { ConfigProvider } from 'antd';
@@ -63,7 +62,8 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import ReactMarkdown from 'react-markdown';
 import { Link } from 'react-router-dom';
-import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import {
   getCustomMarkdownComponents,
   preprocessMarkdownText,
@@ -1098,7 +1098,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                       {Boolean(memoryToEdit) && canDelete && (
                         <Button
                           color="tertiary-destructive"
-                          iconLeading={Trash01}
+                          iconLeading={TrashIcon}
                           isDisabled={isDeleting || isSubmitting}
                           isLoading={isDeleting}
                           size="sm"
