@@ -1586,6 +1586,15 @@ public class MigrationUtil {
      * <p>Idempotent: WorkflowDefinitions with no legacy conditions on approval outbound edges are
      * skipped. Duplicate edges (both {@code true} and {@code approve} present after prior migration
      * runs) are collapsed to a single {@code approve}/{@code reject} edge.
+     *
+     * <p>The {@code createOrUpdate} call intentionally triggers a fresh Flowable BPMN deployment
+     * (via {@code postUpdate}) for each affected definition — the point of the migration is to
+     * emit a new ACT_RE_PROCDEF version whose outbound sequence flows reference
+     * {@code _result == 'approve'} / {@code _result == 'reject'}. Skipping the redeploy would
+     * leave the stale duplicate-edge BPMN in Flowable's repository and future task instances
+     * would still evaluate against the pre-fix conditions. The idempotency guard in
+     * {@link #rewriteApprovalEdgesInPlace} keeps this bounded to definitions that actually carry
+     * legacy conditions.
      */
     private int migrateUserApprovalTaskEdgeConditions() {
       int migrated = 0;

@@ -1495,6 +1495,11 @@ public class WorkflowHandler {
     return result;
   }
 
+  // Match the single-quoted RHS of an equality expression such as ${var == 'approve'}.
+  // {@link org.openmetadata.service.governance.workflows.elements.Edge#getFlowableCondition}
+  // is the sole writer of edge condition expressions and always emits this exact shape
+  // — including for the legacy boolean conditions ({@code == 'true'} / {@code == 'false'})
+  // — so no unquoted-boolean form (${var == true}) can appear in a deployed BPMN.
   private static final Pattern CONDITION_VALUE_PATTERN = Pattern.compile("==\\s*'([^']+)'");
 
   private String extractSubProcessId(String taskDefinitionKey) {
