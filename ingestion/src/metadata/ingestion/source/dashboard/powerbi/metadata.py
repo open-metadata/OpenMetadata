@@ -1091,6 +1091,49 @@ class PowerbiSource(DashboardServiceSource):
             logger.debug(traceback.format_exc())
         return None
 
+    @staticmethod
+    def _strip_sql_line_comments(sql_query: str) -> str:
+        """Remove SQL -- comments without truncating string literals."""
+        cleaned_query = []
+        quote_char = None
+        index = 0
+
+        while index < len(sql_query):
+            char = sql_query[index]
+            next_char = sql_query[index + 1] if index + 1 < len(sql_query) else ""
+
+            if quote_char:
+                cleaned_query.append(char)
+                if char == "\\" and next_char:
+                    cleaned_query.append(next_char)
+                    index += 2
+                    continue
+                if char == quote_char:
+                    if next_char == quote_char:
+                        cleaned_query.append(next_char)
+                        index += 2
+                        continue
+                    quote_char = None
+                index += 1
+                continue
+
+            if char in ("'", '"', "`"):
+                quote_char = char
+                cleaned_query.append(char)
+                index += 1
+                continue
+
+            if char == "-" and next_char == "-":
+                index += 2
+                while index < len(sql_query) and sql_query[index] != "\n":
+                    index += 1
+                continue
+
+            cleaned_query.append(char)
+            index += 1
+
+        return "".join(cleaned_query)
+
     def _parse_bigquery_query_source(self, source_expression: str) -> Optional[List[dict]]:  # noqa: UP006, UP045
         """
         Parse BigQuery Value.NativeQuery source expressions containing inline SQL.
@@ -1122,7 +1165,7 @@ class PowerbiSource(DashboardServiceSource):
             sql_query = sql_match.group(1).replace('""', '"')
             sql_query = sql_query.replace("#(lf)", "\n")
             sql_query = sql_query.replace("#(tab)", "\t")
-            sql_query = re.sub(r"--[^\n]*", "", sql_query)
+            sql_query = self._strip_sql_line_comments(sql_query)
             sql_query = re.sub(SQL_LINE_COMMENT_PATTERN, "", sql_query)
             sql_query = re.sub(r"\s+", " ", sql_query).strip()
 

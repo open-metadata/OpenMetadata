@@ -338,6 +338,24 @@ EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT = [
     },
 ]
 
+MOCK_BIGQUERY_NATIVE_QUERY_WITH_DASH_LITERAL_EXP = (
+    "let\n"
+    "    Source = Value.NativeQuery(GoogleBigQuery.Database("
+    '[BillingProject="my-gcp-project"])'
+    '{[Name="my-gcp-project"]}[Data], '
+    '"SELECT id#(lf)'
+    "FROM `analytics.orders`#(lf)"
+    "WHERE status <> '--' -- ignore placeholder statuses#(lf)"
+    'AND note = ""contains -- inside literal""", '
+    "null, [EnableFolding=true])\n"
+    "in\n"
+    "    Source"
+)
+
+EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_DASH_LITERAL_RESULT = [
+    {"database": "my-gcp-project", "schema": "analytics", "table": "orders"}
+]
+
 # =============================================================================
 # Dataflow M Document Test Data
 # =============================================================================
@@ -828,6 +846,14 @@ class PowerBIUnitTest(TestCase):
         )
         self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_BLOCK_COMMENTS_RESULT)
 
+        # Test with BigQuery NativeQuery containing -- inside SQL string literals
+        result = self.powerbi._parse_bigquery_source(
+            MOCK_BIGQUERY_NATIVE_QUERY_WITH_DASH_LITERAL_EXP,
+            MOCK_DASHBOARD_DATA_MODEL,
+            table,
+        )
+        self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_WITH_DASH_LITERAL_RESULT)
+
         # Test with BigQuery NativeQuery using fully-qualified backtick-quoted tables
         # e.g. `project.dataset.table` — parser returns "project.dataset" as schema,
         # which must be split into database and schema
@@ -837,6 +863,21 @@ class PowerBIUnitTest(TestCase):
             table,
         )
         self.assertEqual(result, EXPECTED_BIGQUERY_NATIVE_QUERY_FQN_BACKTICK_RESULT)
+
+    def test_strip_sql_line_comments_preserves_backslash_escaped_quotes(self):
+        sql_query = (
+            "SELECT *\n"
+            "FROM `analytics.orders`\n"
+            r"WHERE note = 'contains \' -- inside literal' -- remove this comment"
+            "\n"
+            r'AND label = "contains \" -- inside literal" -- remove this comment'
+        )
+
+        result = self.powerbi._strip_sql_line_comments(sql_query)
+
+        self.assertIn(r"contains \' -- inside literal", result)
+        self.assertIn(r'contains \" -- inside literal', result)
+        self.assertNotIn("remove this comment", result)
 
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
