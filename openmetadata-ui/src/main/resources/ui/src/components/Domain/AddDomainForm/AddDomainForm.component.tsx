@@ -78,7 +78,6 @@ import { formatTeamsResponse } from '../../../utils/APIUtils';
 import { getRandomColor } from '../../../utils/ColorUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -752,7 +751,7 @@ const AddDomainForm = ({
   });
 
   const handleCoverImageValidationError = useCallback((message: string) => {
-    showNotistackError(message);
+    showErrorToast(message);
   }, []);
 
   const coverImageField: FieldProp = {

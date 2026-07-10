@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.database.snowflake import metadata as snowflake_metadata
 
 SnowflakeSource = snowflake_metadata.SnowflakeSource
@@ -61,7 +62,8 @@ class TestSnowflakeDatabaseCount:
         source.status.filter.assert_called_once()
 
     def test_producer_setup_runs_per_kept_database_without_re_filtering(self):
-        from metadata.utils.progress_registry import ProgressRegistry
+        from metadata.ingestion.progress.modes import ProgressMode
+        from metadata.ingestion.progress.tracking import ProgressTracking
 
         source = _source(["A", "B"])
         for setup in (
@@ -75,7 +77,7 @@ class TestSnowflakeDatabaseCount:
             "set_database_tags_map",
         ):
             setattr(source, setup, MagicMock())
-        source.__dict__["_progress_registry"] = ProgressRegistry()
+        source.__dict__["_progress_tracking"] = ProgressTracking(ProgressMode.AUTO, "Test")
         with patch.object(snowflake_metadata, "filter_by_database", return_value=False):
             source._filtered_database_names()  # warms the database names cache
             yielded = list(source.get_database_names())
@@ -87,7 +89,8 @@ class TestSnowflakeDatabaseCount:
 @pytest.fixture
 def snowflake_source():
     """Minimal SnowflakeSource stub for push-totals tests."""
-    from metadata.utils.progress_registry import ProgressRegistry
+    from metadata.ingestion.progress.modes import ProgressMode
+    from metadata.ingestion.progress.tracking import ProgressTracking
 
     source = object.__new__(SnowflakeSource)
     source.config = SimpleNamespace(
@@ -102,7 +105,7 @@ def snowflake_source():
     source.status = MagicMock()
     source.context = MagicMock()
     source.context.get.return_value = SimpleNamespace(database=None, database_service="svc")
-    source.__dict__["_progress_registry"] = ProgressRegistry()
+    source.__dict__["_progress_tracking"] = ProgressTracking(ProgressMode.AUTO, "Test")
     return source
 
 
@@ -110,8 +113,8 @@ def test_declare_progress_totals_seeds_database_and_schema(snowflake_source):
     snowflake_source._filtered_database_names = lambda: ["db1", "db2"]
     snowflake_source._schema_names_by_database = lambda: {"db1": ["s1", "s2"], "db2": ["s3"]}
     snowflake_source._is_schema_filtered = lambda db, sch: False
-    snowflake_source._declare_progress_totals()
-    counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
+    snowflake_source.declare_progress_totals(TotalsDeclarer(snowflake_source.progress_tracking.registry))
+    counters = {t: (d, total) for t, d, total in snowflake_source.progress_tracking.registry.global_counters()}
     assert counters["Database"] == (0, 2)
     assert counters["DatabaseSchema"] == (0, 3)
 
@@ -120,16 +123,16 @@ def test_declare_progress_totals_applies_schema_filter(snowflake_source):
     snowflake_source._filtered_database_names = lambda: ["db1"]
     snowflake_source._schema_names_by_database = lambda: {"db1": ["keep", "drop"]}
     snowflake_source._is_schema_filtered = lambda db, sch: sch == "drop"
-    snowflake_source._declare_progress_totals()
-    counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
+    snowflake_source.declare_progress_totals(TotalsDeclarer(snowflake_source.progress_tracking.registry))
+    counters = {t: (d, total) for t, d, total in snowflake_source.progress_tracking.registry.global_counters()}
     assert counters["DatabaseSchema"] == (0, 1)
 
 
 def test_declare_progress_totals_falls_back_when_account_show_unavailable(snowflake_source):
     snowflake_source._filtered_database_names = lambda: ["db1"]
     snowflake_source._schema_names_by_database = lambda: None
-    snowflake_source._declare_progress_totals()
-    assert snowflake_source.progress.is_reconcilable("DatabaseSchema") is True
-    counters = {t: (d, total) for t, d, total in snowflake_source.progress.global_counters()}
+    snowflake_source.declare_progress_totals(TotalsDeclarer(snowflake_source.progress_tracking.registry))
+    assert snowflake_source.progress_tracking.registry.is_reconcilable("DatabaseSchema") is True
+    counters = {t: (d, total) for t, d, total in snowflake_source.progress_tracking.registry.global_counters()}
     assert counters["Database"] == (0, 1)
     assert counters["DatabaseSchema"] == (0, None)

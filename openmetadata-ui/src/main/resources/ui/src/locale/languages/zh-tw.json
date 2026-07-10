@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "運用 AI 為您的資產自動分級、建立文件並進行品質檢查。",
     "collate-ai-widget-description": "Collate AI 為服務產生的資料概觀。<0>了解更多。</0>",
     "column-bulk-operations-description": "一次管理和編輯多個欄位的元資料。搜尋、篩選和更新資料資產中的顯示名稱、描述、標籤和詞彙表術語。",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "按欄位標籤或名稱篩選血緣。使用 'tag:標籤名稱' 進行標籤篩選，或直接輸入欄位名稱。",
     "column-name-pattern-placeholder": "輸入正規表達式以篩選欄位（例如 id_*、*_date）",
     "column-name-sla-description": "<0>{{label}}</0>: 表示與<0>{{data}}</0>對應的資料重新整理時間",
