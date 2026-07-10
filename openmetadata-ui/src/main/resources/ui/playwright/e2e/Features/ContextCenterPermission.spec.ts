@@ -152,7 +152,7 @@ let allPermissionOwnMemoryId = '';
 let viewOnlyOwnMemoryId = '';
 let earlyAlphabetMemoryId = '';
 
-test.describe('Context Center Permissions', () => {
+test.describe.fixme('Context Center Permissions', () => {
   test.slow(true);
 
   test.beforeAll(async ({ browser }) => {

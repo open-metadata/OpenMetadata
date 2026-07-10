@@ -162,6 +162,14 @@
       "description": "Stack/message if status=Failed",
       "type": "string"
     },
+    "runningOn": {
+      "description": "Identifier of the server node that claimed and is running this job. Used to detect and recover jobs orphaned by a pod restart.",
+      "type": "string"
+    },
+    "requestSignature": {
+      "description": "Deterministic hash of the request parameters (scope, target, framework, format, asOfDate, includeRedacted). Backs an indexed lookup so a retried submission dedupes to the in-flight report instead of generating the same pack twice.",
+      "type": "string"
+    },
     "artifacts": {
       "description": "Generated artifacts available for download",
       "type": "array",
