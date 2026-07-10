@@ -56,6 +56,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 
 /**
  * Elasticsearch implementation using new Java API client with custom bulk handler
@@ -377,8 +378,13 @@ public class ElasticSearchBulkSink implements BulkSink {
       Map<UUID, DocBuildContext> docBuildContexts) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
+      SearchIndex searchIndex = Entity.buildSearchIndex(entityType, entity);
+      if (!searchIndex.isSearchable()) {
+        recordNonSearchableSkip(tracker);
+        return;
+      }
       DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
+      Object searchIndexDoc = searchIndex.buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
       String docId = entity.getId().toString();
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
@@ -469,6 +475,29 @@ public class ElasticSearchBulkSink implements BulkSink {
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
       }
+    }
+  }
+
+  /**
+   * Account for an entity the doc-level rule kept out of the index ({@link
+   * SearchIndex#isSearchable()} is false) as processed and successfully sunk, without writing it.
+   * The reader schedules every row, so counting the skip as a success keeps {@code
+   * successRecords == totalRecords} and lets the staged index promote — the entity was handled, it
+   * simply belongs out of search. Mirrors {@link #indexDocumentDirectly}'s success bookkeeping minus
+   * the write.
+   */
+  private void recordNonSearchableSkip(StageStatsTracker tracker) {
+    if (tracker != null) {
+      tracker.incrementPendingSink();
+    }
+    totalSuccess.incrementAndGet();
+    updateStats();
+    if (tracker != null) {
+      tracker.recordSink(StatsResult.SUCCESS);
+    }
+    processSuccess.incrementAndGet();
+    if (tracker != null) {
+      tracker.recordProcess(StatsResult.SUCCESS);
     }
   }
 

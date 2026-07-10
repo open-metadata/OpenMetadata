@@ -1011,6 +1011,14 @@ public class SearchRepository {
       return;
     }
 
+    if (!shouldIndexEntity(entity)) {
+      LOG.debug(
+          "Skipping search index create for non-searchable {} [{}]",
+          entity.getEntityReference().getType(),
+          entity.getId());
+      return;
+    }
+
     String entityId = entity.getId().toString();
     String entityType = entity.getEntityReference().getType();
     Timer.Sample searchSample = RequestLatencyContext.startSearchOperation();
@@ -1294,6 +1302,9 @@ public class SearchRepository {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
         List<Map<String, String>> docs = new ArrayList<>();
         for (EntityInterface entity : entities) {
+          if (!shouldIndexEntity(entity)) {
+            continue;
+          }
           try {
             SearchIndex index = searchIndexFactory.buildIndex(entityType, entity);
             String doc = JsonUtils.pojoToJson(index.buildSearchIndexDoc());
@@ -1480,6 +1491,13 @@ public class SearchRepository {
     if (!checkIfIndexingIsSupported(entity.getEntityReference().getType())) {
       LOG.debug(
           "Indexing is not supported for entity type: {}", entity.getEntityReference().getType());
+      return;
+    }
+
+    if (!shouldIndexEntity(entity)) {
+      // A now-non-searchable instance (e.g. a memory flipped to PRIVATE/SHARED) must have any
+      // stale document removed from the index.
+      deleteEntityIndex(entity);
       return;
     }
 
@@ -1741,6 +1759,13 @@ public class SearchRepository {
         continue;
       }
 
+      if (!shouldIndexEntity(entity)) {
+        // A now-non-searchable instance (e.g. a memory flipped to PRIVATE/SHARED) must have any
+        // stale document removed from the index.
+        deleteEntityIndex(entity);
+        continue;
+      }
+
       String actualType = entity.getEntityReference().getType();
       entitiesByType.computeIfAbsent(actualType, k -> new ArrayList<>()).add(entity);
     }
@@ -1985,6 +2010,18 @@ public class SearchRepository {
       return false;
     }
     return true;
+  }
+
+  /**
+   * Whether this entity instance should be written to the search index, per its search document's
+   * {@link SearchIndex#isSearchable()} (e.g. {@code ContextMemoryIndex} keeps non-org-wide memories
+   * out of search). Building the index only wraps the entity — the document itself is built
+   * separately when the entity is actually written — so this stays cheap on the live path.
+   */
+  public boolean shouldIndexEntity(EntityInterface entity) {
+    SearchIndex index =
+        searchIndexFactory.buildIndex(entity.getEntityReference().getType(), entity);
+    return index == null || index.isSearchable();
   }
 
   /**

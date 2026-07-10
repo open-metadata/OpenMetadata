@@ -20,6 +20,7 @@ import java.util.List;
 import java.util.Map;
 import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.context.MemorySharedPrincipal;
+import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 
@@ -33,6 +34,19 @@ public class ContextMemoryIndex implements TaggableIndex {
   @Override
   public Object getEntity() {
     return memory;
+  }
+
+  /**
+   * Only org-wide ({@link MemoryVisibility#ENTITY}) memories are searchable. PRIVATE and SHARED
+   * memories (and the unset default, which is PRIVATE) are kept out of the search index entirely —
+   * owners and shared principals still read them through the REST {@code /contextCenter/memories}
+   * endpoints, which enforce per-memory visibility.
+   */
+  @Override
+  public boolean isSearchable() {
+    return memory != null
+        && memory.getShareConfig() != null
+        && memory.getShareConfig().getVisibility() == MemoryVisibility.ENTITY;
   }
 
   @Override

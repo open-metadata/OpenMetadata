@@ -133,6 +133,18 @@ public interface SearchIndex {
   Object getEntity();
 
   /**
+   * Whether this entity instance should be written to the search index. Defaults to {@code true};
+   * override per entity to keep specific instances out of search (e.g. {@link
+   * org.openmetadata.service.search.indexes.ContextMemoryIndex} indexes only org-wide memories). The
+   * rule lives on the search document it governs and is enforced identically on the live
+   * create/update paths and the bulk-reindex sink, so a non-searchable instance is never written and
+   * a document that turns non-searchable is deleted.
+   */
+  default boolean isSearchable() {
+    return true;
+  }
+
+  /**
    * Returns the entity type name (e.g., Entity.TABLE). Used by mixin interfaces to avoid requiring
    * each implementation to pass the entity type explicitly.
    */

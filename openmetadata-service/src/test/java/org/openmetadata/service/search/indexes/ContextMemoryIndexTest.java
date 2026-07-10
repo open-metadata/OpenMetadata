@@ -14,6 +14,7 @@
 package org.openmetadata.service.search.indexes;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -256,6 +257,34 @@ class ContextMemoryIndexTest {
 
     assertTrue(index.getRequiredReindexFields().contains("tags"));
     assertTrue(index.getRequiredReindexFields().contains("owners"));
+  }
+
+  @Test
+  void isSearchable_onlyForEntityVisibility() {
+    assertTrue(
+        new ContextMemoryIndex(memoryWithVisibility(MemoryVisibility.ENTITY)).isSearchable(),
+        "ENTITY memories must be searchable");
+    assertFalse(
+        new ContextMemoryIndex(memoryWithVisibility(MemoryVisibility.PRIVATE)).isSearchable(),
+        "PRIVATE memories must not be searchable");
+    assertFalse(
+        new ContextMemoryIndex(memoryWithVisibility(MemoryVisibility.SHARED)).isSearchable(),
+        "SHARED memories must not be searchable");
+  }
+
+  @Test
+  void isSearchable_falseWhenShareConfigOrVisibilityMissing() {
+    assertFalse(
+        new ContextMemoryIndex(baseMemory()).isSearchable(),
+        "A memory with no shareConfig defaults to not searchable");
+    assertFalse(
+        new ContextMemoryIndex(baseMemory().withShareConfig(new MemoryShareConfig()))
+            .isSearchable(),
+        "A memory with shareConfig but no visibility is not searchable");
+  }
+
+  private ContextMemory memoryWithVisibility(MemoryVisibility visibility) {
+    return baseMemory().withShareConfig(new MemoryShareConfig().withVisibility(visibility));
   }
 
   private ContextMemory baseMemory() {
