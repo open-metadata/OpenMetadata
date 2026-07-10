@@ -954,3 +954,81 @@ class LookerUnitTest(TestCase):
         registry = self.looker.progress_tracking.registry
         self.assertEqual(registry._global["Dashboard"].total, 2)
         self.assertTrue(registry._global["Chart"].reconcilable)
+
+    def test_yield_bulk_datamodel_tracks_progress(self):
+        """
+        Check that yield_bulk_datamodel advances the DashboardDataModel
+        counter after successfully yielding the explore request.
+        """
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_explore = LookmlModelExplore(
+            name="my_explore",
+            model_name="my_model",
+            project_name="my_project",
+            fields=LookmlModelExploreFieldset(dimensions=[], measures=[]),
+        )
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_get_explore_sql", return_value=None),
+        ):
+            list(self.looker.yield_bulk_datamodel(mock_explore))
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_standalone_datamodels_tracks_progress(self):
+        """
+        Check that yield_standalone_datamodels advances the
+        DashboardDataModel counter after successfully yielding a view request.
+        """
+        from metadata.ingestion.source.dashboard.looker.models import LookMlView
+
+        self.looker.progress_tracking.manual.set_total("DashboardDataModel", 5)
+
+        mock_view = LookMlView(name="my_view", source_file="views/my_view.view.lkml")
+        mock_parser = MagicMock()
+        mock_parser._views_cache = {"my_view": mock_view}
+        mock_parser.parsed_files = {}
+
+        self.looker._repo_credentials = True
+        self.looker._project_parsers = {"my_project": mock_parser}
+        self.looker._views_cache = {}
+        self.looker._all_lookml_models = [SimpleNamespace(name="my_model")]
+
+        with (
+            patch.object(LookerSource, "register_record_datamodel", return_value=None),
+            patch.object(LookerSource, "_build_data_model", return_value=None),
+            patch.object(LookerSource, "_add_standalone_view_lineage", return_value=iter([])),
+        ):
+            list(self.looker.yield_standalone_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_dashboard_tracks_progress(self):
+        """
+        Check that yield_dashboard advances the Dashboard counter after
+        successfully yielding the dashboard request.
+        """
+        self.looker.progress_tracking.manual.set_total("Dashboard", 5)
+
+        with patch.object(LookerSource, "get_owner_ref", return_value=None):
+            list(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD))
+
+        counter = self.looker.progress_tracking.registry._global["Dashboard"]
+        self.assertGreaterEqual(counter.done, 1)
+
+    def test_yield_dashboard_chart_tracks_progress(self):
+        """
+        Check that yield_dashboard_chart advances the Chart counter after
+        successfully yielding a chart request.
+        """
+        self.looker.progress_tracking.manual.set_total("Chart", 5)
+
+        list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
+
+        counter = self.looker.progress_tracking.registry._global["Chart"]
+        self.assertGreaterEqual(counter.done, 1)

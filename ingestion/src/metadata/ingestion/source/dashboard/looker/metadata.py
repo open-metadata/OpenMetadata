@@ -542,6 +542,7 @@ class LookerSource(DashboardServiceSource):
                 )
 
                 yield Either(right=data_model_request)
+                self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=data_model_request)
 
                 # Build and cache the view model
@@ -637,6 +638,7 @@ class LookerSource(DashboardServiceSource):
                     ),
                 )
                 yield Either(right=explore_datamodel)
+                self.progress_tracking.manual.track(DashboardDataModel.__name__)
                 self.register_record_datamodel(datamodel_request=explore_datamodel)
 
                 # build datamodel by our hand since ack_sink=False
@@ -1277,6 +1279,7 @@ class LookerSource(DashboardServiceSource):
             owners=self.get_owner_ref(dashboard_details=dashboard_details),
         )
         yield Either(right=dashboard_request)
+        self.progress_tracking.manual.track(Dashboard.__name__)
         self.register_record(dashboard_request=dashboard_request)
 
     def get_project_name(self, dashboard_details: LookerDashboard) -> Optional[str]:  # noqa: UP045
@@ -1641,6 +1644,7 @@ class LookerSource(DashboardServiceSource):
                     service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart_request)
+                self.progress_tracking.manual.track(Chart.__name__)
                 self.register_record_chart(chart_request=chart_request)
 
             except Exception as exc:
