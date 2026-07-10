@@ -54,14 +54,14 @@ class TestUsageProgress:
 
         list(UsageSource._iter(source))
 
-        assert source.progress.global_counters() == [("Queries", 3, 3)]
+        assert source.progress_tracking.registry.global_counters() == [("Queries", 3, 3)]
 
     def test_ceiling_is_result_limit_times_days_before_reconcile(self):
         captured = {}
 
         def batches():
             # peek the seeded total after the first batch, before completion
-            captured["mid"] = source.progress.global_counters()
+            captured["mid"] = source.progress_tracking.registry.global_counters()
             yield TableQueries(queries=[_query()])
 
         source = _make_usage_source(batches(), result_limit=1000, start=datetime(2026, 1, 1), end=datetime(2026, 1, 3))

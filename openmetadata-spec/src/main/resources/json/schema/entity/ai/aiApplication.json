@@ -120,6 +120,7 @@
     "governanceMetadata": {
       "type": "object",
       "javaType": "org.openmetadata.schema.entity.ai.GovernanceMetadata",
+      "javaInterfaces": ["org.openmetadata.schema.entity.ai.AIGovernanceRegistration"],
       "description": "AI governance metadata for compliance and risk management",
       "additionalProperties": false,
       "properties": {

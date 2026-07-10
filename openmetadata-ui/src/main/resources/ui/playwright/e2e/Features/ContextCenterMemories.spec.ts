@@ -1815,7 +1815,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
 
-        await row.getByRole('button', { name: 'Open menu' }).first().click();
+        await row.getByTestId('manage-button').click();
         await page.getByTestId('delete-btn').click();
 
         const deleteResPromise = page.waitForResponse(
