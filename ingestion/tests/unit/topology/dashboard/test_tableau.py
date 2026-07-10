@@ -1046,3 +1046,16 @@ class TableauUnitTest(TestCase):
         assert len(self.tableau.chart_source_state) == 3
         for fqn in self.tableau.chart_source_state:
             assert "tableau_source_test" in fqn
+
+    def test_get_dashboards_list_declares_totals(self):
+        self.tableau.client = SimpleNamespace(
+            get_workbook_count=MagicMock(return_value=7),
+            get_workbooks=MagicMock(return_value=iter([])),
+        )
+
+        list(self.tableau.get_dashboards_list())
+
+        registry = self.tableau.progress_tracking.registry
+        assert registry._global["Dashboard"].total == 7
+        assert registry._global["Chart"].reconcilable is True
+        assert registry._global["DashboardDataModel"].reconcilable is True
