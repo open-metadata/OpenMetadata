@@ -147,6 +147,19 @@ describe('ServiceUtilClassBase', () => {
     ).toBe(iconURL);
   });
 
+  it('should use the default service logo when source is unavailable', () => {
+    const getServiceLogoSpy = jest
+      .spyOn(serviceUtilClassBase, 'getServiceLogo')
+      .mockReturnValue('default-service-logo');
+
+    expect(serviceUtilClassBase.getServiceTypeLogo()).toBe(
+      'default-service-logo'
+    );
+    expect(getServiceLogoSpy).toHaveBeenCalledWith('');
+
+    getServiceLogoSpy.mockRestore();
+  });
+
   it.each([
     {
       connectionType: 'Snowflake',

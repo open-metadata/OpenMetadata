@@ -377,7 +377,7 @@ class ServiceUtilClassBase {
     return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
   }
 
-  public getServiceTypeLogo(searchSource: ServiceLogoSource): string {
+  public getServiceTypeLogo(searchSource?: ServiceLogoSource): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
@@ -389,12 +389,12 @@ class ServiceUtilClassBase {
       return isQuickLink ? QuickLinkIcon : KnowledgeCenterIcon;
     }
 
-    const ownIcon = searchSource.style?.iconURL;
+    const ownIcon = searchSource?.style?.iconURL;
     if (ownIcon) {
       return ownIcon;
     }
 
-    const serviceIcon = searchSource.service?.style?.iconURL;
+    const serviceIcon = searchSource?.service?.style?.iconURL;
     if (serviceIcon) {
       return serviceIcon;
     }
