@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, ButtonUtility, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  ButtonUtility,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Tag01, XClose } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC, KeyboardEvent, MouseEvent, ReactElement, useMemo } from 'react';
@@ -83,11 +87,18 @@ const TagChip: FC<TagChipProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const chipIcon = useMemo(() => icon ? renderIcon(icon, {
-    size: 12,
-    style: { marginRight: 4, flexShrink: 0 },
-  }) :  <Tag01 size={sizeStyles[size].icon} />
-    , [icon,]);
+  const chipIcon = useMemo(
+    () =>
+      icon ? (
+        renderIcon(icon, {
+          size: 12,
+          style: { marginRight: 4, flexShrink: 0 },
+        })
+      ) : (
+        <Tag01 size={sizeStyles[size].icon} />
+      ),
+    [icon]
+  );
 
   const handleKeyDown = (e: KeyboardEvent<HTMLDivElement>) => {
     if (
@@ -103,7 +114,7 @@ const TagChip: FC<TagChipProps> = ({
   return (
     <Box
       inline
-      align='center'
+      align="center"
       aria-disabled={disabled}
       className={classNames(
         'tw:min-w-0 tw:whitespace-nowrap tw:transition-all tw:duration-150',
@@ -128,7 +139,7 @@ const TagChip: FC<TagChipProps> = ({
         />
       )}
       {showIcon && chipIcon && (
-        <Box inline align='center' className="tw:mr-1 tw:shrink-0">
+        <Box inline align="center" className="tw:mr-1 tw:shrink-0">
           {chipIcon}
         </Box>
       )}
