@@ -111,6 +111,27 @@ class BedrockEmbeddingClientTest {
   }
 
   @Test
+  void truncatesPreciselyFromReportedTokenCounts() {
+    String input = "x".repeat(18338);
+    String message =
+        "Too many input tokens. Max input tokens: 8192, request input token count: 18338";
+
+    String truncated = BedrockEmbeddingClient.truncateForTokenLimit(input, message);
+
+    assertEquals(7372, truncated.length());
+  }
+
+  @Test
+  void truncationHalvesWhenTokenCountsAbsent() {
+    String input = "y".repeat(1000);
+
+    String truncated =
+        BedrockEmbeddingClient.truncateForTokenLimit(input, "some other validation error");
+
+    assertEquals(500, truncated.length());
+  }
+
+  @Test
   void titanQueryRequestIsIdenticalToDocumentRequest() throws Exception {
     JsonNode document = buildPayload(BedrockEmbeddingFamily.TITAN_V2, "hello world", 512, false);
     JsonNode query = buildPayload(BedrockEmbeddingFamily.TITAN_V2, "hello world", 512, true);

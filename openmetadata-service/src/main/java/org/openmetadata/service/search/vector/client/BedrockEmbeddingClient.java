@@ -7,6 +7,8 @@ import java.io.IOException;
 import java.util.List;
 import java.util.Locale;
 import java.util.OptionalInt;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.configuration.LLMBedrockEmbeddingConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
@@ -50,6 +52,18 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   // while staying well above the 380-word chunk bound, so normal text is never truncated.
   // ponytail: char/token ratio is empirical — lower this knob if a denser corpus still overflows.
   private static final int TITAN_MAX_INPUT_CHARS = 16384;
+
+  // The char cap is a fast-path that keeps typical English input to a single call; token-dense
+  // scripts (CJK, emoji) where chars approx tokens can still exceed it. Bedrock's
+  // ValidationException
+  // reports the model max and the actual token count, so on overflow we truncate precisely from
+  // those numbers and retry — a content-agnostic guarantee no fixed char cap can give.
+  private static final int MAX_TOKEN_LIMIT_RETRIES = 3;
+  private static final double TOKEN_LIMIT_SAFETY = 0.9;
+  private static final Pattern MAX_INPUT_TOKENS_PATTERN =
+      Pattern.compile("max input tokens:?\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
+  private static final Pattern REQUEST_TOKENS_PATTERN =
+      Pattern.compile("request input token count:?\\s*(\\d+)", Pattern.CASE_INSENSITIVE);
 
   private static final BedrockEmbeddingFamily DEFAULT_FAMILY = BedrockEmbeddingFamily.TITAN_V2;
 
@@ -199,29 +213,91 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   }
 
   private float[] invokeEmbedding(String text, boolean isQuery) {
-    try {
-      String body = buildRequestBody(family, text, dimension, isQuery);
+    String input = text;
+    float[] embedding = null;
+    int attempt = 0;
+    while (embedding == null) {
+      try {
+        embedding = invokeOnce(input, isQuery);
+      } catch (AwsServiceException e) {
+        input = shrinkOnTokenOverflow(input, e, attempt++);
+      } catch (SdkClientException e) {
+        LOG.error("SDK client error calling Bedrock: {}", e.getMessage(), e);
+        throw new RuntimeException("Bedrock embedding generation failed (SDK client error)", e);
+      } catch (IOException e) {
+        LOG.error("IO error calling Bedrock: {}", e.getMessage(), e);
+        throw new RuntimeException("Bedrock embedding generation failed (IO error)", e);
+      }
+    }
+    return embedding;
+  }
 
-      InvokeModelRequest request =
-          InvokeModelRequest.builder()
-              .modelId(modelId)
-              .contentType("application/json")
-              .accept("application/json")
-              .body(SdkBytes.fromUtf8String(body))
-              .build();
+  private float[] invokeOnce(String text, boolean isQuery) throws IOException {
+    String body = buildRequestBody(family, text, dimension, isQuery);
+    InvokeModelRequest request =
+        InvokeModelRequest.builder()
+            .modelId(modelId)
+            .contentType("application/json")
+            .accept("application/json")
+            .body(SdkBytes.fromUtf8String(body))
+            .build();
+    InvokeModelResponse response = bedrockClient.invokeModel(request);
+    return parseEmbeddingResponse(family, response.body().asUtf8String());
+  }
 
-      InvokeModelResponse response = bedrockClient.invokeModel(request);
-      return parseEmbeddingResponse(family, response.body().asUtf8String());
-    } catch (AwsServiceException e) {
+  /**
+   * On a token-limit ValidationException, truncate the input precisely from the token counts Bedrock
+   * reports and hand it back for one more attempt; rethrow once the retry budget is spent or the
+   * error is not a token-limit error. This catches token-dense scripts (CJK, emoji) that slip past
+   * the {@link #TITAN_MAX_INPUT_CHARS} fast-path cap.
+   */
+  private String shrinkOnTokenOverflow(String input, AwsServiceException e, int attempt) {
+    String shorter;
+    if (attempt >= MAX_TOKEN_LIMIT_RETRIES || !isTokenLimitError(e)) {
       LOG.error("AWS service error calling Bedrock: {}", e.getMessage(), e);
       throw new RuntimeException("Bedrock embedding generation failed (AWS service error)", e);
-    } catch (SdkClientException e) {
-      LOG.error("SDK client error calling Bedrock: {}", e.getMessage(), e);
-      throw new RuntimeException("Bedrock embedding generation failed (SDK client error)", e);
-    } catch (IOException e) {
-      LOG.error("IO error calling Bedrock: {}", e.getMessage(), e);
-      throw new RuntimeException("Bedrock embedding generation failed (IO error)", e);
+    } else {
+      shorter = truncateForTokenLimit(input, e.getMessage());
+      LOG.warn(
+          "Bedrock rejected oversized input ({} chars); retrying truncated to {} chars",
+          input.length(),
+          shorter.length());
     }
+    return shorter;
+  }
+
+  private static boolean isTokenLimitError(AwsServiceException e) {
+    String message = e.getMessage();
+    return message != null && message.toLowerCase(Locale.ROOT).contains("input token");
+  }
+
+  static String truncateForTokenLimit(String input, String message) {
+    int target = targetCharsFromMessage(input.length(), message);
+    int safeTarget = Math.max(1, Math.min(target, input.length() - 1));
+    return input.substring(0, safeTarget);
+  }
+
+  private static int targetCharsFromMessage(int length, String message) {
+    int maxTokens = firstInt(MAX_INPUT_TOKENS_PATTERN, message);
+    int requestTokens = firstInt(REQUEST_TOKENS_PATTERN, message);
+    int target;
+    if (maxTokens > 0 && requestTokens > maxTokens) {
+      target = (int) (length * ((double) maxTokens / requestTokens) * TOKEN_LIMIT_SAFETY);
+    } else {
+      target = length / 2;
+    }
+    return target;
+  }
+
+  private static int firstInt(Pattern pattern, String message) {
+    int value = -1;
+    if (message != null) {
+      Matcher matcher = pattern.matcher(message);
+      if (matcher.find()) {
+        value = Integer.parseInt(matcher.group(1));
+      }
+    }
+    return value;
   }
 
   @Override
