@@ -42,8 +42,8 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        shardIndex: [1, 2, 3, 4, 5, 6]
-        shardTotal: [6]
+        shardIndex: [1, 2, 3, 4, 5, 6, 7]
+        shardTotal: [7]
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
@@ -94,9 +94,17 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
 
+          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
+            echo "🔹 Running search relevance tests on shard 2"
+
+            npx playwright test \
+              --project=search-nightly \
+              playwright/e2e/Search/SearchRelevance.spec.ts \
+              --workers=1
+
           else
-            # Shards 2-5 handle chromium tests (5 shards total)
-            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 1 ))
+            # Shards 3-7 handle chromium tests (5 shards total)
+            CHROMIUM_SHARD=$(( ${{ matrix.shardIndex }} - 2 ))
             echo "🔹 Running all tests (excluding DataAssetRules) on chromium shard ${CHROMIUM_SHARD}/5"
             npx playwright test \
               --project=chromium \

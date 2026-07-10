@@ -51,6 +51,61 @@ import TagsV1 from '../../Tag/TagsV1/TagsV1.component';
 import './explore-search-card.less';
 import { ExploreSearchCardProps } from './ExploreSearchCard.interface';
 
+const RANKING_STAGE_LABEL_KEYS: Record<string, string> = {
+  exactName: 'label.exact-name',
+  closeName: 'label.close-name',
+  structuralContext: 'label.structural-context',
+  descriptionContext: 'label.description-context',
+};
+
+const RANKING_STAGE_DESCRIPTION_KEYS: Record<string, string> = {
+  exactName: 'message.search-ranking-exact-name-explanation',
+  closeName: 'message.search-ranking-close-name-explanation',
+  structuralContext: 'message.search-ranking-structural-context-explanation',
+  descriptionContext: 'message.search-ranking-description-context-explanation',
+};
+
+const MAX_RANKING_REASONS = 4;
+const IGNORED_EXPLANATION_FIELDS = new Set(['deleted']);
+
+const formatScoreValue = (value: number) => value.toFixed(value >= 10 ? 2 : 4);
+
+const formatExplanationFieldMatch = (fieldValue: string) => {
+  const fieldMatch = fieldValue.match(/^([^:]+):(.+?)(?: in \d+)?$/);
+
+  if (!fieldMatch?.[1] || !fieldMatch?.[2]) {
+    return;
+  }
+
+  const field = fieldMatch[1].replace(/\.keyword$/, '');
+
+  return IGNORED_EXPLANATION_FIELDS.has(field)
+    ? undefined
+    : `${field}: ${fieldMatch[2]}`;
+};
+
+const getReadableExplanation = (description: string) => {
+  const normalizedDescription = description.replace(/\s+/g, ' ').trim();
+  const weightMatch = normalizedDescription.match(/^weight\(([^)]+)\)/i);
+  if (weightMatch?.[1]) {
+    return formatExplanationFieldMatch(weightMatch[1]);
+  }
+
+  const exactMatch = normalizedDescription.match(/^ConstantScore\(([^)]+)\)/i);
+  if (exactMatch?.[1]) {
+    return formatExplanationFieldMatch(exactMatch[1]);
+  }
+
+  const signalMatch = normalizedDescription.match(
+    /^field value function: .*doc\['([^']+)'\]/i
+  );
+  if (signalMatch?.[1]) {
+    return signalMatch[1];
+  }
+
+  return;
+};
+
 const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
   HTMLDivElement,
   ExploreSearchCardProps
@@ -71,6 +126,8 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
       checked = false,
       onCheckboxChange,
       score,
+      scoreExplanation,
+      matchedQueries,
       highlight,
       classNameForBreadcrumb,
     },
@@ -86,6 +143,68 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
         ? highlightEntityNameAndDescription(_source, highlight)
         : _source;
     }, [_source, highlight]);
+
+    const rankingStages = useMemo(() => {
+      const stageNames = new Set<string>();
+      matchedQueries
+        ?.filter((queryName) => queryName.startsWith('ranking:'))
+        .forEach((queryName) => {
+          const stageName = queryName.split(':')[1];
+          if (stageName) {
+            stageNames.add(stageName);
+          }
+        });
+
+      return [...stageNames].map((stageName) => ({
+        description: t(
+          RANKING_STAGE_DESCRIPTION_KEYS[stageName] ??
+            'message.search-ranking-generic-stage-explanation'
+        ),
+        label: t(RANKING_STAGE_LABEL_KEYS[stageName] ?? stageName),
+        name: stageName,
+      }));
+    }, [matchedQueries, t]);
+
+    const scoreReasons = useMemo(() => {
+      const reasons: { description: string; value: number }[] = [];
+      const visitExplanation = (
+        explanation: typeof scoreExplanation,
+        depth = 0
+      ) => {
+        if (!explanation || depth > 8) {
+          return;
+        }
+
+        const description = getReadableExplanation(explanation.description);
+
+        if (explanation.value > 0 && description) {
+          reasons.push({
+            description,
+            value: explanation.value,
+          });
+        }
+
+        explanation.details?.forEach((detail) =>
+          visitExplanation(detail, depth + 1)
+        );
+      };
+
+      visitExplanation(scoreExplanation);
+
+      const seenDescriptions = new Set<string>();
+
+      return reasons
+        .sort((left, right) => right.value - left.value)
+        .filter(({ description }) => {
+          if (seenDescriptions.has(description)) {
+            return false;
+          }
+          seenDescriptions.add(description);
+
+          return true;
+        })
+        .slice(0, MAX_RANKING_REASONS);
+    }, [scoreExplanation]);
 
     // Hover/focus on an entity card warms the React Query cache so the click that follows
     // hits an already-populated slot. Dispatched on entityType because each detail page reads
@@ -319,7 +438,7 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 )}
                 items={breadcrumbItems}
               />
-              {score && (
+              {score !== undefined && (
                 <div className="flex items-center gap-1 score-container">
                   <ScoreIcon />
 
@@ -435,6 +554,66 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
                 ${startCase(data.key)}${i === matches.length - 1 ? '' : ','}`}
               </span>
             ))}
+          </div>
+        ) : null}
+        {rankingStages.length > 0 || score !== undefined ? (
+          <div
+            className="ranking-details-container"
+            data-testid="ranking-details">
+            <div className="ranking-details-header">
+              <Typography.Text className="ranking-details-title">
+                {t('label.ranking-detail-plural')}
+              </Typography.Text>
+              {score !== undefined && (
+                <Typography.Text
+                  className="ranking-details-score"
+                  data-testid="ranking-score">
+                  {t('label.score')}: {formatScoreValue(score)}
+                </Typography.Text>
+              )}
+            </div>
+            {rankingStages.length > 0 ? (
+              <div className="ranking-stage-list">
+                {rankingStages.map(({ description, label, name }) => (
+                  <div
+                    className="ranking-stage-item"
+                    data-testid={`ranking-stage-${name}`}
+                    key={name}>
+                    <Typography.Text className="text-xs font-medium">
+                      {label}
+                    </Typography.Text>
+                    <Typography.Text className="text-xs text-grey-muted">
+                      {description}
+                    </Typography.Text>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            {scoreReasons.length > 0 ? (
+              <div
+                className="ranking-score-explanation"
+                data-testid="ranking-score-explanation">
+                <Typography.Text className="text-xs font-medium">
+                  {t('label.reason')}
+                </Typography.Text>
+                {scoreReasons.map(({ description, value }) => (
+                  <div
+                    className="ranking-score-contributor"
+                    data-testid="ranking-score-contributor"
+                    key={`${description}-${value}`}>
+                    <Typography.Text className="text-xs font-medium">
+                      {formatScoreValue(value)}
+                    </Typography.Text>
+                    <Typography.Text className="text-xs text-grey-muted">
+                      {description}
+                    </Typography.Text>
+                  </div>
+                ))}
+              </div>
+            ) : null}
+            <Typography.Text className="text-xs text-grey-muted">
+              {t('message.search-ranking-signals-explanation')}
+            </Typography.Text>
           </div>
         ) : null}
         {actionPopoverContent && (

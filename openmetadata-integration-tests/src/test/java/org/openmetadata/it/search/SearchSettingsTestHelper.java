@@ -1,6 +1,7 @@
 package org.openmetadata.it.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -205,6 +206,27 @@ public final class SearchSettingsTestHelper {
       final String assetType,
       final AssetTypeConfiguration.BoostMode boostMode) {
     assetConfig(settings, assetType).setBoostMode(boostMode);
+  }
+
+  public static SearchSettings withRankingDisabled(
+      final SearchSettings settings, final String assetType) {
+    final JsonNode root = JsonUtils.readTree(JsonUtils.pojoToJson(settings));
+    disableRankingNode(root.path("defaultConfiguration"));
+
+    for (JsonNode config : root.path("assetTypeConfigurations")) {
+      if (assetType.equalsIgnoreCase(config.path("assetType").asText())) {
+        disableRankingNode(config);
+      }
+    }
+
+    return JsonUtils.treeToValue(root, SearchSettings.class);
+  }
+
+  private static void disableRankingNode(final JsonNode config) {
+    if (config instanceof ObjectNode configNode
+        && configNode.path("ranking") instanceof ObjectNode rankingNode) {
+      rankingNode.put("enabled", false);
+    }
   }
 
   /**
