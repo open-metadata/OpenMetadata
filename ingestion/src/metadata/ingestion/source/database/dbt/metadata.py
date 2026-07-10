@@ -1505,6 +1505,7 @@ class DbtSource(DbtServiceSource):
     def create_dbt_metric_lineage(self, metric_entry: dict) -> Iterable[Either[AddLineageRequest]]:
         metric_node = metric_entry["metric_node"]
         semantic_models = metric_entry["semantic_models"]
+        all_metrics = metric_entry.get("all_metrics") or {}
 
         metric_name = metric_node.name
         metric_entity = self.metadata.get_by_name(
@@ -1515,8 +1516,15 @@ class DbtSource(DbtServiceSource):
             logger.debug(f"Metric entity '{metric_name}' not found, skipping lineage")
             return
 
-        # Table → Metric lineage (from semantic models)
-        for sm in find_semantic_models_for_metric(metric_node, semantic_models):
+        # Table → Metric lineage (from semantic models). Resolve transitively so
+        # derived/ratio/conversion metrics that inherit semantic models through parent
+        # metrics also get source-table and column lineage, matching dimension/measure extraction.
+        models = (
+            find_semantic_models_transitive(metric_node, semantic_models, all_metrics)
+            if all_metrics
+            else find_semantic_models_for_metric(metric_node, semantic_models)
+        )
+        for sm in models:
             node_relation = getattr(sm, "node_relation", None)
             if not node_relation:
                 continue
