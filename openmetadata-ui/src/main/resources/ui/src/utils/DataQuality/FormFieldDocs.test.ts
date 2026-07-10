@@ -120,6 +120,18 @@ describe('loadFormFieldDocs', () => {
     expect(second).toBe(first);
   });
 
+  it('dedupes concurrent calls for the same form via the in-flight promise', async () => {
+    mockFetchMarkdownFile.mockResolvedValue(SAMPLE_MD);
+
+    const [first, second] = await Promise.all([
+      loadFormFieldDocs('SampleFormD'),
+      loadFormFieldDocs('SampleFormD'),
+    ]);
+
+    expect(mockFetchMarkdownFile).toHaveBeenCalledTimes(1);
+    expect(second).toBe(first);
+  });
+
   it('falls back to an empty map when the fetch fails', async () => {
     mockFetchMarkdownFile.mockRejectedValueOnce(new Error('404 not found'));
 

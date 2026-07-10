@@ -38,14 +38,37 @@ export const parseFormFieldDocs = (
   return docs;
 };
 
-const docsCache = new Map<string, Record<string, string>>();
+const DOCS_CACHE_MAX_SIZE = 50;
+
+// Bounded cache of the in-flight fetch+parse promise per form. Caching the
+// promise (not the resolved value) lets concurrent callers share one request,
+// so the file is fetched at most once per form; the size cap keeps this
+// module-level cache from growing without bound, per the repo's caching rule
+// (the same bounded pattern used for the tag-data cache in TagSuggestion).
+const docsCache = new Map<string, Promise<Record<string, string>>>();
+
+const cacheFormDocs = (
+  formName: string,
+  docs: Promise<Record<string, string>>
+): void => {
+  docsCache.delete(formName);
+  docsCache.set(formName, docs);
+  while (docsCache.size > DOCS_CACHE_MAX_SIZE) {
+    const oldestKey = docsCache.keys().next().value;
+    if (oldestKey === undefined) {
+      break;
+    }
+    docsCache.delete(oldestKey);
+  }
+};
 
 /**
  * Fetches and parses a form documentation markdown file into a
  * `{ fieldId: sectionMarkdown }` map. English-only (matching the classic doc
- * panel), cached per form so the file is fetched at most once.
+ * panel) and cached per form — concurrent callers share the same in-flight
+ * request, so the file is fetched at most once per form.
  */
-export const loadFormFieldDocs = async (
+export const loadFormFieldDocs = (
   formName: string
 ): Promise<Record<string, string>> => {
   const cached = docsCache.get(formName);
@@ -53,16 +76,18 @@ export const loadFormFieldDocs = async (
     return cached;
   }
 
-  let docs: Record<string, string> = {};
-  try {
-    const markdown = await fetchMarkdownFile(
-      `${SupportedLocales.English}/OpenMetadata/${formName}.md`
-    );
-    docs = parseFormFieldDocs(markdown);
-  } catch {
-    docs = {};
-  }
-  docsCache.set(formName, docs);
+  const docs = (async () => {
+    try {
+      const markdown = await fetchMarkdownFile(
+        `${SupportedLocales.English}/OpenMetadata/${formName}.md`
+      );
+
+      return parseFormFieldDocs(markdown);
+    } catch {
+      return {};
+    }
+  })();
+  cacheFormDocs(formName, docs);
 
   return docs;
 };
