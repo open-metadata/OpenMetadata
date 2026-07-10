@@ -120,13 +120,7 @@ describe('useAuthenticatedImage', () => {
     expect(result.current.imageSrc).toBe(src);
   });
 
-  it('does not revoke the object URL on unmount because the cleanup closure captures pre-fetch imageSrc', async () => {
-    // NOTE: the effect that owns this cleanup only depends on [src], so its
-    // closure captures `imageSrc` as of the render when the effect last ran
-    // (still the raw `src`, before fetchImage's setState resolves it to the
-    // blob URL). This means the blob URL is currently never revoked on
-    // unmount - a real memory leak in useAuthenticatedImage, tracked here so
-    // a future fix has a failing-then-passing test to flip.
+  it('revokes the object URL on unmount once resolved', async () => {
     const src = attachmentSrc('attachment-id-unmount');
     const { unmount, result } = renderHook(() => useAuthenticatedImage(src));
 
@@ -140,7 +134,58 @@ describe('useAuthenticatedImage', () => {
 
     unmount();
 
+    expect(revokeObjectURLMock).toHaveBeenCalledWith(BLOB_URL);
+  });
+
+  it('does not revoke a blob URL still referenced by another mounted instance, and revokes it once all instances unmount', async () => {
+    const src = attachmentSrc('attachment-id-shared');
+    const first = renderHook(() => useAuthenticatedImage(src));
+    const second = renderHook(() => useAuthenticatedImage(src));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(first.result.current.imageSrc).toBe(BLOB_URL);
+    expect(second.result.current.imageSrc).toBe(BLOB_URL);
+
+    first.unmount();
+
     expect(revokeObjectURLMock).not.toHaveBeenCalled();
+
+    second.unmount();
+
+    expect(revokeObjectURLMock).toHaveBeenCalledWith(BLOB_URL);
+    expect(revokeObjectURLMock).toHaveBeenCalledTimes(1);
+  });
+
+  it('fetches again on a fresh mount after a prior instance for the same src has unmounted', async () => {
+    const src = attachmentSrc('attachment-id-remount');
+    const first = renderHook(() => useAuthenticatedImage(src));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    first.unmount();
+
+    expect(revokeObjectURLMock).toHaveBeenCalledTimes(1);
+
+    const second = renderHook(() => useAuthenticatedImage(src));
+
+    await act(async () => {
+      await Promise.resolve();
+      await Promise.resolve();
+    });
+
+    expect(mockDownloadAsset).toHaveBeenCalledTimes(2);
+    expect(second.result.current.imageSrc).toBe(BLOB_URL);
+
+    second.unmount();
+
+    expect(revokeObjectURLMock).toHaveBeenCalledTimes(2);
   });
 
   it('does not revoke anything on unmount when the src was never resolved to a blob URL', async () => {

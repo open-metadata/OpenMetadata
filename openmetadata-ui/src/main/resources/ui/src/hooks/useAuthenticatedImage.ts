@@ -18,10 +18,29 @@ import { getAttachmentId } from '../utils/UploadAttachmentUtils';
 // Track in-flight requests globally
 const pendingRequests = new Map<string, Promise<string>>();
 
+// Track how many live consumers reference each blob URL so it is only
+// revoked once nothing still points at it.
+const blobUrlRefCounts = new Map<string, number>();
+
+const acquireBlobUrl = (objectUrl: string) => {
+  blobUrlRefCounts.set(objectUrl, (blobUrlRefCounts.get(objectUrl) ?? 0) + 1);
+};
+
+const releaseBlobUrl = (objectUrl: string) => {
+  const count = (blobUrlRefCounts.get(objectUrl) ?? 1) - 1;
+  if (count <= 0) {
+    blobUrlRefCounts.delete(objectUrl);
+    URL.revokeObjectURL(objectUrl);
+  } else {
+    blobUrlRefCounts.set(objectUrl, count);
+  }
+};
+
 export const useAuthenticatedImage = (src: string) => {
   const [imageSrc, setImageSrc] = useState<string>(src);
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const isMounted = useRef(true);
+  const objectUrlRef = useRef<string | null>(null);
 
   const fetchImage = async () => {
     if (!src?.includes('/api/v1/attachments/')) {
@@ -30,11 +49,11 @@ export const useAuthenticatedImage = (src: string) => {
       return;
     }
 
+    setIsLoading(true);
+
     // Check if there's already a request in flight for this src
     let request = pendingRequests.get(src);
-
     if (!request) {
-      setIsLoading(true);
       request = (async () => {
         try {
           const attachmentId = getAttachmentId(src);
@@ -53,9 +72,6 @@ export const useAuthenticatedImage = (src: string) => {
         } catch (error) {
           return src; // Fallback to original src
         } finally {
-          if (isMounted.current) {
-            setIsLoading(false);
-          }
           pendingRequests.delete(src);
         }
       })();
@@ -66,11 +82,22 @@ export const useAuthenticatedImage = (src: string) => {
     try {
       const objectUrl = await request;
       if (isMounted.current) {
+        if (objectUrl.startsWith('blob:')) {
+          acquireBlobUrl(objectUrl);
+        }
+        if (objectUrlRef.current) {
+          releaseBlobUrl(objectUrlRef.current);
+        }
+        objectUrlRef.current = objectUrl.startsWith('blob:') ? objectUrl : null;
         setImageSrc(objectUrl);
       }
     } catch (error) {
       if (isMounted.current) {
         setImageSrc(src);
+      }
+    } finally {
+      if (isMounted.current) {
+        setIsLoading(false);
       }
     }
   };
@@ -87,8 +114,9 @@ export const useAuthenticatedImage = (src: string) => {
     fetchImage();
 
     return () => {
-      if (imageSrc.startsWith('blob:')) {
-        URL.revokeObjectURL(imageSrc);
+      if (objectUrlRef.current) {
+        releaseBlobUrl(objectUrlRef.current);
+        objectUrlRef.current = null;
       }
     };
   }, [src]);
