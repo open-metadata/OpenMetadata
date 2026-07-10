@@ -386,6 +386,13 @@ CREATE TABLE IF NOT EXISTS audit_report_entity (
     PRIMARY KEY (id),
     UNIQUE (fqnHash)
 );
+-- For 2.0.0 environments that ran the CREATE TABLE above before the
+-- requestSignature generated column was added inline, attach it now. CREATE
+-- TABLE IF NOT EXISTS is a no-op on those environments so the column would
+-- never appear otherwise, and the index below would fail to create.
+ALTER TABLE audit_report_entity
+    ADD COLUMN IF NOT EXISTS requestSignature VARCHAR(512) GENERATED ALWAYS AS (json->>'requestSignature') STORED;
+
 CREATE INDEX IF NOT EXISTS audit_report_name_index ON audit_report_entity(name);
 CREATE INDEX IF NOT EXISTS audit_report_status_index ON audit_report_entity(status);
 CREATE INDEX IF NOT EXISTS audit_report_deleted_index ON audit_report_entity(deleted);

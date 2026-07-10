@@ -435,6 +435,47 @@ CREATE TABLE IF NOT EXISTS audit_report_entity (
     INDEX deleted_index (deleted),
     INDEX request_signature_index (requestSignature)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Audit Report entities';
+
+-- For 2.0.0 environments that ran the CREATE TABLE above before the
+-- requestSignature generated column and its index were added inline. CREATE
+-- TABLE IF NOT EXISTS is a no-op on those environments so neither would ever
+-- appear. MySQL doesn't reliably support `ADD COLUMN IF NOT EXISTS` across
+-- 8.0 versions and has no `ADD KEY IF NOT EXISTS`, so guard both via
+-- information_schema.
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_report_entity'
+        AND column_name = 'requestSignature'
+    ),
+    'SELECT 1',
+    'ALTER TABLE audit_report_entity ADD COLUMN requestSignature VARCHAR(512) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4''$.requestSignature''))) STORED'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'audit_report_entity'
+        AND index_name = 'request_signature_index'
+    ),
+    'SELECT 1',
+    'ALTER TABLE audit_report_entity ADD KEY request_signature_index (requestSignature)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS `user_session` (
   `id` varchar(64) GENERATED ALWAYS AS (json_unquote(json_extract(`json`,_utf8mb4'$.id'))) STORED NOT NULL,
