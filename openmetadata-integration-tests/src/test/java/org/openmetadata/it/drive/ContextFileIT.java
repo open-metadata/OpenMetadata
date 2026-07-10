@@ -240,7 +240,8 @@ class ContextFileIT {
 
     // Scoped to the archiver: the archived file is returned.
     List<String> byArchiver =
-        listFileIds(adminRest, FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + archiver);
+        listFileIds(
+            adminRest, FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + encode(archiver));
     assertTrue(
         byArchiver.contains(file.getId().toString()),
         "updatedBy filter must include files archived by that user");
@@ -248,7 +249,8 @@ class ContextFileIT {
     // Scoped to a different user: the archived file is excluded.
     List<String> byOther =
         listFileIds(
-            adminRest, FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + ns.prefix("nobody"));
+            adminRest,
+            FILE_PATH + "?include=deleted&limit=1000&updatedBy=" + encode(ns.prefix("nobody")));
     assertFalse(
         byOther.contains(file.getId().toString()),
         "updatedBy filter must exclude files archived by a different user");
@@ -259,6 +261,10 @@ class ContextFileIT {
     assertTrue(
         unfiltered.contains(file.getId().toString()),
         "Unfiltered archive list must still contain the archived file");
+  }
+
+  private String encode(String value) {
+    return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 
   private ContextFile getFileIncludeAll(RestClient rest, UUID id) {
