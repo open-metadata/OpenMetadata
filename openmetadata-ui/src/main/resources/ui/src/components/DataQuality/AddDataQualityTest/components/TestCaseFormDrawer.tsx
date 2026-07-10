@@ -481,7 +481,13 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           fieldDocOffset={56}
           form={form}
           renderFieldDoc={(markdown) => (
-            <RichTextEditorPreviewerV1 markdown={markdown} />
+            // Render the full field doc without the "see more" toggle — the
+            // popover shows the whole hint, and toggling it would resize the
+            // popover and make react-aria re-anchor it (flicker).
+            <RichTextEditorPreviewerV1
+              enableSeeMoreVariant={false}
+              markdown={markdown}
+            />
           )}
           showFieldDocs={showHint}
           onSubmit={form.handleSubmit(

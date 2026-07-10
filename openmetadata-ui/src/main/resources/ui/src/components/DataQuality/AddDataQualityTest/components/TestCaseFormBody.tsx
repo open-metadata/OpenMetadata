@@ -39,6 +39,8 @@ import {
   PAGE_SIZE_LARGE,
 } from '../../../../constants/constants';
 import { TEST_CASE_NAME_REGEX } from '../../../../constants/regex.constants';
+import { TEST_CASE_FORM } from '../../../../constants/service-guide.constant';
+import { loadFormFieldDocs } from '../../../../utils/DataQuality/FormFieldDocs';
 import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore';
 import { usePermissionProvider } from '../../../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -131,6 +133,23 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const [selectedTestType, setSelectedTestType] = useState<string>();
   const [currentColumnType, setCurrentColumnType] = useState<string>();
   const [isCustomQuery, setIsCustomQuery] = useState(false);
+
+  // Per-field "Form Hint" text is sourced from the same TestCaseForm.md that
+  // backs the classic documentation panel, so the popover and the doc panel
+  // stay in sync and we don't duplicate the copy as translation strings.
+  const [fieldDocs, setFieldDocs] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    loadFormFieldDocs(TEST_CASE_FORM).then((docs) => {
+      if (!cancelled) {
+        setFieldDocs(docs);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
 
   const [existingTestCases, setExistingTestCases] = useState<string[]>([]);
   const [canCreatePipeline, setCanCreatePipeline] = useState(false);
@@ -750,7 +769,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       },
     },
     id: 'root/table',
-    doc: t('message.doc-field-selected-table'),
+    doc: fieldDocs.table ?? t('message.doc-field-selected-table'),
     placeholder: t('label.select-entity', { entity: t('label.table') }),
     props: {
       'data-testid': 'selectedTable',
@@ -793,7 +812,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
       required: t('label.please-select-entity', { entity: t('label.column') }),
     },
     id: 'root/column',
-    doc: t('message.doc-field-selected-column'),
+    doc: fieldDocs.column ?? t('message.doc-field-selected-column'),
     placeholder: t('label.select-entity', { entity: t('label.column') }),
     props: {
       'data-testid': 'selectedColumn',
@@ -846,7 +865,9 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     },
     id: selectedTestType ? `root/${selectedTestType}` : 'root/testType',
     doc:
-      selectedTestDefinition?.description ?? t('message.doc-field-test-type'),
+      selectedTestDefinition?.description ??
+      fieldDocs.testType ??
+      t('message.doc-field-test-type'),
     placeholder: t('label.select-test-type'),
     props: {
       'data-testid': 'test-type',
@@ -893,7 +914,7 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
     type: FieldTypes.TEXT,
     required: false,
     id: 'root/name',
-    doc: t('message.doc-field-test-case-name'),
+    doc: fieldDocs.name ?? t('message.doc-field-test-case-name'),
     placeholder: t('message.enter-test-case-name'),
     rules: {
       pattern: {
@@ -942,30 +963,30 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
   const testLevelDoc = useFieldDoc({
     name: 'testLevel',
     label: t('message.select-test-level'),
-    doc: t('message.doc-field-test-level'),
+    doc: fieldDocs.testLevel ?? t('message.doc-field-test-level'),
   });
 
   const tagsDoc = useFieldDoc({
     name: 'tags',
     label: t('label.tag-plural'),
-    doc: t('message.doc-field-tags'),
+    doc: fieldDocs.tags ?? t('message.doc-field-tags'),
   });
 
   const glossaryTermsDoc = useFieldDoc({
     name: 'glossaryTerms',
     label: t('label.glossary-term-plural'),
-    doc: t('message.doc-field-glossary-terms'),
+    doc: fieldDocs.glossaryTerms ?? t('message.doc-field-glossary-terms'),
   });
 
   const pipelineDoc = useFieldDoc({
     name: 'pipeline',
     label: t('label.pipeline'),
-    doc: t('message.doc-field-pipeline'),
+    doc: fieldDocs.createPipeline ?? t('message.doc-field-pipeline'),
   });
   const descriptionDoc = useFieldDoc({
     name: 'description',
     label: t('label.description'),
-    doc: t('message.doc-field-description'),
+    doc: fieldDocs.description ?? t('message.doc-field-description'),
   });
 
   // Seed the hint panel with the first field actually on screen so it isn't
@@ -1092,6 +1113,10 @@ const TestCaseFormBody: FC<TestCaseFormBodyProps> = ({
               definition={selectedTestDefinition}
               form={form}
               table={selectedTableData}
+              testDefinitionDoc={
+                fieldDocs[selectedTestDefinition.name ?? ''] ??
+                selectedTestDefinition.description
+              }
             />
           </div>
         )}

@@ -57,9 +57,16 @@ const CodeEditor = withSuspenseFallback(
 interface ParamArrayFieldProps {
   form: UseFormReturn<FormValues>;
   data: TestCaseParameterDefinition;
+  // The selected test definition's doc, shown in the Form Hint popover on
+  // focus so the AI modal matches the classic drawer's documentation panel.
+  testDefinitionDoc?: string;
 }
 
-const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
+const ParamArrayField: React.FC<ParamArrayFieldProps> = ({
+  form,
+  data,
+  testDefinitionDoc,
+}) => {
   const { t } = useTranslation();
   const fieldName = `params.${data.name}` as const;
   const label = getEntityName(data);
@@ -110,6 +117,9 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
               // must not repeat it. Validation is still enforced via `rules`.
               required: false,
               rules: rowRequired ? { required: rowRequired } : undefined,
+              // Surface the selected test definition's doc in the Form Hint
+              // popover on focus, matching the classic drawer's doc panel.
+              doc: testDefinitionDoc ?? data.description,
               placeholder: t('message.enter-a-field', { field: label }),
               id: `testCaseFormV1_params_${data.name}_${index}_value`,
               props: {
@@ -133,18 +143,20 @@ const ParamArrayField: React.FC<ParamArrayFieldProps> = ({ form, data }) => {
 interface SqlExpressionFieldProps {
   form: UseFormReturn<FormValues>;
   data: TestCaseParameterDefinition;
+  testDefinitionDoc?: string;
 }
 
 const SqlExpressionField: React.FC<SqlExpressionFieldProps> = ({
   form,
   data,
+  testDefinitionDoc,
 }) => {
   const { t } = useTranslation();
   const label = getEntityName(data);
   const fieldDoc = useFieldDoc({
     name: `params.${data.name}`,
     label,
-    doc: data.description,
+    doc: testDefinitionDoc ?? data.description,
   });
 
   return (
@@ -208,6 +220,10 @@ export interface ParameterFieldsProps {
   form: UseFormReturn<FormValues>;
   definition: TestDefinition;
   table?: Table;
+  // Doc for the selected test definition (from TestCaseForm.md), shown in the
+  // Form Hint popover when any parameter field is focused so the AI modal
+  // matches the classic drawer's documentation panel.
+  testDefinitionDoc?: string;
 }
 
 const toSelectOptions = (values: string[]): FormSelectItem[] =>
@@ -217,6 +233,7 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
   form,
   definition,
   table,
+  testDefinitionDoc,
 }) => {
   const { t } = useTranslation();
 
@@ -313,7 +330,9 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
       rules: buildRules(data, label),
       helperText: data.description,
       helperTextType: HelperTextType.TOOLTIP,
-      doc: data.description,
+      // Form Hint popover shows the selected test definition's doc (matching
+      // the classic drawer's doc panel); the tooltip keeps the per-param text.
+      doc: testDefinitionDoc ?? data.description,
       // Legacy antd form-item id kept as the stable E2E selector.
       id: `testCaseFormV1_params_${data.name}`,
       props: { 'data-testid': `parameter-${data.name}` },
@@ -377,7 +396,11 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
         if (isArrayOrSet(data) && !data.optionValues?.length) {
           return (
             <div key={data.name}>
-              <ParamArrayField data={data} form={form} />
+              <ParamArrayField
+                data={data}
+                form={form}
+                testDefinitionDoc={testDefinitionDoc}
+              />
             </div>
           );
         }
@@ -385,7 +408,11 @@ const ParameterFields: React.FC<ParameterFieldsProps> = ({
         if (data.name === 'sqlExpression') {
           return (
             <div key={data.name}>
-              <SqlExpressionField data={data} form={form} />
+              <SqlExpressionField
+                data={data}
+                form={form}
+                testDefinitionDoc={testDefinitionDoc}
+              />
             </div>
           );
         }
