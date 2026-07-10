@@ -94,6 +94,7 @@ class AirflowApiSource(PipelineServiceSource):
                 logger.warning(f"Error building DAG details for {dag_data.get('dag_id')}: {exc}")
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the ``Pipeline`` denominator from the Airflow REST DAG count."""
         count = self.connection.get_dags_count()
         if isinstance(count, int) and count > 0:
             totals.set_total("Pipeline", count)
