@@ -98,6 +98,7 @@ class AirflowApiClient:
                 auth_token=auth_token_fn,
                 auth_token_mode=auth_token_mode,
                 verify=verify_ssl,
+                retry_codes=[503, 504],
             )
             self.client = TrackedREST(client_config, source_name="airflow_api")
 

@@ -84,8 +84,10 @@ class AirflowApiSource(PipelineServiceSource):
         return cls(config, metadata)
 
     def get_pipelines_list(self) -> Iterable[AirflowApiDagDetails]:
-        all_dags = self.connection.get_all_dags()
-        for dag_data in all_dags:
+        include_undeployed = self.source_config.includeUnDeployedPipelines
+        for dag_data in self.connection.get_all_dags():
+            if not include_undeployed and dag_data.get("is_paused"):
+                continue
             try:
                 yield self.connection.build_dag_details(dag_data)
             except Exception as exc:

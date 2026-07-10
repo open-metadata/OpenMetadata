@@ -589,7 +589,19 @@ class AirflowSource(PipelineServiceSource):
 
         while True:
             paginated_query = session_query.order_by(SerializedDagModel.dag_id.asc()).limit(limit).offset(offset)
-            results = paginated_query.all()
+            try:
+                results = paginated_query.all()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.warning(f"Error fetching DAG page at offset {offset} - {exc}")
+                self.status.failed(
+                    StackTraceError(
+                        name="Airflow DAG Pagination",
+                        error=f"Error fetching DAG page at offset {offset}: {exc}",
+                        stackTrace=traceback.format_exc(),
+                    )
+                )
+                break
             if not results:
                 break
             for serialized_dag in results:
@@ -636,9 +648,23 @@ class AirflowSource(PipelineServiceSource):
                 except ValidationError as err:
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Error building pydantic model for {serialized_dag} - {err}")
+                    self.status.failed(
+                        StackTraceError(
+                            name=serialized_dag[0],
+                            error=f"Error building pydantic model for DAG '{serialized_dag[0]}': {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
                 except Exception as err:
                     logger.debug(traceback.format_exc())
                     logger.warning(f"Wild error yielding dag {serialized_dag} - {err}")
+                    self.status.failed(
+                        StackTraceError(
+                            name=serialized_dag[0],
+                            error=f"Wild error yielding DAG '{serialized_dag[0]}': {err}",
+                            stackTrace=traceback.format_exc(),
+                        )
+                    )
 
             offset += limit
 
