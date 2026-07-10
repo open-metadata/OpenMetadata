@@ -533,6 +533,62 @@ class DBTCloudUnitTest(TestCase):
         results = list(self.dbtcloud.get_pipelines_list())
         self.assertEqual([EXPECTED_JOB_DETAILS], results)
 
+    def test_declare_progress_totals_sets_pipeline_total(self):
+        totals = MagicMock()
+        with patch.object(self.dbtcloud.client, "get_jobs_count", return_value=5):
+            self.dbtcloud.declare_progress_totals(totals)
+        totals.set_total.assert_called_once_with("Pipeline", 5)
+
+    def test_declare_progress_totals_skips_when_none(self):
+        totals = MagicMock()
+        with patch.object(self.dbtcloud.client, "get_jobs_count", return_value=None):
+            self.dbtcloud.declare_progress_totals(totals)
+        totals.set_total.assert_not_called()
+
+    def test_declare_progress_totals_skips_when_zero(self):
+        totals = MagicMock()
+        with patch.object(self.dbtcloud.client, "get_jobs_count", return_value=0):
+            self.dbtcloud.declare_progress_totals(totals)
+        totals.set_total.assert_not_called()
+
+    def test_get_jobs_count_uses_job_ids_length(self):
+        client = self.dbtcloud.client
+        client.job_ids = ["1", "2", "3"]
+        assert client.get_jobs_count() == 3
+
+    def test_get_jobs_count_sums_filter_totals(self):
+        client = self.dbtcloud.client
+        client.job_ids = None
+        client.project_ids = ["p1", "p2"]
+        client.environment_ids = None
+        with patch.object(client.client, "get", return_value=MOCK_JOB_RESULT) as get:
+            assert client.get_jobs_count() == 4
+        assert get.call_count == 2
+
+    def test_get_jobs_count_reads_pagination_total(self):
+        client = self.dbtcloud.client
+        client.job_ids = None
+        client.project_ids = None
+        client.environment_ids = None
+        with patch.object(client.client, "get", return_value=MOCK_JOB_RESULT):
+            assert client.get_jobs_count() == 2
+
+    def test_get_jobs_count_returns_zero_on_error(self):
+        client = self.dbtcloud.client
+        client.job_ids = None
+        client.project_ids = None
+        client.environment_ids = None
+        with patch.object(client.client, "get", side_effect=Exception("boom")):
+            assert client.get_jobs_count() == 0
+
+    def test_get_jobs_count_continues_when_one_filter_fails(self):
+        client = self.dbtcloud.client
+        client.job_ids = None
+        client.project_ids = ["p1", "p2"]
+        client.environment_ids = None
+        with patch.object(client.client, "get", side_effect=[MOCK_JOB_RESULT, Exception("boom")]):
+            assert client.get_jobs_count() == 2
+
     def test_pipeline_name(self):
         assert self.dbtcloud.get_pipeline_name(EXPECTED_JOB_DETAILS) == EXPECTED_PIPELINE_NAME
 
