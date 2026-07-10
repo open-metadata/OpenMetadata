@@ -16,14 +16,17 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.ai.IntakeCheck;
+import org.openmetadata.schema.api.ai.IntakeChecksResponse;
 import org.openmetadata.schema.entity.ai.AIApplication;
+import org.openmetadata.schema.entity.ai.GovernanceMetadata;
 import org.openmetadata.schema.entity.ai.LLMModel;
+import org.openmetadata.schema.entity.ai.McpGovernanceMetadata;
 import org.openmetadata.schema.entity.ai.McpServer;
-import org.openmetadata.schema.utils.JsonUtils;
-import org.openmetadata.service.resources.ai.AIGovernanceResource.IntakeCheck;
-import org.openmetadata.service.resources.ai.AIGovernanceResource.IntakeChecksResponse;
+import org.openmetadata.schema.type.AICompliance;
+import org.openmetadata.schema.type.AIComplianceRecord;
+import org.openmetadata.schema.type.AIEvidence;
 
 /**
  * Computes the 5 intake checks the Approvals queue UI surfaces for an AI asset.
@@ -41,15 +44,17 @@ final class IntakeChecks {
 
   static IntakeChecksResponse compute(EntityInterface entity) {
     List<IntakeCheck> checks = new ArrayList<>();
-    checks.add(new IntakeCheck(OWNER_ASSIGNED, hasOwner(entity), null));
-    checks.add(new IntakeCheck(RISK_CLASSIFIED, hasRisk(entity), null));
-    checks.add(new IntakeCheck(FAIRNESS_EVIDENCE, hasFairnessEvidence(entity), null));
-    checks.add(new IntakeCheck(DPIA_REFERENCED, hasDpia(entity), null));
-    checks.add(new IntakeCheck(TRANSPARENCY_DISCLOSURE, hasTransparency(entity), null));
-    IntakeChecksResponse response = new IntakeChecksResponse();
-    response.setChecks(checks);
+    checks.add(intakeCheck(OWNER_ASSIGNED, hasOwner(entity), null));
+    checks.add(intakeCheck(RISK_CLASSIFIED, hasRisk(entity), null));
+    checks.add(intakeCheck(FAIRNESS_EVIDENCE, hasFairnessEvidence(entity), null));
+    checks.add(intakeCheck(DPIA_REFERENCED, hasDpia(entity), null));
+    checks.add(intakeCheck(TRANSPARENCY_DISCLOSURE, hasTransparency(entity), null));
 
-    return response;
+    return new IntakeChecksResponse().withChecks(checks);
+  }
+
+  private static IntakeCheck intakeCheck(String name, boolean passing, String evidenceRef) {
+    return new IntakeCheck().withName(name).withPassing(passing).withEvidenceRef(evidenceRef);
   }
 
   private static boolean hasOwner(EntityInterface entity) {
@@ -57,17 +62,8 @@ final class IntakeChecks {
   }
 
   private static boolean hasRisk(EntityInterface entity) {
-    Map<String, Object> governance = readGovernance(entity);
-    boolean result = false;
-    if (governance != null) {
-      Map<String, Object> risk = asMap(governance.get("riskAssessment"));
-      if (risk != null && risk.get("riskLevel") != null) {
-        result = true;
-      }
-      if (!result) {
-        result = euRiskClassificationPresent(governance);
-      }
-    }
+    boolean result =
+        riskAssessmentDeclared(entity) || euRiskClassificationPresent(aiCompliance(entity));
     if (!result && entity instanceof LLMModel llm) {
       result = llm.getGovernanceStatus() != null;
     }
@@ -82,106 +78,82 @@ final class IntakeChecks {
       result = true;
     }
     if (!result) {
-      String url = readEvidenceUrl(entity, "fairnessEvidenceUrl");
-      result = url != null && !url.isBlank();
+      AIEvidence evidence = evidence(entity);
+      result = evidence != null && !nullOrEmpty(evidence.getFairnessEvidenceUrl());
     }
     return result;
   }
 
   private static boolean hasDpia(EntityInterface entity) {
-    String url = readEvidenceUrl(entity, "dpiaUrl");
-    return url != null && !url.isBlank();
+    AIEvidence evidence = evidence(entity);
+    return evidence != null && !nullOrEmpty(evidence.getDpiaUrl());
   }
 
   private static boolean hasTransparency(EntityInterface entity) {
-    Map<String, Object> governance = readGovernance(entity);
+    AICompliance aiCompliance = aiCompliance(entity);
     boolean result = false;
-    if (governance != null) {
-      Map<String, Object> aiCompliance = asMap(governance.get("aiCompliance"));
-      if (aiCompliance != null) {
-        List<Object> records = asList(aiCompliance.get("complianceRecords"));
-        if (records != null) {
-          for (Object item : records) {
-            Map<String, Object> record = asMap(item);
-            if (record == null) {
-              continue;
-            }
-            Map<String, Object> eu = asMap(record.get("euAIAct"));
-            Map<String, Object> transparency =
-                eu == null ? null : asMap(eu.get("transparencyObligations"));
-            if (transparency != null && Boolean.TRUE.equals(transparency.get("usersInformed"))) {
-              result = true;
-              break;
-            }
-          }
+    if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+      for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+        if (record.getEuAIAct() != null
+            && record.getEuAIAct().getTransparencyObligations() != null
+            && Boolean.TRUE.equals(
+                record.getEuAIAct().getTransparencyObligations().getUsersInformed())) {
+          result = true;
+          break;
         }
       }
     }
     return result;
   }
 
-  private static String readEvidenceUrl(EntityInterface entity, String key) {
-    String url = null;
-    Map<String, Object> evidence = null;
+  private static boolean riskAssessmentDeclared(EntityInterface entity) {
+    boolean result = false;
     if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
-      evidence =
-          JsonUtils.getObjectMapper()
-              .convertValue(app.getGovernanceMetadata().getEvidence(), Map.class);
+      GovernanceMetadata governance = app.getGovernanceMetadata();
+      result =
+          governance.getRiskAssessment() != null
+              && governance.getRiskAssessment().getRiskLevel() != null;
     } else if (entity instanceof McpServer server && server.getGovernanceMetadata() != null) {
-      evidence =
-          JsonUtils.getObjectMapper()
-              .convertValue(server.getGovernanceMetadata().getEvidence(), Map.class);
-    } else if (entity instanceof LLMModel llm && llm.getEvidence() != null) {
-      evidence = JsonUtils.getObjectMapper().convertValue(llm.getEvidence(), Map.class);
+      McpGovernanceMetadata governance = server.getGovernanceMetadata();
+      result =
+          governance.getRiskAssessment() != null
+              && governance.getRiskAssessment().getRiskLevel() != null;
     }
-    if (evidence != null && evidence.get(key) instanceof String value) {
-      url = value;
-    }
-    return url;
+    return result;
   }
 
-  @SuppressWarnings("unchecked")
-  private static Map<String, Object> readGovernance(EntityInterface entity) {
-    Object source = null;
-    if (entity instanceof AIApplication app) {
-      source = app.getGovernanceMetadata();
-    } else if (entity instanceof McpServer server) {
-      source = server.getGovernanceMetadata();
-    }
-    return source == null
-        ? null
-        : (Map<String, Object>) JsonUtils.getObjectMapper().convertValue(source, Map.class);
-  }
-
-  private static boolean euRiskClassificationPresent(Map<String, Object> governance) {
-    Map<String, Object> aiCompliance = asMap(governance.get("aiCompliance"));
+  private static boolean euRiskClassificationPresent(AICompliance aiCompliance) {
     boolean result = false;
-    if (aiCompliance != null) {
-      List<Object> records = asList(aiCompliance.get("complianceRecords"));
-      if (records != null) {
-        for (Object item : records) {
-          Map<String, Object> record = asMap(item);
-          if (record == null) {
-            continue;
-          }
-          Map<String, Object> eu = asMap(record.get("euAIAct"));
-          if (eu != null && eu.get("riskClassification") != null) {
-            result = true;
-            break;
-          }
+    if (aiCompliance != null && aiCompliance.getComplianceRecords() != null) {
+      for (AIComplianceRecord record : aiCompliance.getComplianceRecords()) {
+        if (record.getEuAIAct() != null && record.getEuAIAct().getRiskClassification() != null) {
+          result = true;
+          break;
         }
       }
     }
     return result;
   }
 
-  @SuppressWarnings("unchecked")
-  private static Map<String, Object> asMap(Object value) {
-    return value instanceof Map<?, ?> ? (Map<String, Object>) value : null;
+  private static AICompliance aiCompliance(EntityInterface entity) {
+    AICompliance result = null;
+    if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
+      result = app.getGovernanceMetadata().getAiCompliance();
+    } else if (entity instanceof McpServer server && server.getGovernanceMetadata() != null) {
+      result = server.getGovernanceMetadata().getAiCompliance();
+    }
+    return result;
   }
 
-  @SuppressWarnings("unchecked")
-  private static List<Object> asList(Object value) {
-    return value instanceof List<?> ? (List<Object>) value : null;
+  private static AIEvidence evidence(EntityInterface entity) {
+    AIEvidence result = null;
+    if (entity instanceof AIApplication app && app.getGovernanceMetadata() != null) {
+      result = app.getGovernanceMetadata().getEvidence();
+    } else if (entity instanceof McpServer server && server.getGovernanceMetadata() != null) {
+      result = server.getGovernanceMetadata().getEvidence();
+    } else if (entity instanceof LLMModel llm) {
+      result = llm.getEvidence();
+    }
+    return result;
   }
 }
