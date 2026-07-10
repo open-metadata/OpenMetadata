@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -37,6 +37,7 @@ import {
   navigateToMemories,
   scrollHierarchyToNode,
   scrollListingToCard,
+  searchAndGetMemoryRow,
   uploadDisposableDocument,
   waitForDocumentInArchive,
 } from '../../utils/ContextCenterUtil';
@@ -142,17 +143,22 @@ let folderId = '';
 let archivedDocumentId = '';
 
 let ownerMemoryId = '';
+let ownerMemoryTitle = '';
 
 let quickLinkId = '';
 let quickLinkDisplayName = '';
 
 let editAllOwnMemoryId = '';
+let editAllOwnMemoryTitle = '';
 let deleteAllOwnMemoryId = '';
+let deleteAllOwnMemoryTitle = '';
 let allPermissionOwnMemoryId = '';
+let allPermissionOwnMemoryTitle = '';
 let viewOnlyOwnMemoryId = '';
+let viewOnlyOwnMemoryTitle = '';
 let earlyAlphabetMemoryId = '';
 
-test.describe.fixme('Context Center Permissions', () => {
+test.describe('Context Center Permissions', () => {
   test.slow(true);
 
   test.beforeAll(async ({ browser }) => {
@@ -222,10 +228,11 @@ test.describe.fixme('Context Center Permissions', () => {
     });
     quickLinkId = (await qlRes.json()).id;
 
+    ownerMemoryTitle = `CC Permission Memory ${uuid()}`;
     const memoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_${uuid()}`,
-        title: `CC Permission Memory ${uuid()}`,
+        title: ownerMemoryTitle,
         question: 'Owned by admin for permission matrix tests',
         answer: 'Owned by admin for permission matrix tests',
         shareConfig: { visibility: 'Entity' },
@@ -273,10 +280,11 @@ test.describe.fixme('Context Center Permissions', () => {
       'context-center-permission-full'
     );
 
+    editAllOwnMemoryTitle = `CC Permission Memory Edit-All ${uuid()}`;
     const editAllMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_edit_all_${uuid()}`,
-        title: `CC Permission Memory Edit-All ${uuid()}`,
+        title: editAllOwnMemoryTitle,
         question: 'Owned by editAllUser',
         answer: 'Owned by editAllUser',
         shareConfig: { visibility: 'Entity' },
@@ -285,10 +293,11 @@ test.describe.fixme('Context Center Permissions', () => {
     });
     editAllOwnMemoryId = (await editAllMemoryRes.json()).id;
 
+    deleteAllOwnMemoryTitle = `CC Permission Memory Delete-All ${uuid()}`;
     const deleteAllMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_delete_all_${uuid()}`,
-        title: `CC Permission Memory Delete-All ${uuid()}`,
+        title: deleteAllOwnMemoryTitle,
         question: 'Owned by deleteAllUser',
         answer: 'Owned by deleteAllUser',
         shareConfig: { visibility: 'Entity' },
@@ -297,10 +306,11 @@ test.describe.fixme('Context Center Permissions', () => {
     });
     deleteAllOwnMemoryId = (await deleteAllMemoryRes.json()).id;
 
+    allPermissionOwnMemoryTitle = `CC Permission Memory Full ${uuid()}`;
     const allPermissionMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_full_${uuid()}`,
-        title: `CC Permission Memory Full ${uuid()}`,
+        title: allPermissionOwnMemoryTitle,
         question: 'Owned by allPermissionUser',
         answer: 'Owned by allPermissionUser',
         shareConfig: { visibility: 'Entity' },
@@ -309,10 +319,11 @@ test.describe.fixme('Context Center Permissions', () => {
     });
     allPermissionOwnMemoryId = (await allPermissionMemoryRes.json()).id;
 
+    viewOnlyOwnMemoryTitle = `CC Permission Memory View-Only Owner ${uuid()}`;
     const viewOnlyMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_view_only_${uuid()}`,
-        title: `CC Permission Memory View-Only Owner ${uuid()}`,
+        title: viewOnlyOwnMemoryTitle,
         question: 'Owned by the view-only user',
         answer: 'Owned by the view-only user',
         shareConfig: { visibility: 'Entity' },
@@ -1481,6 +1492,7 @@ test.describe.fixme('Context Center Permissions', () => {
       viewOnlyPage,
       browser,
     }) => {
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1499,6 +1511,7 @@ test.describe.fixme('Context Center Permissions', () => {
       createAllPage,
       browser,
     }) => {
+       test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1519,6 +1532,7 @@ test.describe.fixme('Context Center Permissions', () => {
       editAllPage,
       browser,
     }) => {
+       test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1533,6 +1547,7 @@ test.describe.fixme('Context Center Permissions', () => {
       await expect(row.getByTestId('delete-btn')).not.toBeVisible();
 
       await test.step('can restore a disposable archived document', async () => {
+         test.slow();
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
           browser
         );
@@ -1572,6 +1587,7 @@ test.describe.fixme('Context Center Permissions', () => {
       deleteAllPage,
       browser,
     }) => {
+       test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1588,6 +1604,7 @@ test.describe.fixme('Context Center Permissions', () => {
       await expect(row.getByTestId('delete-btn')).toBeVisible();
 
       await test.step('can delete a disposable archived document', async () => {
+         test.slow();
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
           browser
         );
@@ -1626,6 +1643,7 @@ test.describe.fixme('Context Center Permissions', () => {
       allPermissionPage,
       browser,
     }) => {
+       test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1655,7 +1673,11 @@ test.describe.fixme('Context Center Permissions', () => {
         viewOnlyPage.getByTestId('add-memory-btn')
       ).not.toBeVisible();
 
-      const row = viewOnlyPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        viewOnlyPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
@@ -1679,8 +1701,10 @@ test.describe.fixme('Context Center Permissions', () => {
     }) => {
       await navigateToMemories(viewOnlyPage);
 
-      const ownRow = viewOnlyPage.getByTestId(
-        `memory-row-${viewOnlyOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        viewOnlyPage,
+        viewOnlyOwnMemoryTitle,
+        viewOnlyOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
@@ -1708,7 +1732,11 @@ test.describe.fixme('Context Center Permissions', () => {
 
       await expect(createAllPage.getByTestId('add-memory-btn')).toBeVisible();
 
-      const row = createAllPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        createAllPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
@@ -1764,8 +1792,10 @@ test.describe.fixme('Context Center Permissions', () => {
         await listResPromise;
         await waitForAllLoadersToDisappear(createAllPage);
 
-        const createdRow = createAllPage.getByTestId(
-          `memory-row-${createdMemory.id}`
+        const createdRow = await searchAndGetMemoryRow(
+          createAllPage,
+          memoryTitle,
+          createdMemory.id
         );
         await createdRow.scrollIntoViewIfNeeded();
         await expect(createdRow).toBeVisible();
@@ -1787,13 +1817,19 @@ test.describe.fixme('Context Center Permissions', () => {
 
       await expect(editAllPage.getByTestId('add-memory-btn')).not.toBeVisible();
 
-      const foreignRow = editAllPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const foreignRow = await searchAndGetMemoryRow(
+        editAllPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await foreignRow.scrollIntoViewIfNeeded();
       await expect(foreignRow).toBeVisible();
       await expect(foreignRow.getByTestId('edit-memory-btn')).not.toBeVisible();
 
-      const ownRow = editAllPage.getByTestId(
-        `memory-row-${editAllOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        editAllPage,
+        editAllOwnMemoryTitle,
+        editAllOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
@@ -1834,15 +1870,19 @@ test.describe.fixme('Context Center Permissions', () => {
     }) => {
       await navigateToMemories(deleteAllPage);
 
-      const foreignRow = deleteAllPage.getByTestId(
-        `memory-row-${ownerMemoryId}`
+      const foreignRow = await searchAndGetMemoryRow(
+        deleteAllPage,
+        ownerMemoryTitle,
+        ownerMemoryId
       );
       await foreignRow.scrollIntoViewIfNeeded();
       await expect(foreignRow).toBeVisible();
       await expect(foreignRow.getByTestId('edit-memory-btn')).not.toBeVisible();
 
-      const ownRow = deleteAllPage.getByTestId(
-        `memory-row-${deleteAllOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        deleteAllPage,
+        deleteAllOwnMemoryTitle,
+        deleteAllOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
@@ -1879,7 +1919,11 @@ test.describe.fixme('Context Center Permissions', () => {
     }) => {
       await navigateToMemories(allPermissionPage);
 
-      const row = allPermissionPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        allPermissionPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
@@ -1906,7 +1950,11 @@ test.describe.fixme('Context Center Permissions', () => {
 
       await navigateToMemories(adminPage);
 
-      const row = adminPage.getByTestId(`memory-row-${editAllOwnMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        adminPage,
+        editAllOwnMemoryTitle,
+        editAllOwnMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
 
@@ -1957,8 +2005,10 @@ test.describe.fixme('Context Center Permissions', () => {
         allPermissionPage.getByTestId('add-memory-btn')
       ).toBeVisible();
 
-      const ownRow = allPermissionPage.getByTestId(
-        `memory-row-${allPermissionOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        allPermissionPage,
+        allPermissionOwnMemoryTitle,
+        allPermissionOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();

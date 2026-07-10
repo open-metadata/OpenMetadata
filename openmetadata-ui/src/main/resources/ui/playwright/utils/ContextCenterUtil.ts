@@ -367,27 +367,21 @@ export const createDisposableArchivedDocument = async (
 export async function waitForDocumentInArchive(
   apiContext: APIRequestContext,
   documentId: string,
-  timeout = 60_000,
-  interval = 2_000
+  timeout = 180_000,
+  interval = 5_000
 ) {
   const start = Date.now();
 
   while (Date.now() - start < timeout) {
     const response = await apiContext.get(
-      '/api/v1/contextCenter/drive/files?include=deleted&limit=1000'
+      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
     );
 
-    expect(response.ok()).toBeTruthy();
-
-    const files = await response.json();
-
-    const found = (files?.data ?? []).some(
-      (file: { id: string; deleted: boolean }) =>
-        file.id === documentId && file.deleted === true
-    );
-
-    if (found) {
-      return;
+    if (response.ok()) {
+      const file = await response.json();
+      if (file.deleted === true) {
+        return;
+      }
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
@@ -405,31 +399,13 @@ export async function waitForDocumentPermanentlyDeleted(
   interval = 2_000
 ) {
   const start = Date.now();
-  const pageSize = 200;
 
   while (Date.now() - start < timeout) {
-    let after: string | undefined;
-    let foundInArchive = false;
+    const response = await apiContext.get(
+      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
+    );
 
-    do {
-      const response = await apiContext.get(
-        `/api/v1/contextCenter/drive/files?include=deleted&limit=${pageSize}${
-          after ? `&after=${after}` : ''
-        }`
-      );
-
-      expect(response.ok()).toBeTruthy();
-
-      const files = await response.json();
-
-      foundInArchive = (files?.data ?? []).some(
-        (file: { id: string }) => file.id === documentId
-      );
-
-      after = files?.paging?.after;
-    } while (!foundInArchive && after);
-
-    if (!foundInArchive) {
+    if (response.status() === 404) {
       return;
     }
 

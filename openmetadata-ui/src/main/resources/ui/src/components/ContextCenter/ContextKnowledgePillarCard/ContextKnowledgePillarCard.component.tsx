@@ -40,14 +40,14 @@ function RecentItem({
       {item.icon ? (
         item.icon
       ) : (
-        <Icon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+        <Icon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
       )}
       <Box
         align="center"
         className="tw:min-w-0 tw:flex-1"
         gap={4}
         justify="between">
-        <div className="tw:min-w-40">
+        <div className="tw:min-w-0">
           <Typography
             ellipsis
             className="tw:min-w-0 tw:flex-1 tw:text-secondary"
@@ -83,7 +83,7 @@ export const ContextKnowledgePillarCardSkeleton: FC<{
   dataTestId?: string;
 }> = ({ dataTestId }) => (
   <Card
-    className="tw:p-5 tw:flex tw:flex-col tw:justify-between"
+    className="tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between"
     data-testid={dataTestId}>
     <div>
       <Box align="center" className="tw:mb-3.5" gap={3}>
@@ -150,7 +150,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   return (
     <Card
       className={classNames(
-        'tw:cursor-pointer tw:p-5 tw:flex tw:flex-col tw:justify-between',
+        'tw:cursor-pointer tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between',
         'tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px'
       )}
       data-testid={dataTestId}
@@ -160,7 +160,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
           <FeaturedIcon
             className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
             color="brand"
-            icon={Icon}
+            icon={<Icon className='tw:size-5' />}
             size="sm"
             theme="light"
           />

@@ -273,15 +273,11 @@ const ContextCenterDashboardPage: FC = () => {
         const icon =
           article.pageType === PageType.QUICK_LINK ? (
             <QuickLinkIcon
-              className="tw:text-quaternary tw:shrink-0"
-              height={13}
-              width={13}
+              className="tw:size-4 tw:text-quaternary tw:shrink-0"
             />
           ) : (
             <FileIcon
-              className="tw:text-quaternary tw:shrink-0"
-              height={14}
-              width={14}
+              className="tw:size-4 tw:text-quaternary tw:shrink-0"
             />
           );
 
@@ -445,17 +441,15 @@ const ContextCenterDashboardPage: FC = () => {
             icon={FileIcon}
             isEmpty={recentlyViewedItems.length === 0}
             title={t('label.recently-viewed')}>
-            <Box className="tw:p-5 tw:pt-0" direction="col">
+            <Box className="tw:px-4 tw:py-3 tw:pt-0" direction="col">
               {recentlyViewedItems.map((item) => (
                 <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
                   {item.pageType === PageType.QUICK_LINK ? (
                     <QuickLinkIcon
-                      className="tw:text-quaternary tw:shrink-0"
-                      height={13}
-                      width={13}
+                      className="tw:size-4 tw:text-quaternary tw:shrink-0"
                     />
                   ) : (
-                    <FileIcon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                    <FileIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
                   )}
 
                   <Box
@@ -463,7 +457,7 @@ const ContextCenterDashboardPage: FC = () => {
                     className="tw:min-w-0 tw:flex-1"
                     gap={4}
                     justify="between">
-                    <div className="tw:min-w-40">
+                    <div className="tw:min-w-0">
                       <Typography
                         ellipsis
                         className="tw:min-w-0 tw:flex-1 tw:text-secondary"
@@ -501,16 +495,16 @@ const ContextCenterDashboardPage: FC = () => {
             isEmpty={mostCitedItems.length === 0}
             isLoading={isMostCitedLoading}
             title={t('label.most-cited')}>
-            <Box className="tw:p-5 tw:pt-0" direction="col">
+            <Box className="tw:px-4 tw:py-3 tw:pt-0" direction="col">
               {mostCitedItems.map((item) => (
                 <Box align="center" className="tw:py-1.5" gap={2} key={item.id}>
-                  <MemoryIcon className="tw:size-3 tw:text-quaternary tw:shrink-0" />
+                  <MemoryIcon className="tw:size-4 tw:text-quaternary tw:shrink-0" />
                   <Box
                     align="center"
                     className="tw:min-w-0 tw:flex-1"
                     gap={4}
                     justify="between">
-                    <div className="tw:min-w-40">
+                    <div className="tw:min-w-0">
                       <Typography
                         ellipsis
                         className="tw:min-w-0 tw:flex-1 tw:text-secondary"

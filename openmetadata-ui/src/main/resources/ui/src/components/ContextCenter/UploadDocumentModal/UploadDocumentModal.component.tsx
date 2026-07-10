@@ -197,7 +197,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
               )}
             </FileUpload.Root>
           </Dialog.Content>
-          <Dialog.Footer className="quick-link-modal-footer">
+          <Dialog.Footer className="tw:border-0 tw:mt-0!">
             <Button color="secondary" size="sm" onClick={handleClose}>
               {t('label.cancel')}
             </Button>
