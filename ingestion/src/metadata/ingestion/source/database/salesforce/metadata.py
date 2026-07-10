@@ -13,7 +13,7 @@ Salesforce source ingestion
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -47,12 +47,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.connections.test_connections import (
-    raise_test_connection_exception,
-)
+from metadata.ingestion.connections.connection import BaseConnection  # noqa: TC001
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, get_test_connection_fn
+from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
@@ -81,7 +79,8 @@ class SalesforceSource(DatabaseServiceSource):
         self.ssl_manager: SSLManager = check_ssl_and_init(self.service_connection)
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.table_constraints = None
         self.database_source_state = set()
 
@@ -372,8 +371,3 @@ class SalesforceSource(DatabaseServiceSource):
 
     def close(self):
         """Nothing to close"""
-
-    def test_connection(self) -> None:
-        test_connection_fn = get_test_connection_fn(self.service_connection)
-        result = test_connection_fn(self.client, self.service_connection)
-        raise_test_connection_exception(result)

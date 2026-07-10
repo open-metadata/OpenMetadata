@@ -16,7 +16,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import traceback
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -50,9 +50,10 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
+from metadata.ingestion.connections.connection import BaseConnection  # noqa: TC001
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.storage.storage_service import (
@@ -88,12 +89,17 @@ class DatalakeSource(DatabaseServiceSource):
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.table_constraints = None
         self.database_source_state = set()
         self.config_source = self.service_connection.configSource
         self.connection_obj = self.client
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod

@@ -57,8 +57,8 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import create_connection, get_connection
 from metadata.ingestion.source.database.burstiq.client import BurstIQClient
-from metadata.ingestion.source.database.burstiq.connection import get_connection
 from metadata.ingestion.source.database.burstiq.models import BurstIQDictionary
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
@@ -83,9 +83,13 @@ class Burstiqsource(DatabaseServiceSource):
         self.client: Optional[BurstIQClient] = None  # noqa: UP045
         self._current_dictionary: Optional[BurstIQDictionary] = None  # noqa: UP045
 
-        # Initialize connection and test it
+        self._connection = create_connection(self.service_connection)
         self.connection_obj = self._get_client()
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(
@@ -103,7 +107,10 @@ class Burstiqsource(DatabaseServiceSource):
     def _get_client(self) -> BurstIQClient:
         """Get or create BurstIQ client"""
         if self.client is None:
-            self.client = get_connection(self.service_connection)
+            client: BurstIQClient = (
+                self._connection.client if self._connection else get_connection(self.service_connection)
+            )
+            self.client = client
         return self.client
 
     def _get_current_dictionary(self, table_name: str) -> Optional[BurstIQDictionary]:  # noqa: UP045
@@ -502,8 +509,7 @@ class Burstiqsource(DatabaseServiceSource):
         """
         Clean up resources
         """
-        # Clear cached dictionary
         self._current_dictionary = None
-        # Close client if needed (currently no cleanup required for requests.Session)
-        if self.client:
-            self.client = None
+        self.client = None
+        if self._connection is not None:
+            self._connection.close()
