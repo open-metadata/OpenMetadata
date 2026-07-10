@@ -11,11 +11,15 @@
 
 """Progress counting for the no-serviceName profiler source path."""
 
+import uuid
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+from metadata.generated.schema.entity.data.table import Table, TableType
 from metadata.profiler.source.metadata_ext import OpenMetadataSourceExt
 from metadata.profiler.source.profiler_source_interface import ProfilerSourceInterface
+
+RESOLVED_TABLE = Table(id=uuid.uuid4(), name="resolved", columns=[], tableType=TableType.Regular)
 
 
 def _make_ext_source(table_names):
@@ -42,7 +46,7 @@ class TestMetadataExtProgress:
             ),
             patch(
                 "metadata.profiler.source.metadata_ext.fqn.search_table_from_es",
-                side_effect=lambda **kw: None if kw["table_name"] == "missing" else MagicMock(),
+                side_effect=lambda **kw: None if kw["table_name"] == "missing" else RESOLVED_TABLE,
             ),
         ):
             records = list(OpenMetadataSourceExt._iter(source))

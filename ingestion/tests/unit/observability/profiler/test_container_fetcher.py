@@ -214,7 +214,11 @@ class TestStorageFetcherProgress:
         strategy.config = MagicMock()
         strategy.metadata = MagicMock()
         strategy.global_profiler_config = None
-        strategy._get_container_entities = lambda: [MagicMock(), MagicMock(), MagicMock()]
+        strategy._get_container_entities = lambda: [
+            STRUCTURED_CONTAINER,
+            UNSTRUCTURED_CONTAINER,
+            TAGGED_CONTAINER,
+        ]
 
         with patch(
             "metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory.create",
