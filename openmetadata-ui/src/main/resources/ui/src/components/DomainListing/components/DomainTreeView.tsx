@@ -832,13 +832,19 @@ const DomainTreeView = ({
                 key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
                 textValue={t('label.load-more')}>
                 <Tree.ItemContent showExpandIcon={false}>
-                  <div className="tw:flex tw:items-center tw:gap-2 tw:text-brand-primary tw:text-sm">
+                  <button
+                    className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      loadDomains(identifier, true);
+                    }}>
                     {loadingChildren[identifier] ? (
                       <Loader size="small" />
                     ) : (
                       t('label.load-more')
                     )}
-                  </div>
+                  </button>
                 </Tree.ItemContent>
               </Tree.Item>
             )}
