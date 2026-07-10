@@ -61,7 +61,7 @@ test('Verify Platform Lineage View', async ({ page }) => {
   await page.getByTestId('lineage-layer-btn').click();
 
   await page
-    .locator('[data-testid="lineage-layer-domain-btn"]:not(.MUI-selected)')
+    .locator('[data-testid="lineage-layer-domain-btn"]:not([data-selected])')
     .waitFor();
 
   const domainRes = page.waitForResponse(

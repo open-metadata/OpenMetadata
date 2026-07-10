@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { useTheme } from '@mui/material';
 import { fireEvent, render, waitFor } from '@testing-library/react';
 import { Edge } from 'reactflow';
 import { CanvasEdgeRenderer } from './CanvasEdgeRenderer.component';
@@ -48,11 +47,6 @@ const mockUseReactFlow = {
 
 const mockViewport = { x: 0, y: 0, zoom: 1 };
 
-jest.mock('@mui/material', () => ({
-  ...jest.requireActual('@mui/material'),
-  useTheme: jest.fn(),
-}));
-
 jest.mock('reactflow', () => ({
   ...jest.requireActual('reactflow'),
   useReactFlow: () => mockUseReactFlow,
@@ -71,6 +65,14 @@ jest.mock('../../../hooks/useLineageStore', () => ({
   useLineageStore: () => mockUseLineageStore,
 }));
 
+jest.mock('../../../hooks/useLineageEdgeColors', () => ({
+  useLineageEdgeColors: () => ({
+    primary: '#1890ff',
+    columnHighlight: '#3F51B5',
+    dqHighlight: '#F44336',
+  }),
+}));
+
 jest.mock('../../../utils/EdgeStyleUtils', () => ({
   clearEdgeStyleCache: jest.fn(),
 }));
@@ -83,19 +85,12 @@ jest.mock('../../../utils/EdgeMidpointUtils', () => ({
   calculateEdgeMidpoints: jest.fn(() => []),
 }));
 
-const mockTheme = {
-  palette: {
-    primary: { main: '#1890ff' },
-  },
-};
-
 describe('CanvasEdgeRenderer', () => {
   let reactFlowContainer: HTMLElement;
   let pane: HTMLElement;
 
   beforeEach(() => {
     jest.clearAllMocks();
-    (useTheme as jest.Mock).mockReturnValue(mockTheme);
     mockUseLineageStore.isEditMode = false;
     mockGetEdgeAtPoint.mockReturnValue(null);
     mockRedraw.mockClear();
