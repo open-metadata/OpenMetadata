@@ -25,6 +25,9 @@ import ClassificationDetails from '../../components/Classifications/Classificati
 import { ClassificationDetailsRef } from '../../components/Classifications/ClassificationDetails/ClassificationDetails.interface';
 import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../components/common/ResizablePanels/ResizableLeftPanels';
 import TagsLeftPanelSkeleton from '../../components/common/Skeleton/Tags/TagsLeftPanelSkeleton.component';
@@ -43,6 +46,7 @@ import { Classification } from '../../generated/entity/classification/classifica
 import { Tag } from '../../generated/entity/classification/tag';
 import { Operation } from '../../generated/entity/policies/accessControl/rule';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useFqn } from '../../hooks/useFqn';
 import {
   createClassification,
@@ -74,6 +78,7 @@ import {
 const TagsPage = () => {
   const { getEntityPermission, permissions } = usePermissionProvider();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const { fqn: tagCategoryName } = useFqn();
   const tagForm = useForm<TagFormValues>({ defaultValues: TAG_FORM_DEFAULTS });
@@ -757,6 +762,22 @@ const TagsPage = () => {
 
   return (
     <div>
+      {isAiMode && (
+        <HeaderShell
+          breadcrumb={
+            <HeaderBreadcrumb
+              noMargin
+              items={[
+                getGlossaryHomeCrumb(t),
+                { label: t('label.classification-plural') },
+              ]}
+              showHome={false}
+            />
+          }
+          title={t('label.classification-plural')}
+          variant="gradient"
+        />
+      )}
       <ResizableLeftPanels
         showLearningIcon
         className="content-height-with-resizable-panel"

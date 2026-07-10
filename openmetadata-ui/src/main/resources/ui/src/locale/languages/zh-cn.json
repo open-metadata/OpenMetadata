@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "使用 AI 自动分级、记录并检查资产质量。",
     "collate-ai-widget-description": "服务中由 Collate AI 生成的数据概览。<0>了解更多。</0>",
     "column-bulk-operations-description": "一次管理和编辑多个列的元数据。搜索、过滤和更新数据资产中的显示名称、描述、标签和术语表术语。",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "按列标签或名称过滤血缘。使用 'tag:标签名' 进行标签过滤，或直接输入列名。",
     "column-name-pattern-placeholder": "输入正则表达式模式来过滤列（例如 id*、*date）",
     "column-name-sla-description": "<0>{{label}}</0>: 表示与<0>{{data}}</0>对应的数据刷新时间",

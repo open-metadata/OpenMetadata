@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "AI로 자산을 자동 티어 분류, 문서화 및 품질 검사합니다.",
     "collate-ai-widget-description": "해당 서비스에서 Collate AI가 생성한 데이터 개요입니다. <0>자세히 보기</0>",
     "column-bulk-operations-description": "한 번에 여러 열의 메타데이터를 관리하고 편집합니다. 데이터 자산 전반에 걸쳐 표시 이름, 설명, 태그 및 용어를 검색, 필터링 및 업데이트합니다.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "컬럼 태그 또는 이름으로 계보를 필터링합니다. 태그 필터링에는 'tag:태그명'을 사용하거나 컬럼 이름을 입력하세요.",
     "column-name-pattern-placeholder": "컬럼을 필터링할 정규식 패턴 입력 (예: id_*, *_date)",
     "column-name-sla-description": "<0>{{label}}</0>: <0>{{data}}</0>에 해당하는 데이터 새로고침 시간을 나타냅니다",

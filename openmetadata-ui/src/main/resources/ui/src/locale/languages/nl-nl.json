@@ -2946,6 +2946,7 @@
     "collate-ai-agents-description": "Wijs automatisch tiers toe, documenteer en controleer de kwaliteit van je assets met AI.",
     "collate-ai-widget-description": "Overzicht van de data gegenereerd door de Collate AI voor de service. <0>meer informatie.</0>",
     "column-bulk-operations-description": "Beheer en bewerk metadata voor meerdere kolommen tegelijk.Zoek, filter en update weergavenamen, beschrijvingen, tags en woordenlijsttermen in uw gegevensassets.",
+    "column-bulk-operations-subtitle": "Bulk edit metadata across columns to improve consistency and governance.",
     "column-filter-help-text": "Filter afkomst op kolomtags of namen. Gebruik 'tag:TagNaam' voor tagfiltering of voer gewoon de kolomnaam in.",
     "column-name-pattern-placeholder": "Voer een regex-patroon in om kolommen te filteren (bijvoorbeeld id*, *date)",
     "column-name-sla-description": "<0>{{label}}</0>: Vertegenwoordigt de gegevensverversingstijd die overeenkomt met <0>{{data}}</0>",

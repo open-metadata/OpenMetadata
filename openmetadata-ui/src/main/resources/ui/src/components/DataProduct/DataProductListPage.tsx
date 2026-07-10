@@ -31,6 +31,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
@@ -65,12 +66,16 @@ import AddDomainForm, {
 } from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
+import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
-const DataProductListPage = () => {
+const DataProductListPage = ({
+  renderPageHeader,
+}: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -155,6 +160,28 @@ const DataProductListPage = () => {
       loading: isLoading,
     });
 
+  const breadcrumbItems = useMemo(
+    () => [
+      ...(isMarketplace
+        ? [
+            {
+              label: t('label.data-marketplace'),
+              href: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      {
+        label: t('label.data-product-plural'),
+        href: dataProductBasePath,
+      },
+    ],
+    [dataProductBasePath, isMarketplace, t]
+  );
+
+  const headerBreadcrumb = (
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} />
+  );
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
@@ -162,6 +189,8 @@ const DataProductListPage = () => {
     addButtonLabelKey: 'label.add-data-product',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
+    variant: isAiMode ? 'search' : undefined,
+    breadcrumb: headerBreadcrumb,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -370,20 +399,17 @@ const DataProductListPage = () => {
 
   return (
     <>
-      <HeaderBreadcrumb
-        items={[
-          ...(isMarketplace
-            ? [
-                {
-                  label: t('label.data-marketplace'),
-                  href: ROUTES.DATA_MARKETPLACE,
-                },
-              ]
-            : []),
-          { label: t('label.data-product-plural'), href: dataProductBasePath },
-        ]}
-      />
-      {pageHeader}
+      {!renderPageHeader && !isAiMode && (
+        <HeaderBreadcrumb items={breadcrumbItems} />
+      )}
+      {renderPageHeader
+        ? renderPageHeader({
+            onAddClick: openDrawer,
+            createPermission: permissions.dataProduct?.Create || false,
+            count: dataProductListing.totalEntities,
+            breadcrumb: headerBreadcrumb,
+          })
+        : pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
