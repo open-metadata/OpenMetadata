@@ -97,7 +97,6 @@ from metadata.ingestion.source.database.redshift.utils import (
     get_view_definition,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
@@ -278,32 +277,6 @@ class RedshiftSource(ExternalTableLineageMixin, LifeCycleQueryMixin, CommonDbSou
         with self.engine.connect() as conn:
             results = conn.execute(text(REDSHIFT_EXTERNAL_TABLE_LOCATION.format(database_name=database_name))).all()
         self.external_location_map = {(database_name, row.schemaname, row.tablename): row.location for row in results}
-
-    def _is_database_filtered(self, database_name: str) -> bool:
-        """Whether a database fails ``databaseFilterPattern``. Pure predicate —
-        no status side effects — so the totals hook and the walk share it."""
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.context.get().database_service,
-            database_name=database_name,
-        )
-        filter_name = database_fqn if self.source_config.useFqnForFiltering else database_name
-        return filter_by_database(self.source_config.databaseFilterPattern, filter_name)
-
-    def _is_schema_filtered(self, database_name: str, schema_name: str) -> bool:
-        """Whether a schema fails ``schemaFilterPattern``, matched the same way as
-        the walk (FQN or bare name per ``useFqnForFiltering``). Context-free: the
-        FQN is built from the explicit database name."""
-        schema_fqn = fqn.build(
-            self.metadata,
-            entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,
-            database_name=database_name,
-            schema_name=schema_name,
-        )
-        filter_name = schema_fqn if self.source_config.useFqnForFiltering else schema_name
-        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
 
     def _filtered_database_names_for_totals(self) -> List[str]:  # noqa: UP006
         """Filtered database names for the progress denominator. Single configured

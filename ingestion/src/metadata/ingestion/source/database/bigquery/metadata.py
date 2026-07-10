@@ -110,7 +110,6 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
-from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import is_complex_type
@@ -807,31 +806,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def get_configured_database(self) -> Optional[str]:  # noqa: UP045
         return None
-
-    def _is_database_filtered(self, project_id: str) -> bool:
-        """Whether a project fails ``databaseFilterPattern``. Pure predicate — no
-        status side effects — so the totals hook and the walk share it."""
-        database_fqn = fqn.build(
-            self.metadata,
-            entity_type=Database,
-            service_name=self.context.get().database_service,
-            database_name=project_id,
-        )
-        filter_name = database_fqn if self.source_config.useFqnForFiltering else project_id
-        return filter_by_database(self.source_config.databaseFilterPattern, filter_name)
-
-    def _is_schema_filtered(self, project_id: str, schema_name: str) -> bool:
-        """Whether a dataset fails ``schemaFilterPattern``, matched the same way as
-        the walk. Context-free: the FQN is built from the explicit project id."""
-        schema_fqn = fqn.build(
-            self.metadata,
-            entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,
-            database_name=project_id,
-            schema_name=schema_name,
-        )
-        filter_name = schema_fqn if self.source_config.useFqnForFiltering else schema_name
-        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
 
     def _raw_dataset_names(self, project_id: str) -> Iterable[str]:
         """Dataset IDs for ``project_id``, context-free (does not read the walk's
