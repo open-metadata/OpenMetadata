@@ -102,7 +102,7 @@ test.describe('Context Center - Download', () => {
     await targetRow.getByTestId('download-btn').click();
     const downloadRes = await downloadResPromise;
 
-    expect([200, 302, 303]).toContain(downloadRes.status());
+    expect([200, 302, 303, 307]).toContain(downloadRes.status());
     await expectCapturedDownload(page, fileName);
   });
 

@@ -14,7 +14,10 @@
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { createNewPage, redirectToHomePage, uuid } from '../../utils/common';
 import { navigateToDocuments } from '../../utils/ContextCenterUtil';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  copyAndGetClipboardText,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { test } from '../fixtures/pages';
 
 // ─── Interfaces ───────────────────────────────────────────────────────────────
@@ -761,6 +764,7 @@ test.describe('Context Center - Documents Page', () => {
 
     const panel = page.getByTestId('document-preview-panel');
     await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
 
     await expect(page).toHaveURL(new RegExp(`document=${doc.id}`));
     await expect(row.getByTestId('document-name')).toHaveText(fileName);
@@ -774,11 +778,8 @@ test.describe('Context Center - Documents Page', () => {
 
     const copyBtn = panel.getByTestId('copy-link-btn');
     await expect(copyBtn).toBeVisible();
-    await copyBtn.click();
 
-    const panelClipboardText = await page.evaluate(() =>
-      navigator.clipboard.readText()
-    );
+    const panelClipboardText = await copyAndGetClipboardText(page, copyBtn);
     expect(panelClipboardText).toContain(`document=${doc.id}`);
 
     await panel.getByTestId('close-preview-btn').click();
@@ -808,11 +809,8 @@ test.describe('Context Center - Documents Page', () => {
 
     const copyBtn = row.getByTestId('copy-link-btn');
     await expect(copyBtn).toBeVisible();
-    await copyBtn.click();
 
-    const clipboardText = await page.evaluate(() =>
-      navigator.clipboard.readText()
-    );
+    const clipboardText = await copyAndGetClipboardText(page, copyBtn);
     expect(clipboardText).toContain(`document=${doc.id}`);
 
     const newTab = await browser.newPage();
@@ -824,6 +822,7 @@ test.describe('Context Center - Documents Page', () => {
 
     const panel = newTab.getByTestId('document-preview-panel');
     await expect(panel).toBeVisible();
+    await expect(panel.getByTestId('preview-file-name')).toHaveText(fileName);
 
     await expect(
       newTab.getByTestId(`document-row-${doc.id}`).getByTestId('document-name')
