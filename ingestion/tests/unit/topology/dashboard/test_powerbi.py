@@ -879,6 +879,22 @@ class PowerBIUnitTest(TestCase):
         self.assertIn(r'contains \" -- inside literal', result)
         self.assertNotIn("remove this comment", result)
 
+    def test_strip_sql_line_comments_preserves_bigquery_triple_quoted_literals(self):
+        sql_query = (
+            "SELECT *\n"
+            "FROM `analytics.orders`\n"
+            "WHERE note = '''contains -- inside triple single quote''' -- remove this comment\n"
+            'AND label = """contains -- inside triple double quote""" -- remove this comment\n'
+            "JOIN `analytics.customers` ON orders.customer_id = customers.id"
+        )
+
+        result = self.powerbi._strip_sql_line_comments(sql_query)
+
+        self.assertIn("'''contains -- inside triple single quote'''", result)
+        self.assertIn('"""contains -- inside triple double quote"""', result)
+        self.assertIn("JOIN `analytics.customers`", result)
+        self.assertNotIn("remove this comment", result)
+
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
     def test_owner_ingestion(self, get_reference_by_email):

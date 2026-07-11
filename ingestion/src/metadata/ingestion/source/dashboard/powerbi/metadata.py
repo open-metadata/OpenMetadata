@@ -1095,30 +1095,41 @@ class PowerbiSource(DashboardServiceSource):
     def _strip_sql_line_comments(sql_query: str) -> str:
         """Remove SQL -- comments without truncating string literals."""
         cleaned_query = []
-        quote_char = None
+        quote_delimiter = None
         index = 0
 
         while index < len(sql_query):
             char = sql_query[index]
             next_char = sql_query[index + 1] if index + 1 < len(sql_query) else ""
 
-            if quote_char:
+            if quote_delimiter:
                 cleaned_query.append(char)
                 if char == "\\" and next_char:
                     cleaned_query.append(next_char)
                     index += 2
                     continue
-                if char == quote_char:
-                    if next_char == quote_char:
+                if sql_query.startswith(quote_delimiter, index):
+                    if len(quote_delimiter) == 3:
+                        cleaned_query.extend(sql_query[index + 1 : index + 3])
+                        index += 3
+                        quote_delimiter = None
+                        continue
+                    if next_char == quote_delimiter:
                         cleaned_query.append(next_char)
                         index += 2
                         continue
-                    quote_char = None
+                    quote_delimiter = None
                 index += 1
                 continue
 
+            if sql_query.startswith(("'''", '"""'), index):
+                quote_delimiter = sql_query[index : index + 3]
+                cleaned_query.extend(quote_delimiter)
+                index += 3
+                continue
+
             if char in ("'", '"', "`"):
-                quote_char = char
+                quote_delimiter = char
                 cleaned_query.append(char)
                 index += 1
                 continue
