@@ -38,13 +38,13 @@ import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
@@ -192,9 +192,8 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     initialSearchQuery: domainListing.urlState.searchQuery,
   });
 
-  const { view, viewToggle, isTreeView } = useViewToggle({
-    views: ['table', 'card', 'tree'],
-  });
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
+  const isTreeView = view === ViewMode.Tree;
   const { renderDomainCard } = useDomainCardTemplates();
 
   useEffect(() => {
@@ -280,7 +279,7 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
       );
     }
 
-    if (view === 'table') {
+    if (view === ViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -356,7 +355,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             {search}
             {!isTreeView && quickFilters}
             <Box className="tw:ml-auto" />
-            {viewToggle}
+            <ViewToggle
+              value={view}
+              views={[ViewMode.Table, ViewMode.Card, ViewMode.Tree]}
+              onChange={setView}
+            />
             {deleteIconButton}
           </Box>
           {!isTreeView && filterSelectionDisplay}
