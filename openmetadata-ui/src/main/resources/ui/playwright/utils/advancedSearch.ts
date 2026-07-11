@@ -181,14 +181,13 @@ export const selectOption = async (
 
   await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
 
-  if (await comboboxInput.isVisible()) {
-    if (isSearchable) {
-      await comboboxInput.clear();
-      await comboboxInput.fill(optionTitle);
-    } else {
-      await comboboxInput.click();
-    }
+  if (isSearchable) {
+    await comboboxInput.clear();
+    await comboboxInput.fill(optionTitle);
   } else {
+    // Clicking the trigger button (not the input) opens Select.ComboBox in
+    // "show all" mode (per ARIA spec for disclosure buttons), preventing the
+    // input's current value from filtering out unrelated options.
     await triggerButton.click();
   }
 
