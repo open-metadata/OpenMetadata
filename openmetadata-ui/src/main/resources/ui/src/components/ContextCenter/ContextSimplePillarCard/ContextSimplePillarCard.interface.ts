@@ -19,5 +19,5 @@ export interface ContextSimplePillarCardProps {
   emptyMessage?: string;
   dataTestId?: string;
   children: ReactNode;
-  icon: FC;
+  icon: FC<{ className: string }>;
 }

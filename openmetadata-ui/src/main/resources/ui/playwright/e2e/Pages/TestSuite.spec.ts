@@ -363,8 +363,6 @@ test(
       await ownerPage.click('[data-testid="manage-button"]');
       await ownerPage.click('[data-testid="delete-button"]');
 
-      // Click on Permanent/Hard delete option
-      await ownerPage.click('[data-testid="hard-delete"]');
       const deleteResponse = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testSuites/*?hardDelete=true&recursive=true'
       );
