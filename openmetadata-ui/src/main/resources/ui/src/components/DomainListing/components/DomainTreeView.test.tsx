@@ -187,12 +187,7 @@ describe('DomainTreeView', () => {
     const TreeMock = Tree as jest.MockedFunction<any>;
 
     TreeMock.mockImplementation(
-      ({
-        children,
-        onSelectionChange,
-        onExpandedChange,
-        onAction,
-      }: any) => {
+      ({ children, onSelectionChange, onExpandedChange, onAction }: any) => {
         capturedCallbacks = { onAction, onExpandedChange, onSelectionChange };
 
         return <div data-testid="mock-tree">{children}</div>;
@@ -335,9 +330,7 @@ describe('DomainTreeView', () => {
 
     it('ignores onSelectionChange events for load-more items', async () => {
       renderComponent();
-      await waitFor(() =>
-        expect(mockGetDomainByName).toHaveBeenCalledTimes(1)
-      );
+      await waitFor(() => expect(mockGetDomainByName).toHaveBeenCalledTimes(1));
 
       act(() => {
         capturedCallbacks.onSelectionChange?.(new Set(['Domain1__load_more']));
