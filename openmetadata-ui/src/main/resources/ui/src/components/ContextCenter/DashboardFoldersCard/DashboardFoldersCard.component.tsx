@@ -21,7 +21,7 @@ import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import { FOLDER_CARD_CHILDREN_LIMIT } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { listContextFiles } from '../../../rest/assetAPI';

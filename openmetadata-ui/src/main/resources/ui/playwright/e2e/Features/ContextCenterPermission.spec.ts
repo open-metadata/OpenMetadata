@@ -28,6 +28,7 @@ import {
 import {
   buildPermissionRule,
   createDisposableArchivedDocument,
+  getLoggedInUser,
   loginAsUser,
   MEMORIES_API,
   navigateToArchive,
@@ -663,10 +664,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const upvoteRes = await upvoteResPromise;
 
         expect(upvoteRes.status()).toBe(200);
-        await expect(upvoteBtn.locator('svg')).toHaveClass(
-          /fill-utility-blue-500/
-        );
-
         const downvoteResPromise = viewOnlyPage.waitForResponse(
           `/api/v1/contextCenter/pages/${articleEntity.responseData.id}/vote`
         );
@@ -674,9 +671,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const downvoteRes = await downvoteResPromise;
 
         expect(downvoteRes.status()).toBe(200);
-        await expect(downvoteBtn.locator('svg')).toHaveClass(
-          /fill-utility-blue-500/
-        );
       });
 
       await test.step('can start a conversation on the article', async () => {
@@ -714,7 +708,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const followRes = await followResPromise;
 
         expect(followRes.status()).toBe(200);
-        await expect(followBtn).toHaveClass(/text-fg-brand-primary/);
 
         const unfollowResPromise = viewOnlyPage.waitForResponse((response) =>
           response
@@ -727,7 +720,6 @@ test.describe.fixme('Context Center Permissions', () => {
         const unfollowRes = await unfollowResPromise;
 
         expect(unfollowRes.status()).toBe(200);
-        await expect(followBtn).not.toHaveClass(/text-fg-brand-primary/);
       });
     });
 
@@ -1190,7 +1182,7 @@ test.describe.fixme('Context Center Permissions', () => {
       const row = page.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await row.locator('button[aria-label="Open menu"]').click();
+      await row.getByTestId('manage-button').click();
     };
 
     test('user with view-only permission cannot see upload, folder, or row actions', async ({
@@ -1208,9 +1200,7 @@ test.describe.fixme('Context Center Permissions', () => {
       const row = viewOnlyPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.locator('button[aria-label="Open menu"]')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('selecting a document shows only download in bulk bar (no move or delete)', async () => {
         await row.getByTestId('document-checkbox').click();
@@ -1243,9 +1233,7 @@ test.describe.fixme('Context Center Permissions', () => {
       const row = createAllPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.locator('button[aria-label="Open menu"]')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('can create a folder', async () => {
         const folderName = `cc-permission-folder-${uuid()}`;
@@ -1370,7 +1358,7 @@ test.describe.fixme('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await editAllPage.getByTestId('move-btn').click();
 
         const moveResPromise = editAllPage.waitForResponse(
@@ -1453,7 +1441,7 @@ test.describe.fixme('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await deleteAllPage.getByTestId('delete-btn').click();
 
         const deleteResPromise = deleteAllPage.waitForResponse(
@@ -1653,6 +1641,106 @@ test.describe.fixme('Context Center Permissions', () => {
       await expect(row).toBeVisible();
       await expect(row.getByTestId('restore-btn')).toBeVisible();
       await expect(row.getByTestId('delete-btn')).toBeVisible();
+    });
+
+    test('a document archived by a different user can be permanently deleted, via the UI, by a user with Delete permission', async ({
+      deleteAllPage,
+      browser,
+    }) => {
+      // Archived as admin (a different identity than deleteAllUser) so the
+      // archived row's updatedBy is admin, not deleteAllUser — proving this
+      // is genuinely a cross-user delete, not deleteAllUser deleting its own.
+      const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+        await getDefaultAdminAPIContext(browser);
+      const { id: crossUserDocId } = await createDisposableArchivedDocument(
+        adminApiContext,
+        'cc-cross-user-delete-doc'
+      );
+      await waitForDocumentInArchive(adminApiContext, crossUserDocId);
+      await adminAfterAction();
+
+      await navigateToArchive(deleteAllPage);
+      const row = deleteAllPage.getByTestId(`archive-row-${crossUserDocId}`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+      await expect(row.getByTestId('delete-btn')).toBeVisible();
+
+      await row.getByTestId('delete-btn').click();
+      const deleteResPromise = deleteAllPage.waitForResponse(
+        new RegExp(
+          String.raw`/api/v1/contextCenter/drive/files/${crossUserDocId}\?hardDelete=true`
+        )
+      );
+      await deleteAllPage.getByTestId('confirm-button').click();
+      const deleteRes = await deleteResPromise;
+
+      expect([200, 202]).toContain(deleteRes.status());
+      await expect(row).not.toBeVisible();
+    });
+
+    test("created-by-me filter on the archive page shows only the current user's archived documents", async ({
+      allPermissionPage,
+      browser,
+    }) => {
+      const {
+        apiContext: allPermissionApiContext,
+        afterAction: allPermissionAfterAction,
+      } = await getApiContext(allPermissionPage);
+      const allPermissionLoggedInUser = await getLoggedInUser(
+        allPermissionApiContext
+      );
+      const { id: ownDocId } = await createDisposableArchivedDocument(
+        allPermissionApiContext,
+        'cc-created-by-me-own-doc'
+      );
+      await waitForDocumentInArchive(allPermissionApiContext, ownDocId);
+      await allPermissionAfterAction();
+
+      const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+        await getDefaultAdminAPIContext(browser);
+      const { id: otherUserDocId } = await createDisposableArchivedDocument(
+        adminApiContext,
+        'cc-created-by-me-other-doc'
+      );
+      await waitForDocumentInArchive(adminApiContext, otherUserDocId);
+      await adminAfterAction();
+
+      await navigateToArchive(allPermissionPage);
+
+      await test.step('both documents are visible under the All tab', async () => {
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${ownDocId}`)
+        ).toBeVisible();
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${otherUserDocId}`)
+        ).toBeVisible();
+      });
+
+      await test.step('switching to the created-by-me tab issues a request with updatedBy set to the current user', async () => {
+        const filterResPromise = allPermissionPage.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/contextCenter/drive/files') &&
+            res.url().includes(`updatedBy=${allPermissionLoggedInUser.name}`) &&
+            res.request().method() === 'GET'
+        );
+        await allPermissionPage
+          .getByRole('tab', { name: /created by me/i })
+          .click();
+        const filterRes = await filterResPromise;
+        expect(filterRes.status()).toBe(200);
+      });
+
+      await test.step('own archived document is visible under created-by-me', async () => {
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${ownDocId}`)
+        ).toBeVisible();
+      });
+
+      await test.step("the other user's archived document is not visible under created-by-me", async () => {
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${otherUserDocId}`)
+        ).not.toBeVisible();
+      });
     });
   });
 

@@ -24,6 +24,7 @@ import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { EntityType } from '../../enums/entity.enum';
 import { CreateDomain } from '../../generated/api/domains/createDomain';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDomains, patchDomains } from '../../rest/domainAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
@@ -51,12 +52,14 @@ import AddDomainForm, {
 import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
 import DomainTreeView from './components/DomainTreeView';
+import { DomainListPageProps } from './DomainListPage.interface';
 import { useDomainListingData } from './hooks/useDomainListingData';
 
-const DomainListPage = () => {
+const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const domainListing = useDomainListingData();
   const { isMarketplace, domainBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -146,6 +149,25 @@ const DomainListPage = () => {
       loading: isLoading,
     });
 
+  const breadcrumbItems = useMemo(
+    () => [
+      ...(isMarketplace
+        ? [
+            {
+              label: t('label.data-marketplace'),
+              href: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      { label: t('label.domain-plural'), href: domainBasePath },
+    ],
+    [domainBasePath, isMarketplace, t]
+  );
+
+  const headerBreadcrumb = (
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} />
+  );
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.domain-plural',
     descriptionMessageKey: 'message.domain-description',
@@ -154,6 +176,8 @@ const DomainListPage = () => {
     addButtonTestId: 'add-domain',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DOMAIN,
+    variant: isAiMode ? 'search' : undefined,
+    breadcrumb: headerBreadcrumb,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -310,20 +334,17 @@ const DomainListPage = () => {
     <Box
       direction="col"
       style={isTreeView ? { height: 'calc(100vh - 80px)' } : {}}>
-      <HeaderBreadcrumb
-        items={[
-          ...(isMarketplace
-            ? [
-                {
-                  label: t('label.data-marketplace'),
-                  href: ROUTES.DATA_MARKETPLACE,
-                },
-              ]
-            : []),
-          { label: t('label.domain-plural'), href: domainBasePath },
-        ]}
-      />
-      {pageHeader}
+      {!renderPageHeader && !isAiMode && (
+        <HeaderBreadcrumb items={breadcrumbItems} />
+      )}
+      {renderPageHeader
+        ? renderPageHeader({
+            onAddClick: openDrawer,
+            createPermission: permissions.domain?.Create || false,
+            count: domainListing.totalEntities,
+            breadcrumb: headerBreadcrumb,
+          })
+        : pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box

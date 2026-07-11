@@ -274,8 +274,6 @@ test.describe.serial('Persona operations', () => {
 
     await page.click('[data-testid="delete-button-title"]');
 
-    await page.click(`[data-testid="hard-delete"]`);
-
     const deleteResponse = page.waitForResponse(
       `/api/v1/personas/*?hardDelete=true&recursive=false`
     );
