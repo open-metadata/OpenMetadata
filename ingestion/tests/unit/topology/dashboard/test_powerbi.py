@@ -897,6 +897,33 @@ class PowerBIUnitTest(TestCase):
         self.assertIn("JOIN `analytics.customers`", result)
         self.assertNotIn("remove this comment", result)
 
+    def test_strip_sql_line_comments_preserves_bigquery_escaped_triple_delimiters(
+        self,
+    ):
+        sql_query = (
+            r"SELECT '''contains \''' -- inside escaped delimiter''' AS note "
+            "FROM `analytics.orders` "
+            "JOIN `analytics.customers` ON orders.customer_id = customers.id "
+            "-- remove this comment\n"
+            'SELECT """contains \\""" -- inside escaped delimiter""" AS label '
+            "FROM `analytics.labels` -- remove this comment"
+        )
+
+        result = self.powerbi._strip_sql_line_comments(sql_query)
+
+        self.assertIn(
+            r"'''contains \''' -- inside escaped delimiter''' AS note "
+            "FROM `analytics.orders`",
+            result,
+        )
+        self.assertIn("JOIN `analytics.customers`", result)
+        self.assertIn(
+            '"""contains \\""" -- inside escaped delimiter""" AS label '
+            "FROM `analytics.labels`",
+            result,
+        )
+        self.assertNotIn("remove this comment", result)
+
     @pytest.mark.order(2)
     @patch("metadata.ingestion.ometa.ometa_api.OpenMetadata.get_reference_by_email")
     def test_owner_ingestion(self, get_reference_by_email):

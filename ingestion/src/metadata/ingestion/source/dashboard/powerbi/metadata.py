@@ -1103,6 +1103,11 @@ class PowerbiSource(DashboardServiceSource):
             next_char = sql_query[index + 1] if index + 1 < len(sql_query) else ""
 
             if quote_delimiter and len(quote_delimiter) == 3:
+                if char == "\\" and next_char:
+                    cleaned_query.append(char)
+                    cleaned_query.append(next_char)
+                    index += 2
+                    continue
                 if sql_query.startswith(quote_delimiter, index):
                     cleaned_query.extend(quote_delimiter)
                     index += 3
