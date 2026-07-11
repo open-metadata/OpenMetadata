@@ -128,8 +128,8 @@ export interface ContextRule {
      */
     filterJsonTree?: string;
     /**
-     * Render complete documentation for every matched entity and ignore sections. Fully rendered
-     * Data Products also include the context of every contained asset.
+     * Render complete documentation for every matched entity and ignore sections. Fully
+     * rendered Data Products also include the context of every contained asset.
      */
     fullyRendered?: boolean;
     /**
