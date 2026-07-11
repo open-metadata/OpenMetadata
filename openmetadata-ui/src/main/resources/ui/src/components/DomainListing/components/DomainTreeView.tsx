@@ -976,7 +976,7 @@ const DomainTreeView = ({
         title: t('label.domain-plural'),
         children: (
           <div
-            className="tw:pt-[18px] tw:pr-3 tw:pb-4 tw:overflow-y-auto tw:max-h-[calc(80vh-160px)]"
+            className="tw:pt-4.5 tw:pr-3 tw:overflow-y-auto tw:max-h-[calc(80vh-220px)]"
             ref={scrollContainerRef}
             onScroll={handleScroll}>
             {hierarchySection}

@@ -223,6 +223,7 @@ describe('DomainTreeView', () => {
         () => new Promise(() => {})
       );
       renderComponent();
+
       expect(await screen.findByTestId('loader')).toBeInTheDocument();
     });
 
@@ -261,6 +262,7 @@ describe('DomainTreeView', () => {
         paging: { total: 0 },
       } as any);
       renderComponent();
+
       expect(
         await screen.findByTestId('error-placeholder')
       ).toBeInTheDocument();
@@ -274,6 +276,7 @@ describe('DomainTreeView', () => {
       const openAddDomainDrawer = jest.fn();
       renderComponent({ openAddDomainDrawer });
       fireEvent.click(await screen.findByTestId('error-placeholder'));
+
       expect(openAddDomainDrawer).toHaveBeenCalledTimes(1);
     });
   });
@@ -285,6 +288,7 @@ describe('DomainTreeView', () => {
       await waitFor(() => {
         expect(mockSearchDomains).toHaveBeenCalled();
       });
+
       expect(mockGetDomainChildrenPaginated).not.toHaveBeenCalled();
     });
 
@@ -323,6 +327,7 @@ describe('DomainTreeView', () => {
     it('renders DomainDetails in the right panel after a domain loads', async () => {
       renderComponent();
       await waitFor(() => expect(mockGetDomainByName).toHaveBeenCalled());
+
       expect(
         within(screen.getByTestId('right-panel')).getByTestId('domain-details')
       ).toBeInTheDocument();
