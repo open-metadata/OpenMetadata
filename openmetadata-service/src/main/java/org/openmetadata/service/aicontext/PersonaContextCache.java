@@ -65,13 +65,21 @@ public class PersonaContextCache {
 
   private final CacheProvider provider;
   private final CacheKeys keys;
+  private final int pollAttempts;
+  private final long pollMillis;
   private final String nodeId = UUID.randomUUID().toString();
   private final Cache<String, LocalEntry> local = Caffeine.newBuilder().maximumSize(50).build();
   private final ConcurrentMap<UUID, GenerationState> generationStates = new ConcurrentHashMap<>();
 
   PersonaContextCache(CacheProvider provider, CacheKeys keys) {
+    this(provider, keys, POLL_ATTEMPTS, POLL_MILLIS);
+  }
+
+  PersonaContextCache(CacheProvider provider, CacheKeys keys, int pollAttempts, long pollMillis) {
     this.provider = provider;
     this.keys = keys;
+    this.pollAttempts = pollAttempts;
+    this.pollMillis = pollMillis;
   }
 
   public static PersonaContextCache getInstance() {
@@ -143,8 +151,10 @@ public class PersonaContextCache {
       }
       ownsLock = provider.setIfAbsent(lockKey, lockOwner, BUILD_LEASE);
       if (!ownsLock) {
-        throw new IllegalStateException(
-            "Timed out waiting for persona context materialization for " + persona.getId());
+        PersonaContextBuilder.MaterializedPersonaContext built = build(persona);
+        cacheIfEligible(localKey, built, ttlSeconds, false, persona.getId(), definitionHash);
+        markFresh(persona);
+        return new CachedResult(built, CacheStatus.BYPASS);
       }
     }
 
@@ -297,9 +307,9 @@ public class PersonaContextCache {
 
   private PersonaContextBuilder.MaterializedPersonaContext waitForWinner(
       UUID personaId, String definitionHash, Long previousGeneratedAt) {
-    for (int attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
+    for (int attempt = 0; attempt < pollAttempts; attempt++) {
       try {
-        TimeUnit.MILLISECONDS.sleep(POLL_MILLIS);
+        TimeUnit.MILLISECONDS.sleep(pollMillis);
       } catch (InterruptedException exception) {
         Thread.currentThread().interrupt();
         break;

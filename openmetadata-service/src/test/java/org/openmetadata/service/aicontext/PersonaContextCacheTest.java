@@ -12,12 +12,16 @@
  */
 package org.openmetadata.service.aicontext;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -27,6 +31,7 @@ import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.teams.Persona;
+import org.openmetadata.schema.type.PersonaContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.service.cache.CacheKeys;
 import org.openmetadata.service.cache.CacheProvider;
@@ -59,5 +64,45 @@ class PersonaContextCacheTest {
 
     assertThrows(IllegalStateException.class, () -> cache.get(persona, false));
     verify(provider).deleteIfValue(eq(keys.personaContextLock(personaId)), anyString());
+  }
+
+  @Test
+  void buildsLocallyWhenWinnerWaitEndsAndLeaseIsStillHeld() {
+    CacheProvider provider = mock(CacheProvider.class);
+    UUID personaId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    CacheKeys keys = new CacheKeys("om:test");
+    Persona persona =
+        new Persona()
+            .withId(personaId)
+            .withName("analyst")
+            .withContextDefinition(new PersonaContextDefinition());
+    PersonaContextBuilder.MaterializedPersonaContext materialized =
+        new PersonaContextBuilder.MaterializedPersonaContext(
+            new PersonaContext().withGeneratedAt(1L), "compiled context");
+
+    when(provider.available()).thenReturn(true);
+    when(provider.mget(anyList())).thenReturn(List.of(Optional.empty(), Optional.empty()));
+    when(provider.setIfAbsent(eq(keys.personaContextLock(personaId)), any(), any(Duration.class)))
+        .thenReturn(false);
+
+    PersonaContextCache cache =
+        new PersonaContextCache(provider, keys, 1, 0) {
+          @Override
+          protected PersonaContextBuilder.MaterializedPersonaContext build(Persona ignored) {
+            return materialized;
+          }
+        };
+
+    PersonaContextCache.CachedResult fallback = cache.get(persona, false);
+    PersonaContextCache.CachedResult localHit = cache.get(persona, false);
+
+    assertSame(materialized, fallback.value());
+    assertEquals(PersonaContextCache.CacheStatus.BYPASS, fallback.status());
+    assertSame(materialized, localHit.value());
+    assertEquals(PersonaContextCache.CacheStatus.HIT, localHit.status());
+    verify(provider, times(2))
+        .setIfAbsent(eq(keys.personaContextLock(personaId)), any(), any(Duration.class));
+    verify(provider, never()).set(anyString(), anyString(), any(Duration.class));
+    verify(provider, never()).deleteIfValue(eq(keys.personaContextLock(personaId)), anyString());
   }
 }
