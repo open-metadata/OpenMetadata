@@ -218,7 +218,10 @@ describe('QueryBuilderWidgetV1', () => {
       expect(
         QueryBuilderElasticsearchFormatUtils.elasticSearchFormat
       ).toHaveBeenCalled();
-      expect(mockOnChange).toHaveBeenCalledWith('{"query":{"query":"test"}}');
+      expect(mockOnChange).toHaveBeenCalledWith(
+        '{"query":{"query":"test"}}',
+        mocks.treeInternal
+      );
     });
 
     it('should handle tree updates for JSONLogic output', async () => {
@@ -496,6 +499,24 @@ describe('QueryBuilderWidgetV1', () => {
       expect(Utils.loadTree).toHaveBeenCalledWith(tree);
     });
 
+    it('should reload the builder when the tree prop changes', async () => {
+      const firstTree: JsonTree = {
+        type: 'group',
+        properties: { conjunction: 'AND', not: false },
+      };
+      const nextTree: JsonTree = {
+        type: 'group',
+        properties: { conjunction: 'OR', not: false },
+      };
+      const { rerender } = render(<QueryBuilderWidgetV1 tree={firstTree} />);
+
+      rerender(<QueryBuilderWidgetV1 tree={nextTree} />);
+
+      await waitFor(() => {
+        expect(Utils.loadTree).toHaveBeenCalledWith(nextTree);
+      });
+    });
+
     it('should handle undefined value prop', () => {
       render(<QueryBuilderWidgetV1 value={undefined} />);
 
@@ -632,7 +653,7 @@ describe('QueryBuilderWidgetV1', () => {
         fireEvent.click(changeButton);
       });
 
-      expect(mockOnChange).toHaveBeenCalledWith('');
+      expect(mockOnChange).toHaveBeenCalledWith('', mocks.treeInternal);
     });
 
     it('should handle null search response', async () => {

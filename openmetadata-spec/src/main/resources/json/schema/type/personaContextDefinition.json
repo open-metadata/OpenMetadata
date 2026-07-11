@@ -1,0 +1,173 @@
+{
+  "$id": "https://open-metadata.org/schema/type/personaContextDefinition.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PersonaContextDefinition",
+  "description": "Rules and materialization settings for the shared AI context document attached to a Persona.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PersonaContextDefinition",
+  "definitions": {
+    "contextSection": {
+      "description": "A section of an entity's documentation that can be included by a persona context rule.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.personaContext.ContextSection",
+      "enum": [
+        "description",
+        "schema",
+        "constraints",
+        "joins",
+        "tags",
+        "glossaryTerms",
+        "articles",
+        "metrics",
+        "lineage",
+        "profile",
+        "dataQuality",
+        "titleSummary",
+        "fullBody",
+        "relatedAssets",
+        "definition",
+        "formulaExpression",
+        "unitGrain",
+        "owner",
+        "synonyms",
+        "relatedTerms"
+      ]
+    },
+    "cacheState": {
+      "description": "Current state of the compiled persona context document.",
+      "type": "string",
+      "javaType": "org.openmetadata.schema.type.personaContext.PersonaContextCacheState",
+      "enum": ["FRESH", "STALE", "GENERATING", "FAILED"]
+    },
+    "contextRule": {
+      "description": "A dynamic entity-selection rule whose query is evaluated whenever the persona context is materialized.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.personaContext.ContextRule",
+      "properties": {
+        "id": {
+          "description": "Stable identifier used by the persona AI context rule CRUD APIs.",
+          "$ref": "basic.json#/definitions/uuid"
+        },
+        "name": {
+          "description": "Unique display name for the rule within this persona.",
+          "$ref": "basic.json#/definitions/entityName"
+        },
+        "description": {
+          "description": "Optional explanation of why these entities belong in the persona context.",
+          "$ref": "basic.json#/definitions/markdown"
+        },
+        "entityType": {
+          "description": "Entity type selected by the rule, for example table, dashboard, glossaryTerm, page, or metric.",
+          "type": "string"
+        },
+        "queryFilter": {
+          "description": "Elasticsearch query DSL string emitted by the Explore query builder. Empty selects every entity of the configured type.",
+          "type": "string",
+          "default": ""
+        },
+        "filterJsonTree": {
+          "description": "Serialized react-awesome-query-builder JSON tree used only to restore the rule editor UI.",
+          "type": "string"
+        },
+        "sections": {
+          "description": "Entity-type-specific documentation sections to render. Ignored when fullyRendered is true.",
+          "type": "array",
+          "items": {
+            "$ref": "#/definitions/contextSection"
+          },
+          "uniqueItems": true
+        },
+        "maxAssets": {
+          "description": "Maximum number of matching entities to include from this rule.",
+          "type": "integer",
+          "minimum": 1,
+          "maximum": 1000,
+          "default": 50
+        },
+        "fullyRendered": {
+          "description": "Render complete documentation for every matched entity and ignore sections. Fully rendered Data Products also include the context of every contained asset.",
+          "type": "boolean",
+          "default": false
+        },
+        "alwaysInContext": {
+          "description": "Place this rule before relevance-scoped rules so its content is injected into every request.",
+          "type": "boolean",
+          "default": false
+        },
+        "enabled": {
+          "description": "Whether the rule participates in materialization.",
+          "type": "boolean",
+          "default": true
+        },
+        "matchedCount": {
+          "description": "Read-only count of entities currently matched by this rule.",
+          "type": "integer",
+          "minimum": 0,
+          "readOnly": true
+        }
+      },
+      "required": ["name", "entityType"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "enabled": {
+      "description": "Whether persona context is enabled.",
+      "type": "boolean",
+      "default": true
+    },
+    "rules": {
+      "description": "Ordered dynamic entity-selection rules. An entity matched by multiple rules is rendered under the first rule only.",
+      "type": "array",
+      "maxItems": 25,
+      "items": {
+        "$ref": "#/definitions/contextRule"
+      },
+      "default": []
+    },
+    "maxTotalChars": {
+      "description": "Deprecated alias for characterBudget retained for stored persona compatibility.",
+      "type": "integer",
+      "minimum": 10000,
+      "maximum": 2000000,
+      "default": 150000
+    },
+    "cacheTtlSeconds": {
+      "description": "Deprecated alias for cacheTtlMinutes retained for stored persona compatibility.",
+      "type": "integer",
+      "minimum": 60,
+      "maximum": 86400,
+      "default": 1800
+    },
+    "characterBudget": {
+      "description": "Hard character cap for the compiled Markdown document.",
+      "type": "integer",
+      "minimum": 10000,
+      "maximum": 2000000,
+      "default": 150000
+    },
+    "cacheTtlMinutes": {
+      "description": "Number of minutes a compiled context remains fresh before it is regenerated.",
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 1440,
+      "default": 30
+    },
+    "lastGeneratedAt": {
+      "description": "Read-only timestamp of the most recent successful compilation.",
+      "$ref": "basic.json#/definitions/timestamp",
+      "readOnly": true
+    },
+    "cacheState": {
+      "description": "Read-only state of the compiled context cache.",
+      "$ref": "#/definitions/cacheState",
+      "readOnly": true
+    },
+    "lastError": {
+      "description": "Read-only reason the latest compilation failed.",
+      "type": "string",
+      "readOnly": true
+    }
+  },
+  "additionalProperties": false
+}

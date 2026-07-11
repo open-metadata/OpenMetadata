@@ -73,11 +73,13 @@ const QueryBuilderWidgetV1: FC<{
   readonly?: boolean;
   getQueryActions?: (actions: Actions) => void;
   label?: string;
+  showCountPreview?: boolean;
   tree?: JsonTree;
 }> = ({
   onChange,
   entityType = EntityType.ALL,
   outputType = SearchOutputType.ElasticSearch,
+  showCountPreview = true,
   value,
   fields,
   ...props
@@ -112,6 +114,27 @@ const QueryBuilderWidgetV1: FC<{
       config
     )
   );
+
+  useEffect(() => {
+    const nextConfig: Config = {
+      ...baseConfig,
+      fields: fields ?? baseConfig.fields,
+      settings: {
+        ...baseConfig.settings,
+        ...(props.readonly ? READONLY_SETTINGS : {}),
+        removeEmptyGroupsOnLoad: false,
+        removeEmptyRulesOnLoad: false,
+        shouldCreateEmptyGroup: true,
+      },
+    };
+    setConfig(nextConfig);
+    setTreeInternal(
+      QbUtils.checkTree(
+        QbUtils.loadTree(props.tree ?? getEmptyJsonTreeForQueryBuilder()),
+        nextConfig
+      )
+    );
+  }, [baseConfig, fields, props.readonly, props.tree]);
 
   const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
@@ -168,11 +191,12 @@ const QueryBuilderWidgetV1: FC<{
 
   const showFilteredResourceCount = useMemo(
     () =>
+      showCountPreview &&
       outputType === SearchOutputType.ElasticSearch &&
       !isUndefined(value) &&
       searchResults !== undefined &&
       !isCountLoading,
-    [outputType, value, isCountLoading]
+    [isCountLoading, outputType, showCountPreview, value]
   );
 
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
@@ -183,7 +207,7 @@ const QueryBuilderWidgetV1: FC<{
       const qFilter = {
         query: data,
       };
-      if (data) {
+      if (data && showCountPreview) {
         const qFilterWithEntityType = addEntityTypeFilter(
           qFilter as unknown as QueryFilterInterface,
           entityType
@@ -192,9 +216,14 @@ const QueryBuilderWidgetV1: FC<{
         debouncedFetchEntityCount(
           qFilterWithEntityType as unknown as Record<string, unknown>
         );
+      } else {
+        setSearchResults(undefined);
       }
 
-      onChange?.(isEmpty(data) ? '' : JSON.stringify(qFilter));
+      onChange?.(
+        isEmpty(data) ? '' : JSON.stringify(qFilter),
+        QbUtils.getTree(nTree)
+      );
     } else {
       const jsonTree = QbUtils.getTree(nTree);
       try {
