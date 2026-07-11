@@ -24,6 +24,7 @@ import java.util.Comparator;
 import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.IdentityHashMap;
 import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -456,6 +457,7 @@ public class PersonaContextBuilder {
       return accumulator;
     }
 
+    Map<SelectedEntity, ContextRule> ruleByEntity = indexRulesByEntity(materializedRules);
     Map<String, SelectedEntity> assetById = new LinkedHashMap<>();
     assets.forEach(asset -> assetById.put(asset.id(), asset));
     List<String> assetIds = new ArrayList<>(assetById.keySet());
@@ -473,7 +475,7 @@ public class PersonaContextBuilder {
         entitiesById(Entity.METRIC, flatten(metricIdsByAsset.values()), Metric.class);
 
     for (SelectedEntity asset : assets) {
-      ContextRule rule = findRule(materializedRules, asset);
+      ContextRule rule = ruleByEntity.get(asset);
       Set<ContextSection> sections = selectedSections(rule);
       if (sections.contains(ContextSection.GLOSSARY_TERMS)) {
         for (String termFqn : glossaryFqns(asset.document())) {
@@ -571,13 +573,15 @@ public class PersonaContextBuilder {
     }
   }
 
-  private static ContextRule findRule(
-      List<RuleMaterialization> rules, SelectedEntity selectedEntity) {
-    return rules.stream()
-        .filter(rule -> rule.entities().contains(selectedEntity))
-        .findFirst()
-        .orElseThrow()
-        .rule();
+  static Map<SelectedEntity, ContextRule> indexRulesByEntity(
+      List<RuleMaterialization> materializedRules) {
+    Map<SelectedEntity, ContextRule> ruleByEntity = new IdentityHashMap<>();
+    for (RuleMaterialization materialization : materializedRules) {
+      for (SelectedEntity entity : materialization.entities()) {
+        ruleByEntity.put(entity, materialization.rule());
+      }
+    }
+    return ruleByEntity;
   }
 
   private static Map<String, List<UUID>> groupRelatedIds(

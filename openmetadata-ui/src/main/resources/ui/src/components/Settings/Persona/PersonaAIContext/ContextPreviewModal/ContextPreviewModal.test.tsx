@@ -82,6 +82,9 @@ describe('ContextPreviewModal', () => {
       '# Persona context'
     );
     expect(mockedGetPersonaAIContextDocument).toHaveBeenCalledTimes(1);
+    expect(mockedGetPersonaAIContextDocument).toHaveBeenCalledWith(
+      '11111111-1111-1111-1111-111111111111'
+    );
 
     rerender(
       <ContextPreviewModal

@@ -137,6 +137,7 @@ const mockPersonaContextApi = async (
     if (path === `${basePath}/document`) {
       documentRequestCount++;
       expect(documentRequestCount).toBe(1);
+      expect(new URL(request.url()).search).toBe('');
 
       return fulfill(route, createDocument());
     }
@@ -435,6 +436,15 @@ test.describe.serial('Persona AI Context', () => {
       cacheTtlMinutes: 30,
       characterBudget: 175000,
       enabled: true,
+    });
+
+    const disableRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext') && request.method() === 'PUT'
+    );
+    await adminPage.getByTestId('persona-context-enabled').click();
+    expect((await disableRequest).postDataJSON()).toMatchObject({
+      enabled: false,
     });
   });
 

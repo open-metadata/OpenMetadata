@@ -146,13 +146,9 @@ export const previewPersonaAIContextRule = async (
   return response.data;
 };
 
-export const getPersonaAIContextDocument = async (
-  id: string,
-  format: 'raw' | 'rendered'
-) => {
+export const getPersonaAIContextDocument = async (id: string) => {
   const response = await axiosClient.get<PersonaContextDocument>(
-    `${BASE_URL}/${id}/aiContext/document`,
-    { params: { format } }
+    `${BASE_URL}/${id}/aiContext/document`
   );
 
   return response.data;

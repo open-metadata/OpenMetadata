@@ -14,6 +14,7 @@ package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
@@ -186,6 +187,33 @@ class PersonaContextBuilderTest {
             Entity.TOPIC)) {
       assertTrue(PersonaContextBuilder.supportsEntityType(entityType), entityType);
     }
+  }
+
+  @Test
+  void indexesSelectedEntitiesByIdentityWithoutDeepEqualityLookups() {
+    Map<String, Object> document = documents(0, 1).getFirst();
+    AIContext context =
+        new AIContext()
+            .withEntityType(Entity.TABLE)
+            .withFullyQualifiedName(String.valueOf(document.get("fullyQualifiedName")));
+    PersonaContextBuilder.SelectedEntity firstEntity =
+        new PersonaContextBuilder.SelectedEntity("id", document, context, null, null);
+    PersonaContextBuilder.SelectedEntity equalButDistinctEntity =
+        new PersonaContextBuilder.SelectedEntity("id", document, context, null, null);
+    ContextRule firstRule = assetRule("First", "");
+    ContextRule secondRule = assetRule("Second", "");
+
+    assertEquals(firstEntity, equalButDistinctEntity);
+
+    Map<PersonaContextBuilder.SelectedEntity, ContextRule> ruleByEntity =
+        PersonaContextBuilder.indexRulesByEntity(
+            List.of(
+                new PersonaContextBuilder.RuleMaterialization(firstRule, 1, List.of(firstEntity)),
+                new PersonaContextBuilder.RuleMaterialization(
+                    secondRule, 1, List.of(equalButDistinctEntity))));
+
+    assertSame(firstRule, ruleByEntity.get(firstEntity));
+    assertSame(secondRule, ruleByEntity.get(equalButDistinctEntity));
   }
 
   @Test

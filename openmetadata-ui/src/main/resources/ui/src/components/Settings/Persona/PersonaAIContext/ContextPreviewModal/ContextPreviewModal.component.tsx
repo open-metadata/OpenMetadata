@@ -75,7 +75,7 @@ export const ContextPreviewModal = ({
         setLoading(true);
         const response = refresh
           ? await refreshPersonaAIContextDocument(personaId)
-          : await getPersonaAIContextDocument(personaId, 'rendered');
+          : await getPersonaAIContextDocument(personaId);
         if (requestId === previewRequestRef.current) {
           setContextDocument(response);
           onDocumentLoadedRef.current?.(response);

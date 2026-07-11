@@ -377,10 +377,8 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
   public Response getAiContextDocument(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @PathParam("id") UUID id,
-      @DefaultValue("rendered") @QueryParam("format") String format) {
+      @PathParam("id") UUID id) {
     authorizer.authorizeAdmin(securityContext);
-    validateDocumentFormat(format);
     Persona persona = getPersona(uriInfo, id);
     PersonaContextCache.CachedResult cached = PersonaContextCache.getInstance().get(persona, false);
     return documentResponse(cached);
@@ -570,12 +568,6 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
       }
     }
     throw new NotFoundException("Persona AI context rule not found: " + ruleId);
-  }
-
-  private static void validateDocumentFormat(String format) {
-    if (!"rendered".equalsIgnoreCase(format) && !"raw".equalsIgnoreCase(format)) {
-      throw new BadRequestException("format must be rendered or raw");
-    }
   }
 
   private static Response documentResponse(PersonaContextCache.CachedResult cached) {

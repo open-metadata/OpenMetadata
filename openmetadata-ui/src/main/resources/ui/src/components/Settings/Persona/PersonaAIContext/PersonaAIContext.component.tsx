@@ -121,7 +121,7 @@ export const PersonaAIContext = ({
           characterBudget:
             updated.characterBudget ??
             DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
-          enabled: updated.enabled ?? true,
+          enabled: updated.enabled,
         });
         applyServerDefinition(response);
       } catch (error) {
