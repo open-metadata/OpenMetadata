@@ -36,7 +36,14 @@ const expandTreeNode = async (page: Page, titleTestId: string) => {
   // Response-based waiting (the same pattern used in expandServiceInExploreTree
   // etc.) anchors on the actual data fetch so children are fully rendered before
   // we interact with them.
-  const res = page.waitForResponse('/api/v1/search/query?*index=dataAsset*');
+  // ServiceType nodes drill down through POST /search/aggregate (service.style
+  // top hits for custom icons); every other level still uses GET /search/query.
+  const res = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/search/query?') ||
+      (response.url().endsWith('/api/v1/search/aggregate') &&
+        response.request().method() === 'POST')
+  );
   await page
     .locator('.ant-tree-treenode')
     .filter({ has: page.getByTestId(`explore-tree-title-${titleTestId}`) })

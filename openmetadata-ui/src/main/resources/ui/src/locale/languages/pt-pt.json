@@ -3309,6 +3309,7 @@
     "icon-aspect-ratio": "A proporção do ícone deve ser 1:1 e o tamanho recomendado deve ser 64 x 64 px",
     "image-dimensions-exceeded": "As dimensões da imagem excedem o máximo permitido de {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "A imagem deve ter mais de 103px de altura para reposicionar",
+    "image-upload-after-asset-creation": "Pode carregar ficheiros depois de o ativo ser criado.",
     "image-upload-error": "O upload de imagens não é suportado. Por favor use a sintaxe Markdown para imagens disponíveis via URL.",
     "impact-score-helper": "Classifica a dimensão pelo impacto na qualidade dos dados. Esta pontuação responde: \"Onde está o problema real?\", pesando as taxas de falha contra o volume de dados.",
     "import-csv-building-preview": "Building preview...",

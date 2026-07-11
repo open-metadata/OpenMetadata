@@ -3309,6 +3309,7 @@
     "icon-aspect-ratio": "圖示長寬比應為1:1，建議大小應為64 x 64像素",
     "image-dimensions-exceeded": "圖片尺寸超過允許的最大值 {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "圖片高度必須大於103px才能重新定位",
+    "image-upload-after-asset-creation": "資產建立後即可上傳檔案。",
     "image-upload-error": "不支援圖片上傳。請對可透過 URL 取得的圖片使用 Markdown 語法。",
     "impact-score-helper": "影響分數基於失敗列數及其嚴重程度計算,量化資料品質問題對下游流程的潛在影響。",
     "import-csv-building-preview": "Building preview...",

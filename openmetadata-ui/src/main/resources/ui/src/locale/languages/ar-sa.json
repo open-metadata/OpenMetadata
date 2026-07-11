@@ -3309,6 +3309,7 @@
     "icon-aspect-ratio": "يجب أن تكون نسبة العرض إلى الارتفاع للأيقونة 1:1 ويوصى بحجم 64 × 64 بكسل",
     "image-dimensions-exceeded": "أبعاد الصورة تتجاوز الحد الأقصى المسموح به {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "يجب أن تكون الصورة أطول من 103 بكسل لإعادة تموضعها",
+    "image-upload-after-asset-creation": "يمكنك تحميل الملفات بعد إنشاء الأصل.",
     "image-upload-error": "رفع الصور غير مدعوم. يرجى استخدام بناء جملة Markdown للصور المتاحة عبر رابط URL.",
     "impact-score-helper": "يصنّف البُعد حسب تأثير جودة البيانات. يجيب هذا المقياس على سؤال: \"أين المشكلة الحقيقية؟\" من خلال وزن معدلات الفشل مقابل حجم البيانات.",
     "import-csv-building-preview": "Building preview...",
