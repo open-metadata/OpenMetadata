@@ -3465,7 +3465,6 @@
     "metric-description": "در سراسر سازمان خود معیارهای استاندارد شده را تعریف و فهرست کنید.",
     "metric-relations-require-glossary-term": "یک اصطلاح واژه‌نامه برای افزودن روابط انتخاب کنید.",
     "metric-tags-info": "معیارها از طریق برچسب‌ها به اصطلاحات واژه‌نامه متصل می‌شوند.",
-    "metrics-delete-collection-description": "Deleting this collection would permanently remove its metadata.",
     "metrics-delete-success": "Deleted {{count}} metrics successfully.",
     "metrics-export-description": "Download all your metrics as a CSV file, and share with your team.",
     "metrics-import-description": "Save time & effort by uploading a CSV file with several metrics in one go.",
