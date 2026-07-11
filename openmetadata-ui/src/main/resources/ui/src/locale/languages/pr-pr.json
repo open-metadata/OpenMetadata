@@ -3309,6 +3309,7 @@
     "icon-aspect-ratio": "نسبت ابعاد آیکون باید 1:1 باشد و اندازه توصیه شده باید 64 x 64 پیکسل باشد",
     "image-dimensions-exceeded": "ابعاد تصویر از حداکثر مجاز {{maxWidth}}×{{maxHeight}}px بیشتر است",
     "image-too-small-to-reposition": "تصویر باید بلندتر از 103px باشد تا قابل تغییر موقعیت باشد",
+    "image-upload-after-asset-creation": "پس از ایجاد دارایی می‌توانید فایل‌ها را بارگذاری کنید.",
     "image-upload-error": "بارگذاری تصویر پشتیبانی نمی‌شود. لطفاً از نحو Markdown برای تصاویری که از طریق URL در دسترس هستند استفاده کنید.",
     "impact-score-helper": "امتیاز تأثیر، تأثیر بالقوه مشکلات کیفیت داده بر فرآیندهای پایین‌دستی را بر اساس ردیف‌های ناموفق و اهمیت آن‌ها محاسبه می‌کند.",
     "import-csv-building-preview": "Building preview...",

@@ -3309,6 +3309,7 @@
     "icon-aspect-ratio": "Das Seitenverhältnis des Symbols sollte 1:1 sein und die empfohlene Größe sollte 64 x 64 px betragen",
     "image-dimensions-exceeded": "Bildabmessungen überschreiten das zulässige Maximum von {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "Das Bild muss höher als 103px sein, um neu positioniert zu werden",
+    "image-upload-after-asset-creation": "Sie können Dateien hochladen, nachdem der Asset erstellt wurde.",
     "image-upload-error": "Das Hochladen von Bildern wird nicht unterstützt. Bitte verwenden Sie die Markdown-Syntax für Bilder, die über eine URL verfügbar sind.",
     "impact-score-helper": "Der Impact Score quantifiziert die potenziellen Auswirkungen von Datenqualitätsproblemen auf nachgelagerte Prozesse, berechnet auf Basis fehlgeschlagener Zeilen und deren Kritikalität.",
     "import-csv-building-preview": "Building preview...",

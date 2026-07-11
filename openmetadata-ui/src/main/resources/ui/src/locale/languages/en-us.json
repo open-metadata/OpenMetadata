@@ -3309,6 +3309,7 @@
     "icon-aspect-ratio": "Icon aspect ratio should be 1:1 and recommended size should be 64 x 64 px",
     "image-dimensions-exceeded": "Image dimensions exceed maximum allowed {{maxWidth}}×{{maxHeight}}px",
     "image-too-small-to-reposition": "Image must be taller than 103px to reposition",
+    "image-upload-after-asset-creation": "You can upload files after the asset is created.",
     "image-upload-error": "Image upload is not supported. Please use Markdown syntax for images available via URL.",
     "impact-score-helper": "Ranks dimension by data quality impact. This score answers: \"Where's the real problem?\" by weighing failure rates against data volume.",
     "import-csv-building-preview": "Building preview...",

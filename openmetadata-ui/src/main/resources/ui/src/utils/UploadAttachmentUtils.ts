@@ -10,15 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+export const getAttachmentId = (src: string) => {
+  // Extract ID from the path using regex
+  const idMatch = src.match(/api\/v1\/attachments\/([^/]+)\/download/);
+  const attachmentId = idMatch ? idMatch[1] : null;
 
-export interface AttachmentItem {
-  id: string;
-  name: string;
-  size: number;
-  fileType: string;
-  downloadUrl?: string;
-}
-
-export interface AttachmentWidgetProps {
-  entityFqn?: string;
-}
+  return attachmentId;
+};

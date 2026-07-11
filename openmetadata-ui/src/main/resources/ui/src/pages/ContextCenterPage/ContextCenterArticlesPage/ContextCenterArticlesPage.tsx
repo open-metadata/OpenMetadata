@@ -368,7 +368,7 @@ const ContextCenterArticlesPage = () => {
               'left-panel-collapsed': !leftSidebar,
             })}
             data-testid="left-panel"
-            flex={0.2}
+            flex={0.25}
             minSize={280}>
             {leftSidebar}
           </ReflexElement>
