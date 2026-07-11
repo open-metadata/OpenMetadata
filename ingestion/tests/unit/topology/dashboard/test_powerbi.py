@@ -885,6 +885,7 @@ class PowerBIUnitTest(TestCase):
             "FROM `analytics.orders`\n"
             "WHERE note = '''contains -- inside triple single quote''' -- remove this comment\n"
             'AND label = """contains -- inside triple double quote""" -- remove this comment\n'
+            "AND compact_note = '''a---b''' -- remove this comment\n"
             "JOIN `analytics.customers` ON orders.customer_id = customers.id"
         )
 
@@ -892,6 +893,7 @@ class PowerBIUnitTest(TestCase):
 
         self.assertIn("'''contains -- inside triple single quote'''", result)
         self.assertIn('"""contains -- inside triple double quote"""', result)
+        self.assertIn("'''a---b'''", result)
         self.assertIn("JOIN `analytics.customers`", result)
         self.assertNotIn("remove this comment", result)
 

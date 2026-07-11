@@ -1102,18 +1102,23 @@ class PowerbiSource(DashboardServiceSource):
             char = sql_query[index]
             next_char = sql_query[index + 1] if index + 1 < len(sql_query) else ""
 
+            if quote_delimiter and len(quote_delimiter) == 3:
+                if sql_query.startswith(quote_delimiter, index):
+                    cleaned_query.extend(quote_delimiter)
+                    index += 3
+                    quote_delimiter = None
+                    continue
+                cleaned_query.append(char)
+                index += 1
+                continue
+
             if quote_delimiter:
                 cleaned_query.append(char)
                 if char == "\\" and next_char:
                     cleaned_query.append(next_char)
                     index += 2
                     continue
-                if sql_query.startswith(quote_delimiter, index):
-                    if len(quote_delimiter) == 3:
-                        cleaned_query.extend(sql_query[index + 1 : index + 3])
-                        index += 3
-                        quote_delimiter = None
-                        continue
+                if char == quote_delimiter:
                     if next_char == quote_delimiter:
                         cleaned_query.append(next_char)
                         index += 2
