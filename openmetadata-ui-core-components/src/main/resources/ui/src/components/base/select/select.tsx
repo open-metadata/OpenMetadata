@@ -34,7 +34,18 @@ export interface SelectCommonProps {
   size?: 'sm' | 'md';
   fontSize?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
   placeholder?: string;
+  emptyState?: ReactNode;
 }
+
+export const SelectEmptyState = ({
+  emptyState,
+}: {
+  emptyState?: ReactNode;
+}) => (
+  <div className="tw:px-3 tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
+    {emptyState ?? 'No data'}
+  </div>
+);
 
 interface SelectProps
   extends Omit<AriaSelectProps<SelectItemType>, 'children' | 'items'>,
@@ -170,6 +181,7 @@ const Select = ({
   label,
   hint,
   tooltip,
+  emptyState,
   className,
   ...rest
 }: SelectProps) => {
@@ -200,7 +212,10 @@ const Select = ({
             <Popover className={rest.popoverClassName} size={size}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
-                items={items}>
+                items={items}
+                renderEmptyState={() => (
+                  <SelectEmptyState emptyState={emptyState} />
+                )}>
                 {children}
               </AriaListBox>
             </Popover>

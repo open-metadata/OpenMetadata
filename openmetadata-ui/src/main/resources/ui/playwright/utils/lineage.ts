@@ -91,7 +91,7 @@ export type LineageEdge = {
 export const verifyColumnLayerInactive = async (page: Page) => {
   await page.getByTestId('lineage-layer-btn').click(); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"]:not(.Mui-selected)')
+    .locator('[data-testid="lineage-layer-column-btn"]:not([data-selected])')
     .waitFor();
   await clickOutside(page); // close Layer popover
 };
@@ -101,7 +101,7 @@ export const activateColumnLayer = async (page: Page) => {
 
   const isColumnLayerSelected = await page
     .locator('[data-testid="lineage-layer-column-btn"]')
-    .evaluate((el) => el.classList.contains('Mui-selected'));
+    .evaluate((el) => el.hasAttribute('data-selected'));
 
   if (isColumnLayerSelected) {
     await clickOutside(page);
@@ -189,8 +189,10 @@ export const deleteEdge = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage/**');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 };
 
@@ -611,8 +613,10 @@ export const removeColumnLineage = async (
 
   const deleteRes = page.waitForResponse('/api/v1/lineage');
   await page
-    .locator('[data-testid="delete-edge-confirmation-modal"] .ant-btn-primary')
-    .dispatchEvent('click');
+    .locator(
+      '[data-testid="delete-edge-confirmation-modal"] [data-testid="confirm-button"]'
+    )
+    .click();
   await deleteRes;
 
   await editLineageClick(page);
@@ -734,7 +738,7 @@ export const fillLineageConfigForm = async (
 export const verifyColumnLayerActive = async (page: Page) => {
   await page.click('[data-testid="lineage-layer-btn"]'); // Open Layer popover
   await page
-    .locator('[data-testid="lineage-layer-column-btn"].Mui-selected')
+    .locator('[data-testid="lineage-layer-column-btn"][data-selected]')
     .waitFor();
   await clickOutside(page); // Close Layer popover
 };

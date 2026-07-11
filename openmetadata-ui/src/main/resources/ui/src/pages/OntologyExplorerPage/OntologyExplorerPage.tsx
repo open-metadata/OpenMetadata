@@ -13,24 +13,31 @@
 
 import {
   Badge,
+  Box,
   Card,
-  Divider,
+  Dot,
   Skeleton,
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Home02 } from '@untitledui/icons';
 import React, { useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import TitleBreadcrumb from '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import {
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
+} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import { OntologyExplorer } from '../../components/OntologyExplorer';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import SparqlQueryConsole from '../../components/SparqlQueryConsole/SparqlQueryConsole.component';
+import { useIsAiMode } from '../../hooks/useAppMode';
 
 type StudioMode = 'view' | 'edit' | 'query';
 
 const OntologyExplorerPage: React.FC = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
   const [mode, setMode] = useState<StudioMode>('view');
   const [stats, setStats] = useState<string[]>([]);
   const [isStatsLoading, setIsStatsLoading] = useState(true);
@@ -43,101 +50,122 @@ const OntologyExplorerPage: React.FC = () => {
     setIsStatsLoading(loading);
   }, []);
 
+  const breadcrumb = (
+    <HeaderBreadcrumb
+      noMargin
+      items={[
+        isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+        { label: t('label.ontology-explorer') },
+      ]}
+      showHome={false}
+    />
+  );
+
+  const heading = (
+    <Typography
+      as="span"
+      data-testid="heading"
+      size="text-md"
+      weight="semibold">
+      {t('label.ontology-explorer')}
+    </Typography>
+  );
+
+  const betaBadge = (
+    <Badge color="blue-light" data-testid="beta-badge" size="sm" type="color">
+      {t('label.beta').toUpperCase()}
+    </Badge>
+  );
+
+  const modeTabs = (
+    <Tabs
+      className="tw:w-fit!"
+      selectedKey={mode}
+      onSelectionChange={(key) => {
+        if (key === 'view' || key === 'edit' || key === 'query') {
+          setMode(key);
+        }
+      }}>
+      <Tabs.List size="sm" type="button-border">
+        <Tabs.Item id="view" label={t('label.view')} />
+        <Tabs.Item id="edit" label={t('label.edit')} />
+        <Tabs.Item id="query" label={t('label.query')} />
+      </Tabs.List>
+      <Tabs.Panel className="tw:hidden" id="view" />
+      <Tabs.Panel className="tw:hidden" id="edit" />
+      <Tabs.Panel className="tw:hidden" id="query" />
+    </Tabs>
+  );
+
+  const statsRow =
+    mode !== 'query' ? (
+      <Box
+        align="center"
+        data-testid="ontology-explorer-stats"
+        gap={3}
+        wrap="wrap">
+        {isStatsLoading
+          ? [1, 2, 3].map((i) => (
+              <Skeleton height={20} key={i} variant="rounded" width={80} />
+            ))
+          : stats.map((item, index) => {
+              const spaceIndex = item.indexOf(' ');
+              const count = spaceIndex > 0 ? item.slice(0, spaceIndex) : item;
+              const label = spaceIndex > 0 ? item.slice(spaceIndex + 1) : '';
+
+              return (
+                <React.Fragment key={item}>
+                  {index > 0 && (
+                    <Dot className="tw:text-quaternary" size="tiny" />
+                  )}
+                  <Typography
+                    as="span"
+                    data-testid={
+                      index === 0 ? 'ontology-explorer-stats-item' : undefined
+                    }
+                    size="text-sm">
+                    <span className="tw:font-semibold">{count}</span>
+                    {label && (
+                      <span className="tw:text-xs tw:font-normal">
+                        {' '}
+                        {label}
+                      </span>
+                    )}
+                  </Typography>
+                </React.Fragment>
+              );
+            })}
+      </Box>
+    ) : null;
+
   return (
-    <PageLayoutV1 pageTitle={t('label.ontology-studio')}>
-      <div className="tw:flex tw:flex-col tw:gap-3">
-        <TitleBreadcrumb
-          useCustomArrow
-          titleLinks={[
-            {
-              name: '',
-              icon: <Home02 size={12} />,
-              url: '/',
-              activeTitle: true,
-            },
-            {
-              name: t('label.ontology-studio'),
-              url: '',
-            },
-          ]}
-        />
-
-        <Card className="tw:p-5">
-          <div className="tw:grid tw:grid-cols-[1fr_auto_1fr] tw:items-center tw:gap-2">
-            <div className="tw:flex tw:items-center tw:gap-2">
-              <Typography
-                as="span"
-                data-testid="heading"
-                size="text-md"
-                weight="semibold">
-                {t('label.ontology-studio')}
-              </Typography>
-              <Badge
-                color="blue-light"
-                data-testid="beta-badge"
-                size="sm"
-                type="pill-color">
-                {t('label.beta')}
-              </Badge>
-            </div>
-            <div className="tw:flex tw:justify-center">
-              <Tabs
-                className="tw:w-fit!"
-                selectedKey={mode}
-                onSelectionChange={(key) => {
-                  if (key === 'view' || key === 'edit' || key === 'query') {
-                    setMode(key);
-                  }
-                }}>
-                <Tabs.List size="sm" type="button-border">
-                  <Tabs.Item id="view" label={t('label.view')} />
-                  <Tabs.Item id="edit" label={t('label.edit')} />
-                  <Tabs.Item id="query" label={t('label.query')} />
-                </Tabs.List>
-                <Tabs.Panel className="tw:hidden" id="view" />
-                <Tabs.Panel className="tw:hidden" id="edit" />
-                <Tabs.Panel className="tw:hidden" id="query" />
-              </Tabs>
-            </div>
-            <div />
-          </div>
-
-          {mode !== 'query' ? (
-            <div
-              className="tw:mt-1 tw:flex tw:flex-wrap tw:items-center tw:gap-2"
-              data-testid="ontology-explorer-stats">
-              {isStatsLoading
-                ? [1, 2, 3].map((i) => (
-                    <Skeleton
-                      height={20}
-                      key={i}
-                      variant="rounded"
-                      width={80}
-                    />
-                  ))
-                : stats.map((item, index) => (
-                    <React.Fragment key={item}>
-                      {index > 0 && (
-                        <Divider
-                          className="tw:h-4 tw:self-center"
-                          orientation="vertical"
-                        />
-                      )}
-                      <Typography
-                        data-testid={
-                          index === 0
-                            ? 'ontology-explorer-stats-item'
-                            : undefined
-                        }
-                        size="text-sm"
-                        weight="regular">
-                        {item}
-                      </Typography>
-                    </React.Fragment>
-                  ))}
-            </div>
-          ) : null}
-        </Card>
+    <PageLayoutV1 pageTitle={t('label.ontology-explorer')}>
+      <Box direction="col" gap={3}>
+        {isAiMode ? (
+          <HeaderShell
+            actions={modeTabs}
+            badge={betaBadge}
+            breadcrumb={breadcrumb}
+            hasStats={mode !== 'query'}
+            meta={statsRow}
+            title={heading}
+            variant="gradient"
+          />
+        ) : (
+          <>
+            {breadcrumb}
+            <Card className="tw:p-5">
+              <Box align="center" justify="between" wrap="wrap">
+                <Box align="center" gap={2}>
+                  {heading}
+                  {betaBadge}
+                </Box>
+                {modeTabs}
+              </Box>
+              {statsRow}
+            </Card>
+          </>
+        )}
 
         {mode === 'query' ? (
           <SparqlQueryConsole />
@@ -150,7 +178,7 @@ const OntologyExplorerPage: React.FC = () => {
             onStatsChange={handleStatsChange}
           />
         )}
-      </div>
+      </Box>
     </PageLayoutV1>
   );
 };

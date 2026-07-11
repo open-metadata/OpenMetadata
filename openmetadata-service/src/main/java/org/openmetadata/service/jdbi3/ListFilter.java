@@ -66,6 +66,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
+    conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
@@ -84,12 +85,14 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getTaskApproverCondition());
     conditions.add(getTaskAboutServiceCondition());
     conditions.add(getTaskAccessTypeCondition());
+    conditions.add(getTaskCreatedAtRangeCondition(tableName));
     conditions.add(getDarSearchCondition());
     conditions.add(getEntityStatusCondition(tableName));
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
     conditions.add(getSourceEntityCondition());
+    conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
     return condition.isEmpty() ? "WHERE TRUE" : "WHERE " + condition;
@@ -159,6 +162,26 @@ public class ListFilter extends Filter<ListFilter> {
                   + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
                   + "AND entity_relationship.relation = %d))",
               Relationship.MENTIONED_IN.ordinal());
+    }
+    return result;
+  }
+
+  /**
+   * Filters context memories down to the knowledge pills whose primaryEntity is the given asset.
+   * Edge direction: primaryEntity --APPLIED_TO--> contextMemory, so the memory is the {@code toId}.
+   */
+  private String getPrimaryEntityCondition() {
+    String primaryEntityId = queryParams.get("primaryEntityId");
+    String result = "";
+    if (!nullOrEmpty(primaryEntityId)) {
+      queryParams.put("primaryEntityIdParam", primaryEntityId);
+      result =
+          String.format(
+              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
+                  + "WHERE entity_relationship.fromId = :primaryEntityIdParam "
+                  + "AND entity_relationship.toEntity = 'contextMemory' "
+                  + "AND entity_relationship.relation = %d))",
+              Relationship.APPLIED_TO.ordinal());
     }
     return result;
   }
@@ -290,6 +313,23 @@ public class ListFilter extends Filter<ListFilter> {
             + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d))",
         inCondition, Relationship.CREATED.ordinal());
+  }
+
+  /**
+   * Filter by the user recorded in the entity's {@code updatedBy} column (the last writer). For a
+   * soft-deleted entity this is the user who archived it, since an archived entity cannot be edited.
+   * Matches the generated {@code updatedBy} column directly (plain username, comma-separated list
+   * supported). Qualifies the column with the table name when available so it stays unambiguous if a
+   * joined table ever exposes its own {@code updatedBy}.
+   */
+  private String getUpdatedByCondition(String tableName) {
+    String updatedBy = queryParams.get("updatedBy");
+    if (nullOrEmpty(updatedBy)) {
+      return "";
+    }
+    String columnName = tableName == null ? "updatedBy" : tableName + ".updatedBy";
+    String inCondition = buildIndexedBindParams("updatedBy", updatedBy);
+    return String.format("%s IN (%s)", columnName, inCondition);
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -1138,6 +1178,22 @@ public class ListFilter extends Filter<ListFilter> {
     String column = tableName == null ? "status" : tableName + ".status";
     String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
     return String.format("%s IN (%s)", column, inCondition);
+  }
+
+  // Restricts tasks to a [startTs, endTs] window on createdAt. Inlines the
+  // validated Long values so the bigint comparison works on MySQL and PostgreSQL.
+  private String getTaskCreatedAtRangeCondition(String tableName) {
+    String column = tableName == null ? "createdAt" : tableName + ".createdAt";
+    String start = queryParams.get("taskStartTs");
+    String end = queryParams.get("taskEndTs");
+    List<String> clauses = new ArrayList<>();
+    if (!nullOrEmpty(start)) {
+      clauses.add(String.format("%s >= %s", column, Long.parseLong(start)));
+    }
+    if (!nullOrEmpty(end)) {
+      clauses.add(String.format("%s <= %s", column, Long.parseLong(end)));
+    }
+    return String.join(" AND ", clauses);
   }
 
   private String getTaskApproverCondition() {

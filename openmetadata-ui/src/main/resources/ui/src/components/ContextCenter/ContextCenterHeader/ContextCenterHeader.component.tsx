@@ -17,10 +17,11 @@ import {
   Input,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, SearchMd, UploadCloud02 } from '@untitledui/icons';
+import { Plus, SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { ContextCenterHeaderProps } from './ContextCenterHeader.interface';
@@ -62,7 +63,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
       {onUploadFile && (
         <Button
           color="primary"
-          iconLeading={UploadCloud02}
+          iconLeading={UploadIcon}
           size="sm"
           onClick={onUploadFile}>
           {t('label.upload-file')}

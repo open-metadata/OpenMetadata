@@ -522,6 +522,15 @@ public interface CollectionDAO {
   AIGovernancePolicyDAO aiGovernancePolicyDAO();
 
   @CreateSqlObject
+  AIGovernanceFrameworkDAO aiGovernanceFrameworkDAO();
+
+  @CreateSqlObject
+  AIFrameworkControlDAO aiFrameworkControlDAO();
+
+  @CreateSqlObject
+  AuditReportDAO auditReportDAO();
+
+  @CreateSqlObject
   McpServerDAO mcpServerDAO();
 
   @CreateSqlObject
@@ -12077,6 +12086,137 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+  }
+
+  interface AIGovernanceFrameworkDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIGovernanceFramework> {
+    @Override
+    default String getTableName() {
+      return "ai_governance_framework_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIGovernanceFramework> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIGovernanceFramework.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AIFrameworkControlDAO
+      extends EntityDAO<org.openmetadata.schema.entity.ai.AIFrameworkControl> {
+    @Override
+    default String getTableName() {
+      return "ai_framework_control_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AIFrameworkControl> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AIFrameworkControl.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+  }
+
+  interface AuditReportDAO extends EntityDAO<org.openmetadata.schema.entity.ai.AuditReport> {
+    @Override
+    default String getTableName() {
+      return "audit_report_entity";
+    }
+
+    @Override
+    default Class<org.openmetadata.schema.entity.ai.AuditReport> getEntityClass() {
+      return org.openmetadata.schema.entity.ai.AuditReport.class;
+    }
+
+    @Override
+    default String getNameHashColumn() {
+      return "fqnHash";
+    }
+
+    /**
+     * Atomically claims a Queued report for this node, flipping it to Running only if it is still
+     * Queued. Returns 1 for the single winning caller and 0 for losers, so concurrent recovery
+     * re-drives across pods generate the pack exactly once.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_SET(json, '$.status', 'Running', '$.runningOn', :runningOn, '$.startedAt', :startedAt) "
+                + "WHERE id = :id AND status = 'Queued'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = json || jsonb_build_object('status', 'Running', 'runningOn', CAST(:runningOn AS text), 'startedAt', CAST(:startedAt AS bigint)) "
+                + "WHERE id = :id AND status = 'Queued'",
+        connectionType = POSTGRES)
+    int claimQueued(
+        @Bind("id") String id,
+        @Bind("runningOn") String runningOn,
+        @Bind("startedAt") long startedAt);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_SET(json, '$.status', 'Completed', '$.completedAt', :completedAt, '$.artifacts', CAST(:artifacts AS JSON), '$.manifest', CAST(:manifest AS JSON), '$.updatedAt', :completedAt, '$.updatedBy', :updatedBy) "
+                + "WHERE id = :id AND status = 'Running' AND json ->> '$.runningOn' = :runningOn",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = json || jsonb_build_object('status', 'Completed', 'completedAt', CAST(:completedAt AS bigint), 'artifacts', CAST(:artifacts AS jsonb), 'manifest', CAST(:manifest AS jsonb), 'updatedAt', CAST(:completedAt AS bigint), 'updatedBy', CAST(:updatedBy AS text)) "
+                + "WHERE id = :id AND status = 'Running' AND json->>'runningOn' = :runningOn",
+        connectionType = POSTGRES)
+    int completeRunning(
+        @Bind("id") String id,
+        @Bind("runningOn") String runningOn,
+        @Bind("completedAt") long completedAt,
+        @Bind("artifacts") String artifacts,
+        @Bind("manifest") String manifest,
+        @Bind("updatedBy") String updatedBy);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_SET(json, '$.status', 'Failed', '$.completedAt', :completedAt, '$.failureReason', :failureReason, '$.updatedAt', :completedAt, '$.updatedBy', :updatedBy) "
+                + "WHERE id = :id AND status = 'Running' AND json ->> '$.runningOn' = :runningOn",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = json || jsonb_build_object('status', 'Failed', 'completedAt', CAST(:completedAt AS bigint), 'failureReason', CAST(:failureReason AS text), 'updatedAt', CAST(:completedAt AS bigint), 'updatedBy', CAST(:updatedBy AS text)) "
+                + "WHERE id = :id AND status = 'Running' AND json->>'runningOn' = :runningOn",
+        connectionType = POSTGRES)
+    int failRunning(
+        @Bind("id") String id,
+        @Bind("runningOn") String runningOn,
+        @Bind("completedAt") long completedAt,
+        @Bind("failureReason") String failureReason,
+        @Bind("updatedBy") String updatedBy);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_REMOVE(JSON_SET(json, '$.status', 'Queued', '$.updatedAt', :updatedAt, '$.updatedBy', :updatedBy), '$.runningOn', '$.startedAt') "
+                + "WHERE id = :id AND status = 'Running' AND (JSON_EXTRACT(json, '$.startedAt') IS NULL OR CAST(json ->> '$.startedAt' AS UNSIGNED) < :staleBefore)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = (json || jsonb_build_object('status', 'Queued', 'updatedAt', CAST(:updatedAt AS bigint), 'updatedBy', CAST(:updatedBy AS text))) - 'runningOn' - 'startedAt' "
+                + "WHERE id = :id AND status = 'Running' AND ((json->>'startedAt') IS NULL OR CAST(json->>'startedAt' AS bigint) < :staleBefore)",
+        connectionType = POSTGRES)
+    int requeueStaleRunning(
+        @Bind("id") String id,
+        @Bind("staleBefore") long staleBefore,
+        @Bind("updatedAt") long updatedAt,
+        @Bind("updatedBy") String updatedBy);
+
+    /** Indexed lookup of an in-flight (Queued/Running) report by its request signature. */
+    @SqlQuery(
+        "SELECT json FROM audit_report_entity "
+            + "WHERE requestSignature = :signature AND status IN ('Queued', 'Running') "
+            + "AND (deleted = FALSE OR deleted IS NULL) LIMIT 1")
+    String findActiveByRequestSignature(@Bind("signature") String signature);
   }
 
   interface McpServerDAO extends EntityDAO<org.openmetadata.schema.entity.ai.McpServer> {

@@ -57,18 +57,29 @@ jest.mock('@openmetadata/ui-core-components', () => {
       .mockImplementation(({ children, 'data-testid': testId }) => (
         <span data-testid={testId}>{children}</span>
       )),
-    Card: jest
+    Box: jest
       .fn()
       .mockImplementation(
         ({
           children,
+          className,
           'data-testid': testId,
         }: {
-          children: React.ReactNode;
+          children?: React.ReactNode;
+          className?: string;
           'data-testid'?: string;
-        }) => <div data-testid={testId}>{children}</div>
+        }) => (
+          <div className={className} data-testid={testId}>
+            {children}
+          </div>
+        )
       ),
-    Divider: jest.fn().mockImplementation(() => <hr />),
+    Card: jest
+      .fn()
+      .mockImplementation(({ children }: { children: React.ReactNode }) => (
+        <div>{children}</div>
+      )),
+    Dot: jest.fn().mockImplementation(() => <span data-testid="stats-dot" />),
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
@@ -87,10 +98,6 @@ jest.mock('@openmetadata/ui-core-components', () => {
   };
 });
 
-jest.mock('@untitledui/icons', () => ({
-  Home02: () => <div>Home02</div>,
-}));
-
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
   default: jest.fn(({ children }: { children: React.ReactNode }) => (
@@ -99,12 +106,43 @@ jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
 }));
 
 jest.mock(
-  '../../components/common/TitleBreadcrumb/TitleBreadcrumb.component',
+  '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
   () => ({
     __esModule: true,
     default: jest.fn(() => <div data-testid="breadcrumb" />),
   })
 );
+
+jest.mock('../../components/common/HeaderShell/HeaderShell.component', () => ({
+  __esModule: true,
+  default: jest.fn(
+    ({
+      actions,
+      badge,
+      breadcrumb,
+      meta,
+      title,
+    }: {
+      actions?: React.ReactNode;
+      badge?: React.ReactNode;
+      breadcrumb?: React.ReactNode;
+      meta?: React.ReactNode;
+      title?: React.ReactNode;
+    }) => (
+      <div data-testid="header-shell">
+        {breadcrumb}
+        {title}
+        {badge}
+        {meta}
+        {actions}
+      </div>
+    )
+  ),
+}));
+
+jest.mock('../../hooks/useAppMode', () => ({
+  useIsAiMode: jest.fn(() => false),
+}));
 
 jest.mock('../../components/OntologyExplorer', () => ({
   OntologyExplorer: jest.fn((props) => {
@@ -131,7 +169,7 @@ describe('OntologyExplorerPage', () => {
     render(<OntologyExplorerPage />);
 
     expect(screen.getByTestId('heading')).toBeInTheDocument();
-    expect(screen.getByTestId('beta-badge')).toHaveTextContent('label.beta');
+    expect(screen.getByTestId('beta-badge')).toHaveTextContent('LABEL.BETA');
     expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
     expect(screen.getByTestId('mode-tabs')).toBeInTheDocument();
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();

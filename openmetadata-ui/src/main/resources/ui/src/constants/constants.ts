@@ -409,6 +409,12 @@ export const ENTITY_PATH = {
   worksheets: 'worksheet',
   dataProductsTab: 'dataProductsTab',
   column: 'tableColumn',
+  aiApplications: 'aiApplication',
+  llmModels: 'llmModel',
+  mcpServers: 'mcpServer',
+  agentExecutions: 'agentExecution',
+  mcpExecutions: 'mcpExecution',
+  promptTemplates: 'promptTemplate',
 };
 
 export const CUSTOM_PROPERTIES_DOCS =
