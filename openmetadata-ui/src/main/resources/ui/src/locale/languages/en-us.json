@@ -3333,7 +3333,6 @@
     "has-glossary": "Has Glossary",
     "has-tags": "Has Tags",
     "have-not-explored-yet": "Haven't explored yet?",
-    "heavy-section-warning": "Lineage, profile, and data quality can increase materialization time. Enable them only when the persona needs those signals.",
     "hex-code-placeholder": "Select or enter HEX color code.",
     "hex-color-validation": "Input is not valid HEX code.",
     "hi-user-welcome-to": "Hi {{user}}, Welcome to",

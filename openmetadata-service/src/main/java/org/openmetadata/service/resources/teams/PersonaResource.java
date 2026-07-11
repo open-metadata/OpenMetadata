@@ -511,8 +511,6 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     definition.setLastGeneratedAt(null);
     definition.setCacheState(null);
     definition.setLastError(null);
-    definition.setMaxTotalChars(null);
-    definition.setCacheTtlSeconds(null);
     return definition;
   }
 
@@ -556,7 +554,7 @@ public class PersonaResource extends EntityResource<Persona, PersonaRepository> 
     ContextRule rule = JsonUtils.deepCopy(requestedRule, ContextRule.class);
     rule.setMatchedCount(null);
     if (rule.getMaxAssets() == null) {
-      rule.setMaxAssets(50);
+      rule.setMaxAssets(200);
     }
     return rule;
   }

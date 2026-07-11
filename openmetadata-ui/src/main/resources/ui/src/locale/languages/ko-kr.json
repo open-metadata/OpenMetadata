@@ -3333,7 +3333,6 @@
     "has-glossary": "용어집 있음",
     "has-tags": "태그 있음",
     "have-not-explored-yet": "아직 탐색하지 않으셨나요?",
-    "heavy-section-warning": "리니지, 프로필 및 데이터 품질을 포함하면 구체화 시간이 늘어날 수 있습니다. 페르소나에 해당 신호가 필요한 경우에만 활성화하세요.",
     "hex-code-placeholder": "HEX 색상 코드를 선택하거나 입력하세요.",
     "hex-color-validation": "입력이 유효한 HEX 코드가 아닙니다.",
     "hi-user-welcome-to": "안녕하세요 {{user}}님, 환영합니다",

@@ -39,11 +39,11 @@ import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 class PersonaContextMarkdownTest {
 
   @Test
-  void renderEnforcesTheHardBudgetAcrossAssetsAndSharedKnowledge() {
+  void renderReservesFullKnowledgeBeforeAssetsEvenWhenKnowledgeExceedsTheBudget() {
     String fullArticle = "A".repeat(3000);
     Persona persona = persona();
     PersonaContextDefinition definition =
-        new PersonaContextDefinition().withMaxTotalChars(300).withRules(List.of(rule()));
+        new PersonaContextDefinition().withCharacterBudget(300).withRules(List.of(rule()));
     PersonaContext context =
         new PersonaContext()
             .withPersona(persona.getEntityReference())
@@ -62,14 +62,14 @@ class PersonaContextMarkdownTest {
         PersonaContextMarkdown.render(
             persona, definition, List.of(materializedRule()), context, false);
 
-    assertFalse(result.markdown().contains(fullArticle));
-    assertEquals(300, result.markdown().length());
+    assertTrue(result.markdown().contains(fullArticle));
+    assertTrue(result.markdown().length() > 300);
     assertTrue(Boolean.TRUE.equals(result.context().getTruncated()));
-    assertEquals(2, result.context().getManifest().size());
+    assertEquals(1, result.context().getManifest().size());
   }
 
   @Test
-  void knowledgeRulesHonorSectionsUnlessFullyRendered() {
+  void knowledgeRulesAreAlwaysFullyRendered() {
     Persona persona = persona();
     ContextRule selectedRule =
         new ContextRule()
@@ -117,7 +117,7 @@ class PersonaContextMarkdownTest {
             .markdown();
 
     assertTrue(selectedMarkdown.contains("### Definition"));
-    assertFalse(selectedMarkdown.contains("SUM(order_total)"));
+    assertTrue(selectedMarkdown.contains("SUM(order_total)"));
 
     selectedRule.setFullyRendered(true);
     String fullMarkdown =
@@ -143,7 +143,7 @@ class PersonaContextMarkdownTest {
     ContextRule selectedRule =
         rule().withSections(Set.of(ContextSection.DESCRIPTION, ContextSection.SCHEMA));
     PersonaContextDefinition definition =
-        new PersonaContextDefinition().withMaxTotalChars(50_000).withRules(List.of(selectedRule));
+        new PersonaContextDefinition().withCharacterBudget(50_000).withRules(List.of(selectedRule));
     PersonaContext context =
         new PersonaContext()
             .withPersona(persona.getEntityReference())
@@ -191,12 +191,50 @@ class PersonaContextMarkdownTest {
   @Test
   void definitionHashIsStableForEquivalentDefinitions() {
     PersonaContextDefinition first =
-        new PersonaContextDefinition().withRules(List.of(rule())).withMaxTotalChars(400_000);
+        new PersonaContextDefinition().withRules(List.of(rule())).withCharacterBudget(400_000);
     PersonaContextDefinition second =
-        new PersonaContextDefinition().withRules(List.of(rule())).withMaxTotalChars(400_000);
+        new PersonaContextDefinition().withRules(List.of(rule())).withCharacterBudget(400_000);
 
     assertEquals(
         PersonaContextHash.definitionHash(first), PersonaContextHash.definitionHash(second));
+  }
+
+  @Test
+  void contentFingerprintDoesNotChangeOnlyBecauseGeneratedAtChanges() {
+    Persona persona = persona();
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition().withRules(List.of(rule())).withCharacterBudget(50_000);
+
+    PersonaContextBuilder.MaterializedPersonaContext first =
+        PersonaContextMarkdown.render(
+            persona,
+            definition,
+            List.of(materializedRule()),
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(1_000L)
+                .withSharedKnowledge(new SharedKnowledge()),
+            false);
+    PersonaContextBuilder.MaterializedPersonaContext second =
+        PersonaContextMarkdown.render(
+            persona,
+            definition,
+            List.of(materializedRule()),
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(2_000L)
+                .withSharedKnowledge(new SharedKnowledge()),
+            false);
+
+    assertEquals(first.context().getFingerprint(), second.context().getFingerprint());
+    assertFalse(first.markdown().equals(second.markdown()));
+  }
+
+  @Test
+  void manifestPointersUseTheRegisteredCollectionRoutes() {
+    assertEquals("contextCenter/pages", PersonaContextMarkdown.collectionPath("page"));
+    assertEquals(
+        "dashboard/datamodels", PersonaContextMarkdown.collectionPath("dashboardDataModel"));
   }
 
   @Test
@@ -205,7 +243,7 @@ class PersonaContextMarkdownTest {
     ContextRule selectedRule =
         rule().withSections(Set.of(ContextSection.DESCRIPTION, ContextSection.PROFILE));
     PersonaContextDefinition definition =
-        new PersonaContextDefinition().withMaxTotalChars(50_000).withRules(List.of(selectedRule));
+        new PersonaContextDefinition().withCharacterBudget(50_000).withRules(List.of(selectedRule));
     PersonaContext context =
         new PersonaContext()
             .withPersona(persona.getEntityReference())

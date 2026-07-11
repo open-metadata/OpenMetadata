@@ -15,11 +15,9 @@ import { EntityType } from '../enums/entity.enum';
 import { ContextSection } from '../generated/type/personaContextDefinition';
 import {
   getDefaultPersonaContextSections,
-  getIncludedEntityCount,
   getPersonaContextSections,
   getRuleConditionCount,
   getRuleFilterTree,
-  getRuleMatchedCount,
   isKnowledgeContextRule,
   normalizePersonaContextDefinition,
   parseRuleFilterTree,
@@ -36,7 +34,7 @@ describe('PersonaAIContextUtils', () => {
       sections: [ContextSection.Schema],
     });
 
-    expect(first.characterBudget).toBe(150000);
+    expect(first.characterBudget).toBe(400000);
     expect(first.cacheTtlMinutes).toBe(30);
     expect(second.rules).toEqual([]);
   });
@@ -73,6 +71,12 @@ describe('PersonaAIContextUtils', () => {
     );
     expect(getPersonaContextSections(EntityType.DATA_PRODUCT)).toContain(
       ContextSection.Lineage
+    );
+    expect(getDefaultPersonaContextSections(EntityType.TABLE)).toContain(
+      ContextSection.Joins
+    );
+    expect(getDefaultPersonaContextSections(EntityType.TABLE)).toContain(
+      ContextSection.Metrics
     );
   });
 
@@ -117,22 +121,6 @@ describe('PersonaAIContextUtils', () => {
     expect(getRuleConditionCount(JSON.stringify(tree))).toBe(1);
   });
 
-  it('reads matched and rendered counts from a materialization', () => {
-    const context = {
-      rules: [
-        {
-          matched: 142,
-          renderedCompact: 2,
-          renderedFull: 10,
-          ruleName: 'Semantic tables',
-        },
-      ],
-    };
-
-    expect(getRuleMatchedCount(context, 'Semantic tables')).toBe(142);
-    expect(getIncludedEntityCount(context)).toBe(12);
-  });
-
   it('identifies knowledge rules', () => {
     expect(
       isKnowledgeContextRule({
@@ -143,5 +131,19 @@ describe('PersonaAIContextUtils', () => {
     expect(
       isKnowledgeContextRule({ entityType: EntityType.TABLE, name: 'Tables' })
     ).toBe(false);
+  });
+
+  it('normalizes knowledge rules as fully rendered', () => {
+    const definition = normalizePersonaContextDefinition({
+      rules: [
+        {
+          entityType: EntityType.GLOSSARY_TERM,
+          fullyRendered: false,
+          name: 'Terms',
+        },
+      ],
+    });
+
+    expect(definition.rules?.[0].fullyRendered).toBe(true);
   });
 });

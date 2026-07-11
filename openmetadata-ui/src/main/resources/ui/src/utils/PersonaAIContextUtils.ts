@@ -15,12 +15,12 @@ import { cloneDeep } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
 import {
   DEFAULT_PERSONA_CONTEXT_DEFINITION,
+  DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
   PERSONA_CONTEXT_DEFAULT_SECTIONS_BY_ENTITY_TYPE,
   PERSONA_CONTEXT_KNOWLEDGE_TYPES,
   PERSONA_CONTEXT_SECTIONS_BY_ENTITY_TYPE,
 } from '../constants/PersonaAIContext.constants';
 import { EntityType } from '../enums/entity.enum';
-import { PersonaContext } from '../generated/type/personaContext';
 import {
   ContextRule,
   PersonaContextDefinition,
@@ -42,21 +42,22 @@ export const normalizePersonaContextDefinition = (
     ...normalized,
     cacheTtlMinutes:
       definition?.cacheTtlMinutes ??
-      (definition?.cacheTtlSeconds
-        ? Math.max(1, Math.round(definition.cacheTtlSeconds / 60))
-        : DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes),
+      DEFAULT_PERSONA_CONTEXT_DEFINITION.cacheTtlMinutes,
     characterBudget:
       definition?.characterBudget ??
-      definition?.maxTotalChars ??
       DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
     rules: (definition?.rules ?? []).map((rule) => ({
       ...cloneDeep(rule),
       alwaysInContext: rule.alwaysInContext ?? false,
       enabled: rule.enabled ?? true,
-      fullyRendered: rule.fullyRendered ?? false,
-      maxAssets: rule.maxAssets ?? 50,
+      fullyRendered: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
+        rule.entityType as EntityType
+      )
+        ? true
+        : rule.fullyRendered ?? false,
+      maxAssets: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
       sections:
-        rule.sections ??
+        (rule.sections?.length ? rule.sections : undefined) ??
         PERSONA_CONTEXT_DEFAULT_SECTIONS_BY_ENTITY_TYPE[rule.entityType] ??
         [],
     })),
@@ -170,16 +171,3 @@ export const getRuleConditionSummary = (
 
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
-
-export const getRuleMatchedCount = (
-  context: PersonaContext | undefined,
-  ruleName: string
-): number | undefined =>
-  context?.rules?.find((rule) => rule.ruleName === ruleName)?.matched;
-
-export const getIncludedEntityCount = (context?: PersonaContext): number =>
-  context?.rules?.reduce(
-    (total, rule) =>
-      total + (rule.renderedFull ?? 0) + (rule.renderedCompact ?? 0),
-    0
-  ) ?? 0;

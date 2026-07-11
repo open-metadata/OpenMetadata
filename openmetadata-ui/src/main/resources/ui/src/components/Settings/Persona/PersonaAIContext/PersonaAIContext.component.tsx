@@ -113,6 +113,13 @@ export const PersonaAIContext = ({
     async (updated: PersonaContextDefinition) => {
       const previous = persistedDefinitionRef.current;
       setDefinition(updated);
+      if (
+        previous.enabled === updated.enabled &&
+        previous.characterBudget === updated.characterBudget &&
+        previous.cacheTtlMinutes === updated.cacheTtlMinutes
+      ) {
+        return;
+      }
       try {
         const response = await updatePersonaAIContext(persona.id, {
           cacheTtlMinutes:
@@ -274,7 +281,9 @@ export const PersonaAIContext = ({
                 onChange={(value) =>
                   setDefinition((current) => ({
                     ...current,
-                    characterBudget: value ?? 150000,
+                    characterBudget:
+                      value ??
+                      DEFAULT_PERSONA_CONTEXT_DEFINITION.characterBudget,
                   }))
                 }
               />
@@ -378,6 +387,9 @@ export const PersonaAIContext = ({
         )}
 
         <ContextRuleEditor
+          existingRuleNames={rules
+            .filter(({ id }) => id !== editingRuleId)
+            .map(({ name }) => name)}
           open={editorOpen}
           personaId={persona.id}
           rule={editingRule}

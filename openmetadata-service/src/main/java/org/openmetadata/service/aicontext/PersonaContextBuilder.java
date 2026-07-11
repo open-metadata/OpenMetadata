@@ -16,6 +16,7 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import jakarta.ws.rs.ServiceUnavailableException;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
@@ -55,6 +56,7 @@ import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
@@ -69,6 +71,7 @@ public class PersonaContextBuilder {
   static final int MAX_SHARED_KNOWLEDGE_ITEMS = 500;
   private static final int SEARCH_BATCH_SIZE = 100;
   private static final int DATA_PRODUCT_ASSET_BATCH_SIZE = 1000;
+  private static final int DEFAULT_MAX_ASSETS = 200;
   private static final Set<String> KNOWLEDGE_ENTITY_TYPES =
       Set.of(Entity.GLOSSARY_TERM, Entity.PAGE, Entity.METRIC);
   private static final Set<String> ASSET_ENTITY_TYPES =
@@ -101,6 +104,16 @@ public class PersonaContextBuilder {
           ContextSection.LINEAGE,
           ContextSection.PROFILE,
           ContextSection.DATA_QUALITY);
+  private static final Set<ContextSection> DEFAULT_ASSET_CONTEXT_SECTIONS =
+      EnumSet.of(
+          ContextSection.DESCRIPTION,
+          ContextSection.SCHEMA,
+          ContextSection.CONSTRAINTS,
+          ContextSection.JOINS,
+          ContextSection.TAGS,
+          ContextSection.GLOSSARY_TERMS,
+          ContextSection.ARTICLES,
+          ContextSection.METRICS);
   private static final Set<String> KEYWORD_SORT_ENTITY_TYPES = Set.of("testCase", "user", "team");
   private static final String[] SEARCH_FIELDS = {
     "id",
@@ -152,28 +165,11 @@ public class PersonaContextBuilder {
   }
 
   static int characterBudget(PersonaContextDefinition definition) {
-    if (definition.getMaxTotalChars() != null
-        && definition.getMaxTotalChars() != 150_000
-        && (definition.getCharacterBudget() == null
-            || definition.getCharacterBudget() == 150_000)) {
-      return definition.getMaxTotalChars();
-    }
-    if (definition.getCharacterBudget() != null) {
-      return definition.getCharacterBudget();
-    }
-    return definition.getMaxTotalChars() == null ? 150_000 : definition.getMaxTotalChars();
+    return definition.getCharacterBudget() == null ? 400_000 : definition.getCharacterBudget();
   }
 
   static int cacheTtlSeconds(PersonaContextDefinition definition) {
-    if (definition.getCacheTtlSeconds() != null
-        && definition.getCacheTtlSeconds() != 1800
-        && (definition.getCacheTtlMinutes() == null || definition.getCacheTtlMinutes() == 30)) {
-      return definition.getCacheTtlSeconds();
-    }
-    if (definition.getCacheTtlMinutes() != null) {
-      return definition.getCacheTtlMinutes() * 60;
-    }
-    return definition.getCacheTtlSeconds() == null ? 1800 : definition.getCacheTtlSeconds();
+    return (definition.getCacheTtlMinutes() == null ? 30 : definition.getCacheTtlMinutes()) * 60;
   }
 
   List<RuleMaterialization> selectRules(PersonaContextDefinition definition) {
@@ -191,7 +187,11 @@ public class PersonaContextBuilder {
       }
       RuleSearchResult matches = search(rule);
       List<SelectedEntity> selected = new ArrayList<>();
+      int maxAssets = rule.getMaxAssets() == null ? DEFAULT_MAX_ASSETS : rule.getMaxAssets();
       for (Map<String, Object> document : matches.documents()) {
+        if (selected.size() >= maxAssets) {
+          break;
+        }
         String fqn = stringValue(document.get("fullyQualifiedName"));
         if (nullOrEmpty(fqn) || !seenEntities.add(rule.getEntityType() + ':' + fqn)) {
           continue;
@@ -204,7 +204,8 @@ public class PersonaContextBuilder {
           selected.add(entity);
           if (Entity.DATA_PRODUCT.equals(rule.getEntityType())
               && Boolean.TRUE.equals(rule.getFullyRendered())) {
-            for (SelectedEntity member : expandDataProductAssets(entity)) {
+            int remaining = maxAssets - selected.size();
+            for (SelectedEntity member : expandDataProductAssets(entity, remaining)) {
               String memberFqn = member.context().getFullyQualifiedName();
               String memberType = member.context().getEntityType();
               if (!nullOrEmpty(memberFqn)
@@ -225,7 +226,7 @@ public class PersonaContextBuilder {
     if (searchRepository == null) {
       throw new IllegalStateException("Search is unavailable while materializing persona context");
     }
-    int maxAssets = rule.getMaxAssets() == null ? 50 : rule.getMaxAssets();
+    int maxAssets = rule.getMaxAssets() == null ? DEFAULT_MAX_ASSETS : rule.getMaxAssets();
     List<Map<String, Object>> documents = new ArrayList<>(maxAssets);
     Object[] searchAfter = null;
     int matched = 0;
@@ -234,6 +235,7 @@ public class PersonaContextBuilder {
             ? "fullyQualifiedName.keyword"
             : "fullyQualifiedName";
     SearchSortFilter sort = new SearchSortFilter(sortField, "asc", null, null);
+    String queryFilter = activeEntityFilter(rule.getQueryFilter());
     try {
       while (documents.size() < maxAssets) {
         int pageSize = Math.min(SEARCH_BATCH_SIZE, maxAssets - documents.size());
@@ -241,7 +243,7 @@ public class PersonaContextBuilder {
             searchRepository.listWithDeepPagination(
                 rule.getEntityType(),
                 null,
-                nullOrEmpty(rule.getQueryFilter()) ? null : rule.getQueryFilter(),
+                queryFilter,
                 SEARCH_FIELDS,
                 sort,
                 pageSize,
@@ -259,14 +261,33 @@ public class PersonaContextBuilder {
         }
       }
     } catch (IOException | RuntimeException exception) {
-      throw new IllegalArgumentException(
-          "Failed to evaluate persona context rule '"
-              + rule.getName()
-              + "': "
-              + exception.getMessage(),
-          exception);
+      ServiceUnavailableException unavailable =
+          new ServiceUnavailableException(
+              "Failed to evaluate persona context rule '"
+                  + rule.getName()
+                  + "': "
+                  + exception.getMessage());
+      unavailable.initCause(exception);
+      throw unavailable;
     }
     return new RuleSearchResult(matched, documents);
+  }
+
+  static String activeEntityFilter(String queryFilter) {
+    JsonNode requestedFilter = null;
+    if (!nullOrEmpty(queryFilter)) {
+      JsonNode parsedFilter = JsonUtils.readTree(queryFilter);
+      if (parsedFilter == null || !parsedFilter.isObject()) {
+        throw new IllegalArgumentException("Persona context queryFilter must be a JSON object");
+      }
+      requestedFilter = parsedFilter.has("query") ? parsedFilter.get("query") : parsedFilter;
+    }
+    List<Object> filters = new ArrayList<>();
+    filters.add(Map.of("term", Map.of("deleted", false)));
+    if (requestedFilter != null && !requestedFilter.isEmpty()) {
+      filters.add(requestedFilter);
+    }
+    return JsonUtils.pojoToJson(Map.of("query", Map.of("bool", Map.of("filter", filters))));
   }
 
   public static RulePreview preview(ContextRule rule) {
@@ -289,6 +310,11 @@ public class PersonaContextBuilder {
   }
 
   private SelectedEntity buildAssetSelection(ContextRule rule, Map<String, Object> document) {
+    return buildAssetSelection(rule, document, true);
+  }
+
+  private SelectedEntity buildAssetSelection(
+      ContextRule rule, Map<String, Object> document, boolean loadHeavySections) {
     String fqn = stringValue(document.get("fullyQualifiedName"));
     String id = stringValue(document.get("id"));
     AIContext context =
@@ -308,76 +334,70 @@ public class PersonaContextBuilder {
         LOG.debug("Ignoring invalid indexed href for {}: {}", fqn, href);
       }
     }
-    loadHeavySections(context, selectedSections(rule));
+    if (loadHeavySections && !Entity.DATA_PRODUCT.equals(rule.getEntityType())) {
+      loadHeavySections(context, selectedSections(rule));
+    }
     return new SelectedEntity(id, document, context, null, null);
   }
 
-  protected List<SelectedEntity> expandDataProductAssets(SelectedEntity dataProduct) {
+  protected List<SelectedEntity> expandDataProductAssets(
+      SelectedEntity dataProduct, int maxAssets) {
     List<SelectedEntity> members = new ArrayList<>();
-    if (nullOrEmpty(dataProduct.id())) {
+    if (nullOrEmpty(dataProduct.id()) || maxAssets <= 0) {
       return members;
     }
+    UUID dataProductId;
     try {
-      DataProductRepository repository =
-          (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
-      UUID dataProductId = UUID.fromString(dataProduct.id());
-      int offset = 0;
-      while (true) {
-        ResultList<EntityReference> page =
-            repository.getDataProductAssets(dataProductId, DATA_PRODUCT_ASSET_BATCH_SIZE, offset);
-        List<EntityReference> assets = listOrEmpty(page.getData());
-        if (assets.isEmpty()) {
-          break;
-        }
-        for (EntityReference asset : assets) {
-          SelectedEntity member = buildDataProductAssetSelection(asset);
-          if (member != null) {
-            members.add(member);
-          }
-        }
-        offset += assets.size();
-        if (assets.size() < DATA_PRODUCT_ASSET_BATCH_SIZE) {
-          break;
-        }
-      }
-    } catch (Exception exception) {
+      dataProductId = UUID.fromString(dataProduct.id());
+    } catch (IllegalArgumentException exception) {
       LOG.warn(
-          "Failed to expand assets for data product {}: {}",
+          "Ignoring invalid data product id for {}: {}",
           dataProduct.context().getFullyQualifiedName(),
           exception.getMessage());
+      return members;
+    }
+    DataProductRepository repository =
+        (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+    int limit = Math.min(maxAssets, DATA_PRODUCT_ASSET_BATCH_SIZE);
+    ResultList<EntityReference> page = repository.getDataProductAssets(dataProductId, limit, 0);
+    Map<String, List<String>> fqnsByType = new LinkedHashMap<>();
+    for (EntityReference asset : listOrEmpty(page.getData())) {
+      if (asset != null
+          && supportsEntityType(asset.getType())
+          && !isKnowledgeEntityType(asset.getType())
+          && !nullOrEmpty(asset.getFullyQualifiedName())) {
+        fqnsByType
+            .computeIfAbsent(asset.getType(), ignored -> new ArrayList<>())
+            .add(asset.getFullyQualifiedName());
+      }
+    }
+
+    for (Map.Entry<String, List<String>> entry : fqnsByType.entrySet()) {
+      if (members.size() >= limit) {
+        break;
+      }
+      List<String> fqns = entry.getValue();
+      ContextRule memberRule =
+          new ContextRule()
+              .withName("Data product member")
+              .withEntityType(entry.getKey())
+              .withQueryFilter(
+                  JsonUtils.pojoToJson(
+                      Map.of("query", Map.of("terms", Map.of("fullyQualifiedName", fqns)))))
+              .withMaxAssets(Math.min(fqns.size(), limit - members.size()))
+              .withFullyRendered(true)
+              .withSections(ASSET_CONTEXT_SECTIONS);
+      for (Map<String, Object> document : search(memberRule).documents()) {
+        members.add(buildAssetSelection(memberRule, document, false));
+      }
     }
     return members;
-  }
-
-  private SelectedEntity buildDataProductAssetSelection(EntityReference asset) {
-    if (asset == null
-        || nullOrEmpty(asset.getType())
-        || nullOrEmpty(asset.getFullyQualifiedName())) {
-      return null;
-    }
-    try {
-      AIContext context =
-          new AIContextBuilder(asset.getType(), asset.getFullyQualifiedName()).build();
-      Map<String, Object> document = new LinkedHashMap<>();
-      if (asset.getId() != null) {
-        document.put("id", asset.getId().toString());
-      }
-      document.put("fullyQualifiedName", asset.getFullyQualifiedName());
-      return new SelectedEntity(
-          asset.getId() == null ? null : asset.getId().toString(), document, context, null, null);
-    } catch (Exception exception) {
-      LOG.warn(
-          "Failed to materialize data product asset {}: {}",
-          asset.getFullyQualifiedName(),
-          exception.getMessage());
-      return null;
-    }
   }
 
   static Set<ContextSection> selectedSections(ContextRule rule) {
     return Boolean.TRUE.equals(rule.getFullyRendered())
         ? ASSET_CONTEXT_SECTIONS
-        : rule.getSections() == null ? Set.of() : rule.getSections();
+        : nullOrEmpty(rule.getSections()) ? DEFAULT_ASSET_CONTEXT_SECTIONS : rule.getSections();
   }
 
   private void loadHeavySections(AIContext context, Set<ContextSection> sections) {
@@ -387,21 +407,14 @@ public class PersonaContextBuilder {
     if (!needsLineage && !needsDataQuality) {
       return;
     }
-    try {
-      AIContext heavy =
-          new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName()).build();
-      if (needsLineage) {
-        context.withUpstream(heavy.getUpstream()).withDownstream(heavy.getDownstream());
-      }
-      if (needsDataQuality && heavy.getObservability() != null) {
-        context.withObservability(
-            new Observability().withDataQuality(heavy.getObservability().getDataQuality()));
-      }
-    } catch (Exception exception) {
-      LOG.warn(
-          "Failed to load heavy persona context sections for {}: {}",
-          context.getFullyQualifiedName(),
-          exception.getMessage());
+    AIContext heavy =
+        new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName()).build();
+    if (needsLineage) {
+      context.withUpstream(heavy.getUpstream()).withDownstream(heavy.getDownstream());
+    }
+    if (needsDataQuality && heavy.getObservability() != null) {
+      context.withObservability(
+          new Observability().withDataQuality(heavy.getObservability().getDataQuality()));
     }
   }
 
@@ -422,9 +435,9 @@ public class PersonaContextBuilder {
               .withDisplayName(entity.getDisplayName())
               .withDescription(entity.getDescription())
               .withGeneratedAt(System.currentTimeMillis());
-      attachKnowledge(context, item, Boolean.TRUE.equals(rule.getFullyRendered()));
+      attachKnowledge(context, item, true);
       return new SelectedEntity(stringValue(document.get("id")), document, context, item, entity);
-    } catch (Exception exception) {
+    } catch (EntityNotFoundException exception) {
       LOG.warn("Failed to load persona knowledge entity {}: {}", fqn, exception.getMessage());
       return null;
     }
@@ -473,13 +486,27 @@ public class PersonaContextBuilder {
     Map<UUID, Page> pages = entitiesById(Entity.PAGE, flatten(pageIdsByAsset.values()), Page.class);
     Map<UUID, Metric> metrics =
         entitiesById(Entity.METRIC, flatten(metricIdsByAsset.values()), Metric.class);
+    Set<String> glossaryFqns = new LinkedHashSet<>();
+    for (SelectedEntity asset : assets) {
+      ContextRule rule = ruleByEntity.get(asset);
+      if (selectedSections(rule).contains(ContextSection.GLOSSARY_TERMS)) {
+        glossaryFqns.addAll(glossaryFqns(asset.document()));
+      }
+    }
+    Map<String, KnowledgeItem> glossaryTerms = new HashMap<>();
+    for (String glossaryFqn : glossaryFqns) {
+      KnowledgeItem term = loadGlossaryTerm(glossaryFqn);
+      if (term != null) {
+        glossaryTerms.put(glossaryFqn, term);
+      }
+    }
 
     for (SelectedEntity asset : assets) {
       ContextRule rule = ruleByEntity.get(asset);
       Set<ContextSection> sections = selectedSections(rule);
       if (sections.contains(ContextSection.GLOSSARY_TERMS)) {
         for (String termFqn : glossaryFqns(asset.document())) {
-          KnowledgeItem full = loadGlossaryTerm(termFqn);
+          KnowledgeItem full = glossaryTerms.get(termFqn);
           if (full != null) {
             accumulator.add(full);
             attachKnowledge(asset.context(), referenceOf(full), false);
@@ -627,7 +654,7 @@ public class PersonaContextBuilder {
       GlossaryTerm term =
           Entity.getEntityByName(Entity.GLOSSARY_TERM, fqn, "", Include.NON_DELETED);
       return fullKnowledgeItem(Entity.GLOSSARY_TERM, term);
-    } catch (Exception exception) {
+    } catch (EntityNotFoundException exception) {
       LOG.warn("Failed to load persona glossary term {}: {}", fqn, exception.getMessage());
       return null;
     }
@@ -774,7 +801,7 @@ public class PersonaContextBuilder {
     return !nullOrEmpty(name) ? name : stringValue(document.get("fullyQualifiedName"));
   }
 
-  static boolean isKnowledgeEntityType(String entityType) {
+  public static boolean isKnowledgeEntityType(String entityType) {
     return KNOWLEDGE_ENTITY_TYPES.contains(entityType);
   }
 

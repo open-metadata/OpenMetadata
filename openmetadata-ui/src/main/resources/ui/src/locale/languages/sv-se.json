@@ -3333,7 +3333,6 @@
     "has-glossary": "Har ordlista",
     "has-tags": "Har taggar",
     "have-not-explored-yet": "Har du inte utforskat än?",
-    "heavy-section-warning": "Dataursprung, profil och datakvalitet kan öka materialiseringstiden. Aktivera dem endast när personan behöver dessa signaler.",
     "hex-code-placeholder": "Välj eller ange HEX-färgkod.",
     "hex-color-validation": "Indata är inte en giltig HEX-kod.",
     "hi-user-welcome-to": "Hej {{user}}, välkommen till",

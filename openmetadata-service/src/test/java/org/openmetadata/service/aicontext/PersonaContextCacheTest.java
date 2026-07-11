@@ -15,6 +15,7 @@ package org.openmetadata.service.aicontext;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
@@ -57,6 +58,6 @@ class PersonaContextCacheTest {
         };
 
     assertThrows(IllegalStateException.class, () -> cache.get(persona, false));
-    verify(provider).del(keys.personaContextLock(personaId));
+    verify(provider).deleteIfValue(eq(keys.personaContextLock(personaId)), anyString());
   }
 }

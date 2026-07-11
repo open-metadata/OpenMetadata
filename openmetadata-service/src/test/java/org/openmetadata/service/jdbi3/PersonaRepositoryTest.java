@@ -14,12 +14,17 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.service.Entity;
 
 class PersonaRepositoryTest {
@@ -61,6 +66,59 @@ class PersonaRepositoryTest {
     PersonaContextDefinition definition =
         new PersonaContextDefinition()
             .withRules(List.of(new ContextRule().withName("Users").withEntityType(Entity.USER)));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> PersonaRepository.validateContextDefinition(definition));
+  }
+
+  @Test
+  void appliesDefaultsWhenGeneratedRuleSectionsAreEmpty() {
+    ContextRule rule =
+        new ContextRule().withName("Tables").withEntityType(Entity.TABLE).withSections(Set.of());
+    PersonaContextDefinition definition = new PersonaContextDefinition().withRules(List.of(rule));
+
+    PersonaRepository.validateContextDefinition(definition);
+
+    assertEquals(200, rule.getMaxAssets());
+    assertTrue(rule.getSections().contains(ContextSection.JOINS));
+    assertTrue(rule.getSections().contains(ContextSection.ARTICLES));
+    assertTrue(rule.getSections().contains(ContextSection.METRICS));
+    assertFalse(rule.getSections().contains(ContextSection.LINEAGE));
+  }
+
+  @Test
+  void forcesKnowledgeRulesToFullyRendered() {
+    ContextRule rule =
+        new ContextRule()
+            .withName("Glossary")
+            .withEntityType(Entity.GLOSSARY_TERM)
+            .withFullyRendered(false);
+    PersonaContextDefinition definition = new PersonaContextDefinition().withRules(List.of(rule));
+
+    PersonaRepository.validateContextDefinition(definition);
+
+    assertTrue(rule.getFullyRendered());
+  }
+
+  @Test
+  void rejectsCaseInsensitiveDuplicateRuleNames() {
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition()
+            .withRules(
+                List.of(
+                    new ContextRule().withName("Tables").withEntityType(Entity.TABLE),
+                    new ContextRule().withName(" tables ").withEntityType(Entity.TABLE)));
+
+    assertThrows(
+        IllegalArgumentException.class,
+        () -> PersonaRepository.validateContextDefinition(definition));
+  }
+
+  @Test
+  void validatesNumericBoundsForPatchedDefinitions() {
+    PersonaContextDefinition definition =
+        new PersonaContextDefinition().withCharacterBudget(0).withCacheTtlMinutes(30);
 
     assertThrows(
         IllegalArgumentException.class,

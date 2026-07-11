@@ -34,8 +34,11 @@ export const DEFAULT_PERSONA_CONTEXT_SECTIONS = [
   ContextSection.Description,
   ContextSection.Schema,
   ContextSection.Constraints,
+  ContextSection.Joins,
   ContextSection.Tags,
   ContextSection.GlossaryTerms,
+  ContextSection.Articles,
+  ContextSection.Metrics,
 ];
 
 export const PERSONA_CONTEXT_ARTICLE_SECTIONS = [
@@ -71,10 +74,12 @@ export const HEAVY_PERSONA_CONTEXT_SECTIONS = new Set([
 
 export const DEFAULT_PERSONA_CONTEXT_DEFINITION: PersonaContextDefinition = {
   cacheTtlMinutes: 30,
-  characterBudget: 150000,
+  characterBudget: 400000,
   enabled: true,
   rules: [],
 };
+
+export const DEFAULT_PERSONA_CONTEXT_MAX_ASSETS = 200;
 
 export const PERSONA_CONTEXT_ASSET_TYPES = [
   EntityType.TABLE,

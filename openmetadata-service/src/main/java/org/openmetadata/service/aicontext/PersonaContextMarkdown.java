@@ -17,7 +17,9 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.IdentityHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
@@ -53,8 +55,20 @@ final class PersonaContextMarkdown {
       boolean knowledgeOverflowed) {
     int maxChars = PersonaContextBuilder.characterBudget(definition);
     int headingChars = rules.stream().mapToInt(PersonaContextMarkdown::ruleHeadingEstimate).sum();
-    BudgetTracker budget =
-        new BudgetTracker(Math.max(0, maxChars - headingChars - DOCUMENT_OVERHEAD_RESERVE));
+    Map<PersonaContextBuilder.RuleMaterialization, RuleRenderResult> renderedKnowledge =
+        new IdentityHashMap<>();
+    int mandatoryKnowledgeChars = 0;
+    for (PersonaContextBuilder.RuleMaterialization rule : rules) {
+      if (PersonaContextBuilder.isKnowledgeEntityType(rule.rule().getEntityType())) {
+        RuleRenderResult rendered = renderKnowledgeRule(rule);
+        renderedKnowledge.put(rule, rendered);
+        mandatoryKnowledgeChars += rendered.body().length();
+      }
+    }
+    String sharedKnowledge = renderSharedKnowledge(context.getSharedKnowledge());
+    mandatoryKnowledgeChars += sharedKnowledge.length();
+    int contentBudget = Math.max(0, maxChars - headingChars - DOCUMENT_OVERHEAD_RESERVE);
+    BudgetTracker budget = new BudgetTracker(Math.max(0, contentBudget - mandatoryKnowledgeChars));
     List<RuleResult> ruleResults = new ArrayList<>();
     List<ManifestEntry> manifest = new ArrayList<>();
     StringBuilder body = new StringBuilder();
@@ -63,85 +77,51 @@ final class PersonaContextMarkdown {
     for (PersonaContextBuilder.RuleMaterialization rule : rules) {
       RuleRenderResult rendered =
           PersonaContextBuilder.isKnowledgeEntityType(rule.rule().getEntityType())
-              ? renderKnowledgeRule(rule, budget, tier, manifest)
+              ? renderedKnowledge.get(rule)
               : renderAssetRule(rule, budget, tier, manifest);
-      tier = rendered.nextTier();
+      if (!PersonaContextBuilder.isKnowledgeEntityType(rule.rule().getEntityType())) {
+        tier = rendered.nextTier();
+      }
       ruleResults.add(rendered.result());
       body.append(ruleHeading(rule, rendered.result())).append(rendered.body());
     }
-    body.append(renderSharedKnowledge(context.getSharedKnowledge(), budget, manifest));
+    body.append(sharedKnowledge);
     appendManifest(body, manifest);
 
-    boolean truncated = knowledgeOverflowed || !manifest.isEmpty();
+    boolean truncated =
+        knowledgeOverflowed || mandatoryKnowledgeChars > contentBudget || !manifest.isEmpty();
     context.withRules(ruleResults).withManifest(manifest).withTruncated(truncated);
 
     String definitionHash = PersonaContextHash.definitionHash(definition);
     context.withFingerprint(definitionHash);
     int tokensEstimate = Math.max(1, (renderTitle(persona).length() + body.length()) / 4);
-    String provisional =
-        frontmatter(context, maxChars, tokensEstimate) + renderTitle(persona) + body;
-    context.withFingerprint(definitionHash + ':' + PersonaContextHash.contentHash(provisional));
+    String deterministicContent = renderTitle(persona) + body;
+    context.withFingerprint(
+        definitionHash + ':' + PersonaContextHash.contentHash(deterministicContent));
     String markdown =
         (frontmatter(context, maxChars, tokensEstimate) + renderTitle(persona) + body).strip()
             + "\n";
-    if (markdown.length() > maxChars) {
-      markdown = truncateDocument(markdown, maxChars);
-      context.withTruncated(true);
-    }
     return new PersonaContextBuilder.MaterializedPersonaContext(context, markdown);
   }
 
   private static RuleRenderResult renderKnowledgeRule(
-      PersonaContextBuilder.RuleMaterialization rule,
-      BudgetTracker budget,
-      RenderTier currentTier,
-      List<ManifestEntry> manifest) {
+      PersonaContextBuilder.RuleMaterialization rule) {
     StringBuilder body = new StringBuilder();
     List<AIContext> entities = new ArrayList<>();
-    int full = 0;
-    int compact = 0;
-    int omitted = 0;
-    RenderTier tier = currentTier;
-    Set<ContextSection> sections =
-        rule.rule().getSections() == null ? Set.of() : rule.rule().getSections();
     for (PersonaContextBuilder.SelectedEntity selected : rule.entities()) {
-      AIContext context = selected.context();
-      if (tier == RenderTier.FULL) {
-        String fragment =
-            renderKnowledgeEntity(
-                selected, sections, Boolean.TRUE.equals(rule.rule().getFullyRendered()));
-        if (budget.tryConsume(fragment)) {
-          body.append(fragment);
-          entities.add(context);
-          full++;
-          continue;
-        }
-        tier = RenderTier.COMPACT;
-      }
-      if (tier == RenderTier.COMPACT) {
-        String fragment = renderCompactKnowledge(selected.knowledgeItem());
-        if (budget.tryConsume(fragment)) {
-          body.append(fragment);
-          entities.add(context);
-          manifest.add(manifestEntry(context, ManifestEntry.Reason.COMPACT));
-          compact++;
-          continue;
-        }
-        tier = RenderTier.MANIFEST;
-      }
-      manifest.add(manifestEntry(context, ManifestEntry.Reason.OMITTED));
-      omitted++;
+      body.append(renderKnowledgeEntity(selected, Set.of(), true));
+      entities.add(selected.context());
     }
     RuleResult result =
         new RuleResult()
             .withRuleName(rule.rule().getName())
             .withEntityType(rule.rule().getEntityType())
             .withMatched(rule.matched())
-            .withRenderedFull(full)
-            .withRenderedCompact(compact)
-            .withManifestOnly(omitted)
+            .withRenderedFull(entities.size())
+            .withRenderedCompact(0)
+            .withManifestOnly(0)
             .withEntities(entities);
-    return new RuleRenderResult(result, body.toString(), tier);
+    return new RuleRenderResult(result, body.toString(), RenderTier.FULL);
   }
 
   private static String renderKnowledgeEntity(
@@ -350,30 +330,6 @@ final class PersonaContextMarkdown {
             : reference.getName();
   }
 
-  private static String renderCompactKnowledge(KnowledgeItem item) {
-    if (item == null) {
-      return "";
-    }
-    StringBuilder markdown =
-        new StringBuilder("\n## ")
-            .append(knowledgeTypeLabel(item))
-            .append(": ")
-            .append(labelOf(item))
-            .append('\n');
-    if (!nullOrEmpty(item.getFullyQualifiedName())) {
-      markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
-    }
-    String summary = firstLine(item.getContent());
-    if (!nullOrEmpty(summary)) {
-      markdown.append('\n').append(summary).append('\n');
-    }
-    return markdown
-        .append("\n_Compact rendering — fetch ")
-        .append(contextEndpoint(item.getType().value(), item.getFullyQualifiedName()))
-        .append(" for the complete content._\n")
-        .toString();
-  }
-
   private static RuleRenderResult renderAssetRule(
       PersonaContextBuilder.RuleMaterialization rule,
       BudgetTracker budget,
@@ -513,8 +469,7 @@ final class PersonaContextMarkdown {
     markdown.append('\n');
   }
 
-  private static String renderSharedKnowledge(
-      SharedKnowledge shared, BudgetTracker budget, List<ManifestEntry> manifest) {
+  private static String renderSharedKnowledge(SharedKnowledge shared) {
     if (shared == null
         || (listOrEmpty(shared.getGlossaryTerms()).isEmpty()
             && listOrEmpty(shared.getMetrics()).isEmpty()
@@ -522,38 +477,19 @@ final class PersonaContextMarkdown {
       return "";
     }
     StringBuilder markdown = new StringBuilder("\n# Shared Knowledge\n");
-    appendSharedKnowledge(markdown, shared.getGlossaryTerms(), budget, manifest);
-    appendSharedKnowledge(markdown, shared.getMetrics(), budget, manifest);
-    appendSharedKnowledge(markdown, shared.getArticles(), budget, manifest);
+    appendSharedKnowledge(markdown, shared.getGlossaryTerms());
+    appendSharedKnowledge(markdown, shared.getMetrics());
+    appendSharedKnowledge(markdown, shared.getArticles());
     return markdown.toString();
   }
 
-  private static void appendSharedKnowledge(
-      StringBuilder markdown,
-      List<KnowledgeItem> items,
-      BudgetTracker budget,
-      List<ManifestEntry> manifest) {
+  private static void appendSharedKnowledge(StringBuilder markdown, List<KnowledgeItem> items) {
     for (KnowledgeItem item : listOrEmpty(items)) {
-      String full = renderKnowledgeItem(item, false);
-      if (budget.tryConsume(full)) {
-        markdown.append(full);
-        continue;
-      }
-      String compact = renderCompactKnowledge(item);
-      AIContext context = knowledgeContext(item);
-      if (budget.tryConsume(compact)) {
-        markdown.append(compact);
-        manifest.add(manifestEntry(context, ManifestEntry.Reason.COMPACT));
-      } else {
-        manifest.add(manifestEntry(context, ManifestEntry.Reason.OMITTED));
-      }
+      markdown.append(renderKnowledgeItem(item));
     }
   }
 
-  private static String renderKnowledgeItem(KnowledgeItem item, boolean compact) {
-    if (compact) {
-      return renderCompactKnowledge(item);
-    }
+  private static String renderKnowledgeItem(KnowledgeItem item) {
     StringBuilder markdown =
         new StringBuilder("\n## ")
             .append(knowledgeTypeLabel(item))
@@ -567,13 +503,6 @@ final class PersonaContextMarkdown {
       markdown.append('\n').append(item.getContent().strip()).append('\n');
     }
     return markdown.toString();
-  }
-
-  private static AIContext knowledgeContext(KnowledgeItem item) {
-    return new AIContext()
-        .withEntityType(item.getType().value())
-        .withFullyQualifiedName(item.getFullyQualifiedName())
-        .withDisplayName(item.getDisplayName());
   }
 
   private static void appendManifest(StringBuilder markdown, List<ManifestEntry> manifest) {
@@ -635,17 +564,6 @@ final class PersonaContextMarkdown {
         + "\n---\n";
   }
 
-  private static String truncateDocument(String markdown, int maxChars) {
-    if (maxChars <= 0) {
-      return "";
-    }
-    String suffix = "\n\n_Context truncated to the configured character budget._\n";
-    if (maxChars <= suffix.length()) {
-      return suffix.substring(0, maxChars);
-    }
-    return markdown.substring(0, maxChars - suffix.length()).stripTrailing() + suffix;
-  }
-
   private static String renderTitle(Persona persona) {
     String title =
         !nullOrEmpty(persona.getDisplayName()) ? persona.getDisplayName() : persona.getName();
@@ -689,7 +607,7 @@ final class PersonaContextMarkdown {
     return "`GET /v1/" + collectionPath(entityType) + "/name/" + fqn + "/context`";
   }
 
-  private static String collectionPath(String entityType) {
+  static String collectionPath(String entityType) {
     return switch (entityType) {
       case "glossaryTerm" -> "glossaryTerms";
       case "mlmodel" -> "mlmodels";
@@ -697,6 +615,8 @@ final class PersonaContextMarkdown {
       case "databaseSchema" -> "databaseSchemas";
       case "storedProcedure" -> "storedProcedures";
       case "apiEndpoint" -> "apiEndpoints";
+      case "page" -> "contextCenter/pages";
+      case "dashboardDataModel" -> "dashboard/datamodels";
       default -> entityType.endsWith("s") ? entityType : entityType + 's';
     };
   }

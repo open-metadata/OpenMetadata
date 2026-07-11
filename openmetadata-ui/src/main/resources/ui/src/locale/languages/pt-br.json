@@ -3333,7 +3333,6 @@
     "has-glossary": "Tem glossário",
     "has-tags": "Tem tags",
     "have-not-explored-yet": "Ainda não explorou?",
-    "heavy-section-warning": "Linhagem, perfil e qualidade de dados podem aumentar o tempo de materialização. Ative-os apenas quando a persona precisar desses sinais.",
     "hex-code-placeholder": "Selecione ou insira o código de cor HEX.",
     "hex-color-validation": "A entrada não é um código HEX válido.",
     "hi-user-welcome-to": "Olá {{user}}, Bem-vindo(a) ao",

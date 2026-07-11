@@ -15,6 +15,7 @@ import { Button, Popconfirm, Tooltip, Typography } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
+  DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
   HEAVY_PERSONA_CONTEXT_SECTIONS,
   PERSONA_CONTEXT_ENTITY_LABEL_KEYS,
   PERSONA_CONTEXT_SECTION_LABEL_KEYS,
@@ -118,7 +119,7 @@ export const ContextRuleCard = ({
           className="persona-ai-context-rule-footnote"
           type="secondary">
           {t('message.persona-context-max-assets', {
-            count: rule.maxAssets ?? 50,
+            count: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
           })}
         </Typography.Text>
       </div>

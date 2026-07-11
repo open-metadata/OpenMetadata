@@ -166,11 +166,8 @@ export interface PersonaContextDefinition {
      */
     cacheTtlMinutes?: number;
     /**
-     * Deprecated alias for cacheTtlMinutes retained for stored persona compatibility.
-     */
-    cacheTtlSeconds?: number;
-    /**
-     * Hard character cap for the compiled Markdown document.
+     * Character budget for the compiled Markdown document. Mandatory knowledge and manifest
+     * content can exceed this budget.
      */
     characterBudget?: number;
     /**
@@ -185,10 +182,6 @@ export interface PersonaContextDefinition {
      * Read-only timestamp of the most recent successful compilation.
      */
     lastGeneratedAt?: number;
-    /**
-     * Deprecated alias for characterBudget retained for stored persona compatibility.
-     */
-    maxTotalChars?: number;
     /**
      * Ordered dynamic entity-selection rules. An entity matched by multiple rules is rendered
      * under the first rule only.

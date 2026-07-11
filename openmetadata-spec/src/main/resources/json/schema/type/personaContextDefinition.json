@@ -82,7 +82,7 @@
           "type": "integer",
           "minimum": 1,
           "maximum": 1000,
-          "default": 50
+          "default": 200
         },
         "fullyRendered": {
           "description": "Render complete documentation for every matched entity and ignore sections. Fully rendered Data Products also include the context of every contained asset.",
@@ -125,26 +125,12 @@
       },
       "default": []
     },
-    "maxTotalChars": {
-      "description": "Deprecated alias for characterBudget retained for stored persona compatibility.",
-      "type": "integer",
-      "minimum": 10000,
-      "maximum": 2000000,
-      "default": 150000
-    },
-    "cacheTtlSeconds": {
-      "description": "Deprecated alias for cacheTtlMinutes retained for stored persona compatibility.",
-      "type": "integer",
-      "minimum": 60,
-      "maximum": 86400,
-      "default": 1800
-    },
     "characterBudget": {
-      "description": "Hard character cap for the compiled Markdown document.",
+      "description": "Character budget for the compiled Markdown document. Mandatory knowledge and manifest content can exceed this budget.",
       "type": "integer",
       "minimum": 10000,
       "maximum": 2000000,
-      "default": 150000
+      "default": 400000
     },
     "cacheTtlMinutes": {
       "description": "Number of minutes a compiled context remains fresh before it is regenerated.",

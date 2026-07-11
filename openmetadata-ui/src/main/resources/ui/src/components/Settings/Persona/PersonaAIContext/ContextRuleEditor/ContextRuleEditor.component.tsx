@@ -33,6 +33,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
+  DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
   HEAVY_PERSONA_CONTEXT_SECTIONS,
   PERSONA_CONTEXT_ASSET_TYPES,
   PERSONA_CONTEXT_ENTITY_LABEL_KEYS,
@@ -56,6 +57,7 @@ import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupCont
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
 interface ContextRuleEditorProps {
+  existingRuleNames: string[];
   open: boolean;
   personaId: string;
   rule?: ContextRule;
@@ -75,16 +77,19 @@ const getDefaultRule = (rule?: ContextRule): ContextRule => {
     enabled: rule?.enabled ?? true,
     entityType,
     filterJsonTree: rule?.filterJsonTree,
-    fullyRendered: rule?.fullyRendered ?? knowledgeType,
+    fullyRendered: knowledgeType ? true : rule?.fullyRendered ?? false,
     id: rule?.id,
-    maxAssets: rule?.maxAssets ?? 50,
+    maxAssets: rule?.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
     name: rule?.name ?? '',
     queryFilter: rule?.queryFilter ?? '',
-    sections: rule?.sections ?? getDefaultPersonaContextSections(entityType),
+    sections: rule?.sections?.length
+      ? rule.sections
+      : getDefaultPersonaContextSections(entityType),
   };
 };
 
 export const ContextRuleEditor = ({
+  existingRuleNames,
   open,
   personaId,
   rule,
@@ -107,6 +112,10 @@ export const ContextRuleEditor = ({
   const maxAssets = useWatch({ control: form.control, name: 'maxAssets' });
   const queryFilter = useWatch({ control: form.control, name: 'queryFilter' });
   const closeDrawerRef = useRef<() => void>(() => undefined);
+  const lastResetRuleIdRef = useRef<string>();
+  const ruleForResetRef = useRef(rule);
+  ruleForResetRef.current = rule;
+  const activeRuleId = rule?.id;
   const previewRequestRef = useRef(0);
   const [preview, setPreview] = useState<PersonaContextRulePreview>();
   const [previewError, setPreviewError] = useState(false);
@@ -189,6 +198,7 @@ export const ContextRuleEditor = ({
         description: data.description || undefined,
         filterJsonTree: data.filterJsonTree || undefined,
         matchedCount: undefined,
+        name: data.name.trim(),
         queryFilter: data.queryFilter || '',
       });
       closeDrawerRef.current();
@@ -224,6 +234,10 @@ export const ContextRuleEditor = ({
           required: t('message.field-text-is-required', {
             fieldText: t('label.name'),
           }),
+          validate: (value) =>
+            !existingRuleNames.some(
+              (name) => name.trim().toLowerCase() === value.trim().toLowerCase()
+            ) || t('message.name-already-exists'),
         }}
       />
 
@@ -395,15 +409,18 @@ export const ContextRuleEditor = ({
                 </Typography.Text>
                 <Typography.Paragraph type="secondary">
                   {t(
-                    entityType === EntityType.DATA_PRODUCT
+                    isKnowledgeRule
+                      ? 'message.persona-context-knowledge-fully-rendered'
+                      : entityType === EntityType.DATA_PRODUCT
                       ? 'message.persona-context-data-product-fully-rendered-description'
                       : 'message.persona-context-fully-rendered-description'
                   )}
                 </Typography.Paragraph>
               </div>
               <Switch
-                checked={field.value}
+                checked={isKnowledgeRule || field.value}
                 data-testid="context-rule-fully-rendered"
+                disabled={isKnowledgeRule}
                 onChange={field.onChange}
               />
             </div>
@@ -419,14 +436,14 @@ export const ContextRuleEditor = ({
             className="persona-ai-context-sections-field"
             label={t('label.context-sections')}>
             <Typography.Paragraph type="secondary">
-              {fullyRendered
+              {fullyRendered || isKnowledgeRule
                 ? t('message.persona-context-sections-disabled')
                 : t('message.persona-context-sections-description')}
             </Typography.Paragraph>
             <Checkbox.Group
               {...field}
               className="persona-ai-context-section-grid"
-              disabled={fullyRendered}
+              disabled={fullyRendered || isKnowledgeRule}
               options={sectionOptions}
             />
           </Form.Item>
@@ -472,12 +489,17 @@ export const ContextRuleEditor = ({
 
   useEffect(() => {
     if (open) {
-      form.reset(getDefaultRule(rule));
+      const ruleId = activeRuleId ?? 'new';
+      if (!isOpen || lastResetRuleIdRef.current !== ruleId) {
+        form.reset(getDefaultRule(ruleForResetRef.current));
+        lastResetRuleIdRef.current = ruleId;
+      }
       openDrawer();
     } else if (isOpen) {
       closeDrawer();
+      lastResetRuleIdRef.current = undefined;
     }
-  }, [closeDrawer, form, isOpen, open, openDrawer, rule]);
+  }, [activeRuleId, closeDrawer, form, isOpen, open, openDrawer]);
 
   return formDrawer;
 };

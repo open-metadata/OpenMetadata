@@ -16,7 +16,9 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.mcp.util.McpResponseTrim;
 
 class GetPersonaContextToolTest {
 
@@ -27,8 +29,29 @@ class GetPersonaContextToolTest {
     List<String> parts = GetPersonaContextTool.split(content);
 
     assertEquals(content, String.join("", parts));
-    assertTrue(parts.stream().allMatch(part -> part.length() <= 85_000));
+    assertTrue(
+        parts.stream()
+            .allMatch(
+                part ->
+                    McpResponseTrim.serializedLength(Map.of("content", part))
+                        <= McpResponseTrim.MAX_RESPONSE_CHARS - 10_000));
     assertTrue(parts.getFirst().endsWith("\n"));
+  }
+
+  @Test
+  void budgetsJsonEscapingInsideTheMcpEnvelope() {
+    String content = "{\"line\":\"\\\\quoted\\nvalue\"}\n".repeat(10_000);
+
+    List<String> parts = GetPersonaContextTool.split(content);
+
+    assertEquals(content, String.join("", parts));
+    assertTrue(parts.size() > 1);
+    assertTrue(
+        parts.stream()
+            .allMatch(
+                part ->
+                    McpResponseTrim.serializedLength(Map.of("content", part))
+                        <= McpResponseTrim.MAX_RESPONSE_CHARS - 10_000));
   }
 
   @Test

@@ -103,4 +103,29 @@ describe('PersonaAIContext', () => {
       })
     );
   });
+
+  it('does not persist unchanged settings on blur', async () => {
+    const definition = {
+      cacheTtlMinutes: 30,
+      characterBudget: 400000,
+      enabled: true,
+      rules: [
+        {
+          entityType: 'table',
+          id: '22222222-2222-4222-8222-222222222222',
+          name: 'Tables',
+        },
+      ],
+    };
+    mockedGetPersonaAIContext.mockResolvedValue(definition);
+
+    render(<PersonaAIContext canEdit persona={persona} />);
+
+    const budget = await screen.findByTestId(
+      'persona-context-character-budget'
+    );
+    fireEvent.blur(budget);
+
+    expect(mockedUpdatePersonaAIContext).not.toHaveBeenCalled();
+  });
 });

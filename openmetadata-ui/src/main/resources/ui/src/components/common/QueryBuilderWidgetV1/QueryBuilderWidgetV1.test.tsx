@@ -279,6 +279,28 @@ describe('QueryBuilderWidgetV1', () => {
         expect(mockGetQueryActions).toHaveBeenCalledWith({ test: 'actions' });
       });
     });
+
+    it('does not reload a structurally equal tree echoed by the parent', () => {
+      const { rerender } = render(
+        <QueryBuilderWidgetV1
+          tree={{ children1: [], id: 'initial', type: 'group' }}
+          onChange={mockOnChange}
+        />
+      );
+
+      fireEvent.click(screen.getByTestId('mock-query-change'));
+      const loadCountAfterChange = (Utils.loadTree as jest.Mock).mock.calls
+        .length;
+
+      rerender(
+        <QueryBuilderWidgetV1
+          tree={{ ...mocks.treeInternal }}
+          onChange={mockOnChange}
+        />
+      );
+
+      expect(Utils.loadTree).toHaveBeenCalledTimes(loadCountAfterChange);
+    });
   });
 
   describe('Search Results and Counting', () => {

@@ -3333,7 +3333,6 @@
     "has-glossary": "Hat Glossar",
     "has-tags": "Hat Tags",
     "have-not-explored-yet": "Noch nicht erkundet?",
-    "heavy-section-warning": "Lineage, Profile und Datenqualität können die Materialisierung verlangsamen. Aktivieren Sie sie nur, wenn die Persona diese Signale benötigt.",
     "hex-code-placeholder": "Wählen Sie einen HEX-Farbcode oder geben Sie ihn ein.",
     "hex-color-validation": "Die Eingabe ist kein gültiger HEX-Code.",
     "hi-user-welcome-to": "Hallo {{user}}, Willkommen bei",

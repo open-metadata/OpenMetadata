@@ -3333,7 +3333,6 @@
     "has-glossary": "用語集あり",
     "has-tags": "タグあり",
     "have-not-explored-yet": "まだ試していませんか？",
-    "heavy-section-warning": "リネージ、プロファイル、データ品質を含めると生成時間が長くなる場合があります。ペルソナに必要な場合のみ有効にしてください。",
     "hex-code-placeholder": "HEX カラーコードを選択または入力してください",
     "hex-color-validation": "有効な HEX コードではありません",
     "hi-user-welcome-to": "{{user}} さん、ようこそ",

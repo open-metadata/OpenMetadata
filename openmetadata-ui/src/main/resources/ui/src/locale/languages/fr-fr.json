@@ -3333,7 +3333,6 @@
     "has-glossary": "A un glossaire",
     "has-tags": "A des étiquettes",
     "have-not-explored-yet": "Vous n'avez pas encore exploré?",
-    "heavy-section-warning": "Le lignage, le profil et la qualité des données peuvent augmenter le temps de matérialisation. Activez-les uniquement si le persona a besoin de ces signaux.",
     "hex-code-placeholder": "Sélectionnez un code couleur hexadécimal.",
     "hex-color-validation": "Code hexadécimal non valide.",
     "hi-user-welcome-to": "Bonjour {{user}}, Bienvenue sur",

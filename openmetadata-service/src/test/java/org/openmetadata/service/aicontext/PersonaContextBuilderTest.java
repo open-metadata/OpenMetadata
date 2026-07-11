@@ -39,6 +39,7 @@ import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.SearchResultListMapper;
@@ -62,7 +63,7 @@ class PersonaContextBuilderTest {
     when(repository.listWithDeepPagination(
             eq(Entity.TABLE),
             isNull(),
-            eq(rule.getQueryFilter()),
+            eq(PersonaContextBuilder.activeEntityFilter(rule.getQueryFilter())),
             any(String[].class),
             any(SearchSortFilter.class),
             anyInt(),
@@ -79,6 +80,21 @@ class PersonaContextBuilderTest {
         "service.db.schema.table-000", result.documents().getFirst().get("fullyQualifiedName"));
     assertEquals(
         "service.db.schema.table-149", result.documents().getLast().get("fullyQualifiedName"));
+  }
+
+  @Test
+  void activeEntityFilterAlwaysExcludesDeletedEntities() {
+    var filtered =
+        JsonUtils.readTree(
+            PersonaContextBuilder.activeEntityFilter(
+                "{\"query\":{\"term\":{\"tier.tagFQN\":\"Tier.Tier1\"}}}"));
+    var empty = JsonUtils.readTree(PersonaContextBuilder.activeEntityFilter("{}"));
+
+    assertEquals(false, filtered.at("/query/bool/filter/0/term/deleted").asBoolean());
+    assertEquals("Tier.Tier1", filtered.at("/query/bool/filter/1/term/tier.tagFQN").asText());
+    assertEquals(1, empty.at("/query/bool/filter").size());
+    assertThrows(
+        IllegalArgumentException.class, () -> PersonaContextBuilder.activeEntityFilter("[]"));
   }
 
   @Test
@@ -228,7 +244,7 @@ class PersonaContextBuilderTest {
     when(repository.listWithDeepPagination(
             eq(Entity.DATA_PRODUCT),
             isNull(),
-            isNull(),
+            eq(PersonaContextBuilder.activeEntityFilter(null)),
             any(String[].class),
             any(SearchSortFilter.class),
             anyInt(),
@@ -252,7 +268,8 @@ class PersonaContextBuilderTest {
     PersonaContextBuilder builder =
         new PersonaContextBuilder(persona(), repository) {
           @Override
-          protected List<SelectedEntity> expandDataProductAssets(SelectedEntity dataProduct) {
+          protected List<SelectedEntity> expandDataProductAssets(
+              SelectedEntity dataProduct, int maxAssets) {
             AIContext tableContext =
                 new AIContext()
                     .withEntityType(Entity.TABLE)
@@ -276,7 +293,7 @@ class PersonaContextBuilderTest {
         new ContextRule()
             .withName("Customer data product")
             .withEntityType(Entity.DATA_PRODUCT)
-            .withMaxAssets(1)
+            .withMaxAssets(2)
             .withEnabled(true)
             .withFullyRendered(true)
             .withSections(Set.of());

@@ -18,10 +18,13 @@ import java.time.Duration;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ArrayBlockingQueue;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
+import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.PersonaContext;
@@ -41,6 +44,23 @@ public class PersonaContextCache {
   private static final Duration BUILD_LEASE = Duration.ofSeconds(120);
   private static final int POLL_ATTEMPTS = 30;
   private static final long POLL_MILLIS = 500;
+  private static final AtomicInteger REFRESH_THREAD_SEQUENCE = new AtomicInteger();
+  private static final ThreadPoolExecutor REFRESH_EXECUTOR =
+      new ThreadPoolExecutor(
+          2,
+          2,
+          0,
+          TimeUnit.MILLISECONDS,
+          new ArrayBlockingQueue<>(50),
+          runnable -> {
+            Thread thread =
+                new Thread(
+                    runnable,
+                    "persona-context-refresh-" + REFRESH_THREAD_SEQUENCE.incrementAndGet());
+            thread.setDaemon(true);
+            return thread;
+          },
+          new ThreadPoolExecutor.AbortPolicy());
   private static volatile PersonaContextCache instance;
 
   private final CacheProvider provider;
@@ -76,6 +96,7 @@ public class PersonaContextCache {
     String definitionHash = PersonaContextHash.definitionHash(definition);
     String localKey = localKey(persona.getId(), definitionHash);
     int ttlSeconds = PersonaContextBuilder.cacheTtlSeconds(definition);
+    Long previousGeneratedAt = null;
 
     if (!refresh) {
       PersonaContextBuilder.MaterializedPersonaContext localValue = getLocal(localKey);
@@ -85,6 +106,15 @@ public class PersonaContextCache {
     }
 
     boolean redisAvailable = provider.available();
+    if (refresh) {
+      PersonaContextBuilder.MaterializedPersonaContext previous = getLocal(localKey);
+      if (previous == null && redisAvailable) {
+        previous = getRedis(persona.getId(), definitionHash);
+      }
+      if (previous != null && previous.context() != null) {
+        previousGeneratedAt = previous.context().getGeneratedAt();
+      }
+    }
     if (!refresh && redisAvailable) {
       PersonaContextBuilder.MaterializedPersonaContext cached =
           getRedis(persona.getId(), definitionHash);
@@ -102,13 +132,19 @@ public class PersonaContextCache {
     }
 
     String lockKey = keys.personaContextLock(persona.getId());
-    boolean ownsLock = provider.setIfAbsent(lockKey, nodeId, BUILD_LEASE);
+    String lockOwner = nodeId + ':' + UUID.randomUUID();
+    boolean ownsLock = provider.setIfAbsent(lockKey, lockOwner, BUILD_LEASE);
     if (!ownsLock) {
       PersonaContextBuilder.MaterializedPersonaContext winner =
-          waitForWinner(persona.getId(), definitionHash);
+          waitForWinner(persona.getId(), definitionHash, previousGeneratedAt);
       if (winner != null) {
         putLocal(localKey, winner, ttlSeconds);
         return new CachedResult(winner, refresh ? CacheStatus.BYPASS : CacheStatus.HIT);
+      }
+      ownsLock = provider.setIfAbsent(lockKey, lockOwner, BUILD_LEASE);
+      if (!ownsLock) {
+        throw new IllegalStateException(
+            "Timed out waiting for persona context materialization for " + persona.getId());
       }
     }
 
@@ -119,7 +155,7 @@ public class PersonaContextCache {
       return new CachedResult(built, refresh ? CacheStatus.BYPASS : CacheStatus.MISS);
     } finally {
       if (ownsLock) {
-        provider.del(lockKey);
+        provider.deleteIfValue(lockKey, lockOwner);
       }
     }
   }
@@ -174,17 +210,22 @@ public class PersonaContextCache {
       generationStates.put(
           persona.getId(), new GenerationState(PersonaContextCacheState.GENERATING, null));
     }
-    CompletableFuture.runAsync(
-        () -> {
-          try {
-            refresh(persona);
-          } catch (RuntimeException exception) {
-            LOG.warn(
-                "Persona context compilation failed for {}: {}",
-                persona.getFullyQualifiedName(),
-                exception.getMessage());
-          }
-        });
+    try {
+      REFRESH_EXECUTOR.execute(
+          () -> {
+            try {
+              refresh(persona);
+            } catch (RuntimeException exception) {
+              LOG.warn(
+                  "Persona context compilation failed for {}: {}",
+                  persona.getFullyQualifiedName(),
+                  exception.getMessage());
+            }
+          });
+    } catch (RejectedExecutionException exception) {
+      markFailed(persona, exception);
+      LOG.warn("Persona context refresh queue is full for {}", persona.getFullyQualifiedName());
+    }
   }
 
   public CacheSnapshot snapshot(Persona persona) {
@@ -255,7 +296,7 @@ public class PersonaContextCache {
   }
 
   private PersonaContextBuilder.MaterializedPersonaContext waitForWinner(
-      UUID personaId, String definitionHash) {
+      UUID personaId, String definitionHash, Long previousGeneratedAt) {
     for (int attempt = 0; attempt < POLL_ATTEMPTS; attempt++) {
       try {
         TimeUnit.MILLISECONDS.sleep(POLL_MILLIS);
@@ -264,11 +305,18 @@ public class PersonaContextCache {
         break;
       }
       PersonaContextBuilder.MaterializedPersonaContext cached = getRedis(personaId, definitionHash);
-      if (cached != null) {
+      if (cached != null && generatedAfter(cached, previousGeneratedAt)) {
         return cached;
       }
     }
     return null;
+  }
+
+  private static boolean generatedAfter(
+      PersonaContextBuilder.MaterializedPersonaContext cached, Long previousGeneratedAt) {
+    Long generatedAt = cached.context().getGeneratedAt();
+    return previousGeneratedAt == null
+        || (generatedAt != null && generatedAt > previousGeneratedAt);
   }
 
   private void cacheIfEligible(

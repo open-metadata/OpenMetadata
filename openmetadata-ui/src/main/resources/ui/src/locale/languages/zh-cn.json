@@ -3333,7 +3333,6 @@
     "has-glossary": "有术语表",
     "has-tags": "有标签",
     "have-not-explored-yet": "还没有探索过?",
-    "heavy-section-warning": "血缘、画像和数据质量可能会增加物化时间。仅当角色需要这些信号时才启用。",
     "hex-code-placeholder": "选择或输入 HEX 颜色代码",
     "hex-color-validation": "输入不是有效的 HEX 颜色代码",
     "hi-user-welcome-to": "Hi {{user}}, 欢迎来到",

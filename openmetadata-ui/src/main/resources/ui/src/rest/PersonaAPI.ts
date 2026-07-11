@@ -16,7 +16,6 @@ import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreatePersona } from '../generated/api/teams/createPersona';
 import { Persona } from '../generated/entity/teams/persona';
-import { PersonaContext } from '../generated/type/personaContext';
 import {
   CacheState,
   ContextRule,
@@ -53,11 +52,6 @@ export const getPersonaByName = async (fqn: string, fields?: string) => {
 
   return response.data;
 };
-
-export interface PersonaContextResponse<T> {
-  cacheStatus?: string;
-  data: T;
-}
 
 export interface PersonaContextRulePreview {
   matchedCount: number;
@@ -160,27 +154,6 @@ export const refreshPersonaAIContextDocument = async (id: string) => {
   );
 
   return response.data;
-};
-
-export const getPersonaContext = async <T extends string | PersonaContext>(
-  fqn: string,
-  params: { format: 'json' | 'markdown'; refresh?: boolean }
-): Promise<PersonaContextResponse<T>> => {
-  const response = await axiosClient.get<T>(
-    `${BASE_URL}/name/${getEncodedFqn(fqn)}/context`,
-    {
-      headers: {
-        Accept: params.format === 'json' ? 'application/json' : 'text/markdown',
-      },
-      params,
-      responseType: params.format === 'markdown' ? 'text' : 'json',
-    }
-  );
-
-  return {
-    cacheStatus: response.headers['x-cache'],
-    data: response.data,
-  };
 };
 
 export const createPersona = async (data: CreatePersona) => {

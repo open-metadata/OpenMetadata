@@ -3333,7 +3333,6 @@
     "has-glossary": "Tiene glosario",
     "has-tags": "Tiene etiquetas",
     "have-not-explored-yet": "¿Todavía no has explorado?",
-    "heavy-section-warning": "El linaje, el perfil y la calidad de datos pueden aumentar el tiempo de materialización. Actívelos solo cuando el perfil necesite esas señales.",
     "hex-code-placeholder": "Seleccione o ingrese el código de color HEX.",
     "hex-color-validation": "La entrada no es un código HEX válido.",
     "hi-user-welcome-to": "Hola {{user}}, Bienvenido a",

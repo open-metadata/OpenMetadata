@@ -46,7 +46,7 @@ const MARKDOWN = `---
 persona: "Business Analyst"
 generated_at: "2026-07-10T14:07:00Z"
 rules: 1
-budget: 150000
+budget: 400000
 tokens_est: 128
 ---
 
@@ -79,7 +79,7 @@ const mockPersonaContextApi = async (
   let definition: PersonaContextDefinition = {
     cacheState: CacheState.Fresh,
     cacheTtlMinutes: 30,
-    characterBudget: 150000,
+    characterBudget: 400000,
     enabled: true,
     lastGeneratedAt: Date.now(),
     rules: initialRules,
@@ -219,6 +219,69 @@ test.describe.serial('Persona AI Context', () => {
     await afterAction();
   });
 
+  test('round-trips real configuration, rule CRUD, and preview endpoints', async ({
+    browser,
+  }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    const basePath = `/api/v1/personas/${persona.responseData.id}/aiContext`;
+    try {
+      const settingsResponse = await apiContext.put(basePath, {
+        data: {
+          cacheTtlMinutes: 30,
+          characterBudget: 400000,
+          enabled: true,
+        },
+      });
+      expect(settingsResponse.ok()).toBe(true);
+
+      const requestedRule: ContextRule = {
+        entityType: EntityType.TABLE,
+        maxAssets: 1,
+        name: 'Real API tables',
+        queryFilter: '',
+        sections: [],
+      };
+      const createResponse = await apiContext.post(`${basePath}/rules`, {
+        data: requestedRule,
+      });
+      expect(createResponse.ok()).toBe(true);
+      const createdDefinition =
+        (await createResponse.json()) as PersonaContextDefinition;
+      const createdRule = createdDefinition.rules?.find(
+        ({ name }) => name === requestedRule.name
+      );
+      expect(createdRule?.id).toBeTruthy();
+      expect(createdRule?.sections).toContain(ContextSection.Description);
+      expect(createdRule?.sections).toContain(ContextSection.Joins);
+
+      const previewResponse = await apiContext.post(
+        `${basePath}/rules/preview`,
+        { data: requestedRule }
+      );
+      expect(previewResponse.ok()).toBe(true);
+      expect(await previewResponse.json()).toEqual(
+        expect.objectContaining({ matchedCount: expect.any(Number) })
+      );
+
+      const updateResponse = await apiContext.put(
+        `${basePath}/rules/${createdRule?.id}`,
+        {
+          data: { ...requestedRule, name: 'Updated real API tables' },
+        }
+      );
+      expect(updateResponse.ok()).toBe(true);
+
+      const deleteResponse = await apiContext.delete(
+        `${basePath}/rules/${createdRule?.id}`
+      );
+      expect(deleteResponse.ok()).toBe(true);
+    } finally {
+      await afterAction();
+    }
+  });
+
   test('configures every entity type, behavior, section, filter, and setting', async ({
     adminPage,
   }) => {
@@ -317,6 +380,9 @@ test.describe.serial('Persona AI Context', () => {
     await expect(
       adminPage.getByTestId('context-rule-fully-rendered')
     ).toHaveAttribute('aria-checked', 'true');
+    await expect(
+      adminPage.getByTestId('context-rule-fully-rendered')
+    ).toBeDisabled();
     for (const section of [
       'Title & summary',
       'Full body',
@@ -329,11 +395,6 @@ test.describe.serial('Persona AI Context', () => {
       ).toBeDisabled();
     }
     await expect(adminPage.getByText(/18 entities matched/)).toBeVisible();
-
-    await adminPage.getByTestId('context-rule-fully-rendered').click();
-    await expect(
-      adminPage.getByRole('checkbox', { name: 'Full body' })
-    ).toBeEnabled();
 
     await entitySelect.click();
     await entityTypePopup.getByText('Metric', { exact: true }).click();
