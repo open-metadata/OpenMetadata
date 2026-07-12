@@ -33,8 +33,8 @@ export const COLUMNS_WIDTH: Record<string, number> = {
   description: 300,
   expressionCode: 420,
   operation: 160,
-  tags: 200,
-  glossaryTerms: 220,
+  tags: 260,
+  glossaryTerms: 280,
   'entityType*': 230,
   arrayDataType: 210,
   dataTypeDisplay: 220,
@@ -53,6 +53,100 @@ export const CSV_DISABLED_COLUMNS = [
   'entityFQN*',
   'testSuite',
 ];
+
+// Columns whose values are semicolon-separated chips that wrap onto multiple
+// lines; the row grows tall enough to show every chip for these.
+export const CSV_CHIP_COLUMN_TYPES = new Set([
+  'tags',
+  'glossaryTerms',
+  'relatedTerms',
+  'domains',
+  'dataProducts',
+  'relatedMetrics',
+  'owners',
+  'owner',
+  'reviewers',
+  'extension',
+]);
+
+const CSV_GRID_BASE_ROW_HEIGHT = 44;
+const CSV_CHIP_ROW_LINE_HEIGHT = 26;
+const CSV_DEFAULT_CHIP_COLUMN_WIDTH = 200;
+const CSV_CHIP_CELL_PADDING = 16;
+const CSV_CHIP_GAP = 6;
+const CSV_CHIP_HORIZONTAL_PADDING = 16;
+const CSV_CHIP_MAX_WIDTH = 160;
+const CSV_CHIP_CHAR_WIDTH = 6.5;
+
+const getCsvColumnType = (key: string) =>
+  key.replaceAll('*', '').split('.').pop() ?? '';
+
+const getChipLabelWidth = (label: string) =>
+  Math.min(
+    CSV_CHIP_MAX_WIDTH,
+    label.length * CSV_CHIP_CHAR_WIDTH + CSV_CHIP_HORIZONTAL_PADDING
+  );
+
+// Greedy line packing that mirrors the flex-wrap chip layout: fit chips onto a
+// line until the next one overflows the column's content width, then wrap.
+const estimateChipRowLines = (items: string[], columnWidth: number) => {
+  const availableWidth = Math.max(1, columnWidth - CSV_CHIP_CELL_PADDING);
+  let lines = 1;
+  let lineWidth = 0;
+
+  items.forEach((label) => {
+    const chipWidth = getChipLabelWidth(label);
+    const projectedWidth =
+      lineWidth === 0 ? chipWidth : lineWidth + CSV_CHIP_GAP + chipWidth;
+
+    if (projectedWidth > availableWidth && lineWidth > 0) {
+      lines += 1;
+      lineWidth = chipWidth;
+    } else {
+      lineWidth = projectedWidth;
+    }
+  });
+
+  return lines;
+};
+
+/**
+ * Estimate the row height needed so every chip in the tallest chip column is
+ * visible. Returns the base height for rows that have no wrapping chips, so it
+ * can be passed directly as react-data-grid's `rowHeight` prop.
+ */
+export const getCsvGridRowHeight = (
+  row: Record<string, string>,
+  columns: readonly Column<Record<string, string>>[],
+  baseRowHeight: number = CSV_GRID_BASE_ROW_HEIGHT
+) => {
+  const maxLines = columns.reduce((currentMax, column) => {
+    const colType = getCsvColumnType(String(column.key));
+
+    if (!CSV_CHIP_COLUMN_TYPES.has(colType)) {
+      return currentMax;
+    }
+
+    const items = String(row[column.key] ?? '')
+      .split(SEMICOLON_SPLITTER)
+      .filter(Boolean);
+
+    if (items.length <= 1) {
+      return currentMax;
+    }
+
+    const columnWidth =
+      typeof column.width === 'number'
+        ? column.width
+        : typeof column.minWidth === 'number'
+        ? column.minWidth
+        : CSV_DEFAULT_CHIP_COLUMN_WIDTH;
+
+    return Math.max(currentMax, estimateChipRowLines(items, columnWidth));
+  }, 1);
+
+  return baseRowHeight + (maxLines - 1) * CSV_CHIP_ROW_LINE_HEIGHT;
+};
 
 const convertCustomPropertyStringToValueExtensionBasedOnType = (
   value: string,

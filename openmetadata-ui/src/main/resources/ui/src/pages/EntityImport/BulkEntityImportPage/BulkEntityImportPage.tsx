@@ -92,6 +92,7 @@ import {
 } from '../../../utils/CSV/CSV.utils';
 import {
   COLUMNS_WIDTH,
+  getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
@@ -233,7 +234,18 @@ const BulkEntityImportPage = () => {
   const [csvJobs, setCsvJobs] = useState<CsvAsyncJob[]>([]);
   const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [selectedCsvFile, setSelectedCsvFile] = useState<SelectedCsvFile>();
+  const [editingRowHeight, setEditingRowHeight] = useState<{
+    rowIdx: number;
+    height: number;
+  } | null>(null);
   const [activeImportLogLines, setActiveImportLogLines] = useState<string[]>(
+    []
+  );
+
+  const handleEditCellHeightChange = useCallback(
+    (rowIdx: number, height: number | null) => {
+      setEditingRowHeight(height === null ? null : { rowIdx, height });
+    },
     []
   );
   const [bulkEditLoadState, setBulkEditLoadState] = useState({
@@ -672,7 +684,8 @@ const BulkEntityImportPage = () => {
         },
         cellEditable,
         isBulkEdit,
-        shouldUseRichEditorGrid
+        shouldUseRichEditorGrid,
+        handleEditCellHeightChange
       );
 
       const filteredDataSource =
@@ -691,6 +704,7 @@ const BulkEntityImportPage = () => {
     [
       entityType,
       handleActiveStepChange,
+      handleEditCellHeightChange,
       importedEntityType,
       isBulkEdit,
       entityRules,
@@ -1161,6 +1175,27 @@ const BulkEntityImportPage = () => {
     return dataSource;
   }, [dataSource, rowFilter]);
 
+  const editableRowIndexMap = useMemo(
+    () => new Map(editableDataSource.map((row, index) => [row, index])),
+    [editableDataSource]
+  );
+
+  const getEditableRowHeight = useCallback(
+    (row: Record<string, string>) => {
+      const baseHeight = getCsvGridRowHeight(row, filterColumns);
+
+      if (
+        editingRowHeight &&
+        editableRowIndexMap.get(row) === editingRowHeight.rowIdx
+      ) {
+        return Math.max(baseHeight, editingRowHeight.height);
+      }
+
+      return baseHeight;
+    },
+    [editableRowIndexMap, editingRowHeight, filterColumns]
+  );
+
   const editDataGrid = useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
@@ -1172,6 +1207,7 @@ const BulkEntityImportPage = () => {
               unknown
             >[]
           }
+          rowHeight={getEditableRowHeight}
           rows={editableDataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}
@@ -1182,6 +1218,7 @@ const BulkEntityImportPage = () => {
   }, [
     columns,
     editableDataSource,
+    getEditableRowHeight,
     handleCopy,
     handlePaste,
     handleOnRowsChange,
@@ -1806,6 +1843,9 @@ const BulkEntityImportPage = () => {
                                 className="rdg-light"
                                 columns={importResultColumns}
                                 rowClass={getImportOperationRowClass}
+                                rowHeight={(row: Record<string, string>) =>
+                                  getCsvGridRowHeight(row, importResultColumns)
+                                }
                                 rows={validateCSVData.dataSource}
                               />
                             </div>
