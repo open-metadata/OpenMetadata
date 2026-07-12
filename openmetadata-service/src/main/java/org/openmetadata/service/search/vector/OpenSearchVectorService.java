@@ -377,16 +377,40 @@ public class OpenSearchVectorService implements VectorIndexService {
     if (aliasJson != null) {
       JsonNode root = readTreeQuietly(aliasJson);
       if (root != null) {
-        var names = root.fieldNames();
-        if (names.hasNext()) {
-          physical = names.next();
-        }
+        physical = writeIndexFor(root, writeAlias);
       }
     }
     if (physical == null && indexExists(writeAlias)) {
       physical = writeAlias;
     }
     return physical;
+  }
+
+  /**
+   * The physical index that is the write target of {@code writeAlias}. If the alias fans out over
+   * several indices (e.g. a partial rollover left the outgoing index attached), prefer the member
+   * whose {@code is_write_index} is true instead of an arbitrary first entry; fall back to the sole
+   * member otherwise.
+   */
+  private String writeIndexFor(JsonNode aliasRoot, String writeAlias) {
+    String first = null;
+    String writeTarget = null;
+    var names = aliasRoot.fieldNames();
+    while (names.hasNext()) {
+      String index = names.next();
+      first = first == null ? index : first;
+      boolean isWrite =
+          aliasRoot
+              .path(index)
+              .path("aliases")
+              .path(writeAlias)
+              .path("is_write_index")
+              .asBoolean(false);
+      if (isWrite) {
+        writeTarget = index;
+      }
+    }
+    return writeTarget != null ? writeTarget : first;
   }
 
   private boolean chunkSchemaCurrent(String physicalIndex) {
@@ -404,7 +428,12 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private boolean provisionFreshChunkIndex(String physicalIndex, String writeAlias) {
-    executeGenericRequest("PUT", "/" + physicalIndex, buildChunkIndexMapping());
+    // Skip the PUT when a prior provision created the index but failed before the alias swap, so
+    // the
+    // retry completes the swap instead of erroring with resource_already_exists on every write.
+    if (!indexExists(physicalIndex)) {
+      executeGenericRequest("PUT", "/" + physicalIndex, buildChunkIndexMapping());
+    }
     swapChunkAliases(null, physicalIndex, writeAlias);
     LOG.info(
         "Provisioned chunk index {} behind aliases {} / {}",
@@ -419,23 +448,36 @@ public class OpenSearchVectorService implements VectorIndexService {
    * {@code _reindex} copies each doc's stored {@code embedding} vector and denormalized fields
    * verbatim; the new index's analyzers apply at index time. Analyzers and field types cannot be
    * changed on a live index, so this recreate is the only path to entity-index parity. Runs under the
-   * {@link #ensureChunkIndex()} monitor, so concurrent writers block until the swap completes rather
-   * than racing the alias move.
+   * {@link #ensureChunkIndex()} monitor within one JVM.
+   *
+   * <p>Rollover-safety across concurrent instances (e.g. a rolling deploy): the target is created
+   * only when absent — never delete-then-create — so a partial or in-flight {@code desired} is healed
+   * by the deterministic-id reindex rather than dropped from under another instance; the old index is
+   * deleted only after the reindex verified a complete copy (see {@link #reindexChunks}); and the
+   * legacy path attaches the shared read alias to the new index before dropping the old one so reads
+   * never see zero chunk indices.
    */
   private boolean recreateChunkIndex(String oldIndex, String desired, String writeAlias) {
-    if (indexExists(desired)) {
-      executeGenericRequest("DELETE", "/" + desired, null);
+    if (oldIndex.equals(desired)) {
+      // Same physical index (stale/absent _meta at the current-version name): reindexing from a
+      // just-deleted self would lose data, so only (re)attach the aliases.
+      return ensureChunkAliases(desired, writeAlias);
     }
-    executeGenericRequest("PUT", "/" + desired, buildChunkIndexMapping());
+    if (!indexExists(desired)) {
+      executeGenericRequest("PUT", "/" + desired, buildChunkIndexMapping());
+    }
     reindexChunks(oldIndex, desired);
     boolean legacyConcrete = oldIndex.equals(writeAlias);
     if (legacyConcrete) {
-      // The pre-rollover index occupies the write-alias name; free it before aliasing.
-      executeGenericRequest("DELETE", "/" + oldIndex, null);
-      swapChunkAliases(null, desired, writeAlias);
+      // The legacy concrete index occupies the write-alias name, so the write alias can only move
+      // once it is gone. Attach the shared read alias to the new index first to avoid a read gap.
+      runAliasActions(
+          MAPPER.createArrayNode().add(aliasAction("add", desired, getSearchAlias(), false)));
+      deleteIndexQuietly(oldIndex);
+      runAliasActions(MAPPER.createArrayNode().add(aliasAction("add", desired, writeAlias, true)));
     } else {
       swapChunkAliases(oldIndex, desired, writeAlias);
-      executeGenericRequest("DELETE", "/" + oldIndex, null);
+      deleteIndexQuietly(oldIndex);
     }
     LOG.info("Recreated chunk index {} -> {} (aliases swapped)", oldIndex, desired);
     return true;
@@ -484,9 +526,18 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
     actions.add(aliasAction("add", newIndex, getSearchAlias(), false));
     actions.add(aliasAction("add", newIndex, writeAlias, true));
+    runAliasActions(actions);
+  }
+
+  private void runAliasActions(JsonNode actions) {
     var body = MAPPER.createObjectNode();
     body.set("actions", actions);
     executeGenericRequest("POST", "/_aliases", body.toString());
+  }
+
+  private void deleteIndexQuietly(String index) {
+    // Tolerate a concurrent rollover having already dropped the index.
+    executeGenericRequestQuietly("DELETE", "/" + index);
   }
 
   private ObjectNode aliasAction(String op, String index, String alias, boolean writeIndex) {
@@ -545,9 +596,14 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   /**
    * The {@code settings.analysis} block — om_analyzer / om_ngram / om_compound_analyzer plus their
-   * filters, tokenizer and normalizer. Mirrors the block shipped in every entity {@code
-   * *_index_mapping.json}; keep it in lockstep with those, since a drift silently re-opens the
+   * filters, tokenizer and normalizer. Mirrors the block shipped in the default (English) entity
+   * {@code *_index_mapping.json}; keep it in lockstep, since a drift silently re-opens the
    * keyword-parity gap on chunk docs.
+   *
+   * <p>Localized deployments (jp/ru/zh) use different per-language analyzers/stemmers in their entity
+   * mappings. This restores full parity for the default analyzers and is a strict improvement for
+   * localized clusters too (chunk docs were on the built-in standard analyzer before), but per-language
+   * chunk parity — deriving this block from the configured search language — is a follow-up.
    */
   private ObjectNode buildChunkAnalysis() {
     var analysis = MAPPER.createObjectNode();

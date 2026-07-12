@@ -48,10 +48,12 @@ public class VectorDocBuilder {
    * reusing stored embeddings) and swaps the aliases on the next ensure — without forcing a re-embed
    * (the fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
    *
-   * <p>v2: analyzer parity — name/displayName/columns.name gain an {@code om_analyzer} text root with
-   * {@code .ngram}/{@code .compound} subfields and {@code description} switches to {@code om_analyzer},
-   * matching the entity indices so the lexical clauses score chunk docs the same. Analyzers and field
-   * types cannot change on a live index, so the rollout is an index recreate.
+   * <p>v2: analyzer parity — name/displayName gain an {@code om_analyzer} text root with
+   * {@code .keyword}/{@code .ngram}/{@code .compound} subfields, {@code columns.name} gains an
+   * {@code om_analyzer} root with {@code .keyword}/{@code .ngram} (no {@code .compound}, matching the
+   * entity mapping), and {@code description} switches to {@code om_analyzer} — so the lexical clauses
+   * score chunk docs the same. Analyzers and field types cannot change on a live index, so the rollout
+   * is an index recreate.
    */
   public static final int CHUNK_DOC_VERSION = 2;
 
