@@ -5,6 +5,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
@@ -18,8 +19,8 @@ import org.openmetadata.sdk.network.HttpMethod;
  * Client for OpenMetadata system settings ({@code /v1/system/settings}).
  *
  * <p>Focused on glossary term relation types. Type registration preserves the server's missing,
- * null, or array representation and reconciles a fresh snapshot after potential concurrent
- * updates.
+ * null, or array representation and reconciles a fresh snapshot after a rejected concurrent
+ * update.
  */
 public class SystemSettingsService {
   private static final int MAX_REGISTRATION_ATTEMPTS = 3;
@@ -56,8 +57,9 @@ public class SystemSettingsService {
 
   /**
    * Register a glossary term relation type while preserving the current {@code relationTypes}
-   * representation. After a potential precondition failure, a fresh snapshot confirms whether
-   * another caller changed the setting. A concurrently registered matching name then becomes an
+   * representation. A 400 or 422 response is reconciled once, but retries only when the error
+   * identifies a failed JSON-Patch {@code test} operation. Explicit 409 or 412 precondition
+   * failures may retry from a fresh snapshot. A concurrently registered matching name becomes an
    * idempotent no-op.
    *
    * @param relationType the relation type to register
@@ -75,16 +77,21 @@ public class SystemSettingsService {
       try {
         return appendRelationType(relationType, snapshot);
       } catch (OpenMetadataException exception) {
-        if (!isPotentialConcurrentUpdate(exception)) {
+        int statusCode = exception.getStatusCode();
+        if (!shouldReconcileRegistrationFailure(statusCode)) {
           throw exception;
         }
-        attempts++;
         Settings latest = getGlossaryRelationSettings();
         RelationTypesSnapshot latestSnapshot = relationTypesSnapshot(latest);
         if (relationTypeExists(latestSnapshot.relationTypes(), relationType.getName())) {
           return latest;
         }
-        if (attempts >= MAX_REGISTRATION_ATTEMPTS || hasSamePatchState(snapshot, latestSnapshot)) {
+        if (!isRetryableRegistrationFailure(exception, statusCode)
+            || hasSamePatchState(snapshot, latestSnapshot)) {
+          throw exception;
+        }
+        attempts++;
+        if (attempts >= MAX_REGISTRATION_ATTEMPTS) {
           throw exception;
         }
         current = latest;
@@ -99,6 +106,7 @@ public class SystemSettingsService {
     ArrayNode patch = objectMapper.createArrayNode();
     JsonNode relationTypeValue = objectMapper.valueToTree(relationType);
     if (!snapshot.present()) {
+      addOperation(patch, "test", "", snapshot.config());
       addOperation(
           patch, "add", RELATION_TYPES_PATH, objectMapper.createArrayNode().add(relationTypeValue));
     } else if (snapshot.patchValue().isNull()) {
@@ -137,17 +145,44 @@ public class SystemSettingsService {
       throw new OpenMetadataException("glossary relationTypes must be an array, null, or absent");
     }
     List<GlossaryTermRelationType> types = toRelationConfig(settings).getRelationTypes();
-    return new RelationTypesSnapshot(types != null ? types : List.of(), relationTypes, present);
+    return new RelationTypesSnapshot(
+        types != null ? types : List.of(), relationTypes, config, present);
   }
 
-  private boolean isPotentialConcurrentUpdate(OpenMetadataException exception) {
-    int statusCode = exception.getStatusCode();
+  private boolean shouldReconcileRegistrationFailure(int statusCode) {
     return statusCode == 400 || statusCode == 409 || statusCode == 412 || statusCode == 422;
   }
 
+  private boolean isRetryableRegistrationFailure(OpenMetadataException exception, int statusCode) {
+    if (statusCode == 409 || statusCode == 412) {
+      return true;
+    }
+    if (statusCode != 400 && statusCode != 422) {
+      return false;
+    }
+    String message = exception.getMessage();
+    if (message == null) {
+      return false;
+    }
+    String normalizedMessage = message.toLowerCase(Locale.ROOT);
+    boolean identifiesTestOperation =
+        normalizedMessage.contains("operation 'test'")
+            || normalizedMessage.contains("operation \"test\"")
+            || normalizedMessage.contains("test operation")
+            || normalizedMessage.contains("json patch test");
+    return identifiesTestOperation
+        && (normalizedMessage.contains("fail")
+            || normalizedMessage.contains("mismatch")
+            || normalizedMessage.contains("did not match"));
+  }
+
   private boolean hasSamePatchState(RelationTypesSnapshot first, RelationTypesSnapshot second) {
-    return first.present() == second.present()
-        && Objects.equals(first.patchValue(), second.patchValue());
+    if (first.present() != second.present()) {
+      return false;
+    }
+    return first.present()
+        ? Objects.equals(first.patchValue(), second.patchValue())
+        : Objects.equals(first.config(), second.config());
   }
 
   private boolean relationTypeExists(List<GlossaryTermRelationType> types, String name) {
@@ -167,5 +202,8 @@ public class SystemSettingsService {
   }
 
   private record RelationTypesSnapshot(
-      List<GlossaryTermRelationType> relationTypes, JsonNode patchValue, boolean present) {}
+      List<GlossaryTermRelationType> relationTypes,
+      JsonNode patchValue,
+      JsonNode config,
+      boolean present) {}
 }

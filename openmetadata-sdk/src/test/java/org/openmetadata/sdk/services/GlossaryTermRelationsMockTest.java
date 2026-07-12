@@ -215,10 +215,58 @@ class GlossaryTermRelationsMockTest {
     verify(httpClient)
         .execute(eq(HttpMethod.PATCH), anyString(), patch.capture(), eq(Settings.class));
     ArrayNode operations = (ArrayNode) patch.getValue();
-    assertEquals(1, operations.size());
-    assertEquals("add", operations.get(0).get("op").asText());
-    assertEquals("/relationTypes", operations.get(0).get("path").asText());
-    assertEquals("prescribes", operations.get(0).get("value").get(0).get("name").asText());
+    assertEquals(2, operations.size());
+    assertEquals("test", operations.get(0).get("op").asText());
+    assertEquals("", operations.get(0).get("path").asText());
+    assertTrue(operations.get(0).get("value").isObject());
+    assertTrue(operations.get(0).get("value").isEmpty());
+    assertEquals("add", operations.get(1).get("op").asText());
+    assertEquals("/relationTypes", operations.get(1).get("path").asText());
+    assertEquals("prescribes", operations.get(1).get("value").get(0).get("name").asText());
+  }
+
+  @Test
+  void defineGlossaryRelationTypeRetriesAbsentInitializationAfterBadRequestTestFailure() {
+    assertAbsentInitializationRetriesAfterTestFailure(400);
+  }
+
+  @Test
+  void defineGlossaryRelationTypeRetriesAbsentInitializationAfterUnprocessableTestFailure() {
+    assertAbsentInitializationRetriesAfterTestFailure(422);
+  }
+
+  private void assertAbsentInitializationRetriesAfterTestFailure(int statusCode) {
+    Settings initial =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(Map.of());
+    Settings latest =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(
+                new GlossaryTermRelationSettings()
+                    .withRelationTypes(List.of(new GlossaryTermRelationType().withName("treats"))));
+    when(httpClient.execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class)))
+        .thenReturn(initial, latest);
+    when(httpClient.execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class)))
+        .thenThrow(
+            new ApiException("The JSON Patch operation 'test' failed for path ''", statusCode))
+        .thenReturn(latest);
+
+    Settings result =
+        settings.defineGlossaryRelationType(new GlossaryTermRelationType().withName("prescribes"));
+
+    assertSame(latest, result);
+    ArgumentCaptor<Object> patches = ArgumentCaptor.forClass(Object.class);
+    verify(httpClient, times(2))
+        .execute(eq(HttpMethod.PATCH), anyString(), patches.capture(), eq(Settings.class));
+    ArrayNode initialPatch = (ArrayNode) patches.getAllValues().get(0);
+    assertEquals("test", initialPatch.get(0).get("op").asText());
+    assertEquals("", initialPatch.get(0).get("path").asText());
+    ArrayNode retryPatch = (ArrayNode) patches.getAllValues().get(1);
+    assertEquals("test", retryPatch.get(0).get("op").asText());
+    assertEquals("/relationTypes", retryPatch.get(0).get("path").asText());
+    assertEquals("treats", retryPatch.get(0).get("value").get(0).get("name").asText());
   }
 
   @Test
@@ -264,7 +312,7 @@ class GlossaryTermRelationsMockTest {
     when(httpClient.execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class)))
         .thenReturn(initial, latest);
     when(httpClient.execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class)))
-        .thenThrow(new InvalidRequestException("different wording"))
+        .thenThrow(new ApiException("precondition failed", 412))
         .thenReturn(latest);
 
     Settings result =
@@ -281,19 +329,57 @@ class GlossaryTermRelationsMockTest {
 
   @Test
   void defineGlossaryRelationTypeDoesNotRetryUnrelatedBadRequest() {
-    Settings current =
+    Settings initial =
         new Settings()
             .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
             .withConfigValue(new GlossaryTermRelationSettings().withRelationTypes(List.of()));
-    InvalidRequestException failure = new InvalidRequestException("invalid relation type");
+    Settings latest =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(
+                new GlossaryTermRelationSettings()
+                    .withRelationTypes(List.of(new GlossaryTermRelationType().withName("treats"))));
+    InvalidRequestException failure =
+        new InvalidRequestException("relation type test failed validation");
     when(httpClient.execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class)))
-        .thenReturn(current);
+        .thenReturn(initial, latest);
     when(httpClient.execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class)))
         .thenThrow(failure);
 
     InvalidRequestException thrown =
         assertThrows(
             InvalidRequestException.class,
+            () ->
+                settings.defineGlossaryRelationType(
+                    new GlossaryTermRelationType().withName("prescribes")));
+
+    assertSame(failure, thrown);
+    verify(httpClient, times(2))
+        .execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class));
+    verify(httpClient).execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class));
+  }
+
+  @Test
+  void defineGlossaryRelationTypeDoesNotRetryUnrelatedUnprocessablePatch() {
+    Settings initial =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(new GlossaryTermRelationSettings().withRelationTypes(List.of()));
+    Settings latest =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(
+                new GlossaryTermRelationSettings()
+                    .withRelationTypes(List.of(new GlossaryTermRelationType().withName("treats"))));
+    ApiException failure = new ApiException("relation type test failed validation", 422);
+    when(httpClient.execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class)))
+        .thenReturn(initial, latest);
+    when(httpClient.execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class)))
+        .thenThrow(failure);
+
+    ApiException thrown =
+        assertThrows(
+            ApiException.class,
             () ->
                 settings.defineGlossaryRelationType(
                     new GlossaryTermRelationType().withName("prescribes")));
