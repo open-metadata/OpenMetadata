@@ -15,14 +15,14 @@ import {
   CodeSquare01,
   File02,
   File05,
-  File06,
   FileCheck02,
-  Folder,
   Settings02,
-  SlashCircle01,
-  Sun,
+  SlashCircle01
 } from '@untitledui/icons';
 import React from 'react';
+import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
+import { ReactComponent as FolderIcon } from '../assets/svg/common/folder.svg';
+import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
 import { ReactComponent as KnowledgeCenter } from '../assets/svg/context-center.svg';
 import { ReactComponent as AIAutomation } from '../assets/svg/entity/ai-automation.svg';
 import { ReactComponent as APICollection } from '../assets/svg/entity/api-collection.svg';
@@ -366,7 +366,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-utility-blue-700',
     bgClass: 'tw:bg-utility-blue-50',
     borderClass: 'tw:border-utility-blue-200',
-    icon: File06,
+    icon: FileIcon,
   },
   [EntityType.KNOWLEDGE_CENTER]: {
     iconClass: 'tw:text-utility-blue-700',
@@ -528,7 +528,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-teal-600 tw:dark:text-teal-400',
     bgClass: 'tw:bg-teal-50 tw:dark:bg-teal-950',
     borderClass: 'tw:border-teal-300 tw:dark:border-teal-700',
-    icon: Sun,
+    icon: MemoriesIcon,
   },
   aiAutomation: {
     iconClass: 'tw:text-moss-600 tw:dark:text-moss-400',
@@ -552,7 +552,7 @@ export const ENTITY_ICON_MAPPER: Record<
     iconClass: 'tw:text-utility-error-600',
     bgClass: 'tw:bg-error-primary',
     borderClass: 'tw:border-utility-error-200',
-    icon: Folder,
+    icon: FolderIcon,
   },
   contextPlugin: {
     iconClass: 'tw:text-utility-fuchsia-600',
