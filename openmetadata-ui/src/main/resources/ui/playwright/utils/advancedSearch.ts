@@ -184,10 +184,14 @@ export const selectOption = async (
   if (isSearchable) {
     await comboboxInput.clear();
     await comboboxInput.fill(optionTitle);
+  } else if ((await comboboxInput.count()) > 0) {
+    // Select.ComboBox: clicking the input triggers AriaGroup.handlePointerDown
+    // which calls state.open(null, 'input') — not a toggle, so it only opens.
+    // Fill with '' afterwards to clear any current-value filter so all options show.
+    await comboboxInput.click();
+    await comboboxInput.fill('');
   } else {
-    // Clicking the trigger button (not the input) opens Select.ComboBox in
-    // "show all" mode (per ARIA spec for disclosure buttons), preventing the
-    // input's current value from filtering out unrelated options.
+    // Plain Select (no combobox input): click the trigger button to open.
     await triggerButton.click();
   }
 
