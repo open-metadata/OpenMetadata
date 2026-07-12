@@ -338,98 +338,277 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private boolean createChunkIndexIfAbsent() {
-    String indexName = getChunkIndexName();
+    String writeAlias = getChunkIndexName();
+    boolean ready = false;
     try {
-      boolean exists = client.indices().exists(e -> e.index(indexName)).value();
-      if (!exists) {
-        executeGenericRequest("PUT", "/" + indexName, buildChunkIndexMapping());
-        LOG.info("Created dedicated vector chunk index {}", indexName);
-        return true;
+      String current = resolvePhysicalIndex(writeAlias);
+      String desired = chunkPhysicalIndexName();
+      if (current == null) {
+        ready = provisionFreshChunkIndex(desired, writeAlias);
+      } else if (current.equals(desired) && chunkSchemaCurrent(desired)) {
+        ready = ensureChunkAliases(desired, writeAlias);
+      } else {
+        ready = recreateChunkIndex(current, desired, writeAlias);
       }
-      // The alias is normally attached at creation, but an index left over from a partial or manual
-      // setup may miss it — and reads via the alias would then silently skip all chunk docs. The
-      // alias PUT is idempotent. Only report "ensured" once the mapping is at the current version
-      // so
-      // a failed upgrade does not latch (and so docs are not stamped with the new docVersion into a
-      // still-stale mapping).
-      executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
-      return applyChunkMappingUpgradeIfStale(indexName);
     } catch (Exception e) {
-      LOG.error("Failed to ensure chunk index {}: {}", indexName, e.getMessage());
-      return false;
+      LOG.error("Failed to ensure chunk index (alias {}): {}", writeAlias, e.getMessage());
     }
+    return ready;
   }
 
   /**
-   * When the chunk index already exists, compare its {@code _meta.chunkDocVersion} against the code
-   * {@link VectorDocBuilder#CHUNK_DOC_VERSION}; if the index is older, apply the additive
-   * {@code PUT _mapping} so the new denormalized fields become mappable. This is legal on a
-   * {@code dynamic:false} index and safe pre-backfill: old docs simply lack the new fields until a
-   * Search Reindex re-materializes them (the reindex reuses embeddings, so there is no re-embed
-   * cost — see {@link #updateEntityEmbeddingChunks(EntityInterface, String)}).
-   *
-   * @return {@code true} when the index is (already or now) at the current version; {@code false}
-   *     when the upgrade could not be applied, so the caller leaves the index un-ensured and the
-   *     PUT is retried on the next write rather than silently proceeding with a stale mapping.
+   * The versioned physical index the chunk write-alias fronts, e.g. {@code
+   * data_asset_embeddings_chunks_000002}. A new {@link VectorDocBuilder#CHUNK_DOC_VERSION} yields a
+   * new physical name so a rollover is idempotent and never collides with the outgoing index.
    */
-  private boolean applyChunkMappingUpgradeIfStale(String indexName) {
-    try {
-      String mappingJson = executeGenericRequest("GET", "/" + indexName + "/_mapping", null);
-      JsonNode mappings = MAPPER.readTree(mappingJson).path(indexName).path("mappings");
-      int existingVersion = mappings.path("_meta").path("chunkDocVersion").asInt(0);
-      if (existingVersion >= VectorDocBuilder.CHUNK_DOC_VERSION) {
-        return true;
+  private String chunkPhysicalIndexName() {
+    return getChunkIndexName()
+        + String.format(Locale.ROOT, "_%06d", VectorDocBuilder.CHUNK_DOC_VERSION);
+  }
+
+  /**
+   * What currently backs the chunk write-alias name: the physical index an alias points to, a legacy
+   * concrete index literally named like the alias (pre-rollover clusters), or {@code null} when
+   * nothing exists yet.
+   */
+  private String resolvePhysicalIndex(String writeAlias) {
+    String physical = null;
+    String aliasJson = executeGenericRequestQuietly("GET", "/_alias/" + writeAlias);
+    if (aliasJson != null) {
+      JsonNode root = readTreeQuietly(aliasJson);
+      if (root != null) {
+        var names = root.fieldNames();
+        if (names.hasNext()) {
+          physical = names.next();
+        }
       }
-      executeGenericRequest("PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody());
-      LOG.info(
-          "Upgraded chunk index {} mapping chunkDocVersion {} -> {} (denormalized fields backfill "
-              + "on next Search Reindex)",
-          indexName,
-          existingVersion,
-          VectorDocBuilder.CHUNK_DOC_VERSION);
-      return true;
-    } catch (Exception e) {
-      LOG.error(
-          "Failed to upgrade chunk index {} mapping; leaving it un-ensured to retry on the next "
-              + "write rather than stamping docs with the new docVersion into a stale mapping: {}",
-          indexName,
-          e.getMessage());
-      return false;
     }
+    if (physical == null && indexExists(writeAlias)) {
+      physical = writeAlias;
+    }
+    return physical;
+  }
+
+  private boolean chunkSchemaCurrent(String physicalIndex) {
+    boolean current = false;
+    try {
+      String mappingJson = executeGenericRequest("GET", "/" + physicalIndex + "/_mapping", null);
+      JsonNode mappings = MAPPER.readTree(mappingJson).path(physicalIndex).path("mappings");
+      current =
+          mappings.path("_meta").path("chunkDocVersion").asInt(0)
+              >= VectorDocBuilder.CHUNK_DOC_VERSION;
+    } catch (Exception e) {
+      LOG.debug("Chunk schema probe failed for {}: {}", physicalIndex, e.getMessage());
+    }
+    return current;
+  }
+
+  private boolean provisionFreshChunkIndex(String physicalIndex, String writeAlias) {
+    executeGenericRequest("PUT", "/" + physicalIndex, buildChunkIndexMapping());
+    swapChunkAliases(null, physicalIndex, writeAlias);
+    LOG.info(
+        "Provisioned chunk index {} behind aliases {} / {}",
+        physicalIndex,
+        writeAlias,
+        getSearchAlias());
+    return true;
+  }
+
+  /**
+   * Rebuild the chunk index under a fresh physical name and swap the aliases at zero embedding cost:
+   * {@code _reindex} copies each doc's stored {@code embedding} vector and denormalized fields
+   * verbatim; the new index's analyzers apply at index time. Analyzers and field types cannot be
+   * changed on a live index, so this recreate is the only path to entity-index parity. Runs under the
+   * {@link #ensureChunkIndex()} monitor, so concurrent writers block until the swap completes rather
+   * than racing the alias move.
+   */
+  private boolean recreateChunkIndex(String oldIndex, String desired, String writeAlias) {
+    if (indexExists(desired)) {
+      executeGenericRequest("DELETE", "/" + desired, null);
+    }
+    executeGenericRequest("PUT", "/" + desired, buildChunkIndexMapping());
+    reindexChunks(oldIndex, desired);
+    boolean legacyConcrete = oldIndex.equals(writeAlias);
+    if (legacyConcrete) {
+      // The pre-rollover index occupies the write-alias name; free it before aliasing.
+      executeGenericRequest("DELETE", "/" + oldIndex, null);
+      swapChunkAliases(null, desired, writeAlias);
+    } else {
+      swapChunkAliases(oldIndex, desired, writeAlias);
+      executeGenericRequest("DELETE", "/" + oldIndex, null);
+    }
+    LOG.info("Recreated chunk index {} -> {} (aliases swapped)", oldIndex, desired);
+    return true;
+  }
+
+  private void reindexChunks(String source, String dest) {
+    var body = MAPPER.createObjectNode();
+    body.set("source", MAPPER.createObjectNode().put("index", source));
+    body.set("dest", MAPPER.createObjectNode().put("index", dest));
+    // wait_for_completion=true suits modest catalogs; for very large indices switch to
+    // wait_for_completion=false and poll the returned task via GET /_tasks/{taskId}.
+    executeGenericRequest(
+        "POST",
+        "/_reindex?wait_for_completion=true&refresh=true&slices=auto&requests_per_second=-1",
+        body.toString());
+  }
+
+  private boolean ensureChunkAliases(String physicalIndex, String writeAlias) {
+    swapChunkAliases(null, physicalIndex, writeAlias);
+    return true;
+  }
+
+  /**
+   * Atomically point the chunk read ({@code dataAssetEmbeddings}) and write (base-name) aliases at
+   * {@code newIndex}, removing them from {@code oldIndex} in the same request so a reader never sees
+   * zero or two backing indices. The removes are index-scoped, so the shared read alias stays
+   * attached to the entity indices.
+   */
+  private void swapChunkAliases(String oldIndex, String newIndex, String writeAlias) {
+    var actions = MAPPER.createArrayNode();
+    if (oldIndex != null && !oldIndex.equals(newIndex)) {
+      actions.add(aliasAction("remove", oldIndex, getSearchAlias(), false));
+      actions.add(aliasAction("remove", oldIndex, writeAlias, false));
+    }
+    actions.add(aliasAction("add", newIndex, getSearchAlias(), false));
+    actions.add(aliasAction("add", newIndex, writeAlias, true));
+    var body = MAPPER.createObjectNode();
+    body.set("actions", actions);
+    executeGenericRequest("POST", "/_aliases", body.toString());
+  }
+
+  private ObjectNode aliasAction(String op, String index, String alias, boolean writeIndex) {
+    var spec = MAPPER.createObjectNode().put("index", index).put("alias", alias);
+    if (writeIndex) {
+      spec.put("is_write_index", true);
+    }
+    return (ObjectNode) MAPPER.createObjectNode().set(op, spec);
+  }
+
+  private boolean indexExists(String name) {
+    boolean exists = false;
+    try {
+      exists = client.indices().exists(e -> e.index(name)).value();
+    } catch (Exception e) {
+      LOG.debug("Index exists probe failed for {}: {}", name, e.getMessage());
+    }
+    return exists;
+  }
+
+  private String executeGenericRequestQuietly(String method, String endpoint) {
+    String result = null;
+    try {
+      result = executeGenericRequest(method, endpoint, null);
+    } catch (Exception e) {
+      LOG.debug("Quiet request {} {} returned no body: {}", method, endpoint, e.getMessage());
+    }
+    return result;
+  }
+
+  private JsonNode readTreeQuietly(String json) {
+    JsonNode node = null;
+    try {
+      node = MAPPER.readTree(json);
+    } catch (Exception e) {
+      LOG.debug("Failed to parse JSON: {}", e.getMessage());
+    }
+    return node;
   }
 
   private String buildChunkIndexMapping() {
     var mappings = MAPPER.createObjectNode().put("dynamic", false);
     mappings.set("properties", buildChunkProperties());
     mappings.set("_meta", chunkMeta());
+    var settings = MAPPER.createObjectNode();
+    // max_ngram_diff must equal the om_ngram tokenizer span (max_gram 20 - min_gram 3 = 17); the
+    // default is 1, so index creation is REJECTED without it. Validation fires at creation time, so
+    // it has to live in settings.index here — it cannot be applied after the fact.
+    settings.set("index", MAPPER.createObjectNode().put("knn", true).put("max_ngram_diff", 17));
+    settings.set("analysis", buildChunkAnalysis());
     var root = MAPPER.createObjectNode();
-    root.set(
-        "settings",
-        MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
+    root.set("settings", settings);
     root.set("mappings", mappings);
-    root.set("aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
     return root.toString();
   }
 
   /**
-   * Additive {@code PUT _mapping} body applied by {@link #applyChunkMappingUpgradeIfStale}. Sends the
-   * property set <b>minus the {@code embedding} knn_vector</b> plus the bumped
-   * {@code _meta.chunkDocVersion}. Re-declaring the existing {@code knn_vector} is rejected by some
-   * OpenSearch versions/plugins even with identical parameters; because {@code PUT _mapping} is
-   * atomic, that would fail the whole request and silently leave the genuinely new denormalized
-   * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
-   * {@code docVersion} — defeating the rollout. Omitting the unchanged vector avoids that
-   * all-or-nothing failure; the remaining fields are additive (new fields) or legal no-ops
-   * (unchanged keyword/text/integer). Absent-on-old-docs fields simply do not match until a Search
-   * Reindex backfills them, so there is zero regression before the backfill runs.
+   * The {@code settings.analysis} block — om_analyzer / om_ngram / om_compound_analyzer plus their
+   * filters, tokenizer and normalizer. Mirrors the block shipped in every entity {@code
+   * *_index_mapping.json}; keep it in lockstep with those, since a drift silently re-opens the
+   * keyword-parity gap on chunk docs.
    */
-  private String buildChunkMappingUpgradeBody() {
-    ObjectNode properties = buildChunkProperties();
-    properties.remove("embedding");
-    var body = MAPPER.createObjectNode();
-    body.set("properties", properties);
-    body.set("_meta", chunkMeta());
-    return body.toString();
+  private ObjectNode buildChunkAnalysis() {
+    var analysis = MAPPER.createObjectNode();
+    analysis.set("tokenizer", chunkTokenizers());
+    analysis.set("normalizer", chunkNormalizers());
+    analysis.set("analyzer", chunkAnalyzers());
+    analysis.set("filter", chunkFilters());
+    return analysis;
+  }
+
+  private ObjectNode chunkTokenizers() {
+    var ngram =
+        MAPPER.createObjectNode().put("type", "ngram").put("min_gram", 3).put("max_gram", 20);
+    ngram.set("token_chars", MAPPER.createArrayNode().add("letter").add("digit"));
+    return (ObjectNode) MAPPER.createObjectNode().set("n_gram_tokenizer", ngram);
+  }
+
+  private ObjectNode chunkNormalizers() {
+    var normalizer = MAPPER.createObjectNode().put("type", "custom");
+    normalizer.set("char_filter", MAPPER.createArrayNode());
+    normalizer.set("filter", MAPPER.createArrayNode().add("lowercase"));
+    return (ObjectNode) MAPPER.createObjectNode().set("lowercase_normalizer", normalizer);
+  }
+
+  private ObjectNode chunkAnalyzers() {
+    var analyzers = MAPPER.createObjectNode();
+    analyzers.set(
+        "om_analyzer", analyzer("standard", "lowercase", "word_delimiter_filter", "om_stemmer"));
+    analyzers.set("om_ngram", customAnalyzer("n_gram_tokenizer", "lowercase"));
+    analyzers.set(
+        "om_compound_analyzer",
+        analyzer("standard", "lowercase", "compound_word_delimiter_graph", "flatten_graph"));
+    return analyzers;
+  }
+
+  private ObjectNode analyzer(String tokenizer, String... filters) {
+    var node = MAPPER.createObjectNode().put("tokenizer", tokenizer);
+    var arr = MAPPER.createArrayNode();
+    for (String filter : filters) {
+      arr.add(filter);
+    }
+    node.set("filter", arr);
+    return node;
+  }
+
+  private ObjectNode customAnalyzer(String tokenizer, String... filters) {
+    return analyzer(tokenizer, filters).put("type", "custom");
+  }
+
+  private ObjectNode chunkFilters() {
+    var filters = MAPPER.createObjectNode();
+    filters.set(
+        "om_stemmer", MAPPER.createObjectNode().put("type", "stemmer").put("name", "kstem"));
+    filters.set(
+        "word_delimiter_filter",
+        MAPPER.createObjectNode().put("type", "word_delimiter").put("preserve_original", true));
+    filters.set("compound_word_delimiter_graph", compoundDelimiterFilter());
+    return filters;
+  }
+
+  private ObjectNode compoundDelimiterFilter() {
+    return MAPPER
+        .createObjectNode()
+        .put("type", "word_delimiter_graph")
+        .put("generate_word_parts", true)
+        .put("generate_number_parts", true)
+        .put("split_on_case_change", true)
+        .put("split_on_numerics", true)
+        .put("catenate_words", false)
+        .put("catenate_numbers", false)
+        .put("catenate_all", false)
+        .put("preserve_original", true)
+        .put("stem_english_possessive", true);
   }
 
   private ObjectNode chunkMeta() {
@@ -456,21 +635,26 @@ public class OpenSearchVectorService implements VectorIndexService {
         List.of("parentId", "fingerprint", "entityType", "fullyQualifiedName", "serviceType")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
-    // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
-    // (case_insensitive term) clauses, which target `<field>.keyword`, resolve on chunk docs.
-    for (String keywordWithSub : List.of("name", "displayName")) {
-      properties.set(keywordWithSub, keywordWithKeywordSubfield());
-    }
+    // name/displayName get the full entity-index treatment: an om_analyzer text root plus .keyword
+    // (lowercase_normalizer), .ngram (om_ngram) and .compound (om_compound_analyzer) subfields, so
+    // the shard-fair exact/phrase/compound clauses all resolve on chunk docs (Phase-4 parity).
+    properties.set("name", analyzedIdentityField(false));
+    properties.set("displayName", analyzedIdentityField(true));
     for (String integer : List.of("chunkIndex", "chunkCount", "docVersion")) {
       properties.set(integer, MAPPER.createObjectNode().put("type", "integer"));
     }
-    // Analyzed lexical parity fields. The dedicated chunk index defines no custom analyzers, so
-    // these use the default standard analyzer; full om_analyzer/compound parity is a Phase 4
-    // index recreate.
-    for (String text :
-        List.of("textToEmbed", "textToLLMContext", "description", "fqnParts", "synonyms")) {
+    // textToEmbed/textToLLMContext are the embedding source + LLM context, never lexically scored,
+    // so they stay plain standard-analyzer text.
+    for (String text : List.of("textToEmbed", "textToLLMContext")) {
       properties.set(text, MAPPER.createObjectNode().put("type", "text"));
     }
+    // description gets om_analyzer parity with the entity indices; fqnParts/synonyms gain a
+    // .keyword
+    // subfield to match. fullyQualifiedName stays a plain keyword (the entity indices map it so
+    // too).
+    properties.set("description", descriptionMapping());
+    properties.set("fqnParts", textWithKeywordSub());
+    properties.set("synonyms", textWithKeywordSub());
     properties.set("deleted", MAPPER.createObjectNode().put("type", "boolean"));
     properties.set("tags", objectKeyword("tagFQN"));
     properties.set("domains", objectKeyword("name"));
@@ -490,16 +674,46 @@ public class OpenSearchVectorService implements VectorIndexService {
     return properties;
   }
 
-  private ObjectNode keywordWithKeywordSubfield() {
+  /**
+   * An {@code om_analyzer} text root with {@code .keyword} (lowercase_normalizer), {@code .ngram}
+   * (om_ngram) and {@code .compound} (om_compound_analyzer) subfields — the entity-index shape for
+   * {@code name}. {@code displayName} additionally carries {@code .actualCase}.
+   */
+  private ObjectNode analyzedIdentityField(boolean withActualCase) {
+    var fields = MAPPER.createObjectNode();
+    fields.set("keyword", keywordSub("lowercase_normalizer"));
+    if (withActualCase) {
+      fields.set("actualCase", keywordSub(null));
+    }
+    fields.set("ngram", textAnalyzed("om_ngram"));
+    fields.set("compound", textAnalyzed("om_compound_analyzer"));
+    return (ObjectNode) textAnalyzed("om_analyzer").set("fields", fields);
+  }
+
+  private ObjectNode descriptionMapping() {
+    return textAnalyzed("om_analyzer")
+        .put("similarity", "boolean")
+        .put("term_vector", "with_positions_offsets");
+  }
+
+  private ObjectNode textWithKeywordSub() {
     return (ObjectNode)
         MAPPER
             .createObjectNode()
-            .put("type", "keyword")
-            .set(
-                "fields",
-                MAPPER
-                    .createObjectNode()
-                    .set("keyword", MAPPER.createObjectNode().put("type", "keyword")));
+            .put("type", "text")
+            .set("fields", MAPPER.createObjectNode().set("keyword", keywordSub(null)));
+  }
+
+  private ObjectNode textAnalyzed(String analyzer) {
+    return MAPPER.createObjectNode().put("type", "text").put("analyzer", analyzer);
+  }
+
+  private ObjectNode keywordSub(String normalizer) {
+    var keyword = MAPPER.createObjectNode().put("type", "keyword").put("ignore_above", 256);
+    if (normalizer != null) {
+      keyword.put("normalizer", normalizer);
+    }
+    return keyword;
   }
 
   private ObjectNode objectKeyword(String field) {
@@ -542,7 +756,10 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private ObjectNode columnsMapping() {
-    var name = keywordWithKeywordSubfield();
+    var fields = MAPPER.createObjectNode();
+    fields.set("keyword", keywordSub("lowercase_normalizer"));
+    fields.set("ngram", textAnalyzed("om_ngram"));
+    var name = (ObjectNode) textAnalyzed("om_analyzer").set("fields", fields);
     return (ObjectNode)
         MAPPER.createObjectNode().set("properties", MAPPER.createObjectNode().set("name", name));
   }
