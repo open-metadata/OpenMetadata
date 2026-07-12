@@ -77,6 +77,13 @@ const CSV_CHIP_GAP = 6;
 const CSV_CHIP_HORIZONTAL_PADDING = 16;
 const CSV_CHIP_MAX_WIDTH = 160;
 const CSV_CHIP_CHAR_WIDTH = 6.5;
+// Width reserved per line before wrapping. The chip width is only estimated from
+// the label text, so it under-counts for values the estimate can't see — most
+// notably owner/reviewer avatar chips (a ~24px avatar + gap) and wide glyphs.
+// Reserving this margin biases a borderline row toward one extra (visible) line
+// rather than packing too many chips and clipping the last one, since the RDG
+// `.rdg-cell` clips overflow regardless of the inner container's `overflow`.
+const CSV_CHIP_ROW_SAFETY_MARGIN = 20;
 
 const getCsvColumnType = (key: string) =>
   key.replaceAll('*', '').split('.').pop() ?? '';
@@ -90,7 +97,10 @@ const getChipLabelWidth = (label: string) =>
 // Greedy line packing that mirrors the flex-wrap chip layout: fit chips onto a
 // line until the next one overflows the column's content width, then wrap.
 const estimateChipRowLines = (items: string[], columnWidth: number) => {
-  const availableWidth = Math.max(1, columnWidth - CSV_CHIP_CELL_PADDING);
+  const availableWidth = Math.max(
+    1,
+    columnWidth - CSV_CHIP_CELL_PADDING - CSV_CHIP_ROW_SAFETY_MARGIN
+  );
   let lines = 1;
   let lineWidth = 0;
 

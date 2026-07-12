@@ -51,6 +51,7 @@ import {
   convertCustomPropertyStringToEntityExtension,
   convertEntityExtensionToCustomPropertyString,
   getCSVStringFromColumnsAndDataSource,
+  getCsvGridRowHeight,
   splitCSV,
 } from './CSVPureUtils';
 
@@ -1453,8 +1454,8 @@ describe('CSVUtils', () => {
       );
 
       expect(descColumn.minWidth).toBe(300);
-      expect(tagsColumn.minWidth).toBe(200);
-      expect(glossaryTermsColumn.minWidth).toBe(220);
+      expect(tagsColumn.minWidth).toBe(260);
+      expect(glossaryTermsColumn.minWidth).toBe(280);
       expect(domainsColumn.minWidth).toBe(200);
       expect(expressionCodeColumn.minWidth).toBe(420);
     });
@@ -2033,5 +2034,73 @@ describe('CSVUtils', () => {
       expect(screen.getByText('SQL')).toBeInTheDocument();
       expect(screen.getByText('SELECT 1')).toBeInTheDocument();
     });
+  });
+});
+
+describe('getCsvGridRowHeight', () => {
+  const BASE_HEIGHT = 44;
+  const LINE_HEIGHT = 26;
+
+  const col = (key: string, width?: number): Column<Record<string, string>> =>
+    ({ key, name: key, ...(width ? { width } : {}) } as Column<
+      Record<string, string>
+    >);
+
+  it('returns the base height when there are no chip columns', () => {
+    const columns = [col('name'), col('description')];
+
+    expect(getCsvGridRowHeight({ name: 'a', description: 'b' }, columns)).toBe(
+      BASE_HEIGHT
+    );
+  });
+
+  it('returns the base height for a chip column with a single value', () => {
+    const columns = [col('tags', 260)];
+
+    expect(getCsvGridRowHeight({ tags: 'PII.Sensitive' }, columns)).toBe(
+      BASE_HEIGHT
+    );
+  });
+
+  it('grows the row when chips wrap onto multiple lines', () => {
+    const columns = [col('tags', 260)];
+    const manyTags = Array.from({ length: 8 }, (_, i) => `Tier.Tag${i}`).join(
+      ';'
+    );
+
+    const height = getCsvGridRowHeight({ tags: manyTags }, columns);
+
+    expect(height).toBeGreaterThan(BASE_HEIGHT);
+    // Height must be a whole number of extra line-heights above the base.
+    expect((height - BASE_HEIGHT) % LINE_HEIGHT).toBe(0);
+  });
+
+  it('takes the tallest chip column when several wrap', () => {
+    const wide = Array.from({ length: 10 }, (_, i) => `Term${i}`).join(';');
+    const columns = [col('tags', 260), col('glossaryTerms', 280)];
+
+    const height = getCsvGridRowHeight(
+      { tags: 'A;B', glossaryTerms: wide },
+      columns
+    );
+
+    // Matches the glossaryTerms column, which wraps to more lines than tags.
+    expect(height).toBe(
+      getCsvGridRowHeight({ glossaryTerms: wide }, [col('glossaryTerms', 280)])
+    );
+  });
+
+  it('ignores empty segments from trailing/duplicate separators', () => {
+    const columns = [col('tags', 260)];
+
+    expect(getCsvGridRowHeight({ tags: 'OnlyOne;;' }, columns)).toBe(
+      BASE_HEIGHT
+    );
+  });
+
+  it('honours a custom base row height', () => {
+    const columns = [col('name')];
+
+    expect(getCsvGridRowHeight({ name: 'a' }, columns, 60)).toBe(60);
   });
 });

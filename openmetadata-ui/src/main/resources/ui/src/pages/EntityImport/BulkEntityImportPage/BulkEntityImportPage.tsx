@@ -1180,9 +1180,27 @@ const BulkEntityImportPage = () => {
     [editableDataSource]
   );
 
+  // Content-based height per row, precomputed once per data/column change.
+  // react-data-grid invokes the `rowHeight` function for every row (not just
+  // visible ones) whenever its identity changes, and the identity changes on
+  // every ResizeObserver tick while a multi-select cell is being edited. Keeping
+  // the base heights in a map makes each of those ticks an O(1) lookup per row
+  // instead of re-scanning every column/chip of every row.
+  const contentRowHeights = useMemo(
+    () =>
+      new Map(
+        editableDataSource.map((row) => [
+          row,
+          getCsvGridRowHeight(row, filterColumns),
+        ])
+      ),
+    [editableDataSource, filterColumns]
+  );
+
   const getEditableRowHeight = useCallback(
     (row: Record<string, string>) => {
-      const baseHeight = getCsvGridRowHeight(row, filterColumns);
+      const baseHeight =
+        contentRowHeights.get(row) ?? getCsvGridRowHeight(row, filterColumns);
 
       if (
         editingRowHeight &&
@@ -1193,7 +1211,7 @@ const BulkEntityImportPage = () => {
 
       return baseHeight;
     },
-    [editableRowIndexMap, editingRowHeight, filterColumns]
+    [contentRowHeights, editableRowIndexMap, editingRowHeight, filterColumns]
   );
 
   const editDataGrid = useMemo(() => {
