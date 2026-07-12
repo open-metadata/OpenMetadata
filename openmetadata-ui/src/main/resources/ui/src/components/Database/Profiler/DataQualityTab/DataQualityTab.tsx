@@ -48,6 +48,7 @@ import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentMana
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { deleteEntity } from '../../../../rest/miscAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
+import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
@@ -63,9 +64,9 @@ import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterT
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
+import TestCaseFormDrawer from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import AddToBundleSuiteModal from '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component';
-import BundleSuiteForm from '../../../DataQuality/BundleSuiteForm/BundleSuiteForm';
+import BundleSuiteFormDrawer from '../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
@@ -126,6 +127,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   tableHeader,
   removeTableBorder = false,
   enableBulkActions = false,
+  editVariant = getDefaultTestCaseFormVariant(),
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -877,22 +879,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onCancel={() => setIsAddToBundleSuiteModalOpen(false)}
         />
       )}
-      {isBundleSuiteFormOpen && (
-        <BundleSuiteForm
-          drawerProps={{ open: isBundleSuiteFormOpen }}
-          initialValues={{ testCases: bundleSuiteFormInitialCases }}
-          onCancel={() => {
-            setIsBundleSuiteFormOpen(false);
-            setBundleSuiteFormInitialCases([]);
-          }}
-          onSuccess={handleBundleSuiteSuccess}
-        />
-      )}
+      <BundleSuiteFormDrawer
+        initialValues={{ testCases: bundleSuiteFormInitialCases }}
+        open={isBundleSuiteFormOpen}
+        onClose={() => {
+          setIsBundleSuiteFormOpen(false);
+          setBundleSuiteFormInitialCases([]);
+        }}
+        onSuccess={handleBundleSuiteSuccess}
+      />
       {selectedTestCase?.action === 'UPDATE' && (
-        <EditTestCaseModalV1
+        <TestCaseFormDrawer
           open
           testCase={selectedTestCase?.data}
-          onCancel={handleCancel}
+          variant={editVariant}
+          onClose={handleCancel}
           onUpdate={onTestUpdate}
         />
       )}

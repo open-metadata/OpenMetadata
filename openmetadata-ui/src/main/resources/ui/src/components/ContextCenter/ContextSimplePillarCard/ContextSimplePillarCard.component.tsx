@@ -31,11 +31,14 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
 }) => {
   return (
     <Card className="tw:h-full tw:flex tw:flex-col" data-testid={dataTestId}>
-      <Box align="center" className="tw:mb-3.5 tw:p-5 tw:pb-0" gap={3}>
+      <Box
+        align="center"
+        className="tw:mb-3.5 tw:px-4 tw:py-3  tw:pb-0"
+        gap={3}>
         <FeaturedIcon
           className="tw:size-9 tw:rounded-lg tw:bg-brand-50"
           color="brand"
-          icon={Icon}
+          icon={<Icon className="tw:size-5" />}
           size="sm"
           theme="light"
         />
@@ -58,9 +61,14 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
             <Skeleton height="14px" variant="rounded" width="70%" />
           </Box>
         ) : isEmpty ? (
-          <Typography className="tw:text-quaternary" size="text-sm">
-            {emptyMessage}
-          </Typography>
+          <div className="tw:px-4">
+            <Typography
+              as="p"
+              className="tw:text-quaternary tw:text-center"
+              size="text-sm">
+              {emptyMessage}
+            </Typography>
+          </div>
         ) : (
           children
         )}
