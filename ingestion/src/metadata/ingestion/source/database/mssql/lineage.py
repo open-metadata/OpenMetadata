@@ -13,6 +13,9 @@ MSSQL lineage module
 """
 
 from datetime import datetime
+from typing import Iterator  # noqa: UP035
+
+from sqlalchemy.engine import Engine
 
 from metadata.ingestion.source.database.lineage_source import LineageSource
 from metadata.ingestion.source.database.mssql.constants import (
@@ -21,6 +24,7 @@ from metadata.ingestion.source.database.mssql.constants import (
 )
 from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_STORED_PROCEDURE_QUERIES,
+    MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE,
     MSSQL_SQL_STATEMENT,
 )
 from metadata.ingestion.source.database.mssql.query_parser import MssqlQueryParserSource
@@ -54,7 +58,7 @@ class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, Li
         """
         server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
         current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
-        return self.sql_stmt.format(
+        return self.resolve_query_log_statement().format(
             start_time=start_time.strftime(current_datetime_format),
             end_time=end_time.strftime(current_datetime_format),
             filters=self.get_filters(),
@@ -63,14 +67,27 @@ class MssqlLineageSource(MssqlQueryParserSource, StoredProcedureLineageMixin, Li
 
     def get_stored_procedure_sql_statement(self) -> str:
         """
-        Return the SQL statement to get the stored procedure queries
+        Return the SQL statement to get the stored procedure queries.
+
+        Uses Query Store when enabled (durable, per-statement text tied to the
+        parent procedure via object_id), otherwise the plan-cache DMV query, which
+        cannot reliably attribute a procedure's DML statements to it.
         """
         start, _ = get_start_and_end(self.source_config.queryLogDuration)
         server_date_format = get_sqlalchemy_engine_dateformat(self.engine)
         current_datetime_format = MSSQL_DATEFORMAT_DATETIME_MAP.get(server_date_format, DEFAULT_DATETIME_FORMAT)
         start = start.strftime(current_datetime_format)
-        query = MSSQL_GET_STORED_PROCEDURE_QUERIES.format(
-            start_date=start,
+        use_query_store = self._active_query_store if self._active_query_store is not None else self.uses_query_store()
+        template = (
+            MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE
+            if use_query_store
+            else MSSQL_GET_STORED_PROCEDURE_QUERIES
         )
+        return template.format(start_date=start)
 
-        return query  # noqa: RET504
+    def get_stored_procedure_engines(self) -> Iterator[Engine]:
+        """
+        Read stored-procedure query history per database, mirroring get_engine so
+        Query Store coverage spans every database on an ingest-all-databases run.
+        """
+        yield from self.get_engine()

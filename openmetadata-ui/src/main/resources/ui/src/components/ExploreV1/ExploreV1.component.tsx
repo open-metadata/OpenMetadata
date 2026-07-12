@@ -26,6 +26,7 @@ import {
   ChevronDown,
   Download01,
   FilterFunnel01,
+  InfoCircle,
   Trash01,
 } from '@untitledui/icons';
 import { Card, Col, Menu, Modal, Radio, Row, Skeleton } from 'antd';
@@ -105,6 +106,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
   activeTabKey,
   tabItems = [],
   searchResults,
+  showRankingDetails = false,
+  onChangeShowRankingDetails,
   onChangeAdvancedSearchQuickFilters,
   searchIndex,
   sortOrder,
@@ -788,6 +791,18 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     label={t('label.advanced-search')}
                     onPress={() => toggleModal(true)}
                   />
+
+                  <Dropdown.Item
+                    icon={InfoCircle}
+                    id="show-ranking-details"
+                    onPress={() =>
+                      onChangeShowRankingDetails?.(!showRankingDetails)
+                    }>
+                    <Box justify="between">
+                      {t('label.ranking-detail-plural')}
+                      <Toggle isSelected={showRankingDetails} />
+                    </Box>
+                  </Dropdown.Item>
                 </Dropdown.Menu>
               </Dropdown.Popover>
             </Dropdown.Root>
@@ -843,8 +858,8 @@ const ExploreV1: React.FC<ExploreProps> = ({
           flex: 0.8,
           minWidth: 800,
           children: (
-            <Box className="tw:h-full" colGap={3}>
-              <div className="h-full tw:flex tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
+            <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+              <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
                 <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
                   {!loading && !isElasticSearchIssue ? (
                     <SearchedData
@@ -854,6 +869,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                       isFilterSelected={hasActiveFilters}
                       isSummaryPanelVisible={showSummaryPanel}
                       selectedEntityId={entityDetails?.id || ''}
+                      showRankingDetails={showRankingDetails}
                       showResultCount={hasActiveFilters}
                       totalValue={totalValue}
                     />
@@ -864,7 +880,6 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 </Card>
                 {!loading && !isElasticSearchIssue && totalValue > 0 ? (
                   <PaginationCardWithControls
-                    className="tw:rounded-t-none"
                     page={validCurrentPage}
                     pageSize={pageSize}
                     pageSizeOptions={EXPLORE_PAGE_SIZE_OPTIONS}

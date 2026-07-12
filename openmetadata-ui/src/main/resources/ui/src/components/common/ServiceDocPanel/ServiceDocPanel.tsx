@@ -128,6 +128,58 @@ interface RequirementLabels {
   profiler: string;
 }
 
+const getScrollParent = (node: HTMLElement | null): HTMLElement | null => {
+  let parent = node?.parentElement ?? null;
+  while (parent) {
+    const { overflowY } = window.getComputedStyle(parent);
+    if (
+      /(auto|scroll|overlay)/.test(overflowY) &&
+      parent.scrollHeight > parent.clientHeight
+    ) {
+      return parent;
+    }
+    parent = parent.parentElement;
+  }
+
+  return null;
+};
+
+/**
+ * Scrolls the doc panel's own scroll container to reveal the active field's
+ * documentation. We deliberately avoid `Element.scrollIntoView`, which scrolls
+ * *every* scrollable ancestor: on this layout that includes the flex container
+ * shared with the form, and scrolling a container that holds an open field
+ * popover makes react-aria dismiss it (overlays close when a trigger ancestor
+ * scrolls). Scrolling only the nearest scroll parent keeps the popover open.
+ */
+const scrollDocElementIntoView = (
+  element: HTMLElement,
+  alignToStart: boolean
+): void => {
+  const scrollParent = getScrollParent(element);
+  if (!scrollParent) {
+    element.scrollIntoView({
+      block: alignToStart ? 'start' : 'center',
+      behavior: 'smooth',
+      inline: 'nearest',
+    });
+
+    return;
+  }
+
+  const containerRect = scrollParent.getBoundingClientRect();
+  const elementRect = element.getBoundingClientRect();
+  const relativeTop = elementRect.top - containerRect.top;
+  const delta = alignToStart
+    ? relativeTop
+    : relativeTop - scrollParent.clientHeight / 2 + elementRect.height / 2;
+
+  scrollParent.scrollTo({
+    top: scrollParent.scrollTop + delta,
+    behavior: 'smooth',
+  });
+};
+
 const getSupportedLanguage = (language: string): SupportedLocales => {
   if (supportedLocales.includes(language)) {
     return language as SupportedLocales;
@@ -509,11 +561,10 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
           `[data-id="${CSS.escape(activeFieldName)}"]`
         );
         if (element) {
-          element.scrollIntoView({
-            block: activeFieldName === 'selected-entity' ? 'start' : 'center',
-            behavior: 'smooth',
-            inline: 'center',
-          });
+          scrollDocElementIntoView(
+            element as HTMLElement,
+            activeFieldName === 'selected-entity'
+          );
           (element as HTMLElement).dataset.highlighted = 'true';
         }
       });

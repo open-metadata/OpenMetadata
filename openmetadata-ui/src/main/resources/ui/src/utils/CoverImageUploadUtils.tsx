@@ -18,6 +18,7 @@ import imageClassBase from '../components/BlockEditor/Extensions/image/ImageClas
 import { ERROR_MESSAGE } from '../constants/constants';
 import { EntityType } from '../enums/entity.enum';
 import { getIsErrorMatch } from './APIUtils';
+import { showErrorToast } from './ToastUtils';
 
 /**
  * Position offset for cover image using CSS percentage values
@@ -261,7 +262,7 @@ export async function createEntityWithCoverImage<TFormData, TEntity>(
     return finalEntity;
   } catch (error) {
     // Error handling
-    showNotistackError(
+    showErrorToast(
       getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist) ? (
         <Typography className="tw:font-bold">
           {t('server.entity-already-exist', {

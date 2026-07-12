@@ -175,10 +175,20 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
           @QueryParam("orderBy")
           String orderBy,
       @Parameter(description = "Filter files by folder ID.") @QueryParam("folderId")
-          String folderId) {
+          String folderId,
+      @Parameter(
+              description =
+                  "Filter files by the user who last updated them (their username). Combine with "
+                      + "include=deleted to scope the archive page to files archived by that user - "
+                      + "an archived file cannot be edited, so updatedBy stays the user who archived it.")
+          @QueryParam("updatedBy")
+          String updatedBy) {
     ListFilter filter = new ListFilter(include);
     if (folderId != null && !folderId.isBlank()) {
       filter.addQueryParam("folderId", folderId);
+    }
+    if (updatedBy != null && !updatedBy.isBlank()) {
+      filter.addQueryParam("updatedBy", updatedBy);
     }
     if (orderBy == null || orderBy.isBlank()) {
       return super.listInternal(
