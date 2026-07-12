@@ -39,6 +39,7 @@ import DataAssetsVersionHeader from '../../DataAssets/DataAssetsVersionHeader/Da
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
+import { StoredProcedureCodeCard } from '../StoredProcedureCodeCard/StoredProcedureCodeCard';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
 const StoredProcedureVersion = ({
   version,
@@ -130,6 +131,9 @@ const StoredProcedureVersion = ({
                     entityType={EntityType.STORED_PROCEDURE}
                     showActions={false}
                   />
+                </Col>
+                <Col span={24}>
+                  <StoredProcedureCodeCard />
                 </Col>
               </Row>
             </Col>

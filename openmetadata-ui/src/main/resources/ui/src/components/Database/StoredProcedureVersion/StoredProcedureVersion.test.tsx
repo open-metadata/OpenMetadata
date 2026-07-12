@@ -41,6 +41,12 @@ jest.mock('../../common/EntityDescription/DescriptionV1', () =>
   jest.fn().mockImplementation(() => <div>DescriptionV1</div>)
 );
 
+jest.mock('../StoredProcedureCodeCard/StoredProcedureCodeCard', () => ({
+  StoredProcedureCodeCard: jest
+    .fn()
+    .mockImplementation(() => <div>StoredProcedureCodeCard</div>),
+}));
+
 jest.mock('../../Entity/EntityVersionTimeLine/EntityVersionTimeLine', () =>
   jest.fn().mockImplementation(() => <div>EntityVersionTimeLine</div>)
 );
@@ -76,6 +82,7 @@ describe('StoredProcedureVersion tests', () => {
 
     const dataAssetsVersionHeader = screen.getByText('DataAssetsVersionHeader');
     const description = screen.getByText('DescriptionV1');
+    const codeCard = screen.getByText('StoredProcedureCodeCard');
     const codeTabLabel = screen.getByText('label.code');
     const customPropertyTabLabel = screen.getByText(
       'label.custom-property-plural'
@@ -84,6 +91,7 @@ describe('StoredProcedureVersion tests', () => {
 
     expect(dataAssetsVersionHeader).toBeInTheDocument();
     expect(description).toBeInTheDocument();
+    expect(codeCard).toBeInTheDocument();
     expect(codeTabLabel).toBeInTheDocument();
     expect(customPropertyTabLabel).toBeInTheDocument();
     expect(entityVersionTimeLine).toBeInTheDocument();

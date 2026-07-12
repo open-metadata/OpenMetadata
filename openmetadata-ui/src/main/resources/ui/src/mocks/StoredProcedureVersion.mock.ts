@@ -86,7 +86,10 @@ const mockData = {
     previousVersion: 0.1,
   },
   deleted: false,
-  storedProcedureCode: '',
+  storedProcedureCode: {
+    code: 'CREATE OR REPLACE PROCEDURE update_dim_address_table()',
+    language: 'SQL',
+  },
 };
 
 export const storedProcedureVersionMockProps: StoredProcedureVersionProp = {
