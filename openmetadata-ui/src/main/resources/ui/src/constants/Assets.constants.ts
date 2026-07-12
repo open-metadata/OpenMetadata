@@ -17,7 +17,7 @@ import {
   File05,
   FileCheck02,
   Settings02,
-  SlashCircle01
+  SlashCircle01,
 } from '@untitledui/icons';
 import React from 'react';
 import { ReactComponent as FileIcon } from '../assets/svg/common/file.svg';
