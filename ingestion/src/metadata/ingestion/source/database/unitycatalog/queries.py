@@ -15,19 +15,21 @@ SQL Queries used during ingestion
 import textwrap
 
 UNITY_CATALOG_GET_CATALOGS_TAGS = """
-SELECT * FROM `{database}`.information_schema.catalog_tags;
+SELECT catalog_name, tag_name, tag_value FROM `{database}`.information_schema.catalog_tags;
 """
 
 UNITY_CATALOG_GET_ALL_SCHEMA_TAGS = """
-SELECT * FROM `{database}`.information_schema.schema_tags;
+SELECT catalog_name, schema_name, tag_name, tag_value FROM `{database}`.information_schema.schema_tags;
 """
 
 UNITY_CATALOG_GET_ALL_TABLE_TAGS = """
-SELECT * FROM `{database}`.information_schema.table_tags WHERE schema_name = '{schema}';
+SELECT catalog_name, schema_name, table_name, tag_name, tag_value
+FROM `{database}`.information_schema.table_tags WHERE schema_name = '{schema}';
 """
 
 UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS = """
-SELECT * FROM `{database}`.information_schema.column_tags WHERE schema_name = '{schema}';
+SELECT catalog_name, schema_name, table_name, column_name, tag_name, tag_value
+FROM `{database}`.information_schema.column_tags WHERE schema_name = '{schema}';
 """
 
 UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
@@ -52,37 +54,42 @@ UNITY_CATALOG_SQL_STATEMENT = textwrap.dedent(
 
 UNITY_CATALOG_GET_TABLE_DDL = "SHOW CREATE TABLE `{database}`.`{schema}`.`{table}`"
 
-UNITY_CATALOG_TABLE_LINEAGE = textwrap.dedent(
+UNITY_CATALOG_LINEAGE = textwrap.dedent(
     """
+    WITH column_pairs AS (
+        SELECT
+            source_table_full_name,
+            target_table_full_name,
+            collect_set(
+                struct(source_column_name AS u, target_column_name AS d)
+            ) AS pairs
+        FROM system.access.column_lineage
+        WHERE event_time >= to_timestamp('{start_time}')
+            AND event_time < to_timestamp('{end_time}')
+            AND source_table_full_name IS NOT NULL
+            AND target_table_full_name IS NOT NULL
+            AND source_column_name IS NOT NULL
+            AND target_column_name IS NOT NULL
+        GROUP BY source_table_full_name, target_table_full_name
+    ),
+    table_edges AS (
+        SELECT DISTINCT
+            source_table_full_name,
+            target_table_full_name
+        FROM system.access.table_lineage
+        WHERE event_time >= to_timestamp('{start_time}')
+            AND event_time < to_timestamp('{end_time}')
+            AND source_table_full_name IS NOT NULL
+            AND target_table_full_name IS NOT NULL
+    )
     SELECT
-        source_table_full_name,
-        target_table_full_name
-    FROM system.access.table_lineage
-    WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
-        AND source_table_full_name IS NOT NULL
-        AND target_table_full_name IS NOT NULL
-    GROUP BY source_table_full_name, target_table_full_name
-    """
-)
-
-UNITY_CATALOG_COLUMN_LINEAGE = textwrap.dedent(
-    """
-    SELECT
-        source_table_full_name,
-        source_column_name,
-        target_table_full_name,
-        target_column_name
-    FROM system.access.column_lineage
-    WHERE event_time >= current_date() - INTERVAL {query_log_duration} DAYS
-        AND source_table_full_name IS NOT NULL
-        AND target_table_full_name IS NOT NULL
-        AND source_column_name IS NOT NULL
-        AND target_column_name IS NOT NULL
-    GROUP BY
-        source_table_full_name,
-        source_column_name,
-        target_table_full_name,
-        target_column_name
+        t.source_table_full_name AS source_table_full_name,
+        t.target_table_full_name AS target_table_full_name,
+        to_json(c.pairs) AS column_pairs
+    FROM table_edges t
+    LEFT JOIN column_pairs c
+        ON c.source_table_full_name = t.source_table_full_name
+        AND c.target_table_full_name = t.target_table_full_name
     """
 )
 

@@ -366,6 +366,25 @@ class TestUnityCatalogIncrementalSource:
         _, kwargs = delete_mock.call_args
         assert kwargs["entity_names"] == ["svc.cat.schema1.dropped"]
 
+    def test_mark_tables_as_deleted_drains_global_list(self):
+        source = self._make_source()
+        source.incremental.enabled = True
+        source.source_config.markDeletedTables = True
+        source.context.get.return_value = SimpleNamespace(database="cat")
+        deleted_tables = ["svc.cat.schema1.dropped", "svc.cat.schema2.dropped"]
+        source.context.get_global.return_value = SimpleNamespace(deleted_tables=deleted_tables)
+
+        with patch(
+            f"{UC_METADATA_MODULE}.delete_entity_by_name",
+            return_value=iter(["deleted"]),
+        ) as delete_mock:
+            result = list(UnitycatalogSource.mark_tables_as_deleted(source))
+
+        assert result == ["deleted"]
+        _, kwargs = delete_mock.call_args
+        assert kwargs["entity_names"] == ["svc.cat.schema1.dropped", "svc.cat.schema2.dropped"]
+        assert deleted_tables == []
+
     def test_mark_tables_as_deleted_incremental_respects_mark_flag(self):
         source = self._make_source()
         source.incremental.enabled = True
