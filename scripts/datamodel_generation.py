@@ -115,10 +115,10 @@ entity_name_validator = '''
     def validate_entity_name(cls, value: str) -> str:
         """Validate entity name: disallow ::, special characters, and control characters."""
         if "::" in value:
-            raise ValueError("Entity name cannot contain '::'")
+            raise ValueError('Entity name cannot contain "::"')
         forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
         if any(c in forbidden_chars for c in value):
-            raise ValueError("Entity name contains invalid characters: ><\"|, or control characters")
+            raise ValueError('Entity name contains invalid characters: ><"|, or control characters')
         return value
 '''
 
@@ -129,10 +129,10 @@ test_case_entity_name_validator = '''
     def validate_test_case_entity_name(cls, value: str) -> str:
         """Validate test case entity name: disallow ::, special characters, and control characters."""
         if "::" in value:
-            raise ValueError("Test case entity name cannot contain '::'")
+            raise ValueError('Test case entity name cannot contain "::"')
         forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
         if any(c in forbidden_chars for c in value):
-            raise ValueError("Test case entity name contains invalid characters: ><\"|, or control characters")
+            raise ValueError('Test case entity name contains invalid characters: ><"|, or control characters')
         return value
 '''
 
@@ -183,6 +183,7 @@ if "from pydantic import" in content and "field_validator" not in content:
     content = re.sub(r'from pydantic import (.*)', add_field_validator_import, content)
 
 # Define new Column2 class (no pattern, with validator)
+# For Column2
 new_col2 = '''class Column2(RootModel[str]):
     root: str
 
@@ -191,14 +192,14 @@ new_col2 = '''class Column2(RootModel[str]):
     def validate_column2_name(cls, value: str) -> str:
         """Validate column2 name: disallow ::, special characters, and control characters."""
         if "::" in value:
-            raise ValueError("Column2 name cannot contain '::'")
+            raise ValueError('Column2 name cannot contain "::"')
         forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
         if any(c in forbidden_chars for c in value):
-            raise ValueError("Column2 name contains invalid characters: ><\"|, or control characters")
+            raise ValueError('Column2 name contains invalid characters: ><"|, or control characters')
         return value
 '''
 
-# Define new ColumnName class (keep Field, add validator)
+# For ColumnName
 new_colname = '''class ColumnName(RootModel[str]):
     root: Annotated[
         str,
@@ -213,10 +214,10 @@ new_colname = '''class ColumnName(RootModel[str]):
     def validate_column_name(cls, value: str) -> str:
         """Validate column name: disallow ::, special characters, and control characters."""
         if "::" in value:
-            raise ValueError("Column name cannot contain '::'")
+            raise ValueError('Column name cannot contain "::"')
         forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
         if any(c in forbidden_chars for c in value):
-            raise ValueError("Column name contains invalid characters: ><\"|, or control characters")
+            raise ValueError('Column name contains invalid characters: ><"|, or control characters')
         return value
 '''
 
