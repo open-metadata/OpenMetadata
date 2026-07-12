@@ -5,7 +5,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
-import java.util.Locale;
 import java.util.Objects;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
@@ -18,14 +17,14 @@ import org.openmetadata.sdk.network.HttpMethod;
 /**
  * Client for OpenMetadata system settings ({@code /v1/system/settings}).
  *
- * <p>Focused on glossary term relation types. Type registration uses an optimistic RFC-6902 JSON
- * Patch precondition so concurrent registration of the same name converges without creating
- * duplicates.
+ * <p>Focused on glossary term relation types. Type registration preserves the server's missing,
+ * null, or array representation and reconciles a fresh snapshot after potential concurrent
+ * updates.
  */
 public class SystemSettingsService {
   private static final int MAX_REGISTRATION_ATTEMPTS = 3;
-  private static final String PATCH_TEST_FAILURE = "operation 'test' failed";
   private static final String SETTINGS_BASE = "/v1/system/settings";
+  private static final String RELATION_TYPES_PATH = "/relationTypes";
   private static final String RELATION_TYPES_APPEND_PATH = "/relationTypes/-";
 
   private final HttpClient httpClient;
@@ -56,9 +55,9 @@ public class SystemSettingsService {
   }
 
   /**
-   * Register a glossary term relation type with a JSON Patch {@code test} for the current {@code
-   * relationTypes} array before appending. If another caller changes the setting first, the failed
-   * test triggers a bounded re-read. A concurrently registered matching name then becomes an
+   * Register a glossary term relation type while preserving the current {@code relationTypes}
+   * representation. After a potential precondition failure, a fresh snapshot confirms whether
+   * another caller changed the setting. A concurrently registered matching name then becomes an
    * idempotent no-op.
    *
    * @param relationType the relation type to register
@@ -67,34 +66,52 @@ public class SystemSettingsService {
   public Settings defineGlossaryRelationType(GlossaryTermRelationType relationType)
       throws OpenMetadataException {
     int attempts = 0;
+    Settings current = getGlossaryRelationSettings();
+    RelationTypesSnapshot snapshot = relationTypesSnapshot(current);
     while (true) {
-      Settings current = getGlossaryRelationSettings();
-      if (relationTypeExists(current, relationType.getName())) {
+      if (relationTypeExists(snapshot.relationTypes(), relationType.getName())) {
         return current;
       }
       try {
-        return appendRelationType(relationType, relationTypesSnapshot(current));
+        return appendRelationType(relationType, snapshot);
       } catch (OpenMetadataException exception) {
-        attempts++;
-        if (attempts >= MAX_REGISTRATION_ATTEMPTS || !isRelationTypesTestFailure(exception)) {
+        if (!isPotentialConcurrentUpdate(exception)) {
           throw exception;
         }
+        attempts++;
+        Settings latest = getGlossaryRelationSettings();
+        RelationTypesSnapshot latestSnapshot = relationTypesSnapshot(latest);
+        if (relationTypeExists(latestSnapshot.relationTypes(), relationType.getName())) {
+          return latest;
+        }
+        if (attempts >= MAX_REGISTRATION_ATTEMPTS || hasSamePatchState(snapshot, latestSnapshot)) {
+          throw exception;
+        }
+        current = latest;
+        snapshot = latestSnapshot;
       }
     }
   }
 
   private Settings appendRelationType(
-      GlossaryTermRelationType relationType, JsonNode currentRelationTypes)
+      GlossaryTermRelationType relationType, RelationTypesSnapshot snapshot)
       throws OpenMetadataException {
     ArrayNode patch = objectMapper.createArrayNode();
-    ObjectNode precondition = patch.addObject();
-    precondition.put("op", "test");
-    precondition.put("path", "/relationTypes");
-    precondition.set("value", currentRelationTypes);
-    ObjectNode operation = patch.addObject();
-    operation.put("op", "add");
-    operation.put("path", RELATION_TYPES_APPEND_PATH);
-    operation.set("value", objectMapper.valueToTree(relationType));
+    JsonNode relationTypeValue = objectMapper.valueToTree(relationType);
+    if (!snapshot.present()) {
+      addOperation(
+          patch, "add", RELATION_TYPES_PATH, objectMapper.createArrayNode().add(relationTypeValue));
+    } else if (snapshot.patchValue().isNull()) {
+      addOperation(patch, "test", RELATION_TYPES_PATH, snapshot.patchValue());
+      addOperation(
+          patch,
+          "replace",
+          RELATION_TYPES_PATH,
+          objectMapper.createArrayNode().add(relationTypeValue));
+    } else {
+      addOperation(patch, "test", RELATION_TYPES_PATH, snapshot.patchValue());
+      addOperation(patch, "add", RELATION_TYPES_APPEND_PATH, relationTypeValue);
+    }
     return httpClient.execute(
         HttpMethod.PATCH,
         SETTINGS_BASE + "/" + glossaryRelationSettingsKey(),
@@ -102,30 +119,39 @@ public class SystemSettingsService {
         Settings.class);
   }
 
-  private JsonNode relationTypesSnapshot(Settings settings) {
+  private void addOperation(ArrayNode patch, String op, String path, JsonNode value) {
+    ObjectNode operation = patch.addObject();
+    operation.put("op", op);
+    operation.put("path", path);
+    operation.set("value", value);
+  }
+
+  private RelationTypesSnapshot relationTypesSnapshot(Settings settings) {
     JsonNode config = objectMapper.valueToTree(settings.getConfigValue());
+    if (!config.isObject()) {
+      throw new OpenMetadataException("glossary relation settings must be a JSON object");
+    }
     JsonNode relationTypes = config.get("relationTypes");
-    return relationTypes != null ? relationTypes : objectMapper.createArrayNode();
-  }
-
-  private boolean isRelationTypesTestFailure(OpenMetadataException exception) {
-    int statusCode = exception.getStatusCode();
-    if (statusCode == 409 || statusCode == 412) {
-      return true;
+    boolean present = config.has("relationTypes");
+    if (present && !relationTypes.isNull() && !relationTypes.isArray()) {
+      throw new OpenMetadataException("glossary relationTypes must be an array, null, or absent");
     }
-    String message = exception.getMessage();
-    return statusCode == 400
-        && message != null
-        && message.toLowerCase(Locale.ROOT).contains(PATCH_TEST_FAILURE);
-  }
-
-  private boolean relationTypeExists(Settings settings, String name) {
     List<GlossaryTermRelationType> types = toRelationConfig(settings).getRelationTypes();
-    boolean exists = false;
-    if (types != null) {
-      exists = types.stream().anyMatch(type -> Objects.equals(type.getName(), name));
-    }
-    return exists;
+    return new RelationTypesSnapshot(types != null ? types : List.of(), relationTypes, present);
+  }
+
+  private boolean isPotentialConcurrentUpdate(OpenMetadataException exception) {
+    int statusCode = exception.getStatusCode();
+    return statusCode == 400 || statusCode == 409 || statusCode == 412 || statusCode == 422;
+  }
+
+  private boolean hasSamePatchState(RelationTypesSnapshot first, RelationTypesSnapshot second) {
+    return first.present() == second.present()
+        && Objects.equals(first.patchValue(), second.patchValue());
+  }
+
+  private boolean relationTypeExists(List<GlossaryTermRelationType> types, String name) {
+    return types.stream().anyMatch(type -> Objects.equals(type.getName(), name));
   }
 
   private GlossaryTermRelationSettings glossaryRelationConfig() throws OpenMetadataException {
@@ -139,4 +165,7 @@ public class SystemSettingsService {
   private String glossaryRelationSettingsKey() {
     return SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value();
   }
+
+  private record RelationTypesSnapshot(
+      List<GlossaryTermRelationType> relationTypes, JsonNode patchValue, boolean present) {}
 }

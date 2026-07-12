@@ -64,6 +64,13 @@ def wire_client(rest_client: FakeRestClient, monkeypatch: pytest.MonkeyPatch) ->
     monkeypatch.setattr(Settings, "_default_client", ometa)
 
 
+def patch_payload(rest_client: FakeRestClient, call_index: int = 0) -> list[dict[str, object]]:
+    _, kwargs = rest_client.patch_calls[call_index]
+    patch_data = kwargs["data"]
+    assert isinstance(patch_data, str)
+    return json.loads(patch_data)
+
+
 def test_add_relation_posts_typed_payload(rest_client: FakeRestClient):
     GlossaryTerms.add_relation(FROM_ID, TO_ID, "prescribes")
 
@@ -116,11 +123,9 @@ def test_define_relation_type_appends_when_absent(rest_client: FakeRestClient):
     Settings.define_glossary_relation_type({"name": "prescribes", "displayName": "prescribes"})
 
     assert len(rest_client.patch_calls) == 1
-    path, kwargs = rest_client.patch_calls[0]
+    path, _ = rest_client.patch_calls[0]
     assert path == RELATION_SETTINGS_PATH
-    patch_data = kwargs["data"]
-    assert isinstance(patch_data, str)
-    patch = json.loads(patch_data)
+    patch = patch_payload(rest_client)
     assert patch[0] == {"op": "test", "path": "/relationTypes", "value": []}
     assert patch[1]["op"] == "add"
     assert patch[1]["path"] == "/relationTypes/-"
@@ -136,25 +141,73 @@ def test_define_relation_type_is_idempotent(rest_client: FakeRestClient):
     assert not rest_client.patch_calls
 
 
+def test_define_relation_type_initializes_null_relation_types(rest_client: FakeRestClient):
+    rest_client.get_response = {"configValue": {"relationTypes": None}}
+
+    Settings.define_glossary_relation_type({"name": "prescribes"})
+
+    assert patch_payload(rest_client) == [
+        {"op": "test", "path": "/relationTypes", "value": None},
+        {
+            "op": "replace",
+            "path": "/relationTypes",
+            "value": [{"name": "prescribes"}],
+        },
+    ]
+
+
+def test_define_relation_type_initializes_absent_relation_types(rest_client: FakeRestClient):
+    rest_client.get_response = {"configValue": {}}
+
+    Settings.define_glossary_relation_type({"name": "prescribes"})
+
+    assert patch_payload(rest_client) == [
+        {
+            "op": "add",
+            "path": "/relationTypes",
+            "value": [{"name": "prescribes"}],
+        }
+    ]
+
+
 def test_define_relation_type_rechecks_after_concurrent_registration(rest_client: FakeRestClient):
     rest_client.get_responses = [
         {"configValue": {"relationTypes": []}},
         {"configValue": {"relationTypes": [{"name": "prescribes"}]}},
     ]
-    rest_client.patch_errors = [
-        APIError(
-            {
-                "code": 400,
-                "message": "The JSON Patch operation 'test' failed for path '/relationTypes'",
-            }
-        )
-    ]
+    rest_client.patch_errors = [APIError({"code": 422, "message": "unprocessable settings patch"})]
 
     result = Settings.define_glossary_relation_type({"name": "prescribes"})
 
     assert result is None
     assert len(rest_client.get_calls) == 2
     assert len(rest_client.patch_calls) == 1
+
+
+def test_define_relation_type_retries_only_after_snapshot_changes(rest_client: FakeRestClient):
+    rest_client.get_responses = [
+        {"configValue": {"relationTypes": []}},
+        {
+            "configValue": {
+                "relationTypes": [
+                    {"name": "treats", "optionalField": None},
+                ]
+            }
+        },
+    ]
+    rest_client.patch_errors = [APIError({"code": 400, "message": "different wording"})]
+    rest_client.patch_response = {"configValue": {"relationTypes": []}}
+
+    result = Settings.define_glossary_relation_type({"name": "prescribes"})
+
+    assert result == rest_client.patch_response
+    assert len(rest_client.get_calls) == 2
+    assert len(rest_client.patch_calls) == 2
+    assert patch_payload(rest_client, 1)[0] == {
+        "op": "test",
+        "path": "/relationTypes",
+        "value": [{"name": "treats", "optionalField": None}],
+    }
 
 
 def test_define_relation_type_does_not_retry_unrelated_bad_request(rest_client: FakeRestClient):
@@ -164,7 +217,7 @@ def test_define_relation_type_does_not_retry_unrelated_bad_request(rest_client: 
     with pytest.raises(APIError, match="invalid relation type"):
         Settings.define_glossary_relation_type({"name": "prescribes"})
 
-    assert len(rest_client.get_calls) == 1
+    assert len(rest_client.get_calls) == 2
     assert len(rest_client.patch_calls) == 1
 
 
