@@ -447,10 +447,22 @@ public class OpenSearchVectorService implements VectorIndexService {
     body.set("dest", MAPPER.createObjectNode().put("index", dest));
     // wait_for_completion=true suits modest catalogs; for very large indices switch to
     // wait_for_completion=false and poll the returned task via GET /_tasks/{taskId}.
-    executeGenericRequest(
-        "POST",
-        "/_reindex?wait_for_completion=true&refresh=true&slices=auto&requests_per_second=-1",
-        body.toString());
+    String response =
+        executeGenericRequest(
+            "POST",
+            "/_reindex?wait_for_completion=true&refresh=true&slices=auto&requests_per_second=-1",
+            body.toString());
+    // _reindex returns HTTP 200 even when individual docs fail (reported in the body, not the
+    // status). recreateChunkIndex deletes the source right after this, and the chunk embeddings are
+    // the only stored copy of the vectors, so a partial copy is unrecoverable without a re-embed.
+    // Fail hard here so the delete never runs and the source stays intact.
+    JsonNode result = readTreeQuietly(response);
+    if (result == null
+        || result.path("failures").size() > 0
+        || result.path("timed_out").asBoolean(false)) {
+      throw new IllegalStateException(
+          "Chunk reindex " + source + " -> " + dest + " had failures: " + response);
+    }
   }
 
   private boolean ensureChunkAliases(String physicalIndex, String writeAlias) {
