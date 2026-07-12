@@ -722,7 +722,7 @@ public class ElasticSearchSourceBuilderFactory
               terms.get(index),
               fields,
               TextQueryType.BestFields,
-              Operator.Or,
+              Operator.And,
               String.valueOf(DEFAULT_TIE_BREAKER),
               "0",
               null,

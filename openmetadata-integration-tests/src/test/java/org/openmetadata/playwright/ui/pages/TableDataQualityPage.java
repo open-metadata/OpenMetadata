@@ -73,7 +73,9 @@ public final class TableDataQualityPage extends PageObject {
                 && r.url().contains("entityType=COLUMN"),
         () -> {
           page.locator("[id='root\\/column']").click();
-          page.locator("[title='" + columnName + "']").click();
+          page.getByRole(
+                  AriaRole.OPTION, new Page.GetByRoleOptions().setName(columnName).setExact(true))
+              .click();
         });
     return this;
   }
@@ -84,9 +86,8 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitColumnValueLengthsToBeBetween(
       final String testCaseName, final String minLength, final String maxLength) {
-    byTestId("test-case-name").fill(testCaseName);
-    page.locator("[id='root\\/testType']").click();
-    byTestId("columnValueLengthsToBeBetween").click();
+    byTestId("test-case-name").locator("input").fill(testCaseName);
+    selectTestType("Column Value Lengths To Be Between");
     page.locator("#testCaseFormV1_params_minLength").fill(minLength);
     page.locator("#testCaseFormV1_params_maxLength").fill(maxLength);
 
@@ -104,9 +105,8 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitColumnValuesToBeInSet(
       final String testCaseName, final java.util.List<String> allowedValues) {
-    byTestId("test-case-name").fill(testCaseName);
-    page.locator("[id='root\\/testType']").click();
-    byTestId("columnValuesToBeInSet").click();
+    byTestId("test-case-name").locator("input").fill(testCaseName);
+    selectTestType("Column Values To Be In Set");
     // Fill each allowed-value row. UI renders one row by default; click "+" for extras.
     for (int i = 0; i < allowedValues.size(); i++) {
       if (i > 0) {
@@ -129,9 +129,8 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitTableColumnNameToExist(
       final String testCaseName, final String columnName) {
-    byTestId("test-case-name").fill(testCaseName);
-    page.locator("[id='root\\/testType']").click();
-    byTestId("tableColumnNameToExist").click();
+    byTestId("test-case-name").locator("input").fill(testCaseName);
+    selectTestType("Table Column Name To Exist");
     page.locator("#testCaseFormV1_params_columnName").fill(columnName);
 
     page.waitForResponse(
@@ -170,9 +169,19 @@ public final class TableDataQualityPage extends PageObject {
     page.waitForResponse(
         r -> r.url().matches(API_TEST_DEFINITION_REGEX),
         () -> byTestId("edit-" + testCaseName).click());
-    byTestId("edit-test-case-drawer-title")
+    byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     return this;
+  }
+
+  private void selectTestType(final String testTypeLabel) {
+    final Locator testTypeInput = page.locator("[id='root\\/testType']");
+    testTypeInput.click();
+    testTypeInput.fill(testTypeLabel);
+    page.getByRole(AriaRole.OPTION)
+        .filter(new Locator.FilterOptions().setHasText(testTypeLabel))
+        .first()
+        .click();
   }
 
   /** Update a single param field (id starts with {@code tableTestForm_params_}) and save. */
@@ -184,7 +193,7 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("update-btn").click());
+        () -> byTestId("create-btn").click());
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
@@ -212,7 +221,7 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("update-btn").click());
+        () -> byTestId("create-btn").click());
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
