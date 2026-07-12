@@ -1,9 +1,11 @@
 package org.openmetadata.sdk.services.system;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ArrayNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
@@ -16,11 +18,13 @@ import org.openmetadata.sdk.network.HttpMethod;
 /**
  * Client for OpenMetadata system settings ({@code /v1/system/settings}).
  *
- * <p>Focused on glossary term relation types. Type registration appends via RFC-6902 JSON Patch, so
- * concurrent callers never overwrite each other's relation types (unlike a full {@code PUT} that
- * replaces the whole list).
+ * <p>Focused on glossary term relation types. Type registration uses an optimistic RFC-6902 JSON
+ * Patch precondition so concurrent registration of the same name converges without creating
+ * duplicates.
  */
 public class SystemSettingsService {
+  private static final int MAX_REGISTRATION_ATTEMPTS = 3;
+  private static final String PATCH_TEST_FAILURE = "operation 'test' failed";
   private static final String SETTINGS_BASE = "/v1/system/settings";
   private static final String RELATION_TYPES_APPEND_PATH = "/relationTypes/-";
 
@@ -52,31 +56,41 @@ public class SystemSettingsService {
   }
 
   /**
-   * Register a glossary term relation type by appending it via JSON Patch ({@code add
-   * /relationTypes/-}), which never overwrites other callers' types the way a full {@code PUT}
-   * would. The name check makes repeated registration idempotent under normal sequential use.
-   *
-   * <p>The check is not atomic: two callers registering the same new name concurrently can both
-   * pass the check and both append, and the server does not dedupe {@code relationTypes}. Treat
-   * registration as a one-time setup step; callers racing on the same new name should reconcile
-   * duplicates.
+   * Register a glossary term relation type with a JSON Patch {@code test} for the current {@code
+   * relationTypes} array before appending. If another caller changes the setting first, the failed
+   * test triggers a bounded re-read. A concurrently registered matching name then becomes an
+   * idempotent no-op.
    *
    * @param relationType the relation type to register
    * @return the updated settings, or the current settings unchanged if the name already existed
    */
   public Settings defineGlossaryRelationType(GlossaryTermRelationType relationType)
       throws OpenMetadataException {
-    Settings current = getGlossaryRelationSettings();
-    Settings result = current;
-    if (!relationTypeExists(current, relationType.getName())) {
-      result = appendRelationType(relationType);
+    int attempts = 0;
+    while (true) {
+      Settings current = getGlossaryRelationSettings();
+      if (relationTypeExists(current, relationType.getName())) {
+        return current;
+      }
+      try {
+        return appendRelationType(relationType, relationTypesSnapshot(current));
+      } catch (OpenMetadataException exception) {
+        attempts++;
+        if (attempts >= MAX_REGISTRATION_ATTEMPTS || !isRelationTypesTestFailure(exception)) {
+          throw exception;
+        }
+      }
     }
-    return result;
   }
 
-  private Settings appendRelationType(GlossaryTermRelationType relationType)
+  private Settings appendRelationType(
+      GlossaryTermRelationType relationType, JsonNode currentRelationTypes)
       throws OpenMetadataException {
     ArrayNode patch = objectMapper.createArrayNode();
+    ObjectNode precondition = patch.addObject();
+    precondition.put("op", "test");
+    precondition.put("path", "/relationTypes");
+    precondition.set("value", currentRelationTypes);
     ObjectNode operation = patch.addObject();
     operation.put("op", "add");
     operation.put("path", RELATION_TYPES_APPEND_PATH);
@@ -86,6 +100,23 @@ public class SystemSettingsService {
         SETTINGS_BASE + "/" + glossaryRelationSettingsKey(),
         patch,
         Settings.class);
+  }
+
+  private JsonNode relationTypesSnapshot(Settings settings) {
+    JsonNode config = objectMapper.valueToTree(settings.getConfigValue());
+    JsonNode relationTypes = config.get("relationTypes");
+    return relationTypes != null ? relationTypes : objectMapper.createArrayNode();
+  }
+
+  private boolean isRelationTypesTestFailure(OpenMetadataException exception) {
+    int statusCode = exception.getStatusCode();
+    if (statusCode == 409 || statusCode == 412) {
+      return true;
+    }
+    String message = exception.getMessage();
+    return statusCode == 400
+        && message != null
+        && message.toLowerCase(Locale.ROOT).contains(PATCH_TEST_FAILURE);
   }
 
   private boolean relationTypeExists(Settings settings, String name) {

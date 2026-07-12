@@ -2,6 +2,7 @@ package org.openmetadata.sdk.services;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -9,6 +10,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -26,6 +28,7 @@ import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.TermRelation;
+import org.openmetadata.sdk.exceptions.InvalidRequestException;
 import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 import org.openmetadata.sdk.network.RequestOptions;
@@ -136,7 +139,12 @@ class GlossaryTermRelationsMockTest {
     ArgumentCaptor<Object> patch = ArgumentCaptor.forClass(Object.class);
     verify(httpClient)
         .execute(eq(HttpMethod.PATCH), anyString(), patch.capture(), eq(Settings.class));
-    ObjectNode operation = (ObjectNode) ((ArrayNode) patch.getValue()).get(0);
+    ObjectNode precondition = (ObjectNode) ((ArrayNode) patch.getValue()).get(0);
+    assertEquals("test", precondition.get("op").asText());
+    assertEquals("/relationTypes", precondition.get("path").asText());
+    assertTrue(precondition.get("value").isArray());
+    assertTrue(precondition.get("value").isEmpty());
+    ObjectNode operation = (ObjectNode) ((ArrayNode) patch.getValue()).get(1);
     assertEquals("add", operation.get("op").asText());
     assertEquals("/relationTypes/-", operation.get("path").asText());
     assertEquals("prescribes", operation.get("value").get("name").asText());
@@ -160,5 +168,58 @@ class GlossaryTermRelationsMockTest {
     assertSame(current, result);
     verify(httpClient, never())
         .execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class));
+  }
+
+  @Test
+  void defineGlossaryRelationTypeRechecksAfterConcurrentRegistration() {
+    Settings absent =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(new GlossaryTermRelationSettings().withRelationTypes(List.of()));
+    Settings present =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(
+                new GlossaryTermRelationSettings()
+                    .withRelationTypes(
+                        List.of(new GlossaryTermRelationType().withName("prescribes"))));
+    when(httpClient.execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class)))
+        .thenReturn(absent, present);
+    when(httpClient.execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class)))
+        .thenThrow(
+            new InvalidRequestException(
+                "The JSON Patch operation 'test' failed for path '/relationTypes'"));
+
+    Settings result =
+        settings.defineGlossaryRelationType(new GlossaryTermRelationType().withName("prescribes"));
+
+    assertSame(present, result);
+    verify(httpClient, times(2))
+        .execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class));
+    verify(httpClient).execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class));
+  }
+
+  @Test
+  void defineGlossaryRelationTypeDoesNotRetryUnrelatedBadRequest() {
+    Settings current =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(new GlossaryTermRelationSettings().withRelationTypes(List.of()));
+    InvalidRequestException failure = new InvalidRequestException("invalid relation type");
+    when(httpClient.execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class)))
+        .thenReturn(current);
+    when(httpClient.execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class)))
+        .thenThrow(failure);
+
+    InvalidRequestException thrown =
+        assertThrows(
+            InvalidRequestException.class,
+            () ->
+                settings.defineGlossaryRelationType(
+                    new GlossaryTermRelationType().withName("prescribes")));
+
+    assertSame(failure, thrown);
+    verify(httpClient).execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class));
+    verify(httpClient).execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class));
   }
 }

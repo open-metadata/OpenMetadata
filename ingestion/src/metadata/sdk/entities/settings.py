@@ -5,19 +5,22 @@ from __future__ import annotations
 import json
 from typing import Any, Optional, Union
 
+from metadata.ingestion.ometa.client import APIError
 from metadata.sdk.client import OpenMetadata
 from metadata.sdk.types import OMetaClient  # noqa: TC001
 
 GLOSSARY_TERM_RELATION_SETTINGS = "glossaryTermRelationSettings"
 _SETTINGS_ENDPOINT = "/system/settings"
+_MAX_REGISTRATION_ATTEMPTS = 3
+_PATCH_TEST_FAILURE = "operation 'test' failed"
 
 
 class Settings:
     """Facade for OpenMetadata system settings.
 
-    Focused on glossary term relation types. Type registration appends via JSON
-    Patch so concurrent callers never overwrite each other's relation types
-    (unlike a full ``PUT`` that replaces the whole list).
+    Focused on glossary term relation types. Type registration uses an optimistic
+    JSON Patch precondition so concurrent registration of the same name converges
+    without creating duplicates.
     """
 
     _default_client: Optional[OMetaClient] = None  # noqa: UP045
@@ -67,26 +70,41 @@ class Settings:
     ) -> Optional[dict[str, Any]]:  # noqa: UP045
         """Register a glossary term relation type.
 
-        Appends via JSON Patch (``add /relationTypes/-``) so it never overwrites
-        other callers' types the way a full ``PUT`` would. The name check makes
-        repeated registration idempotent under normal sequential use.
-
-        The check is not atomic, however: two callers registering the *same* new
-        name concurrently can both pass the check and both append, and the server
-        does not dedupe ``relationTypes``. Treat registration as a one-time setup
-        step; callers racing on the same new name should reconcile duplicates.
+        Sends a JSON Patch ``test`` for the current ``relationTypes`` array before
+        appending. If another caller changes the setting first, the failed test
+        triggers a bounded re-read. A concurrently registered matching name then
+        becomes an idempotent no-op.
 
         Returns the updated settings, or ``None`` if the name already existed.
         """
         name = relation_type.get("name")
         if not name:
             raise ValueError("relation_type must include a 'name'")
-        existing = {entry.get("name") for entry in cls.glossary_relation_types()}
-        result: Optional[dict[str, Any]] = None  # noqa: UP045
-        if name not in existing:
-            patch = [{"op": "add", "path": "/relationTypes/-", "value": relation_type}]
-            result = cls._get_rest_client().patch(
-                f"{_SETTINGS_ENDPOINT}/{GLOSSARY_TERM_RELATION_SETTINGS}",
-                data=json.dumps(patch),
-            )
-        return result
+
+        rest_client = cls._get_rest_client()
+        attempts = 0
+        while True:
+            relation_types = cls.glossary_relation_types()
+            if any(entry.get("name") == name for entry in relation_types):
+                return None
+
+            patch = [
+                {"op": "test", "path": "/relationTypes", "value": relation_types},
+                {"op": "add", "path": "/relationTypes/-", "value": relation_type},
+            ]
+            try:
+                return rest_client.patch(
+                    f"{_SETTINGS_ENDPOINT}/{GLOSSARY_TERM_RELATION_SETTINGS}",
+                    data=json.dumps(patch),
+                )
+            except APIError as exc:
+                attempts += 1
+                if attempts >= _MAX_REGISTRATION_ATTEMPTS or not cls._is_relation_types_test_failure(exc):
+                    raise
+
+    @staticmethod
+    def _is_relation_types_test_failure(error: APIError) -> bool:
+        status_code = error.status_code or error.code
+        if status_code in (409, 412):
+            return True
+        return status_code == 400 and _PATCH_TEST_FAILURE in str(error).casefold()
