@@ -88,8 +88,9 @@ public class TypeRegistry {
   public void addType(Type type) {
     TYPES.put(type.getName(), type);
 
-    // Store custom properties added to a type
-    for (CustomProperty property : type.getCustomProperties()) {
+    // Store custom properties added to a type. Property (Category.Field) types carry no custom
+    // properties, so a self-heal reload of one yields a null list — guard with listOrEmpty.
+    for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
       TypeRegistry.instance().addCustomProperty(type.getName(), property.getName(), property);
     }
   }
@@ -137,10 +138,38 @@ public class TypeRegistry {
   public void validateCustomProperties(Type type) {
     // Validate custom properties added to a type
     for (CustomProperty property : listOrEmpty(type.getCustomProperties())) {
-      if (TYPES.get(property.getPropertyType().getName()) == null) {
+      String propertyTypeName = property.getPropertyType().getName();
+      if (TYPES.get(propertyTypeName) == null) {
+        // A property type created on a peer replica is absent from this process's startup-loaded
+        // registry; re-read it from the shared database before rejecting it as unknown.
+        reloadTypeFromDb(propertyTypeName);
+      }
+      if (TYPES.get(propertyTypeName) == null) {
         throw EntityNotFoundException.byMessage(
-            CatalogExceptionMessage.entityNotFound(
-                Entity.TYPE, property.getPropertyType().getName()));
+            CatalogExceptionMessage.entityNotFound(Entity.TYPE, propertyTypeName));
+      }
+    }
+  }
+
+  /**
+   * Re-reads a single type by name from the shared database and repopulates the registry. Self-heals
+   * the {@code TYPES} map when a custom property references a type that was created on a peer replica
+   * and is therefore missing from this process's startup-loaded registry. A failed read is swallowed
+   * so the caller falls through to its existing not-found handling.
+   */
+  private void reloadTypeFromDb(String typeName) {
+    TypeRepository repository = Entity.getTypeRepository();
+    if (repository != null) {
+      try {
+        EntityUtil.Fields fields = repository.getFields(PROPERTIES_FIELD);
+        Type type = repository.getByName(null, typeName, fields);
+        addType(type);
+        LOG.debug("Self-healed type '{}' from database after registry cache miss", typeName);
+      } catch (RuntimeException e) {
+        LOG.debug(
+            "Could not load type '{}' from database on registry cache miss: {}",
+            typeName,
+            e.getMessage());
       }
     }
   }

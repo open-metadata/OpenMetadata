@@ -14,10 +14,23 @@
 package org.openmetadata.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.when;
 
+import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.Type;
+import org.openmetadata.schema.entity.type.Category;
 import org.openmetadata.schema.entity.type.CustomProperty;
+import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.jdbi3.TypeRepository;
+import org.openmetadata.service.util.EntityUtil;
 
 /**
  * Tests {@link TypeRegistry#getPropertyName(String)}.
@@ -36,6 +49,64 @@ class TypeRegistryTest {
   @AfterEach
   void cleanRegistry() {
     TypeRegistry.CUSTOM_PROPERTIES.clear();
+    TypeRegistry.TYPES.clear();
+    Entity.setTypeRepository(null);
+  }
+
+  /**
+   * Multi-replica desync of the {@code TYPES} map: a custom property type created on a peer replica
+   * (e.g. via {@code POST /metadata/types} with {@code category=field}) is absent from this
+   * process's registry. Validating a custom property that references it must self-heal by re-reading
+   * the type from the shared database instead of rejecting the property as an unknown type.
+   */
+  @Test
+  void validateCustomProperties_selfHealsMissingPropertyTypeFromDatabase() {
+    String fieldType = "currency";
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getByName(any(), eq(fieldType), any()))
+        .thenReturn(
+            new Type()
+                .withName(fieldType)
+                .withCategory(Category.Field)
+                .withSchema("{\"type\":\"string\"}"));
+    Entity.setTypeRepository(repository);
+
+    TypeRegistry.instance().validateCustomProperties(tableTypeUsingPropertyType(fieldType));
+
+    assertNotNull(
+        TypeRegistry.TYPES.get(fieldType),
+        "Missing property type should be self-healed from the database");
+  }
+
+  /**
+   * When the referenced property type is genuinely absent — not in the registry and not in the
+   * database — validation must still reject it after the self-heal attempt.
+   */
+  @Test
+  void validateCustomProperties_throwsWhenPropertyTypeAbsentEvenAfterReload() {
+    String fieldType = "ghostType";
+    TypeRepository repository = mock(TypeRepository.class);
+    when(repository.getFields(any())).thenReturn(EntityUtil.Fields.EMPTY_FIELDS);
+    when(repository.getByName(any(), eq(fieldType), any()))
+        .thenThrow(new RuntimeException("type not found"));
+    Entity.setTypeRepository(repository);
+
+    Type tableType = tableTypeUsingPropertyType(fieldType);
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> TypeRegistry.instance().validateCustomProperties(tableType));
+  }
+
+  private static Type tableTypeUsingPropertyType(String propertyTypeName) {
+    return new Type()
+        .withName(ENTITY_TYPE)
+        .withCategory(Category.Entity)
+        .withCustomProperties(
+            List.of(
+                new CustomProperty()
+                    .withName("price")
+                    .withPropertyType(new EntityReference().withName(propertyTypeName))));
   }
 
   @Test
