@@ -189,7 +189,9 @@ const AssetSelectionContentBody = ({
               })}
             </Checkbox>
             <List>
-              <VirtualList data={items} itemKey="id">
+              <VirtualList
+                data={items}
+                itemKey={(item) => item._source.id ?? item._id}>
                 {({ _source: item }) => {
                   const { isError, errorMessage } = getErrorStatusAndMessage(
                     item.id ?? ''

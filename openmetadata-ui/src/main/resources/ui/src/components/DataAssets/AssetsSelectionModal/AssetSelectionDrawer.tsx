@@ -45,18 +45,13 @@ export const AssetSelectionDrawer = ({
 }: AssetSelectionDrawerProps) => {
   const { t } = useTranslation();
 
-  const handleSave = useCallback(() => {
-    onSave?.();
-    onCancel();
-  }, [onSave, onCancel]);
-
   const state = useAssetSelectionState({
     entityFqn,
     type,
     queryFilter,
     open,
     variant: 'drawer',
-    onSave: handleSave,
+    onSave,
     onCancel,
   });
 
