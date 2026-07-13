@@ -88,7 +88,7 @@ test.describe(
         '/api/v1/services/ingestionPipelines',
         {
           data: {
-            airflowConfig: {},
+            airflowConfig: { scheduleInterval: '0 0 * * *' },
             loggerLevel: 'INFO',
             name: pipelineName,
             pipelineType: 'metadata',
@@ -158,6 +158,16 @@ test.describe(
         await expect(
           agentCard.getByTestId('agent-run-dot').first()
         ).toBeVisible();
+      });
+
+      await test.step('Card shows the configured schedule', async () => {
+        const schedule = agentCard.getByTestId('agent-schedule');
+        await expect(schedule).toBeVisible();
+        await expect(schedule).toContainText('12:00 AM');
+        await expect(schedule).toContainText('Every day');
+
+        await schedule.hover();
+        await expect(page.getByRole('tooltip')).toContainText('Every day');
       });
 
       await test.step('First progress frame flips the card to running', async () => {
