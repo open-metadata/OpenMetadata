@@ -61,6 +61,7 @@ export const TreeSelectTreeItemContent = <T,>({
           }}>
           {showCheckbox && multiple && isSelectable && (
             <span
+              data-selected={isSelected}
               data-testid={`${
                 node.isParentMutuallyExclusive ? 'radio' : 'checkbox'
               }-${node.id}`}>

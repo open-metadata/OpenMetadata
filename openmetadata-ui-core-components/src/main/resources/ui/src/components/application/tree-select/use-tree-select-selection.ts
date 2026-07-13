@@ -147,9 +147,14 @@ export const useTreeSelectSelection = <T = unknown>({
     }
   }, [selectedData, toggleNodeSelection]);
 
+  const isNodeSelected = useCallback(
+    (nodeId: string) => selectedNodes.has(nodeId),
+    [selectedNodes]
+  );
+
   return {
     selectedData,
-    isNodeSelected: (nodeId: string) => selectedNodes.has(nodeId),
+    isNodeSelected,
     toggleNodeSelection,
     setSelection,
     clearSelection,

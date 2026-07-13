@@ -79,7 +79,8 @@ export const useTreeSelectData = <T = unknown>({
   const fetchTreeData = useCallback(
     async (params: TreeSelectDataFetcherParams) => {
       abortControllerRef.current?.abort();
-      abortControllerRef.current = new AbortController();
+      const controller = new AbortController();
+      abortControllerRef.current = controller;
 
       if (params.parentId) {
         loadingNodesRef.current = new Set(loadingNodesRef.current).add(
@@ -95,7 +96,15 @@ export const useTreeSelectData = <T = unknown>({
       }));
 
       try {
-        const response = await fetchData({ ...params, pageSize });
+        const response = await fetchData({
+          ...params,
+          pageSize,
+          signal: controller.signal,
+        });
+
+        if (controller.signal.aborted) {
+          return;
+        }
 
         setState((prev) => {
           const nextLoadingNodes = new Set(loadingNodesRef.current);
@@ -130,7 +139,7 @@ export const useTreeSelectData = <T = unknown>({
           };
         });
       } catch (error) {
-        if (abortControllerRef.current?.signal.aborted) {
+        if (controller.signal.aborted) {
           return;
         }
 

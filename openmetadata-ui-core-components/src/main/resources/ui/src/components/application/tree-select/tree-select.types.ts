@@ -30,6 +30,7 @@ export interface TreeSelectDataFetcherParams {
   searchTerm?: string;
   parentId?: string;
   pageSize?: number;
+  signal?: AbortSignal;
 }
 
 export interface TreeSelectDataResponse<T = unknown> {

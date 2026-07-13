@@ -111,7 +111,7 @@ export const TreeSelect = <T = unknown,>({
   const triggerRef = useRef<HTMLDivElement>(null);
   const popoverRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
-  const seededRef = useRef(false);
+  const prevValueRef = useRef<typeof value>(undefined);
 
   const { inputValue, searchTerm, setInputValue, clearSearch } =
     useTreeSelectSearch({ debounceMs, onSearch });
@@ -138,12 +138,9 @@ export const TreeSelect = <T = unknown,>({
     });
 
   useEffect(() => {
-    if (!seededRef.current) {
-      const initial = toArray(value);
-      if (initial.length > 0) {
-        setSelection(initial);
-      }
-      seededRef.current = true;
+    if (value !== prevValueRef.current) {
+      prevValueRef.current = value;
+      setSelection(toArray(value));
     }
   }, [value, setSelection]);
 
@@ -376,6 +373,7 @@ export const TreeSelect = <T = unknown,>({
               'tw:absolute tw:top-full tw:left-0 tw:z-50 tw:mt-1 tw:w-full tw:min-w-full tw:rounded-lg tw:bg-primary tw:shadow-lg tw:ring-1 tw:ring-secondary_alt',
               popoverClassName
             )}
+            data-testid={dataTestId ? `${dataTestId}-popover` : undefined}
             ref={popoverRef}>
             <div
               className="tw:max-h-80 tw:overflow-y-auto tw:p-1"

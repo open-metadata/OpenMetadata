@@ -2006,9 +2006,10 @@ export const verifyMutualExclusivitySelection = async (
   await expect(deselectedRadio).not.toBeChecked();
 };
 
-// -- MUI Glossary Tree Select helpers --
+// -- Glossary Tree Select helpers --
 
-export const getTreeDropdown = (page: Page) => page.getByRole('tooltip');
+export const getTreeDropdown = (page: Page) =>
+  page.getByTestId('glossary-terms-popover');
 
 export const getTreeNode = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(`tree-node-${nodeId}`);
@@ -2017,19 +2018,15 @@ export const getSelectionControl = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(new RegExp(`^(radio|checkbox)-${nodeId}$`));
 
 export const expandTreeNodeByName = async (page: Page, displayName: string) => {
-  const tooltip = getTreeDropdown(page);
-  const nodeText = tooltip.getByText(displayName, { exact: true });
+  const popover = getTreeDropdown(page);
+  const nodeText = popover.getByText(displayName, { exact: true });
   await expect(nodeText).toBeVisible({ timeout: 10000 });
   await nodeText.scrollIntoViewIfNeeded();
 
-  const treeItem = nodeText.locator(
-    'xpath=ancestor::li[contains(@class, "MuiTreeItem-root")][1]'
-  );
-  const iconContainer = treeItem.locator(
-    '> .MuiTreeItem-content > .MuiTreeItem-iconContainer'
-  );
-  await expect(iconContainer).toBeVisible({ timeout: 5000 });
-  await iconContainer.click();
+  const treeItem = nodeText.locator('xpath=ancestor::li[@role="treeitem"][1]');
+  const expandButton = treeItem.locator('button').first();
+  await expect(expandButton).toBeVisible({ timeout: 5000 });
+  await expandButton.click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -2042,7 +2039,7 @@ export const expandToGlossaryTermChildren = async (
   await expect(glossaryField).toBeVisible();
   await glossaryField.click();
 
-  await expect(page.locator('.MuiTreeItem-root').first()).toBeVisible({
+  await expect(page.getByTestId('glossary-terms-popover')).toBeVisible({
     timeout: 10000,
   });
 
@@ -2074,12 +2071,12 @@ export const expectCheckbox = async (page: Page, nodeId: string) => {
 
 export const expectChecked = async (page: Page, nodeId: string) => {
   const control = getSelectionControl(page, nodeId);
-  await expect(control).toHaveClass(/Mui-checked/);
+  await expect(control).toHaveAttribute('data-selected', 'true');
 };
 
 export const expectNotChecked = async (page: Page, nodeId: string) => {
   const control = getSelectionControl(page, nodeId);
-  await expect(control).not.toHaveClass(/Mui-checked/);
+  await expect(control).not.toHaveAttribute('data-selected', 'true');
 };
 
 export const clickTreeNode = async (page: Page, nodeId: string) => {
