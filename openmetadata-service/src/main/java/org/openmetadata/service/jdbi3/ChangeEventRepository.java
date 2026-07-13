@@ -48,9 +48,6 @@ public class ChangeEventRepository {
       long afterOffset,
       int from,
       int limit) {
-    long total =
-        count(
-            timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
     Long windowStartOffset = afterOffset;
     if (from > 0) {
       windowStartOffset =
@@ -80,7 +77,7 @@ public class ChangeEventRepository {
       }
       afterCursor = page.afterCursor();
     }
-    return new ResultList<>(events, null, afterCursor, (int) Math.min(total, Integer.MAX_VALUE));
+    return new ResultList<>(events, null, afterCursor, events.size());
   }
 
   private Page fetchWindow(
@@ -152,19 +149,6 @@ public class ChangeEventRepository {
     String afterCursor =
         hasMore && !page.isEmpty() ? String.valueOf(page.getLast().offset()) : null;
     return new Page(page, afterCursor);
-  }
-
-  private long count(
-      long timestamp,
-      List<String> entityCreatedList,
-      List<String> entityUpdatedList,
-      List<String> entityRestoredList,
-      List<String> entityDeletedList) {
-    return dao.count(ENTITY_CREATED, entityCreatedList, timestamp)
-        + dao.count(ENTITY_UPDATED, entityUpdatedList, timestamp)
-        + dao.count(ENTITY_RESTORED, entityRestoredList, timestamp)
-        + dao.count(ENTITY_DELETED, entityDeletedList, timestamp)
-        + dao.count(ENTITY_SOFT_DELETED, entityDeletedList, timestamp);
   }
 
   @Transaction

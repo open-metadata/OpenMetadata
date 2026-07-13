@@ -8837,31 +8837,6 @@ public interface CollectionDAO {
         @Bind("afterOffset") long afterOffset,
         @Bind("limit") int limit);
 
-    default long count(EventType eventType, List<String> entityTypes, long timestamp) {
-      long result;
-      if (nullOrEmpty(entityTypes)) {
-        result = 0;
-      } else if (entityTypes.getFirst().equals("*")) {
-        result = countWithoutEntityFilter(eventType.value(), timestamp);
-      } else {
-        result = countWithEntityFilter(eventType.value(), entityTypes, timestamp);
-      }
-      return result;
-    }
-
-    @SqlQuery(
-        "SELECT COUNT(*) FROM change_event WHERE eventType = :eventType "
-            + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp")
-    long countWithEntityFilter(
-        @Bind("eventType") String eventType,
-        @BindList("entityTypes") List<String> entityTypes,
-        @Bind("timestamp") long timestamp);
-
-    @SqlQuery(
-        "SELECT COUNT(*) FROM change_event WHERE eventType = :eventType AND eventTime >= :timestamp")
-    long countWithoutEntityFilter(
-        @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
-
     @SqlQuery(
         "SELECT json FROM change_event ce  WHERE ce.offset > :offset ORDER BY ce.offset ASC LIMIT :limit")
     List<String> list(@Bind("limit") long limit, @Bind("offset") long offset);
