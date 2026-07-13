@@ -22,7 +22,6 @@ import { isUndefined } from 'lodash';
 import VirtualList from 'rc-virtual-list';
 import { useTranslation } from 'react-i18next';
 import { SearchIndex } from '../../../enums/search.enum';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import Banner from '../../common/Banner/Banner';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -89,7 +88,6 @@ const AssetSelectionContentBody = ({
   handleQuickFiltersValueSelect,
   clearFilters,
 }: AssetSelectionContentBodyProps) => {
-  const { theme } = useApplicationStore();
   const { t } = useTranslation();
 
   return (
@@ -159,12 +157,7 @@ const AssetSelectionContentBody = ({
               }
               message={
                 <div className="d-flex items-center gap-3">
-                  <ExclamationCircleOutlined
-                    style={{
-                      color: theme.errorColor,
-                      fontSize: '24px',
-                    }}
-                  />
+                  <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
                   <Typography as="span" size="text-sm" weight="semibold">
                     {t('label.validation-error-plural')}
                   </Typography>
@@ -225,10 +218,7 @@ const AssetSelectionContentBody = ({
                           </div>
                           <div className="d-flex gap-3 p-x-sm p-b-sm">
                             <ExclamationCircleOutlined
-                              style={{
-                                color: theme.errorColor,
-                                fontSize: '24px',
-                              }}
+                              className="tw:text-2xl tw:text-error-primary"
                             />
                             <Typography as="span" className="tw:break-all">
                               {errorMessage}
