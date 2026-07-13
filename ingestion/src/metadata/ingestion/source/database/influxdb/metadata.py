@@ -52,6 +52,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 _INFLUX_TO_OM_TYPE = {
+    # InfluxDB 3 Cloud
     "Int64": DataType.BIGINT,
     "Int32": DataType.INT,
     "UInt64": DataType.BIGINT,
@@ -65,6 +66,9 @@ _INFLUX_TO_OM_TYPE = {
     "Dictionary(Int32, Utf8)": DataType.VARCHAR,
     "Timestamp(Nanosecond, None)": DataType.TIMESTAMP,
     'Timestamp(Nanosecond, Some("UTC"))': DataType.TIMESTAMP,
+    # InfluxDB 3 Core
+    "Timestamp(ns)": DataType.TIMESTAMP,
+    "timestamp(ns, UTC)": DataType.TIMESTAMP,
 }
 
 

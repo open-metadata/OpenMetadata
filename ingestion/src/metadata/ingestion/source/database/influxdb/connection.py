@@ -45,7 +45,8 @@ class InfluxDBClient:
     def __init__(self, url: str, token: str):
         self._url = url.rstrip("/")
         self._session = Session()
-        self._session.headers["Authorization"] = f"Bearer {token}"
+        if token:
+            self._session.headers["Authorization"] = f"Bearer {token}"
 
     def _query(self, database: str, sql: str) -> list[dict]:
         params = {"db": database, "q": sql, "format": "json"}
@@ -67,16 +68,38 @@ class InfluxDBClient:
     def list_tables(self, database: str) -> list[str]:
         rows = self._query(
             database,
-            "SELECT table_name FROM information_schema.tables WHERE table_schema = 'iox'",
+            "SELECT table_name FROM information_schema.tables",
         )
-        return [row["table_name"] for row in rows]
+        return [
+            row["table_name"]
+            for row in rows
+            if not row["table_name"].startswith("_")
+            and row["table_name"]
+            not in {
+                "distinct_caches",
+                "influxdb_schema",
+                "last_caches",
+                "parquet_files",
+                "processing_engine_logs",
+                "processing_engine_trigger_arguments",
+                "processing_engine_triggers",
+                "queries",
+                "tables",
+                "views",
+                "columns",
+                "df_settings",
+                "schemata",
+                "routines",
+                "parameters",
+            }
+        ]
 
     def get_columns(self, database: str, table: str) -> list[dict]:
         safe_table = table.replace("'", "''")
         sql = (
             "SELECT column_name, data_type, is_nullable "
             "FROM information_schema.columns "
-            f"WHERE table_schema = 'iox' AND table_name = '{safe_table}'"
+            f"WHERE table_name = '{safe_table}'"
         )
         return self._query(database, sql)
 
