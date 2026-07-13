@@ -185,16 +185,6 @@ export const ContextRuleEditor = ({
   );
 
   const sectionsDisabled = fullyRendered || isKnowledgeRule;
-  const genericContent = t('message.persona-context-generic-content');
-  const genericContentBreak = genericContent.indexOf('. ');
-  const genericContentLabel =
-    genericContentBreak >= 0
-      ? genericContent.slice(0, genericContentBreak + 1)
-      : genericContent;
-  const genericContentBody =
-    genericContentBreak >= 0
-      ? genericContent.slice(genericContentBreak + 2)
-      : '';
 
   useEffect(() => {
     if (!open) {
@@ -450,9 +440,9 @@ export const ContextRuleEditor = ({
               as="span"
               className="tw:text-[13px] tw:text-primary"
               weight="semibold">
-              {genericContentLabel}
+              {t('message.persona-context-generic-content-label')}
             </Typography>{' '}
-            {genericContentBody}
+            {t('message.persona-context-generic-content-body')}
           </Typography>
         </Box>
       )}
