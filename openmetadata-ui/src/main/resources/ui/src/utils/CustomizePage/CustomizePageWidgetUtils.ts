@@ -14,6 +14,7 @@
 import { get, noop, uniqueId } from 'lodash';
 import type { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
+import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import type { Page, Tab } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
@@ -23,36 +24,91 @@ import {
   getDefaultWidgetForTab,
   getWidgetHeight,
 } from './CustomizePageDispatchUtils';
+
 const calculateNewPosition = (
   currentLayout: WidgetConfig[],
   newWidget: { w: number; h: number },
-  maxCols = 8
+  maxCols = 8,
+  preferredX?: number
 ) => {
-  const sortedLayout = [...currentLayout].sort(
-    (a, b) => a.y + a.h - (b.y + b.h)
-  );
+  const maxX = Math.max(maxCols - newWidget.w, 0);
 
-  const lastWidget = sortedLayout.at(sortedLayout.length - 1);
+  // When a widget is added from an existing right-panel widget, keep the scan
+  // inside that column so the new widget does not jump into the main content.
+  const candidateXPositions =
+    preferredX !== undefined
+      ? [Math.min(Math.max(preferredX, 0), maxX)]
+      : Array.from({ length: maxX + 1 }, (_, index) => index);
 
-  if (!lastWidget) {
-    return { x: 0, y: 0 };
-  }
+  const hasCollision = (position: { x: number; y: number }) =>
+    currentLayout.some(
+      (widget) =>
+        position.x < widget.x + widget.w &&
+        position.x + newWidget.w > widget.x &&
+        position.y < widget.y + widget.h &&
+        position.y + newWidget.h > widget.y
+    );
 
-  const lastRowY = lastWidget.y + lastWidget.h;
-  const lastRowWidgets = sortedLayout.filter(
-    (widget) => widget.y + widget.h === lastRowY
-  );
+  // If the preferred column has no gap, append below the widgets that actually
+  // overlap that column instead of using the bottom of the whole page layout.
+  const getColumnBottom = (xPosition: number) =>
+    currentLayout.reduce((bottom, widget) => {
+      const hasHorizontalOverlap =
+        xPosition < widget.x + widget.w && xPosition + newWidget.w > widget.x;
 
-  const lastX = lastRowWidgets.reduce(
-    (maxX, widget) => Math.max(maxX, widget.x + widget.w),
+      return hasHorizontalOverlap
+        ? Math.max(bottom, widget.y + widget.h)
+        : bottom;
+    }, 0);
+
+  const maxY = currentLayout.reduce(
+    (bottom, widget) => Math.max(bottom, widget.y + widget.h),
     0
   );
 
-  if (lastX + newWidget.w <= maxCols) {
-    return { x: lastX, y: lastRowY - lastWidget.h };
+  // Scan from top to bottom and left to right, returning the first rectangle
+  // that can fit the new widget without overlapping any existing widget.
+  for (let y = 0; y <= maxY; y++) {
+    for (const x of candidateXPositions) {
+      const position = { x, y };
+
+      if (!hasCollision(position)) {
+        return position;
+      }
+    }
   }
 
-  return { x: 0, y: lastRowY };
+  const fallbackX = candidateXPositions[0] ?? 0;
+
+  return { x: fallbackX, y: getColumnBottom(fallbackX) };
+};
+
+// The add modal can be opened from a specific widget. Use that widget's x
+// coordinate as the preferred column so right-panel widgets stay together.
+const getPreferredWidgetX = (
+  currentLayout: WidgetConfig[],
+  placeholderWidgetKey: string,
+  widgetWidth: number,
+  maxCols = 8
+) => {
+  const sourceWidget = currentLayout.find(
+    (widget) => widget.i === placeholderWidgetKey
+  );
+
+  if (sourceWidget) {
+    return sourceWidget.x;
+  }
+
+  // If there is no source widget key, detail pages with a left panel still
+  // have a natural right-panel column immediately after the left panel.
+  const leftPanelWidget = currentLayout.find((widget) =>
+    widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
+  );
+  const rightPanelX = (leftPanelWidget?.x ?? 0) + (leftPanelWidget?.w ?? 0);
+
+  return leftPanelWidget && widgetWidth <= maxCols - rightPanelX
+    ? rightPanelX
+    : undefined;
 };
 
 export const getAddWidgetHandler =
@@ -89,15 +145,17 @@ export const getAddWidgetHandler =
         },
       ];
     } else {
+      const filteredLayout = currentLayout.filter(
+        (widget) => widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+      );
       const { x: widgetX, y: widgetY } = calculateNewPosition(
-        currentLayout.filter(
-          (widget) =>
-            widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-        ),
+        filteredLayout,
         {
           w: widgetWidth,
           h: widgetHeight,
-        }
+        },
+        undefined,
+        getPreferredWidgetX(filteredLayout, placeholderWidgetKey, widgetWidth)
       );
 
       return [
