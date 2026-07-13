@@ -29,7 +29,6 @@ public class AwsCredentialsUtil {
    * that contention.
    */
   public static ClientOverrideConfiguration throttleResilientOverrideConfiguration() {
-    // ponytail: fixed attempt ceiling; wire to LLMConfiguration if operators need per-quota tuning.
     return ClientOverrideConfiguration.builder()
         .retryStrategy(
             AwsRetryStrategy.standardRetryStrategy().toBuilder()
