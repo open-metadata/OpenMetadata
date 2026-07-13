@@ -19,6 +19,10 @@ from typing import TYPE_CHECKING, Any, Dict, Optional, Union  # noqa: UP035
 
 import tableauserverclient as TSC  # noqa: N812
 from requests.exceptions import SSLError
+from tableauserverclient.server.endpoint.exceptions import (
+    InternalServerError,
+    ServerResponseError,
+)
 
 from metadata.core.connections.test_connection import (
     ErrorPack,
@@ -68,18 +72,17 @@ METADATA_API_DOC = (
 def _status_of(error: BaseException) -> int | None:
     """Return the HTTP status a Tableau error carries, if any.
 
-    ``ServerResponseError`` reports a Tableau error code - a string whose first
-    three digits are the HTTP status, e.g. ``401002`` - while
-    ``InternalServerError`` puts the status itself on ``.code``. A raw ``requests``
-    error carries it at ``.response.status_code``.
+    Only the two Tableau error types whose ``.code`` is HTTP-ish are trusted -
+    ``ServerResponseError.code`` is a string whose first three digits are the
+    status (e.g. ``401002``), ``InternalServerError.code`` is the status itself -
+    plus a raw ``requests`` error's ``.response.status_code``. Reading ``.code``
+    off any exception would misclassify an unrelated app code the chain happens
+    to carry.
     """
-    code = getattr(error, "code", None)
-    if isinstance(code, bool):
-        status = None
-    elif isinstance(code, int):
-        status = code
-    elif isinstance(code, str) and code[:3].isdigit():
-        status = int(code[:3])
+    if isinstance(error, ServerResponseError) and error.code[:3].isdigit():
+        status = int(error.code[:3])
+    elif isinstance(error, InternalServerError) and isinstance(error.code, int):
+        status = error.code
     else:
         response = getattr(error, "response", None)
         status = getattr(response, "status_code", None)

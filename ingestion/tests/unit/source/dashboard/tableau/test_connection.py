@@ -249,5 +249,14 @@ def test_error_pack_classifies_a_wrapped_cause():
     assert diagnosis.title == "Authentication failed"
 
 
+def test_error_pack_ignores_unrelated_code_attribute():
+    # A non-Tableau exception exposing an int .code must not be read as an HTTP
+    # status just because it happens to equal 401/403/404.
+    class _AppError(Exception):
+        code = 403
+
+    assert TABLEAU_ERRORS.classify(_AppError("application code, not HTTP")) is None
+
+
 def test_error_pack_ignores_unknown_error():
     assert TABLEAU_ERRORS.classify(ValueError("something else")) is None
