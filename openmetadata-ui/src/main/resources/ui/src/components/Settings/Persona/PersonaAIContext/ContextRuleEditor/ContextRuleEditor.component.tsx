@@ -185,6 +185,16 @@ export const ContextRuleEditor = ({
   );
 
   const sectionsDisabled = fullyRendered || isKnowledgeRule;
+  const genericContent = t('message.persona-context-generic-content');
+  const genericContentBreak = genericContent.indexOf('. ');
+  const genericContentLabel =
+    genericContentBreak >= 0
+      ? genericContent.slice(0, genericContentBreak + 1)
+      : genericContent;
+  const genericContentBody =
+    genericContentBreak >= 0
+      ? genericContent.slice(genericContentBreak + 2)
+      : '';
 
   useEffect(() => {
     if (!open) {
@@ -428,11 +438,23 @@ export const ContextRuleEditor = ({
       </Field>
 
       {isKnowledgeRule && (
-        <Alert
-          className="tw:mb-5 tw:border-dashed"
-          title={t('message.persona-context-generic-content')}
-          variant="gray"
-        />
+        <Box
+          align="start"
+          className="tw:mb-5 tw:gap-2.5 tw:rounded-xl tw:border tw:border-dashed tw:border-secondary tw:bg-secondary tw:px-3.5 tw:py-2.75"
+          data-testid="context-rule-generic-content">
+          <InfoCircle className="tw:mt-0.5 tw:size-4 tw:shrink-0 tw:text-quaternary" />
+          <Typography
+            as="p"
+            className="tw:m-0 tw:min-w-0 tw:flex-1 tw:text-[13px] tw:leading-relaxed tw:text-tertiary tw:[&_.prose]:inline">
+            <Typography
+              as="span"
+              className="tw:text-[13px] tw:text-primary"
+              weight="semibold">
+              {genericContentLabel}
+            </Typography>{' '}
+            {genericContentBody}
+          </Typography>
+        </Box>
       )}
 
       <Box className="tw:mb-5.5 tw:gap-2.5" direction="col">

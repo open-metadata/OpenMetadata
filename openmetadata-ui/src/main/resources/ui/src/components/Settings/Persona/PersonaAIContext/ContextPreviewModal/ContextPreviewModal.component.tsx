@@ -92,7 +92,7 @@ export const ContextPreviewModal = ({
   onClose,
   onDocumentLoaded,
 }: ContextPreviewModalProps) => {
-  const { t } = useTranslation();
+  const { t, i18n } = useTranslation();
   const documentPaneRef = useRef<HTMLDivElement>(null);
   const onDocumentLoadedRef = useRef(onDocumentLoaded);
   const previewRequestRef = useRef(0);
@@ -211,7 +211,9 @@ export const ContextPreviewModal = ({
     }),
     t('message.persona-context-token-estimate', {
       count: contextDocument?.tokensEst ?? 0,
-      formattedCount: (contextDocument?.tokensEst ?? 0).toLocaleString(),
+      formattedCount: (contextDocument?.tokensEst ?? 0).toLocaleString(
+        i18n.language
+      ),
     }),
     t('message.persona-context-size', {
       count: Math.max(1, Math.ceil((contextDocument?.bytes ?? 0) / 1024)),
