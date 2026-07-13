@@ -132,8 +132,8 @@ test.describe('Lineage Interactions', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.keyboard.press('Escape');
 
       await page.getByTestId('lineage-layer-btn').click();
-      await expect(columnBtn).toHaveClass(/Mui-selected/);
-      await expect(observabilityBtn).toHaveClass(/Mui-selected/);
+      await expect(columnBtn).toHaveAttribute('data-selected');
+      await expect(observabilityBtn).toHaveAttribute('data-selected');
     });
   });
 

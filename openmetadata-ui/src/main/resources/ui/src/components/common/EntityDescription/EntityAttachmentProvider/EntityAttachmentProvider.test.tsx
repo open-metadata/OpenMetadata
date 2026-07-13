@@ -121,7 +121,6 @@ describe('EntityAttachmentProvider', () => {
     (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
       {
         onImageUpload: mockOnImageUpload,
-        allowImageUpload: true,
       }
     );
   });
@@ -137,7 +136,7 @@ describe('EntityAttachmentProvider', () => {
       EntityType.TABLE
     );
     expect(screen.getByTestId('entity-fqn')).toHaveTextContent('');
-    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('true');
+    expect(screen.getByTestId('allow-image-upload')).toHaveTextContent('false');
     expect(screen.getByTestId('allow-file-upload')).toHaveTextContent('false');
   });
 
@@ -165,7 +164,7 @@ describe('EntityAttachmentProvider', () => {
     mockOnImageUpload.mockResolvedValue(mockUrl);
 
     render(
-      <EntityAttachmentProvider entityType={EntityType.TABLE}>
+      <EntityAttachmentProvider allowFileUpload entityType={EntityType.TABLE}>
         <FileUploadTestComponent file={mockFile} position={0} view={mockView} />
       </EntityAttachmentProvider>
     );
@@ -286,7 +285,7 @@ describe('EntityAttachmentProvider', () => {
     });
 
     render(
-      <EntityAttachmentProvider entityType={EntityType.TABLE}>
+      <EntityAttachmentProvider allowFileUpload entityType={EntityType.TABLE}>
         <div>
           <TestComponent />
           <FileUploadTestComponent
@@ -311,7 +310,7 @@ describe('EntityAttachmentProvider', () => {
     mockOnImageUpload.mockRejectedValue(mockError);
 
     render(
-      <EntityAttachmentProvider entityType={EntityType.TABLE}>
+      <EntityAttachmentProvider allowFileUpload entityType={EntityType.TABLE}>
         <FileUploadTestComponent file={mockFile} position={0} view={mockView} />
       </EntityAttachmentProvider>
     );
@@ -327,15 +326,13 @@ describe('EntityAttachmentProvider', () => {
 
   it('does not handle file upload when onImageUpload is not provided', async () => {
     (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
-      {
-        allowImageUpload: true,
-      }
+      {}
     );
 
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
 
     render(
-      <EntityAttachmentProvider entityType={EntityType.TABLE}>
+      <EntityAttachmentProvider allowFileUpload entityType={EntityType.TABLE}>
         <FileUploadTestComponent file={mockFile} position={0} view={mockView} />
       </EntityAttachmentProvider>
     );
@@ -346,14 +343,7 @@ describe('EntityAttachmentProvider', () => {
     expect(mockOnImageUpload).not.toHaveBeenCalled();
   });
 
-  it('does not handle image upload when not allowed', async () => {
-    (imageClassBase.getBlockEditorAttachmentProps as jest.Mock).mockReturnValue(
-      {
-        onImageUpload: mockOnImageUpload,
-        allowImageUpload: false,
-      }
-    );
-
+  it('does not handle image upload when allowFileUpload is not set', async () => {
     const mockFile = new File([''], 'test.jpg', { type: 'image/jpeg' });
 
     render(

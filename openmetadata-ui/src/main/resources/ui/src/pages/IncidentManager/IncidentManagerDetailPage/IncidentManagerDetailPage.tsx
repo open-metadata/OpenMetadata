@@ -30,10 +30,10 @@ import ManageButton from '../../../components/common/EntityPageInfos/ManageButto
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { AlignRightIconButton } from '../../../components/common/IconButtons/EditIconButton';
-import Loader from '../../../components/common/Loader/Loader';
+import { PageLoader } from '../../../components/common/Loader/Loader';
 import { TitleBreadcrumbProps } from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import { StatItem } from '../../../components/DataAssets/DataAssetsHeader/StatItem.component';
-import EditTestCaseModal from '../../../components/DataQuality/AddDataQualityTest/EditTestCaseModal';
+import TestCaseFormDrawer from '../../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import IncidentManagerPageHeader from '../../../components/DataQuality/IncidentManager/IncidentManagerPageHeader/IncidentManagerPageHeader.component';
 import EntityVersionTimeLine from '../../../components/Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
@@ -180,7 +180,7 @@ const IncidentManagerDetailPage = ({
         activeTitle: true,
       },
     ];
-  }, [testCase, isDimensionPage, dimensionKey, t]);
+  }, [testCase, testCaseFQN, activeTab, isDimensionPage, dimensionKey, t]);
 
   const breadcrumbItems = useMemo(
     () =>
@@ -198,7 +198,7 @@ const IncidentManagerDetailPage = ({
   }, [onCopyToClipBoard]);
 
   if (isLoading) {
-    return <Loader />;
+    return <PageLoader />;
   }
 
   if (!hasViewPermission) {
@@ -399,10 +399,11 @@ const IncidentManagerDetailPage = ({
         />
       )}
       {testCase && isDimensionEdit && (
-        <EditTestCaseModal
+        <TestCaseFormDrawer
+          open={isDimensionEdit}
           testCase={testCase}
-          visible={isDimensionEdit}
-          onCancel={handleCancelDimension}
+          variant="drawer"
+          onClose={handleCancelDimension}
           onUpdate={setTestCase}
         />
       )}

@@ -414,4 +414,14 @@ public final class GlossaryTerms {
       return new GlossaryTermDeleter(client, glossaryTerm.getId().toString());
     }
   }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().glossaryTerms().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().glossaryTerms().getContextByName(fqn);
+  }
 }

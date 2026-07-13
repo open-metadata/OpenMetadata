@@ -503,13 +503,6 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       // Wait for delete button to be visible and click it
       await expect(roleLocator).toBeVisible();
 
-      // Wait for confirmation modal to be visible
-      const confirmationInput = page.locator(
-        '[data-testid="confirmation-text-input"]'
-      );
-      await expect(confirmationInput).toBeVisible();
-      await confirmationInput.fill('DELETE');
-
       const confirmButton = page.locator('[data-testid="confirm-button"]');
       await expect(confirmButton).toBeVisible();
       await expect(confirmButton).toBeEnabled();
@@ -568,13 +561,6 @@ test.describe('Roles page tests', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       .first();
     await expect(deleteButton).toBeVisible();
     await deleteButton.click();
-
-    // Wait for confirmation modal
-    const confirmationInput = page.locator(
-      '[data-testid="confirmation-text-input"]'
-    );
-    await expect(confirmationInput).toBeVisible();
-    await confirmationInput.fill('DELETE');
 
     const confirmButton = page.locator('[data-testid="confirm-button"]');
     await expect(confirmButton).toBeVisible();
