@@ -1571,9 +1571,9 @@ public class WorkflowHandler {
               handle -> {
                 try {
                   for (WorkflowInstance instance : conflictingInstances) {
-                    workflowInstanceStateRepository.markInstanceStatesAsFailed(
+                    workflowInstanceStateRepository.markInstanceStatesAsSuperseded(
                         instance.getId(), "Terminated due to conflicting workflow instance");
-                    workflowInstanceRepository.markInstanceAsFailed(
+                    workflowInstanceRepository.markInstanceAsSuperseded(
                         instance.getId(), "Terminated due to conflicting workflow instance");
                   }
                   return null;

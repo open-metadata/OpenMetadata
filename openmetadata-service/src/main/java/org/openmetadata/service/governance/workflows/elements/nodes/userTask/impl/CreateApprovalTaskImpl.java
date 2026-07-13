@@ -2,6 +2,7 @@ package org.openmetadata.service.governance.workflows.elements.nodes.userTask.im
 
 import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_VARIABLE;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -132,7 +133,7 @@ public class CreateApprovalTaskImpl implements TaskListener {
       Entity.getCollectionDAO().feedDAO().update(thread.getId(), JsonUtils.pojoToJson(thread));
 
       WorkflowHandler.getInstance()
-          .terminateTaskProcessInstance(thread.getId(), "A Newer Process Instance is Running.");
+          .terminateTaskProcessInstance(thread.getId(), SUPERSEDED_BY_NEWER_RUN);
       changeEvent =
           new ChangeEvent()
               .withId(UUID.randomUUID())
