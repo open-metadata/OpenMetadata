@@ -45,13 +45,12 @@ import { CustomTooltip } from '../../utils/DataInsightChartUtils';
 import {
   getGraphDataByEntityType,
   sortEntityByValue,
-} from '../../utils/DataInsightUtils';
+} from '../../utils/DataInsightPureUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import PageHeader from '../PageHeader/PageHeader.component';
 import './data-insight-detail.less';
 import { EmptyGraphPlaceholder } from './EmptyGraphPlaceholder';
 import TotalEntityInsightSummary from './TotalEntityInsightSummary.component';
-
 interface Props {
   chartFilter: ChartFilter;
   selectedDays: number;

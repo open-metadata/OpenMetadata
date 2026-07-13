@@ -17,8 +17,8 @@ import classNames from 'classnames';
 import { isEmpty, map } from 'lodash';
 import { useEffect, useMemo, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { ReactComponent as KnowledgeCenterWidgetIcon } from '../../../assets/svg/context-center.svg';
 import { ReactComponent as IconArticle } from '../../../assets/svg/ic-article.svg';
-import { ReactComponent as KnowledgeCenterWidgetIcon } from '../../../assets/svg/ic-knowledge-center-widget.svg';
 import { ReactComponent as LinkIcon } from '../../../assets/svg/ic-quick-link.svg';
 import { ReactComponent as KnowledgeCenterNoDataPlaceholder } from '../../../assets/svg/no-folder-data.svg';
 import WidgetEmptyState from '../../../components/MyData/Widgets/Common/WidgetEmptyState/WidgetEmptyState';
@@ -36,12 +36,11 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
-import { getKnowledgePagePath } from '../../../utils/KnowledgePageUtils';
+import { getKnowledgePagePath } from '../../../utils/KnowledgePagePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import './KnowledgeCenterWidget.less';
-
 const KnowledgeCenterWidget = ({
   isEditView = false,
   widgetKey,

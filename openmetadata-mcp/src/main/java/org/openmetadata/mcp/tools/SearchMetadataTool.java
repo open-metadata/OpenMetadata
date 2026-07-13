@@ -13,8 +13,13 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.stream.Collectors;
+import java.util.stream.Stream;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.PageCursor;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -28,9 +33,6 @@ public class SearchMetadataTool implements McpTool {
 
   private static final int DEFAULT_MAX_AGGREGATION_BUCKETS = 10;
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;
-  private static final int DESCRIPTION_MAX_LENGTH = 500;
-  private static final int DESCRIPTION_TRUNCATE_LENGTH = 450;
-  private static final int MAX_RESPONSE_CHARS = 100_000;
 
   private static final List<String> ESSENTIAL_FIELDS_ONLY =
       List.of(
@@ -65,47 +67,43 @@ public class SearchMetadataTool implements McpTool {
       List.of("testCaseStatus", "timestamp", "result");
 
   private static final List<String> DETAILED_EXCLUDE_KEYS =
-      List.of(
-          "id",
-          "version",
-          "updatedAt",
-          "updatedBy",
-          "usageSummary",
-          "followers",
-          "votes",
-          "lifeCycle",
-          "sourceHash",
-          "processedLineage",
-          "totalVotes",
-          "fqnParts",
-          "service_suggest",
-          "column_suggest",
-          "schema_suggest",
-          "database_suggest",
-          "upstreamLineage",
-          "entityRelationship",
-          "changeSummary",
-          "fqnHash",
-          "columns",
-          "schemaDefinition",
-          "queries",
-          "sourceUrl",
-          "locationPath",
-          "customMetrics",
-          "tierSources",
-          "tagSources",
-          "descriptionSources",
-          "columnDescriptionStatus",
-          "columnNamesFuzzy",
-          "descriptionStatus",
-          "domains",
-          "embeddings",
-          "embedding",
-          "textToEmbed",
-          "textToLLMContext",
-          "fingerprint",
-          "chunkCount",
-          "chunkIndex");
+      Stream.concat(
+              Stream.of(
+                  "id",
+                  "version",
+                  "updatedAt",
+                  "updatedBy",
+                  "usageSummary",
+                  "followers",
+                  "votes",
+                  "lifeCycle",
+                  "sourceHash",
+                  "processedLineage",
+                  "totalVotes",
+                  "fqnParts",
+                  "service_suggest",
+                  "column_suggest",
+                  "schema_suggest",
+                  "database_suggest",
+                  "upstreamLineage",
+                  "entityRelationship",
+                  "changeSummary",
+                  "fqnHash",
+                  "columns",
+                  "schemaDefinition",
+                  "queries",
+                  "sourceUrl",
+                  "locationPath",
+                  "customMetrics",
+                  "tierSources",
+                  "tagSources",
+                  "descriptionSources",
+                  "columnDescriptionStatus",
+                  "columnNamesFuzzy",
+                  "descriptionStatus",
+                  "domains"),
+              McpResponseTrim.VECTOR_NOISE_FIELDS.stream())
+          .toList();
 
   @Override
   public Map<String, Object> execute(
@@ -142,6 +140,10 @@ public class SearchMetadataTool implements McpTool {
           from = 0;
         }
       }
+    }
+    Optional<PageCursor.Cursor> cursor = PageCursor.decode(stringParam(params, "cursor", null));
+    if (cursor.isPresent() && cursor.get().isOffset()) {
+      from = cursor.get().offset();
     }
 
     size = Math.min(size, 50);
@@ -267,7 +269,13 @@ public class SearchMetadataTool implements McpTool {
     }
 
     return buildEnhancedSearchResponse(
-        searchResponse, query, size, requestedFields, includeAggregations, maxAggregationBuckets);
+        searchResponse,
+        query,
+        size,
+        from,
+        requestedFields,
+        includeAggregations,
+        maxAggregationBuckets);
   }
 
   @Override
@@ -285,6 +293,24 @@ public class SearchMetadataTool implements McpTool {
       Map<String, Object> searchResponse,
       String query,
       int requestedLimit,
+      List<String> requestedFields,
+      boolean includeAggregations,
+      int maxAggregationBuckets) {
+    return buildEnhancedSearchResponse(
+        searchResponse,
+        query,
+        requestedLimit,
+        0,
+        requestedFields,
+        includeAggregations,
+        maxAggregationBuckets);
+  }
+
+  static Map<String, Object> buildEnhancedSearchResponse(
+      Map<String, Object> searchResponse,
+      String query,
+      int requestedLimit,
+      int from,
       List<String> requestedFields,
       boolean includeAggregations,
       int maxAggregationBuckets) {
@@ -354,7 +380,8 @@ public class SearchMetadataTool implements McpTool {
       }
     }
 
-    if (totalResults > requestedLimit) {
+    boolean moreInIndex = (long) from + cleanedResults.size() < totalResults;
+    if (moreInIndex) {
       result.put(
           "message",
           String.format(
@@ -365,42 +392,68 @@ public class SearchMetadataTool implements McpTool {
       result.put("hasMore", true);
     }
 
-    try {
-      String serialized = JsonUtils.pojoToJson(result);
-      LOG.debug(
-          "[MCP] search_metadata response size: {} chars for query '{}'",
-          serialized.length(),
-          query);
-      if (serialized.length() > MAX_RESPONSE_CHARS) {
-        int targetCount =
-            Math.min(
-                Math.max(
-                    1,
-                    (int)
-                        (cleanedResults.size() * (MAX_RESPONSE_CHARS * 0.8) / serialized.length())),
-                cleanedResults.size());
-        List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, targetCount));
-        LOG.warn(
-            "[MCP] search_metadata response trimmed: {} chars -> {} results (was {})",
-            serialized.length(),
-            trimmed.size(),
-            cleanedResults.size());
-        result.put("results", trimmed);
-        result.put("returnedCount", trimmed.size());
-        result.put("hasMore", true);
-        result.put(
-            "message",
-            String.format(
-                "Response exceeded %d characters and was trimmed to %d of %d results. "
-                    + "There are many matching assets. Are you looking for something specific? "
-                    + "Try narrowing with a service name, schema, or specific name.",
-                MAX_RESPONSE_CHARS, trimmed.size(), totalResults));
-      }
-    } catch (RuntimeException e) {
-      LOG.warn("Failed to check response size for query '{}': {}", query, e.getMessage());
-    }
+    fitResultsToBudget(result, cleanedResults, totalResults, query);
+    attachPagingContract(result, from, totalResults);
 
     return result;
+  }
+
+  /**
+   * Sets the unified paging markers. {@code total} is the real ES hit count; {@code nextCursor}
+   * advances by the count actually returned this page (after any budget trim) so the next call never
+   * skips rows. Emitted only when {@code hasMore} was set — either the total exceeds this page or the
+   * size budget trimmed it.
+   */
+  private static void attachPagingContract(
+      Map<String, Object> result, int from, long totalResults) {
+    result.put(McpResponseTrim.TOTAL_KEY, totalResults);
+    int returned = result.get("returnedCount") instanceof Number number ? number.intValue() : 0;
+    if (Boolean.TRUE.equals(result.get(McpResponseTrim.HAS_MORE_KEY)) && returned > 0) {
+      result.put(McpResponseTrim.NEXT_CURSOR_KEY, PageCursor.encodeOffset(from + returned));
+    } else if (returned == 0) {
+      result.remove(McpResponseTrim.HAS_MORE_KEY);
+      result.remove(McpResponseTrim.MESSAGE_KEY);
+    }
+  }
+
+  /**
+   * Ensures the response stays under the dispatch-level size cap by returning fewer <em>results</em>
+   * (never mangling the ones kept), so search never falls through to the empty-stub nuke. Uses
+   * {@link ResponseBudget} to fit results to the budget by measuring each result's real serialized
+   * size, which the previous single proportional estimate could undershoot on heavy `fields=`
+   * responses, leaving the payload above the cap.
+   */
+  private static void fitResultsToBudget(
+      Map<String, Object> result,
+      List<Map<String, Object>> cleanedResults,
+      long totalResults,
+      String query) {
+    long overhead = overheadWithoutResults(result);
+    int fit = ResponseBudget.fitCount(cleanedResults, overhead);
+    if (fit < cleanedResults.size()) {
+      List<Map<String, Object>> trimmed = new ArrayList<>(cleanedResults.subList(0, fit));
+      LOG.warn(
+          "[MCP] search_metadata fit {} of {} results to size budget for query '{}'",
+          trimmed.size(),
+          cleanedResults.size(),
+          query);
+      result.put("results", trimmed);
+      result.put("returnedCount", trimmed.size());
+      result.put("hasMore", true);
+      result.put(
+          "message",
+          String.format(
+              "Returning %d of %d results to stay within the response size budget. "
+                  + "Pass 'nextCursor' to fetch the next page, or narrow the query.",
+              trimmed.size(), totalResults));
+    }
+  }
+
+  private static long overheadWithoutResults(Map<String, Object> result) {
+    Object savedResults = result.remove("results");
+    long overhead = McpResponseTrim.serializedLength(result);
+    result.put("results", savedResults);
+    return overhead;
   }
 
   public static Map<String, Object> cleanSearchResult(
@@ -424,11 +477,8 @@ public class SearchMetadataTool implements McpTool {
     addSlimTestCaseResult(source, result);
 
     // Truncate long descriptions to optimize LLM context usage
-    if (result.containsKey("description")) {
-      Object descObj = result.get("description");
-      if (descObj instanceof String description && description.length() > DESCRIPTION_MAX_LENGTH) {
-        result.put("description", description.substring(0, DESCRIPTION_TRUNCATE_LENGTH) + "...");
-      }
+    if (result.get("description") instanceof String description) {
+      result.put("description", McpResponseTrim.truncateDescription(description));
     }
     return result;
   }

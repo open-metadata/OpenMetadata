@@ -24,11 +24,13 @@ import jakarta.json.JsonPatch;
 import java.sql.SQLException;
 import java.util.List;
 import java.util.UUID;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.Isolated;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
@@ -48,6 +50,7 @@ import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.ChartRepository;
 import org.openmetadata.service.jdbi3.DataProductRepository;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
@@ -71,9 +74,18 @@ import org.slf4j.LoggerFactory;
  * after the entity row, extension, owner, and tag rows are already written-but-uncommitted) and
  * inside {@code storeEntity(Chart, true)} for update, so the rollback/replay is exercised with the
  * transaction populated.
+ *
+ * <p>@Isolated because the {@code Faulty*Repository} subclasses self-register into the global
+ * {@code Entity.ENTITY_REPOSITORY_MAP} via the {@code EntityRepository} constructor, replacing the
+ * production chart/glossaryTerm/dataProduct repositories JVM-wide with fault-injecting instances.
+ * A concurrent class writing one of those entities (e.g. a dashboard restore cascading to its
+ * charts) would otherwise be routed through the injected fault and fail with a spurious 500. The
+ * {@code @AfterAll} restores the production repositories so a class scheduled after this one is not
+ * left with a faulty registration.
  */
 @ExtendWith(TestNamespaceExtension.class)
 @Execution(ExecutionMode.CONCURRENT)
+@Isolated
 public class OneTransactionFlushAtomicityIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(OneTransactionFlushAtomicityIT.class);
@@ -84,9 +96,35 @@ public class OneTransactionFlushAtomicityIT {
   private static final String TAG_USAGE_TABLE = "tag_usage";
   private static final String PII_SENSITIVE = "PII.Sensitive";
 
+  private static ChartRepository productionChartRepository;
+  private static GlossaryTermRepository productionGlossaryTermRepository;
+  private static DataProductRepository productionDataProductRepository;
+
   @BeforeAll
   static void setup() {
     SdkClients.adminClient();
+    productionChartRepository = (ChartRepository) Entity.getEntityRepository(Entity.CHART);
+    productionGlossaryTermRepository =
+        (GlossaryTermRepository) Entity.getEntityRepository(Entity.GLOSSARY_TERM);
+    productionDataProductRepository =
+        (DataProductRepository) Entity.getEntityRepository(Entity.DATA_PRODUCT);
+  }
+
+  @AfterAll
+  static void restoreProductionRepositories() {
+    // @AfterAll still runs if @BeforeAll threw partway through capture, so guard each field —
+    // registering a null repository into the global map would poison every subsequent test class.
+    if (productionChartRepository != null) {
+      Entity.registerEntity(Chart.class, Entity.CHART, productionChartRepository);
+    }
+    if (productionGlossaryTermRepository != null) {
+      Entity.registerEntity(
+          GlossaryTerm.class, Entity.GLOSSARY_TERM, productionGlossaryTermRepository);
+    }
+    if (productionDataProductRepository != null) {
+      Entity.registerEntity(
+          DataProduct.class, Entity.DATA_PRODUCT, productionDataProductRepository);
+    }
   }
 
   @Test
@@ -504,6 +542,10 @@ public class OneTransactionFlushAtomicityIT {
     private int storeAttempts;
     private int updateStoreAttempts;
 
+    private FaultyChartRepository() {
+      super(false);
+    }
+
     @Override
     public void storeRelationships(Chart chart) {
       storeAttempts++;
@@ -543,6 +585,10 @@ public class OneTransactionFlushAtomicityIT {
     private boolean deadlockOnFirstUpdateStore;
     private int updateStoreAttempts;
 
+    private FaultyGlossaryTermRepository() {
+      super(false);
+    }
+
     @Override
     public void storeEntity(GlossaryTerm entity, boolean update) {
       if (update) {
@@ -565,6 +611,10 @@ public class OneTransactionFlushAtomicityIT {
   private static class FaultyDataProductRepository extends DataProductRepository {
     private boolean deadlockOnFirstUpdateStore;
     private int updateStoreAttempts;
+
+    private FaultyDataProductRepository() {
+      super(false);
+    }
 
     @Override
     public void storeEntity(DataProduct entity, boolean update) {

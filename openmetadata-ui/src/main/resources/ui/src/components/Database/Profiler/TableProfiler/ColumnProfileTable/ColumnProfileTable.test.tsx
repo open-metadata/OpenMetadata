@@ -135,7 +135,7 @@ jest.mock('../../../../../utils/NumberUtils', () => ({
     ),
 }));
 
-jest.mock('../../../../../utils/TableUtils', () => ({
+jest.mock('../../../../../utils/TablePureUtils', () => ({
   pruneEmptyChildren: jest.fn().mockImplementation((data) => data),
 }));
 

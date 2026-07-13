@@ -59,18 +59,20 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {
     doc.put(
         "originEntityFQN", MessageParser.EntityLink.parse(testCase.getEntityLink()).getEntityFQN());
-    try {
-      TestDefinition testDefinition =
-          Entity.getEntity(
-              Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
-      doc.put("testPlatforms", testDefinition.getTestPlatforms());
-      doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
-      doc.put("testCaseType", testDefinition.getEntityType());
-    } catch (EntityNotFoundException ex) {
-      LOG.warn(
-          "TestDefinition not found for TestCase [{}]: {}",
-          testCase.getFullyQualifiedName(),
-          ex.getMessage());
+    if (testCase.getTestDefinition() != null) {
+      try {
+        TestDefinition testDefinition =
+            Entity.getEntity(
+                Entity.TEST_DEFINITION, testCase.getTestDefinition().getId(), "", Include.ALL);
+        doc.put("testPlatforms", testDefinition.getTestPlatforms());
+        doc.put("dataQualityDimension", testDefinition.getDataQualityDimension());
+        doc.put("testCaseType", testDefinition.getEntityType());
+      } catch (EntityNotFoundException ex) {
+        LOG.warn(
+            "TestDefinition not found for TestCase [{}]: {}",
+            testCase.getFullyQualifiedName(),
+            ex.getMessage());
+      }
     }
     setParentRelationships(doc, testCase);
     return doc;
@@ -92,6 +94,13 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
         && linkedTable != null
         && linkedTable.getCertification() != null) {
       doc.put("certification", linkedTable.getCertification());
+    }
+
+    if (nullOrEmpty(testCase.getDataProducts())
+        && linkedTable != null
+        && !nullOrEmpty(linkedTable.getDataProducts())) {
+      doc.put(
+          Entity.FIELD_DATA_PRODUCTS, getEntitiesWithDisplayName(linkedTable.getDataProducts()));
     }
   }
 

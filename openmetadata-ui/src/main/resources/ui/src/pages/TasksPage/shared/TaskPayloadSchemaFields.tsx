@@ -107,7 +107,7 @@ const ClampedText = ({ text }: { text: string }) => {
   return (
     <div className="tw:relative">
       <p
-        className={`tw:m-0 tw:text-sm tw:text-gray-900 tw:wrap-break-word${
+        className={`tw:m-0 tw:text-sm tw:text-primary tw:wrap-break-word${
           expanded ? '' : ' tw:overflow-hidden tw:max-h-10 tw:break-all'
         }`}
         ref={ref}>
@@ -116,11 +116,11 @@ const ClampedText = ({ text }: { text: string }) => {
       {!expanded && isClamped && (
         <span className="tw:absolute tw:bottom-0 tw:right-0 tw:flex tw:items-end">
           <span className="tw:inline-block tw:w-8 tw:h-5 tw:bg-linear-to-r tw:from-white/0 tw:to-white" />
-          <span className="tw:bg-white tw:text-sm tw:text-gray-900 tw:select-none tw:pr-0.5">
+          <span className="tw:bg-primary tw:text-sm tw:text-primary tw:select-none tw:pr-0.5">
             …
           </span>
           <Button
-            className="tw:bg-white! tw:p-0! tw:h-auto! tw:min-h-0! tw:text-sm tw:font-medium"
+            className="tw:bg-primary! tw:p-0! tw:h-auto! tw:min-h-0! tw:text-sm tw:font-medium"
             color="link-color"
             onPress={() => setExpanded(true)}>
             {t('label.show-more')}
@@ -309,7 +309,7 @@ const TaskPayloadSchemaFields = ({
     }
 
     return (
-      <Typography className="tw:text-gray-900" size="text-sm">
+      <Typography className="tw:text-primary" size="text-sm">
         {stringifyValue(value)}
       </Typography>
     );

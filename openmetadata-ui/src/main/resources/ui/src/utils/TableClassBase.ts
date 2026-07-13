@@ -34,7 +34,7 @@ import i18n from './i18next/LocalUtil';
 import {
   getTableDetailPageBaseTabs,
   getTableWidgetFromKey,
-} from './TableUtils';
+} from './TableTabsUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;
@@ -230,6 +230,14 @@ class TableClassBase {
 
   public getShowRequestDataAccess() {
     return false;
+  }
+
+  public getRequestDataAccessBanner(): ReactNode {
+    return null;
+  }
+
+  public getRequestDataAccessButton(): ReactNode {
+    return null;
   }
 
   public getRequestDataAccessDrawer(

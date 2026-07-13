@@ -27,17 +27,21 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.openmetadata.it.factories.DatabaseServiceTestFactory;
+import org.openmetadata.it.factories.PipelineServiceTestFactory;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateTable;
 import org.openmetadata.schema.api.teams.CreateTeam;
 import org.openmetadata.schema.api.teams.CreateTeam.TeamType;
 import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.services.DatabaseService;
+import org.openmetadata.schema.entity.services.PipelineService;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.ApiStatus;
@@ -870,6 +874,57 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
     Team verifyDiv = client.teams().get(updated.getId().toString(), "parents");
     assertTrue(verifyDiv.getParents().stream().anyMatch(p -> p.getId().equals(bu2.getId())));
     assertFalse(verifyDiv.getParents().stream().anyMatch(p -> p.getId().equals(bu1.getId())));
+  }
+
+  @Test
+  void test_listTeams_ownsEntityTypeFilter_preservesDomainsAndFiltersOwns(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    String domainFqn = testDomain().getFullyQualifiedName();
+    CreateTeam createTeam =
+        new CreateTeam()
+            .withName(ns.prefix("ownsFilterTeam"))
+            .withTeamType(TeamType.GROUP)
+            .withDomains(List.of(domainFqn))
+            .withDescription("Team for ownsEntityType filter regression test (#28381)");
+    Team team = createEntity(createTeam);
+
+    PipelineService service = PipelineServiceTestFactory.createAirflow(ns);
+    CreatePipeline createPipeline =
+        new CreatePipeline()
+            .withName(ns.prefix("ownedPipeline"))
+            .withService(service.getFullyQualifiedName())
+            .withOwners(List.of(team.getEntityReference()));
+    Pipeline pipeline = client.pipelines().create(createPipeline);
+
+    ListParams params = new ListParams();
+    params.setLimit(1000000);
+    params.setFields("owns,domains");
+    params.addFilter("ownsEntityType", "pipeline");
+    ListResponse<Team> response = listEntities(params);
+
+    Team listed =
+        response.getData().stream()
+            .filter(t -> t.getId().equals(team.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(listed, "Team must be present in the list response");
+
+    // Regression guard (#28381): the ownsEntityType filter must not drop relationship-bulk
+    // fields like domains, which Team populates only via the batched relationship fetch.
+    assertNotNull(
+        listed.getDomains(), "domains must not be dropped when the ownsEntityType filter is set");
+    assertTrue(
+        listed.getDomains().stream().anyMatch(d -> d.getFullyQualifiedName().equals(domainFqn)),
+        "Team domains should be preserved alongside the ownsEntityType filter");
+
+    assertNotNull(listed.getOwns(), "owns should be populated");
+    assertTrue(
+        listed.getOwns().stream().anyMatch(o -> o.getId().equals(pipeline.getId())),
+        "owns should include the owned pipeline");
+    assertTrue(
+        listed.getOwns().stream().allMatch(o -> "pipeline".equals(o.getType())),
+        "owns should contain only pipelines when ownsEntityType=pipeline");
   }
 
   @Test

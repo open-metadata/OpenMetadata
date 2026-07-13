@@ -154,6 +154,13 @@ public final class AlertUtil {
 
     // Trigger Specific Settings
     if (event.getEntityType().equals(THREAD)) {
+      // Observability alerts (those with trigger actions) react to a measurable signal the
+      // entity emits (test/pipeline status, …), never to threads/conversations on it. Routing
+      // a thread here would let an EXCLUDE trigger flip and deliver it. Thread events still
+      // reach notification alerts (no actions) — see #28122.
+      if (!nullOrEmpty(config.getActions())) {
+        return false;
+      }
       return shouldTriggerAlertForThread(event, config.getResources().get(0));
     }
 

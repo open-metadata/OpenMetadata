@@ -13,7 +13,7 @@
 
 import { Divider } from 'antd';
 import { AxiosError } from 'axios';
-import { FC, useEffect, useState } from 'react';
+import { FC, lazy, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Post,
@@ -21,11 +21,18 @@ import {
   ThreadType,
 } from '../../../generated/entity/feed/thread';
 import { getFeedById } from '../../../rest/feedsAPI';
-import { getReplyText } from '../../../utils/FeedUtils';
+import { getReplyText } from '../../../utils/FeedUtilsPure';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ActivityFeedCard from '../ActivityFeedCard/ActivityFeedCard';
-import ActivityFeedEditor from '../ActivityFeedEditor/ActivityFeedEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { ActivityThreadProp } from './ActivityThreadPanel.interface';
+
+const ActivityFeedCard = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedCard/ActivityFeedCard'))
+);
+
+const ActivityFeedEditor = withSuspenseFallback(
+  lazy(() => import('../ActivityFeedEditor/ActivityFeedEditor'))
+);
 
 const ActivityThread: FC<ActivityThreadProp> = ({
   className,

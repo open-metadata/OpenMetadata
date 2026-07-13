@@ -625,6 +625,93 @@ class SessionServiceTest {
   }
 
   @Test
+  void bearerAccessRefreshesLruPositionBeforeSessionLimitEviction() {
+    when(authConfig.getMaxActiveSessionsPerUser()).thenReturn(5);
+    long now = System.currentTimeMillis();
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("session-user")
+            .withEmail("session-user@example.com");
+    UserSession bearerSession =
+        activeSession(validSessionId('a'), user, 10L, 1L).toBuilder()
+            .username(user.getName())
+            .expiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .idleExpiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .build();
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
+
+    UserSession refreshedBearerSession =
+        sessionService.recordSessionAccess(bearerSession).orElseThrow();
+    UserSession evictedSession = activeSession(validSessionId('b'), user, 2L, 2L);
+    List<UserSession> activeSessions =
+        List.of(
+            refreshedBearerSession,
+            evictedSession,
+            activeSession(validSessionId('c'), user, 3L, 3L),
+            activeSession(validSessionId('d'), user, 4L, 4L),
+            activeSession(validSessionId('e'), user, 5L, 5L),
+            activeSession(validSessionId('f'), user, 6L, 6L));
+    when(repository.findByUserIdAndStatus(
+            eq(user.getId().toString()), eq(SessionStatus.ACTIVE), eq(20)))
+        .thenReturn(
+            activeSessions, activeSessions.stream().filter(s -> s != evictedSession).toList());
+    when(repository.findById(evictedSession.getId())).thenReturn(Optional.of(evictedSession));
+
+    sessionService.createActiveSession(request, response, "basic", user, "refresh-token");
+
+    assertTrue(refreshedBearerSession.getLastAccessedAt() > bearerSession.getLastAccessedAt());
+    verify(repository).findById(evictedSession.getId());
+    verify(repository, never()).findById(bearerSession.getId());
+  }
+
+  @Test
+  void recordSessionAccess_skipsStoreWriteWhenAccessWasRecentlyRecorded() {
+    long now = System.currentTimeMillis();
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("session-user")
+            .withEmail("session-user@example.com");
+    UserSession freshSession =
+        activeSession(validSessionId('r'), user, 10L, now).toBuilder()
+            .username(user.getName())
+            .expiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .idleExpiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .build();
+
+    UserSession result = sessionService.recordSessionAccess(freshSession).orElseThrow();
+
+    assertEquals(freshSession.getId(), result.getId());
+    assertEquals(freshSession.getLastAccessedAt(), result.getLastAccessedAt());
+    verify(repository, never()).updateIfVersion(any(UserSession.class), anyLong());
+  }
+
+  @Test
+  void recordSessionAccess_refreshesStoreWriteWhenIdleExpiryIsNear() {
+    long now = System.currentTimeMillis();
+    long nearIdleExpiry = now + 10_000;
+    User user =
+        new User()
+            .withId(UUID.randomUUID())
+            .withName("session-user")
+            .withEmail("session-user@example.com");
+    UserSession freshSessionNearIdleExpiry =
+        activeSession(validSessionId('i'), user, 10L, now).toBuilder()
+            .username(user.getName())
+            .expiresAt(now + TimeUnit.HOURS.toMillis(1))
+            .idleExpiresAt(nearIdleExpiry)
+            .build();
+    when(repository.updateIfVersion(any(UserSession.class), anyLong())).thenReturn(true);
+
+    UserSession result =
+        sessionService.recordSessionAccess(freshSessionNearIdleExpiry).orElseThrow();
+
+    assertTrue(result.getIdleExpiresAt() > nearIdleExpiry);
+    verify(repository).updateIfVersion(any(UserSession.class), eq(10L));
+  }
+
+  @Test
   void createActiveSession_usesConfiguredSessionExpiryForAbsoluteExpiryAndCookie() {
     when(authConfig.getSessionExpiry()).thenReturn(3600);
     User user =

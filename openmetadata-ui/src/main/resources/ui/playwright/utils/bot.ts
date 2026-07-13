@@ -32,7 +32,7 @@ export const BOT_DETAILS = {
   updatedDescription: `This is updated bot description for ${botName}`,
   updatedBotName: `updated-${botName}`,
   unlimitedExpiryTime: 'This token has no expiration date.',
-  JWTToken: 'OpenMetadata JWT',
+  JWTToken: /(OpenMetadata|Collate) JWT Token/,
 };
 
 const EXPIRATION_TIME = [1, 7, 30, 60, 90];
@@ -121,7 +121,7 @@ export const createBot = async (page: Page) => {
   await expect(page.getByTestId('revoke-button')).toContainText('Revoke token');
 
   await expect(page.getByTestId('center-panel')).toContainText(
-    `${BOT_DETAILS.JWTToken} Token`
+    BOT_DETAILS.JWTToken
   );
 
   await expect(page.getByTestId('token-expiry')).toBeVisible();
@@ -135,9 +135,7 @@ export const deleteBot = async (page: Page) => {
   // Click on delete button
   await page.getByTestId(`bot-delete-${botName}`).click();
 
-  await page.getByTestId('hard-delete-option').click();
-
-  await page.getByTestId('confirmation-text-input').fill('DELETE');
+  await page.getByTestId('hard-delete').click();
 
   const deleteResponse = page.waitForResponse(`/api/v1/bots/*`);
 

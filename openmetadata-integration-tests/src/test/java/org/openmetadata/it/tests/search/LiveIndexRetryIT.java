@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import java.time.Duration;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Assumptions;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -60,6 +61,10 @@ class LiveIndexRetryIT {
 
   @BeforeAll
   static void setup() {
+    Assumptions.assumeTrue(
+        !OssTestServer.isExternalMode(),
+        "LiveIndexRetryIT pauses the ES container (EsOutageInjector) and reads the retry queue via "
+            + "the in-JVM DAO — both require the embedded stack, so it is skipped in external mode");
     server = OssTestServer.defaultHandle();
     search = new SearchAssertions(server);
     Apps.setDefaultClient(SdkClients.adminClient());

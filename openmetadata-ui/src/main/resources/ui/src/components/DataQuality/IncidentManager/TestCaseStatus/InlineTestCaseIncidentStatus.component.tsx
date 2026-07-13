@@ -47,10 +47,8 @@ import {
   TaskEntityType,
   TaskResolutionType,
 } from '../../../../rest/tasksAPI';
-import {
-  getEntityFeedLink,
-  getEntityName,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { UserTag } from '../../../common/UserTag/UserTag.component';

@@ -19,11 +19,13 @@ import org.openmetadata.playwright.ui.UiSessionExtension;
 import org.openmetadata.playwright.ui.pages.IncidentManagerPage;
 import org.openmetadata.schema.api.tests.CreateTestCaseResult;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.Apps;
 import org.openmetadata.sdk.fluent.TestCases;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Java port of {@code IncidentManager.spec.ts → "Resolve task from incident list page"}
@@ -85,9 +87,14 @@ class IncidentManagerAssignResolveReindexUIIT {
         .openIncidentDetail(testCaseName)
         .acknowledgeFromDetail();
 
-    // --- UI: reload list, assign to admin from status chip. ---
+    // --- UI: reload list, assign to the current admin from status chip. The admin's login name
+    // varies by cluster (seeded "admin" embedded, a real account like "mohit" on an external
+    // cluster), so resolve it dynamically — a hardcoded "admin" has no matching user, and its
+    // assignee-search option never renders off the seed data. ---
+    final User admin =
+        client.getHttpClient().execute(HttpMethod.GET, "/v1/users/loggedInUser", null, User.class);
     final IncidentManagerPage afterAck = IncidentManagerPage.open(ui);
-    afterAck.assignIncident(testCaseName, "admin", "admin");
+    afterAck.assignIncident(testCaseName, admin.getName(), admin.getName());
     assertThat(afterAck.statusForTestCase(testCaseName))
         .as("status after assign")
         .containsIgnoringCase("Assigned");

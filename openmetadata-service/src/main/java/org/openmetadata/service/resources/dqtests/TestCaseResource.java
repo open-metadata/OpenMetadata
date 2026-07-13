@@ -453,7 +453,12 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
               description = "Return list of tests by column names",
               schema = @Schema(type = "string", example = "{columnName}"))
           @QueryParam("columnName")
-          String columnName)
+          String columnName,
+      @Parameter(
+              description = "data product filter to use in list",
+              schema = @Schema(type = "string"))
+          @QueryParam("dataProductFqn")
+          String dataProductFqn)
       throws IOException {
     validateTimestamps(startTimestamp, endTimestamp);
 
@@ -479,7 +484,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
             followedBy,
             startTimestamp,
             endTimestamp,
-            columnName);
+            columnName,
+            dataProductFqn);
 
     // Execute search
     return executeTestCaseSearch(
@@ -1475,7 +1481,8 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
       String followedBy,
       Long startTimestamp,
       Long endTimestamp,
-      String columnName) {
+      String columnName,
+      String dataProductFqn) {
 
     SearchListFilter searchListFilter = new SearchListFilter(include);
 
@@ -1495,6 +1502,7 @@ public class TestCaseResource extends EntityResource<TestCase, TestCaseRepositor
     searchListFilter.addQueryParam("serviceName", serviceName);
     searchListFilter.addQueryParam("createdBy", createdBy);
     searchListFilter.addQueryParam("columnName", columnName);
+    searchListFilter.addQueryParam("dataProductFqn", dataProductFqn);
 
     // Handle owner and followedBy parameters
     if (!nullOrEmpty(owner)) {

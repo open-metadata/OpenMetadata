@@ -46,6 +46,11 @@
         "$ref" : "../../type/basic.json#/definitions/fullyQualifiedEntityName"
       }
     },
+    "assets": {
+      "description": "Data assets (tables, dashboards, etc.) this metric is computed on or applies to.",
+      "$ref": "../../type/entityReferenceList.json",
+      "default": null
+    },
     "owners": {
       "description": "Owners of this metric",
       "$ref": "../../type/entityReferenceList.json",
@@ -81,6 +86,9 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
+    },
+    "provider": {
+      "$ref": "../../type/basic.json#/definitions/providerType"
     }
   },
   "required": ["name"],

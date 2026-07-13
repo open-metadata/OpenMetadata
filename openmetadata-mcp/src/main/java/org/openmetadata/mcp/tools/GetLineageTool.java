@@ -13,6 +13,9 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
+import org.openmetadata.mcp.util.McpParams;
+import org.openmetadata.mcp.util.McpResponseTrim;
+import org.openmetadata.mcp.util.ResponseBudget;
 import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -43,13 +46,6 @@ public class GetLineageTool implements McpTool {
   private static final int DEFAULT_DEPTH = 3;
   // Maximum depth to prevent exponential response growth (lineage graphs can explode)
   private static final int MAX_DEPTH = 10;
-  // SQL is the single heaviest field; keep the gist of the transform, cap the size
-  private static final int SQL_MAX_LENGTH = 500;
-  // Free-text markdown (pipeline / edge descriptions) is capped for the same reason as SQL:
-  // a single long pipeline doc string can be shared across many edges and reintroduce bloat
-  private static final int TEXT_MAX_LENGTH = 500;
-  // Final safety net mirroring SearchMetadataTool: even slimmed, a wide graph can blow the limit
-  private static final int MAX_RESPONSE_CHARS = 100_000;
   private static final String RELATIONSHIP_SQL = "sql";
 
   @JsonInclude(JsonInclude.Include.NON_NULL)
@@ -94,9 +90,9 @@ public class GetLineageTool implements McpTool {
         securityContext,
         new OperationContext(entityType, MetadataOperation.VIEW_BASIC),
         new ResourceContext<>(entityType));
-    int upstreamDepth = parseDepthParameter(params.get("upstreamDepth"), DEFAULT_DEPTH);
-    int downstreamDepth = parseDepthParameter(params.get("downstreamDepth"), DEFAULT_DEPTH);
-    boolean includeColumnLineage = parseBooleanParameter(params.get("includeColumnLineage"));
+    int upstreamDepth = clampDepth(McpParams.getInt(params, "upstreamDepth", DEFAULT_DEPTH));
+    int downstreamDepth = clampDepth(McpParams.getInt(params, "downstreamDepth", DEFAULT_DEPTH));
+    boolean includeColumnLineage = McpParams.getBoolean(params, "includeColumnLineage", false);
     LOG.info(
         "Getting lineage for entity type: {}, FQN: {}, upstreamDepth: {}, downstreamDepth: {}, "
             + "includeColumnLineage: {}",
@@ -176,7 +172,7 @@ public class GetLineageTool implements McpTool {
     }
     LineageDetails details = edge.getLineageDetails();
     EntityReference pipeline = details != null ? details.getPipeline() : null;
-    SqlText sql = truncateSqlQuery(details);
+    SqlText sql = fullSqlQuery(details);
     return new SlimEdge(
         refFqn(from),
         refFqn(to),
@@ -186,8 +182,8 @@ public class GetLineageTool implements McpTool {
         refType(to),
         relationshipType(pipeline),
         pipeline != null ? pipeline.getFullyQualifiedName() : null,
-        truncateText(pipeline != null ? pipeline.getDescription() : null),
-        truncateText(details != null ? details.getDescription() : null),
+        pipeline != null ? pipeline.getDescription() : null,
+        details != null ? details.getDescription() : null,
         sourceValue(details),
         details != null ? details.getAssetEdges() : null,
         sql.value(),
@@ -211,27 +207,19 @@ public class GetLineageTool implements McpTool {
     return pipeline != null ? pipeline.getType() + ":" + pipeline.getName() : RELATIONSHIP_SQL;
   }
 
-  private static String truncateText(String text) {
-    String result = text;
-    if (text != null && text.length() > TEXT_MAX_LENGTH) {
-      result = text.substring(0, TEXT_MAX_LENGTH) + "...";
-    }
-    return result;
-  }
-
   private static String sourceValue(LineageDetails details) {
     return details != null && details.getSource() != null ? details.getSource().value() : null;
   }
 
-  private static SqlText truncateSqlQuery(LineageDetails details) {
+  /**
+   * Edge SQL is returned in full. Size is controlled by returning fewer edges (see {@link
+   * #enforceSizeBudget}), never by cutting the transformation SQL, which is exactly the metadata a
+   * lineage caller needs. The {@code sqlTruncated} marker stays in the record for wire compatibility
+   * and is always null now.
+   */
+  private static SqlText fullSqlQuery(LineageDetails details) {
     String sql = details != null ? details.getSqlQuery() : null;
-    SqlText result = new SqlText(null, null);
-    if (sql != null) {
-      boolean tooLong = sql.length() > SQL_MAX_LENGTH;
-      String value = tooLong ? sql.substring(0, SQL_MAX_LENGTH) + "..." : sql;
-      result = new SqlText(value, tooLong ? Boolean.TRUE : null);
-    }
-    return result;
+    return new SqlText(sql, null);
   }
 
   private static String refFqn(EntityReference ref) {
@@ -250,68 +238,79 @@ public class GetLineageTool implements McpTool {
     return name;
   }
 
+  /**
+   * Keeps the response under the dispatch-level cap by returning fewer <em>edges</em>, never by
+   * dropping the whole graph to a bare count or by cutting an edge's SQL. When everything fits (the
+   * common case, including full edge SQL) the complete graph is returned unchanged. When it does not,
+   * the size budget is split fairly between the two directions so both upstream and downstream stay
+   * represented, and per-direction markers tell the caller how many edges were withheld.
+   */
   @VisibleForTesting
   static Map<String, Object> enforceSizeBudget(SlimLineage slim) {
-    Map<String, Object> response = JsonUtils.getMap(slim);
-    int responseSize = JsonUtils.pojoToJson(response).length();
-    Map<String, Object> result = response;
-    if (responseSize > MAX_RESPONSE_CHARS) {
-      result = oversizedHint(slim, responseSize);
+    Map<String, Object> full = JsonUtils.getMap(slim);
+    Map<String, Object> result = full;
+    if (McpResponseTrim.serializedLength(full) > McpResponseTrim.MAX_RESPONSE_CHARS) {
+      result = fitGraphToBudget(slim);
     }
     return result;
   }
 
-  private static Map<String, Object> oversizedHint(SlimLineage slim, int size) {
-    Map<String, Object> hint = new HashMap<>();
-    hint.put("root", slim.root());
-    hint.put("upstreamCount", slim.upstream().size());
-    hint.put("downstreamCount", slim.downstream().size());
-    hint.put("responseSizeChars", size);
-    // Machine-detectable marker so a programmatic client can tell a capped graph from a complete
-    // one without parsing the message. Stays on the success path — this is a deliberate cap, not an
-    // error the caller can fix by retrying.
-    hint.put("truncated", Boolean.TRUE);
-    hint.put(
-        "message",
-        String.format(
-            "Lineage response exceeded %d characters (was %d). Reduce upstreamDepth/downstreamDepth,"
-                + " or keep includeColumnLineage disabled, to get a smaller graph.",
-            MAX_RESPONSE_CHARS, size));
-    return hint;
+  private static Map<String, Object> fitGraphToBudget(SlimLineage slim) {
+    long overhead = graphOverheadChars(slim);
+    long available = Math.max(0, ResponseBudget.defaultBudgetChars() - overhead);
+    long halfShare = available / 2;
+    ResponseBudget.Fit up = ResponseBudget.fitWithin(slim.upstream(), halfShare);
+    ResponseBudget.Fit down =
+        ResponseBudget.fitWithin(slim.downstream(), available - up.usedChars());
+    boolean downstreamLeftRoom =
+        down.usedChars() < halfShare && up.count() < slim.upstream().size();
+    if (downstreamLeftRoom) {
+      up = ResponseBudget.fitWithin(slim.upstream(), available - down.usedChars());
+    }
+    return buildFittedGraph(slim, up.count(), down.count());
   }
 
-  private static boolean parseBooleanParameter(Object value) {
-    boolean result = false;
-    if (value instanceof Boolean bool) {
-      result = bool;
-    } else if (value instanceof String string) {
-      result = Boolean.parseBoolean(string);
-    }
+  /** Serialized size of the graph shell (root identity + empty edge lists), the fixed overhead. */
+  private static long graphOverheadChars(SlimLineage slim) {
+    SlimLineage shell =
+        new SlimLineage(slim.root(), slim.rootId(), slim.rootType(), List.of(), List.of());
+    return McpResponseTrim.serializedLength(JsonUtils.getMap(shell));
+  }
+
+  private static Map<String, Object> buildFittedGraph(
+      SlimLineage slim, int upCount, int downCount) {
+    List<SlimEdge> up = slim.upstream().subList(0, upCount);
+    List<SlimEdge> down = slim.downstream().subList(0, downCount);
+    Map<String, Object> result =
+        JsonUtils.getMap(
+            new SlimLineage(
+                slim.root(),
+                slim.rootId(),
+                slim.rootType(),
+                new ArrayList<>(up),
+                new ArrayList<>(down)));
+    result.put("truncated", Boolean.TRUE);
+    result.put("upstreamReturned", upCount);
+    result.put("upstreamTotal", slim.upstream().size());
+    result.put("downstreamReturned", downCount);
+    result.put("downstreamTotal", slim.downstream().size());
+    result.put(
+        "message",
+        String.format(
+            "Lineage graph is large: returning %d of %d upstream and %d of %d downstream edges to"
+                + " stay within the response size budget. Reduce upstreamDepth/downstreamDepth to"
+                + " narrow the graph.",
+            upCount, slim.upstream().size(), downCount, slim.downstream().size()));
     return result;
   }
 
   /**
-   * Parses depth parameter with default value and enforces maximum limit to prevent excessive
-   * response sizes that could overwhelm LLM context.
+   * Clamps a requested depth into {@code [1, MAX_DEPTH]} to prevent excessive response sizes that
+   * could overwhelm LLM context. Parsing is delegated to {@link McpParams}; the valid range is
+   * specific to this tool, so the clamp stays here.
    */
-  private static int parseDepthParameter(Object depthObj, int defaultValue) {
-    int depth = defaultValue;
-    if (depthObj instanceof Number number) {
-      depth = number.intValue();
-    } else if (depthObj instanceof String string) {
-      depth = parseDepthString(string, defaultValue);
-    }
+  private static int clampDepth(int depth) {
     return Math.min(Math.max(depth, 1), MAX_DEPTH);
-  }
-
-  private static int parseDepthString(String value, int defaultValue) {
-    int depth = defaultValue;
-    try {
-      depth = Integer.parseInt(value);
-    } catch (NumberFormatException e) {
-      depth = defaultValue;
-    }
-    return depth;
   }
 
   @Override

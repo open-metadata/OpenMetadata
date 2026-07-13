@@ -187,6 +187,79 @@ public class AlertsRuleEvaluatorResourceIT {
     assertFalse(evaluateExpression("matchAnyEntityFqn({'unrelated.fqn'})", evaluationContext));
   }
 
+  // matchAnyEntityFqn matches the entity FQN exactly or any ancestor (service/database scope).
+  @ParameterizedTest
+  @ValueSource(
+      strings = {
+        "Snowflake Integration", // service ancestor
+        "Snowflake Integration.BRONZE_DEV", // database ancestor
+        "Snowflake Integration.BRONZE_DEV.MITELEPLUS", // exact
+      })
+  void test_matchAnyEntityFqn_matchesEntityOrAncestor(String listedFqn) {
+    Table table =
+        new Table()
+            .withName("MITELEPLUS")
+            .withFullyQualifiedName("Snowflake Integration.BRONZE_DEV.MITELEPLUS");
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertTrue(evaluateExpression("matchAnyEntityFqn({'" + listedFqn + "'})", evaluationContext));
+  }
+
+  @Test
+  void test_matchAnyEntityFqn_rejectsSiblingAndPrefixCollision() {
+    Table table =
+        new Table().withName("X").withFullyQualifiedName("Snowflake Integration 2.BRONZE_DEV.X");
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(table);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    // Sibling service sharing a name prefix must not match.
+    assertFalse(
+        evaluateExpression("matchAnyEntityFqn({'Snowflake Integration'})", evaluationContext));
+
+    Table sibling = new Table().withName("t").withFullyQualifiedName("service.db.schema2.t");
+    changeEvent.setEntity(sibling);
+    alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+    // Prefix collision: schema2 is not under schema.
+    assertFalse(evaluateExpression("matchAnyEntityFqn({'service.db.schema'})", evaluationContext));
+  }
+
+  @Test
+  void test_matchAnyEntityFqn_childFqnDoesNotMatchParentEntity() {
+    Table schema = new Table().withName("schema").withFullyQualifiedName("service.db.schema");
+    ChangeEvent changeEvent = new ChangeEvent();
+    changeEvent.setEntityType(Entity.TABLE);
+    changeEvent.setEntity(schema);
+    AlertsRuleEvaluator alertsRuleEvaluator = new AlertsRuleEvaluator(changeEvent);
+    EvaluationContext evaluationContext =
+        SimpleEvaluationContext.forReadOnlyDataBinding()
+            .withInstanceMethods()
+            .withRootObject(alertsRuleEvaluator)
+            .build();
+
+    assertFalse(
+        evaluateExpression("matchAnyEntityFqn({'service.db.schema.table'})", evaluationContext));
+  }
+
   @Test
   void test_filterByTableNameTestCaseBelongsTo_happyPath() {
     String tableFqn = "service.db.schema.orders";

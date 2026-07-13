@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.DASHBOARD_DATA_MODEL;
 import static org.openmetadata.service.Entity.TABLE;
 
@@ -25,6 +26,7 @@ import java.util.regex.Pattern;
 import org.antlr.v4.runtime.BailErrorStrategy;
 import org.antlr.v4.runtime.CharStreams;
 import org.antlr.v4.runtime.CommonTokenStream;
+import org.antlr.v4.runtime.misc.ParseCancellationException;
 import org.antlr.v4.runtime.tree.ParseTreeWalker;
 import org.openmetadata.schema.FqnBaseListener;
 import org.openmetadata.schema.FqnLexer;
@@ -154,39 +156,81 @@ public class FullyQualifiedName {
     }
   }
 
-  /** Adds quotes to name as required */
+  /**
+   * Encodes a raw name into its FQN-segment form. Names containing the reserved separator '.'
+   * or a '"' are wrapped in quotes, with any internal '"' escaped by doubling it (""), matching
+   * the Fqn grammar. Names that are already in valid quoted form are returned unchanged (idempotent),
+   * and quoted names that no longer need quoting are unquoted.
+   */
   public static String quoteName(String name) {
-    if (name == null) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    validateName(name);
+    if (isQuotedName(name)) {
+      String unquotedName = decodeQuotedName(name);
+      return needsQuoting(unquotedName) ? name : unquotedName;
     }
-    Matcher matcher = namePattern.matcher(name);
-    if (!matcher.find() || matcher.end() != name.length()) {
-      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
-    }
-
-    // Name matches quoted string "sss".
-    // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
-    if (matcher.group(1) != null) {
-      String unquotedName = matcher.group(2);
-      return unquotedName.contains(".") ? name : unquotedName;
-    }
-
-    // Name matches unquoted string sss
-    // If unquoted string contains ".", return quoted "sss", else unquoted sss
-    String unquotedName = matcher.group(4);
-    if (!unquotedName.contains("\"")) {
-      return unquotedName.contains(".") ? "\"" + name + "\"" : unquotedName;
-    }
-    // Allow names with quotes
-    else if (unquotedName.contains("\"")) {
-      return unquotedName.replace("\"", "\\\"");
-    }
-
-    throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    return needsQuoting(name) ? "\"" + name.replace("\"", "\"\"") + "\"" : name;
   }
 
-  /** Adds quotes to name as required */
+  /** Decodes an FQN-segment form back into its raw name, removing quotes and unescaping "". */
   public static String unquoteName(String name) {
+    validateName(name);
+    return isQuotedName(name) ? decodeQuotedName(name) : name;
+  }
+
+  /**
+   * Verifies that a name can be safely encoded into and parsed back out of a fully qualified name.
+   * Nested objects (table columns, pipeline tasks, topic/searchIndex/apiEndpoint fields, mlFeatures)
+   * carry FQNs derived from their {@code name} but are not hash-validated at insert time, so a name
+   * that cannot round-trip would persist silently and only fail later when its FQN is hashed (e.g. on
+   * a tags read). Calling this at write time rejects such names up front with a clear error. A
+   * null or empty name is rejected too: it yields an empty FQN segment ({@code parent.}) that cannot
+   * be parsed or hashed.
+   */
+  public static void validateFqnName(String name) {
+    boolean valid;
+    if (nullOrEmpty(name)) {
+      valid = false;
+    } else {
+      String segment = quoteName(name);
+      valid = segment.equals(name) || roundTripsAsSegment(name, segment);
+    }
+    if (!valid) {
+      throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
+    }
+  }
+
+  private static boolean roundTripsAsSegment(String name, String segment) {
+    boolean roundTrips;
+    try {
+      String[] parts = split(segment);
+      roundTrips = parts.length == 1 && unquoteName(parts[0]).equals(name);
+    } catch (ParseCancellationException e) {
+      roundTrips = false;
+    }
+    return roundTrips;
+  }
+
+  /**
+   * Returns true if the given fully qualified name can be parsed (and therefore hashed). Legacy
+   * FQNs produced before the quote-escaping fix do not parse; callers can use this to detect and
+   * repair them on the fly instead of failing.
+   */
+  public static boolean isValid(String fullyQualifiedName) {
+    boolean valid;
+    if (nullOrEmpty(fullyQualifiedName)) {
+      valid = false;
+    } else {
+      try {
+        split(fullyQualifiedName);
+        valid = true;
+      } catch (ParseCancellationException e) {
+        valid = false;
+      }
+    }
+    return valid;
+  }
+
+  private static void validateName(String name) {
     if (name == null) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
     }
@@ -194,13 +238,22 @@ public class FullyQualifiedName {
     if (!matcher.find() || matcher.end() != name.length()) {
       throw new IllegalArgumentException(CatalogExceptionMessage.invalidName(name));
     }
+  }
 
-    // Name matches quoted string "sss".
-    // If quoted string does not contain "." return unquoted sss, else return quoted "sss"
-    if (matcher.group(1) != null) {
-      return matcher.group(2);
+  private static boolean needsQuoting(String rawName) {
+    return rawName.contains(".") || rawName.contains("\"");
+  }
+
+  private static boolean isQuotedName(String name) {
+    if (name.length() < 2 || name.charAt(0) != '"' || name.charAt(name.length() - 1) != '"') {
+      return false;
     }
-    return name;
+    String body = name.substring(1, name.length() - 1);
+    return !body.replace("\"\"", "").contains("\"");
+  }
+
+  private static String decodeQuotedName(String name) {
+    return name.substring(1, name.length() - 1).replace("\"\"", "\"");
   }
 
   public static String getTableFQN(String columnFQN) {

@@ -58,13 +58,13 @@ import {
 } from '../../../interface/knowledge-center.interface';
 import deleteWidgetClassBase from '../../../utils/DeleteWidget/DeleteWidgetClassBase';
 import EntityLink from '../../../utils/EntityLink';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import {
   getKnowledgePageName,
   getKnowledgeVersionsPath,
-  updateKnowledgeCenterRecentViewed,
-} from '../../../utils/KnowledgePageUtils';
+} from '../../../utils/KnowledgePagePureUtils';
+import { updateKnowledgeCenterRecentViewed } from '../../../utils/KnowledgePageUtils';
 
 export interface KnowledgeDetailPageHeaderProps {
   isLoading: boolean;

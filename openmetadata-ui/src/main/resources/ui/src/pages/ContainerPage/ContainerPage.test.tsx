@@ -125,6 +125,28 @@ jest.mock(
   () => jest.fn().mockReturnValue(<span>ContainerDataModel</span>)
 );
 
+jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
+  GenericTab: jest.fn().mockImplementation(() => {
+    const { getContainerByName } = jest.requireMock('../../rest/storageAPI');
+
+    getContainerByName('s3_storage_sample.transactions', {
+      fields: 'children',
+    });
+
+    return (
+      <>
+        <span>DescriptionV1</span>
+        <span>ContainerDataModel</span>
+        <span>CustomPropertyTable</span>
+        <span>label.glossary-term</span>
+        <span>label.tag-plural</span>
+        <span>label.data-product-plural</span>
+        <span>ContainerChildren</span>
+      </>
+    );
+  }),
+}));
+
 jest.mock(
   '../../components/DataAssets/DataAssetsHeader/DataAssetsHeader.component',
   () => ({
@@ -151,9 +173,15 @@ jest.mock('../../context/LineageProvider/LineageProvider', () =>
   jest.fn().mockReturnValue(<>LineageProvider</>)
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockReturnValue(<div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
@@ -180,13 +208,13 @@ jest.mock('../../rest/feedsAPI', () => ({
 
 jest.mock('../../rest/storageAPI');
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/RecentActivityUtils', () => ({
   addToRecentViewed: jest.fn(),
 }));
-jest.mock('../../utils/FeedUtils', () => ({
+jest.mock('../../utils/FeedUtilsPure', () => ({
   fetchEntityActivityCountInto: jest.fn(),
   fetchEntityTaskCountsInto: jest.fn(),
   getFeedCounts: jest.fn().mockReturnValue(0),
@@ -195,7 +223,7 @@ jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
 
@@ -214,11 +242,15 @@ jest.mock('../../hooks/paging/usePaging', () => ({
   }),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest
     .fn()
     .mockImplementation((entity) => entity?.name ?? 'entityName'),
+}));
+jest.mock('../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn(),
+}));
+jest.mock('../../utils/EntitySortUtils', () => ({
   getColumnSorter: jest.fn(),
 }));
 
@@ -260,6 +292,26 @@ jest.mock('../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),
 }));
+
+jest.mock(
+  '../../components/Customization/GenericProvider/GenericProvider',
+  () => ({
+    GenericProvider: jest
+      .fn()
+      .mockImplementation(({ children }) => <>{children}</>),
+    useGenericContext: jest.fn().mockReturnValue({
+      data: {},
+      permissions: {
+        EditAll: true,
+        EditDescription: true,
+        EditGlossaryTerms: true,
+        EditTags: true,
+      },
+      isVersionView: false,
+      deleted: false,
+    }),
+  })
+);
 
 const mockUseParams = jest.fn().mockReturnValue({
   fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
@@ -307,6 +359,14 @@ jest.mock('../../hooks/useEntityRules', () => ({
 
 describe('Container Page Component', () => {
   beforeEach(() => {
+    mockGetEntityPermissionByFqn.mockResolvedValue({
+      ViewBasic: true,
+    });
+    mockUseParams.mockReturnValue({
+      fqn: MOCK_CONTAINER_DATA.fullyQualifiedName,
+      tab: 'schema',
+    });
+
     const { getPrioritizedEditPermission, getPrioritizedViewPermission } =
       jest.requireMock('../../utils/PermissionsUtils');
     getPrioritizedEditPermission.mockReturnValue(true);

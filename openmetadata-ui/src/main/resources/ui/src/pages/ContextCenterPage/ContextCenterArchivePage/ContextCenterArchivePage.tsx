@@ -11,41 +11,30 @@
  *  limitations under the License.
  */
 
-import {
-  Badge,
-  Card,
-  Tabs,
-  Typography,
-} from '@openmetadata/ui-core-components';
-import { File06, Home02 } from '@untitledui/icons';
+import { Card, Tabs } from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
-import { FC, useCallback, useEffect, useMemo, useState } from 'react';
+import classNames from 'classnames';
+import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ArchiveView from '../../../components/ContextCenter/ArchiveView/ArchiveView.component';
 import { ArchiveItem } from '../../../components/ContextCenter/ArchiveView/ArchiveView.interface';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
+import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
   OperationPermission,
   ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
-import { Include } from '../../../generated/type/include';
+import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { PageType } from '../../../interface/knowledge-center.interface';
 import {
   deleteDriveFile,
   listArchivedContextFiles,
   restoreDriveFile,
 } from '../../../rest/assetAPI';
-import {
-  deleteKnowledgePage,
-  getListKnowledgePages,
-  restoreKnowledgePage,
-} from '../../../rest/knowledgeCenterAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
@@ -55,13 +44,25 @@ const ContextCenterArchivePage: FC = () => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
   const { getResourcePermission } = usePermissionProvider();
-  const [allItems, setAllItems] = useState<ArchiveItem[]>([]);
+  const { paging, pageSize, handlePagingChange } = usePaging(ARCHIVE_PAGE_SIZE);
+  const [items, setItems] = useState<ArchiveItem[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingMore, setIsLoadingMore] = useState(false);
   const [activeFilter, setActiveFilter] = useState<FilterKey>('all');
   const [itemToDelete, setItemToDelete] = useState<ArchiveItem>();
   const [isDeleting, setIsDeleting] = useState(false);
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
+  );
+  const fetchGenerationRef = useRef(0);
+  const isLoadingMoreRef = useRef(false);
+
+  const filterTabItems = useMemo(
+    () => [
+      { id: 'all', label: t('label.all') },
+      { id: 'mine', label: t('label.created-by-me') },
+    ],
+    [t]
   );
 
   const fetchPermission = useCallback(async () => {
@@ -75,83 +76,94 @@ const ContextCenterArchivePage: FC = () => {
     }
   }, [getResourcePermission]);
 
-  const fetchArchivedItems = useCallback(async () => {
-    setIsLoading(true);
-    try {
-      const [pagesResponse, files] = await Promise.all([
-        getListKnowledgePages({
-          include: Include.Deleted,
-          limit: 1000,
-          pageType: PageType.ARTICLE,
-        }),
-        listArchivedContextFiles(),
-      ]);
+  const fetchArchivedItems = useCallback(
+    async (after?: string) => {
+      if (!after) {
+        fetchGenerationRef.current += 1;
+        isLoadingMoreRef.current = false;
+        setIsLoadingMore(false);
+      }
+      const generation = fetchGenerationRef.current;
 
-      const articleItems: ArchiveItem[] = (pagesResponse.data ?? []).map(
-        (page) => ({
-          id: page.id,
-          name: getEntityName(page),
-          type: 'article' as const,
-          updatedBy: page.updatedBy,
-          updatedAt: page.updatedAt,
-        })
-      );
+      if (after) {
+        setIsLoadingMore(true);
+      } else {
+        setIsLoading(true);
+      }
+      try {
+        const updatedBy =
+          activeFilter === 'mine' ? currentUser?.name : undefined;
 
-      const documentItems: ArchiveItem[] = files.map((file) => ({
-        id: file.id,
-        name: getEntityName(file),
-        type: 'document' as const,
-        updatedBy: file.updatedBy,
-        updatedAt: file.updatedAt,
-      }));
+        const response = await listArchivedContextFiles({
+          after,
+          limit: pageSize,
+          updatedBy,
+        });
+        if (generation !== fetchGenerationRef.current) {
+          return;
+        }
 
-      const merged = [...articleItems, ...documentItems].sort(
-        (a, b) => (b.updatedAt ?? 0) - (a.updatedAt ?? 0)
-      );
+        const documentItems: ArchiveItem[] = response.data.map((file) => ({
+          id: file.id,
+          name: getEntityName(file),
+          type: 'document' as const,
+          fileExtension: file.fileExtension,
+          updatedBy: file.updatedBy,
+          updatedAt: file.updatedAt,
+        }));
 
-      setAllItems(merged);
-    } catch (err) {
-      showErrorToast(err as AxiosError);
-    } finally {
-      setIsLoading(false);
+        setItems((prev) =>
+          after ? [...prev, ...documentItems] : documentItems
+        );
+        handlePagingChange(response.paging);
+      } catch (err) {
+        showErrorToast(err as AxiosError);
+      } finally {
+        if (generation === fetchGenerationRef.current) {
+          if (after) {
+            isLoadingMoreRef.current = false;
+            setIsLoadingMore(false);
+          } else {
+            setIsLoading(false);
+          }
+        }
+      }
+    },
+    [pageSize, activeFilter, currentUser?.name, handlePagingChange]
+  );
+
+  const handleScrollEnd = useCallback(() => {
+    if (paging.after && !isLoading && !isLoadingMoreRef.current) {
+      isLoadingMoreRef.current = true;
+      fetchArchivedItems(paging.after);
     }
-  }, []);
+  }, [paging.after, isLoading, fetchArchivedItems]);
 
   useEffect(() => {
     fetchPermission();
-    fetchArchivedItems();
-  }, [fetchPermission, fetchArchivedItems]);
+  }, [fetchPermission]);
 
-  const filteredItems = useMemo(() => {
-    switch (activeFilter) {
-      case 'mine':
-        return allItems.filter((item) => item.updatedBy === currentUser?.name);
-      case 'article':
-        return allItems.filter((item) => item.type === 'article');
-      case 'document':
-        return allItems.filter((item) => item.type === 'document');
-      default:
-        return allItems;
-    }
-  }, [allItems, activeFilter, currentUser?.name]);
+  useEffect(() => {
+    fetchArchivedItems();
+  }, [fetchArchivedItems]);
+
+  const handleFilterChange = useCallback((key: FilterKey) => {
+    setActiveFilter(key);
+  }, []);
 
   const handleRestore = useCallback(
     async (item: ArchiveItem) => {
       try {
-        if (item.type === 'article') {
-          await restoreKnowledgePage(item.id);
-        } else {
-          await restoreDriveFile(item.id);
-        }
-        setAllItems((prev) => prev.filter((i) => i.id !== item.id));
+        await restoreDriveFile(item.id);
         showSuccessToast(
           t('message.entity-restored-success', { entity: item.name })
         );
+        await fetchArchivedItems();
       } catch (err) {
         showErrorToast(err as AxiosError);
       }
     },
-    [t]
+    [t, fetchArchivedItems]
   );
 
   const handleDeleteClick = useCallback((item: ArchiveItem) => {
@@ -169,107 +181,71 @@ const ContextCenterArchivePage: FC = () => {
 
     try {
       setIsDeleting(true);
-      if (itemToDelete.type === 'article') {
-        await deleteKnowledgePage(itemToDelete.id, false, true);
-      } else {
-        await deleteDriveFile(itemToDelete.id, true);
-      }
-      setAllItems((prev) => prev.filter((i) => i.id !== itemToDelete.id));
+      await deleteDriveFile(itemToDelete.id, true);
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
       setItemToDelete(undefined);
+      await fetchArchivedItems();
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDeleting(false);
     }
-  }, [itemToDelete, t]);
+  }, [itemToDelete, t, fetchArchivedItems]);
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:overflow-hidden tw:bg-secondary tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-archive-page">
       <ContextCenterHeader
         breadcrumbs={[
           {
-            name: '',
-            icon: <Home02 size={14} />,
-            url: contextCenterClassBase.getHomePath(),
-            activeTitle: true,
-          },
-          {
-            name: t('label.context-center'),
-            url: contextCenterClassBase.getContextCenterPath(),
-          },
-          {
-            activeTitle: true,
-            name: t('label.archive'),
-            url: '',
+            label: t('label.archive'),
           },
         ]}
         hasPermission={permissions?.Create}
-        subtitle={t('message.context-center-archive-subtitle')}
+        subtitle={t('label.view-archived-document-plural')}
         title={t('label.archive-plural')}
       />
-      <Card>
-        <div className="tw:flex tw:items-end tw:gap-2 tw:px-6 tw:py-5">
-          <Typography size="text-md" weight="medium">
-            {t('label.archive-file-plural')}
-          </Typography>
-          <Badge color="brand" type="pill-color">
-            {filteredItems.length}
-          </Badge>
-        </div>
-        <div className="tw:px-5 tw:py-3 tw:bg-tertiary">
-          <Tabs
-            className="tw:w-max"
-            selectedKey={activeFilter}
-            onSelectionChange={(key) => setActiveFilter(key as FilterKey)}>
-            <Tabs.List
-              className="tw:gap-2"
-              items={[
-                { id: 'all', label: t('label.all') },
-                { id: 'mine', label: t('label.created-by-me') },
-                {
-                  id: 'article',
-                  label: (
-                    <div className="tw:flex tw:items-center tw:gap-1.5">
-                      <File06 size={14} />
-                      {t('label.article-plural')}
-                    </div>
-                  ),
-                },
-                {
-                  id: 'document',
-                  label: (
-                    <div className="tw:flex tw:items-center tw:gap-1.5">
-                      <FolderIcon height={14} width={14} />
-                      {t('label.document-plural')}
-                    </div>
-                  ),
-                },
-              ]}
-              type="button-brand">
-              {(tab) => (
-                <Tabs.Item
-                  {...tab}
-                  className={({ isSelected }) =>
-                    isSelected
-                      ? 'tw:rounded-md tw:border tw:border-brand-100 tw:bg-brand-50 tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-brand-700 tw:cursor-pointer'
-                      : 'tw:rounded-md tw:border tw:border-gray-300 tw:bg-white tw:px-3 tw:py-1.5 tw:text-sm tw:font-semibold tw:text-quaternary tw:cursor-pointer'
-                  }
-                />
-              )}
-            </Tabs.List>
-          </Tabs>
-        </div>
-
+      <div className="tw:pb-5">
+        <Tabs
+          className="tw:w-max"
+          selectedKey={activeFilter}
+          onSelectionChange={(key) => handleFilterChange(key as FilterKey)}>
+          <Tabs.List
+            className="tw:gap-2"
+            items={filterTabItems}
+            type="button-brand">
+            {(tab) => (
+              <Tabs.Item
+                {...tab}
+                className={({ isSelected }) =>
+                  classNames(
+                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
+                    {
+                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
+                        isSelected,
+                      'tw:border-primary tw:bg-primary tw:text-secondary':
+                        !isSelected,
+                    }
+                  )
+                }
+              />
+            )}
+          </Tabs.List>
+        </Tabs>
+      </div>
+      <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden">
         <ArchiveView
-          data={filteredItems}
+          canDelete={permissions?.Delete}
+          canRestore={permissions?.EditAll}
+          data={items}
           isLoading={isLoading}
+          isLoadingMore={isLoadingMore}
           onDelete={handleDeleteClick}
           onRestore={handleRestore}
+          onScrollEnd={handleScrollEnd}
         />
       </Card>
 
@@ -277,8 +253,8 @@ const ContextCenterArchivePage: FC = () => {
         <DeleteModal
           entityTitle={itemToDelete.name}
           isDeleting={isDeleting}
-          message={t('message.delete-entity-message', {
-            entity: itemToDelete.name,
+          message={t('message.are-you-sure-you-want-to-delete-this-entity', {
+            entity: t('label.document-lowercase'),
           })}
           open={Boolean(itemToDelete)}
           onCancel={handleCancelDelete}

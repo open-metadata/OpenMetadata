@@ -10,24 +10,65 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
+import { isString, omit } from 'lodash';
 import type { EntityTags } from 'Models';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import {
   ResourceEntity,
-  UIPermission,
+  type UIPermission,
 } from '../context/PermissionProvider/PermissionProvider.interface';
 import { EntityType } from '../enums/entity.enum';
 import { ExplorePageTabs } from '../enums/Explore.enum';
+import type { Tag } from '../generated/entity/classification/tag';
+import type {
+  AssetCertification,
+  Column,
+} from '../generated/entity/data/table';
 import { TagSource } from '../generated/entity/data/table';
 import { Operation } from '../generated/entity/policies/policy';
+import { LabelType, State, TagLabel } from '../generated/type/tagLabel';
+import { getEntityName } from './EntityNameUtils';
+import i18n from './i18next/LocalUtil';
 import { checkPermissionEntityResource } from './PermissionsUtils';
 import {
   getClassificationTagPath,
   getExplorePath,
   getGlossaryPath,
 } from './RouterUtils';
-import { getTermQuery } from './SearchUtils';
+import { getTermQuery } from './SearchPureUtils';
+import { getTagsWithoutTier } from './TablePureUtils';
+
+export const getTableTags = (
+  columns: Array<Partial<Column>>
+): Array<EntityTags> => {
+  const flag: { [x: string]: boolean } = {};
+  const uniqueTags: Array<EntityTags> = [];
+  const tags = columns
+    .map((column) => column.tags || [])
+    .reduce((prev, curr) => prev.concat(curr), [])
+    .map((tag) => tag);
+
+  tags.forEach((elem) => {
+    if (!flag[elem.tagFQN]) {
+      flag[elem.tagFQN] = true;
+      uniqueTags.push(elem);
+    }
+  });
+
+  return uniqueTags;
+};
+
+export const getTagDisplay = (tag?: string) => {
+  const tagLevelsArray = tag?.split(FQN_SEPARATOR_CHAR) ?? [];
+
+  if (tagLevelsArray.length > 3) {
+    return `${tagLevelsArray[0]}...${tagLevelsArray
+      .slice(-2)
+      .join(FQN_SEPARATOR_CHAR)}`;
+  }
+
+  return tag;
+};
 
 export const getUsageCountLink = (tagFQN: string) => {
   const type = tagFQN.startsWith('Tier') ? 'tier' : 'tags';
@@ -52,6 +93,87 @@ export const getUsageCountLink = (tagFQN: string) => {
     },
     isPersistFilters: false,
   });
+};
+
+export const getTagPlaceholder = (isGlossaryType: boolean): string =>
+  isGlossaryType
+    ? i18n.t('label.search-entity', {
+        entity: i18n.t('label.glossary-term-plural'),
+      })
+    : i18n.t('label.search-entity', {
+        entity: i18n.t('label.tag-plural'),
+      });
+
+export type ResultType = {
+  label: string;
+  value: string;
+  data: Tag;
+};
+
+export const createTierTag = (tag: Tag) => {
+  return {
+    displayName: tag.displayName,
+    name: tag.name,
+    description: tag.description,
+    tagFQN: tag.fullyQualifiedName,
+    labelType: LabelType.Manual,
+    state: State.Confirmed,
+  };
+};
+
+export const createCertificationTag = (tag: Tag) => {
+  return {
+    tagLabel: {
+      displayName: tag.displayName,
+      name: tag.name,
+      href: tag.href,
+      description: tag.description,
+      tagFQN: tag.fullyQualifiedName,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+    },
+  };
+};
+
+export const updateTierTag = (oldTags: Tag[] | TagLabel[], newTier?: Tag) => {
+  return newTier
+    ? [...getTagsWithoutTier(oldTags), createTierTag(newTier)]
+    : getTagsWithoutTier(oldTags);
+};
+
+export const updateCertificationTag = (
+  newCertification?: Tag
+): AssetCertification | undefined => {
+  if (!newCertification) {
+    return undefined;
+  }
+
+  return {
+    tagLabel: {
+      tagFQN: newCertification.fullyQualifiedName || '',
+      name: newCertification.name,
+      displayName: newCertification.displayName,
+      description: newCertification.description || '',
+      source: TagSource.Classification,
+      labelType: LabelType.Manual,
+      state: State.Confirmed,
+      style: newCertification.style,
+    },
+    appliedDate: Date.now(),
+    expiryDate: Date.now() + 90 * 24 * 60 * 60 * 1000,
+  };
+};
+
+export const createTagObject = (tags: EntityTags[]) => {
+  return tags.map(
+    (tag) =>
+      ({
+        ...omit(tag, 'isRemovable'),
+        state: State.Confirmed,
+        source: tag.source,
+        tagFQN: tag.tagFQN,
+      } as TagLabel)
+  );
 };
 
 export const getQueryFilterToExcludeTermsAndEntities = (
@@ -288,6 +410,25 @@ export const getTagAssetsQueryFilter = (fqn: string) => {
   return getTermQuery({ [fieldName]: fqn });
 };
 
+export const isGlossaryTag = (tag: EntityTags): boolean => {
+  return tag.source === TagSource.Glossary;
+};
+
+export const getTagName = (tag: EntityTags, showOnlyName?: boolean): string => {
+  return (
+    getEntityName(tag) ||
+    getTagDisplay(
+      showOnlyName
+        ? tag.tagFQN
+            .split(FQN_SEPARATOR_CHAR)
+            .slice(-2)
+            .join(FQN_SEPARATOR_CHAR)
+        : tag.tagFQN
+    ) ||
+    tag.tagFQN
+  );
+};
+
 export const getTagRedirectLink = (
   tag: EntityTags,
   tagType?: TagSource
@@ -295,4 +436,27 @@ export const getTagRedirectLink = (
   return (tagType ?? tag.source) === TagSource.Glossary
     ? getGlossaryPath(tag.tagFQN)
     : getClassificationTagPath(tag.tagFQN);
+};
+
+export const getGlossaryTags = (tags: TagLabel[] | undefined): TagLabel[] =>
+  tags?.filter((tag) => tag.source === TagSource.Glossary) ?? [];
+
+export const getClassificationTags = (
+  tags: TagLabel[] | undefined
+): TagLabel[] =>
+  tags?.filter((tag) => tag.source === TagSource.Classification) ?? [];
+
+export const getTagValue = (tag: string | TagLabel): string | TagLabel => {
+  if (isString(tag)) {
+    return tag.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
+      ? tag.split(FQN_SEPARATOR_CHAR)[1]
+      : tag;
+  } else {
+    return {
+      ...tag,
+      tagFQN: tag.tagFQN.startsWith(`Tier${FQN_SEPARATOR_CHAR}`)
+        ? tag.tagFQN.split(FQN_SEPARATOR_CHAR)[1]
+        : tag.tagFQN,
+    };
+  }
 };

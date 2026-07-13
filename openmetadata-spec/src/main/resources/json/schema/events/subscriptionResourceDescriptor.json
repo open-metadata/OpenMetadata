@@ -36,6 +36,13 @@
       "items": {
         "$ref": "#/definitions/operation"
       }
+    },
+    "containerEntities": {
+      "description": "Ancestor entity types whose fully qualified name is a prefix of this resource's FQN (e.g. a databaseSchema is contained by databaseService and database). Lets an Entity FQN filter scope an alert to all descendants of a parent.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
     }
   },
   "additionalProperties": false

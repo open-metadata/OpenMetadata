@@ -31,21 +31,20 @@ import {
   MY_DATA_WIDGET_FILTER_OPTIONS,
 } from '../../../constants/Widgets.constant';
 import { SIZE } from '../../../enums/common.enum';
+import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
-import { EntityReference } from '../../../generated/tests/testCase';
+import type { EntityReference } from '../../../generated/tests/testCase';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { SearchSourceAlias } from '../../../interface/search.interface';
 import {
   WidgetCommonProps,
   WidgetConfig,
 } from '../../../pages/CustomizablePage/CustomizablePage.interface';
 import { searchQuery } from '../../../rest/searchAPI';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import { getEntityIcon } from '../../../utils/LandingPageWidgetIconUtils';
 import { getDomainPath, getUserPath } from '../../../utils/RouterUtils';
-import searchClassBase from '../../../utils/SearchClassBase';
-import { getTermQuery } from '../../../utils/SearchUtils';
-import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
+import { getTermQuery } from '../../../utils/SearchPureUtils';
 import EntitySummaryDetails from '../../common/EntitySummaryDetails/EntitySummaryDetails';
 import { OwnerLabel } from '../../common/OwnerLabel/OwnerLabel.component';
 import { SourceType } from '../../SearchedData/SearchedData.interface';
@@ -56,7 +55,6 @@ import WidgetHeader from '../Widgets/Common/WidgetHeader/WidgetHeader';
 import WidgetWrapper from '../Widgets/Common/WidgetWrapper/WidgetWrapper';
 import { CURATED_ASSETS_SORT_BY_KEYS } from '../Widgets/CuratedAssetsWidget/CuratedAssetsWidget.constants';
 import './my-data-widget.less';
-
 const MyDataWidgetInternal = ({
   isEditView = false,
   handleRemoveWidget,
@@ -143,7 +141,7 @@ const MyDataWidgetInternal = ({
           queryFilter: queryFilterObj,
           sortField,
           sortOrder,
-          searchIndex: SearchIndex.ALL,
+          searchIndex: SearchIndex.DATA_ASSET,
         });
 
         // Extract useful details from the Response
@@ -170,22 +168,6 @@ const MyDataWidgetInternal = ({
   useEffect(() => {
     fetchMyDataAssets();
   }, [fetchMyDataAssets]);
-
-  const getEntityIcon = (item: SourceType) => {
-    if ('serviceType' in item && item.serviceType) {
-      return (
-        <img
-          alt={item.name}
-          className="w-8 h-8"
-          src={serviceUtilClassBase.getServiceTypeLogo({
-            serviceType: item.serviceType,
-          } as SearchSourceAlias)}
-        />
-      );
-    } else {
-      return searchClassBase.getEntityIcon(item.entityType ?? '');
-    }
-  };
 
   const emptyState = useMemo(
     () => (
@@ -216,9 +198,9 @@ const MyDataWidgetInternal = ({
                 <div className="d-flex items-center justify-between ">
                   <Link
                     className="item-link w-min-0"
-                    to={entityUtilClassBase.getEntityLink(
-                      item.entityType ?? '',
-                      item.fullyQualifiedName as string
+                    to={getEntityLinkFromType(
+                      item.fullyQualifiedName as string,
+                      item.entityType as EntityType
                     )}>
                     <Button
                       className="entity-button flex items-center gap-2 p-0 w-full"

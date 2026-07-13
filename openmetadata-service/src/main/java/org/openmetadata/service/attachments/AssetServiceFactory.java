@@ -14,6 +14,12 @@ public class AssetServiceFactory {
     registerShutdownHook();
     ObjectStorageConfiguration objectStorageConfiguration = config.getObjectStorage();
     if (objectStorageConfiguration == null || !objectStorageConfiguration.isEnabled()) {
+      LOG.warn(
+          "Object storage is disabled (objectStorage.enabled=false or missing). File uploads "
+              + "(e.g. Context Center Drive) will be accepted but their content will be "
+              + "discarded, and file processing will fail with 'Unable to read file content "
+              + "from object storage'. Configure objectStorage with provider s3, azure, or "
+              + "inmemory to enable file storage.");
       // Storage disabled — always swap to a fresh NoOp provider. If a previous init
       // wired up S3/Azure/InMemory, leaving that instance live after a reload to the
       // disabled state would keep serving real uploads/downloads against the old

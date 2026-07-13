@@ -28,6 +28,7 @@ permissions:
 jobs:
   validate-json-yaml:
     runs-on: ubuntu-latest
+    if: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
     permissions:
       pull-requests: write
     steps:

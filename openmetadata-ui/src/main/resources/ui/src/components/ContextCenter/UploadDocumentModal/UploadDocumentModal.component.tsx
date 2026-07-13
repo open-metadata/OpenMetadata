@@ -21,6 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { FC, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { v4 as uuidv4 } from 'uuid';
 import { DOCUMENT_MAX_FILE_SIZE } from '../../../constants/ContextCenter.constants';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import { uploadDriveFile } from '../../../rest/assetAPI';
@@ -58,7 +59,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleDropFiles = (dropped: FileList) => {
     const newEntries: QueuedFile[] = Array.from(dropped).map((file) => ({
       file,
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       progress: 100,
       status: 'done',
     }));
@@ -69,7 +70,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
   const handleSizeLimitExceed = (oversized: FileList) => {
     const newEntries: QueuedFile[] = Array.from(oversized).map((file) => ({
       file,
-      id: crypto.randomUUID(),
+      id: uuidv4(),
       progress: 0,
       sizeExceeded: true,
       status: 'error',
@@ -162,6 +163,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
                 allowsMultiple
                 clickToUploadLabel={t('label.click-to-upload')}
                 hint={t('message.upload-document-hint')}
+                input-data-testid="file-upload-input"
                 maxSize={DOCUMENT_MAX_FILE_SIZE}
                 orDragAndDropLabel={t('label.or-drag-and-drop')}
                 onDropFiles={handleDropFiles}
@@ -195,7 +197,7 @@ const UploadDocumentModal: FC<UploadDocumentModalProps> = ({
               )}
             </FileUpload.Root>
           </Dialog.Content>
-          <Dialog.Footer className="quick-link-modal-footer">
+          <Dialog.Footer className="tw:border-0 tw:mt-0!">
             <Button color="secondary" size="sm" onClick={handleClose}>
               {t('label.cancel')}
             </Button>

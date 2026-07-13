@@ -38,10 +38,8 @@ import { usePaging } from '../../../../hooks/paging/usePaging';
 import { getBots } from '../../../../rest/botsAPI';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatUsersResponse } from '../../../../utils/APIUtils';
-import {
-  getEntityName,
-  highlightSearchText,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { highlightSearchText } from '../../../../utils/EntitySearchUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../../utils/GlobalSettingsUtils';
 import { getBotsPath } from '../../../../utils/RouterUtils';
 import {
@@ -49,7 +47,7 @@ import {
   stringToHTML,
 } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteEntityModal from '../../../common/DeleteWidget/DeleteEntityModal';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
@@ -535,7 +533,7 @@ const BotListV1 = ({
         />
       </Col>
 
-      <DeleteWidgetModal
+      <DeleteEntityModal
         afterDeleteAction={handleDeleteAction}
         allowSoftDelete={!showDeleted}
         entityId={selectedUser?.id || ''}

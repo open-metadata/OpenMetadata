@@ -11,51 +11,34 @@
  *  limitations under the License.
  */
 import { Card, Col, Row, Skeleton } from 'antd';
-import { useTranslation } from 'react-i18next';
-import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import './my-data.less';
 
 /**
- * Above-the-fold placeholder for {@link MyDataPage} while persona / layout data is loading.
+ * Widget-grid placeholder shown while persona / layout data loads.
  *
- * Mirrors page chrome (header band + 4-card grid) so first paint shows the actual page shape
- * instead of a centered spinner. Real widgets stream in once the layout resolves; widgets that
- * are below the fold remain {@link DeferredWidget}-gated as before.
+ * Intentionally renders only the card grid — not a fake header — so
+ * {@link MyDataPage} can always mount {@link CustomiseLandingPageHeader}
+ * immediately (skeleton-first pattern). This avoids the extra API round-trip
+ * that was blocking LCP on /my-data.
  *
- * Match the eight-column grid used in `MyDataPage` so cards land in roughly the same place a
- * real widget would, avoiding a layout shift on reveal.
+ * Match the eight-column grid used in `MyDataPage` so cards land in roughly
+ * the same place a real widget would, avoiding layout shift on reveal.
  */
 export const MyDataPageSkeleton = () => {
-  const { t } = useTranslation();
-
   return (
-    // Pass the actual page title so the browser tab / a11y landmark match the real page.
-    // An empty `pageTitle` would briefly clear the document title and break screen-reader
-    // announcements during the skeleton phase.
-    <PageLayoutV1 className="p-b-lg" pageTitle={t('label.my-data')}>
-      <div className="grid-wrapper" dir="ltr">
-        <div className="landing-page-skeleton-header">
-          <Skeleton
-            active
-            paragraph={{ rows: 1, width: ['40%'] }}
-            title={{ width: '20%' }}
-          />
-        </div>
-        <Row className="p-x-box" gutter={[16, 16]}>
-          {[0, 1, 2, 3].map((i) => (
-            <Col key={i} lg={12} md={24} sm={24} xl={12} xs={24}>
-              <Card className="landing-page-skeleton-card">
-                <Skeleton
-                  active
-                  paragraph={{ rows: 4, width: ['90%', '85%', '80%', '70%'] }}
-                  title={{ width: '30%' }}
-                />
-              </Card>
-            </Col>
-          ))}
-        </Row>
-      </div>
-    </PageLayoutV1>
+    <Row className="p-x-box" gutter={[16, 16]}>
+      {[0, 1, 2, 3].map((i) => (
+        <Col key={i} lg={12} md={24} sm={24} xl={12} xs={24}>
+          <Card className="landing-page-skeleton-card">
+            <Skeleton
+              active
+              paragraph={{ rows: 4, width: ['90%', '85%', '80%', '70%'] }}
+              title={{ width: '30%' }}
+            />
+          </Card>
+        </Col>
+      ))}
+    </Row>
   );
 };
 

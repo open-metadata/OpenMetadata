@@ -58,16 +58,44 @@ jest.mock('antd', () => ({
   )),
 }));
 
-jest.mock('../../../utils/ServiceUtils', () => ({
-  ...jest.requireActual('../../../utils/ServiceUtils'),
+jest.mock('../../../utils/ServicePureUtils', () => ({
+  ...jest.requireActual('../../../utils/ServicePureUtils'),
   getTestConnectionName: jest.fn().mockReturnValue('test-connection-Mysql-01'),
 }));
 
 jest.mock('./TestConnectionModal/TestConnectionModal', () =>
   jest
     .fn()
-    .mockImplementation(({ isOpen }) =>
-      isOpen ? <div data-testid="test-connection-modal">Modal</div> : null
+    .mockImplementation(
+      ({
+        connectionDisplayName,
+        errorMessage,
+        hostIp,
+        isConnectionTimeout,
+        isOpen,
+        onCancel,
+        onConfirm,
+        onTestConnection,
+      }) =>
+        isOpen ? (
+          <div data-testid="test-connection-modal">
+            Modal
+            <span data-testid="connection-display-name">
+              {connectionDisplayName}
+            </span>
+            {errorMessage?.description && (
+              <span data-testid="connection-error-message">
+                {errorMessage.description}
+              </span>
+            )}
+            {isConnectionTimeout && (
+              <span data-testid="connection-timeout-message">{hostIp}</span>
+            )}
+            <button onClick={onCancel}>Cancel Modal</button>
+            <button onClick={onConfirm}>Confirm Modal</button>
+            <button onClick={onTestConnection}>Retry Modal</button>
+          </div>
+        ) : null
     )
 );
 
@@ -99,16 +127,57 @@ jest.mock(
 jest.useFakeTimers();
 
 describe('Test Connection Component', () => {
+  beforeEach(() => {
+    (addWorkflow as jest.Mock).mockImplementation(() =>
+      Promise.resolve(WORKFLOW_DETAILS)
+    );
+    (getTestConnectionDefinitionByName as jest.Mock).mockImplementation(() =>
+      Promise.resolve(TEST_CONNECTION_DEFINITION)
+    );
+    (getWorkflowById as jest.Mock).mockImplementation(() =>
+      Promise.resolve(WORKFLOW_DETAILS)
+    );
+    (triggerWorkflowById as jest.Mock).mockImplementation(() =>
+      Promise.resolve(200)
+    );
+    (deleteWorkflowById as jest.Mock).mockImplementation(() =>
+      Promise.resolve(WORKFLOW_DETAILS)
+    );
+    (useAirflowStatus as jest.Mock).mockImplementation(() => ({
+      isAirflowAvailable: true,
+    }));
+  });
+
+  afterEach(() => {
+    jest.clearAllTimers();
+  });
+
   it('Should render the child component', async () => {
     await act(async () => {
       render(<TestConnection {...mockProps} />);
     });
 
+    const testConnectionButton = screen.getByTestId('test-connection-btn');
+
     expect(
-      screen.getByText('message.test-your-connection-before-creating-service')
+      screen.getByText('message.ready-to-test-connection')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('test-connection-btn')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.test-connection-unlocks-next-step')
+    ).toBeInTheDocument();
+
+    expect(testConnectionButton).toBeInTheDocument();
+  });
+
+  it('Should show missing required field count before testing', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} missingRequiredFieldsCount={4} />);
+    });
+
+    expect(
+      screen.getByText('message.fill-required-fields-then-test-connection')
+    ).toBeInTheDocument();
   });
 
   it('Should render the button only is showDetails is false', async () => {
@@ -157,6 +226,123 @@ describe('Test Connection Component', () => {
     });
 
     expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
+  });
+
+  it('Should show Snowflake account domain in the connection modal', async () => {
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          connectionType="Snowflake"
+          getData={() =>
+            ({
+              account: 'fsad.us-east-1.gcp',
+            } as ConfigData)
+          }
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+      'fsad.us-east-1.gcp.snowflakecomputing.com'
+    );
+  });
+
+  it('Should keep full Snowflake domains without appending another suffix', async () => {
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          connectionType="Snowflake"
+          getData={() =>
+            ({
+              account: ' fsad.snowflakecomputing.com ',
+            } as ConfigData)
+          }
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+      'fsad.snowflakecomputing.com'
+    );
+  });
+
+  it('Should recompute the connection display name from latest form data when opening the modal', async () => {
+    let account = '';
+    const getData = jest.fn(() => ({ account } as ConfigData));
+
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          connectionType="Snowflake"
+          getData={getData}
+        />
+      );
+    });
+
+    account = 'fresh-account';
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+      'fresh-account.snowflakecomputing.com'
+    );
+  });
+
+  it('Should not preserve Snowflake host substrings outside the hostname', async () => {
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          connectionType="Snowflake"
+          getData={() =>
+            ({
+              account: 'https://example.com/snowflakecomputing.com',
+            } as ConfigData)
+          }
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+      'https://example.com/snowflakecomputing.com.snowflakecomputing.com'
+    );
+  });
+
+  it('Should fall back to service name for the connection modal title', async () => {
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          getData={() => ({} as ConfigData)}
+          serviceName="warehouse-prod"
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('connection-display-name')).toHaveTextContent(
+      'warehouse-prod'
+    );
   });
 
   it('Should show the testing message on test connection click', async () => {
@@ -303,14 +489,16 @@ describe('Test Connection Component', () => {
     await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
 
     expect(
-      screen.getByText('message.connection-test-successful')
+      screen.getByText('message.test-connection-verified')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('success-badge')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.test-connection-ready-count')
+    ).toBeInTheDocument();
   });
 
   it('Should show warning message if test connection failed and mandatory steps passed', async () => {
     jest.useFakeTimers();
+    const onTestConnectionStatusChange = jest.fn();
 
     (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
       Promise.resolve({
@@ -319,7 +507,12 @@ describe('Test Connection Component', () => {
       })
     );
     await act(async () => {
-      render(<TestConnection {...mockProps} />);
+      render(
+        <TestConnection
+          {...mockProps}
+          onTestConnectionStatusChange={onTestConnectionStatusChange}
+        />
+      );
     });
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
@@ -336,7 +529,69 @@ describe('Test Connection Component', () => {
       screen.getByText('message.connection-test-warning')
     ).toBeInTheDocument();
 
-    expect(screen.getByTestId('warning-badge')).toBeInTheDocument();
+    expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('Should allow progress when definition-required steps pass and optional steps fail', async () => {
+    jest.useFakeTimers();
+    const onTestConnectionStatusChange = jest.fn();
+
+    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          steps: [
+            {
+              name: 'CheckAccess',
+              passed: true,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetSchemas',
+              passed: true,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetTables',
+              passed: true,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'GetViews',
+              passed: false,
+              message: null,
+              mandatory: true,
+            },
+          ],
+          status: StatusType.Failure,
+        },
+      })
+    );
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          onTestConnectionStatusChange={onTestConnectionStatusChange}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(
+      screen.getByText('message.connection-test-warning')
+    ).toBeInTheDocument();
+    expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
 
   it('Should show fail message if create workflow API fails', async () => {
@@ -356,10 +611,29 @@ describe('Test Connection Component', () => {
     jest.advanceTimersByTime(2000);
 
     expect(
-      screen.getByText('message.connection-test-failed')
+      await screen.findByText('message.connection-test-failed')
     ).toBeInTheDocument();
+  });
 
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
+  it('Should show the unexpected response message for 500 workflow failures', async () => {
+    jest.useFakeTimers();
+
+    (addWorkflow as jest.Mock).mockImplementationOnce(() =>
+      Promise.reject({ status: 500 })
+    );
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    expect(
+      await screen.findByTestId('connection-error-message')
+    ).toHaveTextContent('server.unexpected-response');
   });
 
   it('Should show fail message if trigger workflow API fails', async () => {
@@ -383,8 +657,6 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.connection-test-failed')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
   });
 
   it('Should not show the connection status modal if test connection definition API fails', async () => {
@@ -422,12 +694,11 @@ describe('Test Connection Component', () => {
     });
 
     const testConnectionButton = screen.getByTestId('test-connection-btn');
-    const buttonTooltipTitle = screen.getByTestId('tooltip');
 
     expect(testConnectionButton).toBeDisabled();
-    expect(buttonTooltipTitle).toHaveTextContent(
-      'label.platform-service-client-unavailable'
-    );
+    expect(
+      screen.getAllByText('label.platform-service-client-unavailable').length
+    ).toBeGreaterThan(0);
   });
 
   it('Should render the configure airflow message if airflow is not available', async () => {
@@ -509,8 +780,6 @@ describe('Test Connection Component', () => {
     expect(
       screen.getByText('message.connection-test-failed')
     ).toBeInTheDocument();
-
-    expect(screen.getByTestId('fail-badge')).toBeInTheDocument();
   });
 
   it('Should validate the form before testing the connect', async () => {
@@ -523,6 +792,47 @@ describe('Test Connection Component', () => {
     fireEvent.click(testConnectionButton);
 
     expect(mockonValidateFormRequiredFields).toHaveBeenCalled();
+  });
+
+  it('Should start testing when required field validation succeeds', async () => {
+    const onValidateFormRequiredFields = jest.fn().mockReturnValue(true);
+
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          shouldValidateForm
+          onValidateFormRequiredFields={onValidateFormRequiredFields}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(onValidateFormRequiredFields).toHaveBeenCalled();
+    expect(addWorkflow).toHaveBeenCalled();
+  });
+
+  it('Should close the modal and abort when cancel is clicked', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Cancel Modal'));
+    });
+
+    expect(
+      screen.queryByTestId('test-connection-modal')
+    ).not.toBeInTheDocument();
   });
 
   it('Validate the form and do not initiate the testing of the connection if the required fields are not filled in.', async () => {
@@ -576,5 +886,286 @@ describe('Test Connection Component', () => {
 
     // delete api should be called
     expect(deleteWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id, true);
+  });
+
+  it('Should skip deleting workflow when failed trigger returns an empty workflow id', async () => {
+    const deleteCallCount = (deleteWorkflowById as jest.Mock).mock.calls.length;
+
+    (addWorkflow as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        id: '',
+      })
+    );
+    (triggerWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve(204)
+    );
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    expect((deleteWorkflowById as jest.Mock).mock.calls).toHaveLength(
+      deleteCallCount
+    );
+  });
+
+  it('Should keep polling when workflow has not completed yet', async () => {
+    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        status: 'Running',
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          status: 'Running',
+        },
+      })
+    );
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(screen.getByTestId('loader')).toBeInTheDocument();
+
+    jest.clearAllTimers();
+  });
+
+  it('Should fail and delete the workflow when polling fails', async () => {
+    (getWorkflowById as jest.Mock).mockRejectedValueOnce(new Error('failed'));
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(
+      screen.getByText('message.connection-test-failed')
+    ).toBeInTheDocument();
+    expect(deleteWorkflowById).toHaveBeenCalledWith(WORKFLOW_DETAILS.id, true);
+  });
+
+  it('Should evaluate legacy result required flags when definition has no required steps', async () => {
+    (getTestConnectionDefinitionByName as jest.Mock).mockImplementationOnce(
+      () =>
+        Promise.resolve({
+          ...TEST_CONNECTION_DEFINITION,
+          steps: [],
+        })
+    );
+    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          steps: [
+            {
+              name: 'LegacyStep',
+              passed: true,
+              message: null,
+              mandatory: true,
+            },
+          ],
+          status: 'Successful',
+        },
+      })
+    );
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(
+      await screen.findByText('message.test-connection-verified')
+    ).toBeInTheDocument();
+  });
+
+  it('Should evaluate legacy optional result failures when definition has no optional steps', async () => {
+    const onTestConnectionStatusChange = jest.fn();
+
+    (getTestConnectionDefinitionByName as jest.Mock).mockImplementationOnce(
+      () =>
+        Promise.resolve({
+          ...TEST_CONNECTION_DEFINITION,
+          steps: [
+            {
+              name: 'CheckAccess',
+              description: 'Check access',
+              mandatory: true,
+            },
+          ],
+        })
+    );
+    (getWorkflowById as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          steps: [
+            {
+              name: 'CheckAccess',
+              passed: true,
+              message: null,
+              mandatory: true,
+            },
+            {
+              name: 'LegacyOptional',
+              passed: false,
+              message: null,
+              mandatory: false,
+            },
+          ],
+          status: 'Failed',
+        },
+      })
+    );
+
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          onTestConnectionStatusChange={onTestConnectionStatusChange}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(
+      await screen.findByText('message.connection-test-warning')
+    ).toBeInTheDocument();
+    expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
+  });
+
+  it('Should show timeout copy when workflow never completes', async () => {
+    (addWorkflow as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        status: 'Running',
+      })
+    );
+    (getWorkflowById as jest.Mock).mockImplementation(() =>
+      Promise.resolve({
+        ...WORKFLOW_DETAILS,
+        status: 'Running',
+        response: {
+          ...WORKFLOW_DETAILS.response,
+          status: 'Running',
+        },
+      })
+    );
+
+    await act(async () => {
+      render(<TestConnection {...mockProps} hostIp="10.0.0.1" />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(180000);
+    });
+
+    expect(
+      await screen.findByTestId('connection-timeout-message')
+    ).toHaveTextContent('10.0.0.1');
+  });
+
+  it('Should reopen details and retry from the modal actions', async () => {
+    await act(async () => {
+      render(<TestConnection {...mockProps} />);
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    await act(async () => {
+      jest.advanceTimersByTime(2000);
+    });
+
+    expect(
+      await screen.findByText('message.test-connection-verified')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Confirm Modal'));
+    });
+
+    expect(
+      screen.queryByTestId('test-connection-modal')
+    ).not.toBeInTheDocument();
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-details-btn'));
+    });
+
+    expect(screen.getByTestId('test-connection-modal')).toBeInTheDocument();
+
+    const addWorkflowCallCount = (addWorkflow as jest.Mock).mock.calls.length;
+
+    await act(async () => {
+      fireEvent.click(screen.getByText('Retry Modal'));
+    });
+
+    expect(addWorkflow).toHaveBeenCalledTimes(addWorkflowCallCount + 1);
+  });
+
+  it('Should notify parent when test connection status changes', async () => {
+    const onTestConnectionStatusChange = jest.fn();
+    jest.useFakeTimers();
+
+    await act(async () => {
+      render(
+        <TestConnection
+          {...mockProps}
+          onTestConnectionStatusChange={onTestConnectionStatusChange}
+        />
+      );
+    });
+
+    await act(async () => {
+      fireEvent.click(screen.getByTestId('test-connection-btn'));
+    });
+
+    jest.advanceTimersByTime(2000);
+
+    await waitForElementToBeRemoved(() => screen.getByTestId('loader'));
+
+    expect(onTestConnectionStatusChange).toHaveBeenLastCalledWith(true);
   });
 });

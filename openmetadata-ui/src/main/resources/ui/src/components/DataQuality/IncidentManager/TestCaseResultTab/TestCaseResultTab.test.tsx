@@ -108,18 +108,26 @@ jest.mock('../../../Database/SchemaEditor/SchemaEditor', () => {
 jest.mock('../../../Database/Profiler/TestSummary/TestSummary', () => {
   return jest.fn().mockImplementation(() => <div>TestSummary</div>);
 });
-jest.mock('../../AddDataQualityTest/EditTestCaseModal', () => {
-  return jest.fn().mockImplementation(({ onUpdate, testCase, onCancel }) => (
-    <div>
-      EditTestCaseModal
-      <button data-testid="cancel-btn" onClick={onCancel}>
-        cancel
-      </button>
-      <button data-testid="update-test" onClick={() => onUpdate(testCase)}>
-        update
-      </button>
-    </div>
-  ));
+jest.mock(
+  '../../../DataProducts/DataProductsContainer/DataProductsContainer.component',
+  () => {
+    return jest.fn().mockImplementation(() => <div>DataProductsContainer</div>);
+  }
+);
+jest.mock('../../AddDataQualityTest/components/TestCaseFormDrawer', () => {
+  return jest.fn().mockImplementation(({ open, onUpdate, testCase, onClose }) =>
+    open ? (
+      <div data-testid="test-case-form-v1">
+        EditTestCaseModal
+        <button data-testid="cancel-btn" onClick={onClose}>
+          cancel
+        </button>
+        <button data-testid="update-test" onClick={() => onUpdate(testCase)}>
+          update
+        </button>
+      </div>
+    ) : null
+  );
 });
 
 const mockUpdateTestCaseById = jest.fn();

@@ -50,7 +50,7 @@ export const OwnerTeamList: React.FC<OwnerTeamListProps> = ({
         to={getOwnerPath(visibleTeam)}>
         <IconTeamsGrey
           className={classNames(
-            'tw:text-gray-700',
+            'tw:text-secondary',
             AVATAR_SIZE_CLASS_MAP[avatarSize]
           )}
         />

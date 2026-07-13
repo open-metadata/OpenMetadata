@@ -23,6 +23,7 @@ export interface DomainSelectableListProps {
   onCancel?: () => void;
   onUpdate: (domain: EntityReference | EntityReference[]) => Promise<void>;
   popoverProps?: PopoverProps;
+  restrictedDomains?: EntityReference[];
   selectedDomain?: EntityReference | EntityReference[];
   showAllDomains?: boolean;
   wrapInButton?: boolean;

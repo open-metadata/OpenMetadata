@@ -66,6 +66,7 @@ class ContextMemoryIndexTest {
             .withMemoryType(ContextMemoryType.FAQ)
             .withMemoryScope(ContextMemoryScope.USER_GLOBAL)
             .withStatus(ContextMemoryStatus.ACTIVE)
+            .withPinned(true)
             .withSourceType(ContextMemorySourceType.CHAT_PROMOTION)
             .withUsageCount(7)
             .withLastUsedAt(1_700_000_000_000L);
@@ -80,9 +81,18 @@ class ContextMemoryIndexTest {
     assertEquals(ContextMemoryType.FAQ.value(), doc.get("memoryType"));
     assertEquals(ContextMemoryScope.USER_GLOBAL.value(), doc.get("memoryScope"));
     assertEquals(ContextMemoryStatus.ACTIVE.value(), doc.get("status"));
+    assertEquals(true, doc.get("pinned"));
     assertEquals(ContextMemorySourceType.CHAT_PROMOTION.value(), doc.get("sourceType"));
     assertEquals(7, doc.get("usageCount"));
     assertEquals(1_700_000_000_000L, doc.get("lastUsedAt"));
+  }
+
+  @Test
+  void buildSearchIndexDoc_nullPinnedDefaultsToFalse() {
+    Map<String, Object> doc =
+        new ContextMemoryIndex(baseMemory()).buildSearchIndexDocInternal(new HashMap<>());
+
+    assertEquals(false, doc.get("pinned"));
   }
 
   @Test

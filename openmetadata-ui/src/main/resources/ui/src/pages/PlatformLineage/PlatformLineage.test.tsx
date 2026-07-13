@@ -129,8 +129,11 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   ),
 }));
 
-jest.mock('../../utils/EntityLineageUtils', () => ({
+jest.mock('../../utils/EntityLineagePureUtils', () => ({
   getLineageEntityExclusionFilter: jest.fn(() => ({ mustNot: [] })),
+}));
+
+jest.mock('../../utils/EntityLineageLayoutUtils', () => ({
   getViewportForLineageExport: jest.fn(() => ({ x: 0, y: 0, zoom: 1 })),
 }));
 
@@ -240,10 +243,6 @@ jest.mock('antd', () => {
     Card: jest.fn(({ children }) => <div>{children}</div>),
   };
 });
-
-jest.mock('../../components/LineageTable/LineageTable.styled', () => ({
-  StyledIconButton: jest.fn(({ children }) => <button>{children}</button>),
-}));
 
 jest.mock('../../assets/svg/ic-download.svg', () => ({
   ReactComponent: () => <div>DownloadIcon</div>,

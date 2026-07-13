@@ -58,7 +58,7 @@ module.exports = {
   moduleNameMapper: {
     '\\.svg': '<rootDir>/src/test/unit/mocks/svg.mock.js', // Mock SVG imports
     '\\.(scss)$': 'identity-obj-proxy', // Mock style imports
-    '\\.(jpg|JPG|gif|GIF|png|PNG|less|LESS|css|CSS)$':
+    '\\.(jpg|JPG|gif|GIF|png|PNG|webp|WEBP|less|LESS|css|CSS)$':
       '<rootDir>/src/test/unit/mocks/file.mock.js',
     // fix vendors.map error
     '^<rootDir>/src/.*\\.json$': '<rootDir>/src/test/unit/mocks/json.mock.js',
@@ -75,6 +75,8 @@ module.exports = {
       '<rootDir>/src/test/unit/mocks/reactColumnResize.mock.js',
     '^.*/Lineage/Layout/ELKUtil/ELKUtil$':
       '<rootDir>/src/test/unit/mocks/elkLayout.mock.js',
+    '^.*/AppRouter/withSuspenseFallback$':
+      '<rootDir>/src/test/unit/mocks/withSuspenseFallback.mock.tsx',
     // Force every `require('react')` / `require('react-dom')` to resolve to the consumer's
     // copy. The `openmetadata-ui-core-components` package has its own `node_modules/react`
     // (for its own dev/test) — without these mappings the CJS bundle loaded from

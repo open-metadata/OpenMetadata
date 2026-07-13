@@ -24,7 +24,8 @@ import {
   PipelineType,
 } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useScheduleDescriptionTexts } from '../hooks/useScheduleDescriptionTexts';
-import { getEntityName, highlightSearchText } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
+import { highlightSearchText } from './EntitySearchUtils';
 import { t } from './i18next/LocalUtil';
 import { stringToHTML } from './StringUtils';
 

@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceMessage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
@@ -67,8 +68,31 @@ public class ElasticSearchBulkSink implements BulkSink {
       new JacksonJsonpMapper(OBJECT_MAPPER);
   private static final int DEFAULT_DOC_BUILD_POOL_SIZE =
       Math.min(50, Runtime.getRuntime().availableProcessors() * 4);
+
+  /**
+   * Bounded work queue for the shared doc-build pool. An unbounded queue let a fast partition
+   * reader pile doc-build tasks faster than they drain; pairing a bounded queue with {@link
+   * ThreadPoolExecutor.CallerRunsPolicy} turns overflow into backpressure (the submitting thread
+   * runs the task inline) instead of unbounded heap growth. Mirrors the bounded-queue + backpressure
+   * pattern already used by EventPubSub and OrderedLaneExecutor in this codebase.
+   */
+  private static final int DOC_BUILD_QUEUE_CAPACITY = 2_000;
+
   private static final ThreadPoolExecutor DOC_BUILD_EXECUTOR =
       createDocBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  /**
+   * Dedicated pool for table column indexing, isolated from {@link #DOC_BUILD_EXECUTOR} so a burst
+   * of column work cannot starve latency-sensitive entity doc-build (which is joined per batch and
+   * shares a single FIFO queue). Also bounded + CallerRuns; in practice the column-task semaphore is
+   * the binding limit and CallerRuns is only a backstop. Capacity is kept >= the semaphore permits
+   * so the semaphore, not the queue, is what throttles.
+   */
+  private static final int COLUMN_BUILD_QUEUE_CAPACITY =
+      Math.max(16, 4 * DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  private static final ThreadPoolExecutor COLUMN_BUILD_EXECUTOR =
+      createColumnBuildExecutor(DEFAULT_DOC_BUILD_POOL_SIZE);
 
   private static ThreadPoolExecutor createDocBuildExecutor(int poolSize) {
     ThreadPoolExecutor pool =
@@ -77,22 +101,42 @@ public class ElasticSearchBulkSink implements BulkSink {
             poolSize,
             60L,
             TimeUnit.SECONDS,
-            new LinkedBlockingQueue<>(),
-            Thread.ofVirtual().name("reindex-es-doc-build-", 0).factory());
+            new LinkedBlockingQueue<>(DOC_BUILD_QUEUE_CAPACITY),
+            Thread.ofVirtual().name("reindex-es-doc-build-", 0).factory(),
+            new ThreadPoolExecutor.CallerRunsPolicy());
+    pool.allowCoreThreadTimeOut(true);
+    return pool;
+  }
+
+  private static ThreadPoolExecutor createColumnBuildExecutor(int poolSize) {
+    ThreadPoolExecutor pool =
+        new ThreadPoolExecutor(
+            poolSize,
+            poolSize,
+            60L,
+            TimeUnit.SECONDS,
+            new LinkedBlockingQueue<>(COLUMN_BUILD_QUEUE_CAPACITY),
+            Thread.ofVirtual().name("reindex-es-column-build-", 0).factory(),
+            new ThreadPoolExecutor.CallerRunsPolicy());
     pool.allowCoreThreadTimeOut(true);
     return pool;
   }
 
   public static synchronized void setDocBuildPoolSize(int size) {
     int newSize = Math.max(1, Math.min(50, size));
-    if (newSize <= DOC_BUILD_EXECUTOR.getMaximumPoolSize()) {
-      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
-      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
+    resizePool(DOC_BUILD_EXECUTOR, newSize);
+    resizePool(COLUMN_BUILD_EXECUTOR, newSize);
+    LOG.info("ElasticSearch doc-build and column-build pools resized to {} threads", newSize);
+  }
+
+  private static void resizePool(ThreadPoolExecutor pool, int newSize) {
+    if (newSize <= pool.getMaximumPoolSize()) {
+      pool.setCorePoolSize(newSize);
+      pool.setMaximumPoolSize(newSize);
     } else {
-      DOC_BUILD_EXECUTOR.setMaximumPoolSize(newSize);
-      DOC_BUILD_EXECUTOR.setCorePoolSize(newSize);
+      pool.setMaximumPoolSize(newSize);
+      pool.setCorePoolSize(newSize);
     }
-    LOG.info("ElasticSearch doc-build pool resized to {} threads", newSize);
   }
 
   public static synchronized void resetDocBuildPoolSize() {
@@ -109,10 +153,12 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final AtomicLong totalSubmitted = new AtomicLong(0);
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
+  private final AtomicLong totalWarnings = new AtomicLong(0);
 
   // Process stage metrics (document building/transformation)
   private final AtomicLong processSuccess = new AtomicLong(0);
   private final AtomicLong processFailed = new AtomicLong(0);
+  private final AtomicLong processWarnings = new AtomicLong(0);
 
   // Configuration
   private volatile int batchSize;
@@ -126,9 +172,28 @@ public class ElasticSearchBulkSink implements BulkSink {
   private final AtomicLong columnSinkSubmitted = new AtomicLong(0);
   private final AtomicLong columnSinkSuccess = new AtomicLong(0);
   private final AtomicLong columnSinkFailed = new AtomicLong(0);
+  private final AtomicLong columnSinkWarnings = new AtomicLong(0);
   private final AtomicLong columnBuildFailed = new AtomicLong(0);
   private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
       new ConcurrentLinkedDeque<>();
+
+  /**
+   * Process-wide upper bound on in-flight table column-index tasks. Each queued/running task retains
+   * its full {@link Table} (with every column) until it runs, so unbounded fire-and-forget
+   * submission lets a fast partition reader pin thousands of Tables at once in the {@link
+   * #COLUMN_BUILD_EXECUTOR} queue — the OOM root cause for wide tables. The semaphore turns the
+   * column path into bounded backpressure: {@link #submitColumnIndexTask} blocks the reader once this
+   * many tasks are outstanding instead of queueing another that pins a Table. This is a hard memory
+   * ceiling: it is intentionally fixed and is NOT scaled by {@link #setDocBuildPoolSize} (which tunes
+   * doc-build parallelism, not the memory bound).
+   */
+  private static final int MAX_INFLIGHT_COLUMN_TASKS = Math.max(8, 2 * DEFAULT_DOC_BUILD_POOL_SIZE);
+
+  // Static so the cap is shared across all sink instances, matching the static
+  // COLUMN_BUILD_EXECUTOR
+  // and its bounded queue: total in-flight column tasks (and retained Tables) stay bounded by
+  // MAX_INFLIGHT_COLUMN_TASKS regardless of how many sinks run concurrently.
+  private static final Semaphore columnTaskSemaphore = new Semaphore(MAX_INFLIGHT_COLUMN_TASKS);
 
   public ElasticSearchBulkSink(
       SearchRepository searchRepository,
@@ -170,6 +235,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         totalSubmitted,
         totalSuccess,
         totalFailed,
+        totalWarnings,
         this::updateStats,
         circuitBreaker);
   }
@@ -187,6 +253,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         columnSinkSubmitted,
         columnSinkSuccess,
         columnSinkFailed,
+        columnSinkWarnings,
         () -> {},
         circuitBreaker);
   }
@@ -268,20 +335,13 @@ public class ElasticSearchBulkSink implements BulkSink {
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
 
-        // Index columns asynchronously when processing table entities
+        // Index columns asynchronously when processing table entities. Each submission is gated by
+        // a semaphore so a fast reader cannot pin an unbounded number of Table entities in the
+        // shared doc-build queue (see submitColumnIndexTask).
         if (Entity.TABLE.equals(entityType)) {
           for (EntityInterface entity : entityInterfaces) {
-            CompletableFuture<Void> future =
-                CompletableFuture.runAsync(
-                        () -> indexTableColumns(entity, reindexContext), DOC_BUILD_EXECUTOR)
-                    .exceptionally(
-                        ex -> {
-                          LOG.error("Failed to index columns for table {}", entity.getName(), ex);
-                          return null;
-                        });
-            pendingColumnFutures.add(future);
+            submitColumnIndexTask(entity, reindexContext);
           }
-          pendingColumnFutures.removeIf(CompletableFuture::isDone);
         }
       }
       if (tracker != null) {
@@ -381,23 +441,12 @@ public class ElasticSearchBulkSink implements BulkSink {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
-      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      totalFailed.incrementAndGet();
-      processFailed.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
-      if (failureCallback != null) {
-        String entityTypeName = Entity.getEntityTypeFromObject(entity);
-        failureCallback.onFailure(
-            entityTypeName,
-            entity.getId() != null ? entity.getId().toString() : null,
-            entity.getFullyQualifiedName(),
-            e.getMessage(),
-            IndexingFailureRecorder.FailureStage.PROCESS);
-      }
+      recordStaleReferenceWarning(entity, tracker, e);
     } catch (Exception e) {
+      if (isStaleReferenceMessage(e.getMessage())) {
+        recordStaleReferenceWarning(entity, tracker, e);
+        return;
+      }
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
@@ -418,6 +467,31 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
+  private void recordStaleReferenceWarning(
+      EntityInterface entity, StageStatsTracker tracker, Exception e) {
+    recordStaleReferenceWarning(
+        Entity.getEntityTypeFromObject(entity),
+        entity.getId(),
+        entity.getFullyQualifiedName(),
+        tracker,
+        e);
+  }
+
+  private void recordStaleReferenceWarning(
+      String entityType, UUID entityId, String entityFqn, StageStatsTracker tracker, Exception e) {
+    LOG.warn(
+        "Skipping stale reference while building search doc for {} {}: {}",
+        entityType,
+        entityFqn != null ? entityFqn : entityId,
+        e.getMessage());
+    totalWarnings.incrementAndGet();
+    processWarnings.incrementAndGet();
+    updateStats();
+    if (tracker != null) {
+      tracker.recordProcess(StatsResult.WARNING);
+    }
+  }
+
   private void indexDocumentDirectly(
       String indexName, String docId, String json, String entityType, StageStatsTracker tracker) {
     try {
@@ -430,18 +504,23 @@ public class ElasticSearchBulkSink implements BulkSink {
         tracker.recordSink(StatsResult.SUCCESS);
       }
     } catch (Exception e) {
+      boolean staleReference = isStaleReferenceMessage(e.getMessage());
       LOG.error(
           "Direct index failed for document {} of type {}: {}",
           docId,
           entityType,
           e.getMessage(),
           e);
-      totalFailed.incrementAndGet();
+      if (staleReference) {
+        totalWarnings.incrementAndGet();
+      } else {
+        totalFailed.incrementAndGet();
+      }
       updateStats();
       if (tracker != null) {
-        tracker.recordSink(StatsResult.FAILED);
+        tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
       }
-      if (failureCallback != null) {
+      if (!staleReference && failureCallback != null) {
         failureCallback.onFailure(
             entityType,
             docId,
@@ -481,22 +560,12 @@ public class ElasticSearchBulkSink implements BulkSink {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
-      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      totalFailed.incrementAndGet();
-      processFailed.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
-      if (failureCallback != null) {
-        failureCallback.onFailure(
-            entityType,
-            entity.getId() != null ? entity.getId().toString() : null,
-            null,
-            e.getMessage(),
-            IndexingFailureRecorder.FailureStage.PROCESS);
-      }
+      recordStaleReferenceWarning(entityType, entity.getId(), null, tracker, e);
     } catch (Exception e) {
+      if (isStaleReferenceMessage(e.getMessage())) {
+        recordStaleReferenceWarning(entityType, entity.getId(), null, tracker, e);
+        return;
+      }
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
@@ -516,7 +585,55 @@ public class ElasticSearchBulkSink implements BulkSink {
     }
   }
 
-  private void indexTableColumns(EntityInterface entity, ReindexContext reindexContext) {
+  /**
+   * Submit a table's column-indexing work to the shared doc-build pool under a bounded permit.
+   *
+   * <p>The permit is acquired on the calling (partition-reader) thread <em>before</em> the task is
+   * scheduled, so when {@link #MAX_INFLIGHT_COLUMN_TASKS} tasks are already outstanding the reader
+   * blocks here rather than queueing another task that pins a full {@link Table}. The permit is
+   * released exactly once when the task completes (success or failure), or here if scheduling
+   * itself fails synchronously.
+   */
+  private void submitColumnIndexTask(EntityInterface entity, ReindexContext reindexContext) {
+    try {
+      columnTaskSemaphore.acquire();
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      // Record the skip so getColumnStats() reflects the missing work instead of counting these
+      // columns as silently successful.
+      columnBuildFailed.incrementAndGet();
+      LOG.warn(
+          "Interrupted while waiting to submit column-index task for table {}; skipping columns",
+          entity.getName());
+      return;
+    }
+
+    boolean releaseOwnedByTask = false;
+    try {
+      CompletableFuture<Void> future =
+          CompletableFuture.runAsync(
+                  () -> indexTableColumns(entity, reindexContext), COLUMN_BUILD_EXECUTOR)
+              .exceptionally(
+                  ex -> {
+                    LOG.error("Failed to index columns for table {}", entity.getName(), ex);
+                    return null;
+                  })
+              .whenComplete((result, ex) -> columnTaskSemaphore.release());
+      releaseOwnedByTask = true;
+      pendingColumnFutures.add(future);
+      pendingColumnFutures.removeIf(CompletableFuture::isDone);
+    } finally {
+      // If scheduling threw synchronously (e.g. executor shutdown) the task's whenComplete never
+      // ran, so release the permit here to avoid leaking it.
+      if (!releaseOwnedByTask) {
+        columnTaskSemaphore.release();
+      }
+    }
+  }
+
+  // Visible for testing: overridden by the column-backpressure regression test to control task
+  // timing without standing up a real cluster.
+  protected void indexTableColumns(EntityInterface entity, ReindexContext reindexContext) {
     if (!(entity instanceof Table table)) {
       return;
     }
@@ -570,10 +687,12 @@ public class ElasticSearchBulkSink implements BulkSink {
   public StepStats getColumnStats() {
     long success = columnSinkSuccess.get();
     long failed = columnSinkFailed.get() + columnBuildFailed.get();
+    long warnings = columnSinkWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   private void drainPendingColumnFutures(int timeoutSeconds) {
@@ -601,6 +720,7 @@ public class ElasticSearchBulkSink implements BulkSink {
     stats.setTotalRecords((int) totalSubmitted.get());
     stats.setSuccessRecords((int) totalSuccess.get());
     stats.setFailedRecords((int) totalFailed.get());
+    stats.setWarningRecords((int) totalWarnings.get());
   }
 
   @Override
@@ -612,24 +732,28 @@ public class ElasticSearchBulkSink implements BulkSink {
   @Override
   public StepStats getStats() {
     // Read directly from atomic counters for accurate real-time stats
-    // Use success + failed as total to ensure invariant holds (total = success + failed)
+    // Include warnings so skipped stale references are visible but not counted as failures.
     // This handles entity build failures which increment failed but not submitted
     long success = totalSuccess.get();
     long failed = totalFailed.get();
+    long warnings = totalWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   @Override
   public StepStats getProcessStats() {
     long success = processSuccess.get();
     long failed = processFailed.get();
+    long warnings = processWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   @Override
@@ -778,6 +902,7 @@ public class ElasticSearchBulkSink implements BulkSink {
     private final AtomicLong totalSubmitted;
     private final AtomicLong totalSuccess;
     private final AtomicLong totalFailed;
+    private final AtomicLong totalWarnings;
     private final Runnable statsUpdater;
     private final long initialBackoffMillis;
     private final int maxRetries;
@@ -796,6 +921,7 @@ public class ElasticSearchBulkSink implements BulkSink {
         AtomicLong totalSubmitted,
         AtomicLong totalSuccess,
         AtomicLong totalFailed,
+        AtomicLong totalWarnings,
         Runnable statsUpdater,
         BulkCircuitBreaker circuitBreaker) {
       this.asyncClient = new ElasticsearchAsyncClient(client.getNewClient()._transport());
@@ -807,6 +933,7 @@ public class ElasticSearchBulkSink implements BulkSink {
       this.totalSubmitted = totalSubmitted;
       this.totalSuccess = totalSuccess;
       this.totalFailed = totalFailed;
+      this.totalWarnings = totalWarnings;
       this.statsUpdater = statsUpdater;
       this.circuitBreaker = circuitBreaker;
       this.scheduler =
@@ -1108,7 +1235,12 @@ public class ElasticSearchBulkSink implements BulkSink {
 
     private void recordPermanentFailure(
         List<BulkOperation> operations, int numberOfActions, String failureMessage) {
-      totalFailed.addAndGet(numberOfActions);
+      boolean staleReference = isStaleReferenceMessage(failureMessage);
+      if (staleReference) {
+        totalWarnings.addAndGet(numberOfActions);
+      } else {
+        totalFailed.addAndGet(numberOfActions);
+      }
 
       for (BulkOperation op : operations) {
         String docId = getDocId(op);
@@ -1122,9 +1254,9 @@ public class ElasticSearchBulkSink implements BulkSink {
         }
         StageStatsTracker tracker = docIdToTracker.remove(docId);
         if (tracker != null) {
-          tracker.recordSink(StatsResult.FAILED);
+          tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
         }
-        if (failureCallback != null) {
+        if (!staleReference && failureCallback != null) {
           failureCallback.onFailure(
               entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
         }
@@ -1136,12 +1268,18 @@ public class ElasticSearchBulkSink implements BulkSink {
     private void handlePartialFailure(
         BulkResponse response, long executionId, int numberOfActions) {
       int failures = 0;
+      int warnings = 0;
       for (BulkResponseItem item : response.items()) {
         String docId = item.id();
         StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
         if (item.error() != null) {
-          failures++;
           String failureMessage = item.error().reason();
+          boolean staleReference = isStaleReferenceMessage(failureMessage);
+          if (staleReference) {
+            warnings++;
+          } else {
+            failures++;
+          }
           if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
             LOG.warn(
                 "Document missing error for {}: {} - This may occur during concurrent reindexing",
@@ -1155,9 +1293,9 @@ public class ElasticSearchBulkSink implements BulkSink {
             entityType = extractEntityTypeFromIndex(item.index());
           }
           if (tracker != null) {
-            tracker.recordSink(StatsResult.FAILED);
+            tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
           }
-          if (failureCallback != null) {
+          if (!staleReference && failureCallback != null) {
             failureCallback.onFailure(
                 entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
           }
@@ -1171,14 +1309,16 @@ public class ElasticSearchBulkSink implements BulkSink {
           }
         }
       }
-      int successes = numberOfActions - failures;
+      int successes = numberOfActions - failures - warnings;
       totalSuccess.addAndGet(successes);
       totalFailed.addAndGet(failures);
+      totalWarnings.addAndGet(warnings);
 
       LOG.warn(
-          "Bulk request {} completed with {} failures out of {} actions",
+          "Bulk request {} completed with {} failures and {} warnings out of {} actions",
           executionId,
           failures,
+          warnings,
           numberOfActions);
       statsUpdater.run();
     }

@@ -1031,12 +1031,22 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     Task createdTask = SdkClients.user1Client().tasks().create(request);
 
-    ListResponse<Task> user1CreatedTasks = SdkClients.user1Client().tasks().listCreated();
-
-    assertNotNull(user1CreatedTasks);
-    assertTrue(
-        user1CreatedTasks.getData().stream().anyMatch(t -> t.getId().equals(createdTask.getId())),
-        "User1's created tasks should include the task they created");
+    // listCreated defaults to limit=10. Under heavy concurrent load (multiple tests sharing
+    // USER1) the just-created task may not appear in the first page, so request a wider page
+    // explicitly. Awaitility rides out any write-visibility race on top.
+    Awaitility.await("User1's created tasks include the task they created")
+        .atMost(Duration.ofSeconds(15))
+        .pollInterval(Duration.ofMillis(500))
+        .untilAsserted(
+            () -> {
+              ListResponse<Task> user1CreatedTasks =
+                  SdkClients.user1Client().tasks().listCreated(null, null, null, null, 1000);
+              assertNotNull(user1CreatedTasks);
+              assertTrue(
+                  user1CreatedTasks.getData().stream()
+                      .anyMatch(t -> t.getId().equals(createdTask.getId())),
+                  "User1's created tasks should include the task they created");
+            });
   }
 
   @Test
@@ -3951,6 +3961,116 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                   () -> SdkClients.adminClient().tasks().get(taskId.toString()),
                   "Deleted suggestion task should no longer be retrievable");
             });
+  }
+
+  @Test
+  void testCreateTask_perEntityCreateTaskDenied_403(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
+
+    OpenMetadataClient denied = createUserWithDenyCreateTask("ptd");
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("per-entity-denied-task"))
+            .withCategory(TaskCategory.DataAccess)
+            .withType(TaskEntityType.DataAccessRequest)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withAssignees(List.of(SharedEntities.get().USER1.getFullyQualifiedName()))
+            .withPayload(Map.of("accessType", "FullAccess", "requestedAccess", "Read"));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.tasks().create(request),
+        "User with DENY CreateTask on All must not create task entities targeting any entity");
+  }
+
+  @Test
+  void testCreateTask_perEntityCreateTaskAllowed_200(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
+
+    SharedEntities shared = SharedEntities.get();
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("per-entity-allowed-task"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withAssignees(List.of(shared.USER1.getFullyQualifiedName()));
+
+    Task task = SdkClients.user2Client().tasks().create(request);
+
+    assertNotNull(task.getId(), "default DataConsumer with TaskRule grant should create task");
+    assertNotNull(task.getAbout(), "about should be populated");
+    assertEquals(table.getId(), task.getAbout().getId());
+  }
+
+  @Test
+  void testPutCreate_userWithDenyCreateTask_403(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema dbSchema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, dbSchema.getFullyQualifiedName());
+
+    OpenMetadataClient denied = createUserWithDenyCreateTask("ptcd");
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("put-create-denied"))
+            .withCategory(TaskCategory.Approval)
+            .withType(TaskEntityType.GlossaryApproval)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withAssignees(List.of(SharedEntities.get().USER1.getFullyQualifiedName()));
+
+    assertThrows(
+        ForbiddenException.class,
+        () -> denied.getHttpClient().execute(HttpMethod.PUT, "/v1/tasks", request, Task.class),
+        "PUT-as-create must still enforce CreateTask on the about-entity");
+  }
+
+  private OpenMetadataClient createUserWithDenyCreateTask(String label) {
+    OpenMetadataClient admin = SdkClients.adminClient();
+    String shortId = UUID.randomUUID().toString().substring(0, 8);
+    String prefix = label + "_" + shortId;
+
+    org.openmetadata.schema.entity.policies.accessControl.Rule denyRule =
+        new org.openmetadata.schema.entity.policies.accessControl.Rule();
+    denyRule.setName(prefix + "_deny");
+    denyRule.setResources(List.of("All"));
+    denyRule.setOperations(List.of(org.openmetadata.schema.type.MetadataOperation.CREATE_TASK));
+    denyRule.setEffect(org.openmetadata.schema.entity.policies.accessControl.Rule.Effect.DENY);
+
+    org.openmetadata.schema.api.policies.CreatePolicy createPolicy =
+        new org.openmetadata.schema.api.policies.CreatePolicy()
+            .withName(prefix + "_policy")
+            .withDescription("Deny CreateTask for PUT-create IT")
+            .withRules(List.of(denyRule));
+    org.openmetadata.schema.entity.policies.Policy policy = admin.policies().create(createPolicy);
+
+    org.openmetadata.schema.api.teams.CreateRole createRole =
+        new org.openmetadata.schema.api.teams.CreateRole()
+            .withName(prefix + "_role")
+            .withPolicies(List.of(policy.getFullyQualifiedName()));
+    org.openmetadata.schema.entity.teams.Role role = admin.roles().create(createRole);
+
+    org.openmetadata.schema.api.teams.CreateTeam createTeam =
+        new org.openmetadata.schema.api.teams.CreateTeam();
+    createTeam.setName(prefix + "_team");
+    createTeam.setTeamType(org.openmetadata.schema.api.teams.CreateTeam.TeamType.GROUP);
+    createTeam.setDefaultRoles(List.of(role.getId()));
+    org.openmetadata.schema.entity.teams.Team team = admin.teams().create(createTeam);
+
+    String userName = prefix + "u";
+    String userEmail = userName + "@test.openmetadata.org";
+    CreateUser createUser = new CreateUser();
+    createUser.setName(userName);
+    createUser.setEmail(userEmail);
+    createUser.setTeams(List.of(team.getId()));
+    admin.users().create(createUser);
+
+    return SdkClients.createClient(userEmail, userEmail, new String[] {});
   }
 
   private void awaitTaskReadyForWorkflowResolution(UUID taskId) {

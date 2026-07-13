@@ -13,22 +13,21 @@
 
 import { Space, Typography } from 'antd';
 import classNames from 'classnames';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { t } from '../../../utils/i18next/LocalUtil';
 import {
   getRequestDescriptionPath,
   getUpdateDescriptionPath,
   TASK_ENTITIES,
-} from '../../../utils/TasksUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
-import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
-import SuggestionsAlert from '../../Suggestions/SuggestionsAlert/SuggestionsAlert';
+} from '../../../utils/TaskNavigationUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { useSuggestionsContext } from '../../Suggestions/SuggestionsProvider/SuggestionsProvider';
 import SuggestionsSlider from '../../Suggestions/SuggestionsSlider/SuggestionsSlider';
 import DescriptionSourceBadge from '../DescriptionSourceBadge/DescriptionSourceBadge';
@@ -42,6 +41,17 @@ import RichTextEditorPreviewerV1 from '../RichTextEditor/RichTextEditorPreviewer
 import './description-v1.less';
 import { DescriptionProps } from './Description.interface';
 import { EntityAttachmentProvider } from './EntityAttachmentProvider/EntityAttachmentProvider';
+const ModalWithMarkdownEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(
+      (m) => ({ default: m.ModalWithMarkdownEditor })
+    )
+  )
+);
+
+const SuggestionsAlert = withSuspenseFallback(
+  lazy(() => import('../../Suggestions/SuggestionsAlert/SuggestionsAlert'))
+);
 
 const { Text } = Typography;
 
@@ -61,9 +71,12 @@ const DescriptionV1 = ({
   showSuggestions = false,
   isDescriptionExpanded,
   entityFullyQualifiedName,
+  changeSummaryEntry,
 }: DescriptionProps) => {
   const navigate = useNavigate();
   const { isVersionView, changeSummary } = useGenericContext<Domain>();
+  const descriptionChangeSummary =
+    changeSummaryEntry ?? changeSummary?.['description'];
   const { suggestions, selectedUserSuggestions } = useSuggestionsContext();
   const [isEditDescription, setIsEditDescription] = useState(false);
   const { fqn } = useFqn();
@@ -221,8 +234,8 @@ const DescriptionV1 = ({
   }, [description, suggestionData, isDescriptionExpanded]);
 
   const shouldShowDescriptionMetadata = useMemo(
-    () => changeSummary?.['description']?.changeSource != null,
-    [changeSummary]
+    () => descriptionChangeSummary?.changeSource != null,
+    [descriptionChangeSummary]
   );
 
   const header = useMemo(() => {
@@ -240,7 +253,7 @@ const DescriptionV1 = ({
             {t('label.description')}
           </Text>
           <DescriptionSourceBadge
-            changeSummaryEntry={changeSummary?.['description']}
+            changeSummaryEntry={descriptionChangeSummary}
             showAcceptedBy={false}
             showTimestamp={false}
           />
@@ -249,7 +262,13 @@ const DescriptionV1 = ({
         {showSuggestions && suggestions?.length > 0 && <SuggestionsSlider />}
       </div>
     );
-  }, [showActions, actionButtons, suggestions, showSuggestions, changeSummary]);
+  }, [
+    showActions,
+    actionButtons,
+    suggestions,
+    showSuggestions,
+    descriptionChangeSummary,
+  ]);
 
   const content = (
     <EntityAttachmentProvider entityFqn={entityFqn} entityType={entityType}>
@@ -268,7 +287,7 @@ const DescriptionV1 = ({
           {!suggestionData && shouldShowDescriptionMetadata && (
             <div className="description-v1-metadata">
               <DescriptionSourceBadge
-                changeSummaryEntry={changeSummary?.['description']}
+                changeSummaryEntry={descriptionChangeSummary}
                 showBadge={false}
               />
             </div>

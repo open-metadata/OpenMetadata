@@ -16,6 +16,14 @@
  */
 export interface BackgroundJob {
     /**
+     * Whether cancellation has been requested for the job.
+     */
+    cancelRequested?: boolean;
+    /**
+     * Timestamp when the job reached a terminal state in Unix epoch time milliseconds.
+     */
+    completedAt?: number;
+    /**
      * Timestamp when the job was created in Unix epoch time milliseconds.
      */
     createdAt: number;
@@ -23,6 +31,10 @@ export interface BackgroundJob {
      * User or Bot who triggered the background job.
      */
     createdBy: string;
+    /**
+     * Error message for a failed job.
+     */
+    error?: string;
     /**
      * Unique identifier for the job. This field is auto-incremented.
      */
@@ -36,9 +48,21 @@ export interface BackgroundJob {
      */
     jobType: JobType;
     /**
+     * Latest human-readable job status message.
+     */
+    message?: string;
+    /**
      * JobHandler name of the method that will be executed for this job.
      */
     methodName: string;
+    /**
+     * Number of work units completed by the job.
+     */
+    progress?: number;
+    /**
+     * Serialized result summary for the job.
+     */
+    result?: string;
     /**
      * Timestamp when the job was run in Unix epoch time milliseconds (default: as soon as
      * possible).
@@ -48,6 +72,10 @@ export interface BackgroundJob {
      * Current status of the job.
      */
     status: Status;
+    /**
+     * Total number of work units expected for the job.
+     */
+    total?: number;
     /**
      * Time when job was last updated in Unix epoch time milliseconds.
      */
@@ -79,6 +107,8 @@ export interface EnumCleanupArgs {
  * Type of the job.
  */
 export enum JobType {
+    CSVExport = "CSV_EXPORT",
+    CSVImport = "CSV_IMPORT",
     CustomPropertyEnumCleanup = "CUSTOM_PROPERTY_ENUM_CLEANUP",
     DeleteEntity = "DELETE_ENTITY",
     DeleteToken = "DELETE_TOKEN",
@@ -88,6 +118,7 @@ export enum JobType {
  * Current status of the job.
  */
 export enum Status {
+    Cancelled = "CANCELLED",
     Completed = "COMPLETED",
     Failed = "FAILED",
     Pending = "PENDING",

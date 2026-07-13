@@ -4,9 +4,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.microsoft.playwright.assertions.PlaywrightAssertions;
 import java.time.Duration;
-import java.util.LinkedHashMap;
 import java.util.Map;
 import org.awaitility.Awaitility;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.ResourceAccessMode;
@@ -15,9 +15,9 @@ import org.openmetadata.it.factories.EntityLoadSpec;
 import org.openmetadata.it.factories.EntityLoadSpec.EntityKind;
 import org.openmetadata.it.factories.EntityLoadSummary;
 import org.openmetadata.it.factories.EntityLoader;
+import org.openmetadata.it.search.IndexAliasInspector;
 import org.openmetadata.it.search.ReindexHelpers;
-import org.openmetadata.it.search.SearchQueryHelper;
-import org.openmetadata.it.search.SearchQueryHelper.SearchProbe;
+import org.openmetadata.it.search.SearchAssertions;
 import org.openmetadata.it.server.ServerHandle;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
@@ -37,6 +37,7 @@ import org.slf4j.LoggerFactory;
  */
 @ExtendWith({UiSessionExtension.class, TestNamespaceExtension.class})
 @ResourceLock(value = "SEARCH_INDEX_APP", mode = ResourceAccessMode.READ_WRITE)
+@Tag("search-direct")
 class DistributedAutoTuneReindexUIIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(DistributedAutoTuneReindexUIIT.class);
@@ -50,20 +51,16 @@ class DistributedAutoTuneReindexUIIT {
   private static final int COLUMNS_PER_TABLE = 5;
   private static final int PARALLEL_INGEST_WORKERS = 16;
 
-  private static final Duration REINDEX_TIMEOUT = Duration.ofMinutes(10);
-  private static final Duration POST_REINDEX_REFRESH_GRACE = Duration.ofSeconds(3);
-  private static final int PROBE_PAGE_SIZE = 1;
-
-  private static final Map<EntityKind, String> INDEX_ALIAS_PER_KIND =
-      Map.of(
-          EntityKind.TABLE, "table_search_index",
-          EntityKind.TOPIC, "topic_search_index",
-          EntityKind.DASHBOARD, "dashboard_search_index",
-          EntityKind.PIPELINE, "pipeline_search_index");
+  private static final Duration REINDEX_TIMEOUT = ReindexHelpers.reindexTimeout();
+  // Run terminal swaps the alias, but engine refresh on the new index lags a beat (longer on a
+  // loaded cluster under the parallel ui-it profile). Poll until the strict cohort count converges.
+  private static final Duration COUNT_TIMEOUT = ReindexHelpers.searchPropagationTimeout();
+  private static final Duration COUNT_POLL_INTERVAL = Duration.ofSeconds(3);
 
   // Name base per kind — matches what EntityLoader uses to prefix entity names. We query
   // by this prefix so the count assertion is strict (== ingested cohort) and immune to
-  // any seed data the container image ships with.
+  // any seed data the container image ships with, or to entities other parallel ui-it tests
+  // ingest into the same shared index.
   private static final Map<EntityKind, String> NAME_BASE_PER_KIND =
       Map.of(
           EntityKind.TABLE, "table",
@@ -73,8 +70,8 @@ class DistributedAutoTuneReindexUIIT {
 
   @Test
   void distributedAutoTunedReindexCountsMatchIngestedCohortPerEntityType(
-      final UiSession ui, final TestNamespace ns) throws InterruptedException {
-    EntityLoadSummary seeded = ingestMultiTypeCohort(ns);
+      final UiSession ui, final TestNamespace ns) {
+    final EntityLoadSummary seeded = ingestMultiTypeCohort(ns);
     final ServerHandle server = ui.server();
 
     smokeCheckSearchIndexAppPageLoads(ui);
@@ -94,9 +91,7 @@ class DistributedAutoTuneReindexUIIT {
             () ->
                 ReindexHelpers.freshRunIsTerminal(
                     server, ReindexHelpers.SEARCH_INDEX_APP, triggerTime));
-    LOG.info(
-        "Reindex terminal — waiting {}ms for ES refresh", POST_REINDEX_REFRESH_GRACE.toMillis());
-    Thread.sleep(POST_REINDEX_REFRESH_GRACE.toMillis());
+    LOG.info("Reindex terminal — asserting per-type cohort counts (polling out refresh lag)");
 
     assertPerTypeCounts(server, ns, seeded);
   }
@@ -131,29 +126,43 @@ class DistributedAutoTuneReindexUIIT {
 
   private static void assertPerTypeCounts(
       final ServerHandle server, final TestNamespace ns, final EntityLoadSummary seeded) {
-    Map<EntityKind, Long> actualPerKind = new LinkedHashMap<>();
+    final SearchAssertions search = new SearchAssertions(server);
+    final IndexAliasInspector indices = new IndexAliasInspector(server);
     seeded
         .created()
-        .forEach(
-            (kind, expected) -> {
-              String alias = INDEX_ALIAS_PER_KIND.get(kind);
-              String namePrefix = ns.prefix(NAME_BASE_PER_KIND.get(kind));
-              SearchProbe probe =
-                  SearchQueryHelper.probeIndex(server, alias, namePrefix, PROBE_PAGE_SIZE);
-              actualPerKind.put(kind, probe.totalHits());
-              LOG.info(
-                  "Per-type count assertion: kind={} index={} prefix='{}' expected={} actual={}",
-                  kind,
-                  alias,
-                  namePrefix,
-                  expected,
-                  probe.totalHits());
-              assertThat(probe.totalHits())
-                  .as(
-                      "post-reindex doc count for %s in index %s (prefix '%s') must match"
-                          + " ingested cohort exactly",
-                      kind, alias, namePrefix)
-                  .isEqualTo((long) expected);
-            });
+        .forEach((kind, expected) -> awaitExactCohortIndexed(search, indices, ns, kind, expected));
+  }
+
+  /**
+   * Strict cohort count: docs whose {@code name.keyword} starts with this run's unique prefix must
+   * equal the ingested count. A {@code name.keyword} prefix is exact and run-scoped — unlike a
+   * relevance {@code q=} query, which fuzzy-matches and would also count entities other parallel
+   * ui-it tests ingest into the same shared index. The index name is resolved cluster-alias-aware
+   * via {@link IndexAliasInspector} rather than hardcoded, and the count is polled to ride out the
+   * post-swap refresh lag.
+   */
+  private static void awaitExactCohortIndexed(
+      final SearchAssertions search,
+      final IndexAliasInspector indices,
+      final TestNamespace ns,
+      final EntityKind kind,
+      final long expected) {
+    final String type = NAME_BASE_PER_KIND.get(kind);
+    final String index = indices.indexNameFor(type);
+    final String namePrefix = ns.prefix(type) + "_";
+    LOG.info("Asserting index[{}] cohort count == {} for prefix '{}'", index, expected, namePrefix);
+    Awaitility.await("index[" + index + "] cohort count for '" + namePrefix + "' == " + expected)
+        .atMost(COUNT_TIMEOUT)
+        .pollInterval(COUNT_POLL_INTERVAL)
+        .pollDelay(Duration.ZERO)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertThat(search.countByNamePrefix(index, namePrefix))
+                    .as(
+                        "post-reindex doc count for %s in index %s (prefix '%s') must match"
+                            + " ingested cohort exactly",
+                        kind, index, namePrefix)
+                    .isEqualTo(expected));
   }
 }

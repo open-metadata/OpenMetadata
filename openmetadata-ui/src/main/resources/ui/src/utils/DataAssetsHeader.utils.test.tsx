@@ -51,14 +51,18 @@ jest.mock('./DataAssetsHeader.utils', () => ({
   ...jest.requireActual('./DataAssetsHeader.utils'),
   ExtraInfoLink: jest.fn().mockImplementation(({ value }) => value),
 }));
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('entityName'),
+}));
+jest.mock('./EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn().mockReturnValue([
     {
       name: 'entityName',
       url: 'url',
     },
   ]),
+}));
+jest.mock('./EntityDataBreadcrumbUtils', () => ({
   getBreadcrumbForTable: jest.fn().mockReturnValue([
     {
       name: 'entityName',
@@ -90,7 +94,7 @@ jest.mock('./StringUtils', () => ({
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
 }));
 
-jest.mock('./TableUtils', () => ({
+jest.mock('./TablePureUtils', () => ({
   getUsagePercentile: jest.fn().mockReturnValue('getUsagePercentile'),
 }));
 
@@ -750,17 +754,36 @@ describe('ExtraInfoLabel', () => {
       </Tooltip>
     );
 
-    const { container } = render(
+    const { container, getByText } = render(
       <ExtraInfoLabel label="MIME Type" value={nodeValue} />
     );
 
-    // Check that the component renders without error
     expect(
       container.querySelector('.extra-info-container')
     ).toBeInTheDocument();
-    expect(
-      container.querySelector('.extra-info-label-heading')
-    ).toHaveTextContent('MIME Type');
+    expect(getByText('MIME Type')).toBeInTheDocument();
+  });
+
+  it('should not render the label element when label is empty', () => {
+    const { queryByTestId, getByTestId } = render(
+      <ExtraInfoLabel
+        dataTestId="partition-info"
+        label=""
+        value="Non-partitioned"
+      />
+    );
+
+    expect(queryByTestId('partition-info-label')).not.toBeInTheDocument();
+    expect(getByTestId('partition-info')).toHaveTextContent('Non-partitioned');
+  });
+
+  it('should render the label element when label is provided', () => {
+    const { getByTestId } = render(
+      <ExtraInfoLabel dataTestId="size-info" label="Size" value="1 KB" />
+    );
+
+    expect(getByTestId('size-info-label')).toHaveTextContent('Size');
+    expect(getByTestId('size-info')).toHaveTextContent('1 KB');
   });
 });
 

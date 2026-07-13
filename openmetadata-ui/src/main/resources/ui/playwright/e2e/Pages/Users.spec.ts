@@ -26,6 +26,7 @@ import { GlobalSettingOptions } from '../../constant/settings';
 import { SidebarItem } from '../../constant/sidebar';
 import { PolicyClass } from '../../support/access-control/PoliciesClass';
 import { RolesClass } from '../../support/access-control/RolesClass';
+import { ChartClass } from '../../support/entity/ChartClass';
 import { EntityDataClass } from '../../support/entity/EntityDataClass';
 import { TableClass } from '../../support/entity/TableClass';
 import { PersonaClass } from '../../support/persona/PersonaClass';
@@ -55,6 +56,7 @@ import {
   restoreUser,
   restoreUserProfilePage,
   revokeToken,
+  searchUserByEmail,
   settingPageOperationPermissionCheck,
   softDeleteUser,
   softDeleteUserProfilePage,
@@ -205,6 +207,14 @@ test.describe('User with Admin Roles', () => {
 
     await visitUserListPage(adminPage);
 
+    await test.step('User is searchable by email', async () => {
+      await searchUserByEmail(
+        adminPage,
+        updatedUserDetails.email,
+        updatedUserDetails.name
+      );
+    });
+
     await test.step("User shouldn't be allowed to create User with same Email", async () => {
       await checkForUserExistError(adminPage, {
         name: updatedUserDetails.name,
@@ -218,6 +228,16 @@ test.describe('User with Admin Roles', () => {
       updatedUserDetails.name,
       updatedUserDetails.name,
       false
+    );
+  });
+
+  test('Admin is searchable by email', async ({ adminPage }) => {
+    await redirectToHomePage(adminPage);
+    await settingClick(adminPage, GlobalSettingOptions.ADMINS);
+    await searchUserByEmail(
+      adminPage,
+      adminUser.data.email,
+      adminUser.responseData.name
     );
   });
 
@@ -717,18 +737,17 @@ test.describe('User Profile Dropdown Persona Interactions', () => {
       await moreButton.click();
     }
 
-    // Verify default persona tag is visible
-    await expect(
-      adminPage.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
-
-    // Verify default persona is first in the list
-    const personaLabels = adminPage.locator('[data-testid="persona-label"]');
-    const firstPersona = personaLabels.first();
+    const removedDefaultPersonaLabel = adminPage
+      .locator('[data-testid="persona-label"]')
+      .filter({ hasText: persona2.responseData.displayName });
 
     await expect(
-      firstPersona.locator('[data-testid="default-persona-tag"]')
-    ).toBeVisible();
+      removedDefaultPersonaLabel.locator('[data-testid="default-persona-tag"]')
+    ).not.toBeVisible();
+
+    await expect(
+      removedDefaultPersonaLabel.locator('input[type="radio"]')
+    ).not.toBeChecked();
   });
 
   test('Should switch personas correctly', async ({ adminPage }) => {
@@ -1284,6 +1303,10 @@ base.describe(
     const role5 = new RolesClass();
 
     const user = new UserClass();
+    const chart = new ChartClass();
+    const userPerformanceEntities = entities.map((entity) =>
+      entity === EntityDataClass.chart1 ? chart : entity
+    );
 
     base.beforeAll('Setup pre-requests', async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
@@ -1334,8 +1357,16 @@ base.describe(
         team3.create(apiContext),
         team4.create(apiContext),
         team5.create(apiContext),
+        chart.create(apiContext),
       ]);
 
+      await afterAction();
+    });
+
+    base.afterAll('Cleanup user performance chart', async ({ browser }) => {
+      const { apiContext, afterAction } = await performAdminLogin(browser);
+
+      await chart.delete(apiContext);
       await afterAction();
     });
 
@@ -1344,7 +1375,7 @@ base.describe(
       async ({ browser }) => {
         const { page, afterAction } = await performUserLogin(browser, user);
 
-        for (const entity of entities) {
+        for (const entity of userPerformanceEntities) {
           await entity.visitEntityPage(page);
           await waitForAllLoadersToDisappear(page);
 

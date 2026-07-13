@@ -37,6 +37,7 @@ public final class UiTestServer {
   private static volatile ServerHandle cached;
   private static volatile ContainerizedServer ownedContainer;
   private static volatile TokenRefresher refresher;
+  private static volatile ExternalTokenRefresher externalRefresher;
 
   private UiTestServer() {}
 
@@ -70,6 +71,10 @@ public final class UiTestServer {
     final String token = lookup("OM_ADMIN_TOKEN");
     SdkClients.overrideAdminToken(token);
     AuthSession.initialize(backend, externalTokenSet(token));
+    // Long runs (scale/search suites) can outlive the login token's TTL. We can't re-mint a
+    // server-trusted token here, but we can re-login with the same credentials — start the
+    // refresher when they're available so the token auto-renews before it expires.
+    externalRefresher = ExternalTokenRefresher.startIfConfigured(lookup("OM_URL"), token);
   }
 
   private static void initializeContainerizedAuth(final AuthBackend backend) {
@@ -122,6 +127,9 @@ public final class UiTestServer {
   private static void tearDown() {
     if (refresher != null) {
       refresher.close();
+    }
+    if (externalRefresher != null) {
+      externalRefresher.close();
     }
     if (ownedContainer != null) {
       ownedContainer.close();

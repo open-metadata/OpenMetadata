@@ -5,7 +5,9 @@ import static org.openmetadata.service.jdbi3.locator.ConnectionType.POSTGRES;
 
 import java.sql.ResultSet;
 import java.sql.SQLException;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -391,6 +393,13 @@ public interface EntityTimeSeriesDAO {
     return getById(getTimeSeriesTableName(), id.toString());
   }
 
+  @SqlQuery("SELECT EXISTS (SELECT 1 FROM <table> WHERE id = :id)")
+  boolean exists(@Define("table") String table, @Bind("id") String id);
+
+  default boolean existsById(UUID id) {
+    return exists(getTimeSeriesTableName(), id.toString());
+  }
+
   @SqlUpdate(value = "DELETE from <table> WHERE id = :id")
   void deleteById(@Define("table") String table, @Bind("id") String id);
 
@@ -508,6 +517,33 @@ public interface EntityTimeSeriesDAO {
     Map<String, String> result = new HashMap<>();
     for (FQNHashJsonRow row : rows) {
       result.put(row.entityFQNHash(), row.json());
+    }
+    return result;
+  }
+
+  @SqlQuery(
+      "SELECT entityFQNHash, json FROM (SELECT entityFQNHash, json, "
+          + "ROW_NUMBER() OVER (PARTITION BY entityFQNHash ORDER BY timestamp DESC) AS rn "
+          + "FROM <table> WHERE entityFQNHash IN (<entityFQNHashes>) "
+          + "AND extension = :extension) ranked WHERE rn <= :limit "
+          + "ORDER BY entityFQNHash, rn")
+  @RegisterRowMapper(FQNHashJsonRowMapper.class)
+  List<FQNHashJsonRow> getLatestExtensionsBatch(
+      @Define("table") String table,
+      @BindList("entityFQNHashes") List<String> entityFQNHashes,
+      @Bind("extension") String extension,
+      @Bind("limit") int limit);
+
+  default Map<String, List<String>> getLatestExtensionsBatch(
+      List<String> entityFQNHashes, String extension, int limit) {
+    Map<String, List<String>> result = new LinkedHashMap<>();
+    if (entityFQNHashes == null || entityFQNHashes.isEmpty()) {
+      return result;
+    }
+    List<FQNHashJsonRow> rows =
+        getLatestExtensionsBatch(getTimeSeriesTableName(), entityFQNHashes, extension, limit);
+    for (FQNHashJsonRow row : rows) {
+      result.computeIfAbsent(row.entityFQNHash(), key -> new ArrayList<>()).add(row.json());
     }
     return result;
   }

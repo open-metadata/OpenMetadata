@@ -17,6 +17,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
@@ -34,6 +35,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -68,10 +70,12 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -442,6 +446,15 @@ public class CreateTask implements TaskListener {
       terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
       return null;
     }
+    Object priorApprovalPayload =
+        existingTask == null
+            ? findPriorOpenApprovalPayload(
+                taskRepository,
+                entity,
+                taskCategory,
+                resolvedWorkflowDefinitionId,
+                workflowInstanceId)
+            : null;
     if (existingTask != null) {
       LOG.info(
           "[CreateTask] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
@@ -484,7 +497,10 @@ public class CreateTask implements TaskListener {
       updatedTask.setUpdatedAt(System.currentTimeMillis());
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
-          requestedPayload != null ? requestedPayload : updatedTask.getPayload());
+          requestedPayload != null
+              ? ChangePreviewUtils.preserveProposedChanges(
+                  requestedPayload, updatedTask.getPayload())
+              : updatedTask.getPayload());
       if (effectiveWorkflowDefinitionId != null) {
         updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
       }
@@ -512,6 +528,8 @@ public class CreateTask implements TaskListener {
         updatedTask.setDueDate(effectiveDueDate);
       }
       updatedTask.setPayload(withGrantExpirationDate(stageStatus, updatedTask.getPayload()));
+      updatedTask.setPayload(
+          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -548,7 +566,12 @@ public class CreateTask implements TaskListener {
             .withAvailableTransitions(availableTransitions)
             .withDescription(
                 taskDescription != null ? taskDescription : buildTaskDescription(entity, taskType))
-            .withPayload(requestedPayload != null ? requestedPayload : payload)
+            .withPayload(
+                ChangePreviewUtils.preserveProposedChanges(
+                    requestedPayload != null
+                        ? requestedPayload
+                        : (payload != null ? payload : priorApprovalPayload),
+                    priorApprovalPayload))
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy(updatedBy);
@@ -574,6 +597,7 @@ public class CreateTask implements TaskListener {
       task.setDueDate(effectiveDueDate);
     }
     task.setPayload(withGrantExpirationDate(stageStatus, task.getPayload()));
+    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -605,7 +629,151 @@ public class CreateTask implements TaskListener {
     // Send WebSocket Notification
     WebsocketNotificationHandler.handleTaskNotification(task);
 
+    // Supersede any approval task still open from an earlier run of the same workflow, AFTER the
+    // new
+    // task has been created, so a rollback of the new-task transaction can't leave the prior run's
+    // Flowable process terminated behind a still-open OM task. One live approval per (entity,
+    // workflow) is the invariant.
+    supersedePriorApprovalTask(
+        delegateTask,
+        taskRepository,
+        entity,
+        taskCategory,
+        resolvedWorkflowDefinitionId,
+        workflowInstanceId,
+        updatedBy);
+
     return task;
+  }
+
+  private void supersedePriorApprovalTask(
+      DelegateTask delegateTask,
+      TaskRepository taskRepository,
+      EntityInterface entity,
+      TaskCategory taskCategory,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId,
+      String updatedBy) {
+    // Best-effort cleanup: failing to supersede a prior task must never abort creation of the new
+    // approval task, so all exceptions are contained here instead of bubbling up as a BpmnError.
+    if (taskCategory == TaskCategory.Approval) {
+      try {
+        taskRepository
+            .listNonTerminalTasksByEntityAndCategory(entity.getFullyQualifiedName(), taskCategory)
+            .stream()
+            .filter(
+                prior ->
+                    isSupersedablePriorApprovalTask(
+                        prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+            .forEach(
+                prior ->
+                    cancelAndTerminatePriorApproval(
+                        delegateTask, taskRepository, prior, updatedBy));
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Failed to supersede prior approval task(s) for entity '{}': {}",
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+  }
+
+  /**
+   * Find an open prior approval task on the same entity bound to the same workflow definition but
+   * a different workflow instance, and return its payload. Used to carry forward the {@code
+   * proposedChanges} blob across re-edits, since each entity edit spawns a fresh workflow run that
+   * creates a new Task (the prior task is closed asynchronously by {@link
+   * #supersedePriorApprovalTask}). Returns {@code null} when no eligible prior task exists.
+   */
+  static Object findPriorOpenApprovalPayload(
+      TaskRepository taskRepository,
+      EntityInterface entity,
+      TaskCategory taskCategory,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId) {
+    Object priorPayload = null;
+    if (taskCategory == TaskCategory.Approval && entity != null) {
+      try {
+        priorPayload =
+            taskRepository
+                .listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory)
+                .stream()
+                .filter(
+                    prior ->
+                        isSupersedablePriorApprovalTask(
+                            prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+                .map(Task::getPayload)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Failed to lookup prior approval task payload for entity '{}': {}",
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+    return priorPayload;
+  }
+
+  static boolean isSupersedablePriorApprovalTask(
+      Task prior, UUID currentWorkflowDefinitionId, UUID currentWorkflowInstanceId) {
+    return prior != null
+        && currentWorkflowInstanceId != null
+        && currentWorkflowDefinitionId != null
+        && prior.getWorkflowInstanceId() != null
+        && !isTerminalTaskStatus(prior.getStatus())
+        && !prior.getWorkflowInstanceId().equals(currentWorkflowInstanceId)
+        && currentWorkflowDefinitionId.equals(prior.getWorkflowDefinitionId());
+  }
+
+  private void cancelAndTerminatePriorApproval(
+      DelegateTask delegateTask, TaskRepository taskRepository, Task prior, String updatedBy) {
+    LOG.info(
+        "[CreateTask] Superseding prior approval task '{}' (workflowInstance '{}') with a newer run",
+        prior.getId(),
+        prior.getWorkflowInstanceId());
+    taskRepository.closeTask(prior, updatedBy, SUPERSEDED_BY_NEWER_RUN);
+    dispatchPriorInstanceTermination(
+        inferWorkflowDefinitionRef(delegateTask), prior.getId(), prior.getWorkflowInstanceId());
+  }
+
+  private void dispatchPriorInstanceTermination(
+      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
+    // Run on the shared async executor in its own transaction so deleting the superseded Flowable
+    // process can never poison the current task-creation transaction. Flowable runs as a standalone
+    // engine with its own JDBC connection, so closeTask() above already committed in a separate OM
+    // transaction before this dispatch. The worker reads the prior task straight from the database
+    // (not the entity cache) to observe that committed status, and only terminates the process when
+    // the task is actually terminal — so a still-live approval is never orphaned.
+    CompletableFuture.runAsync(
+            () -> terminateSupersededInstance(mainWorkflowName, priorTaskId, priorInstanceId),
+            AsyncService.getInstance().getExecutorService())
+        .exceptionally(
+            ex -> {
+              LOG.error(
+                  "[CreateTask] Failed to terminate superseded workflow instance '{}'",
+                  priorInstanceId,
+                  ex);
+              return null;
+            });
+  }
+
+  private void terminateSupersededInstance(
+      String mainWorkflowName, UUID priorTaskId, UUID priorInstanceId) {
+    TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
+    Task prior = taskRepository.findCommittedTask(priorTaskId);
+    if (prior != null && isTerminalTaskStatus(prior.getStatus())) {
+      WorkflowHandler.getInstance()
+          .terminateWorkflowInstance(priorInstanceId, mainWorkflowName, SUPERSEDED_BY_NEWER_RUN);
+    } else {
+      LOG.debug(
+          "[CreateTask] Prior approval task '{}' is not terminal (status={}); leaving its workflow "
+              + "process intact",
+          priorTaskId,
+          prior == null ? null : prior.getStatus());
+    }
   }
 
   static List<EntityReference> resolveExistingTaskAssignees(
@@ -634,13 +802,12 @@ public class CreateTask implements TaskListener {
     return existingAssignees;
   }
 
+  // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new
+  // TaskEntityStatus value is added — the canonical NON_TERMINAL_TASK_STATUSES list on
+  // TaskRepository is the single source of truth. Kept as a static wrapper here for call-site
+  // readability at the workflow-lifecycle guards below.
   static boolean isTerminalTaskStatus(TaskEntityStatus status) {
-    return status != null
-        && status != TaskEntityStatus.Open
-        && status != TaskEntityStatus.InProgress
-        && status != TaskEntityStatus.Pending
-        && status != TaskEntityStatus.Approved
-        && status != TaskEntityStatus.Granted;
+    return TaskRepository.isTerminalStatus(status);
   }
 
   static boolean shouldSkipDeletedWorkflowManagedDraftTask(
@@ -786,6 +953,21 @@ public class CreateTask implements TaskListener {
     return merged;
   }
 
+  /**
+   * For approval task types (GlossaryApproval, RequestApproval), augment the task payload with a
+   * {@code proposedChanges} map computed from the target entity's change description, merged
+   * against any existing {@code proposedChanges} on the prior payload (set-cancellation). Returns
+   * the payload unchanged for non-approval task types or when the entity carries no change
+   * description.
+   */
+  static Object applyProposedChangesIfApproval(
+      TaskEntityType taskType, EntityInterface entity, Object payload) {
+    if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
+      return payload;
+    }
+    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload);
+  }
+
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
     try {
       return System.currentTimeMillis() + Duration.parse(duration).toMillis();
@@ -878,7 +1060,9 @@ public class CreateTask implements TaskListener {
       TaskEntityType taskType,
       Map<String, String> inputNamespaceMap,
       WorkflowVariableHandler varHandler) {
-    if (taskType != TaskEntityType.DataQualityReview || inputNamespaceMap == null) {
+    if ((taskType != TaskEntityType.RecognizerFeedbackApproval
+            && taskType != TaskEntityType.DataQualityReview)
+        || inputNamespaceMap == null) {
       return null;
     }
 
@@ -942,6 +1126,7 @@ public class CreateTask implements TaskListener {
           "[CreateTask] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
           requestedTaskId,
           processInstanceId);
+      // Reason string matches WorkflowFailureListener's "Workflow-managed draft task " prefix.
       runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
     } catch (FlowableObjectNotFoundException e) {
       LOG.debug(

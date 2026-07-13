@@ -22,7 +22,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
-    TableauConnection,
+    TableauConnection as TableauConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -31,6 +31,7 @@ from metadata.generated.schema.security.credentials.accessTokenAuth import (
     AccessTokenAuth,
 )
 from metadata.generated.schema.security.credentials.basicAuth import BasicAuth
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -44,7 +45,7 @@ from metadata.utils.ssl_manager import SSLManager
 logger = ingestion_logger()
 
 
-def get_connection(connection: TableauConnection) -> TableauClient:
+def get_connection(connection: TableauConnectionConfig) -> TableauClient:
     """
     Create connection
     """
@@ -64,7 +65,7 @@ def get_connection(connection: TableauConnection) -> TableauClient:
 
 
 def set_verify_ssl(
-    connection: TableauConnection,
+    connection: TableauConnectionConfig,
 ) -> tuple[Union[bool, str], Optional[SSLManager]]:  # noqa: UP007, UP045
     """
     Set verify ssl based on connection configuration
@@ -107,7 +108,7 @@ def set_verify_ssl(
 def test_connection(
     metadata: OpenMetadata,
     client: TableauClient,
-    service_connection: TableauConnection,
+    service_connection: TableauConnectionConfig,
     automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
     timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
 ) -> TestConnectionResult:
@@ -135,7 +136,7 @@ def test_connection(
     )
 
 
-def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, Any]]:  # noqa: UP006
+def build_server_config(connection: TableauConnectionConfig) -> Dict[str, Dict[str, Any]]:  # noqa: UP006
     """
     Build client configuration
     Args:
@@ -160,3 +161,22 @@ def build_server_config(connection: TableauConnection) -> Dict[str, Dict[str, An
         raise ValueError("Unsupported authentication type")  # noqa: TRY004
 
     return tableau_auth
+
+
+class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
+    def _get_client(self) -> TableauClient:
+        return get_connection(self.service_connection)
+
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        return test_connection(
+            metadata,
+            self.client,
+            self.service_connection,
+            automation_workflow,
+            timeout_seconds,
+        )

@@ -18,7 +18,6 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { User } from '../../../generated/entity/teams/user';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import KnowledgePagesHierarchy from './KnowledgePagesHierarchy';
 
@@ -30,6 +29,7 @@ const PageHierarchy = [
     description: 'description',
     fullyQualifiedName: 'Article_XJIGIKX2',
     displayName: 'How to Discover Assets of Interest',
+    childrenCount: 1,
     children: [
       {
         id: 'ae65ca82-a284-4d3e-9554-dd4c94086613',
@@ -38,6 +38,7 @@ const PageHierarchy = [
         description: '',
         fullyQualifiedName: 'Article_2p7Z8MAN',
         displayName: 'How to Discover Assets of Interest Child 1',
+        childrenCount: 1,
         children: [
           {
             id: '27c39402-9691-4776-becd-23a69d06db75',
@@ -46,6 +47,7 @@ const PageHierarchy = [
             description: '',
             fullyQualifiedName: 'Article_UqfRMCZw',
             displayName: 'How to Discover Assets of Interest Child 11',
+            childrenCount: 1,
             children: [
               {
                 id: '838c8ce7-b949-4f58-9a6c-1ef268fc920d',
@@ -54,6 +56,7 @@ const PageHierarchy = [
                 description: '',
                 fullyQualifiedName: 'Article_LtyX9wX3',
                 displayName: 'How to Discover Assets of Interest Child 111',
+                childrenCount: 1,
                 children: [
                   {
                     id: 'a31ca2ba-e841-4673-bbc2-478f0dea4692',
@@ -63,6 +66,7 @@ const PageHierarchy = [
                     fullyQualifiedName: 'Article_atU2ADuH',
                     displayName:
                       'How to Discover Assets of Interest Child 1111',
+                    childrenCount: 0,
                     children: [],
                   },
                 ],
@@ -80,6 +84,7 @@ const PageHierarchy = [
     description: '',
     fullyQualifiedName: 'Article_YjCzUcBl',
     displayName: 'This is Updated',
+    childrenCount: 1,
     children: [
       {
         id: '163a3ff2-f853-4040-a180-6e23717b9cd3',
@@ -88,6 +93,7 @@ const PageHierarchy = [
         description: '',
         fullyQualifiedName: 'Article_mWtepYKg',
         displayName: '',
+        childrenCount: 0,
         children: [],
       },
     ],
@@ -99,6 +105,7 @@ const PageHierarchy = [
     description: 'description',
     fullyQualifiedName: 'Knowledge Article with children',
     displayName: 'Knowledge Article with children',
+    childrenCount: 4,
     children: [
       {
         id: '16d75850-0fd3-475d-965b-fc2d3ef38900',
@@ -107,16 +114,17 @@ const PageHierarchy = [
         description: 'description',
         fullyQualifiedName: 'Article_5K3xBSov',
         displayName: 'Overview of Data Discovery data',
+        childrenCount: 0,
         children: [],
       },
       {
         id: 'c21abbc6-5c72-4998-aacd-8c98c37be772',
         pageType: 'Article',
         name: 'Article_iSUbmc2V',
-        description:
-          '<p></p><p><strong>This is the simple test now I will select and show you the bubble menu</strong></p><p></p>',
+        description: '',
         fullyQualifiedName: 'Article_iSUbmc2V',
         displayName: 'Notion like editor',
+        childrenCount: 1,
         children: [
           {
             id: 'b09e88ab-b2cf-4b21-9650-0a20a51ba6a8',
@@ -125,6 +133,7 @@ const PageHierarchy = [
             description: '',
             fullyQualifiedName: 'Article_bfPSYGdU',
             displayName: '',
+            childrenCount: 1,
             children: [
               {
                 id: '93f5f97e-7c92-40e4-a215-124bc1c475ee',
@@ -133,14 +142,16 @@ const PageHierarchy = [
                 description: '',
                 fullyQualifiedName: 'Article_eJAFUCiA',
                 displayName: 'I updated va;',
+                childrenCount: 1,
                 children: [
                   {
                     id: '2097349d-d128-496d-b8f8-95474bcb3689',
                     pageType: 'Article',
                     name: 'Article_2er2H4E4',
-                    description: '<p></p><p></p><p></p>',
+                    description: '',
                     fullyQualifiedName: 'Article_2er2H4E4',
                     displayName: 'Updated title',
+                    childrenCount: 0,
                     children: [],
                   },
                 ],
@@ -156,6 +167,7 @@ const PageHierarchy = [
         description: '',
         fullyQualifiedName: 'Article_qgqrKSse',
         displayName: '',
+        childrenCount: 0,
         children: [],
       },
       {
@@ -165,6 +177,7 @@ const PageHierarchy = [
         description: '',
         fullyQualifiedName: 'Article_v8dwycta',
         displayName: '',
+        childrenCount: 0,
         children: [],
       },
     ],
@@ -176,6 +189,12 @@ jest.mock('rest/knowledgeCenterAPI', () => ({
     Promise.resolve({
       data: PageHierarchy,
       paging: { limit: 100, offset: 0, total: PageHierarchy.length },
+    })
+  ),
+  getListKnowledgePages: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      data: [],
+      paging: { limit: 0, offset: 0, total: 42 },
     })
   ),
   postKnowledgePage: jest.fn().mockImplementation(() =>
@@ -206,22 +225,6 @@ jest.mock('utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn().mockImplementation(() => ({ fqn })),
 }));
 
-jest.mock('crypto-random-string-with-promisify-polyfill', () =>
-  jest.fn().mockReturnValue('randomString')
-);
-
-const mockUserData: User = {
-  name: 'aaron_johnson0',
-  email: 'testUser1@email.com',
-  id: '9304f330-2e9a-4513-883b-c939e29683a8',
-};
-
-jest.mock('hooks/useApplicationStore', () => ({
-  useApplicationStore: jest.fn().mockImplementation(() => ({
-    currentUser: mockUserData,
-  })),
-}));
-
 jest.mock('context/LimitsProvider/useLimitsStore', () => ({
   useLimitStore: jest
     .fn()
@@ -236,10 +239,7 @@ describe('KnowledgePagesHierarchy', () => {
   it('should render KnowledgePagesHierarchy', async () => {
     await act(async () => {
       render(
-        <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
-          permissions={DEFAULT_ENTITY_PERMISSION}
-        />,
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
         { wrapper: MemoryRouter }
       );
     });
@@ -255,26 +255,31 @@ describe('KnowledgePagesHierarchy', () => {
       screen.getByText('Knowledge Article with children')
     ).toBeInTheDocument();
 
-    // should render the collapse button
-    expect(
-      screen.getByTestId('How to Discover Assets of Interest-collapse-icon')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('This is Updated-collapse-icon')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('Knowledge Article with children-collapse-icon')
-    ).toBeInTheDocument();
-
-    // should render the page icon
+    // should render the page icon for each top-level node
     expect(screen.getAllByTestId('page-icon')).toHaveLength(3);
+  });
+
+  it('should render the total count from getListKnowledgePages, not the hierarchy paging', async () => {
+    await act(async () => {
+      render(
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+        { wrapper: MemoryRouter }
+      );
+    });
+
+    expect(
+      screen.getByText(
+        (_, element) =>
+          element?.tagName.toLowerCase() === 'span' &&
+          element?.textContent === '42 label.article-plural'
+      )
+    ).toBeInTheDocument();
   });
 
   it('should render the active node', async () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy
-          isPageHeaderAvailable
           activeKey="Article_XJIGIKX2"
           permissions={DEFAULT_ENTITY_PERMISSION}
         />,
@@ -284,32 +289,36 @@ describe('KnowledgePagesHierarchy', () => {
       );
     });
 
-    expect(
-      screen.getByTestId('page-node-How to Discover Assets of Interest')
-    ).toBeInTheDocument();
-    expect(
-      screen.getByTestId('page-node-How to Discover Assets of Interest')
-    ).toHaveAttribute('data-isactive', 'true');
+    const activeNode = screen.getByTestId(
+      'page-node-How to Discover Assets of Interest'
+    );
+
+    expect(activeNode).toBeInTheDocument();
+    expect(activeNode).toHaveAttribute('data-isactive', 'true');
   });
 
   it('should render the children if node is expanded', async () => {
     await act(async () => {
       render(
-        <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
-          permissions={DEFAULT_ENTITY_PERMISSION}
-        />,
+        <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
         {
           wrapper: MemoryRouter,
         }
       );
     });
 
-    const collapseButton = screen.getByTestId(
-      `How to Discover Assets of Interest-collapse-icon`
-    );
+    // The tree item row has role="row"; click the chevron button (slot="chevron")
+    // inside the row for "How to Discover Assets of Interest" to expand it.
+    const row = screen
+      .getByText('How to Discover Assets of Interest')
+      .closest('[role="row"]');
+    const expandBtn = row?.querySelector('button[slot="chevron"]');
 
-    fireEvent.click(collapseButton);
+    expect(expandBtn).not.toBeNull();
+
+    await act(async () => {
+      fireEvent.click(expandBtn!);
+    });
 
     expect(
       screen.getByText('How to Discover Assets of Interest Child 1')
@@ -320,7 +329,6 @@ describe('KnowledgePagesHierarchy', () => {
     await act(async () => {
       render(
         <KnowledgePagesHierarchy
-          isPageHeaderAvailable={false}
           permissions={{ ...DEFAULT_ENTITY_PERMISSION, Delete: true }}
         />,
         {
@@ -343,110 +351,48 @@ describe('KnowledgePagesHierarchy', () => {
       'rest/knowledgeCenterAPI'
     ).getPageHierarchyFromES;
 
-    const mockScrollFn = jest.fn();
-
     beforeEach(() => {
       jest.clearAllMocks();
-      // Mock window.innerHeight
-      Object.defineProperty(window, 'innerHeight', {
-        writable: true,
-        configurable: true,
-        value: 1000,
-      });
     });
 
-    it('should trigger pagination when scroll reaches bottom (exact match)', async () => {
+    const getScrollContainer = () =>
+      screen.getByTestId('article-list-container');
+
+    const fireScrollEvent = (
+      scrollHeight: number,
+      scrollTop: number,
+      clientHeight: number
+    ) => {
+      const container = getScrollContainer();
+      Object.defineProperty(container, 'scrollHeight', {
+        configurable: true,
+        value: scrollHeight,
+      });
+      Object.defineProperty(container, 'scrollTop', {
+        configurable: true,
+        value: scrollTop,
+      });
+      Object.defineProperty(container, 'clientHeight', {
+        configurable: true,
+        value: clientHeight,
+      });
+      fireEvent.scroll(container);
+    };
+
+    it('should trigger pagination when scroll reaches the bottom', async () => {
       await act(async () => {
         render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          {
+            wrapper: MemoryRouter,
+          }
         );
       });
 
-      const treeElement = screen.getByTestId('knowledge-pages-hierarchy');
-      const scrollableElement = treeElement.getElementsByClassName(
-        'ant-tree-list-holder'
-      )[0];
-
-      // Set the scroll properties on the element
-      Object.defineProperty(scrollableElement, 'scrollHeight', {
-        value: 3200,
-        writable: true,
-        configurable: true,
-      });
-
-      // Try a different approach for scrollTop
-      Object.defineProperty(scrollableElement, 'scrollTop', {
-        get: () => 2390,
-        set: mockScrollFn,
-        configurable: true,
-      });
-
-      // Simulate scroll event with scrollHeight exactly at windowHeight - 190
-      const scrollEvent = {
-        currentTarget: {
-          ...scrollableElement,
-          scrollHeight: 3200,
-          scrollTop: 2390,
-        },
-      };
-
+      // scrollTop + clientHeight (2400 + 800) === scrollHeight (3200)
       await act(async () => {
-        fireEvent.scroll(scrollableElement, scrollEvent);
+        fireScrollEvent(3200, 2400, 800);
       });
-
-      await waitFor(() => {
-        expect(mockGetPageHierarchyFromES).toHaveBeenCalledWith(
-          undefined,
-          undefined,
-          100, // offset should be incremented by 100
-          100,
-          fqn
-        );
-      });
-    });
-
-    it('should trigger pagination when scrollHeight is within range (windowHeight - 191)', async () => {
-      await act(async () => {
-        render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
-        );
-      });
-
-      const treeElement = screen.getByTestId('knowledge-pages-hierarchy');
-      const scrollableElement = treeElement.getElementsByClassName(
-        'ant-tree-list-holder'
-      )[0];
-
-      // Set the scroll properties on the element
-      Object.defineProperty(scrollableElement, 'scrollHeight', {
-        value: 3200,
-        writable: true,
-        configurable: true,
-      });
-
-      Object.defineProperty(scrollableElement, 'scrollTop', {
-        get: () => 2391,
-        set: mockScrollFn,
-        configurable: true,
-      });
-
-      // Simulate scroll event with scrollHeight at windowHeight - 191 (within -1 range)
-      const scrollEvent = {
-        currentTarget: {
-          ...scrollableElement,
-          scrollHeight: 3200,
-          scrollTop: 2391,
-        },
-      };
-      fireEvent.scroll(scrollableElement, scrollEvent);
 
       await waitFor(() => {
         expect(mockGetPageHierarchyFromES).toHaveBeenCalledWith(
@@ -459,43 +405,20 @@ describe('KnowledgePagesHierarchy', () => {
       });
     });
 
-    it('should trigger pagination when scrollHeight is within range (windowHeight - 189)', async () => {
+    it('should trigger pagination when scroll is within the bottom threshold', async () => {
       await act(async () => {
         render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          {
+            wrapper: MemoryRouter,
+          }
         );
       });
 
-      const treeElement = screen.getByTestId('knowledge-pages-hierarchy');
-      const scrollableElement = treeElement.getElementsByClassName(
-        'ant-tree-list-holder'
-      )[0];
-      // Set the scroll properties on the element
-      Object.defineProperty(scrollableElement, 'scrollHeight', {
-        value: 3200,
-        writable: true,
-        configurable: true,
+      // scrollTop + clientHeight (2399 + 800 = 3199) >= scrollHeight - 1 (3199)
+      await act(async () => {
+        fireScrollEvent(3200, 2399, 800);
       });
-      Object.defineProperty(scrollableElement, 'scrollTop', {
-        get: () => 2389,
-        set: mockScrollFn,
-        configurable: true,
-      });
-
-      // Simulate scroll event with scrollHeight at windowHeight - 189 (within +1 range)
-      const scrollEvent = {
-        currentTarget: {
-          ...scrollableElement,
-          scrollHeight: 3200,
-          scrollTop: 2389,
-        },
-      };
-
-      fireEvent.scroll(scrollableElement, scrollEvent);
 
       await waitFor(() => {
         expect(mockGetPageHierarchyFromES).toHaveBeenCalledWith(
@@ -508,96 +431,20 @@ describe('KnowledgePagesHierarchy', () => {
       });
     });
 
-    it('should NOT trigger pagination when scrollHeight is outside range (too high)', async () => {
+    it('should NOT trigger pagination when scroll is far from the bottom', async () => {
       await act(async () => {
         render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
+          <KnowledgePagesHierarchy permissions={DEFAULT_ENTITY_PERMISSION} />,
+          {
+            wrapper: MemoryRouter,
+          }
         );
       });
 
-      const treeElement = screen.getByTestId('knowledge-pages-hierarchy');
-      const scrollableElement = treeElement.getElementsByClassName(
-        'ant-tree-list-holder'
-      )[0];
-
-      // Set the scroll properties on the element
-      Object.defineProperty(scrollableElement, 'scrollHeight', {
-        value: 1000,
-        writable: true,
-        configurable: true,
-      });
-
-      Object.defineProperty(scrollableElement, 'scrollTop', {
-        get: () => 800,
-        set: mockScrollFn,
-        configurable: true,
-      });
-
-      // Simulate scroll event with scrollHeight at windowHeight - 191 (within -1 range)
-      const scrollEvent = {
-        currentTarget: {
-          ...scrollableElement,
-          scrollHeight: 1000,
-          scrollTop: 800,
-        },
-      };
-
-      fireEvent.scroll(scrollableElement, scrollEvent);
-
-      await waitFor(() => {
-        expect(mockGetPageHierarchyFromES).not.toHaveBeenCalledWith(
-          undefined,
-          undefined,
-          100,
-          100,
-          fqn
-        );
-      });
-    });
-
-    it('should NOT trigger pagination when scrollHeight is outside range (too low)', async () => {
+      // scrollTop + clientHeight (1000 + 800 = 1800) < scrollHeight - 1 (3199)
       await act(async () => {
-        render(
-          <KnowledgePagesHierarchy
-            isPageHeaderAvailable={false}
-            permissions={DEFAULT_ENTITY_PERMISSION}
-          />,
-          { wrapper: MemoryRouter }
-        );
+        fireScrollEvent(3200, 1000, 800);
       });
-
-      const treeElement = screen.getByTestId('knowledge-pages-hierarchy');
-      const scrollableElement = treeElement.getElementsByClassName(
-        'ant-tree-list-holder'
-      )[0];
-
-      // Set the scroll properties on the element
-      Object.defineProperty(scrollableElement, 'scrollHeight', {
-        value: 1000,
-        writable: true,
-        configurable: true,
-      });
-
-      Object.defineProperty(scrollableElement, 'scrollTop', {
-        get: () => 820,
-        set: mockScrollFn,
-        configurable: true,
-      });
-
-      // Simulate scroll event with scrollHeight at windowHeight - 191 (within -1 range)
-      const scrollEvent = {
-        currentTarget: {
-          ...scrollableElement,
-          scrollHeight: 1000,
-          scrollTop: 820,
-        },
-      };
-
-      fireEvent.scroll(scrollableElement, scrollEvent);
 
       await waitFor(() => {
         expect(mockGetPageHierarchyFromES).not.toHaveBeenCalledWith(

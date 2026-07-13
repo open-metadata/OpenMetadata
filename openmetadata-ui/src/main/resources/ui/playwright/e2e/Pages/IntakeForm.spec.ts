@@ -710,6 +710,12 @@ test.describe(
           .filter({ hasText: /admin/i });
         await expect(adminOption.first()).toBeVisible({ timeout: 15000 });
         await adminOption.first().click();
+
+        // Selecting the option collapses the Steward picker's input into a
+        // read-only chip, so `stewardInput` no longer resolves. Press Escape on
+        // the page (not the vanished input) to close the Autocomplete popper.
+        await page.keyboard.press('Escape');
+        await expect(listbox).toBeHidden();
       });
 
       await test.step('Submit and verify 201 + correct extension payload', async () => {
