@@ -12,7 +12,9 @@
  */
 
 import { lazy, useCallback, useMemo } from 'react';
-import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../../../components/AppRouter/withSuspenseFallback';
 import { useGenericContext } from '../../../components/Customization/GenericProvider/GenericContext';
 import {
   SearchIndex,
@@ -22,7 +24,8 @@ import { useFqn } from '../../../hooks/useFqn';
 import { getAllRowKeysByKeyName } from '../../../utils/TablePureUtils';
 
 const SearchIndexFieldsTable = withSuspenseFallback(
-  lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable'))
+  lazy(() => import('../SearchIndexFieldsTable/SearchIndexFieldsTable')),
+  TAB_CONTENT_FALLBACK
 );
 
 function SearchIndexFieldsTab() {

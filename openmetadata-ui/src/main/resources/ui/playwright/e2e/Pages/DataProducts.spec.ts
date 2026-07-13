@@ -30,7 +30,11 @@ import {
   removeAssetsFromDataProduct,
   selectDataProduct,
 } from '../../utils/domain';
-import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  followEntity,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 
@@ -114,8 +118,8 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify view toggle buttons', async () => {
-      await expect(page.locator('button[title="table"]')).toBeVisible();
-      await expect(page.locator('button[title="card"]')).toBeVisible();
+      await expect(page.getByTestId('table-view-toggle')).toBeVisible();
+      await expect(page.getByTestId('card-view-toggle')).toBeVisible();
     });
   });
 
@@ -187,13 +191,12 @@ test.describe('Data Products', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await expect(
-        page.getByTestId('modal-header').getByText(dataProduct.data.name)
-      ).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await expect(page.getByTestId('modal-header')).toContainText(
+        dataProduct.data.name
+      );
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
     });

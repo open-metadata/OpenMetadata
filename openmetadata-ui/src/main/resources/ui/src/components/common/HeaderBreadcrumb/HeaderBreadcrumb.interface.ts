@@ -35,6 +35,19 @@ export interface HeaderBreadcrumbProps {
   divider?: BreadcrumbsDivider;
   /** Size of the crumbs. Defaults to 'sm'. */
   size?: BreadcrumbsSize;
+  /**
+   * Maximum number of crumbs to render inline; longer trails collapse the
+   * middle crumbs into a `…` menu (first crumb + trailing crumbs stay
+   * visible). Omit to always render every crumb.
+   */
+  maxItems?: number;
   /** Optional class name applied to the root nav element. */
   className?: string;
+  /**
+   * When true, drops the default bottom margin (`tw:mb-3`). Use when the
+   * breadcrumb is placed inside a container that already owns the spacing
+   * (e.g. `HeaderShell`, which controls the breadcrumb→title gap via its own
+   * layout). Defaults to false.
+   */
+  noMargin?: boolean;
 }

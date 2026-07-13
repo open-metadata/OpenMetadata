@@ -12,6 +12,7 @@
  */
 import { render, screen } from '@testing-library/react';
 import React from 'react';
+import { Link } from 'react-router-dom';
 import { TestCaseResolutionStatus } from '../../generated/tests/testCaseResolutionStatus';
 import { NextPreviousProps } from '../common/NextPrevious/NextPrevious.interface';
 import { TestCasePermission } from '../Database/Profiler/ProfilerDashboard/profilerDashboard.interface';
@@ -124,7 +125,9 @@ jest.mock('react-router-dom', () => ({
   ...jest.requireActual('react-router-dom'),
   Link: jest
     .fn()
-    .mockImplementation(({ children, ...rest }) => <a {...rest}>{children}</a>),
+    .mockImplementation(({ children, to: _to, state: _state, ...rest }) => (
+      <a {...rest}>{children}</a>
+    )),
 }));
 
 jest.mock('../../utils/EntityNameUtils', () => ({
@@ -267,5 +270,28 @@ describe('IncidentManagerTable', () => {
 
     expect(screen.queryByText('label.table')).not.toBeInTheDocument();
     expect(screen.queryByTestId('table-link')).not.toBeInTheDocument();
+  });
+
+  it('should attach the origin crumbs to the test case link navigation state', () => {
+    const breadcrumbData = [
+      { name: 'Incident Manager', url: '/incident-manager' },
+    ];
+
+    renderTable({ breadcrumbData });
+
+    const nameLinkCall = (Link as unknown as jest.Mock).mock.calls.find(
+      ([props]) => props['data-testid'] === 'test-case-test_case_1'
+    );
+
+    expect(nameLinkCall?.[0].state).toEqual({ breadcrumbData });
+  });
+
+  it('should truncate the table link and expose the full name via title', () => {
+    renderTable();
+
+    const tableLink = screen.getAllByTestId('table-link')[0];
+
+    expect(tableLink).toHaveAttribute('title', 'NameFromFQN');
+    expect(tableLink).toHaveClass('tw:truncate');
   });
 });

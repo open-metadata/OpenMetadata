@@ -10,7 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { lazy, ReactElement } from 'react';
+import { FieldProp } from '@openmetadata/ui-core-components';
+import { lazy, ReactNode } from 'react';
 import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import TabsLabel from '../../../components/common/TabsLabel/TabsLabel.component';
 import { TabsLabelProps } from '../../../components/common/TabsLabel/TabsLabel.interface';
@@ -18,7 +19,6 @@ import { TestCaseFormType } from '../../../components/DataQuality/AddDataQuality
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
-import { FieldProp } from '../../../interface/FormUtils.interface';
 import { createTestCaseParameters } from '../../../utils/DataQuality/DataQualityPureUtils';
 import i18n from '../../../utils/i18next/LocalUtil';
 import { TestCasePageTabs } from '../IncidentManager.interface';
@@ -55,10 +55,20 @@ const TestCaseResultTab = withSuspenseFallback(
   )
 );
 
+export interface TestCaseTabProps {
+  /** Tags/Glossary rail visibility — consumed only by the results tab. */
+  showSidePanel?: boolean;
+  /**
+   * Chrome the params edit opens in: 'drawer' (OSS incident/detail page) or
+   * 'modal' (AskCollate AI renderer). Consumed only by the results tab.
+   */
+  editVariant?: 'drawer' | 'modal';
+}
+
 export interface TestCaseTabType {
   LabelComponent: typeof TabsLabel;
   labelProps: TabsLabelProps;
-  Tab: () => ReactElement;
+  Tab: (props: TestCaseTabProps) => ReactNode;
   key: TestCasePageTabs;
   isBeta?: boolean;
 }

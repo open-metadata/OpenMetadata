@@ -39,6 +39,7 @@ function ObservabilityAlertsTable({
   loading,
   loadingCount,
   onAddAlert,
+  onEditAlert,
   onPageChange,
   onPageSizeChange,
   onSelectAlert,
@@ -97,6 +98,7 @@ function ObservabilityAlertsTable({
               alertPermission={alertPermission}
               loading={loadingCount > 0}
               record={record}
+              onEditAlert={onEditAlert}
               onSelectAlert={onSelectAlert}
             />
           </div>
@@ -106,7 +108,7 @@ function ObservabilityAlertsTable({
   };
 
   return (
-    <TableCard.Root>
+    <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:ring-0">
       <div className="tw:border-b tw:border-secondary">
         <Table
           aria-label={t('label.observability-alert')}

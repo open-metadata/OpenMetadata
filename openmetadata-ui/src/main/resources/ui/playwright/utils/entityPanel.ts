@@ -610,7 +610,7 @@ export const editDisplayNameFromPanel = async (
   await editButton.waitFor({ state: 'visible' });
   await editButton.click();
 
-  const modal = page.locator('.ant-modal');
+  const modal = page.getByTestId('entity-name-modal');
   await modal.waitFor({ state: 'visible' });
 
   const displayNameInput = modal.locator('#displayName');
