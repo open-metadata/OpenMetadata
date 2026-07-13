@@ -781,7 +781,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     id="show-deleted"
                     onPress={() => onChangeShowDeleted(!showDeleted)}>
                     <Box justify="between">
-                      {t('label.deleted')}
+                      {t('label.show-deleted')}
                       <Toggle isSelected={showDeleted} />
                     </Box>
                   </Dropdown.Item>
