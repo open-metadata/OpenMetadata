@@ -195,13 +195,18 @@ export const selectOption = async (
     await triggerButton.click();
   }
 
-  await page.locator('[role="listbox"]').first().waitFor({ state: 'visible' });
+  // Exclude the global-search Suggestions listbox (aria-label="Suggestions") which is
+  // always present in the DOM but hidden — .first() would otherwise resolve to it.
+  await page
+    .locator('[role="listbox"]:not([aria-label="Suggestions"])')
+    .first()
+    .waitFor({ state: 'visible' });
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown animation settling
   await page.waitForTimeout(100);
 
   const optionLocator = page
-    .locator('[role="listbox"]:visible')
+    .locator('[role="listbox"]:not([aria-label="Suggestions"]):visible')
     .getByRole('option', { name: optionTitle, exact: true })
     .first();
 
