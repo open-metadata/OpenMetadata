@@ -461,7 +461,13 @@ public class SearchClusterMetrics {
    */
   static int boundQueueSizeToHeap(int queueSize, long maxHeapBytes) {
     long heapBudget = (long) (maxHeapBytes * QUEUE_HEAP_FRACTION);
-    int maxByHeap = (int) Math.max(1000, heapBudget / ESTIMATED_ENTITY_BYTES);
+    long budgeted = heapBudget / ESTIMATED_ENTITY_BYTES;
+    if (budgeted < 1000) {
+      LOG.info(
+          "Queue floor of 1000 entities exceeds heap budget (~{} fit {}% of heap at {} KB/entity); heap is very small",
+          budgeted, (int) (QUEUE_HEAP_FRACTION * 100), ESTIMATED_ENTITY_BYTES / 1024);
+    }
+    int maxByHeap = (int) Math.max(1000, budgeted);
     return Math.min(queueSize, maxByHeap);
   }
 
@@ -502,9 +508,6 @@ public class SearchClusterMetrics {
     conservativeConcurrentRequests =
         Math.min(conservativeConcurrentRequests, Math.max(10, availCores * 10));
     int conservativeConsumerThreads = Math.min(20, Math.max(1, availCores - 1));
-    int conservativeQueueSize = conservativeBatchSize * conservativeConcurrentRequests * 2;
-    conservativeQueueSize =
-        boundQueueSizeToHeap(conservativeQueueSize, Runtime.getRuntime().maxMemory());
 
     long maxHeap = Runtime.getRuntime().maxMemory();
     long totalHeap = Runtime.getRuntime().totalMemory();
@@ -549,6 +552,8 @@ public class SearchClusterMetrics {
     conservativeConcurrentRequests =
         boundConcurrentRequestsToMemory(
             conservativeConcurrentRequests, maxPayloadSize, availableOffHeapBudgetBytes());
+    int conservativeQueueSize =
+        boundQueueSizeToHeap(conservativeBatchSize * conservativeConcurrentRequests * 2, maxHeap);
 
     double cpuBudget = availCores * 0.70;
     int conservativeFieldFetchThreads = Math.max(2, Math.min(50, availCores * 2));
