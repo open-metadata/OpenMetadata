@@ -49,6 +49,7 @@ import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
 } from '../../../utils/PermissionsUtils';
+import { addToRecentViewed } from '../../../utils/RecentActivityUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
