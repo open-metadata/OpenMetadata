@@ -18,6 +18,7 @@ from botocore.exceptions import ClientError
 
 from metadata.core.connections.test_connection.check import collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.records import Evidence
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
 )
@@ -112,24 +113,50 @@ def test_every_athena_step_resolves_to_a_check():
     }
 
 
+def test_every_check_reports_the_command_it_ran():
+    # pyathena reflects via the AWS API, so the shared SQL capture yields nothing;
+    # each reflection step names its API operation instead.
+    provider = _checks()
+    inspector = MagicMock()
+    inspector.get_schema_names.return_value = ["ecommerce"]
+    inspector.get_table_names.return_value = ["orders"]
+    inspector.get_view_names.return_value = ["v_orders"]
+
+    with (
+        patch(f"{CONNECTION_MODULE}.list_schemas", return_value=Evidence(summary="1 schema enumerated")),
+        patch(f"{CONNECTION_MODULE}.inspect", return_value=inspector),
+    ):
+        assert provider.get_schemas().command == "athena:ListDatabases (CatalogName=AwsDataCatalog)"
+        assert provider.get_tables().command == "athena:ListTableMetadata (CatalogName=AwsDataCatalog)"
+        assert provider.get_views().command == "athena:ListTableMetadata (CatalogName=AwsDataCatalog)"
+
+
+def test_command_names_a_configured_catalog():
+    provider = _checks(catalogId="my_catalog")
+
+    with patch(f"{CONNECTION_MODULE}.list_schemas", return_value=Evidence(summary="ok")):
+        assert provider.get_schemas().command == "athena:ListDatabases (CatalogName=my_catalog)"
+
+
 def test_error_pack_classifies_access_denied_as_not_authorized():
     diagnosis = ATHENA_ERRORS.classify(_client_error("AccessDeniedException"))
     assert diagnosis is not None
     assert diagnosis.title == "Not authorized"
 
 
-def test_error_pack_classifies_unrecognized_client_as_auth_failure():
+def test_error_pack_classifies_unrecognized_client_as_unknown_access_key():
+    # Athena is json-protocol: an unknown access key ID arrives as this.
     diagnosis = ATHENA_ERRORS.classify(_client_error("UnrecognizedClientException"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS access key not recognized"
 
 
-def test_error_pack_classifies_auth_failure_through_a_wrapping_cause():
+def test_error_pack_classifies_a_signature_error_through_a_wrapping_cause():
     wrapped = RuntimeError("query failed")
     wrapped.__cause__ = _client_error("InvalidSignatureException")
     diagnosis = ATHENA_ERRORS.classify(wrapped)
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS secret key does not match"
 
 
 def test_error_pack_classifies_missing_workgroup():
@@ -151,6 +178,13 @@ def test_error_pack_classifies_unwritable_result_location():
     diagnosis = ATHENA_ERRORS.classify(error)
     assert diagnosis is not None
     assert diagnosis.title == "Cannot write query results"
+
+
+def test_error_pack_classifies_an_unusable_result_bucket():
+    error = RuntimeError("An error occurred (InvalidRequestException): Unable to verify/create output bucket my-bucket")
+    diagnosis = ATHENA_ERRORS.classify(error)
+    assert diagnosis is not None
+    assert diagnosis.title == "Query result bucket not usable"
 
 
 def test_error_pack_classifies_unreachable_endpoint():
@@ -180,22 +214,31 @@ def test_error_pack_classifies_sts_assume_role_denied_as_not_authorized():
     assert diagnosis.title == "Not authorized"
 
 
-def test_error_pack_classifies_invalid_token_as_auth_failure():
+def test_error_pack_classifies_invalid_client_token_as_unknown_access_key():
+    # STS's code, from the assume-role leg.
     diagnosis = ATHENA_ERRORS.classify(_client_error("InvalidClientTokenId"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS access key not recognized"
 
 
-def test_error_pack_classifies_signature_mismatch_as_auth_failure():
+def test_error_pack_classifies_signature_mismatch_as_wrong_secret():
     diagnosis = ATHENA_ERRORS.classify(_client_error("SignatureDoesNotMatch"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS secret key does not match"
 
 
-def test_error_pack_classifies_expired_token_as_auth_failure():
+def test_error_pack_classifies_expired_token():
     diagnosis = ATHENA_ERRORS.classify(_client_error("ExpiredToken"))
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "AWS session token expired"
+
+
+def test_error_pack_prefers_an_authentication_code_over_not_authorized_text():
+    # The authorization rule sits above AWS_ERRORS; its message fallback must not
+    # swallow a rejected identity.
+    diagnosis = ATHENA_ERRORS.classify(_client_error("ExpiredToken", "not authorized: token expired"))
+    assert diagnosis is not None
+    assert diagnosis.title == "AWS session token expired"
 
 
 def test_error_pack_returns_none_for_unknown_error():
@@ -219,7 +262,7 @@ def test_check_access_surfaces_client_build_failure_for_classification():
     provider = AthenaChecks(client_factory=_raising_factory(error))
     with pytest.raises(ClientError) as exc_info:
         provider.check_access()
-    assert ATHENA_ERRORS.classify(exc_info.value).title == "Authentication failed"
+    assert ATHENA_ERRORS.classify(exc_info.value).title == "AWS access key not recognized"
 
 
 def test_athena_url():

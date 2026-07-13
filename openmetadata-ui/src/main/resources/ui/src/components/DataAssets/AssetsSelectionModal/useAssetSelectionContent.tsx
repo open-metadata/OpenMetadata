@@ -75,7 +75,6 @@ import {
   getAggregations,
   getQuickFilterQuery,
 } from '../../../utils/ExplorePureUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Banner from '../../common/Banner/Banner';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
@@ -314,7 +313,7 @@ export const useAssetSelectionContent = ({
   const handleSaveError = useCallback(
     (err: unknown) => {
       if (variant === 'drawer') {
-        showNotistackError(
+        showErrorToast(
           err as AxiosError,
           t('server.add-entity-error', {
             entity: t('label.asset-plural').toLowerCase(),
