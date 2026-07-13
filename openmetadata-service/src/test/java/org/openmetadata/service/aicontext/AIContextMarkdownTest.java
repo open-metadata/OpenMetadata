@@ -12,9 +12,11 @@
  */
 package org.openmetadata.service.aicontext;
 
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.aicontext.AssetContext;
@@ -26,6 +28,7 @@ import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.personaContext.ContextSection;
 
 /**
  * Unit tests for {@link AIContextMarkdown}: verify the LLM-facing markdown carries the frontmatter,
@@ -195,6 +198,20 @@ class AIContextMarkdownTest {
     assertTrue(markdown.contains("# Data Quality"), "missing data quality heading");
     assertTrue(markdown.contains("failed: 2"), "missing failed count");
     assertTrue(markdown.contains("currently failing"), "missing failing-test warning");
+  }
+
+  @Test
+  void appendEntitySections_honorsSelectionAndHeadingDepth() {
+    StringBuilder markdown = new StringBuilder();
+    AIContextMarkdown.appendEntitySections(
+        markdown,
+        sampleContext(),
+        Set.of(ContextSection.DESCRIPTION, ContextSection.SCHEMA),
+        "###");
+
+    assertTrue(markdown.toString().contains("### Schema"));
+    assertTrue(markdown.toString().contains("Orders placed by customers."));
+    assertFalse(markdown.toString().contains("Foreign Keys"));
   }
 
   private String render() {

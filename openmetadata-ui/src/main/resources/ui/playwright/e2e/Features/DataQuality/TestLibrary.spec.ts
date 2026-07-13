@@ -272,7 +272,7 @@ test.describe(
         await deleteButton.click();
 
         // Wait for confirmation modal
-        await page.locator('.ant-modal').waitFor({ state: 'visible' });
+        await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
 
         // Verify modal content
         await expect(
@@ -757,7 +757,7 @@ test.describe(
         );
         await deleteButton.click();
 
-        await expect(page.locator('.ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
         await expect(
           page.getByText(`Delete ${createdTestDisplayName}`)
@@ -1104,7 +1104,7 @@ test.describe(
         );
         await deleteButton.click();
 
-        await expect(page.locator('.ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
         const deleteResponse = page.waitForResponse(
           (response) =>
@@ -1273,7 +1273,7 @@ test.describe(
           .getByTestId(`delete-test-definition-${PAGINATION_TEST_NAME}`)
           .click();
 
-        await expect(page.locator('.ant-modal')).toBeVisible();
+        await expect(page.getByTestId('delete-modal')).toBeVisible();
 
         // Set up both DELETE and the subsequent GET response waits BEFORE clicking
         const deleteResponse = page.waitForResponse(

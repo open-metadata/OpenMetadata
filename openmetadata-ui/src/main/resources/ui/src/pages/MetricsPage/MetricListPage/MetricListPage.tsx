@@ -13,6 +13,7 @@
 import {
   Avatar,
   Badge,
+  Box,
   Button,
   Dialog,
   DialogTrigger,
@@ -51,9 +52,13 @@ import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/TableV2';
+import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
@@ -72,6 +77,7 @@ import { EntityStatus, Metric } from '../../../generated/entity/data/metric';
 import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { usePaging } from '../../../hooks/paging/usePaging';
+import { useIsAiMode } from '../../../hooks/useAppMode';
 import {
   deleteMetricAsync,
   exportMetricDetailsInCSV,
@@ -149,6 +155,7 @@ const METRIC_SEARCH_DEBOUNCE_MS = 500;
 const MetricListPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
+  const isAiMode = useIsAiMode();
 
   const {
     pageSize,
@@ -538,8 +545,10 @@ const MetricListPage = () => {
       width: '320px',
       key: 'name',
       render: (_: string, record: Metric) => {
+        const hasMeta = Boolean(record.metricType || record.granularity);
+
         return (
-          <div className="metric-list-identity">
+          <Box align="center" gap={3}>
             <div className="metric-list-icon">
               <BarChartSquare02 />
             </div>
@@ -553,24 +562,26 @@ const MetricListPage = () => {
                 )}>
                 {getEntityName(record)}
               </Link>
-              <div className="metric-list-meta">
-                {record.metricType && (
-                  <Badge
-                    className={`metric-list-type-pill metric-list-type-${record.metricType.toLowerCase()}`}
-                    color="brand"
-                    size="sm"
-                    type="color">
-                    {record.metricType}
-                  </Badge>
-                )}
-                {record.granularity && (
-                  <span className="metric-list-granularity">
-                    {record.granularity}
-                  </span>
-                )}
-              </div>
+              {hasMeta && (
+                <div className="metric-list-meta">
+                  {record.metricType && (
+                    <Badge
+                      className={`metric-list-type-pill metric-list-type-${record.metricType.toLowerCase()}`}
+                      color="brand"
+                      size="sm"
+                      type="color">
+                      {record.metricType}
+                    </Badge>
+                  )}
+                  {record.granularity && (
+                    <span className="metric-list-granularity">
+                      {record.granularity}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          </Box>
         );
       },
     };
@@ -718,99 +729,107 @@ const MetricListPage = () => {
     );
   }
 
+  const metricActions = (
+    <div className="d-flex gap-2 metric-list-actions">
+      {permission.Create && (
+        <LimitWrapper resource="metric">
+          <Button
+            className="metric-list-add-button"
+            color="primary"
+            data-testid="create-metric"
+            iconLeading={Plus}
+            size="sm"
+            onPress={() => navigate(ROUTES.ADD_METRIC)}>
+            {t('label.add-entity', { entity: t('label.metric') })}
+          </Button>
+        </LimitWrapper>
+      )}
+      {permission.EditAll && (
+        <Dropdown.Root
+          isOpen={isMetricActionsOpen}
+          onOpenChange={setIsMetricActionsOpen}>
+          <Dropdown.DotsButton
+            className="metric-list-kebab"
+            data-testid="metric-actions"
+          />
+          <Dropdown.Popover className="metric-actions-menu">
+            <div className="metric-actions-menu-content">
+              <button
+                aria-busy={isExporting}
+                className="metric-actions-menu-item"
+                disabled={isExporting}
+                type="button"
+                onClick={handleExport}>
+                <span className="metric-actions-icon">
+                  <Download01 size={18} />
+                </span>
+                <span>
+                  <span className="metric-actions-title">
+                    {t('label.export')}
+                  </span>
+                  <span className="metric-actions-description">
+                    {t('message.metrics-export-description')}
+                  </span>
+                </span>
+              </button>
+              <button
+                className="metric-actions-menu-item"
+                type="button"
+                onClick={handleImport}>
+                <span className="metric-actions-icon">
+                  <UploadCloud01 size={18} />
+                </span>
+                <span>
+                  <span className="metric-actions-title">
+                    {t('label.import')}
+                  </span>
+                  <span className="metric-actions-description">
+                    {t('message.metrics-import-description')}
+                  </span>
+                </span>
+              </button>
+            </div>
+          </Dropdown.Popover>
+        </Dropdown.Root>
+      )}
+    </div>
+  );
+
   return (
     <PageLayoutV1 pageTitle={t('label.metric-plural')}>
       <div className="p-b-md m-t-xs metric-list-page-stack">
         <div>
-          <div className="d-flex justify-between">
-            <PageHeader
-              data={{
-                header: t('label.metric-plural'),
-                subHeader: t('message.metric-description'),
-              }}
-              learningPageId={LEARNING_PAGE_IDS.METRICS}
-              title={t('label.metric')}
+          {isAiMode ? (
+            <HeaderShell
+              actions={metricActions}
+              badge={<LearningIcon pageId={LEARNING_PAGE_IDS.METRICS} />}
+              breadcrumb={
+                <HeaderBreadcrumb
+                  noMargin
+                  items={[
+                    getGlossaryHomeCrumb(t),
+                    { label: t('label.metric-plural') },
+                  ]}
+                  showHome={false}
+                />
+              }
+              subtitle={t('message.metric-description')}
+              title={t('label.metric-plural')}
+              variant="gradient"
             />
-            <div className="d-flex gap-2 metric-list-actions">
-              {permission.Create && (
-                <LimitWrapper resource="metric">
-                  <Button
-                    className="metric-list-add-button"
-                    color="primary"
-                    data-testid="create-metric"
-                    iconLeading={Plus}
-                    size="sm"
-                    onPress={() => navigate(ROUTES.ADD_METRIC)}>
-                    {t('label.add-entity', { entity: t('label.metric') })}
-                  </Button>
-                </LimitWrapper>
-              )}
-              {permission.EditAll && (
-                <Dropdown.Root
-                  isOpen={isMetricActionsOpen}
-                  onOpenChange={setIsMetricActionsOpen}>
-                  <Dropdown.DotsButton
-                    className="metric-list-kebab"
-                    data-testid="metric-actions"
-                  />
-                  <Dropdown.Popover className="metric-actions-menu">
-                    <div className="metric-actions-menu-content">
-                      <button
-                        aria-busy={isExporting}
-                        className="metric-actions-menu-item"
-                        disabled={isExporting}
-                        type="button"
-                        onClick={handleExport}>
-                        <span className="metric-actions-icon">
-                          <Download01 size={18} />
-                        </span>
-                        <span>
-                          <span className="metric-actions-title">
-                            {t('label.export')}
-                          </span>
-                          <span className="metric-actions-description">
-                            {t('message.metrics-export-description')}
-                          </span>
-                        </span>
-                      </button>
-                      <button
-                        className="metric-actions-menu-item"
-                        type="button"
-                        onClick={handleImport}>
-                        <span className="metric-actions-icon">
-                          <UploadCloud01 size={18} />
-                        </span>
-                        <span>
-                          <span className="metric-actions-title">
-                            {t('label.import')}
-                          </span>
-                          <span className="metric-actions-description">
-                            {t('message.metrics-import-description')}
-                          </span>
-                        </span>
-                      </button>
-                      <span className="metric-actions-separator" />
-                      <button
-                        className="metric-actions-menu-item metric-actions-menu-item-danger"
-                        type="button">
-                        <span className="metric-actions-icon">
-                          <Trash01 size={18} />
-                        </span>
-                        <span>
-                          <span className="metric-actions-title">
-                            {t('label.delete')}
-                          </span>
-                          <span className="metric-actions-description">
-                            {t('message.metrics-delete-collection-description')}
-                          </span>
-                        </span>
-                      </button>
-                    </div>
-                  </Dropdown.Popover>
-                </Dropdown.Root>
-              )}
+          ) : (
+            <div className="d-flex justify-between">
+              <PageHeader
+                data={{
+                  header: t('label.metric-plural'),
+                  subHeader: t('message.metric-description'),
+                }}
+                learningPageId={LEARNING_PAGE_IDS.METRICS}
+                title={t('label.metric')}
+              />
+              {metricActions}
             </div>
-          </div>
+          )}
         </div>
         <div>
           <div className="metric-list-table-card">

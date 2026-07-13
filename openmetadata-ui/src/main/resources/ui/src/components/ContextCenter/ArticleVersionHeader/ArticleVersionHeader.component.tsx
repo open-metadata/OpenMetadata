@@ -12,10 +12,10 @@
  */
 
 import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { File06 } from '@untitledui/icons';
 import classNames from 'classnames';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
@@ -73,10 +73,9 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
         {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
         <div className="tw:flex tw:gap-4 tw:items-center">
           <div className="tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
-            <File06
+            <FileIcon
               className="tw:text-quaternary"
               height={40}
-              strokeWidth={1.2}
               style={{ verticalAlign: 'middle', flexShrink: 0 }}
               width={40}
             />

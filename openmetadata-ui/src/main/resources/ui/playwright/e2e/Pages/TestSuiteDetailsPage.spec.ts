@@ -66,7 +66,9 @@ test(
       await page.goto('/data-quality/test-suites/bundle-suites');
       await page.click('[data-testid="add-test-suite-btn"]');
       await initialListResponse;
-      await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
+      await page
+        .locator('[data-testid="test-suite-name"] input')
+        .fill(NEW_TEST_SUITE.name);
       await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",

@@ -181,9 +181,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
   });
 
-  test('should open delete confirmation modal and require DELETE confirmation', async ({
-    page,
-  }) => {
+  test('should open delete confirmation modal', async ({ page }) => {
     test.slow();
 
     await test.step('Navigate to sample data tab', async () => {
@@ -198,20 +196,14 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('modal-header')).toBeVisible();
     });
 
-    await test.step('Verify confirm button is disabled without typing DELETE', async () => {
+    await test.step('Verify confirm button is enabled', async () => {
       const confirmButton = page.getByTestId('confirm-button');
       await expect(confirmButton).toBeVisible();
-      await expect(confirmButton).toBeDisabled();
-    });
-
-    await test.step('Type DELETE to enable confirm button', async () => {
-      const confirmButton = page.getByTestId('confirm-button');
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
       await expect(confirmButton).toBeEnabled();
     });
 
     await test.step('Close modal by clicking cancel', async () => {
-      await page.getByTestId('discard-button').click();
+      await page.getByTestId('cancel-button').click();
       await expect(page.getByTestId('modal-header')).not.toBeVisible();
       await expect(page.getByTestId('sample-data')).toBeVisible();
     });
@@ -286,7 +278,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
 
       await expect(page.getByTestId('modal-header')).toBeVisible();
 
-      await page.getByTestId('discard-button').click();
+      await page.getByTestId('cancel-button').click();
 
       await expect(page.getByTestId('modal-header')).not.toBeVisible();
     });
