@@ -1676,9 +1676,10 @@ public class WorkflowHandler {
    */
   public void terminateWorkflowInstance(
       UUID workflowInstanceId, String mainWorkflowName, String reason) {
-    // Mark the audit record FAILED first, then delete the Flowable process. The two are guarded
-    // independently so a failure in either step is logged on its own and never prevents the other.
-    markWorkflowInstanceFailedQuietly(workflowInstanceId, reason);
+    // Two steps guarded independently — a failure in one is logged on its own, never blocks the
+    // other. Reason string is whitelisted in WorkflowFailureListener so PROCESS_CANCELLED stays
+    // silent.
+    markWorkflowInstanceSupersededQuietly(workflowInstanceId, reason);
     deleteMainProcessInstanceQuietly(workflowInstanceId, mainWorkflowName, reason);
   }
 
@@ -1704,7 +1705,7 @@ public class WorkflowHandler {
     }
   }
 
-  private void markWorkflowInstanceFailedQuietly(UUID workflowInstanceId, String reason) {
+  private void markWorkflowInstanceSupersededQuietly(UUID workflowInstanceId, String reason) {
     try {
       WorkflowInstanceStateRepository workflowInstanceStateRepository =
           (WorkflowInstanceStateRepository)
@@ -1712,11 +1713,11 @@ public class WorkflowHandler {
       WorkflowInstanceRepository workflowInstanceRepository =
           (WorkflowInstanceRepository)
               Entity.getEntityTimeSeriesRepository(Entity.WORKFLOW_INSTANCE);
-      workflowInstanceStateRepository.markInstanceStatesAsFailed(workflowInstanceId, reason);
-      workflowInstanceRepository.markInstanceAsFailed(workflowInstanceId, reason);
+      workflowInstanceStateRepository.markInstanceStatesAsSuperseded(workflowInstanceId, reason);
+      workflowInstanceRepository.markInstanceAsSuperseded(workflowInstanceId, reason);
     } catch (Exception e) {
       LOG.warn(
-          "Failed to mark superseded workflow instance {} as FAILED: {}",
+          "Failed to mark superseded workflow instance {} as SUPERSEDED: {}",
           workflowInstanceId,
           e.getMessage());
     }

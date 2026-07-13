@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -453,8 +454,16 @@ class OpenSearchVectorServiceTest {
     assertTrue(body.contains("\"weights\":[0.4,0.6]"));
     assertTrue(body.contains("\"technique\":\"rrf\""));
     assertTrue(body.contains("\"rank_constant\":30"));
-    assertTrue(body.contains("\"collapse\""));
-    assertTrue(body.contains("\"parentId\""));
+    assertTrue(body.contains("\"score-ranker-processor\""));
+    assertTrue(body.contains("\"phase_results_processors\""));
+    // The hybrid-rrf pipeline must NOT carry a collapse response processor. Collate's NLQ hybrid
+    // search applies a query-level collapse{parentId} in the request body; a pipeline-level
+    // collapse
+    // on the same field makes OpenSearch reject the request with
+    // "Cannot collapse on parentId. Results already collapsed on parentId" (HTTP 500).
+    assertFalse(body.contains("\"response_processors\""));
+    assertFalse(body.contains("\"collapse\""));
+    assertFalse(body.contains("\"parentId\""));
   }
 
   @Test
