@@ -32,7 +32,7 @@ import {
 import '@react-awesome-query-builder/ui/css/styles.css';
 import { InfoCircle } from '@untitledui/icons';
 import classNames from 'classnames';
-import { debounce, isEmpty, isUndefined } from 'lodash';
+import { debounce, isEmpty, isEqual, isUndefined } from 'lodash';
 import Qs from 'qs';
 import {
   FC,
@@ -71,11 +71,13 @@ const QueryBuilderWidgetV1: FC<{
   readonly?: boolean;
   getQueryActions?: (actions: Actions) => void;
   label?: string;
+  showCountPreview?: boolean;
   tree?: JsonTree;
 }> = ({
   onChange,
   entityType = EntityType.ALL,
   outputType = SearchOutputType.ElasticSearch,
+  showCountPreview = true,
   value,
   fields,
   ...props
@@ -104,12 +106,46 @@ const QueryBuilderWidgetV1: FC<{
       shouldCreateEmptyGroup: true,
     },
   });
-  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(
+  const [treeInternal, setTreeInternal] = useState<ImmutableTree>(() =>
     QbUtils.checkTree(
       QbUtils.loadTree(props.tree ?? getEmptyJsonTreeForQueryBuilder()),
       config
     )
   );
+  const configRef = useRef(config);
+  const lastEmittedTreeRef = useRef<JsonTree>();
+
+  useEffect(() => {
+    const nextConfig: Config = {
+      ...baseConfig,
+      fields: fields ?? baseConfig.fields,
+      settings: {
+        ...baseConfig.settings,
+        ...(props.readonly ? READONLY_SETTINGS : {}),
+        removeEmptyGroupsOnLoad: false,
+        removeEmptyRulesOnLoad: false,
+        shouldCreateEmptyGroup: true,
+      },
+    };
+    configRef.current = nextConfig;
+    setConfig(nextConfig);
+    setTreeInternal((currentTree) =>
+      QbUtils.checkTree(currentTree, nextConfig)
+    );
+  }, [baseConfig, fields, props.readonly]);
+
+  useEffect(() => {
+    if (isEqual(props.tree, lastEmittedTreeRef.current)) {
+      return;
+    }
+    lastEmittedTreeRef.current = undefined;
+    setTreeInternal(
+      QbUtils.checkTree(
+        QbUtils.loadTree(props.tree ?? getEmptyJsonTreeForQueryBuilder()),
+        configRef.current
+      )
+    );
+  }, [props.tree]);
 
   const { t } = useTranslation();
   const [queryURL, setQueryURL] = useState<string>('');
@@ -117,6 +153,7 @@ const QueryBuilderWidgetV1: FC<{
 
   const onTreeUpdate = (nTree: ImmutableTree, nConfig: Config) => {
     setTreeInternal(nTree);
+    configRef.current = nConfig;
     setConfig(nConfig);
   };
 
@@ -166,11 +203,12 @@ const QueryBuilderWidgetV1: FC<{
 
   const showFilteredResourceCount = useMemo(
     () =>
+      showCountPreview &&
       outputType === SearchOutputType.ElasticSearch &&
       !isUndefined(value) &&
       searchResults !== undefined &&
       !isCountLoading,
-    [outputType, value, isCountLoading]
+    [isCountLoading, outputType, showCountPreview, value]
   );
 
   const handleChange = (nTree: ImmutableTree, nConfig: Config) => {
@@ -181,7 +219,7 @@ const QueryBuilderWidgetV1: FC<{
       const qFilter = {
         query: data,
       };
-      if (data) {
+      if (data && showCountPreview) {
         const qFilterWithEntityType = addEntityTypeFilter(
           qFilter as unknown as QueryFilterInterface,
           entityType
@@ -190,11 +228,16 @@ const QueryBuilderWidgetV1: FC<{
         debouncedFetchEntityCount(
           qFilterWithEntityType as unknown as Record<string, unknown>
         );
+      } else {
+        setSearchResults(undefined);
       }
 
-      onChange?.(isEmpty(data) ? '' : JSON.stringify(qFilter));
+      const jsonTree = QbUtils.getTree(nTree);
+      lastEmittedTreeRef.current = jsonTree;
+      onChange?.(isEmpty(data) ? '' : JSON.stringify(qFilter), jsonTree);
     } else {
       const jsonTree = QbUtils.getTree(nTree);
+      lastEmittedTreeRef.current = jsonTree;
       try {
         const jsonLogic = QbUtils.jsonLogicFormat(nTree, config);
         onChange?.(JSON.stringify(jsonLogic.logic ?? ''), jsonTree);

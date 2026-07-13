@@ -253,7 +253,7 @@ jest.mock(
   () => jest.fn().mockImplementation(() => <div>IngestionStatusCount</div>)
 );
 
-jest.mock('../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
+jest.mock('../../../common/DeleteModal/DeleteModal', () =>
   jest.fn().mockImplementation(() => null)
 );
 
