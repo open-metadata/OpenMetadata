@@ -478,7 +478,7 @@ test.describe('Search Settings', () => {
       await redirectToHomePage(page);
     });
 
-    test.fixme('Configure column search field settings', async ({ page }) => {
+    test('Configure column search field settings', async ({ page }) => {
       await settingClick(page, GlobalSettingOptions.SEARCH_SETTINGS);
 
       const columnCard = page.getByTestId('preferences.search-settings.column');
@@ -521,6 +521,9 @@ test.describe('Search Settings', () => {
       await page.reload();
       await previewResponse;
       await waitForAllLoadersToDisappear(page);
+      await openMatchingFieldsPanel(page);
+
+      await openMatchingFieldsPanel(page);
 
       await firstFieldContainer.click();
       await expect(highlightToggle).toHaveAttribute(

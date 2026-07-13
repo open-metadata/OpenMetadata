@@ -83,7 +83,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
               key={child.props.id}
               type="button"
               onClick={() => onAction?.(child.props.id)}>
-              {child.props.label}
+              {child.props.label ?? child.props.children}
             </button>
           ) : (
             child
@@ -95,6 +95,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
     Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Separator: jest.fn().mockImplementation(() => <hr />),
   },
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
