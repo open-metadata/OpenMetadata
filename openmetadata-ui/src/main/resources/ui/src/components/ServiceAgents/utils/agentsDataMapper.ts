@@ -285,6 +285,7 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     errors,
     warnings,
     failStep,
+    schedule: pipeline.airflowConfig?.scheduleInterval,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
     ...progressFields,
   };

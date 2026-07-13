@@ -300,6 +300,29 @@ const ConnectionConfigForm = forwardRef<
       setCurrentFormData(validConfig);
     }, [validConfig]);
 
+    // Custom fields (arrays, toggles) and section headers emit focus through
+    // formContext.handleFocus instead of RJSF's form-level onFocus, so the
+    // same enriched handler must be wired to both paths.
+    const handleFieldFocus = useCallback(
+      (id: string) => {
+        const schemaMeta = getFieldSchemaForId(
+          schemaWithoutDefaultFilterPatternFields,
+          id
+        );
+        const section = getConnectionFieldSection(
+          schemaWithoutDefaultFilterPatternFields,
+          id
+        );
+        onFocus(id, { ...schemaMeta, section });
+      },
+      [onFocus, schemaWithoutDefaultFilterPatternFields]
+    );
+
+    const formContext = useMemo(
+      () => ({ handleFocus: handleFieldFocus }),
+      [handleFieldFocus]
+    );
+
     useEffect(() => {
       const current = (currentFormData as Record<string, unknown>)?.[RUNNER];
       if (typeof current === 'string') {
@@ -383,6 +406,7 @@ const ConnectionConfigForm = forwardRef<
         <FormBuilderV1
           cancelText={cancelText ?? ''}
           fields={customFields}
+          formContext={formContext}
           formData={currentFormData}
           hideFooter={hideFooter}
           isSubmitDisabled={isSubmitDisabled}
@@ -397,17 +421,7 @@ const ConnectionConfigForm = forwardRef<
           onBlur={() => onBlur?.()}
           onCancel={onCancel}
           onChange={handleFormChange}
-          onFocus={(id: string) => {
-            const schemaMeta = getFieldSchemaForId(
-              schemaWithoutDefaultFilterPatternFields,
-              id
-            );
-            const section = getConnectionFieldSection(
-              schemaWithoutDefaultFilterPatternFields,
-              id
-            );
-            onFocus(id, { ...schemaMeta, section });
-          }}
+          onFocus={handleFieldFocus}
           onSubmit={handleSave}>
           {formChildren}
         </FormBuilderV1>
