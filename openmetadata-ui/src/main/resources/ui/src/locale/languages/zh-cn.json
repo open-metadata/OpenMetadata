@@ -2323,6 +2323,7 @@
     "show-nested": "显示嵌套",
     "show-or-hide-advanced-config": "{{showAdv}}高级配置",
     "show-or-hide-column-plural": "显示/隐藏列",
+    "show-property-plural": "显示属性",
     "show-raw-logs": "显示原始日志",
     "showing-count-of-total-assets": "显示 {{total}} 个资产中的 {{count}} 个",
     "showing-total-failure-plural": "总共 {{total}} 次失败",

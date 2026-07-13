@@ -2323,6 +2323,7 @@
     "show-nested": "نمایش تودرتو",
     "show-or-hide-advanced-config": "{{showAdv}} پیکربندی پیشرفته",
     "show-or-hide-column-plural": "نمایش / مخفی کردن ستون‌ها",
+    "show-property-plural": "نمایش ویژگی‌ها",
     "show-raw-logs": "نمایش گزارش‌های خام",
     "showing-count-of-total-assets": "نمایش {{count}} از {{total}} دارایی",
     "showing-total-failure-plural": "مجموع {{total}} خطا",
