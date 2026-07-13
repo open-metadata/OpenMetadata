@@ -75,11 +75,8 @@ public class ChangeEventRepository {
 
   record Page(List<ChangeEventRecord> records, String afterCursor) {}
 
-  /**
-   * Keyset-merges the bounded per-event-type result sets: sorts by monotonic {@code offset}, keeps
-   * the first {@code limit}, and derives the forward cursor from the last kept offset. The cursor is
-   * the raw offset value; {@link ResultList} base64 encodes it into {@code paging.after}.
-   */
+  // Sort merged pages by offset, keep the first `limit`, cursor = last kept offset (raw; ResultList
+  // base64-encodes it into paging.after).
   static Page mergePage(List<ChangeEventRecord> records, int limit) {
     records.sort(Comparator.comparingLong(ChangeEventRecord::offset));
     boolean hasMore = records.size() > limit;

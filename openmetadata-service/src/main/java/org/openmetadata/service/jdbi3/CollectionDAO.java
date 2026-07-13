@@ -8737,10 +8737,9 @@ public interface CollectionDAO {
       return result;
     }
 
-    // Deferred join: the page is resolved index-only on `offset` in the derived table, then json is
-    // fetched by primary key for only the paged rows, so the json blob never enters the filesort
-    // (MySQL packs wide rows into sort_buffer_size and throws ER_OUT_OF_SORTMEMORY otherwise).
-    // The caller re-sorts the merged pages, so no outer ORDER BY is needed here.
+    // Deferred join: sort/limit on `offset` only, fetch json by PK — keeps the json blob out of
+    // MySQL's filesort (else ER_OUT_OF_SORTMEMORY on wide rows). Caller re-sorts; no outer ORDER
+    // BY.
     @ConnectionAwareSqlQuery(
         value =
             "SELECT c.`offset` AS offset, c.json AS json FROM change_event c INNER JOIN ("

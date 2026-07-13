@@ -73,11 +73,8 @@ public class EventResource {
       operationId = "listChangeEvents",
       summary = "Get change events",
       description =
-          "Get a paginated list of change events matching event types and entity type within a "
-              + "time window (`timestamp` lower bound, optional `endTs` upper bound). Results are "
-              + "ordered by the monotonic change-event offset (insertion order), not strictly by "
-              + "event time, so keyset pagination via `after` is stable. Page forward with `limit` "
-              + "and the `after` cursor until `paging.after` is null to drain the window.",
+          "Get change events within a time range, one page at a time. Use `limit` to set the page "
+              + "size and `after` to fetch the next page.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -130,8 +127,8 @@ public class EventResource {
           long timestamp,
       @Parameter(
               description =
-                  "Optional inclusive upper bound: only events with `eventTime` at or before this "
-                      + "unix timestamp in milliseconds are returned. Defaults to no upper bound.",
+                  "Only return events up to this unix timestamp in milliseconds. "
+                      + "Defaults to no end limit.",
               schema = @Schema(type = "long", example = "1426349294842"))
           @DefaultValue("0")
           @QueryParam("endTs")
@@ -146,9 +143,8 @@ public class EventResource {
           int limitParam,
       @Parameter(
               description =
-                  "Opaque cursor returned as `paging.after` from a previous call; pass it back to "
-                      + "fetch the next page of events. Clients should echo this value rather than "
-                      + "construct it. Page forward until `paging.after` is null to drain the range.",
+                  "Cursor from the previous response's `paging.after`. Pass it back to get the next "
+                      + "page; keep going until it is empty.",
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
