@@ -42,7 +42,10 @@ import {
   updatePersonaAIContextRule,
 } from '../../../../rest/PersonaAPI';
 import { getRelativeTime } from '../../../../utils/date-time/DateTimeUtils';
-import { normalizePersonaContextDefinition } from '../../../../utils/PersonaAIContextUtils';
+import {
+  formatPersonaVersion,
+  normalizePersonaContextDefinition,
+} from '../../../../utils/PersonaAIContextUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { ContextPreviewModal } from './ContextPreviewModal/ContextPreviewModal.component';
@@ -299,7 +302,9 @@ export const PersonaAIContext = ({
               weight="semibold"
               onClick={() => setVersionHistoryOpen(true)}>
               <ClockRewind className="tw:size-4" />
-              {t('label.version-short', { version: persona.version })}
+              {t('label.version-short', {
+                version: formatPersonaVersion(persona.version),
+              })}
             </Typography>
           )}
           <Button
@@ -457,7 +462,7 @@ export const PersonaAIContext = ({
               weight="semibold">
               {t('label.rule-plural')}
             </Typography>
-            <Badge color="blue-dark" type="pill-color">
+            <Badge color="blue-dark" size="sm" type="pill-color">
               {rules.length}
             </Badge>
           </Box>

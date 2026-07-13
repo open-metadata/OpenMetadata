@@ -35,6 +35,7 @@ import {
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
   HEAVY_PERSONA_CONTEXT_SECTIONS,
   PERSONA_CONTEXT_ENTITY_LABEL_KEYS,
+  PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS,
   PERSONA_CONTEXT_SECTION_LABEL_KEYS,
 } from '../../../../../constants/PersonaAIContext.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -80,6 +81,10 @@ export const ContextRuleCard = ({
 
   const entityLabel = t(
     PERSONA_CONTEXT_ENTITY_LABEL_KEYS[rule.entityType] ?? 'label.entity'
+  );
+  const entityLabelPlural = t(
+    PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS[rule.entityType] ??
+      'label.entity-plural'
   );
   const EntityIcon = ENTITY_TYPE_ICONS[rule.entityType] ?? Hexagon01;
   const visibleSections = rule.sections?.slice(0, MAX_VISIBLE_SECTIONS) ?? [];
@@ -152,7 +157,7 @@ export const ContextRuleCard = ({
               weight="medium">
               <FilterLines className="tw:size-3.5 tw:text-quaternary" />
               {t('label.all-entity', {
-                entity: `${entityLabel.toLowerCase()}s`,
+                entity: entityLabelPlural,
               })}
             </Typography>
           )}
@@ -213,7 +218,7 @@ export const ContextRuleCard = ({
             <BadgeWithDot color="success" size="md">
               {t('message.persona-context-entity-matched', {
                 count: matchedCount,
-                entity: `${entityLabel.toLowerCase()}s`,
+                entity: entityLabelPlural,
               })}
             </BadgeWithDot>
           )}
