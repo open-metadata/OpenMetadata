@@ -21,6 +21,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import java.util.ArrayList;
 import java.util.List;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.jdbi3.ChangeEventRepository.Page;
 import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.util.RestUtil;
@@ -36,7 +38,7 @@ class ChangeEventRepositoryTest {
   }
 
   private static long decodeOffset(String afterCursor) {
-    return Long.parseLong(RestUtil.decodeCursor(afterCursor));
+    return Long.parseLong(afterCursor);
   }
 
   @Test
@@ -83,6 +85,21 @@ class ChangeEventRepositoryTest {
 
     assertTrue(page.records().isEmpty(), "from past the end yields an empty page");
     assertNull(page.afterCursor(), "no cursor when the window is empty");
+  }
+
+  @Test
+  void cursorSurvivesResultListEncodingRoundTrip() {
+    Page page = ChangeEventRepository.mergePage(records(10, 20, 30, 40), 0, 2);
+
+    ResultList<ChangeEvent> result =
+        new ResultList<>(List.of(), null, page.afterCursor(), page.records().size());
+    String pagingAfter = result.getPaging().getAfter();
+    String decodedByResource = RestUtil.decodeCursor(pagingAfter);
+
+    assertEquals(
+        20L,
+        Long.parseLong(decodedByResource),
+        "paging.after must decode exactly once back to the raw offset the resource parses");
   }
 
   @Test

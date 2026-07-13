@@ -28,7 +28,6 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
-import org.openmetadata.service.util.RestUtil;
 
 @Repository
 public class ChangeEventRepository {
@@ -69,7 +68,8 @@ public class ChangeEventRepository {
     long total =
         count(
             timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
-    return new ResultList<>(events, null, page.afterCursor(), (int) total);
+    return new ResultList<>(
+        events, null, page.afterCursor(), (int) Math.min(total, Integer.MAX_VALUE));
   }
 
   record Page(List<ChangeEventRecord> records, String afterCursor) {}
@@ -78,7 +78,8 @@ public class ChangeEventRepository {
    * Keyset-merges the bounded per-event-type result sets: sorts by monotonic {@code offset}, skips
    * {@code from} records, keeps the next {@code limit}, and derives the forward cursor from the last
    * kept offset. The cursor path (offset &gt; afterOffset) uses {@code from = 0}; positional paging
-   * uses {@code afterOffset = 0}.
+   * uses {@code afterOffset = 0}. The cursor is the raw offset value; {@link ResultList} base64
+   * encodes it into {@code paging.after}.
    */
   static Page mergePage(List<ChangeEventRecord> records, int from, int limit) {
     records.sort(Comparator.comparingLong(ChangeEventRecord::offset));
@@ -87,9 +88,7 @@ public class ChangeEventRepository {
     List<ChangeEventRecord> page = new ArrayList<>(records.subList(windowStart, windowEnd));
     boolean hasMore = records.size() > from + limit;
     String afterCursor =
-        hasMore && !page.isEmpty()
-            ? RestUtil.encodeCursor(String.valueOf(page.getLast().offset()))
-            : null;
+        hasMore && !page.isEmpty() ? String.valueOf(page.getLast().offset()) : null;
     return new Page(page, afterCursor);
   }
 

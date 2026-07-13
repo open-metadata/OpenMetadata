@@ -73,7 +73,11 @@ public class EventResource {
       operationId = "listChangeEvents",
       summary = "Get change events",
       description =
-          "Get a list of change events matching event types, entity type, from a given date",
+          "Get a paginated list of change events matching event types, entity type, from a given "
+              + "date. Results are ordered by the monotonic change-event offset (insertion order), "
+              + "not strictly by event time, so keyset pagination via `after` is stable. Use "
+              + "`limit` with the `after` cursor for forward paging, or `from` for positional "
+              + "access; `from` and `after` are mutually exclusive.",
       responses = {
         @ApiResponse(
             responseCode = "200",
@@ -155,6 +159,9 @@ public class EventResource {
     List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
     String decodedCursor = RestUtil.decodeCursor(after);
+    if (decodedCursor != null && from > 0) {
+      throw new IllegalArgumentException("Only one of 'from' or 'after' query parameter allowed");
+    }
     long afterOffset = decodedCursor == null ? 0 : Long.parseLong(decodedCursor);
     return repository.list(
         timestamp,
