@@ -342,11 +342,6 @@ public class PersonaRepository extends EntityRepository<Persona> {
   protected void postUpdate(Persona original, Persona updated) {
     super.postUpdate(original, updated);
     PersonaContextCache.getInstance().invalidate(original, updated);
-    if (!Objects.equals(original.getDefault(), updated.getDefault())) {
-      SubjectCache.invalidateAllUserContexts();
-    } else if (!userAssignmentsMatch(original.getUsers(), updated.getUsers())) {
-      invalidateUserContexts(original.getUsers(), updated.getUsers());
-    }
   }
 
   @Override
@@ -395,6 +390,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
     private void updateUsers(Persona origPersona, Persona updatedPersona) {
       List<EntityReference> origUsers = listOrEmpty(origPersona.getUsers());
       List<EntityReference> updatedUsers = listOrEmpty(updatedPersona.getUsers());
+      boolean assignmentsChanged = !userAssignmentsMatch(origUsers, updatedUsers);
       updateToRelationships(
           "users",
           PERSONA,
@@ -404,6 +400,11 @@ public class PersonaRepository extends EntityRepository<Persona> {
           origUsers,
           updatedUsers,
           false);
+      if (assignmentsChanged) {
+        List<EntityReference> affectedUsers = new ArrayList<>(origUsers);
+        affectedUsers.addAll(updatedUsers);
+        deferReactOperation(() -> SubjectCache.invalidateUserContexts(affectedUsers));
+      }
     }
 
     private void updateDefault(Persona origPersona, Persona updatedPersona) {
@@ -411,6 +412,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
       Boolean updatedDefault = updatedPersona.getDefault();
       if (!Objects.equals(origDefault, updatedDefault)) {
         recordChange("default", origDefault, updatedDefault);
+        deferReactOperation(SubjectCache::invalidateAllUserContexts);
       }
     }
   }
