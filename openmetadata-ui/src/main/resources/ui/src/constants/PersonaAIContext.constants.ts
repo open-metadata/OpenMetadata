@@ -126,6 +126,28 @@ export const PERSONA_CONTEXT_ENTITY_LABEL_KEYS: Record<string, string> = {
   [EntityType.TOPIC]: 'label.topic',
 };
 
+export const PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS: Record<string, string> =
+  {
+    [EntityType.API_COLLECTION]: 'label.api-collection-plural',
+    [EntityType.API_ENDPOINT]: 'label.api-endpoint-plural',
+    [EntityType.CHART]: 'label.chart-plural',
+    [EntityType.CONTAINER]: 'label.container-plural',
+    [EntityType.DASHBOARD]: 'label.dashboard-plural',
+    [EntityType.DASHBOARD_DATA_MODEL]: 'label.data-model-plural',
+    [EntityType.DATABASE]: 'label.database-plural',
+    [EntityType.DATABASE_SCHEMA]: 'label.database-schema-plural',
+    [EntityType.DATA_PRODUCT]: 'label.data-product-plural',
+    [EntityType.GLOSSARY_TERM]: 'label.glossary-term-plural',
+    [EntityType.KNOWLEDGE_PAGE]: 'label.article-plural',
+    [EntityType.METRIC]: 'label.metric-plural',
+    [EntityType.MLMODEL]: 'label.ml-model-plural',
+    [EntityType.PIPELINE]: 'label.pipeline-plural',
+    [EntityType.SEARCH_INDEX]: 'label.search-index-plural',
+    [EntityType.STORED_PROCEDURE]: 'label.stored-procedure-plural',
+    [EntityType.TABLE]: 'label.table-plural',
+    [EntityType.TOPIC]: 'label.topic-plural',
+  };
+
 export const PERSONA_CONTEXT_SECTION_LABEL_KEYS: Record<
   ContextSection,
   string
