@@ -155,6 +155,7 @@ const TestDefinitionList = () => {
 
       {isFormVisible && (
         <TestDefinitionForm
+          open
           initialValues={selectedDefinition}
           onCancel={handleFormCancel}
           onSuccess={handleFormSuccess}
