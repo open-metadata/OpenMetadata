@@ -2323,6 +2323,7 @@
     "show-nested": "Yuvalanmışları Göster",
     "show-or-hide-advanced-config": "{{showAdv}} Gelişmiş Yapılandırma",
     "show-or-hide-column-plural": "Sütunları göster/gizle",
+    "show-property-plural": "Özellikleri Göster",
     "show-raw-logs": "Ham günlükleri göster",
     "showing-count-of-total-assets": "{{total}} varlıktan {{count}} tanesi gösteriliyor",
     "showing-total-failure-plural": "Toplam {{total}} hata",
