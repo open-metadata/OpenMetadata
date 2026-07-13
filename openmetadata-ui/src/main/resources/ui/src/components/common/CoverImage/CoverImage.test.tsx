@@ -53,7 +53,9 @@ describe('CoverImage', () => {
 
     expect(image).toBeInTheDocument();
     expect(image).toHaveAttribute('src', 'https://example.com/img.png');
-    expect(image).not.toHaveStyle({ transform: expect.stringContaining('translateY') });
+    expect(image).not.toHaveStyle({
+      transform: expect.stringContaining('translateY'),
+    });
   });
 
   it('renders loading element while authenticated URL is resolving', () => {
@@ -100,6 +102,8 @@ describe('CoverImage', () => {
 
     const image = screen.getByTestId('cover-image');
 
-    expect(image).not.toHaveStyle({ transform: expect.stringContaining('translateY') });
+    expect(image).not.toHaveStyle({
+      transform: expect.stringContaining('translateY'),
+    });
   });
 });
