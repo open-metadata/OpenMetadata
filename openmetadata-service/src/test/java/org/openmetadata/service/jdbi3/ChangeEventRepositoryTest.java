@@ -43,7 +43,7 @@ class ChangeEventRepositoryTest {
 
   @Test
   void mergePageSortsByOffsetAcrossEventTypes() {
-    Page page = ChangeEventRepository.mergePage(records(9, 2, 7, 1, 5), 0, 10);
+    Page page = ChangeEventRepository.mergePage(records(9, 2, 7, 1, 5), 10);
 
     List<Long> offsets = page.records().stream().map(ChangeEventRecord::offset).toList();
     assertEquals(List.of(1L, 2L, 5L, 7L, 9L), offsets, "records must be ordered by offset");
@@ -52,7 +52,7 @@ class ChangeEventRepositoryTest {
 
   @Test
   void mergePageBoundsResultsToLimitAndEmitsCursor() {
-    Page page = ChangeEventRepository.mergePage(records(10, 20, 30, 40, 50), 0, 3);
+    Page page = ChangeEventRepository.mergePage(records(10, 20, 30, 40, 50), 3);
 
     List<Long> offsets = page.records().stream().map(ChangeEventRecord::offset).toList();
     assertEquals(List.of(10L, 20L, 30L), offsets, "page is capped at the requested limit");
@@ -62,34 +62,36 @@ class ChangeEventRepositoryTest {
 
   @Test
   void mergePageWithExactlyLimitHasNoCursor() {
-    Page page = ChangeEventRepository.mergePage(records(1, 2, 3), 0, 3);
+    Page page = ChangeEventRepository.mergePage(records(1, 2, 3), 3);
 
     assertEquals(3, page.records().size());
     assertNull(page.afterCursor(), "no cursor when the result set exactly equals the limit");
   }
 
   @Test
-  void mergePageWithFromSkipsToPositionalWindow() {
-    Page page = ChangeEventRepository.mergePage(records(1, 2, 3, 4, 5, 6, 7), 2, 3);
+  void boundaryOffsetResolvesPositionalSkipToKeysetOffset() {
+    List<Long> offsets = new ArrayList<>(List.of(50L, 10L, 40L, 20L, 30L));
 
-    List<Long> offsets = page.records().stream().map(ChangeEventRecord::offset).toList();
-    assertEquals(List.of(3L, 4L, 5L), offsets, "from=2 limit=3 returns the 3rd..5th ordered rows");
-    assertNotNull(page.afterCursor(), "cursor still emitted when rows remain past the window");
+    Long boundary = ChangeEventRepository.boundaryOffset(offsets, 2);
+
     assertEquals(
-        5L, decodeOffset(page.afterCursor()), "cursor points at the last row in the window");
+        20L,
+        boundary,
+        "from=2 resolves to the 2nd smallest offset; window is fetched with offset > 20");
   }
 
   @Test
-  void mergePageWithFromBeyondResultsReturnsEmpty() {
-    Page page = ChangeEventRepository.mergePage(records(1, 2, 3), 10, 5);
+  void boundaryOffsetBeyondResultsReturnsNull() {
+    List<Long> offsets = new ArrayList<>(List.of(10L, 20L, 30L));
 
-    assertTrue(page.records().isEmpty(), "from past the end yields an empty page");
-    assertNull(page.afterCursor(), "no cursor when the window is empty");
+    assertNull(
+        ChangeEventRepository.boundaryOffset(offsets, 10),
+        "from past the end has no boundary offset, so the window is empty");
   }
 
   @Test
   void cursorSurvivesResultListEncodingRoundTrip() {
-    Page page = ChangeEventRepository.mergePage(records(10, 20, 30, 40), 0, 2);
+    Page page = ChangeEventRepository.mergePage(records(10, 20, 30, 40), 2);
 
     ResultList<ChangeEvent> result =
         new ResultList<>(List.of(), null, page.afterCursor(), page.records().size());
@@ -120,7 +122,7 @@ class ChangeEventRepositoryTest {
           fetched.add(new ChangeEventRecord(offset, "{}"));
         }
       }
-      Page page = ChangeEventRepository.mergePage(fetched, 0, limit);
+      Page page = ChangeEventRepository.mergePage(fetched, limit);
       page.records().forEach(record -> paged.add(record.offset()));
       cursor = page.afterCursor();
       if (cursor != null) {

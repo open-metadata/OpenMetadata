@@ -8735,17 +8735,23 @@ public interface CollectionDAO {
       return result;
     }
 
+    // Deferred join: the page is resolved index-only on `offset` in the derived table, then json is
+    // fetched by primary key for only the paged rows, so the json blob never enters the filesort
+    // (MySQL packs wide rows into sort_buffer_size and throws ER_OUT_OF_SORTMEMORY otherwise).
+    // The caller re-sorts the merged pages, so no outer ORDER BY is needed here.
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT `offset` AS offset, json FROM change_event WHERE eventType = :eventType "
+            "SELECT c.`offset` AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT `offset` FROM change_event WHERE eventType = :eventType "
                 + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND `offset` > :afterOffset "
-                + "ORDER BY `offset` ASC LIMIT :limit",
+                + "ORDER BY `offset` ASC LIMIT :limit) k ON c.`offset` = k.`offset`",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT \"offset\" AS offset, json FROM change_event WHERE eventType = :eventType "
+            "SELECT c.\"offset\" AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
                 + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND \"offset\" > :afterOffset "
-                + "ORDER BY \"offset\" ASC LIMIT :limit",
+                + "ORDER BY \"offset\" ASC LIMIT :limit) k ON c.\"offset\" = k.\"offset\"",
         connectionType = POSTGRES)
     @RegisterRowMapper(ChangeEventRecordMapper.class)
     List<ChangeEventRecord> listAfterWithEntityFilter(
@@ -8757,16 +8763,75 @@ public interface CollectionDAO {
 
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT `offset` AS offset, json FROM change_event WHERE eventType = :eventType "
+            "SELECT c.`offset` AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT `offset` FROM change_event WHERE eventType = :eventType "
+                + "AND eventTime >= :timestamp AND `offset` > :afterOffset "
+                + "ORDER BY `offset` ASC LIMIT :limit) k ON c.`offset` = k.`offset`",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT c.\"offset\" AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
+                + "AND eventTime >= :timestamp AND \"offset\" > :afterOffset "
+                + "ORDER BY \"offset\" ASC LIMIT :limit) k ON c.\"offset\" = k.\"offset\"",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listAfterWithoutEntityFilter(
+        @Bind("eventType") String eventType,
+        @Bind("timestamp") long timestamp,
+        @Bind("afterOffset") long afterOffset,
+        @Bind("limit") int limit);
+
+    default List<Long> listOffsetsAfter(
+        EventType eventType,
+        List<String> entityTypes,
+        long timestamp,
+        long afterOffset,
+        int limit) {
+      List<Long> result;
+      if (nullOrEmpty(entityTypes)) {
+        result = Collections.emptyList();
+      } else if (entityTypes.getFirst().equals("*")) {
+        result =
+            listOffsetsAfterWithoutEntityFilter(eventType.value(), timestamp, afterOffset, limit);
+      } else {
+        result =
+            listOffsetsAfterWithEntityFilter(
+                eventType.value(), entityTypes, timestamp, afterOffset, limit);
+      }
+      return result;
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset` FROM change_event WHERE eventType = :eventType "
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND `offset` > :afterOffset "
+                + "ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND \"offset\" > :afterOffset "
+                + "ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    List<Long> listOffsetsAfterWithEntityFilter(
+        @Bind("eventType") String eventType,
+        @BindList("entityTypes") List<String> entityTypes,
+        @Bind("timestamp") long timestamp,
+        @Bind("afterOffset") long afterOffset,
+        @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset` FROM change_event WHERE eventType = :eventType "
                 + "AND eventTime >= :timestamp AND `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
-            "SELECT \"offset\" AS offset, json FROM change_event WHERE eventType = :eventType "
+            "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
                 + "AND eventTime >= :timestamp AND \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
         connectionType = POSTGRES)
-    @RegisterRowMapper(ChangeEventRecordMapper.class)
-    List<ChangeEventRecord> listAfterWithoutEntityFilter(
+    List<Long> listOffsetsAfterWithoutEntityFilter(
         @Bind("eventType") String eventType,
         @Bind("timestamp") long timestamp,
         @Bind("afterOffset") long afterOffset,
