@@ -98,8 +98,7 @@
       "type": "array",
       "items": {
         "type": "string"
-      },
-      "default": null
+      }
     }
   },
   "required": ["glossary", "name", "description"],
