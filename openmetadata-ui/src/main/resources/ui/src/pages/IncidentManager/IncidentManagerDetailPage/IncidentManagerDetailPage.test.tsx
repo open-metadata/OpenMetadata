@@ -184,9 +184,7 @@ const Wrapper = ({ children }: { children: React.ReactNode }) => {
 
   return (
     <MemoryRouter>
-      <QueryClientProvider client={queryClient}>
-        {children}
-      </QueryClientProvider>
+      <QueryClientProvider client={queryClient}>{children}</QueryClientProvider>
     </MemoryRouter>
   );
 };
