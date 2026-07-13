@@ -505,17 +505,23 @@ public class SearchRepository {
   }
 
   /**
-   * Re-applies the aliases declared in indexMapping.json to an index that already exists. Alias
-   * adds are idempotent, so this is a no-op when the index already carries them. Without it, an
+   * Attaches the Data Insights aliases declared in indexMapping.json to an index that already
+   * exists. Only DI aliases are reconciled here (not parent/short aliases, which the reindex
+   * machinery owns) so startup side effects stay scoped to the newly introduced aliases. Alias
+   * adds are idempotent, so this is a no-op when the index already carries them. Without it, a DI
    * alias introduced in a newer release would never attach to an upgraded cluster, since
    * createIndex only creates aliases for indices it creates.
    */
   private void reconcileAliases(IndexMapping indexMapping) {
+    List<String> dataInsightAliases = indexMapping.getDataInsightAliases(clusterAlias);
+    if (nullOrEmpty(dataInsightAliases)) {
+      return;
+    }
     try {
-      searchClient.createAliases(indexMapping);
+      searchClient.addIndexAlias(indexMapping, dataInsightAliases.toArray(new String[0]));
     } catch (Exception e) {
       LOG.warn(
-          "Failed to reconcile aliases for index {}: {}",
+          "Failed to reconcile Data Insights aliases for index {}: {}",
           indexMapping.getIndexName(clusterAlias),
           e.getMessage());
     }

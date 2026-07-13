@@ -274,4 +274,5 @@ SET json = jsonb_set(
     '{appConfiguration,moduleConfiguration}',
     (json::jsonb #> '{appConfiguration,moduleConfiguration}') - 'dataQuality')
 WHERE extension LIKE 'app.version.%'
+  AND json::jsonb ->> 'name' = 'DataInsightsApplication'
   AND json::jsonb #> '{appConfiguration,moduleConfiguration}' ? 'dataQuality';
