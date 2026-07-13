@@ -147,6 +147,13 @@ export const useTreeSelectData = <T = unknown>({
         });
       } catch (error) {
         if (controller.signal.aborted) {
+          if (params.parentId) {
+            const nextLoadingNodes = new Set(loadingNodesRef.current);
+            nextLoadingNodes.delete(params.parentId);
+            loadingNodesRef.current = nextLoadingNodes;
+            setState((prev) => ({ ...prev, loadingNodes: nextLoadingNodes }));
+          }
+
           return;
         }
 
