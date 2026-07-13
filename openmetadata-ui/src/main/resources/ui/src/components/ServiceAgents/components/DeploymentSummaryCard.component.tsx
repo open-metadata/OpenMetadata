@@ -16,6 +16,7 @@ import { Check } from '@untitledui/icons';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RunRunningIcon } from '../../../assets/svg/agents/run-running.svg';
+import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Agent } from '../AgentsPage.interface';
 import { fmtNum, formatEtaShort, getEtaInfo } from '../utils/agents.utils';
 
@@ -61,8 +62,11 @@ const DeploymentSummaryCard: FC<DeploymentSummaryCardProps> = ({ agents }) => {
   const done = activeAgents.filter((a) => a.status === 'success').length;
   const failed = activeAgents.filter((a) => a.status === 'failed').length;
   const queued = total - done - running - failed;
+  // Assets ingested reflects only the Metadata agent — other agents count
+  // different units (queries, models) or profile existing assets rather than
+  // ingesting new ones.
   const assets = activeAgents
-    .filter((a) => a.unit === 'assets')
+    .filter((a) => a.pipelineType === PipelineType.Metadata)
     .reduce((sum, a) => sum + a.assets, 0);
   const errors = activeAgents.reduce((sum, a) => sum + a.errors, 0);
   const etas = activeAgents

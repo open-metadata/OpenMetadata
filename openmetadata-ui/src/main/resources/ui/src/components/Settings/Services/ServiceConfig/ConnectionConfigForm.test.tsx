@@ -22,6 +22,7 @@ import { formatFormDataForSubmit } from '../../../../utils/JSONSchemaFormUtils';
 import {
   buildValidConfig,
   flattenAuthTypeIntoConfig,
+  getConnectionFieldSection,
   getFilteredSchema,
   getMissingRequiredFieldsCount,
   getSchemaWithSynthesizedAuthType,
@@ -174,6 +175,10 @@ jest.mock('../../../../utils/ServiceConnectionUtils', () => ({
     .mockResolvedValue({ schema: { type: 'object' }, uiSchema: {} }),
   EMPTY_CONNECTION_SCHEMA: { schema: {}, uiSchema: {} },
   getFilteredSchema: jest.fn().mockReturnValue({}),
+  getConnectionFieldSection: jest.fn().mockReturnValue('scope'),
+  getFieldSchemaForId: jest
+    .fn()
+    .mockReturnValue({ title: 'Taxonomy Project IDs' }),
   getMissingRequiredFieldsCount: jest.fn().mockReturnValue(0),
   getUISchemaWithNestedDefaultFilterFieldsHidden: jest.fn().mockReturnValue({}),
   getUISchemaWithAuthFieldsAsSelect: jest.fn().mockReturnValue({}),
@@ -198,9 +203,11 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
       .mockImplementation(
         ({
           children,
+          formContext,
           isSubmitDisabled,
           noValidate,
           onChange,
+          onFocus,
           onSubmit,
           onCancel,
         }) => (
@@ -208,6 +215,18 @@ jest.mock('../../../common/FormBuilderV1/FormBuilderV1', () =>
             data-no-validate={String(Boolean(noValidate))}
             data-testid="form-builder">
             {children}
+            <button
+              data-testid="focus-via-form-context"
+              onClick={() =>
+                formContext?.handleFocus?.('root/taxonomyProjectID')
+              }>
+              Focus via formContext
+            </button>
+            <button
+              data-testid="focus-via-rjsf"
+              onClick={() => onFocus?.('root/hostPort')}>
+              Focus via RJSF
+            </button>
             <button
               data-testid="change-valid-form"
               onClick={() => onChange({ formData })}>
@@ -709,6 +728,36 @@ describe('ServiceConfig', () => {
     const testConnectionProps = mockTestConnectionProps.mock.calls.at(-1)?.[0];
 
     expect(testConnectionProps.onValidateFormRequiredFields()).toBe(false);
+  });
+
+  it('should enrich focus events emitted through formContext.handleFocus', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('focus-via-form-context'));
+
+    expect(getConnectionFieldSection).toHaveBeenCalledWith(
+      expect.anything(),
+      'root/taxonomyProjectID'
+    );
+    expect(mockOnFocus).toHaveBeenCalledWith('root/taxonomyProjectID', {
+      title: 'Taxonomy Project IDs',
+      section: 'scope',
+    });
+  });
+
+  it('should enrich focus events emitted through the RJSF onFocus path', async () => {
+    await act(async () => {
+      render(<ConnectionConfigForm {...mockProps} />);
+    });
+
+    fireEvent.click(screen.getByTestId('focus-via-rjsf'));
+
+    expect(mockOnFocus).toHaveBeenCalledWith('root/hostPort', {
+      title: 'Taxonomy Project IDs',
+      section: 'scope',
+    });
   });
 
   it('should render with correct brandName keys', async () => {
