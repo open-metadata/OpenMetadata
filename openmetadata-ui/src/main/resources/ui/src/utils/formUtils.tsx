@@ -50,10 +50,7 @@ import FormItemLabel from '../components/common/Form/FormItemLabel';
 import GlossaryTermTreeSelect, {
   GlossaryTermTreeSelectProps,
 } from '../components/common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
-import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
-import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
-import MUITextField from '../components/common/MUITextField/MUITextField';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
@@ -279,7 +276,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item {...formProps}>
           <GlossaryTermTreeSelect
             {...(props as unknown as GlossaryTermTreeSelectProps)}
-            label={muiLabel}
+            label={typeof label === 'string' ? label : undefined}
             placeholder={placeholder}
             required={isRequired}
           />
@@ -324,7 +321,7 @@ export const getField = (field: FieldProp) => {
         <Form.Item {...formProps}>
           <DomainTreeSelect
             {...(props as unknown as DomainTreeSelectProps)}
-            label={muiLabel as string}
+            label={typeof label === 'string' ? label : undefined}
             placeholder={placeholder}
             required={isRequired}
           />
