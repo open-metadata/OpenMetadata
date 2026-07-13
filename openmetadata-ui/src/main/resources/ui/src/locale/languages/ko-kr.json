@@ -2323,6 +2323,7 @@
     "show-nested": "중첩 표시",
     "show-or-hide-advanced-config": "고급 구성 {{showAdv}}",
     "show-or-hide-column-plural": "열 표시/숨기기",
+    "show-property-plural": "속성 표시",
     "show-raw-logs": "원시 로그 표시",
     "showing-count-of-total-assets": "{{total}}개 중 {{count}}개 자산 표시 중",
     "showing-total-failure-plural": "총 {{total}}건 실패",

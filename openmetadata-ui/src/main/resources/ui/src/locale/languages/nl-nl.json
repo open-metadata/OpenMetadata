@@ -2323,6 +2323,7 @@
     "show-nested": "Geneste weergeven",
     "show-or-hide-advanced-config": "{{showAdv}} geavanceerde configuratie",
     "show-or-hide-column-plural": "Kolommen tonen/verbergen",
+    "show-property-plural": "Eigenschappen tonen",
     "show-raw-logs": "Onbewerkte logs tonen",
     "showing-count-of-total-assets": "{{count}} van {{total}} assets weergegeven",
     "showing-total-failure-plural": "Totaal {{total}} fouten",

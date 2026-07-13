@@ -2323,6 +2323,7 @@
     "show-nested": "Afficher imbriqué",
     "show-or-hide-advanced-config": "{{showAdv}} Configuration Avancée",
     "show-or-hide-column-plural": "Afficher / Masquer les colonnes",
+    "show-property-plural": "Afficher les propriétés",
     "show-raw-logs": "Afficher les journaux bruts",
     "showing-count-of-total-assets": "Affichage de {{count}} sur {{total}} assets",
     "showing-total-failure-plural": "Nombre total d'échecs {{total}}",

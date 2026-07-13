@@ -2323,6 +2323,7 @@
     "show-nested": "Mostrar Aninhados",
     "show-or-hide-advanced-config": "{{showAdv}} Configuração Avançada",
     "show-or-hide-column-plural": "Mostrar / Ocultar colunas",
+    "show-property-plural": "Mostrar Propriedades",
     "show-raw-logs": "Mostrar logs brutos",
     "showing-count-of-total-assets": "Exibindo {{count}} de {{total}} ativos",
     "showing-total-failure-plural": "Total de falhas {{total}}",
