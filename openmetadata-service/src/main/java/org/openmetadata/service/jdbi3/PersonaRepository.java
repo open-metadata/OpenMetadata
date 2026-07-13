@@ -14,29 +14,81 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.Entity.USER;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Locale;
 import java.util.Objects;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.PersonaContextDefinition;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.change.ChangeSource;
+import org.openmetadata.schema.type.personaContext.ContextRule;
+import org.openmetadata.schema.type.personaContext.ContextSection;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.aicontext.PersonaContextBuilder;
+import org.openmetadata.service.aicontext.PersonaContextCache;
 import org.openmetadata.service.resources.teams.PersonaResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
 @Slf4j
 public class PersonaRepository extends EntityRepository<Persona> {
-  static final String PERSONA_UPDATE_FIELDS = "users,default";
-  static final String PERSONA_PATCH_FIELDS = "users,default";
+  static final String PERSONA_UPDATE_FIELDS = "users,default,contextDefinition";
+  static final String PERSONA_PATCH_FIELDS = "users,default,contextDefinition";
+  static final String FIELD_CONTEXT_DEFINITION = "contextDefinition";
   static final String FIELD_USERS = "users";
+  private static final int DEFAULT_MAX_ASSETS = 200;
+  private static final int MAX_RULES = 25;
+  private static final int MIN_CHARACTER_BUDGET = 10_000;
+  private static final int MAX_CHARACTER_BUDGET = 2_000_000;
+  private static final int MIN_CACHE_TTL_MINUTES = 1;
+  private static final int MAX_CACHE_TTL_MINUTES = 1_440;
+  private static final Set<ContextSection> ASSET_SECTIONS =
+      Set.of(
+          ContextSection.DESCRIPTION,
+          ContextSection.SCHEMA,
+          ContextSection.CONSTRAINTS,
+          ContextSection.JOINS,
+          ContextSection.TAGS,
+          ContextSection.GLOSSARY_TERMS,
+          ContextSection.ARTICLES,
+          ContextSection.METRICS,
+          ContextSection.LINEAGE,
+          ContextSection.PROFILE,
+          ContextSection.DATA_QUALITY);
+  private static final Set<ContextSection> ARTICLE_SECTIONS =
+      Set.of(
+          ContextSection.TITLE_SUMMARY,
+          ContextSection.FULL_BODY,
+          ContextSection.TAGS,
+          ContextSection.GLOSSARY_TERMS,
+          ContextSection.RELATED_ASSETS);
+  private static final Set<ContextSection> METRIC_SECTIONS =
+      Set.of(
+          ContextSection.DEFINITION,
+          ContextSection.FORMULA_EXPRESSION,
+          ContextSection.UNIT_GRAIN,
+          ContextSection.OWNER,
+          ContextSection.TAGS,
+          ContextSection.RELATED_ASSETS);
+  private static final Set<ContextSection> GLOSSARY_TERM_SECTIONS =
+      Set.of(
+          ContextSection.DEFINITION,
+          ContextSection.SYNONYMS,
+          ContextSection.RELATED_TERMS,
+          ContextSection.TAGS,
+          ContextSection.RELATED_ASSETS);
 
   public PersonaRepository() {
     super(
@@ -57,12 +109,15 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   @Override
   public void clearFields(Persona persona, Fields fields) {
+    persona.setContextDefinition(
+        fields.contains(FIELD_CONTEXT_DEFINITION) ? persona.getContextDefinition() : null);
     persona.setUsers(fields.contains(FIELD_USERS) ? persona.getUsers() : null);
   }
 
   @Override
   public void prepare(Persona persona, boolean update) {
     validateUsers(persona.getUsers());
+    validateContextDefinition(persona.getContextDefinition());
     if (Boolean.TRUE.equals(persona.getDefault())) {
       unsetExistingDefaultPersona(persona.getId().toString());
     }
@@ -131,6 +186,108 @@ public class PersonaRepository extends EntityRepository<Persona> {
     return null;
   }
 
+  static void validateContextDefinition(PersonaContextDefinition definition) {
+    if (definition == null) {
+      return;
+    }
+    definition.setLastGeneratedAt(null);
+    definition.setCacheState(null);
+    definition.setLastError(null);
+    if (definition.getCharacterBudget() == null
+        || definition.getCharacterBudget() < MIN_CHARACTER_BUDGET
+        || definition.getCharacterBudget() > MAX_CHARACTER_BUDGET) {
+      throw new IllegalArgumentException(
+          "Persona context characterBudget must be between 10000 and 2000000");
+    }
+    if (definition.getCacheTtlMinutes() == null
+        || definition.getCacheTtlMinutes() < MIN_CACHE_TTL_MINUTES
+        || definition.getCacheTtlMinutes() > MAX_CACHE_TTL_MINUTES) {
+      throw new IllegalArgumentException(
+          "Persona context cacheTtlMinutes must be between 1 and 1440");
+    }
+    if (listOrEmpty(definition.getRules()).size() > MAX_RULES) {
+      throw new IllegalArgumentException("Persona context supports at most 25 rules");
+    }
+    Set<UUID> ruleIds = new HashSet<>();
+    Set<String> ruleNames = new HashSet<>();
+    for (ContextRule rule : listOrEmpty(definition.getRules())) {
+      if (rule.getId() == null) {
+        rule.setId(UUID.randomUUID());
+      }
+      if (!ruleIds.add(rule.getId())) {
+        throw new IllegalArgumentException(
+            "Persona context rule IDs must be unique: " + rule.getId());
+      }
+      rule.setMatchedCount(null);
+      String ruleName = rule.getName() == null ? "" : rule.getName().trim();
+      if (nullOrEmpty(ruleName)) {
+        throw new IllegalArgumentException("Persona context rule name must not be empty");
+      }
+      rule.setName(ruleName);
+      if (!ruleNames.add(ruleName.toLowerCase(Locale.ROOT))) {
+        throw new IllegalArgumentException(
+            "Persona context rule names must be unique: " + ruleName);
+      }
+      String ruleEntityType = rule.getEntityType();
+      if (!PersonaContextBuilder.supportsEntityType(ruleEntityType)) {
+        throw new IllegalArgumentException(
+            "Unsupported persona context entity type: " + ruleEntityType);
+      }
+      if (PersonaContextBuilder.isKnowledgeEntityType(ruleEntityType)) {
+        rule.setFullyRendered(true);
+      }
+      if (nullOrEmpty(rule.getSections())) {
+        rule.setSections(defaultSections(ruleEntityType));
+      }
+      if (rule.getMaxAssets() == null) {
+        rule.setMaxAssets(DEFAULT_MAX_ASSETS);
+      } else if (rule.getMaxAssets() < 1 || rule.getMaxAssets() > 1000) {
+        throw new IllegalArgumentException(
+            "Persona context rule maxAssets must be between 1 and 1000: " + ruleName);
+      }
+      Set<ContextSection> allowedSections = allowedSections(ruleEntityType);
+      if (!allowedSections.containsAll(rule.getSections())) {
+        throw new IllegalArgumentException(
+            "Persona context rule contains sections that do not apply to " + ruleEntityType);
+      }
+      if (!nullOrEmpty(rule.getQueryFilter())) {
+        JsonNode queryFilter = JsonUtils.readTree(rule.getQueryFilter());
+        if (queryFilter == null || !queryFilter.isObject()) {
+          throw new IllegalArgumentException(
+              "Persona context queryFilter must be a JSON object for rule: " + rule.getName());
+        }
+      }
+    }
+  }
+
+  private static Set<ContextSection> allowedSections(String entityType) {
+    return switch (entityType) {
+      case Entity.PAGE -> ARTICLE_SECTIONS;
+      case Entity.METRIC -> METRIC_SECTIONS;
+      case Entity.GLOSSARY_TERM -> GLOSSARY_TERM_SECTIONS;
+      default -> ASSET_SECTIONS;
+    };
+  }
+
+  private static Set<ContextSection> defaultSections(String entityType) {
+    return switch (entityType) {
+      case Entity.PAGE -> Set.of(
+          ContextSection.TITLE_SUMMARY, ContextSection.FULL_BODY, ContextSection.TAGS);
+      case Entity.METRIC -> Set.of(
+          ContextSection.DEFINITION, ContextSection.FORMULA_EXPRESSION, ContextSection.UNIT_GRAIN);
+      case Entity.GLOSSARY_TERM -> Set.of(ContextSection.DEFINITION);
+      default -> Set.of(
+          ContextSection.DESCRIPTION,
+          ContextSection.SCHEMA,
+          ContextSection.CONSTRAINTS,
+          ContextSection.JOINS,
+          ContextSection.TAGS,
+          ContextSection.GLOSSARY_TERMS,
+          ContextSection.ARTICLES,
+          ContextSection.METRICS);
+    };
+  }
+
   @Override
   @Transaction
   protected void preDelete(Persona persona, String deletedBy) {
@@ -167,6 +324,18 @@ public class PersonaRepository extends EntityRepository<Persona> {
     }
   }
 
+  @Override
+  protected void postUpdate(Persona original, Persona updated) {
+    super.postUpdate(original, updated);
+    PersonaContextCache.getInstance().invalidate(original, updated);
+  }
+
+  @Override
+  protected void postDelete(Persona persona, boolean hardDelete) {
+    PersonaContextCache.getInstance().invalidate(persona);
+    super.postDelete(persona, hardDelete);
+  }
+
   /** Handles entity updated from PUT and POST operation. */
   public class PersonaUpdater extends EntityUpdater {
     public PersonaUpdater(Persona original, Persona updated, Operation operation) {
@@ -177,6 +346,14 @@ public class PersonaRepository extends EntityRepository<Persona> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       compareAndUpdate("users", () -> updateUsers(original, updated));
       compareAndUpdate("default", () -> updateDefault(original, updated));
+      compareAndUpdate(
+          "contextDefinition",
+          () ->
+              recordChange(
+                  "contextDefinition",
+                  original.getContextDefinition(),
+                  updated.getContextDefinition(),
+                  true));
     }
 
     @Transaction

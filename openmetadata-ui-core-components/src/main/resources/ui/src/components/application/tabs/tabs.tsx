@@ -1,4 +1,4 @@
-import type { BadgeColors } from '@/components/base/badges/badge-types';
+import type { BadgeColors, Sizes } from '@/components/base/badges/badge-types';
 import { Badge } from '@/components/base/badges/badges';
 import { cx } from '@/utils/cx';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
@@ -104,6 +104,13 @@ const sizes = {
     underline: 'tw:text-md tw:px-1 tw:pb-2.5 tw:pt-0',
     line: 'tw:text-md tw:pr-3.5 tw:pl-3 tw:py-1',
   },
+};
+
+// The badge sizing should be less than the tab size
+// according to the design system
+const badgeSizeMapping: Record<keyof typeof sizes, Sizes> = {
+  sm: 'xs',
+  md: 'sm',
 };
 
 // Styles for different types of horizontal tabs
@@ -213,10 +220,10 @@ export const Tab = (props: TabComponentProps) => {
             <Badge
               className={cx(
                 'tw:hidden tw:transition-inherit-all tw:md:flex',
-                size === 'sm' && 'tw:-my-px'
+                badgeSizeMapping[size] === 'sm' && 'tw:-my-px'
               )}
               color={getColorStyles(state)[type] as BadgeColors}
-              size={size}
+              size={badgeSizeMapping[size]}
               type="pill-color">
               {badge}
             </Badge>

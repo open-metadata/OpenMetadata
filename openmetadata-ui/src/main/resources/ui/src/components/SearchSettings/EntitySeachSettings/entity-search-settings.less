@@ -101,3 +101,71 @@
 .term-boost-card {
   min-width: 100%;
 }
+
+.ranking-configuration-container {
+  .ranking-configuration {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .ranking-settings-card {
+    border: 1px solid @border-color-5;
+    border-radius: 10px;
+    padding: 16px 20px;
+    background-color: @white;
+  }
+
+  .ranking-stage-title {
+    color: @text-color;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 24px;
+  }
+
+  .ranking-stage-purpose {
+    color: @text-grey-muted;
+    font-size: 14px;
+    line-height: 22px;
+    margin: 8px 0 14px;
+  }
+
+  .ranking-stage-meta {
+    margin-bottom: 0;
+  }
+
+  .ranking-stage-value {
+    color: @text-color;
+    font-size: 14px;
+    line-height: 22px;
+    margin: 0;
+  }
+
+  .ranking-number-control,
+  .ranking-enabled-control {
+    display: flex;
+    flex-direction: column;
+    gap: 6px;
+  }
+
+  .ranking-enabled-control {
+    align-items: flex-end;
+  }
+
+  .ranking-field-list {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 6px;
+    margin-top: 4px;
+  }
+
+  .ranking-field-tag {
+    max-width: 100%;
+    margin-right: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    font-size: 14px;
+    line-height: 22px;
+    padding: 2px 8px;
+  }
+}

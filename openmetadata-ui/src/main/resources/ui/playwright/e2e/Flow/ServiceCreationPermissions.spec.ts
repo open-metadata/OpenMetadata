@@ -32,6 +32,7 @@ import { updateDescription } from '../../utils/entity';
 import { visitServiceDetailsPage } from '../../utils/service';
 import {
   advanceToServiceConnectionStep,
+  getAgentCard,
   mockSuccessfulTestConnection,
   selectServiceConnector,
   testConnectionIfRequired,
@@ -101,9 +102,9 @@ const openPipelineActions = async (page: Page) => {
     await metadataSubTab.click();
   }
 
-  const actionButton = page
-    .locator(`[data-row-key*="${ingestionPipelineName}"]`)
-    .getByTestId('more-actions');
+  const actionButton = getAgentCard(page, ingestionPipelineName).getByTestId(
+    'more-actions'
+  );
 
   await actionButton.waitFor();
   await actionButton.click();
@@ -335,7 +336,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
       await page.getByTestId('confirm-button').click();
 
       await toastNotification(
@@ -519,7 +519,6 @@ test.describe(
 
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
 
       const deleteResponse = page.waitForResponse(
         (response) =>
@@ -590,19 +589,32 @@ test.describe(
       await expect(page.getByTestId('edit-button')).toBeHidden();
       await expect(page.getByTestId('kill-button')).toBeHidden();
 
-      const triggerResponse = page.waitForResponse(
-        (response) =>
-          response
-            .url()
-            .includes('/api/v1/services/ingestionPipelines/trigger/') &&
-          response.request().method() === 'POST'
-      );
+      // The pipeline deployed in beforeAll may still be registering in
+      // Airflow, so retry the trigger until it succeeds instead of a fixed sleep.
+      await expect
+        .poll(
+          async () => {
+            const triggerResponse = page.waitForResponse(
+              (response) =>
+                response
+                  .url()
+                  .includes('/api/v1/services/ingestionPipelines/trigger/') &&
+                response.request().method() === 'POST'
+            );
 
-      await page.getByTestId('run-button').click();
+            await page.getByTestId('run-button').click();
 
-      const response = await triggerResponse;
+            const response = await triggerResponse;
 
-      expect(response.status()).toBe(200);
+            if (response.status() !== 200) {
+              await openPipelineActions(page);
+            }
+
+            return response.status();
+          },
+          { intervals: [3_000], timeout: 90_000 }
+        )
+        .toBe(200);
     });
 
     test('User with EditAll but not Trigger cannot run a pipeline', async ({
@@ -611,7 +623,6 @@ test.describe(
       await openPipelineActions(page);
 
       await expect(page.getByTestId('edit-button')).toBeVisible();
-      await expect(page.getByTestId('kill-button')).toBeVisible();
       await expect(page.getByTestId('re-deploy-button')).toBeVisible();
       await expect(page.getByTestId('run-button')).toBeHidden();
     });

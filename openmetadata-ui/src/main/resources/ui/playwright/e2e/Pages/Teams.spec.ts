@@ -414,7 +414,11 @@ test.describe('Teams Page', () => {
         teamDetails?.updatedName ?? ''
       );
 
-      await hardDeleteTeam(page, teamDetails?.updatedName ?? teamDetails.name);
+      await hardDeleteTeam(
+        page,
+        teamDetails?.updatedName ?? teamDetails.name,
+        true
+      );
     });
   });
 

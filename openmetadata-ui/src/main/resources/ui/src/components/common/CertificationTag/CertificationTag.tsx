@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as CertificationIcon } from '../../../assets/svg/ic-certification.svg';
 import { AssetCertification } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getTagImageSrc } from '../../../utils/IconUtils';
+import { getTagImageSrc, renderIcon } from '../../../utils/IconUtils';
 import { getClassificationTagPath } from '../../../utils/RouterUtils';
 import { getTagTooltip } from '../../../utils/TagsUtils';
 import './certification-tag.less';
@@ -30,23 +30,41 @@ const CertificationTag = ({
   showName?: boolean;
 }) => {
   const imageItem = useMemo(() => {
-    if (certification.tagLabel.style?.iconURL) {
-      const name = getEntityName(certification.tagLabel);
-      const tagSrc = getTagImageSrc(certification.tagLabel.style.iconURL);
+    const iconURL = certification.tagLabel.style?.iconURL;
+    const name = getEntityName(certification.tagLabel);
+
+    if (iconURL) {
+      const iconSize = 14;
+      const renderedIcon = renderIcon(iconURL, {
+        size: iconSize,
+        className: 'certification-img',
+        alt: `certification: ${name}`,
+      });
+
+      if (renderedIcon) {
+        return renderedIcon;
+      }
 
       return (
         <img
           alt={`certification: ${name}`}
           className="certification-img"
-          src={tagSrc}
+          src={getTagImageSrc(iconURL)}
+          style={{
+            width: iconSize,
+            height: iconSize,
+            objectFit: 'contain',
+          }}
         />
       );
     }
 
-    const iconSize = showName ? 14 : 20;
+    const defaultIconSize = 14;
 
-    return <CertificationIcon height={iconSize} width={iconSize} />;
-  }, [certification.tagLabel.style?.iconURL, showName]);
+    return (
+      <CertificationIcon height={defaultIconSize} width={defaultIconSize} />
+    );
+  }, [certification.tagLabel, showName]);
 
   const certificationRender = useMemo(() => {
     const name = getEntityName(certification.tagLabel);
@@ -55,9 +73,6 @@ const CertificationTag = ({
 
     const tagStyle = showName
       ? {
-          backgroundColor: certification.tagLabel.style?.color
-            ? certification.tagLabel.style?.color + '33'
-            : '#f8f8f8',
           padding: '2px 6px',
         }
       : {};

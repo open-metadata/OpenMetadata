@@ -5306,6 +5306,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return storageJsonNode(entity).toString();
   }
 
+  protected String serializeForVersionHistory(T entity) {
+    return JsonUtils.pojoToJson(entity);
+  }
+
   @Transaction
   protected void store(T entity, boolean update) {
     store(entity, update, null);
@@ -6997,7 +7001,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
           historyIds.add(u.getOriginal().getId());
           historyExtensions.add(
               EntityUtil.getVersionExtension(entityType, u.getOriginal().getVersion()));
-          historyJsons.add(JsonUtils.pojoToJson(u.getOriginal()));
+          historyJsons.add(serializeForVersionHistory(u.getOriginal()));
         }
       }
       if (!historyIds.isEmpty()) {
@@ -10180,7 +10184,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
       daoCollection
           .entityExtensionDAO()
-          .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
+          .insert(
+              original.getId(), extensionName, entityType, serializeForVersionHistory(original));
     }
 
     private void removeEntityHistory(Double version) {
@@ -12229,7 +12234,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     String extensionName = EntityUtil.getVersionExtension(entityType, original.getVersion());
     daoCollection
         .entityExtensionDAO()
-        .insert(original.getId(), extensionName, entityType, JsonUtils.pojoToJson(original));
+        .insert(original.getId(), extensionName, entityType, serializeForVersionHistory(original));
 
     // Directly update the entity in the database without calling other versioning methods
     dao.update(updated.getId(), updated.getFullyQualifiedName(), JsonUtils.pojoToJson(updated));

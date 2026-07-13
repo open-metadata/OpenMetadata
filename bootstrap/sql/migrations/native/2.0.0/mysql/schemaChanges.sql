@@ -427,11 +427,13 @@ CREATE TABLE IF NOT EXISTS audit_report_entity (
     impersonatedBy VARCHAR(256) GENERATED ALWAYS AS (json ->> '$.impersonatedBy') VIRTUAL,
     deleted BOOLEAN GENERATED ALWAYS AS (JSON_EXTRACT(json, '$.deleted')),
     status VARCHAR(32) GENERATED ALWAYS AS (json ->> '$.status') VIRTUAL,
+    requestSignature VARCHAR(512) GENERATED ALWAYS AS (json ->> '$.requestSignature') STORED,
     PRIMARY KEY (id),
     UNIQUE KEY unique_name (fqnHash),
     INDEX name_index (name),
     INDEX status_index (status),
-    INDEX deleted_index (deleted)
+    INDEX deleted_index (deleted),
+    INDEX request_signature_index (requestSignature)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci COMMENT='AI Audit Report entities';
 -- Database-backed user session store for multi-pod session management (issue #21971).
 CREATE TABLE IF NOT EXISTS `user_session` (
