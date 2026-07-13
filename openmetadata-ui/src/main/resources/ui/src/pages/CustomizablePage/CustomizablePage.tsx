@@ -51,7 +51,6 @@ import CustomizableDataMarketplacePage from '../CustomizableDataMarketplacePage/
 import CustomizableDataProductPage from '../CustomizableDataProductPage/CustomizableDataProductPage';
 import CustomizableDomainPage from '../CustomizableDomainPage/CustomizableDomainPage';
 import { CustomizeDetailsPage } from '../CustomizeDetailsPage/CustomizeDetailsPage';
-import { SettingsAppModePage } from '../SettingsAppModePage/SettingsAppModePage';
 import { SettingsNavigationPage } from '../SettingsNavigationPage/SettingsNavigationPage';
 import { useCustomizeStore } from './CustomizeStore';
 
@@ -61,6 +60,14 @@ const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
       import(
         '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage'
       )
+  )
+);
+
+const SettingsAppModePage = withSuspenseFallback(
+  lazy(() =>
+    import('../SettingsAppModePage/SettingsAppModePage').then((m) => ({
+      default: m.SettingsAppModePage,
+    }))
   )
 );
 
