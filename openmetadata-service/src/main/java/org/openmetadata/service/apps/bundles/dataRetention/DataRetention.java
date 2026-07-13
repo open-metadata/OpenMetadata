@@ -4,7 +4,6 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +17,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 import org.openmetadata.schema.system.EntityStats;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -44,7 +44,7 @@ public class DataRetention extends AbstractNativeApplication {
   private JobExecutionContext jobExecutionContext;
 
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
-  private Map<String, Object> failureDetails = null;
+  private IndexingError failureDetails = null;
 
   private final FeedRepository feedRepository;
   private final CollectionDAO.FeedDAO feedDAO;
@@ -93,9 +93,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("DataRetention job failed.", ex);
       internalStatus = AppRunRecord.Status.FAILED;
 
-      failureDetails = new HashMap<>();
-      failureDetails.put("message", ex.getMessage());
-      failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      failureDetails = toIndexingError(ex);
 
       updateRecordToDbAndNotify(ex);
     }
@@ -272,11 +270,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphaned relationships and hierarchies", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -295,11 +289,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphaned tag usages", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -317,11 +307,7 @@ public class DataRetention extends AbstractNativeApplication {
     } catch (Exception ex) {
       LOG.error("Failed to clean orphan test cases", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -349,11 +335,7 @@ public class DataRetention extends AbstractNativeApplication {
     } catch (Exception ex) {
       LOG.error("Failed to clean test cases with missing relationships", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -442,11 +424,7 @@ public class DataRetention extends AbstractNativeApplication {
         totalFailed += BATCH_SIZE;
         internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-        if (failureDetails == null) {
-          failureDetails = new HashMap<>();
-          failureDetails.put("message", ex.getMessage());
-          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-        }
+        recordFirstFailure(ex);
         stoppedByCondition = true;
         break;
       }
@@ -477,11 +455,7 @@ public class DataRetention extends AbstractNativeApplication {
         totalFailed += BATCH_SIZE;
         internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-        if (failureDetails == null) {
-          failureDetails = new HashMap<>();
-          failureDetails.put("message", ex.getMessage());
-          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-        }
+        recordFirstFailure(ex);
         break;
       }
     }
@@ -514,13 +488,25 @@ public class DataRetention extends AbstractNativeApplication {
     jobStats.setFailedRecords(jobStats.getFailedRecords() + failureCount);
   }
 
+  private void recordFirstFailure(Exception ex) {
+    if (failureDetails == null) {
+      failureDetails = toIndexingError(ex);
+    }
+  }
+
+  private static IndexingError toIndexingError(Exception ex) {
+    return new IndexingError()
+        .withErrorSource(IndexingError.ErrorSource.JOB)
+        .withMessage(ex.getMessage())
+        .withStackTrace(ExceptionUtils.getStackTrace(ex));
+  }
+
   private void updateRecordToDbAndNotify(Exception error) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
     appRecord.setStatus(internalStatus);
 
     if (failureDetails != null) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", failureDetails));
+      appRecord.setFailureContext(new FailureContext().withFailure(failureDetails));
     }
 
     if (WebSocketManager.getInstance() != null) {

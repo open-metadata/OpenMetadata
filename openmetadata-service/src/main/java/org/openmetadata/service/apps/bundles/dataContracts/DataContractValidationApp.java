@@ -77,7 +77,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
     } catch (Exception e) {
       LOG.error("Error running DataContractValidationApp", e);
       failureDetails.put("message", e.getMessage());
-      failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(e));
+      failureDetails.put("stackTrace", ExceptionUtils.getStackTrace(e));
       updateStatsRecord(AppRunRecord.Status.FAILED);
     }
   }
