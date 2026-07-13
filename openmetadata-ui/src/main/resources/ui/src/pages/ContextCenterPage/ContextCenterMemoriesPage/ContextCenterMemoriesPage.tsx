@@ -24,11 +24,8 @@ import {
   Check,
   ChevronDown,
   ChevronRight,
-  Database01,
-  FilterFunnel02,
   Plus,
   SearchLg,
-  User03,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
@@ -36,6 +33,9 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useSearchParams } from 'react-router-dom';
+import { ReactComponent as FunnelIcon } from '../../../assets/svg/action-icons/funnel.svg';
+import { ReactComponent as DatabaseIcon } from '../../../assets/svg/common/database.svg';
+import { ReactComponent as UserIcon } from '../../../assets/svg/common/user.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import ContextCenterHeader from '../../../components/ContextCenter/ContextCenterHeader/ContextCenterHeader.component';
@@ -588,12 +588,13 @@ const ContextCenterMemoriesPage: FC = () => {
                 )}
                 data-testid="asset-filter-button"
                 onPress={open}>
-                <Database01
+                <DatabaseIcon
                   className={classNames('tw:shrink-0', {
                     'tw:text-brand-secondary': selectedAsset,
                     'tw:text-secondary': !selectedAsset,
                   })}
-                  size={14}
+                  height={14}
+                  width={14}
                 />
                 <div className="tw:max-w-50">
                   <Typography
@@ -639,12 +640,13 @@ const ContextCenterMemoriesPage: FC = () => {
               className={
                 selectedAuthor ? FILTER_BUTTON_ACTIVE_CLS : FILTER_BUTTON_CLS
               }>
-              <User03
+              <UserIcon
                 className={classNames('tw:shrink-0', {
                   'tw:text-brand-secondary': selectedAuthor,
                   'tw:text-secondary': !selectedAuthor,
                 })}
-                size={14}
+                height={14}
+                width={14}
               />
               <div className="tw:max-w-50">
                 <Typography
@@ -753,7 +755,11 @@ const ContextCenterMemoriesPage: FC = () => {
           )}
           <Dropdown.Root>
             <AriaButton className={FILTER_BUTTON_CLS}>
-              <FilterFunnel02 size={16} />
+              <FunnelIcon
+                className="tw:text-quaternary"
+                height={14}
+                width={14}
+              />
               <Typography className="tw:text-secondary" weight="medium">
                 {t('label.sort')}:
               </Typography>
