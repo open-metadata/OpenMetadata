@@ -777,16 +777,20 @@ public interface CollectionDAO {
     // <serviceHash>.%.%` and reject those rows. ListFilter.getFqnPrefixCondition binds
     // both `:serviceHash` (already used by the prefix LIKE in <sqlCondition>) and
     // `:serviceHashChild` (the `.%.%` companion) so the SQL just plugs them in.
+    // Deferred join: resolve the page index-only on (name, id) in the derived table, then fetch
+    // c.json by primary key for only the paged rows, so the json blob never enters the filesort.
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name, id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "<sqlCondition> AND "
                 + "ce.fqnHash NOT LIKE :serviceHashChild AND "
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId)) "
                 + "ORDER BY name DESC, id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name, id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id "
+                + "ORDER BY c.name, c.id")
     List<String> listRootBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -797,12 +801,16 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "<sqlCondition> AND "
                 + "ce.fqnHash NOT LIKE :serviceHashChild AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId)) "
                 + "ORDER BY name, id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id "
+                + "ORDER BY c.name, c.id")
     List<String> listRootAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1066,8 +1074,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'directory' AND relation = 0 "
@@ -1077,7 +1086,7 @@ public interface CollectionDAO {
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
                 + "ORDER BY name DESC,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1088,7 +1097,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'directory' AND relation = 0 "
@@ -1097,7 +1108,8 @@ public interface CollectionDAO {
                 + "<sqlCondition> AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
                 + "ORDER BY name,id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1187,8 +1199,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity IN ('directory', 'spreadsheet') AND toEntity = 'file' AND relation = 0 "
@@ -1198,7 +1211,7 @@ public interface CollectionDAO {
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
                 + "ORDER BY name DESC,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1209,7 +1222,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity IN ('directory', 'spreadsheet') AND toEntity = 'file' AND relation = 0 "
@@ -1218,7 +1233,8 @@ public interface CollectionDAO {
                 + "<sqlCondition> AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
                 + "ORDER BY name,id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1308,8 +1324,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'spreadsheet' AND relation = 0 "
@@ -1319,7 +1336,7 @@ public interface CollectionDAO {
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
                 + "ORDER BY name DESC,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1330,7 +1347,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'spreadsheet' AND relation = 0 "
@@ -1339,7 +1358,8 @@ public interface CollectionDAO {
                 + "<sqlCondition> AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
                 + "ORDER BY name,id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -7705,9 +7725,7 @@ public interface CollectionDAO {
       boolean includeEmptyTestSuite =
           Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
       if (!includeEmptyTestSuite) {
-        groupBy =
-            String.format(
-                "group by %s.json, %s.name, %s.id", getTableName(), getTableName(), getTableName());
+        groupBy = String.format("GROUP BY %s.name, %s.id", getTableName(), getTableName());
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
@@ -7731,9 +7749,7 @@ public interface CollectionDAO {
       boolean includeEmptyTestSuite =
           Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
       if (!includeEmptyTestSuite) {
-        groupBy =
-            String.format(
-                "group by %s.json, %s.name, %s.id", getTableName(), getTableName(), getTableName());
+        groupBy = String.format("GROUP BY %s.name, %s.id", getTableName(), getTableName());
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
