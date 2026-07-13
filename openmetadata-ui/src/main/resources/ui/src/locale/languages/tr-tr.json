@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Her varlığın belgelerinin hangi bölümlerinin bağlama ekleneceğini seçin.",
     "persona-context-sections-disabled": "Tüm belgeler oluşturulur — ayrı bölüm seçimi devre dışıdır.",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "~{{count}} token",
+    "persona-context-token-estimate": "~{{formattedCount}} token",
     "persona-context-truncated-count": "{{count}} kısaltıldı",
     "persona-context-version-restored": "AI bağlamı v{{version}} sürümüne geri yüklendi",
     "persona-preference-updated": "Kişilik tercihi başarıyla güncellendi!",

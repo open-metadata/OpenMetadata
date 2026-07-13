@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Elija qué partes de la documentación de cada entidad se renderizan en el contexto.",
     "persona-context-sections-disabled": "Se renderiza la documentación completa; la selección de secciones individuales está desactivada.",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "~{{count}} tokens",
+    "persona-context-token-estimate": "~{{formattedCount}} tokens",
     "persona-context-truncated-count": "{{count}} truncados",
     "persona-context-version-restored": "Contexto de IA restaurado a v{{version}}",
     "persona-preference-updated": "Preferencia de persona actualizada exitosamente!",

@@ -243,6 +243,7 @@ export const ContextRuleEditor = ({
         description: data.description || undefined,
         filterJsonTree: data.filterJsonTree || undefined,
         matchedCount: undefined,
+        maxAssets: data.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
         name: data.name.trim(),
         queryFilter: data.queryFilter || '',
       });

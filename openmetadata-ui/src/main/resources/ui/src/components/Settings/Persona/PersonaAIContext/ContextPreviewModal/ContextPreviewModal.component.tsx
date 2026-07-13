@@ -211,6 +211,7 @@ export const ContextPreviewModal = ({
     }),
     t('message.persona-context-token-estimate', {
       count: contextDocument?.tokensEst ?? 0,
+      formattedCount: (contextDocument?.tokensEst ?? 0).toLocaleString(),
     }),
     t('message.persona-context-size', {
       count: Math.max(1, Math.ceil((contextDocument?.bytes ?? 0) / 1024)),

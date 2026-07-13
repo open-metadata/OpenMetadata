@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "בחרו אילו חלקים מתיעוד כל ישות יעובדו לתוך ההקשר.",
     "persona-context-sections-disabled": "התיעוד המלא מעובד — בחירת מקטעים נפרדים מושבתת.",
     "persona-context-size": "{{count}} ק״ב",
-    "persona-context-token-estimate": "כ־{{count}} אסימונים",
+    "persona-context-token-estimate": "כ־{{formattedCount}} אסימונים",
     "persona-context-truncated-count": "{{count}} קוצרו",
     "persona-context-version-restored": "הקשר ה-AI שוחזר לגרסה v{{version}}",
     "persona-preference-updated": "העדפת אישיות עודכנה בהצלחה!",

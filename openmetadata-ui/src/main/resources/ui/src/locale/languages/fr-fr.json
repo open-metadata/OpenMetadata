@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Choisissez les parties de la documentation de chaque entité à générer dans le contexte.",
     "persona-context-sections-disabled": "La documentation complète est générée — la sélection de sections individuelles est désactivée.",
     "persona-context-size": "{{count}} Ko",
-    "persona-context-token-estimate": "~{{count}} jetons",
+    "persona-context-token-estimate": "~{{formattedCount}} jetons",
     "persona-context-truncated-count": "{{count}} tronqués",
     "persona-context-version-restored": "Contexte IA restauré à la v{{version}}",
     "persona-preference-updated": "Préférence de persona mise à jour avec succès!",

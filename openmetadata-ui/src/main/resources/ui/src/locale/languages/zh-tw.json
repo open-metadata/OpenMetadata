@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "選取要將每個實體文件的哪些部分呈現至上下文中。",
     "persona-context-sections-disabled": "將呈現完整文件 — 已停用個別章節選取。",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "約 {{count}} 個權杖",
+    "persona-context-token-estimate": "約 {{formattedCount}} 個權杖",
     "persona-context-truncated-count": "已截斷 {{count}} 項",
     "persona-context-version-restored": "AI 上下文已還原至 v{{version}}",
     "persona-preference-updated": "角色偏好設定已成功更新！",

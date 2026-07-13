@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Välj vilka delar av varje entitets dokumentation som ska renderas i kontexten.",
     "persona-context-sections-disabled": "Fullständig dokumentation renderas — val av enskilda avsnitt är inaktiverat.",
     "persona-context-size": "{{count}} kB",
-    "persona-context-token-estimate": "~{{count}} token",
+    "persona-context-token-estimate": "~{{formattedCount}} token",
     "persona-context-truncated-count": "{{count}} trunkerade",
     "persona-context-version-restored": "AI-kontext återställd till v{{version}}",
     "persona-preference-updated": "Personainställningen har uppdaterats!",

@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "各エンティティのドキュメントからコンテキストに含める部分を選択します。",
     "persona-context-sections-disabled": "ドキュメント全体がレンダリングされるため、個別のセクション選択は無効です。",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "約 {{count}} トークン",
+    "persona-context-token-estimate": "約 {{formattedCount}} トークン",
     "persona-context-truncated-count": "{{count}} 件省略",
     "persona-context-version-restored": "AI コンテキストを v{{version}} に復元しました",
     "persona-preference-updated": "ペルソナ設定が正常に更新されました！",

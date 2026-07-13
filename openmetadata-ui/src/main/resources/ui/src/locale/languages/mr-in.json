@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "प्रत्येक घटकाच्या दस्तऐवजीकरणातील कोणते भाग संदर्भात रेंडर करायचे ते निवडा.",
     "persona-context-sections-disabled": "संपूर्ण दस्तऐवजीकरण रेंडर केले जाते — स्वतंत्र विभाग निवड बंद आहे.",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "सुमारे {{count}} टोकन",
+    "persona-context-token-estimate": "सुमारे {{formattedCount}} टोकन",
     "persona-context-truncated-count": "{{count}} संक्षिप्त",
     "persona-context-version-restored": "AI संदर्भ v{{version}} वर पुनर्संचयित केला",
     "persona-preference-updated": "व्यक्तिमत्व प्राधान्य यशस्वीरित्या अद्ययावत केले!",

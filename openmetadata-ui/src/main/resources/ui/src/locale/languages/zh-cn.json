@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "选择要将每个实体文档的哪些部分渲染到上下文中。",
     "persona-context-sections-disabled": "将渲染完整文档 — 已禁用单独的部分选择。",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "约 {{count}} 个令牌",
+    "persona-context-token-estimate": "约 {{formattedCount}} 个令牌",
     "persona-context-truncated-count": "已截断 {{count}} 项",
     "persona-context-version-restored": "AI 上下文已恢复到 v{{version}}",
     "persona-preference-updated": "角色偏好设置已成功更新!",

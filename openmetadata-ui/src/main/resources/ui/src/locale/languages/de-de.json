@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Wählen Sie aus, welche Teile der Dokumentation jeder Entität in den Kontext gerendert werden.",
     "persona-context-sections-disabled": "Die vollständige Dokumentation wird gerendert — die Auswahl einzelner Abschnitte ist deaktiviert.",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "~{{count}} Tokens",
+    "persona-context-token-estimate": "~{{formattedCount}} Tokens",
     "persona-context-truncated-count": "{{count}} gekürzt",
     "persona-context-version-restored": "KI-Kontext auf v{{version}} wiederhergestellt",
     "persona-preference-updated": "Persona-Einstellung erfolgreich aktualisiert!",

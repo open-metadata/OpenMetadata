@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "เลือกส่วนของเอกสารแต่ละเอนทิตีที่จะเรนเดอร์ในบริบท",
     "persona-context-sections-disabled": "เรนเดอร์เอกสารแบบเต็มแล้ว — ปิดการเลือกแต่ละส่วน",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "ประมาณ {{count}} โทเค็น",
+    "persona-context-token-estimate": "ประมาณ {{formattedCount}} โทเค็น",
     "persona-context-truncated-count": "ตัดทอน {{count}} รายการ",
     "persona-context-version-restored": "กู้คืนบริบท AI เป็น v{{version}} แล้ว",
     "persona-preference-updated": "อัปเดตการตั้งค่าบุคลิกภาพสำเร็จแล้ว!",

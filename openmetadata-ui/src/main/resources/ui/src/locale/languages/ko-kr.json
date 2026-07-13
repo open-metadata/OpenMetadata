@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "각 엔터티 문서에서 컨텍스트에 렌더링할 부분을 선택하세요.",
     "persona-context-sections-disabled": "전체 문서가 렌더링되므로 개별 섹션 선택이 비활성화됩니다.",
     "persona-context-size": "{{count}}KB",
-    "persona-context-token-estimate": "약 {{count}}토큰",
+    "persona-context-token-estimate": "약 {{formattedCount}}토큰",
     "persona-context-truncated-count": "{{count}}개 잘림",
     "persona-context-version-restored": "AI 컨텍스트가 v{{version}}(으)로 복원됨",
     "persona-preference-updated": "페르소나 설정이 성공적으로 업데이트되었습니다!",

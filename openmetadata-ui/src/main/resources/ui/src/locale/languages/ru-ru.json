@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Выберите части документации каждой сущности, которые нужно отобразить в контексте.",
     "persona-context-sections-disabled": "Отображается полная документация — выбор отдельных разделов отключён.",
     "persona-context-size": "{{count}} КБ",
-    "persona-context-token-estimate": "~{{count}} токенов",
+    "persona-context-token-estimate": "~{{formattedCount}} токенов",
     "persona-context-truncated-count": "Сокращено: {{count}}",
     "persona-context-version-restored": "Контекст ИИ восстановлен до v{{version}}",
     "persona-preference-updated": "Предпочтения персонажа успешно обновлены!",

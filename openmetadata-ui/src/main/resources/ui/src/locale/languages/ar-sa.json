@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "اختر أجزاء وثائق كل كيان التي سيتم عرضها في السياق.",
     "persona-context-sections-disabled": "يتم عرض الوثائق الكاملة — تم تعطيل تحديد الأقسام الفردية.",
     "persona-context-size": "{{count}} كيلوبايت",
-    "persona-context-token-estimate": "نحو {{count}} رمزًا",
+    "persona-context-token-estimate": "نحو {{formattedCount}} رمزًا",
     "persona-context-truncated-count": "تم اقتطاع {{count}}",
     "persona-context-version-restored": "تمت استعادة سياق الذكاء الاصطناعي إلى الإصدار v{{version}}",
     "persona-preference-updated": "تم تحديث تفضيل الشخصية بنجاح!",

@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Kies welke delen van de documentatie van elke entiteit in de context worden gerenderd.",
     "persona-context-sections-disabled": "Volledige documentatie wordt gerenderd — afzonderlijke sectieselectie is uitgeschakeld.",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "~{{count}} tokens",
+    "persona-context-token-estimate": "~{{formattedCount}} tokens",
     "persona-context-truncated-count": "{{count}} afgekapt",
     "persona-context-version-restored": "AI-context hersteld naar v{{version}}",
     "persona-preference-updated": "Persoonlijkheidsvoorkeur succesvol bijgewerkt!",

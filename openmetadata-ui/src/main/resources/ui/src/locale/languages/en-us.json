@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "Choose which parts of each entity's documentation are rendered into the context.",
     "persona-context-sections-disabled": "Full documentation is rendered — individual section selection is disabled.",
     "persona-context-size": "{{count}} KB",
-    "persona-context-token-estimate": "~{{count}} tokens",
+    "persona-context-token-estimate": "~{{formattedCount}} tokens",
     "persona-context-truncated-count": "{{count}} truncated",
     "persona-context-version-restored": "AI context restored to v{{version}}",
     "persona-preference-updated": "Persona preference updated successfully!",

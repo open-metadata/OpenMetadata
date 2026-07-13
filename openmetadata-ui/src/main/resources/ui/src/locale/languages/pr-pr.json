@@ -3810,7 +3810,7 @@
     "persona-context-sections-description": "بخش‌هایی از مستندات هر موجودیت را که باید در زمینه پردازش شوند، انتخاب کنید.",
     "persona-context-sections-disabled": "مستندات کامل پردازش می‌شوند — انتخاب بخش‌های جداگانه غیرفعال است.",
     "persona-context-size": "{{count}} کیلوبایت",
-    "persona-context-token-estimate": "حدود {{count}} توکن",
+    "persona-context-token-estimate": "حدود {{formattedCount}} توکن",
     "persona-context-truncated-count": "{{count}} مورد کوتاه شد",
     "persona-context-version-restored": "زمینه هوش مصنوعی به نسخه v{{version}} بازیابی شد",
     "persona-preference-updated": "ترجیح شخصیت با موفقیت به‌روزرسانی شد!",
