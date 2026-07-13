@@ -362,6 +362,11 @@ export interface CollateAIAppConfig {
      */
     profileDataRetentionPeriod?: number;
     /**
+     * Enter the retention period for Reverse Ingestion workflows in days (e.g., 7 for one week,
+     * 30 for one month).
+     */
+    reverseIngestionWorkflowRetentionPeriod?: number;
+    /**
      * Enter the retention period for Test Case Results in days (e.g., 30 for one month, 60 for
      * two months).
      */

@@ -11102,6 +11102,25 @@ public interface CollectionDAO {
       return Workflow.class;
     }
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id FROM automations_workflow "
+                + "WHERE workflowType = 'REVERSE_INGESTION' "
+                + "AND status IN ('Successful', 'Failed') "
+                + "AND updatedAt < :cutoffTs "
+                + "ORDER BY updatedAt LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT id FROM automations_workflow "
+                + "WHERE workflowtype = 'REVERSE_INGESTION' "
+                + "AND status IN ('Successful', 'Failed') "
+                + "AND updatedat < :cutoffTs "
+                + "ORDER BY updatedat LIMIT :limit",
+        connectionType = POSTGRES)
+    List<UUID> listTerminalReverseIngestionWorkflowIdsBeforeCutoff(
+        @Bind("cutoffTs") long cutoffTs, @Bind("limit") int limit);
+
     @Override
     default List<String> listBefore(
         ListFilter filter, int limit, String beforeName, String beforeId) {

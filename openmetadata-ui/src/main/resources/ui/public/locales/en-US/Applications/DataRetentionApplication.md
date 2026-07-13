@@ -29,3 +29,17 @@ $$section
 Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).
 
 $$
+
+$$section
+### Audit Log Retention Period (days) $(id="auditLogRetentionPeriod")
+
+Enter the retention period for Audit Log entries in days (e.g., 90 for three months).
+
+$$
+
+$$section
+### Reverse Ingestion Workflow Retention Period (days) $(id="reverseIngestionWorkflowRetentionPeriod")
+
+Enter the retention period for Reverse Ingestion workflows in days (e.g., 7 for one week, 30 for one month).
+
+$$

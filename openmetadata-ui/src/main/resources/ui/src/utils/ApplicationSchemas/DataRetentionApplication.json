@@ -30,13 +30,29 @@
       "description": "Enter the retention period for Profile Data in days (e.g., 30 for one month, 60 for two months).",
       "type": "integer",
       "default": 1440
+    },
+    "auditLogRetentionPeriod": {
+      "title": "Audit Log Retention Period (days)",
+      "description": "Enter the retention period for Audit Log entries in days (e.g., 90 for three months).",
+      "type": "integer",
+      "default": 90,
+      "minimum": 1
+    },
+    "reverseIngestionWorkflowRetentionPeriod": {
+      "title": "Reverse Ingestion Workflow Retention Period (days)",
+      "description": "Enter the retention period for Reverse Ingestion workflows in days (e.g., 7 for one week, 30 for one month).",
+      "type": "integer",
+      "default": 30,
+      "minimum": 1
     }
   },
   "required": [
     "changeEventRetentionPeriod",
     "activityThreadsRetentionPeriod",
     "testCaseResultsRetentionPeriod",
-    "profileDataRetentionPeriod"
+    "profileDataRetentionPeriod",
+    "auditLogRetentionPeriod",
+    "reverseIngestionWorkflowRetentionPeriod"
   ],
   "additionalProperties": false
 }

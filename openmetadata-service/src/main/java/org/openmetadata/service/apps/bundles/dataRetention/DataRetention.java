@@ -7,6 +7,7 @@ import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.Consumer;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -26,6 +27,7 @@ import org.openmetadata.service.apps.AbstractNativeApplication;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesDAO;
 import org.openmetadata.service.jdbi3.FeedRepository;
+import org.openmetadata.service.jdbi3.WorkflowRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
@@ -38,6 +40,8 @@ import org.quartz.JobExecutionContext;
 @Slf4j
 public class DataRetention extends AbstractNativeApplication {
   private static final int BATCH_SIZE = 10_000;
+  private static final int DEFAULT_REVERSE_INGESTION_WORKFLOW_RETENTION_DAYS = 30;
+  private static final String DEFAULT_SYSTEM_USER = "admin";
 
   private DataRetentionConfiguration dataRetentionConfiguration;
   private final CollectionDAO.EventSubscriptionDAO eventSubscriptionDAO;
@@ -53,15 +57,29 @@ public class DataRetention extends AbstractNativeApplication {
   private final EntityTimeSeriesDAO testCaseResultsDAO;
   private final EntityTimeSeriesDAO profileDataDAO;
   private final CollectionDAO.AuditLogDAO auditLogDAO;
+  private final CollectionDAO.WorkflowDAO workflowDAO;
+  private final WorkflowRepository workflowRepository;
 
   public DataRetention(CollectionDAO collectionDAO, SearchRepository searchRepository) {
+    this(
+        collectionDAO,
+        searchRepository,
+        (WorkflowRepository) Entity.getEntityRepository(Entity.WORKFLOW));
+  }
+
+  DataRetention(
+      CollectionDAO collectionDAO,
+      SearchRepository searchRepository,
+      WorkflowRepository workflowRepository) {
     super(collectionDAO, searchRepository);
     this.eventSubscriptionDAO = collectionDAO.eventSubscriptionDAO();
     this.feedRepository = Entity.getFeedRepository();
-    this.feedDAO = Entity.getCollectionDAO().feedDAO();
+    this.feedDAO = collectionDAO.feedDAO();
     this.testCaseResultsDAO = collectionDAO.testCaseResultTimeSeriesDao();
     this.profileDataDAO = collectionDAO.profilerDataTimeSeriesDao();
     this.auditLogDAO = collectionDAO.auditLogDAO();
+    this.workflowDAO = collectionDAO.workflowDAO();
+    this.workflowRepository = workflowRepository;
   }
 
   @Override
@@ -132,6 +150,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
     entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
+    entityStats.withAdditionalProperty("reverse_ingestion_workflows", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
   }
@@ -202,6 +221,22 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info(
         "Starting cleanup for audit logs with retention period: {} days.", auditLogRetentionPeriod);
     cleanAuditLogs(auditLogRetentionPeriod);
+
+    Integer reverseIngestionWorkflowRetentionPeriod =
+        config.getReverseIngestionWorkflowRetentionPeriod();
+
+    int resolvedReverseIngestionWorkflowRetentionPeriod =
+        resolveReverseIngestionWorkflowRetentionDays(reverseIngestionWorkflowRetentionPeriod);
+    LOG.info(
+        "Starting cleanup for reverse ingestion workflows with retention period: {} days.",
+        resolvedReverseIngestionWorkflowRetentionPeriod);
+    cleanReverseIngestionWorkflows(resolvedReverseIngestionWorkflowRetentionPeriod);
+  }
+
+  private int resolveReverseIngestionWorkflowRetentionDays(Integer configuredRetentionDays) {
+    return configuredRetentionDays != null
+        ? configuredRetentionDays
+        : DEFAULT_REVERSE_INGESTION_WORKFLOW_RETENTION_DAYS;
   }
 
   @Transaction
@@ -431,19 +466,18 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Audit logs cleanup complete.");
   }
 
-  // Safety cap on the orphan-cleanup loop. With BATCH_SIZE=10k this allows up to 10M
-  // rows per entity per run — well above any healthy catalog's orphan count. A buggy
-  // delete query that always returns a non-zero count (e.g., rows it can't actually
-  // delete due to FK constraints) would otherwise spin forever and block the rest of
-  // the DataRetention job.
-  private static final int MAX_ORPHAN_CLEANUP_ITERATIONS = 1000;
+  // Safety cap on batch cleanup loops. With BATCH_SIZE=10k this allows up to 10M
+  // rows per entity per run — well above any healthy catalog's row count. A delete
+  // path that never makes progress (e.g., every item in a full batch fails) would
+  // otherwise spin forever and block the rest of the DataRetention job.
+  private static final int MAX_BATCH_CLEANUP_ITERATIONS = 1000;
 
   private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
     int totalDeleted = 0;
     int totalFailed = 0;
     boolean stoppedByCondition = false;
 
-    for (int iteration = 0; iteration < MAX_ORPHAN_CLEANUP_ITERATIONS; iteration++) {
+    for (int iteration = 0; iteration < MAX_BATCH_CLEANUP_ITERATIONS; iteration++) {
       try {
         int deleted = deleteFunction.get();
         totalDeleted += deleted;
@@ -467,7 +501,67 @@ public class DataRetention extends AbstractNativeApplication {
           "Orphan cleanup for {} hit the iteration cap ({}) before draining; "
               + "remaining rows will be retried on the next DataRetention run.",
           entity,
-          MAX_ORPHAN_CLEANUP_ITERATIONS);
+          MAX_BATCH_CLEANUP_ITERATIONS);
+    }
+
+    updateStats(entity, totalDeleted, totalFailed);
+  }
+
+  @Transaction
+  private void cleanReverseIngestionWorkflows(int retentionPeriod) {
+    LOG.info(
+        "Initiating reverse ingestion workflows cleanup: Retention = {} days.", retentionPeriod);
+    long cutoffMillis = getRetentionCutoffMillis(retentionPeriod);
+
+    executePerEntityBatchWithStatsTracking(
+        "reverse_ingestion_workflows",
+        () ->
+            workflowDAO.listTerminalReverseIngestionWorkflowIdsBeforeCutoff(
+                cutoffMillis, BATCH_SIZE),
+        workflowId -> workflowRepository.delete(DEFAULT_SYSTEM_USER, workflowId, true, true));
+
+    LOG.info("Reverse ingestion workflows cleanup complete.");
+  }
+
+  private <T> void executePerEntityBatchWithStatsTracking(
+      String entity, Supplier<List<T>> listBatchFunction, Consumer<T> deleteFunction) {
+    int totalDeleted = 0;
+    int totalFailed = 0;
+    boolean stoppedByCondition = false;
+
+    for (int iteration = 0; iteration < MAX_BATCH_CLEANUP_ITERATIONS; iteration++) {
+      List<T> entities = listBatchFunction.get();
+      if (entities.isEmpty()) {
+        stoppedByCondition = true;
+        break;
+      }
+
+      int batchDeleted = 0;
+      for (T item : entities) {
+        try {
+          deleteFunction.accept(item);
+          totalDeleted++;
+          batchDeleted++;
+        } catch (Exception ex) {
+          LOG.warn("Failed to clean entity: {} item: {}", entity, item, ex);
+          totalFailed++;
+          internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+          setFailureDetails(ex);
+        }
+      }
+
+      if (entities.size() < BATCH_SIZE || batchDeleted == 0) {
+        stoppedByCondition = true;
+        break;
+      }
+    }
+
+    if (!stoppedByCondition) {
+      LOG.warn(
+          "Per-entity batch cleanup for {} hit the iteration cap ({}) before draining; "
+              + "remaining rows will be retried on the next DataRetention run.",
+          entity,
+          MAX_BATCH_CLEANUP_ITERATIONS);
     }
 
     updateStats(entity, totalDeleted, totalFailed);
@@ -499,6 +593,14 @@ public class DataRetention extends AbstractNativeApplication {
     return Instant.now()
         .minusMillis(Duration.ofDays(retentionPeriodInDays).toMillis())
         .toEpochMilli();
+  }
+
+  private void setFailureDetails(Exception ex) {
+    if (failureDetails == null) {
+      failureDetails = new HashMap<>();
+      failureDetails.put("message", ex.getMessage());
+      failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+    }
   }
 
   private synchronized void updateStats(String entity, int successCount, int failureCount) {
