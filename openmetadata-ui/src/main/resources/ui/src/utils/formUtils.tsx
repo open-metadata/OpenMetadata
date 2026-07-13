@@ -54,7 +54,6 @@ import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUITextField from '../components/common/MUITextField/MUITextField';
-import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
