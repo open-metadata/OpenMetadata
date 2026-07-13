@@ -199,6 +199,13 @@ jest.mock(
   })
 );
 
+jest.mock('../../../utils/Domain/DomainClassBase', () => ({
+  __esModule: true,
+  default: {
+    getCoverImageField: jest.fn().mockReturnValue(null),
+  },
+}));
+
 jest.mock('../../common/IconPicker', () => ({
   AVAILABLE_ICONS: [
     { category: 'default', component: jest.fn(), name: 'Cube01' },

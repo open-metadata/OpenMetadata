@@ -115,7 +115,7 @@ test(
     await test.step('Delete sample data', async () => {
       await page.click('[data-testid="sample-data-manage-button"]');
       await page.click('[data-testid="delete-button"]');
-      await page.locator('.ant-modal-body').waitFor({ state: 'visible' });
+      await page.getByTestId('delete-modal').waitFor({ state: 'visible' });
       const deleteSampleData = page.waitForResponse(
         '/api/v1/dataQuality/testCases/*/failedRowsSample'
       );

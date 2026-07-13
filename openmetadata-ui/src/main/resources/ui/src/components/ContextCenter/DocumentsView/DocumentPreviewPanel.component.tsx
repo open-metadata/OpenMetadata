@@ -157,7 +157,10 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
           )}
         </Card>
 
-        <ExtractedMemoriesCard sourceId={file.id} />
+        <ExtractedMemoriesCard
+          sourceId={file.id}
+          titleClassName="tw:uppercase"
+        />
       </Box>
     </Box>
   );

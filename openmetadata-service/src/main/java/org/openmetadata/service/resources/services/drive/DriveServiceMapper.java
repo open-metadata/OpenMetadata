@@ -9,6 +9,7 @@ public class DriveServiceMapper implements EntityMapper<DriveService, CreateDriv
   public DriveService createToEntity(CreateDriveService create, String user) {
     return copy(new DriveService(), create, user)
         .withServiceType(create.getServiceType())
+        .withStyle(create.getStyle())
         .withConnection(create.getConnection())
         .withIngestionRunner(create.getIngestionRunner());
   }
