@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,25 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+package org.openmetadata.service.aicontext;
 
-export { default } from './MUIFormItemLabel';
-export type { MUIFormItemLabelProps } from './MUIFormItemLabel';
+final class BudgetTracker {
+  private int remaining;
+
+  BudgetTracker(int budget) {
+    remaining = Math.max(0, budget);
+  }
+
+  boolean tryConsume(String value) {
+    int length = value == null ? 0 : value.length();
+    boolean fits = length <= remaining;
+    if (fits) {
+      remaining -= length;
+    }
+    return fits;
+  }
+
+  int remaining() {
+    return remaining;
+  }
+}
