@@ -30,6 +30,8 @@ from metadata.ingestion.source.database.unitycatalog.connection import (
     UNITY_CATALOG_ERRORS,
     UnityCatalogChecks,
     UnityCatalogConnection,
+    get_connection,
+    get_connection_url,
 )
 
 CONNECTION_MODULE = "metadata.ingestion.source.database.unitycatalog.connection"
@@ -98,6 +100,31 @@ def test_every_definition_step_resolves_to_a_check():
     assert sorted(resolved) == sorted(EXPECTED_STEPS)
 
 
+class TestHostNormalization:
+    # The probe, the WorkspaceClient, and the SQLAlchemy URL must all derive the same
+    # host, so a pasted workspace URL resolves consistently instead of one path seeing
+    # a mangled value.
+    @pytest.mark.parametrize(
+        "host_port",
+        [
+            "https://my-workspace.cloud.databricks.com",
+            "https://my-workspace.cloud.databricks.com/sql/1.0/warehouses/abc",
+            "my-workspace.cloud.databricks.com",
+        ],
+    )
+    def test_workspace_client_host_is_normalized(self, host_port):
+        with patch(f"{CONNECTION_MODULE}.WorkspaceClient") as mock_client:
+            get_connection(_config(hostPort=host_port))
+
+        assert mock_client.call_args.kwargs["host"] == "my-workspace.cloud.databricks.com"
+
+    def test_connection_url_normalizes_the_host(self):
+        url = get_connection_url(_config(hostPort="https://my-workspace.cloud.databricks.com/sql/x"))
+
+        assert "://my-workspace.cloud.databricks.com" in url
+        assert "https://" not in url.split("://", 1)[1]
+
+
 class TestCheckAccess:
     def test_probes_the_host_before_listing_catalogs(self):
         client = MagicMock()
@@ -111,6 +138,20 @@ class TestCheckAccess:
     def test_defaults_to_port_443_when_host_port_omits_the_port(self):
         with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
             _checks(MagicMock(), hostPort="my-workspace.cloud.databricks.com").check_access()
+
+        mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
+
+    @pytest.mark.parametrize(
+        "host_port",
+        [
+            "https://my-workspace.cloud.databricks.com",
+            "https://my-workspace.cloud.databricks.com/sql/1.0/warehouses/abc",
+            "my-workspace.cloud.databricks.com",
+        ],
+    )
+    def test_normalizes_a_pasted_workspace_url_before_probing(self, host_port):
+        with patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe:
+            _checks(MagicMock(), hostPort=host_port).check_access()
 
         mock_probe.assert_called_once_with("my-workspace.cloud.databricks.com", 443)
 
@@ -141,7 +182,7 @@ class TestMetadataSteps:
         client.catalogs.list.return_value = iter([_named("__databricks_internal"), _named("main")])
         checks = _checks(client)
 
-        evidence = checks.get_databases()
+        evidence = checks.check_databases()
 
         assert checks.table_obj.catalog_name == "main"
         assert evidence.command == "catalogs.list()"
@@ -152,7 +193,7 @@ class TestMetadataSteps:
         client.catalogs.get.return_value = _named("my_catalog")
         checks = _checks(client, catalog="my_catalog")
 
-        evidence = checks.get_databases()
+        evidence = checks.check_databases()
 
         client.catalogs.get.assert_called_once_with("my_catalog")
         client.catalogs.list.assert_not_called()
@@ -164,7 +205,7 @@ class TestMetadataSteps:
         checks = _checks(client, databaseSchema="my_schema")
         checks.table_obj.catalog_name = "my_catalog"
 
-        evidence = checks.get_schemas()
+        evidence = checks.check_schemas()
 
         client.schemas.get.assert_called_once_with("my_catalog.my_schema")
         assert evidence.command == "schemas.get('my_schema')"
@@ -177,7 +218,7 @@ class TestMetadataSteps:
         checks.table_obj.catalog_name = "my_catalog"
         checks.table_obj.schema_name = "my_schema"
 
-        evidence = checks.get_tables()
+        evidence = checks.check_tables()
 
         assert evidence.summary == "tables enumerated in 'my_catalog.my_schema'"
         assert evidence.command == "tables.list()"
@@ -186,7 +227,7 @@ class TestMetadataSteps:
         client = MagicMock()
 
         with pytest.raises(CheckError) as failure:
-            _checks(client).get_views()
+            _checks(client).check_views()
 
         assert failure.value.evidence.command == "tables.list(omit_columns=True)"
         client.tables.list.assert_not_called()
@@ -201,7 +242,7 @@ class TestWarehouseSteps:
         ):
             checks = _checks(MagicMock())
             mock_engine.assert_not_called()
-            evidence = checks.get_queries()
+            evidence = checks.check_queries()
 
         mock_lineage.assert_called_once_with(engine)
         engine.dispose.assert_called_once_with()
@@ -214,14 +255,14 @@ class TestWarehouseSteps:
             patch(f"{CONNECTION_MODULE}.test_lineage_tables", side_effect=PermissionDenied("PERMISSION_DENIED")),
             pytest.raises(CheckError),
         ):
-            _checks(MagicMock()).get_queries()
+            _checks(MagicMock()).check_queries()
 
         engine.dispose.assert_called_once_with()
 
     def test_get_tags_probes_the_information_schema_tag_tables(self):
         with patch(f"{CONNECTION_MODULE}.get_tags") as mock_tags:
             checks = _checks(MagicMock())
-            evidence = checks.get_tags()
+            evidence = checks.check_tags()
 
         mock_tags.assert_called_once_with(checks.service_connection, checks.table_obj)
         assert evidence.summary == "tag tables accessible"
@@ -242,6 +283,11 @@ class TestErrorPack:
             (RuntimeError("NO_SUCH_SCHEMA: my_schema"), "Schema not found"),
             (RuntimeError("TABLE_OR_VIEW_NOT_FOUND: my_table"), "Table or view not found"),
             (RuntimeError("MALFORMED_REQUEST: bad http path"), "Invalid HTTP path"),
+            (RuntimeError("No valid connection settings."), "SQL warehouse not configured"),
+            (
+                RuntimeError("[FAILED_JDBC.CONNECTION] ... Failed to connect to the database. SQLSTATE: HV000"),
+                "SQL warehouse not reachable",
+            ),
             (RuntimeError("Table system.access.table_lineage does not exist"), "Object not found"),
         ],
     )

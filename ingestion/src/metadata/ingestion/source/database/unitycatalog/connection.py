@@ -62,7 +62,10 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.database.databricks.auth import get_auth_config
+from metadata.ingestion.source.database.databricks.auth import (
+    get_auth_config,
+    normalize_host_port,
+)
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
@@ -75,7 +78,6 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_TEST_COLUMN_LINEAGE,
     UNITY_CATALOG_TEST_TABLE_LINEAGE,
 )
-from metadata.utils.db_utils import get_host_from_host_port
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -145,6 +147,17 @@ UNITY_CATALOG_ERRORS = ErrorPack(
         "Invalid HTTP path",
         fix="The HTTP Path is malformed. Copy it from the SQL warehouse (or cluster) Connection "
         "Details in Databricks - it must look like /sql/1.0/warehouses/<warehouseId>.",
+    ),
+    when(Matchers.contains("no valid connection settings")).diagnose(
+        "SQL warehouse not configured",
+        fix="The GetQueries and GetTags steps open a SQL connection, which needs an HTTP Path. Set "
+        "it to a running SQL warehouse (/sql/1.0/warehouses/<warehouseId>). Metadata ingestion "
+        "works without it, but query-log lineage and tag extraction do not.",
+    ),
+    when(Matchers.contains("failed to connect to the database")).diagnose(
+        "SQL warehouse not reachable",
+        fix="Could not open a SQL connection over the configured HTTP Path. Verify the SQL "
+        "warehouse is running and the principal can use it, and that the HTTP Path is correct.",
     ),
     when(Matchers.contains("does not exist")).diagnose(
         "Object not found",
@@ -277,7 +290,7 @@ def test_lineage_tables(engine: Engine) -> None:
 
 
 def get_connection_url(connection: UnityCatalogConnectionConfig) -> str:
-    url = f"{connection.scheme.value}://{connection.hostPort}"
+    url = f"{connection.scheme.value}://{normalize_host_port(connection.hostPort)}"
     if connection.catalog:
         url = f"{url}?catalog={quote_plus(connection.catalog)}"
     return url
@@ -298,7 +311,7 @@ def get_connection(connection: UnityCatalogConnectionConfig) -> WorkspaceClient:
         client_params["azure_client_secret"] = connection.authType.azureClientSecret.get_secret_value()
         client_params["azure_tenant_id"] = connection.authType.azureTenantId
 
-    return WorkspaceClient(host=get_host_from_host_port(connection.hostPort), **client_params)
+    return WorkspaceClient(host=normalize_host_port(connection.hostPort), **client_params)
 
 
 def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engine:
@@ -343,7 +356,8 @@ class UnityCatalogChecks:
         self.table_obj = DatabricksTable()
 
     def _probe_target(self) -> tuple[str, int]:
-        host_port = self.service_connection.hostPort
+        # Same normalization the client uses, so the probe targets the host it connects to.
+        host_port = normalize_host_port(self.service_connection.hostPort)
         host, _, port = host_port.rpartition(":")
         if host and port.isdigit():
             return host, int(port)
@@ -373,7 +387,7 @@ class UnityCatalogChecks:
         next(iter(self.client.catalogs.list()), None)
 
     @check(DatabaseStep.GetDatabases)
-    def get_databases(self) -> Evidence:
+    def check_databases(self) -> Evidence:
         configured = self.service_connection.catalog
         return self._probe(
             lambda: get_catalogs(self.client, self.table_obj, configured),
@@ -382,7 +396,7 @@ class UnityCatalogChecks:
         )
 
     @check(DatabaseStep.GetSchemas)
-    def get_schemas(self) -> Evidence:
+    def check_schemas(self) -> Evidence:
         configured = self.service_connection.databaseSchema
         return self._probe(
             lambda: get_schemas(self.client, self.table_obj, configured),
@@ -391,7 +405,7 @@ class UnityCatalogChecks:
         )
 
     @check(DatabaseStep.GetTables)
-    def get_tables(self) -> Evidence:
+    def check_tables(self) -> Evidence:
         return self._probe(
             lambda: get_tables(self.client, self.table_obj),
             "tables.list()",
@@ -399,7 +413,7 @@ class UnityCatalogChecks:
         )
 
     @check(DatabaseStep.GetViews)
-    def get_views(self) -> Evidence:
+    def check_views(self) -> Evidence:
         return self._probe(
             lambda: get_views(self.client, self.table_obj),
             "tables.list(omit_columns=True)",
@@ -407,7 +421,7 @@ class UnityCatalogChecks:
         )
 
     @check(DatabaseStep.GetQueries)
-    def get_queries(self) -> Evidence:
+    def check_queries(self) -> Evidence:
         engine = get_sqlalchemy_connection(self.service_connection)
         try:
             return self._probe(
@@ -419,7 +433,7 @@ class UnityCatalogChecks:
             engine.dispose()
 
     @check(DatabaseStep.GetTags)
-    def get_tags(self) -> Evidence:
+    def check_tags(self) -> Evidence:
         return self._probe(
             lambda: get_tags(self.service_connection, self.table_obj),
             "SELECT * FROM information_schema.{catalog_tags,schema_tags,table_tags,column_tags} LIMIT 1",
