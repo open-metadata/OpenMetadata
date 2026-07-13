@@ -152,7 +152,7 @@ class UsageSource(QueryParserSource, ABC):
                     logger.info(f"Processed {row_count} query log entries for usage")
                     result_limit = getattr(self.source_config, "resultLimit", None)
                     if result_limit and row_count >= result_limit:
-                        logger.warning(
+                        logger.debug(
                             f"Reached the configured resultLimit of {result_limit} query log entries; "
                             f"if more queries exist they were truncated and usage may be incomplete. "
                             f"Consider increasing resultLimit."

@@ -206,7 +206,7 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
             self.set_stored_procedure_description_map()
         except Exception as exc:
             logger.debug(traceback.format_exc())
-            logger.warning(f"Could not load MSSQL description metadata, continuing without it: {exc}")
+            logger.debug(f"Could not load MSSQL description metadata, continuing without it: {exc}")
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
