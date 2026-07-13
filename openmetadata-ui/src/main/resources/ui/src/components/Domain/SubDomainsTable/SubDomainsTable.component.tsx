@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { Box, Card } from '@openmetadata/ui-core-components';
+import { Box, Card, PaginationCardDefault } from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +24,6 @@ import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTab
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
-import { PaginationCardDefault } from '@openmetadata/ui-core-components';
 import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';

@@ -15,6 +15,7 @@ import {
   Avatar,
   Box,
   Card,
+  PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Globe01 } from '@untitledui/icons';
@@ -50,7 +51,6 @@ import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { PaginationCardDefault } from '@openmetadata/ui-core-components';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
