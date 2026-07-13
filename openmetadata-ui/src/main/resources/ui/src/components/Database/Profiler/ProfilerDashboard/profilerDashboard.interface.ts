@@ -75,6 +75,7 @@ export interface DataQualityTabProps {
   tableHeader?: ReactNode;
   removeTableBorder?: boolean;
   enableBulkActions?: boolean;
+  editVariant?: 'drawer' | 'modal';
 }
 
 export interface TestSummaryProps {

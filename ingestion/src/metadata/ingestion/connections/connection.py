@@ -35,6 +35,9 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
     TestConnectionResult,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.utils.logger import ingestion_logger
+
+logger = ingestion_logger()
 
 if TYPE_CHECKING:
     from metadata.core.connections.test_connection.check import ChecksProvider
@@ -60,11 +63,19 @@ class BaseConnection(ABC, Generic[S, C]):
         self.service_connection = service_connection
         self._client = None
         self._closing = ExitStack()
+        self._was_closed = False
 
     @property
     def client(self) -> C:
-        """The service client, built once on first access and cached."""
+        """The service client, built once on first access and cached. Rebuilt if
+        requested after ``close()``."""
         if self._client is None:
+            if self._was_closed:
+                logger.info(
+                    "Connection client for %s was closed; opening a new client.",
+                    type(self).__name__,
+                )
+                self._was_closed = False
             self._client = self._get_client()
         return self._client
 
@@ -88,18 +99,14 @@ class BaseConnection(ABC, Generic[S, C]):
         """
         Test the connection through the runner. The timeout is applied per step,
         defaulting to the connector's ``step_timeout_seconds`` when not passed.
+        Does not close the connection; the owner controls lifecycle (as a context
+        manager or via ``close()``).
         """
         # Every service connection config carries a `type` enum, but `S` is an
         # unbound TypeVar so the access can't be proven statically.
         service_type = self.service_connection.type.value  # pyright: ignore[reportAttributeAccessIssue]
         effective_timeout = timeout_seconds if timeout_seconds is not None else self.step_timeout_seconds
-        try:
-            result = TestConnectionRunner(self.checks(), service_type, effective_timeout).run(
-                metadata, automation_workflow
-            )
-        finally:
-            self.close()
-        return result
+        return TestConnectionRunner(self.checks(), service_type, effective_timeout).run(metadata, automation_workflow)
 
     def _on_close(self, teardown: Callable[[], None]) -> None:
         """Register a teardown to run on ``close()``. ``_get_client`` calls this
@@ -115,6 +122,7 @@ class BaseConnection(ABC, Generic[S, C]):
         self._closing.close()
         self._closing = ExitStack()
         self._client = None
+        self._was_closed = True
 
     def __enter__(self) -> "BaseConnection[S, C]":
         return self

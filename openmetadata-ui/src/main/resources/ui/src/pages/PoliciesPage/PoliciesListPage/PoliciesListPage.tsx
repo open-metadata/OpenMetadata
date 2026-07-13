@@ -19,7 +19,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as IconDelete } from '../../../assets/svg/ic-delete.svg';
-import DeleteEntityModal from '../../../components/common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import Table from '../../../components/common/Table/Table';
@@ -43,6 +43,7 @@ import { Operation, Policy } from '../../../generated/entity/policies/policy';
 import { Paging } from '../../../generated/type/paging';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { getPolicies } from '../../../rest/rolesAPIV1';
+import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getSettingPageEntityBreadCrumb } from '../../../utils/GlobalSettingsUtils';
 import {
@@ -64,6 +65,7 @@ const PoliciesListPage = () => {
   const [selectedPolicy, setSelectedPolicy] = useState<Policy>();
   const [policies, setPolicies] = useState<Policy[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const {
     currentPage,
     handlePageChange,
@@ -242,6 +244,20 @@ const PoliciesListPage = () => {
     fetchPolicies();
   }, [fetchPolicies]);
 
+  const handlePolicyDelete = useCallback(async () => {
+    setIsDeleting(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(selectedPolicy),
+      selectedPolicy?.id ?? '',
+      EntityType.POLICY
+    );
+    if (isSuccess) {
+      handleAfterDeleteAction();
+    }
+    setSelectedPolicy(undefined);
+    setIsDeleting(false);
+  }, [selectedPolicy, handleAfterDeleteAction]);
+
   const handleAddPolicy = () => {
     navigate(ROUTES.ADD_POLICY);
   };
@@ -335,17 +351,15 @@ const PoliciesListPage = () => {
             size="small"
           />
           {selectedPolicy && deletePolicyPermission && (
-            <DeleteEntityModal
-              afterDeleteAction={handleAfterDeleteAction}
-              allowSoftDelete={false}
-              deleteMessage={t('message.are-you-sure-delete-entity', {
-                entity: getEntityName(selectedPolicy),
+            <DeleteModal
+              entityTitle={getEntityName(selectedPolicy)}
+              isDeleting={isDeleting}
+              message={t('message.permanently-delete-common-message', {
+                entity: getEntityName(selectedPolicy)?.toLowerCase?.() ?? '',
               })}
-              entityId={selectedPolicy.id}
-              entityName={getEntityName(selectedPolicy)}
-              entityType={EntityType.POLICY}
-              visible={!isUndefined(selectedPolicy)}
+              open={!isUndefined(selectedPolicy)}
               onCancel={() => setSelectedPolicy(undefined)}
+              onDelete={handlePolicyDelete}
             />
           )}
         </Col>
