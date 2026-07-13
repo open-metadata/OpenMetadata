@@ -483,7 +483,9 @@ public class SearchRepository {
     int created = 0;
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
       try {
-        if (!indexExists(entry.getValue())) {
+        if (indexExists(entry.getValue())) {
+          reconcileAliases(entry.getValue());
+        } else {
           createIndex(entry.getValue());
           created++;
           LOG.info("Created missing index for entity type: {}", entry.getKey());
@@ -499,6 +501,23 @@ public class SearchRepository {
           entityIndexMap.size());
     } else {
       LOG.info("All {} indexes already exist", entityIndexMap.size());
+    }
+  }
+
+  /**
+   * Re-applies the aliases declared in indexMapping.json to an index that already exists. Alias
+   * adds are idempotent, so this is a no-op when the index already carries them. Without it, an
+   * alias introduced in a newer release would never attach to an upgraded cluster, since
+   * createIndex only creates aliases for indices it creates.
+   */
+  private void reconcileAliases(IndexMapping indexMapping) {
+    try {
+      searchClient.createAliases(indexMapping);
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to reconcile aliases for index {}: {}",
+          indexMapping.getIndexName(clusterAlias),
+          e.getMessage());
     }
   }
 
