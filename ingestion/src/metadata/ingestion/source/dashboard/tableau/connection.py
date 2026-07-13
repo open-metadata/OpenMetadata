@@ -100,9 +100,8 @@ TABLEAU_ERRORS = ErrorPack(
     when(_http_status(401)).diagnose(
         "Authentication failed",
         fix="Tableau rejected the credentials (401). Check the Personal Access Token name and "
-        "secret - a token expires after 15 consecutive days of no use and is revoked when "
-        "regenerated - or the username and password, and that the Site Name matches the site "
-        "those credentials belong to.",
+        "secret (or the username and password) and that it has not expired, and that the Site "
+        "Name matches the site those credentials belong to.",
     ),
     when(_http_status(403)).diagnose(
         "Insufficient permissions",
