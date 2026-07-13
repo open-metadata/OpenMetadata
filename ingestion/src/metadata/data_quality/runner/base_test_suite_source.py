@@ -18,6 +18,10 @@ from typing import Optional, cast
 from metadata.data_quality.builders.validator_builder import ValidatorBuilder
 from metadata.data_quality.interface.test_suite_interface import TestSuiteInterface
 from metadata.data_quality.runner.core import DataTestsRunner
+from metadata.generated.schema.configuration.profilerConfiguration import (
+    ProfilerConfiguration,
+    SampleDataIngestionConfig,
+)
 from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection,
@@ -35,11 +39,15 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.bigquery_utils import copy_service_config
+from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
+from metadata.utils.logger import test_suite_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (
     import_sampler_class,
     import_test_suite_class,
 )
+
+logger = test_suite_logger()
 
 
 class BaseTestSuiteRunner:
@@ -138,8 +146,21 @@ class BaseTestSuiteRunner:
             sampler=sampler_interface,
             table_entity=self.entity,
             validator_builder=self.validator_builder_class,
+            sample_data_config=self._get_sample_data_config(),
         )
         return self.interface
+
+    def _get_sample_data_config(self) -> SampleDataIngestionConfig | None:
+        """Fetch the global sample data ingestion config from the profiler settings."""
+        sample_data_config = None
+        try:
+            settings = self.ometa_client.get_profiler_config_settings()
+            if settings and settings.config_value:
+                profiler_config = cast("ProfilerConfiguration", settings.config_value)
+                sample_data_config = profiler_config.sampleDataConfig
+        except Exception as exc:
+            logger.debug(f"Could not fetch global profiler config: {exc}")
+        return sample_data_config
 
     def get_data_quality_runner(self) -> DataTestsRunner:
         """Get a data quality runner
