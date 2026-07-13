@@ -15,12 +15,17 @@ package org.openmetadata.service.security.policyevaluator;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
+import static org.mockito.Mockito.clearInvocations;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.times;
+import static org.mockito.Mockito.verify;
 
 import java.util.ArrayList;
 import java.util.Iterator;
@@ -57,10 +62,11 @@ public class SubjectCacheTest {
   private static User user;
   private static Team team1;
   private static Team team11;
+  private static UserRepository userRepository;
 
   @BeforeAll
   public static void setup() {
-    UserRepository userRepository = mock(UserRepository.class);
+    userRepository = mock(UserRepository.class);
     Entity.registerEntity(User.class, Entity.USER, userRepository);
     Mockito.when(
             userRepository.getByName(
@@ -131,6 +137,31 @@ public class SubjectCacheTest {
   @BeforeEach
   public void resetCache() {
     SubjectCache.invalidateAll();
+    clearInvocations(userRepository);
+  }
+
+  @Test
+  void testRepeatedSubjectContextReadsLoadUserOnce() {
+    SubjectContext first = SubjectContext.getSubjectContext("testUser");
+    SubjectContext second = SubjectContext.getSubjectContext("testUser");
+
+    assertSame(first.user(), second.user());
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
+  void testUserContextInvalidationLeavesPolicyCacheWarm() {
+    SubjectCache.getPolicies("testUser");
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidateUserContext("testUser");
+    SubjectCache.getPolicies("testUser");
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
   }
 
   @Test

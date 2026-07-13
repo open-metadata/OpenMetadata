@@ -42,6 +42,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext.PolicyCo
 @Slf4j
 public class SubjectCache {
   private static final String USER_FIELDS = "roles,teams,isAdmin,profile,domains";
+  private static final String USER_CONTEXT_FIELDS =
+      "roles,teams,isAdmin,profile,domains,personas,defaultPersona";
   private static final String TEAM_FIELDS = "defaultRoles,policies,parents,profile,domains";
 
   static class UserPoliciesContext {
@@ -114,6 +116,16 @@ public class SubjectCache {
     USER_CONTEXT_CACHE.invalidate(userName);
   }
 
+  public static void invalidateUserContext(String userName) {
+    LOG.debug("Invalidating user context cache for user: {}", userName);
+    USER_CONTEXT_CACHE.invalidate(userName);
+  }
+
+  public static void invalidateAllUserContexts() {
+    LOG.info("Invalidating all user context caches");
+    USER_CONTEXT_CACHE.invalidateAll();
+  }
+
   public static void invalidateAll() {
     LOG.info("Invalidating all user policy caches");
     USER_POLICIES_CACHE.invalidateAll();
@@ -125,7 +137,7 @@ public class SubjectCache {
       return USER_CONTEXT_CACHE.get(userName);
     } catch (Exception e) {
       LOG.warn("Failed to load user context from cache for user {}", userName, e);
-      return Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+      return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
     }
   }
 
@@ -146,7 +158,7 @@ public class SubjectCache {
     @Override
     public @NonNull User load(@CheckForNull String userName) {
       LOG.debug("Loading user context from database for user: {}", userName);
-      return Entity.getEntityByName(Entity.USER, userName, USER_FIELDS, NON_DELETED);
+      return Entity.getEntityByName(Entity.USER, userName, USER_CONTEXT_FIELDS, NON_DELETED);
     }
   }
 

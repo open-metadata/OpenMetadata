@@ -562,6 +562,9 @@ public class McpClientService implements AutoCloseable {
   }
 
   private CatalogSecurityContext toCatalogSecurityContext(SecurityContext securityContext) {
+    if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
+      return catalogSecurityContext;
+    }
     return new CatalogSecurityContext(
         securityContext.getUserPrincipal(),
         securityContext.isSecure() ? "https" : "http",

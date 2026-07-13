@@ -39,6 +39,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.aicontext.PersonaContextBuilder;
 import org.openmetadata.service.aicontext.PersonaContextCache;
 import org.openmetadata.service.resources.teams.PersonaResource;
+import org.openmetadata.service.security.policyevaluator.SubjectCache;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -287,6 +288,16 @@ public class PersonaRepository extends EntityRepository<Persona> {
   }
 
   @Override
+  protected void postCreate(Persona persona) {
+    super.postCreate(persona);
+    if (Boolean.TRUE.equals(persona.getDefault())) {
+      SubjectCache.invalidateAllUserContexts();
+    } else {
+      invalidateUserContexts(persona.getUsers(), List.of());
+    }
+  }
+
+  @Override
   @Transaction
   protected void preDelete(Persona persona, String deletedBy) {
     // Remove all user-persona relationships (APPLIED_TO)
@@ -319,18 +330,51 @@ public class PersonaRepository extends EntityRepository<Persona> {
     for (EntityReference team : listOrEmpty(teams)) {
       invalidateCacheForEntity(Entity.TEAM, team.getId(), team.getFullyQualifiedName());
     }
+    if (Boolean.TRUE.equals(persona.getDefault()) || !teams.isEmpty()) {
+      SubjectCache.invalidateAllUserContexts();
+    } else {
+      invalidateUserContexts(users, defaultUsers);
+    }
   }
 
   @Override
   protected void postUpdate(Persona original, Persona updated) {
     super.postUpdate(original, updated);
     PersonaContextCache.getInstance().invalidate(original, updated);
+    if (!Objects.equals(original.getDefault(), updated.getDefault())) {
+      SubjectCache.invalidateAllUserContexts();
+    } else if (!userAssignmentsMatch(original.getUsers(), updated.getUsers())) {
+      invalidateUserContexts(original.getUsers(), updated.getUsers());
+    }
   }
 
   @Override
   protected void postDelete(Persona persona, boolean hardDelete) {
     PersonaContextCache.getInstance().invalidate(persona);
     super.postDelete(persona, hardDelete);
+  }
+
+  private boolean userAssignmentsMatch(
+      List<EntityReference> originalUsers, List<EntityReference> updatedUsers) {
+    Set<UUID> originalUserIds = new HashSet<>();
+    Set<UUID> updatedUserIds = new HashSet<>();
+    listOrEmpty(originalUsers).forEach(user -> originalUserIds.add(user.getId()));
+    listOrEmpty(updatedUsers).forEach(user -> updatedUserIds.add(user.getId()));
+    return originalUserIds.equals(updatedUserIds);
+  }
+
+  private void invalidateUserContexts(
+      List<EntityReference> originalUsers, List<EntityReference> updatedUsers) {
+    Set<String> userNames = new HashSet<>();
+    listOrEmpty(originalUsers).stream()
+        .map(EntityReference::getName)
+        .filter(name -> !nullOrEmpty(name))
+        .forEach(userNames::add);
+    listOrEmpty(updatedUsers).stream()
+        .map(EntityReference::getName)
+        .filter(name -> !nullOrEmpty(name))
+        .forEach(userNames::add);
+    userNames.forEach(SubjectCache::invalidateUserContext);
   }
 
   /** Handles entity updated from PUT and POST operation. */
