@@ -116,13 +116,40 @@ describe('EmbedLinkElement', () => {
 
     // Verify validation error
     await waitFor(() => {
-      expect(screen.getByText('label.field-required')).toBeInTheDocument();
+      expect(screen.getByText('label.invalid-url')).toBeInTheDocument();
     });
 
     // Verify that update functions were not called
     expect(mockUpdateAttributes).not.toHaveBeenCalled();
     expect(mockOnPopupVisibleChange).not.toHaveBeenCalled();
     expect(mockOnUploadingChange).not.toHaveBeenCalled();
+  });
+
+  it('shows validation error for empty URL', async () => {
+    render(
+      <EmbedLinkElement
+        deleteNode={mockDeleteNode}
+        fileType={FileType.IMAGE}
+        isUploading={false}
+        isValidSource={false}
+        src={mockSrc}
+        updateAttributes={mockUpdateAttributes}
+        onPopupVisibleChange={mockOnPopupVisibleChange}
+        onUploadingChange={mockOnUploadingChange}
+      />
+    );
+
+    const input = screen.getByTestId('embed-input');
+    const submitButton = screen.getByText('label.embed-file-type');
+
+    fireEvent.change(input, { target: { value: '' } });
+    fireEvent.click(submitButton);
+
+    await waitFor(() => {
+      expect(screen.getByText('label.field-required')).toBeInTheDocument();
+    });
+
+    expect(mockUpdateAttributes).not.toHaveBeenCalled();
   });
 
   it('handles delete button click', () => {
@@ -148,7 +175,7 @@ describe('EmbedLinkElement', () => {
     expect(mockDeleteNode).toHaveBeenCalled();
   });
 
-  it('prevents form submission event propagation on delete', () => {
+  it('handles close button click without submitting the form', () => {
     render(
       <EmbedLinkElement
         deleteNode={mockDeleteNode}
@@ -162,31 +189,11 @@ describe('EmbedLinkElement', () => {
       />
     );
 
-    const deleteButton = screen.getByText('label.delete');
+    const closeButton = screen.getByText('label.close');
 
-    // Create a mock event with preventDefault and stopPropagation
-    const mockEvent = {
-      preventDefault: jest.fn(),
-      stopPropagation: jest.fn(),
-    };
+    fireEvent.click(closeButton);
 
-    // Simulate the click event with our mock event
-    const clickEvent = new MouseEvent('click', {
-      bubbles: true,
-      cancelable: true,
-    });
-    Object.defineProperty(clickEvent, 'preventDefault', {
-      value: mockEvent.preventDefault,
-    });
-    Object.defineProperty(clickEvent, 'stopPropagation', {
-      value: mockEvent.stopPropagation,
-    });
-
-    // Dispatch the event on the delete button
-    deleteButton.dispatchEvent(clickEvent);
-
-    // Verify event methods were called
-    expect(mockEvent.preventDefault).toHaveBeenCalled();
-    expect(mockEvent.stopPropagation).toHaveBeenCalled();
+    expect(mockOnPopupVisibleChange).toHaveBeenCalledWith(false);
+    expect(mockUpdateAttributes).not.toHaveBeenCalled();
   });
 });
