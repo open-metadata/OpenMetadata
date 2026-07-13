@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Card, PaginationCardDefault } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  PaginationCardDefault,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
@@ -203,7 +207,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
 
   const { columns: domainColumns, renderCell: renderDomainCell } =
     useDomainTableColumns();
-
 
   const selectedDomainEntities = useMemo(
     () =>

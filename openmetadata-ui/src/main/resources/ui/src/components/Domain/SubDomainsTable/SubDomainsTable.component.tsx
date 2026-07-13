@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Card, PaginationCardDefault } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  PaginationCardDefault,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -80,7 +84,6 @@ const SubDomainsTable = ({
       nameLabelKey: 'label.sub-domain',
       tagSize: 'lg',
     });
-
 
   const selectedSubdomainEntities = useMemo(
     () =>

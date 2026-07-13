@@ -291,7 +291,6 @@ const DataProductListPage = ({
     []
   );
 
-
   const selectedDataProductEntities = useMemo(
     () =>
       dataProductListing.entities.filter((entity) =>
