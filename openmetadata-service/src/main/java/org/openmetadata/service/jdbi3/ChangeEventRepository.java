@@ -46,8 +46,9 @@ public class ChangeEventRepository {
       List<String> entityRestoredList,
       List<String> entityDeletedList,
       long afterOffset,
+      int from,
       int limit) {
-    int fetchLimit = limit + 1;
+    int fetchLimit = from + limit + 1;
     List<ChangeEventRecord> records = new ArrayList<>();
     records.addAll(
         dao.listAfter(ENTITY_CREATED, entityCreatedList, timestamp, afterOffset, fetchLimit));
@@ -60,7 +61,7 @@ public class ChangeEventRepository {
     records.addAll(
         dao.listAfter(ENTITY_SOFT_DELETED, entityDeletedList, timestamp, afterOffset, fetchLimit));
 
-    Page page = mergePage(records, limit);
+    Page page = mergePage(records, from, limit);
     List<ChangeEvent> events = new ArrayList<>();
     for (ChangeEventRecord record : page.records()) {
       events.add(JsonUtils.readValue(record.json(), ChangeEvent.class));
@@ -74,15 +75,21 @@ public class ChangeEventRepository {
   record Page(List<ChangeEventRecord> records, String afterCursor) {}
 
   /**
-   * Keyset-merges the bounded per-event-type result sets: sorts by monotonic {@code offset}, keeps
-   * the first {@code limit} records, and derives the forward cursor from the last kept offset.
+   * Keyset-merges the bounded per-event-type result sets: sorts by monotonic {@code offset}, skips
+   * {@code from} records, keeps the next {@code limit}, and derives the forward cursor from the last
+   * kept offset. The cursor path (offset &gt; afterOffset) uses {@code from = 0}; positional paging
+   * uses {@code afterOffset = 0}.
    */
-  static Page mergePage(List<ChangeEventRecord> records, int limit) {
+  static Page mergePage(List<ChangeEventRecord> records, int from, int limit) {
     records.sort(Comparator.comparingLong(ChangeEventRecord::offset));
-    boolean hasMore = records.size() > limit;
-    List<ChangeEventRecord> page = hasMore ? new ArrayList<>(records.subList(0, limit)) : records;
+    int windowStart = Math.min(from, records.size());
+    int windowEnd = Math.min(from + limit, records.size());
+    List<ChangeEventRecord> page = new ArrayList<>(records.subList(windowStart, windowEnd));
+    boolean hasMore = records.size() > from + limit;
     String afterCursor =
-        hasMore ? RestUtil.encodeCursor(String.valueOf(page.getLast().offset())) : null;
+        hasMore && !page.isEmpty()
+            ? RestUtil.encodeCursor(String.valueOf(page.getLast().offset()))
+            : null;
     return new Page(page, afterCursor);
   }
 

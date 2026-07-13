@@ -133,7 +133,20 @@ public class EventResource {
           @QueryParam("limit")
           int limitParam,
       @Parameter(
-              description = "Returns list of change events after this cursor",
+              description =
+                  "Number of matching events to skip for positional pagination, defaults to 0. "
+                      + "Prefer the `after` cursor for deep pagination on large event volumes.",
+              schema = @Schema(type = "integer", example = "0"))
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @Max(value = 10000, message = "must be less than or equal to 10000")
+          @QueryParam("from")
+          int from,
+      @Parameter(
+              description =
+                  "Opaque cursor returned as `paging.after` from a previous call; pass it back to "
+                      + "fetch the next page of events. Clients should echo this value rather than "
+                      + "construct it.",
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
@@ -150,6 +163,7 @@ public class EventResource {
         entityRestoredList,
         entityDeletedList,
         afterOffset,
+        from,
         limitParam);
   }
 }
