@@ -61,8 +61,6 @@ class MetabaseIngestionClass extends ServiceBaseClass {
     const metabasePassword = process.env.PLAYWRIGHT_METABASE_PASSWORD ?? '';
     const metabaseHostPort = process.env.PLAYWRIGHT_METABASE_HOST_PORT ?? '';
 
-    await page.getByTestId('connection-section-scope').click();
-
     await page.fill('#root\\/username', metabaseUsername);
     await checkServiceFieldSectionHighlighting(page, 'username');
     await page.fill('#root\\/password', metabasePassword);
