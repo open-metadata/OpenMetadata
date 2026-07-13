@@ -11,6 +11,9 @@
  *  limitations under the License.
  */
 
+import { File06 } from '@untitledui/icons';
+import classNames from 'classnames';
+import { EntityType } from '../enums/entity.enum';
 import customizeMyDataPageClassBase from './CustomizeMyDataPageClassBase';
 import { DataAssetServiceLogo } from './DataAssetServiceUtils';
 import {
@@ -43,6 +46,15 @@ export const getEntityIcon = (
       <DataAssetServiceLogo
         className={className}
         serviceType={item.serviceType}
+      />
+    );
+  }
+
+  if (entityType === EntityType.KNOWLEDGE_PAGE) {
+    return (
+      <File06
+        className={classNames('tw:text-quaternary', className)}
+        strokeWidth={1.5}
       />
     );
   }

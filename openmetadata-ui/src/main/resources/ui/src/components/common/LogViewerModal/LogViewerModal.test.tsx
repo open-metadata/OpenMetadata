@@ -94,6 +94,7 @@ jest.mock('react-aria-components', () => ({
 }));
 
 jest.mock('@untitledui/icons', () => ({
+  AlignLeft: () => <span data-testid="icon-wrap" />,
   Copy01: () => <span data-testid="icon-copy" />,
   Download01: () => <span data-testid="icon-download" />,
   File02: () => <span data-testid="icon-file" />,
@@ -167,6 +168,17 @@ describe('LogViewerModal', () => {
     fireEvent.click(screen.getByTestId('log-viewer-download'));
 
     expect(onDownload).toHaveBeenCalledTimes(1);
+  });
+
+  it('toggles the wrap button pressed state on click', () => {
+    render(<LogViewerModal {...defaultProps} />);
+    const wrapButton = screen.getByTestId('log-viewer-wrap');
+
+    expect(wrapButton).toHaveAttribute('aria-pressed', 'false');
+
+    fireEvent.click(wrapButton);
+
+    expect(wrapButton).toHaveAttribute('aria-pressed', 'true');
   });
 
   it('shows the loader instead of logs when loading', () => {

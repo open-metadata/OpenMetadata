@@ -30,7 +30,6 @@ import { debounce, omit } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { RegisterOptions, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
-import imageClassBase from '../../../components/BlockEditor/Extensions/image/ImageClassBase';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
   DATA_PRODUCT_TYPE_LABEL_KEYS,
@@ -76,9 +75,9 @@ import { getCustomPropertiesByEntityType } from '../../../rest/metadataTypeAPI';
 import { searchQuery } from '../../../rest/searchAPI';
 import { formatTeamsResponse } from '../../../utils/APIUtils';
 import { getRandomColor } from '../../../utils/ColorUtils';
+import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getTermQuery } from '../../../utils/SearchPureUtils';
 import tagClassBase from '../../../utils/TagClassBase';
@@ -98,12 +97,6 @@ import {
   DomainFormSelectItem,
   DomainFormValues,
 } from './AddDomainForm.interface';
-const COVER_IMAGE_ACCEPTED_TYPES = [
-  'image/svg+xml',
-  'image/png',
-  'image/jpeg',
-  'image/gif',
-];
 
 export const DOMAIN_FORM_DEFAULTS: DomainFormValues = {
   name: '',
@@ -457,9 +450,10 @@ const AddDomainForm = ({
     name: 'color',
   });
 
-  const { onImageUpload } =
-    imageClassBase.getBlockEditorAttachmentProps() ?? {};
-  const isCoverImageUploadAvailable = !!onImageUpload;
+  const coverImageField = useMemo(
+    () => domainClassBase.getCoverImageField(),
+    []
+  );
 
   const createPermission = useMemo(() => {
     const resourceEntity =
@@ -750,49 +744,6 @@ const AddDomainForm = ({
     props: { 'data-testid': 'display-name' },
     type: FieldTypes.TEXT,
   });
-
-  const handleCoverImageValidationError = useCallback((message: string) => {
-    showNotistackError(message);
-  }, []);
-
-  const coverImageField: FieldProp = {
-    id: 'root/coverImage',
-    label: t('label.cover-image'),
-    name: 'coverImage',
-    placeholder: t('label.upload-cover-image'),
-    props: {
-      acceptedFileTypes: COVER_IMAGE_ACCEPTED_TYPES,
-      maxSizeMB: 5,
-      maxDimensions: { width: 800, height: 400 },
-      onValidationError: handleCoverImageValidationError,
-      coverImageLabels: {
-        clickToUpload: t('label.click-to-upload'),
-        orDragAndDrop: t('label.or-drag-and-drop'),
-        formatHint: (formats: string, maxSizeMB?: number) =>
-          t('message.cover-image-format-dimensions', {
-            formats,
-            width: 800,
-            height: 400,
-          }) + (maxSizeMB ? ` · ${maxSizeMB}MB` : ''),
-        replace: t('label.upload'),
-        remove: t('label.remove'),
-        reposition: t('label.reposition'),
-        savePosition: t('label.save-position'),
-        cancel: t('label.cancel'),
-        resetPosition: t('label.reset-position'),
-        dragHint: t('message.drag-to-adjust-position'),
-        imageTooSmallToReposition: t('message.image-too-small-to-reposition'),
-      },
-      validationMessages: {
-        sizeExceeded: (maxSizeMB: number) =>
-          t('message.file-size-exceeded', { size: `${maxSizeMB}MB` }),
-        dimensionsExceeded: (maxWidth: number, maxHeight: number) =>
-          t('message.image-dimensions-exceeded', { maxWidth, maxHeight }),
-        failedToLoad: t('message.failed-to-load-image'),
-      },
-    },
-    type: FieldTypes.COVER_IMAGE_UPLOAD,
-  };
 
   const iconField: FieldProp = {
     id: 'root/iconURL',
@@ -1147,7 +1098,7 @@ const AddDomainForm = ({
       data-testid="add-domain-form"
       form={form}
       onSubmit={form.handleSubmit(handleSubmit)}>
-      {isCoverImageUploadAvailable && <div>{getField(coverImageField)}</div>}
+      {coverImageField && <div>{getField(coverImageField)}</div>}
 
       <Box align="start" gap={4}>
         <div className="tw:min-w-[40px] tw:basis-[10%] tw:flex-[0_0_10%]">
