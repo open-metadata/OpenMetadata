@@ -386,3 +386,25 @@ class TestExplicitClusterOverrides:
             _get_redshift_iam_credentials(connection)
 
         assert "clusterIdentifier" not in str(exc_info.value)
+
+    @patch("metadata.ingestion.source.database.redshift.connection.AWSClient")
+    def test_failure_with_override_set_has_no_hint(self, mock_aws_client_cls):
+        mock_client = MagicMock()
+        mock_client.get_cluster_credentials.side_effect = ClientError(
+            {"Error": {"Code": "ClusterNotFound", "Message": "Cluster not found."}},
+            "GetClusterCredentials",
+        )
+        mock_aws_client_cls.return_value.get_redshift_client.return_value = mock_client
+
+        connection = RedshiftConnection(
+            hostPort=f"{VPCE_HOST}:5439",
+            username="admin",
+            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion="us-west-2")),
+            database="mydb",
+            clusterIdentifier="my-real-cluster",
+        )
+
+        with pytest.raises(SourceConnectionException) as exc_info:
+            _get_redshift_iam_credentials(connection)
+
+        assert str(exc_info.value).endswith("Cluster not found.")

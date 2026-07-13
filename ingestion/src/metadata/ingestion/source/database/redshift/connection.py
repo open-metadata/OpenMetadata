@@ -102,10 +102,10 @@ def _non_standard_host_hint(host: str) -> str:
     hint = ""
     if not host.endswith(".redshift.amazonaws.com") and not host.endswith(".redshift-serverless.amazonaws.com"):
         hint = (
-            " The identifier was derived from your hostname, which does not look like a"
-            " standard Redshift endpoint. If you connect via a PrivateLink/VPC endpoint"
-            " or a custom DNS name, set 'clusterIdentifier' (or 'workgroupName' for"
-            " Serverless) in the connection settings."
+            " [Hint: the identifier was derived from your hostname, which does not look"
+            " like a standard Redshift endpoint. If you connect via a PrivateLink/VPC"
+            " endpoint or a custom DNS name, set 'clusterIdentifier', or 'workgroupName'"
+            " for Serverless, in the connection settings.]"
         )
     return hint
 
@@ -122,7 +122,7 @@ def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: 
     except Exception as exc:
         hint = "" if connection.workgroupName else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}.{hint}"
+            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}{hint}"
         ) from exc
 
 
@@ -144,7 +144,7 @@ def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host:
     except Exception as exc:
         hint = "" if connection.clusterIdentifier else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}.{hint}"
+            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}{hint}"
         ) from exc
 
 
