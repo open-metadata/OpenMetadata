@@ -15,7 +15,7 @@ import type {
   ListItem,
   MultiSelectWidgetProps,
 } from '@react-awesome-query-builder/ui';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import type { Key } from 'react-aria-components';
 import { useListData } from 'react-stately';
 
@@ -74,18 +74,25 @@ const OMMultiSelectWidget = ({
     }
   }, [valueArray.join(',')]);
 
+  const requestIdRef = useRef(0);
+
   const loadAsync = useCallback(
     async (search: string) => {
       if (!asyncFetch) {
         return;
       }
+      // Guard against out-of-order responses: only the latest request may
+      // set items, otherwise a slow earlier fetch overwrites newer results.
+      const requestId = ++requestIdRef.current;
       const result = await asyncFetch(search);
-      setAllItems(
-        (result.values as ListItem[]).map((item) => ({
-          id: String(item.value),
-          label: String(item.title ?? item.value),
-        }))
-      );
+      if (requestId === requestIdRef.current) {
+        setAllItems(
+          (result.values as ListItem[]).map((item) => ({
+            id: String(item.value),
+            label: String(item.title ?? item.value),
+          }))
+        );
+      }
     },
     [asyncFetch]
   );

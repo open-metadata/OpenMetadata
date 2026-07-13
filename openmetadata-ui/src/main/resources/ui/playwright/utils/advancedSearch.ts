@@ -182,7 +182,7 @@ export const selectOption = async (
   await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
 
   if (isSearchable) {
-    await comboboxInput.clear();
+    // Single fill (no clear first) — one input event, one async fetch.
     await comboboxInput.fill(optionTitle);
   } else if ((await comboboxInput.count()) > 0) {
     // Select.ComboBox: clicking the input triggers AriaGroup.handlePointerDown
@@ -195,10 +195,12 @@ export const selectOption = async (
     await triggerButton.click();
   }
 
-  // Exclude the global-search Suggestions listbox (aria-label="Suggestions") which is
-  // always present in the DOM but hidden — .first() would otherwise resolve to it.
+  // The ComboBox popup listbox mounts only while open, but other hidden
+  // listboxes stay in the DOM (e.g. the nav-bar search's "Suggestions").
+  // React Aria labels every ComboBox popup "Suggestions", so filter by
+  // visibility — never by aria-label or DOM order.
   await page
-    .locator('[role="listbox"]:not([aria-label="Suggestions"])')
+    .locator('[role="listbox"]:visible')
     .first()
     .waitFor({ state: 'visible' });
 
@@ -206,7 +208,7 @@ export const selectOption = async (
   await page.waitForTimeout(100);
 
   const optionLocator = page
-    .locator('[role="listbox"]:not([aria-label="Suggestions"]):visible')
+    .locator('[role="listbox"]:visible')
     .getByRole('option', { name: optionTitle, exact: true })
     .first();
 

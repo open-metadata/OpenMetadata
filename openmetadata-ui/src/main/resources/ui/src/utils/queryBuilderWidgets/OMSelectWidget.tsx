@@ -16,7 +16,7 @@ import type {
   SelectWidgetProps,
 } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 
 const toSelectItems = (
   listValues: SelectWidgetProps['listValues']
@@ -48,19 +48,25 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
 }) => {
   const staticItems = toSelectItems(listValues);
   const [items, setItems] = useState<SelectItemType[]>(staticItems);
+  const requestIdRef = useRef(0);
 
   const loadAsync = useCallback(
     async (search: string) => {
       if (!asyncFetch) {
         return;
       }
+      // Guard against out-of-order responses: only the latest request may
+      // set items, otherwise a slow earlier fetch overwrites newer results.
+      const requestId = ++requestIdRef.current;
       const result = await asyncFetch(search);
-      setItems(
-        (result.values as ListItem[]).map((item) => ({
-          id: String(item.value),
-          label: String(item.title ?? item.value),
-        }))
-      );
+      if (requestId === requestIdRef.current) {
+        setItems(
+          (result.values as ListItem[]).map((item) => ({
+            id: String(item.value),
+            label: String(item.title ?? item.value),
+          }))
+        );
+      }
     },
     [asyncFetch]
   );
