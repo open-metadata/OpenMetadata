@@ -18,6 +18,7 @@ from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.entity.services.connections.database.influxdbConnection import (
     InfluxdbConnection,
 )
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.influxdb.connection import (
     InfluxDBClient,
     InfluxDBConnection,
@@ -186,7 +187,7 @@ class TestInfluxDBSource:
             },
         }
 
-        with pytest.raises(TypeError, match="Expected InfluxdbConnection"):
+        with pytest.raises(InvalidSourceException, match="Expected InfluxdbConnection"):
             InfluxDBSource.create(config_dict, MagicMock(), pipeline_name="test-pipeline")
 
     def test_get_table_columns_adds_time_column(self):
@@ -252,7 +253,7 @@ class TestInfluxDBSource:
 
 
 class TestInfluxDBSourceSchemaList:
-    """Test schema/database listing with optional databaseName filtering."""
+    """Test schema/database listing with optional databaseSchema filtering."""
 
     def test_get_schema_name_list_no_filter(self):
         mock_client = MagicMock()
@@ -261,7 +262,7 @@ class TestInfluxDBSourceSchemaList:
         source = InfluxDBSource.__new__(InfluxDBSource)
         source.connection_obj = mock_client
         source.service_connection = MagicMock()
-        source.service_connection.databaseName = None
+        source.service_connection.databaseSchema = None
 
         schemas = source.get_schema_name_list()
         assert schemas == ["db1", "db2", "db3"]
@@ -273,7 +274,7 @@ class TestInfluxDBSourceSchemaList:
         source = InfluxDBSource.__new__(InfluxDBSource)
         source.connection_obj = mock_client
         source.service_connection = MagicMock()
-        source.service_connection.databaseName = "db2"
+        source.service_connection.databaseSchema = "db2"
 
         schemas = source.get_schema_name_list()
         assert schemas == ["db2"]

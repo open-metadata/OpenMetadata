@@ -15,8 +15,6 @@ a SQLAlchemy dialect. This module provides a thin HTTP client wrapper
 and a BaseConnection subclass for the OpenMetadata ingestion framework.
 """
 
-from typing import Any
-
 from requests import Session
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -81,16 +79,6 @@ class InfluxDBClient:
             f"WHERE table_schema = 'iox' AND table_name = '{safe_table}'"
         )
         return self._query(database, sql)
-
-    def fetch_sample_rows(self, database: str, table: str, limit: int = 50) -> tuple[list[str], list[list[Any]]]:
-        safe_table = table.replace('"', '""')
-        sql = f"SELECT * FROM \"{safe_table}\" WHERE time >= now() - INTERVAL '24 hours' LIMIT {limit}"
-        data = self._query(database, sql)
-        if not data:
-            return [], []
-        columns = list(data[0].keys())
-        rows = [[row.get(col) for col in columns] for row in data]
-        return columns, rows
 
     def test_connection(self) -> bool:
         resp = self._session.get(f"{self._url}/health", timeout=10)

@@ -21,6 +21,7 @@ introspection. There is no SQLAlchemy dialect for InfluxDB 3, so this
 source extends CommonNoSQLSource with native client calls.
 """
 
+import traceback
 from collections.abc import Iterable
 
 from metadata.generated.schema.api.data.createTable import CreateTableRequest
@@ -40,6 +41,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
     Source as WorkflowSource,
 )
 from metadata.ingestion.api.models import Either
+from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.common_nosql_source import (
     CommonNoSQLSource,
@@ -80,34 +82,27 @@ class InfluxDBSource(CommonNoSQLSource):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: InfluxdbConnection = config.serviceConnection.root.config
         if not isinstance(connection, InfluxdbConnection):
-            raise TypeError(f"Expected InfluxdbConnection, but got {type(connection).__name__}")
+            raise InvalidSourceException(f"Expected InfluxdbConnection, but got {type(connection).__name__}")
         return cls(config, metadata)
 
     def get_schema_name_list(self) -> list[str]:
-        databases = self.connection_obj.list_databases()
-        config_db = getattr(self.service_connection, "databaseName", None)
-        if config_db:
-            databases = [db for db in databases if db == config_db]
-            if not databases:
-                logger.warning(
-                    "Configured databaseName '%s' not found in InfluxDB instance. Available databases: %s",
-                    config_db,
-                    self.connection_obj.list_databases(),
-                )
-        logger.info(
-            "Ingesting %d InfluxDB database(s) as schemas: %s",
-            len(databases),
-            databases,
-        )
-        return databases
+        try:
+            if self.service_connection.databaseSchema:
+                return [self.service_connection.databaseSchema]
+            return self.connection_obj.list_databases()
+        except Exception as exc:
+            logger.debug(f"Failed to list InfluxDB databases: {exc}")
+            logger.debug(traceback.format_exc())
+            return []
 
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         try:
             tables = self.connection_obj.list_tables(schema_name)
             for table in tables:
                 yield TableNameAndType(name=table)
-        except Exception:
-            logger.warning("Failed to list tables for InfluxDB database '%s'", schema_name)
+        except Exception as exc:
+            logger.debug(traceback.format_exc())
+            logger.warning("Failed to list tables for InfluxDB database '%s': %s", schema_name, exc)
 
     def get_table_columns(self, schema_name: str, table_name: str) -> list[Column]:
         columns_info = self.connection_obj.get_columns(schema_name, table_name)
