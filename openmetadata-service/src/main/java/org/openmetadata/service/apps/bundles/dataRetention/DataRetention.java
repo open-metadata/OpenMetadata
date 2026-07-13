@@ -364,9 +364,9 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphan ingestion pipelines", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
       if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+        failureDetails = new IndexingError();
+        failureDetails.setMessage(ex.getMessage());
+        failureDetails.setStackTrace(ExceptionUtils.getStackTrace(ex));
       }
     }
   }
