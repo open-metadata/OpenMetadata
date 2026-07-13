@@ -320,8 +320,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   }
 
   const metaEl = (
-    <div className="tw:flex tw:items-center tw:gap-3 tw:flex-wrap tw:text-sm">
-      <div className="tw:flex tw:items-center tw:gap-1">
+    <Box align='center' gap={3} wrap='wrap'>
+      <Box align='center' gap={1}>
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className="tw:leading-0">
             <GlobeIcon
@@ -363,11 +363,11 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             />
           </DomainSelectableList>
         )}
-      </div>
+      </Box>
 
       <Dot className="tw:text-fg-quaternary" size="xs" />
 
-      <div className="tw:flex tw:items-center tw:gap-1">
+      <Box align='center' gap={1}>
         <Tooltip title={t('label.owner-plural')}>
           <TooltipTrigger className="tw:leading-0">
             <UserIcon
@@ -416,12 +416,12 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
             />
           </UserTeamSelectableList>
         )}
-      </div>
+      </Box>
 
       {editors.length > 0 && (
         <>
           <Dot className="tw:text-fg-quaternary" size="xs" />
-          <div className="tw:flex tw:items-center tw:gap-1.5">
+          <Box align='center' gap={1}>
             <Tooltip title={t('label.editor')}>
               <TooltipTrigger className="tw:leading-0">
                 <EditorIcon
@@ -440,10 +440,10 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 showLabel={false}
               />
             </div>
-          </div>
+          </Box>
         </>
       )}
-    </div>
+    </Box>
   );
 
   const actionsEl = (
@@ -555,7 +555,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 }
               }}>
               <Dropdown.Item data-testid="delete-btn" id="delete">
-                <div className="tw:flex tw:items-center tw:gap-2">
+                <Box align='center' gap={2}>
                   <TrashIcon
                     aria-hidden="true"
                     className="ttw:shrink-0 tw:text-error-primary"
@@ -569,7 +569,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                     weight="medium">
                     {t('label.delete')}
                   </Typography>
-                </div>
+                </Box>
               </Dropdown.Item>
             </Dropdown.Menu>
           </Dropdown.Popover>
