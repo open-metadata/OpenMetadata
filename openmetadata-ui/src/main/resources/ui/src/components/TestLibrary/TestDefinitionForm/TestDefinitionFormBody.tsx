@@ -21,11 +21,22 @@ import {
   FormSelectItem,
   getField,
   HelperTextType,
+  useFieldDoc,
+  useFieldDocRegistry,
 } from '@openmetadata/ui-core-components';
 import { Plus, Trash01 } from '@untitledui/icons';
-import { FC, FocusEvent, lazy, useCallback } from 'react';
+import {
+  FC,
+  FocusEvent,
+  lazy,
+  useCallback,
+  useEffect,
+  useRef,
+  useState,
+} from 'react';
 import { useFieldArray, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
+import { TEST_DEFINITION_FORM } from '../../../constants/service-guide.constant';
 import { CSMode } from '../../../enums/codemirror.enum';
 import { DatabaseServiceType } from '../../../generated/entity/services/databaseService';
 import {
@@ -35,8 +46,10 @@ import {
   TestDataType,
   TestPlatform,
 } from '../../../generated/tests/testDefinition';
+import { loadFormFieldDocs } from '../../../utils/DataQuality/FormFieldDocs';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { TestDefinitionFormBodyProps } from './TestDefinitionForm.interface';
+import { TEST_DEFINITION_FIELD_DOCS } from './testDefinitionFormDocs';
 
 const CodeEditor = withSuspenseFallback(
   lazy(() => import('../../Database/SchemaEditor/CodeEditor'))
@@ -63,6 +76,66 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
   // The SQL editor is wired manually (not via getField); useWatch keeps its value
   // reactive to form.reset and programmatic setValue, unlike a render-time getValues.
   const sqlExpression = useWatch({ control, name: 'sqlExpression' });
+
+  // Per-field "Form Hint" text is sourced from the same TestDefinitionForm.md
+  // that backs the classic documentation panel, so the modal popover and the
+  // drawer doc panel stay in sync without duplicating the copy as translations.
+  const [fieldDocs, setFieldDocs] = useState<Record<string, string>>({});
+  useEffect(() => {
+    let cancelled = false;
+    loadFormFieldDocs(TEST_DEFINITION_FORM).then((docs) => {
+      if (!cancelled) {
+        setFieldDocs(docs);
+      }
+    });
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const resolveDoc = useCallback(
+    (fieldKey: string): string | undefined => {
+      const fallbackKey = TEST_DEFINITION_FIELD_DOCS[fieldKey];
+
+      return fieldDocs[fieldKey] ?? (fallbackKey ? t(fallbackKey) : undefined);
+    },
+    [fieldDocs, t]
+  );
+
+  // SQL and the parameter section render as custom elements (not via getField),
+  // so register their docs manually and spread the returned props on the wrapper.
+  const sqlExpressionDoc = useFieldDoc({
+    name: 'sqlExpression',
+    label: t('label.sql-query'),
+    doc: resolveDoc('sqlExpression'),
+  });
+  const parameterDefinitionDoc = useFieldDoc({
+    name: 'parameterDefinition',
+    label: t('label.parameter-plural'),
+    doc: resolveDoc('parameterDefinition'),
+  });
+
+  // Seed the hint popover with the first rendered field's doc so it isn't empty
+  // when the modal opens (the popover otherwise waits for the first focus). A
+  // no-op in the drawer variant, where the FieldDocProvider is disabled and no
+  // `data-field-doc` anchors exist. Focusing any field replaces it as usual.
+  const { setActive: setActiveFieldDoc, entries: fieldDocEntries } =
+    useFieldDocRegistry();
+  const formBodyRef = useRef<HTMLDivElement>(null);
+  const hasSeededFieldDocRef = useRef(false);
+  useEffect(() => {
+    if (hasSeededFieldDocRef.current) {
+      return;
+    }
+    const firstFieldName = formBodyRef.current
+      ?.querySelector('[data-field-doc]')
+      ?.getAttribute('data-field-doc');
+    if (firstFieldName) {
+      setActiveFieldDoc(firstFieldName);
+      hasSeededFieldDocRef.current = true;
+    }
+  }, [fieldDocEntries, setActiveFieldDoc]);
 
   const handleActiveField = useCallback(
     (id?: string) => {
@@ -92,6 +165,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.TEXT,
       required: true,
       id: 'root/name',
+      doc: resolveDoc('name'),
       placeholder: t('label.enter-entity-name', {
         entity: t('label.test-definition'),
       }),
@@ -111,6 +185,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.TEXT,
       required: false,
       id: 'root/displayName',
+      doc: resolveDoc('displayName'),
       placeholder: t('label.enter-entity-name', {
         entity: t('label.display-name'),
       }),
@@ -124,6 +199,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.TEXTAREA,
       required: false,
       id: 'root/description',
+      doc: resolveDoc('description'),
       placeholder: t('label.enter-entity-description', {
         entity: t('label.test-definition'),
       }),
@@ -140,6 +216,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.SELECT,
       required: true,
       id: 'root/entityType',
+      doc: resolveDoc('entityType'),
       placeholder: t('label.select-field', { field: t('label.entity-type') }),
       rules: {
         required: t('message.field-text-is-required', {
@@ -158,6 +235,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.MULTI_SELECT,
       required: true,
       id: 'root/testPlatforms',
+      doc: resolveDoc('testPlatforms'),
       placeholder: t('label.select-field', {
         field: t('label.test-platform-plural'),
       }),
@@ -178,6 +256,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.SELECT,
       required: false,
       id: 'root/dataQualityDimension',
+      doc: resolveDoc('dataQualityDimension'),
       placeholder: t('label.select-field', {
         field: t('label.data-quality-dimension'),
       }),
@@ -192,6 +271,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.MULTI_SELECT,
       required: false,
       id: 'root/supportedServices',
+      doc: resolveDoc('supportedServices'),
       helperText: t('message.supported-services-help'),
       helperTextType: HelperTextType.TOOLTIP,
       placeholder: t('message.empty-means-all-services'),
@@ -207,6 +287,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       type: FieldTypes.MULTI_SELECT,
       required: false,
       id: 'root/supportedDataTypes',
+      doc: resolveDoc('supportedDataTypes'),
       placeholder: t('label.select-field', {
         field: t('label.supported-data-type-plural'),
       }),
@@ -254,6 +335,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
     <div
       className="new-form-style tw:flex tw:flex-col tw:gap-5"
       data-testid="test-definition-form-body"
+      ref={formBodyRef}
       onFocusCapture={handleFocus}>
       {errorMessage && (
         <div>
@@ -272,7 +354,8 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         className="tw:flex tw:flex-col tw:gap-1.5"
         data-testid="sql-expression"
-        onClick={() => handleActiveField('root/sqlExpression')}>
+        onClick={() => handleActiveField('root/sqlExpression')}
+        {...sqlExpressionDoc}>
         <FormItemLabel
           label={t('label.sql-query')}
           tooltip={t('message.test-definition-sql-query-help')}
@@ -280,7 +363,7 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
         {isReadOnlyField ? (
           <textarea
             disabled
-            className="tw:min-h-[120px] tw:w-full tw:resize-y tw:rounded-lg tw:border tw:border-solid tw:border-secondary tw:bg-secondary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary"
+            className="tw:min-h-30 tw:w-full tw:resize-y tw:rounded-lg tw:border tw:border-solid tw:border-secondary tw:bg-secondary tw:p-3 tw:font-mono tw:text-xs tw:text-secondary"
             placeholder={t('label.sql-query')}
             rows={8}
             value={sqlExpression ?? ''}
@@ -304,14 +387,15 @@ const TestDefinitionFormBody: FC<TestDefinitionFormBodyProps> = ({
       <div
         className="tw:flex tw:flex-col tw:gap-3"
         data-testid="parameter-definition"
-        onClick={() => handleActiveField('root/parameterDefinition')}>
+        onClick={() => handleActiveField('root/parameterDefinition')}
+        {...parameterDefinitionDoc}>
         <FormItemLabel
           label={t('label.parameter-plural')}
           tooltip={t('message.test-definition-parameters-description')}
         />
         {fields.map((field, index) => (
           <div
-            className="m-t-md tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:p-3"
+            className="m-t-md tw:flex tw:flex-col tw:gap-4 tw:rounded-lg tw:border tw:border-solid tw:border-secondary tw:p-3"
             data-testid={`parameter-card-${index}`}
             key={field.id}>
             <div className="tw:flex tw:justify-between">

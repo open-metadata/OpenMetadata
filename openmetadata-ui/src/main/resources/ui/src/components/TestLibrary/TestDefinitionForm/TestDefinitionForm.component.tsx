@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { HookForm, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  HookForm,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import { Lightbulb05 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useMemo, useState } from 'react';
@@ -28,14 +34,15 @@ import {
 import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
+import { AiFormModal } from '../../common/atoms/drawer/AiFormModal';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer/useFormDrawer';
+import RichTextEditorPreviewerV1 from '../../common/RichTextEditor/RichTextEditorPreviewerV1';
 import ServiceDocPanel from '../../common/ServiceDocPanel/ServiceDocPanel';
 import {
   TestDefinitionFormProps,
   TestDefinitionFormValues,
 } from './TestDefinitionForm.interface';
 import TestDefinitionFormBody from './TestDefinitionFormBody';
-import TestDefinitionFormModal from './TestDefinitionFormModal';
 import {
   buildCreateTestDefinitionPayload,
   buildEditPatch,
@@ -66,6 +73,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
 
   const [errorMessage, setErrorMessage] = useState('');
   const [activeField, setActiveField] = useState('');
+  const [showHint, setShowHint] = useState(true);
 
   const resolvedTitle =
     title ??
@@ -250,20 +258,52 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
     }
   }, [isModalVariant, open, isOpen, closeDrawer]);
 
+  const hintLabel = (label: string) => (
+    <Box align="center" className="tw:gap-2" direction="row">
+      <Lightbulb05 className="tw:size-4 tw:text-secondary" />
+      <Typography className="tw:text-secondary" size="text-sm" weight="medium">
+        {label}
+      </Typography>
+    </Box>
+  );
+
   if (isModalVariant) {
     return (
-      <TestDefinitionFormModal
+      <AiFormModal
+        headerActions={
+          <Box align="center" className="tw:gap-2" direction="row">
+            {hintLabel(t('label.show-hint'))}
+            <Toggle
+              aria-label={t('label.show-hint')}
+              isSelected={showHint}
+              size="sm"
+              onChange={setShowHint}
+            />
+          </Box>
+        }
         isSubmitting={form.formState.isSubmitting}
         open={open}
+        reserveHintSpace={showHint}
         submitLabel={t('label.save')}
         subtitle={t('message.page-sub-header-for-test-definitions')}
         title={resolvedTitle}
         onClose={handleDismiss}
         onSubmit={submitAndClose}>
-        <HookForm form={form} onSubmit={submitAndClose}>
+        <HookForm
+          fieldDocHeader={hintLabel(t('label.form-hint'))}
+          fieldDocOffset={56}
+          form={form}
+          renderFieldDoc={(markdown) => (
+            <RichTextEditorPreviewerV1
+              enableSeeMoreVariant={false}
+              markdown={markdown}
+            />
+          )}
+          showFieldDocs={showHint}
+          onSubmit={submitAndClose}>
           {formBody}
         </HookForm>
-      </TestDefinitionFormModal>
+      </AiFormModal>
     );
   }
 

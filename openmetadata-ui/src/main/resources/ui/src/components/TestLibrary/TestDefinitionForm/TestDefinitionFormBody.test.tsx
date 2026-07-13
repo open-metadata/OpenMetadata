@@ -29,6 +29,10 @@ jest.mock('../../Database/SchemaEditor/CodeEditor', () => ({
   default: () => <div data-testid="code-editor" />,
 }));
 
+jest.mock('../../../utils/DataQuality/FormFieldDocs', () => ({
+  loadFormFieldDocs: jest.fn().mockResolvedValue({}),
+}));
+
 let formRef: UseFormReturn<TestDefinitionFormValues> | undefined;
 
 const Harness: FC<{

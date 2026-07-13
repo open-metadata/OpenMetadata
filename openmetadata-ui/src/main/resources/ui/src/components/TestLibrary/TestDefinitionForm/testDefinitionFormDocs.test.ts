@@ -13,7 +13,9 @@
 import enUs from '../../../locale/languages/en-us.json';
 import { TEST_DEFINITION_FIELD_DOCS } from './testDefinitionFormDocs';
 
-// The Test Definition form fields whose per-field docs are deferred but seamed.
+// Every Test Definition form field whose per-field doc backs the modal Form-Hint
+// popover. The popover sources its copy from TestDefinitionForm.md at runtime and
+// falls back to these i18n keys, so each key MUST resolve in en-US.
 const EXPECTED_FIELDS = [
   'name',
   'displayName',
@@ -27,18 +29,13 @@ const EXPECTED_FIELDS = [
   'parameterDefinition',
 ];
 
-// Fields whose docs reuse an existing, already-localized drawer helper key —
-// these MUST resolve in en-US today.
-const REUSED_FIELDS = [
-  'sqlExpression',
-  'supportedServices',
-  'parameterDefinition',
-];
-// Remaining fields point at deferred `doc-field-*` keys that are intentionally
-// not in the locales until the modal Form-Hint seam is enabled.
-const DEFERRED_FIELDS = EXPECTED_FIELDS.filter(
-  (field) => !REUSED_FIELDS.includes(field)
-);
+// Fields whose docs intentionally reuse an existing, already-localized drawer
+// helper key instead of a dedicated `doc-field-*` key.
+const REUSED_FIELDS: Record<string, string> = {
+  sqlExpression: 'message.test-definition-sql-query-help',
+  supportedServices: 'message.supported-services-help',
+  parameterDefinition: 'message.test-definition-parameters-description',
+};
 
 const messages = enUs.message as unknown as Record<string, string>;
 const resolvesInEnUs = (docKey: string): boolean =>
@@ -58,25 +55,15 @@ describe('TEST_DEFINITION_FIELD_DOCS', () => {
     });
   });
 
-  it('reuses existing drawer helper keys that already resolve in en-US', () => {
-    REUSED_FIELDS.forEach((field) => {
+  it('every field doc key resolves in en-US so the popover always has fallback copy', () => {
+    EXPECTED_FIELDS.forEach((field) => {
       expect(resolvesInEnUs(TEST_DEFINITION_FIELD_DOCS[field])).toBe(true);
     });
-
-    expect(TEST_DEFINITION_FIELD_DOCS.sqlExpression).toBe(
-      'message.test-definition-sql-query-help'
-    );
-    expect(TEST_DEFINITION_FIELD_DOCS.supportedServices).toBe(
-      'message.supported-services-help'
-    );
-    expect(TEST_DEFINITION_FIELD_DOCS.parameterDefinition).toBe(
-      'message.test-definition-parameters-description'
-    );
   });
 
-  it('deferred field docs are placeholders not yet in en-US (add them before enabling the modal Form-Hint seam)', () => {
-    DEFERRED_FIELDS.forEach((field) => {
-      expect(resolvesInEnUs(TEST_DEFINITION_FIELD_DOCS[field])).toBe(false);
+  it('reuses the existing drawer helper keys for the shared fields', () => {
+    Object.entries(REUSED_FIELDS).forEach(([field, key]) => {
+      expect(TEST_DEFINITION_FIELD_DOCS[field]).toBe(key);
     });
   });
 });
