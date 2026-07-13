@@ -8716,30 +8716,85 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
 
-    default List<String> list(EventType eventType, List<String> entityTypes, long timestamp) {
+    default List<ChangeEventRecord> listAfter(
+        EventType eventType,
+        List<String> entityTypes,
+        long timestamp,
+        long afterOffset,
+        int limit) {
+      List<ChangeEventRecord> result;
       if (nullOrEmpty(entityTypes)) {
-        return Collections.emptyList();
+        result = Collections.emptyList();
+      } else if (entityTypes.getFirst().equals("*")) {
+        result = listAfterWithoutEntityFilter(eventType.value(), timestamp, afterOffset, limit);
+      } else {
+        result =
+            listAfterWithEntityFilter(
+                eventType.value(), entityTypes, timestamp, afterOffset, limit);
       }
-      if (entityTypes.get(0).equals("*")) {
-        return listWithoutEntityFilter(eventType.value(), timestamp);
+      return result;
+    }
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset` AS offset, json FROM change_event WHERE eventType = :eventType "
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND `offset` > :afterOffset "
+                + "ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\" AS offset, json FROM change_event WHERE eventType = :eventType "
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND \"offset\" > :afterOffset "
+                + "ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listAfterWithEntityFilter(
+        @Bind("eventType") String eventType,
+        @BindList("entityTypes") List<String> entityTypes,
+        @Bind("timestamp") long timestamp,
+        @Bind("afterOffset") long afterOffset,
+        @Bind("limit") int limit);
+
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT `offset` AS offset, json FROM change_event WHERE eventType = :eventType "
+                + "AND eventTime >= :timestamp AND `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT \"offset\" AS offset, json FROM change_event WHERE eventType = :eventType "
+                + "AND eventTime >= :timestamp AND \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listAfterWithoutEntityFilter(
+        @Bind("eventType") String eventType,
+        @Bind("timestamp") long timestamp,
+        @Bind("afterOffset") long afterOffset,
+        @Bind("limit") int limit);
+
+    default long count(EventType eventType, List<String> entityTypes, long timestamp) {
+      long result;
+      if (nullOrEmpty(entityTypes)) {
+        result = 0;
+      } else if (entityTypes.getFirst().equals("*")) {
+        result = countWithoutEntityFilter(eventType.value(), timestamp);
+      } else {
+        result = countWithEntityFilter(eventType.value(), entityTypes, timestamp);
       }
-      return listWithEntityFilter(eventType.value(), entityTypes, timestamp);
+      return result;
     }
 
     @SqlQuery(
-        "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND (entityType IN (<entityTypes>)) AND eventTime >= :timestamp "
-            + "ORDER BY eventTime ASC")
-    List<String> listWithEntityFilter(
+        "SELECT COUNT(*) FROM change_event WHERE eventType = :eventType "
+            + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp")
+    long countWithEntityFilter(
         @Bind("eventType") String eventType,
         @BindList("entityTypes") List<String> entityTypes,
         @Bind("timestamp") long timestamp);
 
     @SqlQuery(
-        "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND eventTime >= :timestamp "
-            + "ORDER BY eventTime ASC")
-    List<String> listWithoutEntityFilter(
+        "SELECT COUNT(*) FROM change_event WHERE eventType = :eventType AND eventTime >= :timestamp")
+    long countWithoutEntityFilter(
         @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
 
     @SqlQuery(

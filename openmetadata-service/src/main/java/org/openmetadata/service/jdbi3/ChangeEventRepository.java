@@ -20,11 +20,15 @@ import static org.openmetadata.schema.type.EventType.ENTITY_SOFT_DELETED;
 import static org.openmetadata.schema.type.EventType.ENTITY_UPDATED;
 
 import java.util.ArrayList;
+import java.util.Comparator;
 import java.util.List;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.JsonUtils;
+import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
+import org.openmetadata.service.util.RestUtil;
 
 @Repository
 public class ChangeEventRepository {
@@ -35,24 +39,64 @@ public class ChangeEventRepository {
     Entity.setChangeEventRepository(this);
   }
 
-  public List<ChangeEvent> list(
+  public ResultList<ChangeEvent> list(
+      long timestamp,
+      List<String> entityCreatedList,
+      List<String> entityUpdatedList,
+      List<String> entityRestoredList,
+      List<String> entityDeletedList,
+      long afterOffset,
+      int limit) {
+    int fetchLimit = limit + 1;
+    List<ChangeEventRecord> records = new ArrayList<>();
+    records.addAll(
+        dao.listAfter(ENTITY_CREATED, entityCreatedList, timestamp, afterOffset, fetchLimit));
+    records.addAll(
+        dao.listAfter(ENTITY_UPDATED, entityUpdatedList, timestamp, afterOffset, fetchLimit));
+    records.addAll(
+        dao.listAfter(ENTITY_RESTORED, entityRestoredList, timestamp, afterOffset, fetchLimit));
+    records.addAll(
+        dao.listAfter(ENTITY_DELETED, entityDeletedList, timestamp, afterOffset, fetchLimit));
+    records.addAll(
+        dao.listAfter(ENTITY_SOFT_DELETED, entityDeletedList, timestamp, afterOffset, fetchLimit));
+
+    Page page = mergePage(records, limit);
+    List<ChangeEvent> events = new ArrayList<>();
+    for (ChangeEventRecord record : page.records()) {
+      events.add(JsonUtils.readValue(record.json(), ChangeEvent.class));
+    }
+    long total =
+        count(
+            timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
+    return new ResultList<>(events, null, page.afterCursor(), (int) total);
+  }
+
+  record Page(List<ChangeEventRecord> records, String afterCursor) {}
+
+  /**
+   * Keyset-merges the bounded per-event-type result sets: sorts by monotonic {@code offset}, keeps
+   * the first {@code limit} records, and derives the forward cursor from the last kept offset.
+   */
+  static Page mergePage(List<ChangeEventRecord> records, int limit) {
+    records.sort(Comparator.comparingLong(ChangeEventRecord::offset));
+    boolean hasMore = records.size() > limit;
+    List<ChangeEventRecord> page = hasMore ? new ArrayList<>(records.subList(0, limit)) : records;
+    String afterCursor =
+        hasMore ? RestUtil.encodeCursor(String.valueOf(page.getLast().offset())) : null;
+    return new Page(page, afterCursor);
+  }
+
+  private long count(
       long timestamp,
       List<String> entityCreatedList,
       List<String> entityUpdatedList,
       List<String> entityRestoredList,
       List<String> entityDeletedList) {
-    List<String> jsons = new ArrayList<>();
-    jsons.addAll(dao.list(ENTITY_CREATED, entityCreatedList, timestamp));
-    jsons.addAll(dao.list(ENTITY_UPDATED, entityUpdatedList, timestamp));
-    jsons.addAll(dao.list(ENTITY_RESTORED, entityRestoredList, timestamp));
-    jsons.addAll(dao.list(ENTITY_DELETED, entityDeletedList, timestamp));
-    jsons.addAll(dao.list(ENTITY_SOFT_DELETED, entityDeletedList, timestamp));
-
-    List<ChangeEvent> changeEvents = new ArrayList<>();
-    for (String json : jsons) {
-      changeEvents.add(JsonUtils.readValue(json, ChangeEvent.class));
-    }
-    return changeEvents;
+    return dao.count(ENTITY_CREATED, entityCreatedList, timestamp)
+        + dao.count(ENTITY_UPDATED, entityUpdatedList, timestamp)
+        + dao.count(ENTITY_RESTORED, entityRestoredList, timestamp)
+        + dao.count(ENTITY_DELETED, entityDeletedList, timestamp)
+        + dao.count(ENTITY_SOFT_DELETED, entityDeletedList, timestamp);
   }
 
   @Transaction

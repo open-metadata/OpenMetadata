@@ -20,7 +20,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.Consumes;
+import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
 import jakarta.ws.rs.Produces;
@@ -37,7 +40,7 @@ import org.openmetadata.service.Entity.EntityList;
 import org.openmetadata.service.jdbi3.ChangeEventRepository;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
-import org.openmetadata.service.util.EntityUtil;
+import org.openmetadata.service.util.RestUtil;
 
 @Path("/v1/events")
 @Tag(
@@ -120,15 +123,33 @@ public class EventResource {
               required = true,
               schema = @Schema(type = "long", example = "1426349294842"))
           @QueryParam("timestamp")
-          long timestamp) {
+          long timestamp,
+      @Parameter(
+              description = "Limit the number of events returned. (1 to 1000, default = 100)",
+              schema = @Schema(type = "integer", example = "100"))
+          @DefaultValue("100")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(
+              description = "Returns list of change events after this cursor",
+              schema = @Schema(type = "string"))
+          @QueryParam("after")
+          String after) {
     List<String> entityCreatedList = EntityList.getEntityList("entityCreated", entityCreated);
     List<String> entityUpdatedList = EntityList.getEntityList("entityUpdated", entityUpdated);
     List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
-    List<ChangeEvent> events =
-        repository.list(
-            timestamp, entityCreatedList, entityUpdatedList, entityRestoredList, entityDeletedList);
-    events.sort(EntityUtil.compareChangeEvent); // Sort change events based on time
-    return new EventList(events, null, null, events.size());
+    String decodedCursor = RestUtil.decodeCursor(after);
+    long afterOffset = decodedCursor == null ? 0 : Long.parseLong(decodedCursor);
+    return repository.list(
+        timestamp,
+        entityCreatedList,
+        entityUpdatedList,
+        entityRestoredList,
+        entityDeletedList,
+        afterOffset,
+        limitParam);
   }
 }
