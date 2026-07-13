@@ -8720,17 +8720,19 @@ public interface CollectionDAO {
         EventType eventType,
         List<String> entityTypes,
         long timestamp,
+        long endTs,
         long afterOffset,
         int limit) {
       List<ChangeEventRecord> result;
       if (nullOrEmpty(entityTypes)) {
         result = Collections.emptyList();
       } else if (entityTypes.getFirst().equals("*")) {
-        result = listAfterWithoutEntityFilter(eventType.value(), timestamp, afterOffset, limit);
+        result =
+            listAfterWithoutEntityFilter(eventType.value(), timestamp, endTs, afterOffset, limit);
       } else {
         result =
             listAfterWithEntityFilter(
-                eventType.value(), entityTypes, timestamp, afterOffset, limit);
+                eventType.value(), entityTypes, timestamp, endTs, afterOffset, limit);
       }
       return result;
     }
@@ -8743,21 +8745,24 @@ public interface CollectionDAO {
         value =
             "SELECT c.`offset` AS offset, c.json AS json FROM change_event c INNER JOIN ("
                 + "SELECT `offset` FROM change_event WHERE eventType = :eventType "
-                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND `offset` > :afterOffset "
-                + "ORDER BY `offset` ASC LIMIT :limit) k ON c.`offset` = k.`offset`",
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND eventTime <= :endTs "
+                + "AND `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit) k "
+                + "ON c.`offset` = k.`offset`",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT c.\"offset\" AS offset, c.json AS json FROM change_event c INNER JOIN ("
                 + "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
-                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND \"offset\" > :afterOffset "
-                + "ORDER BY \"offset\" ASC LIMIT :limit) k ON c.\"offset\" = k.\"offset\"",
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND eventTime <= :endTs "
+                + "AND \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit) k "
+                + "ON c.\"offset\" = k.\"offset\"",
         connectionType = POSTGRES)
     @RegisterRowMapper(ChangeEventRecordMapper.class)
     List<ChangeEventRecord> listAfterWithEntityFilter(
         @Bind("eventType") String eventType,
         @BindList("entityTypes") List<String> entityTypes,
         @Bind("timestamp") long timestamp,
+        @Bind("endTs") long endTs,
         @Bind("afterOffset") long afterOffset,
         @Bind("limit") int limit);
 
@@ -8765,75 +8770,21 @@ public interface CollectionDAO {
         value =
             "SELECT c.`offset` AS offset, c.json AS json FROM change_event c INNER JOIN ("
                 + "SELECT `offset` FROM change_event WHERE eventType = :eventType "
-                + "AND eventTime >= :timestamp AND `offset` > :afterOffset "
+                + "AND eventTime >= :timestamp AND eventTime <= :endTs AND `offset` > :afterOffset "
                 + "ORDER BY `offset` ASC LIMIT :limit) k ON c.`offset` = k.`offset`",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT c.\"offset\" AS offset, c.json AS json FROM change_event c INNER JOIN ("
                 + "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
-                + "AND eventTime >= :timestamp AND \"offset\" > :afterOffset "
+                + "AND eventTime >= :timestamp AND eventTime <= :endTs AND \"offset\" > :afterOffset "
                 + "ORDER BY \"offset\" ASC LIMIT :limit) k ON c.\"offset\" = k.\"offset\"",
         connectionType = POSTGRES)
     @RegisterRowMapper(ChangeEventRecordMapper.class)
     List<ChangeEventRecord> listAfterWithoutEntityFilter(
         @Bind("eventType") String eventType,
         @Bind("timestamp") long timestamp,
-        @Bind("afterOffset") long afterOffset,
-        @Bind("limit") int limit);
-
-    default List<Long> listOffsetsAfter(
-        EventType eventType,
-        List<String> entityTypes,
-        long timestamp,
-        long afterOffset,
-        int limit) {
-      List<Long> result;
-      if (nullOrEmpty(entityTypes)) {
-        result = Collections.emptyList();
-      } else if (entityTypes.getFirst().equals("*")) {
-        result =
-            listOffsetsAfterWithoutEntityFilter(eventType.value(), timestamp, afterOffset, limit);
-      } else {
-        result =
-            listOffsetsAfterWithEntityFilter(
-                eventType.value(), entityTypes, timestamp, afterOffset, limit);
-      }
-      return result;
-    }
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT `offset` FROM change_event WHERE eventType = :eventType "
-                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND `offset` > :afterOffset "
-                + "ORDER BY `offset` ASC LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
-                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND \"offset\" > :afterOffset "
-                + "ORDER BY \"offset\" ASC LIMIT :limit",
-        connectionType = POSTGRES)
-    List<Long> listOffsetsAfterWithEntityFilter(
-        @Bind("eventType") String eventType,
-        @BindList("entityTypes") List<String> entityTypes,
-        @Bind("timestamp") long timestamp,
-        @Bind("afterOffset") long afterOffset,
-        @Bind("limit") int limit);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT `offset` FROM change_event WHERE eventType = :eventType "
-                + "AND eventTime >= :timestamp AND `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
-                + "AND eventTime >= :timestamp AND \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit",
-        connectionType = POSTGRES)
-    List<Long> listOffsetsAfterWithoutEntityFilter(
-        @Bind("eventType") String eventType,
-        @Bind("timestamp") long timestamp,
+        @Bind("endTs") long endTs,
         @Bind("afterOffset") long afterOffset,
         @Bind("limit") int limit);
 

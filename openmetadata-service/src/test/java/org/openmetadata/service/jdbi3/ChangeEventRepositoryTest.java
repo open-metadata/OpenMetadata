@@ -69,27 +69,6 @@ class ChangeEventRepositoryTest {
   }
 
   @Test
-  void boundaryOffsetResolvesPositionalSkipToKeysetOffset() {
-    List<Long> offsets = new ArrayList<>(List.of(50L, 10L, 40L, 20L, 30L));
-
-    Long boundary = ChangeEventRepository.boundaryOffset(offsets, 2);
-
-    assertEquals(
-        20L,
-        boundary,
-        "from=2 resolves to the 2nd smallest offset; window is fetched with offset > 20");
-  }
-
-  @Test
-  void boundaryOffsetBeyondResultsReturnsNull() {
-    List<Long> offsets = new ArrayList<>(List.of(10L, 20L, 30L));
-
-    assertNull(
-        ChangeEventRepository.boundaryOffset(offsets, 10),
-        "from past the end has no boundary offset, so the window is empty");
-  }
-
-  @Test
   void cursorSurvivesResultListEncodingRoundTrip() {
     Page page = ChangeEventRepository.mergePage(records(10, 20, 30, 40), 2);
 

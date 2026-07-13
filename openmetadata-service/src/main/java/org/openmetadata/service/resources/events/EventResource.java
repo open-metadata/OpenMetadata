@@ -129,6 +129,14 @@ public class EventResource {
           @QueryParam("timestamp")
           long timestamp,
       @Parameter(
+              description =
+                  "Optional inclusive upper bound: only events with `eventTime` at or before this "
+                      + "unix timestamp in milliseconds are returned. Defaults to no upper bound.",
+              schema = @Schema(type = "long", example = "1426349294842"))
+          @DefaultValue("0")
+          @QueryParam("endTs")
+          long endTs,
+      @Parameter(
               description = "Limit the number of events returned. (1 to 1000, default = 100)",
               schema = @Schema(type = "integer", example = "100"))
           @DefaultValue("100")
@@ -138,19 +146,9 @@ public class EventResource {
           int limitParam,
       @Parameter(
               description =
-                  "Number of matching events to skip for positional pagination, defaults to 0. "
-                      + "Prefer the `after` cursor for deep pagination on large event volumes.",
-              schema = @Schema(type = "integer", example = "0"))
-          @DefaultValue("0")
-          @Min(value = 0, message = "must be greater than or equal to 0")
-          @Max(value = 10000, message = "must be less than or equal to 10000")
-          @QueryParam("from")
-          int from,
-      @Parameter(
-              description =
                   "Opaque cursor returned as `paging.after` from a previous call; pass it back to "
                       + "fetch the next page of events. Clients should echo this value rather than "
-                      + "construct it.",
+                      + "construct it. Page forward until `paging.after` is null to drain the range.",
               schema = @Schema(type = "string"))
           @QueryParam("after")
           String after) {
@@ -159,18 +157,16 @@ public class EventResource {
     List<String> entityRestoredList = EntityList.getEntityList("entityRestored", entityRestored);
     List<String> entityDeletedList = EntityList.getEntityList("entityDeleted", entityDeleted);
     String decodedCursor = RestUtil.decodeCursor(after);
-    if (decodedCursor != null && from > 0) {
-      throw new IllegalArgumentException("Only one of 'from' or 'after' query parameter allowed");
-    }
     long afterOffset = decodedCursor == null ? 0 : Long.parseLong(decodedCursor);
+    long upperBound = endTs <= 0 ? Long.MAX_VALUE : endTs;
     return repository.list(
         timestamp,
+        upperBound,
         entityCreatedList,
         entityUpdatedList,
         entityRestoredList,
         entityDeletedList,
         afterOffset,
-        from,
         limitParam);
   }
 }
