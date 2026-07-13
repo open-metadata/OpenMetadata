@@ -126,15 +126,7 @@ test.describe.serial('Persona operations', () => {
 
     await waitForAllLoadersToDisappear(page, 'skeleton-card-loader');
 
-    const personaResponse = page.waitForResponse(
-      `/api/v1/personas/name/${encodeURIComponent(
-        PERSONA_DETAILS.name
-      )}?fields=users`
-    );
-
     await navigateToPersonaWithPagination(page, PERSONA_DETAILS.name, true);
-
-    await personaResponse;
 
     await expect(page).toHaveURL(/.*#customize-ui/);
 
@@ -370,19 +362,11 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
         await waitForAllLoadersToDisappear(adminPage, 'skeleton-card-loader');
 
-        const personaResponse = adminPage.waitForResponse(
-          `/api/v1/personas/name/${encodeURIComponent(
-            PERSONA_DETAILS.name
-          )}?fields=users`
-        );
-
         await navigateToPersonaWithPagination(
           adminPage,
           PERSONA_DETAILS.name,
           true
         );
-
-        await personaResponse;
 
         await adminPage.getByRole('tab', { name: 'Users' }).click();
 
