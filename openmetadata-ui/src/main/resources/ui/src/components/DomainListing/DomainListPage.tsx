@@ -38,7 +38,7 @@ import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
+import { PaginationCardDefault } from '@openmetadata/ui-core-components';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
@@ -205,14 +205,6 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
   const { columns: domainColumns, renderCell: renderDomainCell } =
     useDomainTableColumns();
 
-  const { paginationControls } = usePaginationControls({
-    currentPage: domainListing.currentPage,
-    totalPages: domainListing.totalPages,
-    totalEntities: domainListing.totalEntities,
-    pageSize: domainListing.pageSize,
-    onPageChange: domainListing.handlePageChange,
-    loading: domainListing.loading,
-  });
 
   const selectedDomainEntities = useMemo(
     () =>
@@ -293,7 +285,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
             onSelect={domainListing.handleSelect}
             onSelectAll={domainListing.handleSelectAll}
           />
-          {paginationControls}
+          <PaginationCardDefault
+            page={domainListing.currentPage}
+            total={domainListing.totalPages}
+            onPageChange={domainListing.handlePageChange}
+          />
         </>
       );
     }
@@ -306,7 +302,11 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           renderCard={renderDomainCard}
           onEntityClick={domainListing.actionHandlers.onEntityClick}
         />
-        {paginationControls}
+        <PaginationCardDefault
+          page={domainListing.currentPage}
+          total={domainListing.totalPages}
+          onPageChange={domainListing.handlePageChange}
+        />
       </>
     );
   }, [
@@ -317,11 +317,13 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     domainListing.actionHandlers,
     domainListing.urlState.filters,
     domainListing.urlState.searchQuery,
+    domainListing.currentPage,
+    domainListing.totalPages,
+    domainListing.handlePageChange,
     isSearchOrFilterActive,
     view,
     renderDomainCell,
     renderDomainCard,
-    paginationControls,
     treeRefreshToken,
     openDrawer,
     refreshAllDomains,
