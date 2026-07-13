@@ -2355,14 +2355,14 @@ test.describe('Context Center Permissions', () => {
         adminPage.getByRole('button', { name: /updated by/i })
       ).toBeVisible();
 
-      // earlyAlphabetMemoryId is the only memory in the suite updated by an
-      // identity whose name sorts before "admin" (every other memory here
-      // is updated by admin) — ascending Updated By sort must place it first.
+      // earlyAlphabetUser's username sorts before "admin" (every other
+      // memory here is updated by admin) — ascending Updated By sort must
+      // place the memory it updated first. Assert on the rendered
+      // "Updated By" text rather than the row's data-testid: several
+      // fixture memories share similar titles, so the id-based check was
+      // brittle — the updatedBy name is what the sort actually orders by.
       const rows = adminPage.locator('[data-testid^="memory-row-"]');
-      await expect(rows.first()).toHaveAttribute(
-        'data-testid',
-        `memory-row-${earlyAlphabetMemoryId}`
-      );
+      await expect(rows.first()).toContainText('aaa-sort-updatedby.');
 
       await afterAction();
     });
