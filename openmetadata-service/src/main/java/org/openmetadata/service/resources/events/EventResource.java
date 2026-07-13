@@ -73,11 +73,11 @@ public class EventResource {
       operationId = "listChangeEvents",
       summary = "Get change events",
       description =
-          "Get a paginated list of change events matching event types, entity type, from a given "
-              + "date. Results are ordered by the monotonic change-event offset (insertion order), "
-              + "not strictly by event time, so keyset pagination via `after` is stable. Use "
-              + "`limit` with the `after` cursor for forward paging, or `from` for positional "
-              + "access; `from` and `after` are mutually exclusive.",
+          "Get a paginated list of change events matching event types and entity type within a "
+              + "time window (`timestamp` lower bound, optional `endTs` upper bound). Results are "
+              + "ordered by the monotonic change-event offset (insertion order), not strictly by "
+              + "event time, so keyset pagination via `after` is stable. Page forward with `limit` "
+              + "and the `after` cursor until `paging.after` is null to drain the window.",
       responses = {
         @ApiResponse(
             responseCode = "200",
