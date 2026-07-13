@@ -5,8 +5,10 @@ import static org.openmetadata.service.socket.WebSocketManager.SEARCH_INDEX_JOB_
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import io.micrometer.core.instrument.Timer;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashSet;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -27,6 +29,7 @@ import org.openmetadata.service.apps.bundles.searchIndex.listeners.SlackProgress
 import org.openmetadata.service.apps.scheduler.OmAppJobListener;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.search.SearchIndexRetryQueue;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.slf4j.MDC;
@@ -161,9 +164,38 @@ public class ReindexingOrchestrator {
   private void preflightFixes() {
     LOG.info("Running preflight fixes before reindexing");
     markStaleRunningJobsStopped();
+    cleanupRetryQueuePreFlight();
     syncIndexTemplates();
     ensureHybridSearchPipeline();
     cleanupOrphanedIndicesPreFlight();
+  }
+
+  private void cleanupRetryQueuePreFlight() {
+    try {
+      Set<String> requestedEntities = jobData.getEntities();
+      if (requestedEntities == null || requestedEntities.isEmpty()) {
+        return;
+      }
+      boolean isFullReindex = requestedEntities.stream().anyMatch(e -> ALL.equalsIgnoreCase(e));
+      if (isFullReindex) {
+        int deleted =
+            collectionDAO.searchIndexRetryQueueDAO().deleteByStatuses(ALL_PURGEABLE_STATUSES);
+        LOG.info(
+            "Preflight: cleared {} rows from search_index_retry_queue (full reindex)", deleted);
+      } else {
+        int deleted =
+            collectionDAO
+                .searchIndexRetryQueueDAO()
+                .deleteByEntityTypesAndStatuses(
+                    new ArrayList<>(requestedEntities), ALL_PURGEABLE_STATUSES);
+        LOG.info(
+            "Preflight: cleared {} rows from search_index_retry_queue for {} entity type(s)",
+            deleted,
+            requestedEntities.size());
+      }
+    } catch (Exception e) {
+      LOG.warn("Preflight: failed to cleanup retry queue: {}", e.getMessage());
+    }
   }
 
   private void syncIndexTemplates() {
@@ -185,6 +217,13 @@ public class ReindexingOrchestrator {
   }
 
   private static final String APP_NAME = "SearchIndexingApplication";
+  private static final List<String> ALL_PURGEABLE_STATUSES =
+      List.of(
+          SearchIndexRetryQueue.STATUS_PENDING,
+          SearchIndexRetryQueue.STATUS_PENDING_RETRY_1,
+          SearchIndexRetryQueue.STATUS_PENDING_RETRY_2,
+          SearchIndexRetryQueue.STATUS_FAILED,
+          SearchIndexRetryQueue.STATUS_SEARCH_UNAVAILABLE);
 
   private void markStaleRunningJobsStopped() {
     try {
