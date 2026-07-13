@@ -33,7 +33,7 @@ class BrandClassBase {
 
   public getBlogLink(_version: string) {
     // Since medium doens't follow any fixed structure we will just return the blog link
-    return 'http://getcollate.io/blog/announcing-collate-latest';
+    return 'https://www.getcollate.io/blog/announcing-collate-latest';
   }
 
   public getWelcomeScreenImg() {
