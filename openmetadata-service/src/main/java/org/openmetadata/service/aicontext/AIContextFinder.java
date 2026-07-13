@@ -79,22 +79,32 @@ public class AIContextFinder {
   }
 
   public FoundContext find(String query, int size) {
-    List<KnowledgeItem> items = new ArrayList<>();
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
     Map<String, CandidateAsset> candidates = new LinkedHashMap<>();
     VectorSearchResponse response = searchKnowledge(query, size);
     if (response != null && response.getHits() != null) {
       for (Map<String, Object> hit : response.getHits()) {
+        if (items.size() >= size) {
+          break;
+        }
         collectHit(hit, items, candidates);
       }
     }
-    return new FoundContext(items, new ArrayList<>(candidates.values()));
+    return new FoundContext(new ArrayList<>(items.values()), new ArrayList<>(candidates.values()));
   }
 
+  /**
+   * Items are keyed by FQN because the vector index holds one document per body chunk — a long
+   * article matches once per relevant chunk and would otherwise appear repeatedly, blowing the
+   * caller's size budget with duplicates. First (highest-scoring) chunk wins.
+   */
   private void collectHit(
-      Map<String, Object> hit, List<KnowledgeItem> items, Map<String, CandidateAsset> candidates) {
+      Map<String, Object> hit,
+      Map<String, KnowledgeItem> items,
+      Map<String, CandidateAsset> candidates) {
     KnowledgeItem item = toKnowledgeItem(hit);
-    if (item != null) {
-      items.add(item);
+    if (item != null && !items.containsKey(item.getFullyQualifiedName())) {
+      items.put(item.getFullyQualifiedName(), item);
       for (CandidateAsset asset : routeToAssets(hit, item)) {
         candidates.putIfAbsent(asset.fullyQualifiedName(), asset);
       }
