@@ -181,21 +181,21 @@ import { PartitionedKeys } from '../pages/TableDetailsPageV1/PartitionedKeys/Par
 import ConstraintIcon from '../pages/TableDetailsPageV1/TableConstraints/ConstraintIcon';
 import { exportTableDetailsInCSV } from '../rest/tableAPI';
 import { extractApiEndpointFields } from './APIEndpoints/APIEndpointUtils';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
 import { extractContainerColumns } from './ContainerDetailUtils';
 import { extractDataModelColumns } from './DashboardDataModelUtils';
 import EntityLink from './EntityLink';
 import { getEntityImportPath } from './EntityUtils';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './FqnUtils';
 import { t } from './i18next/LocalUtil';
 import { extractMlModelFeatures } from './MlModelDetailsUtils';
 import { extractPipelineTasks } from './PipelineDetailsUtils';
 import searchClassBase from './SearchClassBase';
 import { extractSearchIndexFields } from './SearchIndexUtils';
 import serviceUtilClassBase from './ServiceUtilClassBase';
-import { ordinalize } from './StringsUtils';
+import { ordinalize } from './StringUtils';
 import { TableDetailPageTabProps } from './TableClassBase';
 import { TableFieldsInfoCommonEntities } from './TableUtils.interface';
 import { extractTopicFields } from './TopicDetailsUtils';

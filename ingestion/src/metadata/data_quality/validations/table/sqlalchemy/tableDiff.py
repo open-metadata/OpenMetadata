@@ -478,7 +478,10 @@ class TableDiffValidator(BaseTestValidator, SQAValidatorMixin):
         )
         profile_sample = static.profileSample if static else None
         profile_sample_type = static.profileSampleType if static else None
-        if profile_sample is None or (profile_sample_type == ProfileSampleType.PERCENTAGE and profile_sample == 100):
+        if profile_sample is None or (
+            profile_sample_type == ProfileSampleType.PERCENTAGE
+            and profile_sample == 100
+        ):
             return None, None
         if DatabaseServiceType.Mssql in [
             self.runtime_params.table1.database_service_type,

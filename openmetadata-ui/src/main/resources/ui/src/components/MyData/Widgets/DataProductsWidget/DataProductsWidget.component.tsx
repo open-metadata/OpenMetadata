@@ -38,8 +38,8 @@ import {
 } from '../../../../pages/CustomizablePage/CustomizablePage.interface';
 import { getAllDataProductsWithAssetsCount } from '../../../../rest/dataProductAPI';
 import { searchData } from '../../../../rest/miscAPI';
-import { getEntityTypeExploreQueryFilter } from '../../../../utils/CommonUtils';
 import { getDataProductIconByUrl } from '../../../../utils/DataProductUtils';
+import { getEntityTypeExploreQueryFilter } from '../../../../utils/FilterQueryUtils';
 import { getDataProductDetailsPath } from '../../../../utils/RouterUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import WidgetEmptyState from '../Common/WidgetEmptyState/WidgetEmptyState';

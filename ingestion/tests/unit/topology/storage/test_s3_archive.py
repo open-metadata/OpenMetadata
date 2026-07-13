@@ -21,10 +21,7 @@ import pytest
 from metadata.generated.schema.metadataIngestion.storage.containerMetadataConfig import (
     MetadataEntry,
 )
-from metadata.ingestion.source.storage.s3.metadata import (
-    S3BucketResponse,
-    S3Source,
-)
+from metadata.ingestion.source.storage.s3.metadata import S3BucketResponse, S3Source
 from metadata.readers.archive import (
     TarArchiveReader,
     ZipArchiveReader,
@@ -35,7 +32,9 @@ MOCK_S3_CONFIG = {
     "source": {
         "type": "s3",
         "serviceName": "s3_test",
-        "serviceConnection": {"config": {"type": "S3", "awsConfig": {"awsRegion": "us-east-1"}}},
+        "serviceConnection": {
+            "config": {"type": "S3", "awsConfig": {"awsRegion": "us-east-1"}}
+        },
         "sourceConfig": {
             "config": {
                 "type": "StorageMetadata",
@@ -87,7 +86,9 @@ class TestS3ArchiveIntegration:
     def setup(self):
         with (
             patch("boto3.client"),
-            patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"),
+            patch(
+                "metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"
+            ),
             patch(
                 "metadata.ingestion.source.storage.storage_service.get_connection",
                 return_value=MagicMock(),
@@ -139,7 +140,9 @@ class TestS3ArchiveIntegration:
 
     def test_yields_parent_then_two_children(self):
         zip_bytes = _make_zip({"file1.csv": _CSV_CONTENT, "file2.csv": _CSV2_CONTENT})
-        self.s3_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.s3_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.s3_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with patch(
@@ -149,7 +152,9 @@ class TestS3ArchiveIntegration:
             results = list(
                 self.s3_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -161,7 +166,9 @@ class TestS3ArchiveIntegration:
 
     def test_yields_parent_then_one_child_tar(self):
         tar_bytes = _make_tar({"data.csv": _CSV_CONTENT})
-        self.s3_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.s3_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.s3_source.get_size = MagicMock(return_value=len(tar_bytes))
 
         with patch(
@@ -171,7 +178,9 @@ class TestS3ArchiveIntegration:
             results = list(
                 self.s3_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.tar.gz", structureFormat="tar.gz"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.tar.gz", structureFormat="tar.gz"
+                    ),
                 )
             )
 
@@ -181,7 +190,9 @@ class TestS3ArchiveIntegration:
 
     def test_schema_inferred_exactly_once(self):
         zip_bytes = _make_zip({"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT})
-        self.s3_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.s3_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.s3_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with (
@@ -197,7 +208,9 @@ class TestS3ArchiveIntegration:
             list(
                 self.s3_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -205,7 +218,9 @@ class TestS3ArchiveIntegration:
 
     def test_children_share_same_columns(self):
         zip_bytes = _make_zip({"a.csv": _CSV_CONTENT, "b.csv": _CSV2_CONTENT})
-        self.s3_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.s3_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.s3_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with patch(
@@ -215,7 +230,9 @@ class TestS3ArchiveIntegration:
             results = list(
                 self.s3_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -225,7 +242,9 @@ class TestS3ArchiveIntegration:
         assert children[0].data_model.columns == children[1].data_model.columns
 
     def test_open_reader_value_error_yields_only_parent(self):
-        self.s3_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.s3_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.s3_source.get_size = MagicMock(return_value=100)
 
         with patch(
@@ -245,7 +264,9 @@ class TestS3ArchiveIntegration:
 
     def test_empty_archive_yields_only_parent(self):
         zip_bytes = _make_zip({})
-        self.s3_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.s3_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.s3_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with patch(
@@ -255,7 +276,9 @@ class TestS3ArchiveIntegration:
             results = list(
                 self.s3_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="empty.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="empty.zip", structureFormat="zip"
+                    ),
                 )
             )
 
@@ -270,7 +293,9 @@ class TestS3ArchiveIntegration:
         results = list(
             self.s3_source._generate_archive_containers(
                 bucket_response=self.bucket,
-                metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                metadata_entry=MetadataEntry(
+                    dataPath="archive.zip", structureFormat="zip"
+                ),
             )
         )
 
@@ -279,7 +304,9 @@ class TestS3ArchiveIntegration:
 
     def test_s3_blob_adapter_is_used(self):
         zip_bytes = _make_zip({"file.csv": _CSV_CONTENT})
-        self.s3_source.metadata.get_by_name = MagicMock(return_value=self._make_archive_entity())
+        self.s3_source.metadata.get_by_name = MagicMock(
+            return_value=self._make_archive_entity()
+        )
         self.s3_source.get_size = MagicMock(return_value=len(zip_bytes))
 
         with (
@@ -299,7 +326,9 @@ class TestS3ArchiveIntegration:
             list(
                 self.s3_source._generate_archive_containers(
                     bucket_response=self.bucket,
-                    metadata_entry=MetadataEntry(dataPath="archive.zip", structureFormat="zip"),
+                    metadata_entry=MetadataEntry(
+                        dataPath="archive.zip", structureFormat="zip"
+                    ),
                 )
             )
 

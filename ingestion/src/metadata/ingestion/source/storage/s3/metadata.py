@@ -292,10 +292,16 @@ class S3Source(StorageServiceSource):
         inner_name = entry.name.split("/")[-1]
         inner_prefix = f"{archive_prefix}/{entry.name.lstrip(KEY_SEPARATOR)}"
         try:
-            file_formats = [container.FileFormat(entry_format.value)] if entry_format else []
+            file_formats = (
+                [container.FileFormat(entry_format.value)] if entry_format else []
+            )
         except ValueError:
             file_formats = []
-        data_model = ContainerDataModel(isPartitioned=False, columns=columns) if columns else None
+        data_model = (
+            ContainerDataModel(isPartitioned=False, columns=columns)
+            if columns
+            else None
+        )
         yield S3ContainerDetails(  # pyright: ignore[reportCallIssue]
             name=inner_name,
             prefix=inner_prefix,
@@ -330,7 +336,11 @@ class S3Source(StorageServiceSource):
         yield S3ContainerDetails(  # pyright: ignore[reportCallIssue]
             name=archive_path,
             prefix=prefix,
-            creation_date=(bucket_response.creation_date.isoformat() if bucket_response.creation_date else None),
+            creation_date=(
+                bucket_response.creation_date.isoformat()
+                if bucket_response.creation_date
+                else None
+            ),
             size=archive_size,
             file_formats=[],
             data_model=None,
@@ -349,14 +359,20 @@ class S3Source(StorageServiceSource):
         )
         archive_entity = self.metadata.get_by_name(entity=Container, fqn=archive_fqn)
         if archive_entity is None:
-            logger.warning(f"Archive container {archive_fqn!r} not found after creation; skipping children")
+            logger.warning(
+                f"Archive container {archive_fqn!r} not found after creation; skipping children"
+            )
             return
-        archive_ref = EntityReference(id=archive_entity.id.root, type="container")  # pyright: ignore[reportCallIssue]
+        archive_ref = EntityReference(
+            id=archive_entity.id.root, type="container"
+        )  # pyright: ignore[reportCallIssue]
 
         blob = S3BlobAdapter(self.s3_client, bucket_name, archive_path)
         structure_format = metadata_entry.structureFormat or ""
         with open_archive_reader(blob, structure_format) as reader:
-            for entry, columns, entry_format in iter_archive_entries_with_schema(reader):
+            for entry, columns, entry_format in iter_archive_entries_with_schema(
+                reader
+            ):
                 yield from self._generate_inner_file_container(
                     entry=entry,
                     archive_ref=archive_ref,
@@ -485,11 +501,14 @@ class S3Source(StorageServiceSource):
                         parent=parent,
                     )
                 except (ValueError, OSError) as exc:
-                    logger.warning(f"Failed processing archive {metadata_entry.dataPath!r}: {exc}")
+                    logger.warning(
+                        f"Failed processing archive {metadata_entry.dataPath!r}: {exc}"
+                    )
                     logger.debug(traceback.format_exc())
                 except Exception as exc:
                     logger.error(
-                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}", exc_info=True
+                        f"Unexpected error processing archive {metadata_entry.dataPath!r}: {exc}",
+                        exc_info=True,
                     )
                 continue
             if metadata_entry.depth == 0:

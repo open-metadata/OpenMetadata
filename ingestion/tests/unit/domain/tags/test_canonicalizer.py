@@ -15,7 +15,9 @@ from unittest.mock import MagicMock
 import pytest
 
 from metadata.domain.tags import Canonical, TagCanonicalizer
-from metadata.generated.schema.entity.classification.classification import Classification
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.type.basic import ProviderType
 
 
@@ -59,25 +61,37 @@ def _system_tag(classification: str, name: str, description: str = "") -> MagicM
 
 
 class TestClassification:
-    def test_no_match_returns_source_unchanged(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
+    def test_no_match_returns_source_unchanged(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
         mock_metadata.es_search_from_fqn.return_value = []
         result = canonicalizer.classification("MyClass", "Source desc")
         assert result == Canonical(name="MyClass", description="Source desc")
 
-    def test_system_match_uses_canonical_case(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
-        mock_metadata.es_search_from_fqn.return_value = [_system_classification("PII", "Canonical desc")]
+    def test_system_match_uses_canonical_case(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
+        mock_metadata.es_search_from_fqn.return_value = [
+            _system_classification("PII", "Canonical desc")
+        ]
         result = canonicalizer.classification("pii", "Source desc")
         assert result == Canonical(name="PII", description="Canonical desc")
 
-    def test_caches_per_case_insensitive_key(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
-        mock_metadata.es_search_from_fqn.return_value = [_system_classification("PII", "Canonical desc")]
+    def test_caches_per_case_insensitive_key(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
+        mock_metadata.es_search_from_fqn.return_value = [
+            _system_classification("PII", "Canonical desc")
+        ]
         canonicalizer.classification("pii", "Source desc")
         canonicalizer.classification("PII", "Source desc")
         canonicalizer.classification("Pii", "Source desc")
         # Three case variants share the same case-insensitive cache key
         assert mock_metadata.es_search_from_fqn.call_count == 1
 
-    def test_non_system_match_ignored(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
+    def test_non_system_match_ignored(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
         non_system = _system_classification("PII", "Canonical desc")
         non_system.provider = ProviderType.user
         mock_metadata.es_search_from_fqn.return_value = [non_system]
@@ -89,36 +103,52 @@ class TestClassification:
     ):
         mock_metadata.es_search_from_fqn.return_value = []
         canonicalizer.classification("Foo", "Source desc")
-        mock_metadata.es_search_from_fqn.assert_called_once_with(entity_type=Classification, fqn_search_string="Foo")
+        mock_metadata.es_search_from_fqn.assert_called_once_with(
+            entity_type=Classification, fqn_search_string="Foo"
+        )
 
 
 class TestTag:
-    def test_no_match_returns_source_unchanged(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
+    def test_no_match_returns_source_unchanged(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
         mock_metadata.es_search_from_fqn.return_value = []
         result = canonicalizer.tag("PII", "MyTag", "Source desc")
         assert result == Canonical(name="MyTag", description="Source desc")
 
-    def test_system_match_uses_canonical_case(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
-        mock_metadata.es_search_from_fqn.return_value = [_system_tag("PII", "Sensitive", "Canonical desc")]
+    def test_system_match_uses_canonical_case(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
+        mock_metadata.es_search_from_fqn.return_value = [
+            _system_tag("PII", "Sensitive", "Canonical desc")
+        ]
         result = canonicalizer.tag("PII", "sensitive", "Source desc")
         assert result == Canonical(name="Sensitive", description="Canonical desc")
 
-    def test_caches_per_case_insensitive_key(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
-        mock_metadata.es_search_from_fqn.return_value = [_system_tag("PII", "Sensitive", "")]
+    def test_caches_per_case_insensitive_key(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
+        mock_metadata.es_search_from_fqn.return_value = [
+            _system_tag("PII", "Sensitive", "")
+        ]
         canonicalizer.tag("PII", "sensitive", "Source desc")
         canonicalizer.tag("PII", "SENSITIVE", "Source desc")
         canonicalizer.tag("PII", "Sensitive", "Source desc")
         # Three case variants share the same case-insensitive cache key
         assert mock_metadata.es_search_from_fqn.call_count == 1
 
-    def test_match_requires_classification_match(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
+    def test_match_requires_classification_match(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
         # ES returns a tag but for a different classification — no canonicalization
         wrong_class_tag = _system_tag("OtherClass", "Sensitive", "Canonical desc")
         mock_metadata.es_search_from_fqn.return_value = [wrong_class_tag]
         result = canonicalizer.tag("PII", "sensitive", "Source desc")
         assert result == Canonical(name="sensitive", description="Source desc")
 
-    def test_non_system_match_ignored(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
+    def test_non_system_match_ignored(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
         non_system = _system_tag("PII", "Sensitive", "Canonical desc")
         non_system.provider = ProviderType.user
         mock_metadata.es_search_from_fqn.return_value = [non_system]
@@ -148,7 +178,9 @@ class TestRetryAndFailure:
             canonicalizer.classification("MyClass", "Source desc")
         assert mock_metadata.es_search_from_fqn.call_count == 5
 
-    def test_persistent_failure_does_not_poison_cache(self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock):
+    def test_persistent_failure_does_not_poison_cache(
+        self, canonicalizer: TagCanonicalizer, mock_metadata: MagicMock
+    ):
         # First call: ES persistently fails -> raises.
         mock_metadata.es_search_from_fqn.side_effect = RuntimeError("persistent")
         with pytest.raises(RuntimeError):
@@ -156,6 +188,8 @@ class TestRetryAndFailure:
 
         # ES recovers; subsequent call must reach ES again, not return a cached fallback.
         mock_metadata.es_search_from_fqn.side_effect = None
-        mock_metadata.es_search_from_fqn.return_value = [_system_classification("MyClass", "Canonical desc")]
+        mock_metadata.es_search_from_fqn.return_value = [
+            _system_classification("MyClass", "Canonical desc")
+        ]
         result = canonicalizer.classification("MyClass", "Source desc")
         assert result == Canonical(name="MyClass", description="Canonical desc")

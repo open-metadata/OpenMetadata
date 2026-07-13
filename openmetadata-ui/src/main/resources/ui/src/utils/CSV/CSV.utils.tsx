@@ -33,7 +33,7 @@ import {
   Type,
 } from '../../generated/entity/type';
 import { Status } from '../../generated/type/csvImportResult';
-import { removeOuterEscapes } from '../CommonUtils';
+import { removeOuterEscapes } from '../StringUtils';
 import csvUtilsClassBase from './CSVUtilsClassBase';
 
 export interface EditorProps {

@@ -98,7 +98,7 @@ jest.mock('../../../utils/EntityUtils', () => {
     DRAWER_NAVIGATION_OPTIONS: [],
   };
 });
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn(),
   bytesToSize: jest.fn(),

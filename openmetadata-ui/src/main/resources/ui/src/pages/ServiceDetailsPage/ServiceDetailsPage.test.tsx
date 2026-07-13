@@ -504,7 +504,7 @@ jest.mock('../../utils/EntityUtilClassBase', () => ({
   getManageExtraOptions: jest.fn().mockReturnValue([]),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn().mockReturnValue('Entity not found'),
 }));
 
@@ -556,7 +556,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
 }));
 
 // Additional utility mocks
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((text) => text),
   getEncodedFqn: jest.fn().mockImplementation((text) => text),
 }));

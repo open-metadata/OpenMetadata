@@ -364,8 +364,12 @@ class RdsIamAuthTokenManager:
             query_params = parse_qs(urlparse(token).query)
             amz_date = query_params["X-Amz-Date"][0]
             amz_expires = int(query_params["X-Amz-Expires"][0])
-            issued_at = datetime.datetime.strptime(amz_date, "%Y%m%dT%H%M%SZ").replace(tzinfo=datetime.timezone.utc)
+            issued_at = datetime.datetime.strptime(amz_date, "%Y%m%dT%H%M%SZ").replace(
+                tzinfo=datetime.timezone.utc
+            )
             expires_at = issued_at + datetime.timedelta(seconds=amz_expires)
         except (KeyError, ValueError, IndexError) as exc:
-            logger.warning(f"Could not parse RDS IAM token expiry, using default TTL: {exc}")
+            logger.warning(
+                f"Could not parse RDS IAM token expiry, using default TTL: {exc}"
+            )
         return expires_at

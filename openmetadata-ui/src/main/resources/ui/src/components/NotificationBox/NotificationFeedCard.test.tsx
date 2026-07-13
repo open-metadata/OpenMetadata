@@ -37,21 +37,23 @@ jest.mock('../common/ProfilePicture/ProfilePicture', () =>
 const mockNavigate = jest.fn();
 
 jest.mock('react-router-dom', () => ({
-  Link: jest.fn().mockImplementation(
-    ({
-      children,
-      to,
-      onClick,
-    }: {
-      children: React.ReactNode;
-      to: string;
-      onClick?: (e: React.MouseEvent) => void;
-    }) => (
-      <span data-testid="link" data-to={to} onClick={onClick}>
-        {children}
-      </span>
-    )
-  ),
+  Link: jest
+    .fn()
+    .mockImplementation(
+      ({
+        children,
+        to,
+        onClick,
+      }: {
+        children: React.ReactNode;
+        to: string;
+        onClick?: (e: React.MouseEvent) => void;
+      }) => (
+        <span data-testid="link" data-to={to} onClick={onClick}>
+          {children}
+        </span>
+      )
+    ),
   useNavigate: jest.fn(() => mockNavigate),
 }));
 jest.mock('../../utils/EntityUtils', () => ({

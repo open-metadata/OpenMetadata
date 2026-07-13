@@ -207,7 +207,9 @@ def test_get_columns_falls_back_to_nulltype_for_unknown_type():
     """Unknown data types must not raise — return NullType so SQLAlchemy
     can still reflect the column rather than failing the whole table."""
     connection = MagicMock()
-    connection.execute.return_value = [_row(column="weird_col", type="magical_unknown_type", designated=False)]
+    connection.execute.return_value = [
+        _row(column="weird_col", type="magical_unknown_type", designated=False)
+    ]
 
     columns = _get_columns(connection, "t")
 
@@ -322,7 +324,9 @@ def test_get_view_definition_from_views_returns_sql():
 
     definition = _get_view_definition_from_views(connection, "iot_critical_alerts")
 
-    assert definition == "SELECT ts, sensor_id FROM iot_alerts WHERE severity = 'critical'"
+    assert (
+        definition == "SELECT ts, sensor_id FROM iot_alerts WHERE severity = 'critical'"
+    )
     query_text = str(connection.execute.call_args[0][0])
     assert "views()" in query_text
 
@@ -455,7 +459,9 @@ def test_get_table_partition_details_returns_partition():
     source = _make_source_with_cache(
         mock_tuples=[("sensor_readings", "DAY", "ts", "T")],
     )
-    is_partitioned, partition = source.get_table_partition_details("sensor_readings", "public", MagicMock())
+    is_partitioned, partition = source.get_table_partition_details(
+        "sensor_readings", "public", MagicMock()
+    )
 
     assert is_partitioned is True
     assert partition is not None
@@ -468,7 +474,9 @@ def test_get_table_partition_details_includes_column_name():
     source = _make_source_with_cache(
         mock_tuples=[("sensor_readings", "DAY", "created_at", "T")],
     )
-    _, partition = source.get_table_partition_details("sensor_readings", "public", MagicMock())
+    _, partition = source.get_table_partition_details(
+        "sensor_readings", "public", MagicMock()
+    )
 
     assert partition.columns[0].columnName == "created_at"
 
@@ -478,7 +486,9 @@ def test_get_table_partition_details_returns_false_for_none():
     source = _make_source_with_cache(
         mock_tuples=[("orders", "NONE", None, "T")],
     )
-    is_partitioned, partition = source.get_table_partition_details("orders", "public", MagicMock())
+    is_partitioned, partition = source.get_table_partition_details(
+        "orders", "public", MagicMock()
+    )
 
     assert is_partitioned is False
     assert partition is None
@@ -487,7 +497,9 @@ def test_get_table_partition_details_returns_false_for_none():
 def test_get_table_partition_details_returns_false_for_missing_table():
     """Unknown table names must return (False, None) gracefully."""
     source = _make_source_with_cache(mock_tuples=[])
-    is_partitioned, partition = source.get_table_partition_details("ghost_table", "public", MagicMock())
+    is_partitioned, partition = source.get_table_partition_details(
+        "ghost_table", "public", MagicMock()
+    )
 
     assert is_partitioned is False
     assert partition is None
@@ -497,7 +509,9 @@ def test_get_table_partition_details_hour_interval():
     source = _make_source_with_cache(
         mock_tuples=[("trades", "HOUR", "ts", "T")],
     )
-    is_partitioned, partition = source.get_table_partition_details("trades", "public", MagicMock())
+    is_partitioned, partition = source.get_table_partition_details(
+        "trades", "public", MagicMock()
+    )
 
     assert is_partitioned is True
     assert partition.columns[0].interval == "HOUR"
@@ -525,7 +539,9 @@ def test_patch_questdb_dialect_binds_on_real_pg_dialect():
     assert engine.dialect.get_unique_constraints(connection, "t", schema="public") == []
     assert engine.dialect.get_indexes(connection, "t", schema="public") == []
     assert engine.dialect.get_check_constraints(connection, "t", schema="public") == []
-    assert engine.dialect.get_table_comment(connection, "t", schema="public") == {"text": None}
+    assert engine.dialect.get_table_comment(connection, "t", schema="public") == {
+        "text": None
+    }
 
 
 def test_patch_questdb_dialect_view_definition_queries_views_func():
@@ -590,7 +606,9 @@ def test_lineage_create_raises_for_wrong_connection_type():
 def test_get_materialized_view_definition_returns_sql():
     """Must return the view_sql string when the materialized view exists."""
     connection = MagicMock()
-    connection.execute.return_value.fetchone.return_value = _row(view_sql="SELECT ts FROM sensor_readings")
+    connection.execute.return_value.fetchone.return_value = _row(
+        view_sql="SELECT ts FROM sensor_readings"
+    )
 
     result = get_materialized_view_definition(connection, "sensor_daily")
 
@@ -621,13 +639,20 @@ def test_get_schema_definition_returns_materialized_view_sql():
         source = QuestDBSource.__new__(QuestDBSource)
 
     with (
-        patch.object(type(source), "connection", new_callable=PropertyMock, return_value=MagicMock()),
+        patch.object(
+            type(source),
+            "connection",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+        ),
         patch(
             "metadata.ingestion.source.database.questdb.metadata.get_materialized_view_definition",
             return_value="SELECT ts FROM sensor_readings",
         ) as mock_get,
     ):
-        result = source.get_schema_definition(TableType.MaterializedView, "sensor_daily", "public", MagicMock())
+        result = source.get_schema_definition(
+            TableType.MaterializedView, "sensor_daily", "public", MagicMock()
+        )
 
     assert result == "SELECT ts FROM sensor_readings"
     assert mock_get.call_args[0][1] == "sensor_daily"
@@ -642,12 +667,19 @@ def test_get_schema_definition_returns_none_when_definition_missing():
         source = QuestDBSource.__new__(QuestDBSource)
 
     with (
-        patch.object(type(source), "connection", new_callable=PropertyMock, return_value=MagicMock()),
+        patch.object(
+            type(source),
+            "connection",
+            new_callable=PropertyMock,
+            return_value=MagicMock(),
+        ),
         patch(
             "metadata.ingestion.source.database.questdb.metadata.get_materialized_view_definition",
             return_value=None,
         ),
     ):
-        result = source.get_schema_definition(TableType.MaterializedView, "sensor_daily", "public", MagicMock())
+        result = source.get_schema_definition(
+            TableType.MaterializedView, "sensor_daily", "public", MagicMock()
+        )
 
     assert result is None

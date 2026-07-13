@@ -136,7 +136,9 @@ class PandasInterfaceMixin:
 
         return yield_sampled_dfs
 
-    def get_sampled_dataframe(self, raw_dataset: Callable, static: StaticSamplingConfig) -> Callable:
+    def get_sampled_dataframe(
+        self, raw_dataset: Callable, static: StaticSamplingConfig
+    ) -> Callable:
         """Get sampled dataframe based on profiler config
 
         Returns:

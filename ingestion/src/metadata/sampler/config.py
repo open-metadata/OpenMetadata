@@ -38,11 +38,7 @@ from metadata.profiler.config import (
     get_database_profiler_config,
     get_schema_profiler_config,
 )
-from metadata.sampler.models import (
-    DatabaseAndSchemaConfig,
-    SampleConfig,
-    TableConfig,
-)
+from metadata.sampler.models import DatabaseAndSchemaConfig, SampleConfig, TableConfig
 
 
 def get_sample_storage_config(
@@ -100,7 +96,9 @@ def get_storage_config_for_table(
         return get_sample_storage_config(database_profiler_config)
 
     try:
-        return db_service.connection.config.sampleDataStorageConfig.config  # pyright: ignore[reportAttributeAccessIssue]
+        return (
+            db_service.connection.config.sampleDataStorageConfig.config
+        )  # pyright: ignore[reportAttributeAccessIssue]
     except AttributeError:
         pass
 
@@ -304,22 +302,32 @@ def get_tiered_sample(row_count: int) -> StaticSamplingConfig:
         )
     if row_count <= 1_000_000:
         return StaticSamplingConfig(
-            profileSample=50, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+            profileSample=50,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            samplingMethodType=None,
         )
     if row_count <= 10_000_000:
         return StaticSamplingConfig(
-            profileSample=10, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+            profileSample=10,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            samplingMethodType=None,
         )
     if row_count <= 100_000_000:
         return StaticSamplingConfig(
-            profileSample=5, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+            profileSample=5,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            samplingMethodType=None,
         )
     if row_count <= 1_000_000_000:
         return StaticSamplingConfig(
-            profileSample=1, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+            profileSample=1,
+            profileSampleType=ProfileSampleType.PERCENTAGE,
+            samplingMethodType=None,
         )
     return StaticSamplingConfig(
-        profileSample=0.1, profileSampleType=ProfileSampleType.PERCENTAGE, samplingMethodType=None
+        profileSample=0.1,
+        profileSampleType=ProfileSampleType.PERCENTAGE,
+        samplingMethodType=None,
     )
 
 
@@ -336,7 +344,9 @@ def resolve_static_sampling_config(
         dynamic: DynamicSamplingConfig = sample_config.config
         row_count = row_count or 0
         if not dynamic.smartSampling and dynamic.thresholds is not None:
-            for threshold in sorted(dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True):
+            for threshold in sorted(
+                dynamic.thresholds, key=lambda t: t.rowCountThreshold, reverse=True
+            ):
                 if row_count >= threshold.rowCountThreshold:
                     return StaticSamplingConfig(
                         profileSample=threshold.profileSample,
@@ -348,4 +358,8 @@ def resolve_static_sampling_config(
 
         return None
 
-    return sample_config.config if isinstance(sample_config.config, StaticSamplingConfig) else None
+    return (
+        sample_config.config
+        if isinstance(sample_config.config, StaticSamplingConfig)
+        else None
+    )

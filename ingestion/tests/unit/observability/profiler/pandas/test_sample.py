@@ -36,10 +36,7 @@ from metadata.profiler.interface.pandas.profiler_interface import (
 from metadata.profiler.metrics.registry import Metrics
 from metadata.profiler.processor.core import Profiler
 from metadata.readers.dataframe.models import DatalakeColumnWrapper
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-)
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.pandas.sampler import DatalakeSampler
 
 

@@ -30,15 +30,12 @@ import {
   transformPoint,
 } from './CanvasUtils';
 
-jest.mock('./EntityLineageEdgeUtils', () => ({
+jest.mock('./EntityLineageUtils', () => ({
   getEdgePathData: jest.fn().mockReturnValue({
     edgePath: 'M 0,0 C 50,0 50,100 100,100',
     edgeCenterX: 50,
     edgeCenterY: 50,
   }),
-}));
-
-jest.mock('./EntityLineageNodeUtils', () => ({
   getEntityChildrenAndLabel: jest.fn().mockReturnValue({ children: [] }),
 }));
 

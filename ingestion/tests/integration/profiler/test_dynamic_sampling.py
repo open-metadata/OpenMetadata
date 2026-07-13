@@ -59,7 +59,11 @@ def pg_engine(postgres_container):  # noqa: F811
     engine = create_engine(postgres_container.get_connection_url())
     with engine.connect() as conn:
         conn.execute(text("DROP TABLE IF EXISTS public.sampling_test"))
-        conn.execute(text("CREATE TABLE public.sampling_test (id INTEGER PRIMARY KEY, name VARCHAR(256))"))
+        conn.execute(
+            text(
+                "CREATE TABLE public.sampling_test (id INTEGER PRIMARY KEY, name VARCHAR(256))"
+            )
+        )
         conn.execute(
             text(
                 "INSERT INTO public.sampling_test (id, name) "
@@ -118,7 +122,9 @@ class TestPostgresDynamicSampling:
             sampleConfigType=SampleConfigType.DYNAMIC,
             config=DynamicSamplingConfig(smartSampling=True),
         )
-        static = resolve_static_sampling_config(sample_config=config, row_count=ROW_COUNT)
+        static = resolve_static_sampling_config(
+            sample_config=config, row_count=ROW_COUNT
+        )
         assert static is not None
         assert static.profileSample == 100
         assert static.profileSampleType == ProfileSampleType.PERCENTAGE
@@ -134,7 +140,9 @@ class TestPostgresDynamicSampling:
                 ],
             ),
         )
-        static = resolve_static_sampling_config(sample_config=config, row_count=ROW_COUNT)
+        static = resolve_static_sampling_config(
+            sample_config=config, row_count=ROW_COUNT
+        )
         assert static is not None
         assert static.profileSample == 50.0
 
@@ -149,6 +157,8 @@ class TestPostgresDynamicSampling:
                 ],
             ),
         )
-        static = resolve_static_sampling_config(sample_config=config, row_count=ROW_COUNT)
+        static = resolve_static_sampling_config(
+            sample_config=config, row_count=ROW_COUNT
+        )
         # 1000 < 5000 threshold → no sampling applied
         assert static is None

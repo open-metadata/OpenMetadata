@@ -34,7 +34,7 @@ import {
   getGroupLabel,
   getSuggestionElement,
 } from '../../utils/SearchUtils';
-import { escapeESReservedCharacters } from '../../utils/StringsUtils';
+import { escapeESReservedCharacters } from '../../utils/StringUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
 import './suggestions.less';

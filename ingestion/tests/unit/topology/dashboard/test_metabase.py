@@ -87,7 +87,9 @@ EXAMPLE_DASHBOARD = LineageDashboard(
 EXAMPLE_CHART = LineageChart(
     id="a1b2c3d4-1234-5678-abcd-ef0123456789",
     name="lineage_chart",
-    service=EntityReference(id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"),
+    service=EntityReference(
+        id="c3eb265f-5445-4ad3-ba5e-797d3a3071bb", type="dashboardService"
+    ),
 )
 
 EXAMPLE_TABLE = [
@@ -302,7 +304,9 @@ class MetabaseUnitTest(TestCase):
 
     @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
     @patch.object(MetabaseSource, "_get_chart_entity", return_value=EXAMPLE_CHART)
-    @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
+    @patch.object(
+        MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE
+    )
     def test_yield_lineage(self, *_):
         """
         Function to test out lineage
@@ -553,7 +557,9 @@ class MetabaseUnitTest(TestCase):
 
     @patch.object(OpenMetadata, "search_in_any_service", return_value=EXAMPLE_TABLE)
     @patch.object(MetabaseSource, "_get_chart_entity", return_value=EXAMPLE_CHART)
-    @patch.object(MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE)
+    @patch.object(
+        MetabaseSource, "_get_database_service", return_value=MOCK_DATABASE_SERVICE
+    )
     def test_yield_lineage_optional_clause_blocks(self, *_):
         """
         Lineage is correctly produced for native queries that use Metabase's
@@ -595,11 +601,17 @@ class MetabaseUnitTest(TestCase):
                 dashboard_ids=[],
             )
             self.metabase.charts_dict = {"opt_lineage": chart}
-            dashboard = MetabaseDashboardDetails(name="test", id="1", card_ids=["opt_lineage"])
+            dashboard = MetabaseDashboardDetails(
+                name="test", id="1", card_ids=["opt_lineage"]
+            )
 
-            with patch.object(OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD):
+            with patch.object(
+                OpenMetadata, "get_by_name", return_value=EXAMPLE_DASHBOARD
+            ):
                 result = list(
-                    self.metabase.yield_dashboard_lineage_details(dashboard_details=dashboard, db_service_prefix=None)
+                    self.metabase.yield_dashboard_lineage_details(
+                        dashboard_details=dashboard, db_service_prefix=None
+                    )
                 )
                 lineage_results = [r.right for r in result if r.right is not None]
                 self.assertTrue(

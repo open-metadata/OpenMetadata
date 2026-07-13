@@ -161,7 +161,9 @@ def deaggregate_kinesis_record(data: bytes) -> list[bytes]:
     if not data.startswith(KPL_AGGREGATED_MAGIC):
         return [data]
     if len(data) < len(KPL_AGGREGATED_MAGIC) + KPL_MD5_DIGEST_SIZE:
-        raise ValueError("Truncated KPL-aggregated Kinesis record: missing protobuf body or checksum")
+        raise ValueError(
+            "Truncated KPL-aggregated Kinesis record: missing protobuf body or checksum"
+        )
     protobuf = data[len(KPL_AGGREGATED_MAGIC) : -KPL_MD5_DIGEST_SIZE]
     payloads = []
     for field_number, record in _iter_protobuf_fields(protobuf):
@@ -191,12 +193,16 @@ class OpenlineageSource(PipelineServiceSource):
     _current_pipeline_service: Optional[str] = None  # noqa: UP045
 
     @classmethod
-    def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
+    def create(
+        cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None
+    ):  # noqa: UP045
         """Create class instance"""
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
         connection: OpenLineageConnection = config.serviceConnection.root.config
         if not isinstance(connection, OpenLineageConnection):
-            raise InvalidSourceException(f"Expected OpenLineageConnection, but got {connection}")
+            raise InvalidSourceException(
+                f"Expected OpenLineageConnection, but got {connection}"
+            )
         return cls(config, metadata)
 
     def prepare(self):
@@ -205,7 +211,9 @@ class OpenlineageSource(PipelineServiceSource):
         self._entity_cache: LRUCache = LRUCache(maxsize=10000)
         self._namespace_to_service_cache: LRUCache = LRUCache(maxsize=10000)
         self._resolution_cache: LRUCache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
-        self._db_service_type_map: Dict[str, str] = self._build_db_service_type_map()  # noqa: UP006
+        self._db_service_type_map: Dict[
+            str, str
+        ] = self._build_db_service_type_map()  # noqa: UP006
 
     def close(self) -> None:
         self.metadata.compute_percentile(Pipeline, self.today)
@@ -258,7 +266,9 @@ class OpenlineageSource(PipelineServiceSource):
         )
 
     @staticmethod
-    def _parse_table_identity(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
+    def _parse_table_identity(
+        namespace: str, name: str
+    ) -> Optional[TableDetails]:  # noqa: UP045
         """
         Parse a single OpenLineage ``(namespace, name)`` identity to a table.
 
@@ -297,10 +307,14 @@ class OpenlineageSource(PipelineServiceSource):
         """
         facets = data.get("facets")
         symlinks = facets.get("symlinks") if isinstance(facets, dict) else None
-        identifiers = symlinks.get("identifiers") if isinstance(symlinks, dict) else None
+        identifiers = (
+            symlinks.get("identifiers") if isinstance(symlinks, dict) else None
+        )
         if not isinstance(identifiers, list):
             return []
-        return [identifier for identifier in identifiers if isinstance(identifier, dict)]
+        return [
+            identifier for identifier in identifiers if isinstance(identifier, dict)
+        ]
 
     @staticmethod
     def _raw_table_identities(data: Dict) -> List[Tuple[str, str]]:  # noqa: UP006
@@ -330,7 +344,9 @@ class OpenlineageSource(PipelineServiceSource):
         return identities
 
     @classmethod
-    def _iter_table_candidates(cls, data: Dict) -> List[Tuple[TableDetails, str]]:  # noqa: UP006
+    def _iter_table_candidates(
+        cls, data: Dict
+    ) -> List[Tuple[TableDetails, str]]:  # noqa: UP006
         """
         Parsed, de-duplicated table candidates in resolution priority order.
 
@@ -355,7 +371,9 @@ class OpenlineageSource(PipelineServiceSource):
                 candidates.append((details, namespace))
         return candidates
 
-    def _resolve_table(self, data: Dict) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+    def _resolve_table(
+        self, data: Dict
+    ) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
         """
         Resolve an OpenLineage dataset to an existing OpenMetadata table.
 
@@ -378,7 +396,9 @@ class OpenlineageSource(PipelineServiceSource):
         self._resolution_cache[cache_key] = resolved
         return resolved
 
-    def _resolve_table_uncached(self, data: Dict, ol_name: str) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
+    def _resolve_table_uncached(
+        self, data: Dict, ol_name: str
+    ) -> Optional[ResolvedTable]:  # noqa: UP006, UP045
         """
         Run candidate-based resolution for :meth:`_resolve_table`.
 
@@ -418,7 +438,9 @@ class OpenlineageSource(PipelineServiceSource):
         )
 
     @staticmethod
-    def _log_unmatched_dataset(ol_name: str, attempts: List[str]) -> None:  # noqa: UP006
+    def _log_unmatched_dataset(
+        ol_name: str, attempts: List[str]
+    ) -> None:  # noqa: UP006
         logger.warning(
             f"OpenLineage dataset '{ol_name}' matched no table in configured services. "
             f"Tried {len(attempts)} candidate(s): {'; '.join(attempts)}. Ensure the "
@@ -448,7 +470,9 @@ class OpenlineageSource(PipelineServiceSource):
         parsed = urlparse(namespace)
         broker_hostname = parsed.hostname
         if not broker_hostname:
-            raise ValueError(f"Could not extract broker hostname from namespace: {namespace}")
+            raise ValueError(
+                f"Could not extract broker hostname from namespace: {namespace}"
+            )
 
         if parsed.port:
             broker_hostname = f"{broker_hostname}:{parsed.port}"
@@ -490,7 +514,9 @@ class OpenlineageSource(PipelineServiceSource):
         return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
 
     @staticmethod
-    def _parse_cosmos_table_name(namespace: str, name: str) -> Optional[TableDetails]:  # noqa: UP045
+    def _parse_cosmos_table_name(
+        namespace: str, name: str
+    ) -> Optional[TableDetails]:  # noqa: UP045
         """
         Parse Azure Cosmos DB OL dataset names.
 
@@ -504,7 +530,9 @@ class OpenlineageSource(PipelineServiceSource):
         coll_match = re.fullmatch(r"colls/([^/]+)", name)
         if not db_match or not coll_match:
             return None
-        return TableDetails(name=coll_match.group(1).lower(), schema=db_match.group(1).lower())
+        return TableDetails(
+            name=coll_match.group(1).lower(), schema=db_match.group(1).lower()
+        )
 
     def _get_by_name_cached(self, entity_class, fqn_str: str, **kwargs):
         """Wrapper around metadata.get_by_name with in-memory caching."""
@@ -523,7 +551,9 @@ class OpenlineageSource(PipelineServiceSource):
         type_map = {}
         for service_name in self.get_db_service_names():
             try:
-                resp = self.metadata.client.get(f"/services/databaseServices/name/{quote(service_name, safe='')}")
+                resp = self.metadata.client.get(
+                    f"/services/databaseServices/name/{quote(service_name, safe='')}"
+                )
                 svc_type_str = resp.get("serviceType")
                 if svc_type_str:
                     type_map[service_name] = DatabaseServiceType(svc_type_str)
@@ -531,7 +561,9 @@ class OpenlineageSource(PipelineServiceSource):
                 logger.debug(f"Could not fetch DB service: {service_name}")
         return type_map
 
-    def _resolve_db_services_for_namespace(self, namespace: str) -> Optional[List[str]]:  # noqa: UP006, UP045
+    def _resolve_db_services_for_namespace(
+        self, namespace: str
+    ) -> Optional[List[str]]:  # noqa: UP006, UP045
         """
         Resolve which DB services to search for a given OL dataset namespace.
 
@@ -572,7 +604,9 @@ class OpenlineageSource(PipelineServiceSource):
             self._namespace_to_service_cache[namespace] = result
         return result
 
-    def _get_table_fqn(self, table_details: TableDetails, namespace: Optional[str] = None) -> Optional[str]:  # noqa: UP045
+    def _get_table_fqn(
+        self, table_details: TableDetails, namespace: Optional[str] = None
+    ) -> Optional[str]:  # noqa: UP045
         if not self.get_db_service_names():
             if not self._db_service_names_warned:
                 logger.warning(
@@ -586,7 +620,9 @@ class OpenlineageSource(PipelineServiceSource):
         try:
             resolved_services = self._resolve_db_services_for_namespace(namespace)
             try:
-                return self._get_table_fqn_from_om(table_details, services=resolved_services)
+                return self._get_table_fqn_from_om(
+                    table_details, services=resolved_services
+                )
             except FQNNotFoundException:
                 logger.debug(
                     f"Table '{table_details.name}' in schema '{table_details.schema}' "
@@ -601,10 +637,14 @@ class OpenlineageSource(PipelineServiceSource):
                 logger.warning(str(exc))
                 return None
         except Exception:
-            logger.warning(f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}")
+            logger.warning(
+                f"Failed to get FQN for table {table_details.name}: {traceback.format_exc()}"
+            )
             return None
 
-    def _get_table_fqn_from_om(self, table_details: TableDetails, services: Optional[List[str]] = None) -> str:  # noqa: UP006, UP045
+    def _get_table_fqn_from_om(
+        self, table_details: TableDetails, services: Optional[List[str]] = None
+    ) -> str:  # noqa: UP006, UP045
         """
         Looks for matching Table entity in OM across all configured DB services.
         Raises AmbiguousServiceException if the table exists in multiple services
@@ -658,7 +698,9 @@ class OpenlineageSource(PipelineServiceSource):
                             if broker:
                                 self._broker_to_service[broker] = svc_fqn
                     except Exception:
-                        logger.debug(f"Could not extract bootstrapServers from service {svc.name}")
+                        logger.debug(
+                            f"Could not extract bootstrapServers from service {svc.name}"
+                        )
 
             except Exception as exc:
                 logger.debug(traceback.format_exc())
@@ -666,7 +708,9 @@ class OpenlineageSource(PipelineServiceSource):
 
         return self._broker_to_service
 
-    def _find_service_fqn_by_broker(self, broker_hostname: str) -> Optional[str]:  # noqa: UP045
+    def _find_service_fqn_by_broker(
+        self, broker_hostname: str
+    ) -> Optional[str]:  # noqa: UP045
         """
         Find the messaging service FQN whose bootstrapServers contains the given broker hostname.
 
@@ -676,7 +720,9 @@ class OpenlineageSource(PipelineServiceSource):
         broker_map = self._build_broker_to_service_map()
         return broker_map.get(broker_hostname)
 
-    def _get_topic_entity(self, topic_details: TopicDetails) -> Optional[Topic]:  # noqa: UP045
+    def _get_topic_entity(
+        self, topic_details: TopicDetails
+    ) -> Optional[Topic]:  # noqa: UP045
         """
         Look up a Topic entity by finding the messaging service from the broker hostname,
         then constructing the topic FQN as {service_fqn}.{topic_name}.
@@ -685,9 +731,13 @@ class OpenlineageSource(PipelineServiceSource):
         :return: Topic entity from OpenMetadata, or None
         """
         try:
-            service_fqn = self._find_service_fqn_by_broker(topic_details.broker_hostname)
+            service_fqn = self._find_service_fqn_by_broker(
+                topic_details.broker_hostname
+            )
             if not service_fqn:
-                logger.warning(f"No messaging service found for broker: {topic_details.broker_hostname}")
+                logger.warning(
+                    f"No messaging service found for broker: {topic_details.broker_hostname}"
+                )
                 return None
 
             topic_fqn = f"{service_fqn}.{fqn.quote_name(topic_details.name)}"
@@ -776,7 +826,9 @@ class OpenlineageSource(PipelineServiceSource):
             for namespace, name in self._raw_table_identities(table):
                 if not name:
                     continue
-                ol_name = self._get_ol_table_name({"namespace": namespace, "name": name})
+                ol_name = self._get_ol_table_name(
+                    {"namespace": namespace, "name": name}
+                )
                 result[ol_name] = resolved.fqn
 
         return result
@@ -787,14 +839,20 @@ class OpenlineageSource(PipelineServiceSource):
         lineage_info: List[Tuple[str, str, str, str]],  # noqa: UP006
     ) -> Dict[str, Dict[str, List[ColumnLineage]]]:  # noqa: UP006
         result = defaultdict(lambda: defaultdict(list))
-        for (output_table, input_table, output_column), group in groupby(lineage_info, lambda x: x[:3]):
+        for (output_table, input_table, output_column), group in groupby(
+            lineage_info, lambda x: x[:3]
+        ):
             input_columns = [input_col for _, _, _, input_col in group]
 
-            result[output_table][input_table] += [ColumnLineage(toColumn=output_column, fromColumns=input_columns)]
+            result[output_table][input_table] += [
+                ColumnLineage(toColumn=output_column, fromColumns=input_columns)
+            ]
 
         return result
 
-    def _get_column_lineage(self, inputs: List, outputs: List) -> Dict[str, Dict[str, List[ColumnLineage]]]:  # noqa: UP006
+    def _get_column_lineage(
+        self, inputs: List, outputs: List
+    ) -> Dict[str, Dict[str, List[ColumnLineage]]]:  # noqa: UP006
         _result: List = []  # noqa: UP006
 
         ol_name_to_fqn_map = self._build_ol_name_to_fqn_map(inputs + outputs)
@@ -811,9 +869,17 @@ class OpenlineageSource(PipelineServiceSource):
             # Tolerate a missing, null, or wrongly typed facets/columnLineage/
             # fields field at any level, mirroring the symlinks-facet
             # defensiveness so a single malformed event never aborts the run.
-            facets = table.get("facets") if isinstance(table.get("facets"), dict) else None
-            column_lineage_facet = facets.get("columnLineage") if isinstance(facets, dict) else None
-            fields = column_lineage_facet.get("fields") if isinstance(column_lineage_facet, dict) else None
+            facets = (
+                table.get("facets") if isinstance(table.get("facets"), dict) else None
+            )
+            column_lineage_facet = (
+                facets.get("columnLineage") if isinstance(facets, dict) else None
+            )
+            fields = (
+                column_lineage_facet.get("fields")
+                if isinstance(column_lineage_facet, dict)
+                else None
+            )
             if not isinstance(fields, dict):
                 fields = {}
             for field_name, field_spec in fields.items():
@@ -822,7 +888,9 @@ class OpenlineageSource(PipelineServiceSource):
                 for input_field in field_spec.get("inputFields", []) or []:
                     if not isinstance(input_field, dict):
                         continue
-                    input_table_ol_name = OpenlineageSource._get_ol_table_name(input_field)
+                    input_table_ol_name = OpenlineageSource._get_ol_table_name(
+                        input_field
+                    )
                     input_table_fqn = ol_name_to_fqn_map.get(input_table_ol_name)
                     # Skip when the input table did not resolve; otherwise the
                     # row would carry None as the input FQN and produce a
@@ -865,13 +933,19 @@ class OpenlineageSource(PipelineServiceSource):
 
         if service_name != fallback:
             service_type = resolve_pipeline_service_type(integration)
-            get_or_create_pipeline_service(self.metadata, service_name, service_type, self._service_cache)
+            get_or_create_pipeline_service(
+                self.metadata, service_name, service_type, self._service_cache
+            )
 
         return service_name
 
-    def yield_pipeline(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[CreatePipelineRequest]]:
+    def yield_pipeline(
+        self, pipeline_details: OpenLineageEvent
+    ) -> Iterable[Either[CreatePipelineRequest]]:
         pipeline_name = self.get_pipeline_name(pipeline_details)
-        self._current_pipeline_service = self._resolve_pipeline_service(pipeline_details)
+        self._current_pipeline_service = self._resolve_pipeline_service(
+            pipeline_details
+        )
         try:
             description = f"""```json
             {json.dumps(pipeline_details.run_facet, indent=4).strip()}```"""
@@ -923,7 +997,9 @@ class OpenlineageSource(PipelineServiceSource):
             if not lineage_data:
                 return False
 
-            edges_key = "upstreamEdges" if direction == "upstream" else "downstreamEdges"
+            edges_key = (
+                "upstreamEdges" if direction == "upstream" else "downstreamEdges"
+            )
             for edge_entry in lineage_data.get(edges_key, []):
                 details = edge_entry.get("lineageDetails", {}) or {}
                 pipeline_ref = details.get("pipeline")
@@ -967,30 +1043,40 @@ class OpenlineageSource(PipelineServiceSource):
                     if str(edge_entry[pipeline_field]) != pipeline_id:
                         continue
                     details = edge_entry.get("lineageDetails", {}) or {}
-                    if details.get("source") != Source.OpenLineage.value or details.get("pipeline"):
+                    if details.get("source") != Source.OpenLineage.value or details.get(
+                        "pipeline"
+                    ):
                         continue
                     dataset_id = str(edge_entry[dataset_field])
                     if dataset_id not in event_entity_map:
                         continue
                     from_ref, to_ref = (
                         (
-                            EntityReference(id=dataset_id, type=event_entity_map[dataset_id]),
+                            EntityReference(
+                                id=dataset_id, type=event_entity_map[dataset_id]
+                            ),
                             EntityReference(id=pipeline_id, type="pipeline"),
                         )
                         if direction == "upstreamEdges"
                         else (
                             EntityReference(id=pipeline_id, type="pipeline"),
-                            EntityReference(id=dataset_id, type=event_entity_map[dataset_id]),
+                            EntityReference(
+                                id=dataset_id, type=event_entity_map[dataset_id]
+                            ),
                         )
                     )
-                    self.metadata.delete_lineage_edge(EntitiesEdge(fromEntity=from_ref, toEntity=to_ref))
+                    self.metadata.delete_lineage_edge(
+                        EntitiesEdge(fromEntity=from_ref, toEntity=to_ref)
+                    )
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(
                 f"Failed to cleanup pipeline-as-node edges for {pipeline_entity.fullyQualifiedName.root}: {exc}"
             )
 
-    def yield_pipeline_lineage_details(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
+    def yield_pipeline_lineage_details(
+        self, pipeline_details: OpenLineageEvent
+    ) -> Iterable[Either[AddLineageRequest]]:  # noqa: C901
         # Start every event with a fresh resolution cache so results never
         # leak across events and the cache cannot grow without bound.
         self._resolution_cache = LRUCache(maxsize=RESOLUTION_CACHE_MAXSIZE)
@@ -1018,7 +1104,9 @@ class OpenlineageSource(PipelineServiceSource):
                                 )
                             )
                         else:
-                            logger.warning(f"Table entity not found for: {resolved.fqn}")
+                            logger.warning(
+                                f"Table entity not found for: {resolved.fqn}"
+                            )
 
                 elif entity_details.entity_type == "topic":
                     topic_entity = self._get_topic_entity(entity_details.topic_details)
@@ -1026,7 +1114,9 @@ class OpenlineageSource(PipelineServiceSource):
                     if topic_entity:
                         entity_list.append(
                             LineageNode(
-                                fqn=TopicFQN(value=topic_entity.fullyQualifiedName.root),
+                                fqn=TopicFQN(
+                                    value=topic_entity.fullyQualifiedName.root
+                                ),
                                 uuid=topic_entity.id.root,
                                 node_type="topic",
                             )
@@ -1041,9 +1131,14 @@ class OpenlineageSource(PipelineServiceSource):
 
         column_lineage = self._get_column_lineage(inputs, outputs)
 
-        edges = [LineageEdge(from_node=n[0], to_node=n[1]) for n in product(input_edges, output_edges)]
+        edges = [
+            LineageEdge(from_node=n[0], to_node=n[1])
+            for n in product(input_edges, output_edges)
+        ]
 
-        service_name = self._current_pipeline_service or self.context.get().pipeline_service
+        service_name = (
+            self._current_pipeline_service or self.context.get().pipeline_service
+        )
         pipeline_name = getattr(self.context.get(), "pipeline", None)
         pipeline_fqn = fqn.build(
             metadata=self.metadata,
@@ -1062,7 +1157,9 @@ class OpenlineageSource(PipelineServiceSource):
         pipeline_entity = self.metadata.get_by_name(entity=Pipeline, fqn=pipeline_fqn)
 
         if not pipeline_entity:
-            logger.warning(f"Pipeline entity not found for {pipeline_fqn}, skipping lineage")
+            logger.warning(
+                f"Pipeline entity not found for {pipeline_fqn}, skipping lineage"
+            )
             return
 
         event_has_no_outputs = not outputs
@@ -1082,7 +1179,9 @@ class OpenlineageSource(PipelineServiceSource):
                 node_type="pipeline",
             )
             for dataset_node in dataset_nodes:
-                if self._has_annotated_pipeline_edge(dataset_node, pipeline_entity, direction=direction):
+                if self._has_annotated_pipeline_edge(
+                    dataset_node, pipeline_entity, direction=direction
+                ):
                     from_fqn, to_fqn = (
                         (dataset_node.fqn.value, pipeline_fqn)
                         if dataset_is_source
@@ -1105,16 +1204,25 @@ class OpenlineageSource(PipelineServiceSource):
                     edges.append(edge)
 
         if inputs and outputs and input_edges and output_edges:
-            event_entity_map = {str(node.uuid): node.node_type for node in input_edges + output_edges}
+            event_entity_map = {
+                str(node.uuid): node.node_type for node in input_edges + output_edges
+            }
             self._cleanup_pipeline_as_node_edges(pipeline_entity, event_entity_map)
 
         for edge in edges:
-            is_pipeline_endpoint = edge.from_node.node_type == "pipeline" or edge.to_node.node_type == "pipeline"
+            is_pipeline_endpoint = (
+                edge.from_node.node_type == "pipeline"
+                or edge.to_node.node_type == "pipeline"
+            )
             yield Either(
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(id=edge.from_node.uuid, type=edge.from_node.node_type),
-                        toEntity=EntityReference(id=edge.to_node.uuid, type=edge.to_node.node_type),
+                        fromEntity=EntityReference(
+                            id=edge.from_node.uuid, type=edge.from_node.node_type
+                        ),
+                        toEntity=EntityReference(
+                            id=edge.to_node.uuid, type=edge.to_node.node_type
+                        ),
                         lineageDetails=LineageDetails(
                             pipeline=(
                                 None
@@ -1126,9 +1234,9 @@ class OpenlineageSource(PipelineServiceSource):
                             ),
                             description=f"Lineage extracted from OpenLineage job: {pipeline_details.job['name']}",
                             source=Source.OpenLineage,
-                            columnsLineage=column_lineage.get(edge.to_node.fqn.value, {}).get(
-                                edge.from_node.fqn.value, []
-                            ),
+                            columnsLineage=column_lineage.get(
+                                edge.to_node.fqn.value, {}
+                            ).get(edge.from_node.fqn.value, []),
                         ),
                     ),
                 )
@@ -1143,7 +1251,9 @@ class OpenlineageSource(PipelineServiceSource):
         elif isinstance(broker, KinesisBrokerConfig):
             yield from self._poll_kinesis(broker)
         else:
-            raise InvalidSourceException(f"Unsupported broker config type: {type(broker)}")
+            raise InvalidSourceException(
+                f"Unsupported broker config type: {type(broker)}"
+            )
 
     def _poll_kafka(self, broker: KafkaBrokerConfig) -> Iterable[OpenLineageEvent]:
         """Poll events from Kafka topic."""
@@ -1162,13 +1272,18 @@ class OpenlineageSource(PipelineServiceSource):
                 elif message.error():
                     logger.warning(f"Kafka consumer error: {message.error()}")
                     empty_msg_cnt += 1
-                    if empty_msg_cnt * pool_timeout > self.service_connection.sessionTimeout:
+                    if (
+                        empty_msg_cnt * pool_timeout
+                        > self.service_connection.sessionTimeout
+                    ):
                         session_active = False
                 else:
                     logger.debug(f"new message {message.value()}")
                     empty_msg_cnt = 0
                     try:
-                        _result = message_to_open_lineage_event(json.loads(message.value()))
+                        _result = message_to_open_lineage_event(
+                            json.loads(message.value())
+                        )
                         result = self._filter_event_by_types(
                             _result,
                             [EventType.COMPLETE, EventType.RUNNING, EventType.START],
@@ -1176,12 +1291,16 @@ class OpenlineageSource(PipelineServiceSource):
                         if result:
                             yield result
                     except Exception as e:
-                        logger.warning(f"Failed to parse OpenLineage event from Kafka message: {e}")
+                        logger.warning(
+                            f"Failed to parse OpenLineage event from Kafka message: {e}"
+                        )
                         logger.debug(traceback.format_exc())
 
         except Exception as e:
             logger.debug(traceback.format_exc())
-            raise InvalidSourceException(f"Failed to read from Kafka: {str(e)}")  # noqa: B904, RUF010
+            raise InvalidSourceException(
+                f"Failed to read from Kafka: {str(e)}"
+            )  # noqa: B904, RUF010
 
         finally:
             # Close down consumer to commit final offsets.
@@ -1231,7 +1350,9 @@ class OpenlineageSource(PipelineServiceSource):
                         try:
                             payloads = deaggregate_kinesis_record(record["Data"])
                         except Exception as e:
-                            logger.warning(f"Failed to de-aggregate Kinesis record: {e}")
+                            logger.warning(
+                                f"Failed to de-aggregate Kinesis record: {e}"
+                            )
                             logger.debug(traceback.format_exc())
                             continue
                         for payload in payloads:
@@ -1249,19 +1370,25 @@ class OpenlineageSource(PipelineServiceSource):
                                 if result:
                                     yield result
                             except Exception as e:
-                                logger.warning(f"Failed to parse OpenLineage event from Kinesis record: {e}")
+                                logger.warning(
+                                    f"Failed to parse OpenLineage event from Kinesis record: {e}"
+                                )
                                 logger.debug(traceback.format_exc())
 
                     time.sleep(pool_timeout)
 
         except Exception as e:
             logger.debug(traceback.format_exc())
-            raise InvalidSourceException(f"Failed to read from Kinesis: {str(e)}")  # noqa: B904, RUF010
+            raise InvalidSourceException(
+                f"Failed to read from Kinesis: {str(e)}"
+            )  # noqa: B904, RUF010
 
     def get_pipeline_name(self, pipeline_details: OpenLineageEvent) -> str:
         return OpenlineageSource._render_pipeline_name(pipeline_details)
 
-    def yield_pipeline_status(self, pipeline_details: OpenLineageEvent) -> Iterable[Either[OMetaPipelineStatus]]:
+    def yield_pipeline_status(
+        self, pipeline_details: OpenLineageEvent
+    ) -> Iterable[Either[OMetaPipelineStatus]]:
         pass
 
     def mark_pipelines_as_deleted(self):

@@ -14,7 +14,7 @@ import { Card, Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { Cell, Pie, PieChart, Tooltip } from 'recharts';
 import { GREY_200 } from '../../../../constants/Color.constants';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { SummaryPieChartCardProps } from '../SummaryPanel.interface';
 import './summary-pie-chart-card.style.less';
 

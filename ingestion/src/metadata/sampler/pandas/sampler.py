@@ -60,7 +60,10 @@ class DatalakeSampler(SamplerInterface, PandasInterfaceMixin):
         try:
             self._row_count = sum(len(chunk.index) for chunk in self.raw_dataset())
         except Exception:
-            logger.exception("Failed to fetch row count for asset %s. Defaulting to 0.", self.entity.name)
+            logger.exception(
+                "Failed to fetch row count for asset %s. Defaulting to 0.",
+                self.entity.name,
+            )
             self._row_count = 0
 
         return self._row_count

@@ -28,7 +28,9 @@ from tenacity import (
     wait_random_exponential,
 )
 
-from metadata.generated.schema.entity.classification.classification import Classification
+from metadata.generated.schema.entity.classification.classification import (
+    Classification,
+)
 from metadata.generated.schema.entity.classification.tag import Tag
 from metadata.generated.schema.type.basic import ProviderType
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -87,10 +89,15 @@ class TagCanonicalizer:
         results = self._es_search(Classification, name)
         canonical = Canonical(name=name, description=default_description)
         for entity in results:
-            if entity.provider == ProviderType.system and entity.name.root.lower() == key:
+            if (
+                entity.provider == ProviderType.system
+                and entity.name.root.lower() == key
+            ):
                 canonical = Canonical(
                     name=entity.name.root,
-                    description=entity.description.root if entity.description else default_description,
+                    description=entity.description.root
+                    if entity.description
+                    else default_description,
                 )
                 break
 
@@ -113,7 +120,9 @@ class TagCanonicalizer:
         """
         tag_fqn = cast(
             "str",
-            fqn.build(None, Tag, classification_name=classification_name, tag_name=tag_name),
+            fqn.build(
+                None, Tag, classification_name=classification_name, tag_name=tag_name
+            ),
         )
         key = tag_fqn.lower()
         with self._lock:
@@ -131,7 +140,9 @@ class TagCanonicalizer:
             ):
                 canonical = Canonical(
                     name=entity.name.root,
-                    description=entity.description.root if entity.description else default_tag_description,
+                    description=entity.description.root
+                    if entity.description
+                    else default_tag_description,
                 )
                 break
 
@@ -142,4 +153,9 @@ class TagCanonicalizer:
     @_es_retry
     def _es_search(self, entity_type: Any, search_string: str) -> Iterable[Any]:
         """Run an ES search by FQN with retries."""
-        return self._metadata.es_search_from_fqn(entity_type=entity_type, fqn_search_string=search_string) or []
+        return (
+            self._metadata.es_search_from_fqn(
+                entity_type=entity_type, fqn_search_string=search_string
+            )
+            or []
+        )

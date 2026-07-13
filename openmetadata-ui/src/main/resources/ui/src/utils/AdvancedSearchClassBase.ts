@@ -46,16 +46,14 @@ import { Config } from '../generated/api/data/createCustomProperty';
 import { EntityStatus } from '../generated/entity/data/searchIndex';
 import { CustomPropertySummary } from '../rest/metadataTypeAPI.interface';
 import { getAggregateFieldOptions } from '../rest/miscAPI';
-import {
-  getCustomPropertyAdvanceSearchEnumOptions,
-  renderAdvanceSearchButtons,
-} from './AdvancedSearchUtils';
+import { renderAdvanceSearchButtons } from './AdvancedSearchUtils';
 import { getCustomPropertyMomentFormat } from './CustomProperty.utils';
 import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
 import { parseBucketsData } from './SearchUtils';
+const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
 
@@ -805,6 +803,23 @@ class AdvancedSearchClassBase {
     };
   };
 
+  public buildEnumAsyncFetch(
+    values: string[]
+  ): SelectFieldSettings['asyncFetch'] {
+    return async (search, offset = 0) => {
+      const query = (typeof search === 'string' ? search : '').toLowerCase();
+      const filtered = query
+        ? values.filter((v) => v.toLowerCase().includes(query))
+        : values;
+      const page = filtered.slice(offset, offset + ENUM_ASYNC_FETCH_PAGE_SIZE);
+
+      return {
+        values: page.map((v) => ({ value: v, title: v })) as ListItem[],
+        hasMore: offset + ENUM_ASYNC_FETCH_PAGE_SIZE < filtered.length,
+      } as AsyncFetchListValuesResult;
+    };
+  }
+
   public getCommonConfig(args: {
     entitySearchIndex?: Array<SearchIndex>;
   }): Fields {
@@ -1388,7 +1403,11 @@ class AdvancedSearchClassBase {
           },
         };
 
-      case 'enum':
+      case 'enum': {
+        const enumValues =
+          (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
+            .values ?? [];
+
         return {
           subfieldsKey,
           dataObject: {
@@ -1396,15 +1415,14 @@ class AdvancedSearchClassBase {
             label,
             operators: MULTISELECT_FIELD_OPERATORS,
             fieldSettings: {
-              listValues: getCustomPropertyAdvanceSearchEnumOptions(
-                (field.customPropertyConfig?.config as CustomPropertyEnumConfig)
-                  .values
-              ),
+              asyncFetch: this.buildEnumAsyncFetch(enumValues),
               showSearch: true,
-              useAsyncSearch: false,
+              useAsyncSearch: true,
+              useLoadMore: true,
             },
           },
         };
+      }
 
       case 'date-cp':
       case 'dateTime-cp': {

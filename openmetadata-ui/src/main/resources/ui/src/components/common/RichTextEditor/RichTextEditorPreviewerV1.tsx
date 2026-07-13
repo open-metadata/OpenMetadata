@@ -19,7 +19,7 @@ import {
   formatContent,
   isDescriptionContentEmpty,
 } from '../../../utils/BlockEditorUtils';
-import { getTrimmedContent } from '../../../utils/CommonUtils';
+import { getTrimmedContent } from '../../../utils/StringUtils';
 import BlockEditor from '../../BlockEditor/BlockEditor';
 import './rich-text-editor-previewerV1.less';
 import { PreviewerProp } from './RichTextEditor.interface';

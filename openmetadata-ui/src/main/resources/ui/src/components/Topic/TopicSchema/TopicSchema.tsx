@@ -40,6 +40,7 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
 import { useScrollToElement } from '../../../hooks/useScrollToElement';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import { getVersionedSchema } from '../../../utils/SchemaVersionUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
@@ -73,7 +74,6 @@ import {
   SchemaViewType,
   TopicSchemaFieldsProps,
 } from './TopicSchema.interface';
-import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 
 const TopicSchemaFields: FC<TopicSchemaFieldsProps> = ({
   className,

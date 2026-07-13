@@ -52,7 +52,7 @@ jest.mock('./SearchServiceUtils', () => ({
 jest.mock('./SecurityServiceUtils', () => ({ getSecurityConfig: jest.fn() }));
 jest.mock('./ServiceUtils', () => ({ getTestConnectionName: jest.fn() }));
 jest.mock('./StorageServiceUtils', () => ({ getStorageConfig: jest.fn() }));
-jest.mock('./StringsUtils', () => ({ customServiceComparator: jest.fn() }));
+jest.mock('./StringUtils', () => ({ customServiceComparator: jest.fn() }));
 
 describe('ServiceUtilClassBase', () => {
   it('should create an instance of ServiceUtilClassBase', () => {

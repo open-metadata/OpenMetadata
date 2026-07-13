@@ -50,7 +50,9 @@ class OMetaLogsMixin:
         run_id: UUID,
         log_content: str,
         compress: bool = False,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
     ) -> bool:
         """
         Send logs to S3 storage via OpenMetadata server endpoint.
@@ -118,7 +120,9 @@ class OMetaLogsMixin:
         log_content: str,
         enable_compression: bool = False,
         max_retries: int = 3,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
     ) -> dict:
         """
         Send logs batch to S3 storage via OpenMetadata server endpoint with retry logic.
@@ -196,12 +200,16 @@ class OMetaLogsMixin:
         pipeline_fqn: str,
         run_id: UUID,
         log_content: str,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
         client: Optional[REST] = None,  # noqa: UP045
     ) -> bool:
         """Best-effort log POST: no retries, no logging. Returns True on 2xx."""
         try:
-            url = f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            url = (
+                f"/services/ingestionPipelines/logs/{pipeline_fqn}/{model_str(run_id)}"
+            )
             log_batch = {
                 "logs": log_content,
                 "timestamp": int(time.time() * 1000),
@@ -222,7 +230,9 @@ class OMetaLogsMixin:
         self,
         pipeline_fqn: str,
         run_id: UUID,
-        timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
+        timeout: Optional[
+            Union[float, tuple[float, float]]
+        ] = None,  # noqa: UP007, UP045
         client: Optional[REST] = None,  # noqa: UP045
     ) -> bool:
         """Best-effort /close notify. Same guarantees as send_logs_batch_best_effort."""

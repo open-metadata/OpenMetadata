@@ -100,6 +100,7 @@ jest.mock('../../../../utils/TasksUtils', () => ({
 }));
 
 jest.mock('../../../../utils/CommonUtils', () => ({
+  ...jest.requireActual('../../../../utils/CommonUtils'),
   getNameFromFQN: jest.fn().mockReturnValue('entityName'),
 }));
 

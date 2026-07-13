@@ -67,7 +67,9 @@ class BurstIQSampler(DatalakeSampler):
         super().__init__(*args, **kwargs)
         self.client: BurstIQClient = cast("BurstIQClient", self.get_client())  # type: ignore[assignment]
 
-    def get_dataframes(self, service_connection_config, client, table) -> DatalakeColumnWrapper:
+    def get_dataframes(
+        self, service_connection_config, client, table
+    ) -> DatalakeColumnWrapper:
         """Get the dataframes for burstIQ sampler
 
         Args:
@@ -84,8 +86,12 @@ class BurstIQSampler(DatalakeSampler):
             skip = 0
             yielded = False
             while True:
-                page_size = min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
-                records = self.client.get_records_by_tql(chain, limit=page_size, skip=skip)
+                page_size = (
+                    min(_PAGE_SIZE, total_limit - skip) if total_limit else _PAGE_SIZE
+                )
+                records = self.client.get_records_by_tql(
+                    chain, limit=page_size, skip=skip
+                )
                 if not records:
                     break
                 frame = self._cast_dataframe(pd.DataFrame(records))

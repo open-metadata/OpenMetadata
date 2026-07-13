@@ -39,7 +39,7 @@ jest.mock('../../rest/KpiAPI', () => ({
   postKPI: jest.fn().mockImplementation(() => Promise.resolve(KPI_DATA)),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   isUrlFriendlyName: jest.fn().mockReturnValue(true),
 }));
 

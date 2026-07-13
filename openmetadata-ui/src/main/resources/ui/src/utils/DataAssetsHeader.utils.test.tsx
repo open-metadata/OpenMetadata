@@ -85,7 +85,7 @@ jest.mock('./EntityUtils', () => ({
   ]),
 }));
 
-jest.mock('./StringsUtils', () => ({
+jest.mock('./StringUtils', () => ({
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   bytesToSize: jest.fn().mockReturnValue('bytesToSize'),
 }));

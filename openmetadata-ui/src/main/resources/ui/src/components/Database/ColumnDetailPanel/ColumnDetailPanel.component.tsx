@@ -39,7 +39,7 @@ import { calculateTestCaseStatusCounts } from '../../../utils/DataQuality/DataQu
 import EntityLink from '../../../utils/EntityLink';
 import { toEntityData } from '../../../utils/EntitySummaryPanelUtils';
 import { getEntityName } from '../../../utils/EntityUtils';
-import { getErrorText, stringToHTML } from '../../../utils/StringsUtils';
+import { getErrorText, stringToHTML } from '../../../utils/StringUtils';
 import {
   buildColumnBreadcrumbPath,
   findOriginalColumnIndex,

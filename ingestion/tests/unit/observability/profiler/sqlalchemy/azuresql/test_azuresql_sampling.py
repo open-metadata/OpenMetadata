@@ -32,10 +32,7 @@ from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingCo
 from metadata.profiler.interface.sqlalchemy.profiler_interface import (
     SQAProfilerInterface,
 )
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-)
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -252,7 +249,9 @@ class SampleTest(TestCase):
         ):
             sampler.fetch_sample_data(columns=[valid_from_col, valid_to_col])
 
-        assert received["columns"] == [], "Expected empty list when all columns are filtered, not the original list"
+        assert (
+            received["columns"] == []
+        ), "Expected empty list when all columns are filtered, not the original list"
 
     def test_sampling_with_partition(self, sampler_mock):
         """

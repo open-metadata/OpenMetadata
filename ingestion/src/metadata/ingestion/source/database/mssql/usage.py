@@ -11,6 +11,7 @@
 """
 MSSQL usage module
 """
+
 from datetime import datetime
 
 from metadata.generated.schema.metadataIngestion.workflow import (
@@ -60,7 +61,7 @@ class MssqlUsageSource(MssqlQueryParserSource, UsageSource):
 
         Override if we have specific parameters
         """
-        return self.sql_stmt.format(
+        return self.resolve_query_log_statement().format(
             start_time=start_time.strftime(self.dt_format),
             end_time=end_time.strftime(self.dt_format),
             filters=self.get_filters(),

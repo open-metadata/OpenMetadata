@@ -188,7 +188,9 @@ class MysqlUnitTest(TestCase):
             MOCK_DATABASE_SCHEMA.name.root,
         )
 
-    @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection")
+    @patch(
+        "metadata.ingestion.source.database.common_db_source.CommonDbSourceService.connection"
+    )
     def test_get_stored_procedures_binds_schema_name(self, connection):
         """A schema name with a quote is bound, never interpolated into the SQL text"""
         connection.return_value = True
@@ -207,7 +209,9 @@ class MysqlUnitTest(TestCase):
         list(self.mysql_source.get_stored_procedures())
 
         executed_clause = mock_conn.execute.call_args[0][0]
-        self.assertEqual(executed_clause.compile().params.get("schema_name"), malicious_schema)
+        self.assertEqual(
+            executed_clause.compile().params.get("schema_name"), malicious_schema
+        )
         self.assertIn(":schema_name", MYSQL_GET_ROUTINES)
         self.assertNotIn(malicious_schema, str(executed_clause))
 

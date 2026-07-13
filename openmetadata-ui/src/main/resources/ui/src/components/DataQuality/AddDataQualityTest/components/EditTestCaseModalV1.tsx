@@ -58,7 +58,6 @@ import {
   getTestDefinitionById,
   updateTestCaseById,
 } from '../../../../rest/testAPI';
-import { getNameFromFQN } from '../../../../utils/CommonUtils';
 import {
   getColumnNameFromEntityLink,
   getEntityName,
@@ -69,7 +68,8 @@ import {
   generateFormFields,
   getPopupContainer,
 } from '../../../../utils/formUtils';
-import { isValidJSONString } from '../../../../utils/StringsUtils';
+import { getNameFromFQN } from '../../../../utils/FqnUtils';
+import { isValidJSONString } from '../../../../utils/StringUtils';
 import { getFilterTags } from '../../../../utils/TableTags/TableTags.utils';
 import { getTagsWithoutTier, getTierTags } from '../../../../utils/TableUtils';
 import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';

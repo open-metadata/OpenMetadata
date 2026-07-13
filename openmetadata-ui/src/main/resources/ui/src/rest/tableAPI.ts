@@ -29,7 +29,7 @@ import { EntityReference } from '../generated/type/entityReference';
 import { Include } from '../generated/type/include';
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export type TableListParams = {
@@ -315,6 +315,8 @@ export const getTableColumnsByFQN = async (
 
 export interface SearchTableColumnsParams extends GetTableColumnsParams {
   q?: string; // Search query
+  tags?: string; // Comma-separated classification tag FQNs to filter columns by
+  glossaryTerms?: string; // Comma-separated glossary term FQNs to filter columns by
 }
 
 export const searchTableColumnsById = async (

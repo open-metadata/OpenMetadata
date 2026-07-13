@@ -349,7 +349,9 @@ class GenericDataFrameColumnParser:
                     }
                     if data_type == DataType.ARRAY:
                         parsed_string["arrayDataType"] = DataType.UNKNOWN
-                        struct_children = cls._get_array_struct_children(data_frame[column].dropna()[:100])
+                        struct_children = cls._get_array_struct_children(
+                            data_frame[column].dropna()[:100]
+                        )
                         if struct_children:
                             parsed_string["arrayDataType"] = DataType.STRUCT
                             parsed_string["children"] = struct_children
@@ -389,10 +391,14 @@ class GenericDataFrameColumnParser:
                     for df_row_val in df_row_val_list:
                         try:
                             if isinstance(df_row_val, (dict, list)):
-                                parsed_object_datatype_list.append(type(df_row_val).__name__.lower())
+                                parsed_object_datatype_list.append(
+                                    type(df_row_val).__name__.lower()
+                                )
                             else:
                                 parsed_object_datatype_list.append(
-                                    type(ast.literal_eval(str(df_row_val))).__name__.lower()
+                                    type(
+                                        ast.literal_eval(str(df_row_val))
+                                    ).__name__.lower()
                                 )
                         except (ValueError, SyntaxError):
                             # we try to parse the value as a datetime, if it fails, we fallback to string
@@ -406,7 +412,9 @@ class GenericDataFrameColumnParser:
                                 if not str(df_row_val).isnumeric():
                                     # check if the row value is time
                                     try:
-                                        datetime.strptime(str(df_row_val), "%H:%M:%S").time()
+                                        datetime.strptime(
+                                            str(df_row_val), "%H:%M:%S"
+                                        ).time()
                                         dtype_ = "timedelta[ns]"
                                     except (ValueError, TypeError):
                                         # check if the row value is date / time / datetime
@@ -466,11 +474,19 @@ class GenericDataFrameColumnParser:
                     result[key] = cls.unique_json_structure(
                         [nested_json if isinstance(nested_json, dict) else {}, value]
                     )
-                elif isinstance(value, list) and value and all(isinstance(item, dict) for item in value):
+                elif (
+                    isinstance(value, list)
+                    and value
+                    and all(isinstance(item, dict) for item in value)
+                ):
                     merged_struct = cls.unique_json_structure(value)
                     existing = result.get(key)
-                    existing_struct = existing.struct if isinstance(existing, _ArrayOfStruct) else {}
-                    result[key] = _ArrayOfStruct(cls.unique_json_structure([existing_struct, merged_struct]))
+                    existing_struct = (
+                        existing.struct if isinstance(existing, _ArrayOfStruct) else {}
+                    )
+                    result[key] = _ArrayOfStruct(
+                        cls.unique_json_structure([existing_struct, merged_struct])
+                    )
                 else:
                     result[key] = value
         return result
@@ -494,8 +510,12 @@ class GenericDataFrameColumnParser:
                 column["children"] = cls.construct_json_column_children(value.struct)
             else:
                 type_ = type(value).__name__.lower()
-                column["dataTypeDisplay"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
-                column["dataType"] = cls._data_formats.get(type_, DataType.UNKNOWN).value
+                column["dataTypeDisplay"] = cls._data_formats.get(
+                    type_, DataType.UNKNOWN
+                ).value
+                column["dataType"] = cls._data_formats.get(
+                    type_, DataType.UNKNOWN
+                ).value
                 if isinstance(value, dict):
                     column["children"] = cls.construct_json_column_children(value)
             children.append(column)
@@ -529,7 +549,9 @@ class GenericDataFrameColumnParser:
                             f"parsed type is {type(parsed).__name__}"
                         )
                 except (TypeError, json.JSONDecodeError) as exc:
-                    logger.debug(f"Skipping unparseable string value while extracting column children: {exc}")
+                    logger.debug(
+                        f"Skipping unparseable string value while extracting column children: {exc}"
+                    )
             else:
                 logger.debug(
                     "Skipping non-string, non-dict value while extracting column children: "

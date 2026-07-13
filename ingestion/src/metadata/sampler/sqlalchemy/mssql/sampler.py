@@ -49,6 +49,8 @@ class MssqlSampler(SQASampler):
     def get_sample_query(self, static: StaticSamplingConfig, *, column=None) -> CTE:
         """Override the base method as ROWS or PERCENT sampling handled through the tablesample clause"""
         selectable = self.set_tablesample(static, self.raw_dataset.__table__)  # type: ignore
-        rnd = self._base_sample_query(selectable, column).cte(f"{self.get_sampler_table_name()}_rnd")
+        rnd = self._base_sample_query(selectable, column).cte(
+            f"{self.get_sampler_table_name()}_rnd"
+        )
         query = self.get_client().query(rnd)
         return query.cte(f"{self.get_sampler_table_name()}_sample")

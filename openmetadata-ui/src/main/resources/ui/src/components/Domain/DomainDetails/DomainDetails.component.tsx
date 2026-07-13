@@ -99,7 +99,7 @@ import {
   escapeESReservedCharacters,
   getDecodedFqn,
   getEncodedFqn,
-} from '../../../utils/StringsUtils';
+} from '../../../utils/StringUtils';
 import { useFormDrawerWithRef } from '../../common/atoms/drawer';
 import type { BreadcrumbItem } from '../../common/atoms/navigation/useBreadcrumbs';
 import { useBreadcrumbs } from '../../common/atoms/navigation/useBreadcrumbs';

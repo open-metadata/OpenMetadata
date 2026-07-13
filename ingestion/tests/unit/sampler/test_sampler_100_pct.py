@@ -20,10 +20,7 @@ from unittest.mock import MagicMock, patch
 from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.generated.schema.type.samplingConfig import SampleConfigType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
-from metadata.sampler.models import (
-    ProfileSampleConfig,
-    SampleConfig,
-)
+from metadata.sampler.models import ProfileSampleConfig, SampleConfig
 
 
 class TestSQASampler100Pct:

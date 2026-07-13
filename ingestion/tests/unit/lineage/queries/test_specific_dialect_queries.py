@@ -1421,7 +1421,10 @@ FILE_FORMAT = (TYPE = CSV)"""
 
     def test_starrocks_connection_type_maps_to_starrocks_dialect(self):
         """StarRocks connection type resolves to the StarRocks dialect, not MySQL."""
-        assert ConnectionTypeDialectMapper.dialect_of(StarrocksType.StarRocks.value) == Dialect.STARROCKS
+        assert (
+            ConnectionTypeDialectMapper.dialect_of(StarrocksType.StarRocks.value)
+            == Dialect.STARROCKS
+        )
         assert Dialect.STARROCKS.value == "starrocks"
 
     def test_starrocks_bitmap_functions_with_set_var_hint(self):
@@ -1528,13 +1531,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for the DUPLICATE KEY clause.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1562,8 +1575,14 @@ FILE_FORMAT = (TYPE = CSV)"""
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("s", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("s", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlglot=False,
@@ -1582,13 +1601,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for the UNIQUE KEY clause.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1606,13 +1635,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for the PRIMARY KEY clause.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1630,13 +1669,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for the PARTITION BY RANGE clause.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
-                (TestColumnQualifierTuple("dt", "analytics.src"), TestColumnQualifierTuple("dt", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("id", "analytics.src"),
+                    TestColumnQualifierTuple("id", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("dt", "analytics.src"),
+                    TestColumnQualifierTuple("dt", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1654,13 +1703,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for expression partitioning.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
-                (TestColumnQualifierTuple("dt", "analytics.src"), TestColumnQualifierTuple("dt", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("id", "analytics.src"),
+                    TestColumnQualifierTuple("id", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("dt", "analytics.src"),
+                    TestColumnQualifierTuple("dt", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1678,13 +1737,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for the ORDER BY sort key clause.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.t")),
-                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("v", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("id", "analytics.src"),
+                    TestColumnQualifierTuple("id", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("v", "analytics.src"),
+                    TestColumnQualifierTuple("v", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1701,13 +1770,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for DISTRIBUTED BY RANDOM.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1720,12 +1799,20 @@ FILE_FORMAT = (TYPE = CSV)"""
         """
         query = """CREATE VIEW analytics.v AS SELECT a, b FROM analytics.src"""
 
-        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.v"}, dialect=Dialect.STARROCKS.value)
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.v"}, dialect=Dialect.STARROCKS.value
+        )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.v")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.v")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.v"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.v"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
         )
@@ -1741,13 +1828,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff has no StarRocks grammar for the materialized view refresh clause.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.mv"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.mv"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("id", "analytics.src"), TestColumnQualifierTuple("id", "analytics.mv")),
-                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("c", "analytics.mv")),
+                (
+                    TestColumnQualifierTuple("id", "analytics.src"),
+                    TestColumnQualifierTuple("id", "analytics.mv"),
+                ),
+                (
+                    TestColumnQualifierTuple("v", "analytics.src"),
+                    TestColumnQualifierTuple("c", "analytics.mv"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1760,12 +1857,20 @@ FILE_FORMAT = (TYPE = CSV)"""
         """
         query = """INSERT INTO analytics.t SELECT a, b FROM analytics.src"""
 
-        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value
+        )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
         )
@@ -1775,7 +1880,9 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         Docs: https://docs.starrocks.io/docs/sql-reference/sql-statements/loading_unloading/INSERT/
         """
-        query = """INSERT INTO analytics.t WITH LABEL lbl1 SELECT a, b FROM analytics.src"""
+        query = (
+            """INSERT INTO analytics.t WITH LABEL lbl1 SELECT a, b FROM analytics.src"""
+        )
 
         # Only SqlParse handles the WITH LABEL insert clause today.
         assert_table_lineage_equal(
@@ -1789,8 +1896,14 @@ FILE_FORMAT = (TYPE = CSV)"""
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlglot=False,
@@ -1806,13 +1919,23 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff does not extract lineage from INSERT OVERWRITE today.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1825,12 +1948,20 @@ FILE_FORMAT = (TYPE = CSV)"""
         """
         query = """INSERT INTO analytics.t (a, b) SELECT a, b FROM analytics.src"""
 
-        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value
+        )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
-                (TestColumnQualifierTuple("b", "analytics.src"), TestColumnQualifierTuple("b", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
+                (
+                    TestColumnQualifierTuple("b", "analytics.src"),
+                    TestColumnQualifierTuple("b", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
         )
@@ -1845,7 +1976,11 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlParse does not trace the argument of the HLL aggregate into uv.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlparse=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlparse=False,
         )
         assert_column_lineage_equal(
             query,
@@ -1854,7 +1989,10 @@ FILE_FORMAT = (TYPE = CSV)"""
                     TestColumnQualifierTuple("region", "analytics.src"),
                     TestColumnQualifierTuple("region", "analytics.t"),
                 ),
-                (TestColumnQualifierTuple("uid", "analytics.src"), TestColumnQualifierTuple("uv", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("uid", "analytics.src"),
+                    TestColumnQualifierTuple("uv", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlparse=False,
@@ -1870,7 +2008,11 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlParse does not trace the argument of the aggregate into uv.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlparse=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlparse=False,
         )
         assert_column_lineage_equal(
             query,
@@ -1879,7 +2021,10 @@ FILE_FORMAT = (TYPE = CSV)"""
                     TestColumnQualifierTuple("region", "analytics.src"),
                     TestColumnQualifierTuple("region", "analytics.t"),
                 ),
-                (TestColumnQualifierTuple("uid", "analytics.src"), TestColumnQualifierTuple("uv", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("uid", "analytics.src"),
+                    TestColumnQualifierTuple("uv", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlparse=False,
@@ -1893,7 +2038,9 @@ FILE_FORMAT = (TYPE = CSV)"""
         query = """INSERT INTO analytics.t
         SELECT region, percentile_approx(v, 0.99) AS p99 FROM analytics.src GROUP BY region"""
 
-        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value
+        )
         assert_column_lineage_equal(
             query,
             [
@@ -1901,7 +2048,10 @@ FILE_FORMAT = (TYPE = CSV)"""
                     TestColumnQualifierTuple("region", "analytics.src"),
                     TestColumnQualifierTuple("region", "analytics.t"),
                 ),
-                (TestColumnQualifierTuple("v", "analytics.src"), TestColumnQualifierTuple("p99", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("v", "analytics.src"),
+                    TestColumnQualifierTuple("p99", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
         )
@@ -1916,12 +2066,19 @@ FILE_FORMAT = (TYPE = CSV)"""
 
         # SqlFluff additionally maps the lambda parameter as a source column.
         assert_table_lineage_equal(
-            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value, test_sqlfluff=False
+            query,
+            {"analytics.src"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
+            test_sqlfluff=False,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("arr", "analytics.src"), TestColumnQualifierTuple("r", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("arr", "analytics.src"),
+                    TestColumnQualifierTuple("r", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             test_sqlfluff=False,
@@ -1934,12 +2091,17 @@ FILE_FORMAT = (TYPE = CSV)"""
         """
         query = """INSERT INTO analytics.t WITH c AS (SELECT a FROM analytics.src) SELECT a FROM c"""
 
-        assert_table_lineage_equal(query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value)
+        assert_table_lineage_equal(
+            query, {"analytics.src"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value
+        )
         # Parsers model the CTE node differently, so compare endpoints only.
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("a", "analytics.src"), TestColumnQualifierTuple("a", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("a", "analytics.src"),
+                    TestColumnQualifierTuple("a", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
             skip_graph_check=True,
@@ -1954,12 +2116,18 @@ FILE_FORMAT = (TYPE = CSV)"""
         SELECT a.id AS id FROM analytics.s1 a JOIN analytics.s2 b ON a.id = b.id"""
 
         assert_table_lineage_equal(
-            query, {"analytics.s1", "analytics.s2"}, {"analytics.t"}, dialect=Dialect.STARROCKS.value
+            query,
+            {"analytics.s1", "analytics.s2"},
+            {"analytics.t"},
+            dialect=Dialect.STARROCKS.value,
         )
         assert_column_lineage_equal(
             query,
             [
-                (TestColumnQualifierTuple("id", "analytics.s1"), TestColumnQualifierTuple("id", "analytics.t")),
+                (
+                    TestColumnQualifierTuple("id", "analytics.s1"),
+                    TestColumnQualifierTuple("id", "analytics.t"),
+                ),
             ],
             dialect=Dialect.STARROCKS.value,
         )

@@ -395,7 +395,7 @@ jest.mock('../../../utils/EntitySummaryPanelUtils', () => ({
   }),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   stringToHTML: jest.fn().mockImplementation((str) => str),
   getErrorText: jest
     .fn()

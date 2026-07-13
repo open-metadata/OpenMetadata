@@ -27,7 +27,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { ExplorePageTabs } from '../../../enums/Explore.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { searchQuery } from '../../../rest/searchAPI';
-import { getCountBadge } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { getPluralizeEntityName } from '../../../utils/EntityUtils';
 import {
@@ -41,7 +41,7 @@ import {
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import searchClassBase from '../../../utils/SearchClassBase';
 import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
-import { generateUUID } from '../../../utils/StringsUtils';
+import { generateUUID } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

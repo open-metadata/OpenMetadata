@@ -78,9 +78,12 @@ jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   });
 });
 
-jest.mock('../../utils/CommonUtils', () => ({
-  isUrlFriendlyName: jest.fn().mockReturnValue(true),
+jest.mock('../../utils/EntityUtils', () => ({
+  ...jest.requireActual('../../utils/EntityUtils'),
   getCountBadge: jest.fn().mockReturnValue(''),
+}));
+jest.mock('../../utils/StringUtils', () => ({
+  isUrlFriendlyName: jest.fn().mockReturnValue(true),
 }));
 
 jest.mock('../../hooks/useEntityRules', () => ({

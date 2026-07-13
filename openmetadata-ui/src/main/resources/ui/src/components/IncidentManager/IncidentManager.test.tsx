@@ -330,7 +330,7 @@ jest.mock('../../utils/EntityUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('EntityName'),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
+jest.mock('../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('NameFromFQN'),
   getPartialNameFromTableFQN: jest.fn().mockReturnValue('PartialName'),
 }));

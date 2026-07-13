@@ -24,10 +24,7 @@ from metadata.generated.schema.entity.data.table import (
 from metadata.generated.schema.entity.services.databaseService import (
     DatabaseServiceType,
 )
-from metadata.generated.schema.type.basic import (
-    ProfileSampleType,
-    SamplingMethodType,
-)
+from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.generated.schema.type.dynamicSamplingConfig import (
     DynamicSamplingConfig,
     Threshold,
@@ -52,7 +49,9 @@ class TestResolveStaticSamplingConfig:
         assert resolve_static_sampling_config(sample_config=None) is None
 
     def test_none_config_with_row_count_returns_none(self):
-        assert resolve_static_sampling_config(sample_config=None, row_count=1000) is None
+        assert (
+            resolve_static_sampling_config(sample_config=None, row_count=1000) is None
+        )
 
     def test_static_config_returned_as_is(self):
         static = StaticSamplingConfig(
@@ -320,7 +319,9 @@ class TestSQASamplerGetAssetRowCount:
         mock_query.count.return_value = 999
         mock_session.query.return_value = mock_query
         sampler.get_partitioned_query.return_value = mock_query
-        sampler.session_factory.return_value.__enter__ = MagicMock(return_value=mock_session)
+        sampler.session_factory.return_value.__enter__ = MagicMock(
+            return_value=mock_session
+        )
         sampler.session_factory.return_value.__exit__ = MagicMock(return_value=False)
 
         result = SQASampler._get_asset_row_count(sampler)
@@ -340,7 +341,9 @@ class TestSQASamplerGetAssetRowCount:
 
         mock_session = MagicMock()
         mock_session.get_bind.return_value.dialect.name = "postgresql"
-        sampler.session_factory.return_value.__enter__ = MagicMock(return_value=mock_session)
+        sampler.session_factory.return_value.__enter__ = MagicMock(
+            return_value=mock_session
+        )
         sampler.session_factory.return_value.__exit__ = MagicMock(return_value=False)
 
         result = SQASampler._get_asset_row_count(sampler)
@@ -360,7 +363,9 @@ class TestSQASamplerGetAssetRowCount:
 
         mock_session = MagicMock()
         mock_session.get_bind.return_value.dialect.name = "mysql"
-        sampler.session_factory.return_value.__enter__ = MagicMock(return_value=mock_session)
+        sampler.session_factory.return_value.__enter__ = MagicMock(
+            return_value=mock_session
+        )
         sampler.session_factory.return_value.__exit__ = MagicMock(return_value=False)
 
         result = SQASampler._get_asset_row_count(sampler)
@@ -654,7 +659,9 @@ class TestTableDiffDynamicSampling:
         validator = TableDiffValidator(
             None,
             TestCase.model_construct(
-                parameterValues=[TestCaseParameterValue(name="caseSensitiveColumns", value="false")]
+                parameterValues=[
+                    TestCaseParameterValue(name="caseSensitiveColumns", value="false")
+                ]
             ),
             None,
         )

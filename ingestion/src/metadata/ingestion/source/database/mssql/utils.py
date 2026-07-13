@@ -35,10 +35,12 @@ from sqlalchemy.engine import Engine, reflection
 from sqlalchemy.sql import func
 from sqlalchemy.types import NVARCHAR
 
+from metadata.ingestion.source.database.mssql.models import QueryStoreState
 from metadata.ingestion.source.database.mssql.queries import (
     GET_DB_CONFIGS,
     MSSQL_ALL_VIEW_DEFINITIONS,
     MSSQL_GET_FOREIGN_KEY,
+    MSSQL_GET_QUERY_STORE_STATE,
     MSSQL_GET_TABLE_COMMENTS,
 )
 from metadata.utils.logger import ingestion_logger
@@ -306,7 +308,9 @@ def get_columns(
             }
 
         if is_identity is not None:
-            cdict["identity"] = get_identity_values(coltype, identity_start, identity_increment)
+            cdict["identity"] = get_identity_values(
+                coltype, identity_start, identity_increment
+            )
 
         cols.append(cdict)
     return cols
@@ -505,4 +509,24 @@ def get_sqlalchemy_engine_dateformat(engine: Engine) -> Optional[str]:
         row_dict = row._asdict()
         if row_dict.get("Set Option") == "dateformat":
             return row_dict.get("Value")
-    return
+    return  # noqa: RET502
+
+
+def is_query_store_enabled(engine: Optional[Engine]) -> bool:  # noqa: UP045
+    """Return True if Query Store is readable (READ_ONLY / READ_WRITE) on the connected database."""
+    enabled = False
+    if engine is not None:
+        try:
+            with engine.connect() as conn:
+                actual_state = conn.execute(text(MSSQL_GET_QUERY_STORE_STATE)).scalar()
+            enabled = actual_state in (
+                QueryStoreState.READ_ONLY,
+                QueryStoreState.READ_WRITE,
+            )
+        except Exception as exc:
+            logger.debug(
+                "Query Store availability probe failed, using plan-cache DMVs: %s",
+                exc,
+                exc_info=True,
+            )
+    return enabled

@@ -33,9 +33,7 @@ from metadata.generated.schema.entity.services.connections.database.common.iamAu
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection,
 )
-from metadata.generated.schema.security.credentials.awsCredentials import (
-    AWSCredentials,
-)
+from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.ingestion.source.database.mysql.connection import MySQLConnection
 
 HOST = "myrds.abc.us-east-2.rds.amazonaws.com"
@@ -69,7 +67,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_iam_token_is_not_baked_into_url(self, mock_create, mock_listen, mock_token_manager):
+    def test_iam_token_is_not_baked_into_url(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
         mysql_conn = _make_mysql_connection(_iam_connection())
 
@@ -84,11 +84,15 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_username_is_url_encoded(self, mock_create, mock_listen, mock_token_manager):
+    def test_username_is_url_encoded(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         connection = MysqlConnection(
             username="iam@user/db",
             hostPort=f"{HOST}:{PORT}",
-            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion=REGION)),
+            authType=IamAuthConfigurationSource(
+                awsConfig=AWSCredentials(awsRegion=REGION)
+            ),
         )
         mysql_conn = _make_mysql_connection(connection)
 
@@ -102,13 +106,17 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_url_preserves_database_schema_and_options(self, mock_create, mock_listen, mock_token_manager):
+    def test_url_preserves_database_schema_and_options(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         connection = MysqlConnection(
             username=USERNAME,
             hostPort=f"{HOST}:{PORT}",
             databaseSchema="analytics",
             connectionOptions={"charset": "utf8mb4"},
-            authType=IamAuthConfigurationSource(awsConfig=AWSCredentials(awsRegion=REGION)),
+            authType=IamAuthConfigurationSource(
+                awsConfig=AWSCredentials(awsRegion=REGION)
+            ),
         )
         mysql_conn = _make_mysql_connection(connection)
 
@@ -123,7 +131,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_do_connect_listener_is_registered(self, mock_create, mock_listen, mock_token_manager):
+    def test_do_connect_listener_is_registered(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
         mysql_conn = _make_mysql_connection(_iam_connection())
 
@@ -135,7 +145,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_listener_injects_fresh_token_per_connection(self, mock_create, mock_listen, mock_token_manager):
+    def test_listener_injects_fresh_token_per_connection(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
         mysql_conn = _make_mysql_connection(_iam_connection())
 
@@ -154,7 +166,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_listener_enables_ssl_required_by_pymysql_for_iam(self, mock_create, mock_listen, mock_token_manager):
+    def test_listener_enables_ssl_required_by_pymysql_for_iam(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
         mysql_conn = _make_mysql_connection(_iam_connection())
 
@@ -170,7 +184,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_injected_ssl_makes_pymysql_require_tls(self, mock_create, mock_listen, mock_token_manager):
+    def test_injected_ssl_makes_pymysql_require_tls(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         """Assert real PyMySQL behavior: the injected ssl value enables required TLS.
 
         An empty dict only yields PREFERRED mode (_ssl_required=False), which can
@@ -187,14 +203,18 @@ class TestMySQLIamEngine:
         listener(None, None, None, cparams)
 
         with patch.object(pymysql.connections.Connection, "connect", lambda self: None):
-            conn = pymysql.connections.Connection(host="h", user="u", ssl=cparams["ssl"])
+            conn = pymysql.connections.Connection(
+                host="h", user="u", ssl=cparams["ssl"]
+            )
         assert conn.ssl is True
         assert conn._ssl_required is True
 
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_listener_preserves_existing_ssl_config(self, mock_create, mock_listen, mock_token_manager):
+    def test_listener_preserves_existing_ssl_config(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
         mysql_conn = _make_mysql_connection(_iam_connection())
 
@@ -209,7 +229,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_listener_does_not_overwrite_explicit_empty_ssl(self, mock_create, mock_listen, mock_token_manager):
+    def test_listener_does_not_overwrite_explicit_empty_ssl(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         mock_token_manager.return_value.get_token.return_value = "FRESH_TOKEN"
         mysql_conn = _make_mysql_connection(_iam_connection())
 
@@ -224,7 +246,9 @@ class TestMySQLIamEngine:
     @patch.object(connection_module, "RdsIamAuthTokenManager")
     @patch.object(connection_module, "listen")
     @patch.object(connection_module, "create_generic_db_connection")
-    def test_token_manager_built_with_split_host_and_port(self, mock_create, mock_listen, mock_token_manager):
+    def test_token_manager_built_with_split_host_and_port(
+        self, mock_create, mock_listen, mock_token_manager
+    ):
         mysql_conn = _make_mysql_connection(_iam_connection())
 
         mysql_conn._get_iam_engine(mysql_conn.service_connection)
@@ -284,7 +308,9 @@ class TestRdsIamAuthTokenManager:
 
     def test_expiry_parsed_from_presigned_url(self, mock_rds):
         now = datetime.datetime.now(datetime.timezone.utc)
-        mock_rds.generate_db_auth_token.return_value = _presigned_token(now, expires_seconds=900)
+        mock_rds.generate_db_auth_token.return_value = _presigned_token(
+            now, expires_seconds=900
+        )
 
         manager = self._manager()
         manager.get_token()
@@ -324,7 +350,9 @@ class TestRdsIamAuthTokenManager:
             return manager.get_token()
 
         with ThreadPoolExecutor(max_workers=10) as executor:
-            tokens = [future.result() for future in [executor.submit(call) for _ in range(10)]]
+            tokens = [
+                future.result() for future in [executor.submit(call) for _ in range(10)]
+            ]
 
         assert mock_rds.generate_db_auth_token.call_count == 1
         assert all(token == _presigned_token(now) for token in tokens)

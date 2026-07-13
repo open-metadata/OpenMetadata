@@ -96,7 +96,7 @@ import EntityLink from '../../../../utils/EntityLink';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { getField } from '../../../../utils/formUtils';
 import { checkPermission } from '../../../../utils/PermissionsUtils';
-import { getErrorText } from '../../../../utils/StringsUtils';
+import { getErrorText } from '../../../../utils/StringUtils';
 import {
   fetchOptions,
   generateOptions,

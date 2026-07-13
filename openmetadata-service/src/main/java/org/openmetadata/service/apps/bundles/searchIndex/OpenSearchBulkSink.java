@@ -926,9 +926,25 @@ public class OpenSearchBulkSink implements BulkSink {
         // service-layer pre-filter only admits entries whose state matches (same fingerprint or
         // same updatedAt), and fingerprint covers the body text that determines chunk count.
         doc.setAll((ObjectNode) cached);
+        // Backfill: the entity content is unchanged, but the dedicated chunk index (issue #4789)
+        // may not hold this entity's chunk docs yet (catalogs embedded before multi-chunk
+        // shipped). The call is fingerprint-guarded, so it is a cheap no-op once chunks exist;
+        // chunk docs reflect committed entity state, so writing them mid-reindex is safe even if
+        // the staged index is never promoted.
+        vectorService.updateEntityEmbeddingChunks(entity);
       } else {
-        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
-        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
+        // Build the chunk docs once (one embedding call per chunk): chunk 0's embedding fields
+        // are spliced into the staged entity doc for hybrid search, and the full set is written
+        // to the dedicated chunk index for the semantic vector path (issue #4789).
+        List<Map<String, Object>> chunkDocs =
+            VectorDocBuilder.fromEntity(entity, vectorService.getEmbeddingClient());
+        if (!chunkDocs.isEmpty()) {
+          doc.setAll(
+              (ObjectNode)
+                  OBJECT_MAPPER.valueToTree(
+                      OpenSearchVectorService.legacyEmbeddingFields(chunkDocs.get(0))));
+          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs);
+        }
       }
 
       vectorSuccess.incrementAndGet();

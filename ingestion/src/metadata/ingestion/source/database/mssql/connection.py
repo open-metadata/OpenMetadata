@@ -12,6 +12,7 @@
 """
 Source connection handler
 """
+
 from typing import Optional
 
 from sqlalchemy.engine import Engine
@@ -39,7 +40,9 @@ from metadata.ingestion.source.database.mssql.queries import (
     MSSQL_GET_CURRENT_DATABASE,
     MSSQL_GET_DATABASE,
     MSSQL_TEST_GET_QUERIES,
+    MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE,
 )
+from metadata.ingestion.source.database.mssql.utils import is_query_store_enabled
 from metadata.utils.constants import THREE_MIN
 
 
@@ -72,7 +75,11 @@ def test_connection(
     of a metadata workflow or during an Automation Workflow
     """
     queries = {
-        "GetQueries": MSSQL_TEST_GET_QUERIES,
+        "GetQueries": (
+            MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE
+            if is_query_store_enabled(engine)
+            else MSSQL_TEST_GET_QUERIES
+        ),
         "GetDatabases": MSSQL_GET_DATABASE
         if service_connection.ingestAllDatabases
         else MSSQL_GET_CURRENT_DATABASE,

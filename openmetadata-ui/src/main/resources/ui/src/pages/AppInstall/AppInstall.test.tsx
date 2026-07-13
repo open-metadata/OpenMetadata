@@ -135,9 +135,11 @@ jest.mock('../../rest/applicationMarketPlaceAPI', () => ({
   ),
 }));
 
-jest.mock('../../utils/CommonUtils', () => ({
-  getIngestionFrequency: jest.fn(),
+jest.mock('../../utils/EntityDisplayUtils', () => ({
   getEntityMissingError: jest.fn(),
+}));
+jest.mock('../../utils/SchedularUtils', () => ({
+  getIngestionFrequency: jest.fn(),
 }));
 
 jest.mock('../../utils/JSONSchemaFormUtils', () => ({

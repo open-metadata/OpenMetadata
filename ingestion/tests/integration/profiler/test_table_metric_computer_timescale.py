@@ -62,7 +62,11 @@ def ts_engine():
         engine = create_engine(container.get_connection_url())
         with engine.connect() as conn:
             conn.execute(text("CREATE EXTENSION IF NOT EXISTS timescaledb"))
-            conn.execute(text("CREATE TABLE public.regular_test (id INTEGER PRIMARY KEY, name VARCHAR(256))"))
+            conn.execute(
+                text(
+                    "CREATE TABLE public.regular_test (id INTEGER PRIMARY KEY, name VARCHAR(256))"
+                )
+            )
             conn.execute(
                 text(
                     "INSERT INTO public.regular_test (id, name) "

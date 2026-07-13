@@ -59,7 +59,7 @@ import {
   getTestCaseDetailPagePath,
   getTestSuitePath,
 } from '../../../../utils/RouterUtils';
-import { replacePlus } from '../../../../utils/StringsUtils';
+import { replacePlus } from '../../../../utils/StringUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';

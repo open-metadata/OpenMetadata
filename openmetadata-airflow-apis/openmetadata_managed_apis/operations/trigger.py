@@ -19,7 +19,6 @@ except ImportError:
     from airflow.api.common.experimental.trigger_dag import trigger_dag
 
 from airflow.utils import timezone
-
 from openmetadata_managed_apis.api.response import ApiResponse
 
 try:

@@ -208,7 +208,7 @@ jest.mock('../../../components/common/RichTextEditor/RichTextEditor', () =>
 );
 
 // Mock utils
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   generateUUID: jest.fn().mockReturnValue('mock-uuid'),
 }));
 

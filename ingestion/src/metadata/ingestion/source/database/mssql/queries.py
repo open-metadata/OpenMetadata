@@ -41,6 +41,82 @@ MSSQL_SQL_STATEMENT = textwrap.dedent(
 """
 )
 
+# Same as MSSQL_SQL_STATEMENT but scoped to the connected database via t.dbid = DB_ID().
+# Used per-database in ingest-all runs for databases without Query Store, so each
+# database's DMV read returns only its own queries and nothing is double-counted.
+MSSQL_SQL_STATEMENT_CURRENT_DB = textwrap.dedent(
+    """
+      SELECT TOP {result_limit}
+        db.NAME database_name,
+        t.text query_text,
+        s.last_execution_time start_time,
+        DATEADD(s, s.last_elapsed_time/1000000, s.last_execution_time) end_time,
+        s.last_elapsed_time/1000000 duration,
+        NULL schema_name,
+        NULL query_type,
+        NULL user_name,
+        NULL aborted
+      FROM sys.dm_exec_cached_plans AS p
+      INNER JOIN sys.dm_exec_query_stats AS s
+        ON p.plan_handle = s.plan_handle
+      CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
+      INNER JOIN sys.databases db
+        ON db.database_id = t.dbid
+      WHERE s.last_execution_time between '{start_time}' and '{end_time}'
+          AND t.dbid = DB_ID()
+          AND t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+          AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+          AND p.objtype != 'Prepared'
+          {filters}
+      ORDER BY s.last_execution_time DESC
+"""
+)
+
+# Query Store variant of MSSQL_SQL_STATEMENT: durable per-statement history.
+# object_id = 0 keeps this to ad-hoc statements only, so the statements executed
+# inside stored procedures are left to the stored-procedure lineage path and are
+# not double-counted here. The inner query is aliased `t` and exposes `text` so the
+# same {filters} (which reference t.text) apply unchanged.
+# end_time is an aggregate estimate (max last_execution_time + avg duration), not a
+# measured per-execution end. It is used only for ordering and lineage, never for
+# precise per-execution timing.
+MSSQL_SQL_STATEMENT_FROM_QUERY_STORE = textwrap.dedent(
+    """
+      SELECT TOP {result_limit}
+        t.database_name,
+        t.text query_text,
+        t.start_time,
+        t.end_time,
+        t.duration,
+        NULL schema_name,
+        NULL query_type,
+        NULL user_name,
+        NULL aborted
+      FROM (
+        SELECT
+          DB_NAME() AS database_name,
+          qt.query_sql_text AS text,
+          MAX(rs.last_execution_time) AS start_time,
+          DATEADD(s, CAST(AVG(rs.avg_duration) / 1000000 AS INT), MAX(rs.last_execution_time)) AS end_time,
+          AVG(rs.avg_duration) / 1000000.0 AS duration
+        FROM sys.query_store_query AS q
+        INNER JOIN sys.query_store_query_text AS qt
+          ON qt.query_text_id = q.query_text_id
+        INNER JOIN sys.query_store_plan AS p
+          ON p.query_id = q.query_id
+        INNER JOIN sys.query_store_runtime_stats AS rs
+          ON rs.plan_id = p.plan_id
+        WHERE ISNULL(q.object_id, 0) = 0
+          AND rs.last_execution_time BETWEEN '{start_time}' AND '{end_time}'
+        GROUP BY q.query_id, qt.query_sql_text
+      ) AS t
+      WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
+        AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
+        {filters}
+      ORDER BY t.start_time DESC
+"""
+)
+
 MSSQL_GET_TABLE_COMMENTS = textwrap.dedent(
     """
 SELECT obj.name AS table_name,
@@ -117,6 +193,15 @@ MSSQL_GET_DATABASE = """
 SELECT name FROM master.sys.databases order by name
 """
 
+MSSQL_GET_QUERY_STORE_DATABASES = """
+SELECT name
+FROM sys.databases
+WHERE state = 0
+  AND database_id > 4
+  AND HAS_DBACCESS(name) = 1
+ORDER BY name
+"""
+
 MSSQL_GET_CURRENT_DATABASE = """
 SELECT DB_NAME() AS name
 """
@@ -131,6 +216,14 @@ MSSQL_TEST_GET_QUERIES = textwrap.dedent(
       CROSS APPLY sys.dm_exec_sql_text(p.plan_handle) AS t
       INNER JOIN sys.databases db
         ON db.database_id = t.dbid
+"""
+)
+
+MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
+    """
+      SELECT TOP 1
+        query_sql_text
+      FROM sys.query_store_query_text
 """
 )
 
@@ -271,6 +364,7 @@ WITH SP_HISTORY (start_time, end_time, procedure_name, query_text) AS (
   from sys.dm_exec_procedure_stats s
   CROSS APPLY sys.dm_exec_sql_text(s.plan_handle)
   WHERE OBJECT_NAME(object_id, database_id) IS NOT NULL
+    AND s.database_id = DB_ID()
     AND s.last_execution_time > '{start_date}'
 ),
 Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type, schema_name, user_name) AS (
@@ -297,6 +391,7 @@ Q_HISTORY (database_name, query_text, start_time, end_time, duration,query_type,
   WHERE t.text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND t.text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
     AND p.objtype NOT IN ('Prepared', 'Proc')
+    AND t.dbid = DB_ID()
     AND s.last_execution_time > '{start_date}'
 )
 select 
@@ -320,6 +415,54 @@ JOIN Q_HISTORY Q
 order by PROCEDURE_START_TIME desc
 ;
     """
+)
+
+MSSQL_GET_QUERY_STORE_STATE = (
+    "SELECT actual_state FROM sys.database_query_store_options"
+)
+
+MSSQL_GET_STORED_PROCEDURE_QUERIES_FROM_QUERY_STORE = textwrap.dedent(
+    """
+WITH proc_statements AS (
+    SELECT
+        q.object_id                          AS object_id,
+        qt.query_sql_text                    AS query_text,
+        MAX(rs.last_execution_time)          AS last_execution_time,
+        MIN(rs.first_execution_time)         AS first_execution_time,
+        AVG(rs.avg_duration) / 1000000.0     AS duration_seconds
+    FROM sys.query_store_query AS q
+    INNER JOIN sys.query_store_query_text AS qt
+        ON qt.query_text_id = q.query_text_id
+    INNER JOIN sys.query_store_plan AS p
+        ON p.query_id = q.query_id
+    INNER JOIN sys.query_store_runtime_stats AS rs
+        ON rs.plan_id = p.plan_id
+    WHERE q.object_id <> 0
+      AND rs.last_execution_time > '{start_date}'
+    GROUP BY q.object_id, q.query_id, qt.query_sql_text
+)
+SELECT
+    CASE
+        WHEN query_text LIKE '%%MERGE%%'        THEN 'MERGE'
+        WHEN query_text LIKE '%%UPDATE%%'       THEN 'UPDATE'
+        WHEN query_text LIKE '%%SELECT%%INTO%%' THEN 'CREATE_TABLE_AS_SELECT'
+        WHEN query_text LIKE '%%INSERT%%'       THEN 'INSERT'
+        ELSE 'UNKNOWN'
+    END                                                          AS QUERY_TYPE,
+    DB_NAME()                                                    AS QUERY_DATABASE_NAME,
+    OBJECT_SCHEMA_NAME(object_id)                                AS QUERY_SCHEMA_NAME,
+    query_text                                                   AS QUERY_TEXT,
+    NULL                                                         AS QUERY_USER_NAME,
+    last_execution_time                                          AS QUERY_START_TIME,
+    duration_seconds                                             AS QUERY_DURATION,
+    OBJECT_NAME(object_id)                                       AS PROCEDURE_NAME,
+    ISNULL(OBJECT_DEFINITION(object_id), OBJECT_NAME(object_id)) AS PROCEDURE_TEXT,
+    first_execution_time                                         AS PROCEDURE_START_TIME,
+    last_execution_time                                          AS PROCEDURE_END_TIME
+FROM proc_statements
+WHERE OBJECT_NAME(object_id) IS NOT NULL
+ORDER BY PROCEDURE_START_TIME DESC
+"""
 )
 
 GET_DB_CONFIGS = textwrap.dedent("DBCC USEROPTIONS;")

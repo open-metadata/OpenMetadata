@@ -56,9 +56,18 @@ _COMPOSER_HOST_PATTERN = re.compile(
     r"^[^.]+-dot-(?P<region>[a-z0-9-]+)\.composer\.googleusercontent\.com$",
     re.IGNORECASE,
 )
-_MWAA_HOST_PATTERN = re.compile(r"\.airflow\.[a-z0-9-]+\.amazonaws\.com$", re.IGNORECASE)
-_ASTRONOMER_HOST_SUFFIXES = (".astronomer.run", ".astronomer.io", ".cloud.astronomer.io")
-_GCP_CONSOLE_HOST_SUFFIXES = ("console.cloud.google.com", "console.developers.google.com")
+_MWAA_HOST_PATTERN = re.compile(
+    r"\.airflow\.[a-z0-9-]+\.amazonaws\.com$", re.IGNORECASE
+)
+_ASTRONOMER_HOST_SUFFIXES = (
+    ".astronomer.run",
+    ".astronomer.io",
+    ".cloud.astronomer.io",
+)
+_GCP_CONSOLE_HOST_SUFFIXES = (
+    "console.cloud.google.com",
+    "console.developers.google.com",
+)
 
 
 def detect_flavor(host: Optional[str], auth_config) -> AirflowFlavor:  # noqa: UP045
@@ -82,7 +91,9 @@ def detect_flavor(host: Optional[str], auth_config) -> AirflowFlavor:  # noqa: U
     return flavor
 
 
-def diagnose(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def diagnose(
+    host: Optional[str], auth_config, verify: bool, original_error: Exception
+) -> Optional[str]:  # noqa: UP045
     """
     Run flavor-specific probes and return an actionable hint string, or None
     when no flavor-specific guidance applies.
@@ -102,7 +113,9 @@ def diagnose(host: Optional[str], auth_config, verify: bool, original_error: Exc
 # ── Probes ──────────────────────────────────────────────────────────────────
 
 
-def _probe_composer(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_composer(
+    host: Optional[str], auth_config, verify: bool, original_error: Exception
+) -> Optional[str]:  # noqa: UP045
     hint = None
     if not host:
         hint = "Set hostPort to the Airflow web UI URL from your Composer environment page (https://<env>.composer.googleusercontent.com)."
@@ -122,7 +135,9 @@ def _probe_composer(host: Optional[str], auth_config, verify: bool, original_err
     return hint
 
 
-def _composer_access_hint(host: str, auth_config: GcpServiceAccount, verify: bool) -> Optional[str]:  # noqa: UP045
+def _composer_access_hint(
+    host: str, auth_config: GcpServiceAccount, verify: bool
+) -> Optional[str]:  # noqa: UP045
     """
     A valid GCP Service Account config that still fails CheckAccess is almost
     always an IAM permission problem: Google rejects the request before it
@@ -169,7 +184,9 @@ def _composer_permission_hint(env_info: dict) -> str:
     )
 
 
-def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, verify: bool) -> Optional[dict]:  # noqa: UP045
+def _probe_composer_management_api(
+    host: str, auth_config: GcpServiceAccount, verify: bool
+) -> Optional[dict]:  # noqa: UP045
     """
     Call the Composer Management API to find the env matching this airflowUri,
     proving whether the service account has any project-level access at all.
@@ -203,7 +220,11 @@ def _probe_composer_management_api(host: str, auth_config: GcpServiceAccount, ve
             verify=True,
         )
         if resp.status_code != 200:
-            logger.debug("Composer management API returned %s: %s", resp.status_code, resp.text[:200])
+            logger.debug(
+                "Composer management API returned %s: %s",
+                resp.status_code,
+                resp.text[:200],
+            )
             return None
 
         normalized_host = (host or "").rstrip("/").lower()
@@ -253,11 +274,16 @@ def _project_from_credentials(credentials) -> Optional[str]:  # noqa: UP045
             if ambient_project:
                 project = ambient_project
         except Exception:
-            logger.debug("google.auth.default() project lookup failed: %s", traceback.format_exc())
+            logger.debug(
+                "google.auth.default() project lookup failed: %s",
+                traceback.format_exc(),
+            )
     return project
 
 
-def _mint_access_token_for_diagnostic(auth_config: GcpServiceAccount) -> Optional[str]:  # noqa: UP045
+def _mint_access_token_for_diagnostic(
+    auth_config: GcpServiceAccount,
+) -> Optional[str]:  # noqa: UP045
     """
     Mint an OAuth2 access token (cloud-platform scope) for the Composer
     Management API call. Returns None on any failure.
@@ -276,7 +302,10 @@ def _mint_access_token_for_diagnostic(auth_config: GcpServiceAccount) -> Optiona
         token_value, _ = callback()
         token = token_value
     except Exception:
-        logger.debug("Could not mint access token for Composer management probe: %s", traceback.format_exc())
+        logger.debug(
+            "Could not mint access token for Composer management probe: %s",
+            traceback.format_exc(),
+        )
     return token
 
 
@@ -311,11 +340,15 @@ def _detect_composer_iap_model(host: str, verify: bool) -> Optional[str]:  # noq
             elif location_host == "accounts.google.com" and "client_id=" in location:
                 model = "classic"
     except Exception:
-        logger.debug("Composer IAP model probe failed for %s: %s", host, traceback.format_exc())
+        logger.debug(
+            "Composer IAP model probe failed for %s: %s", host, traceback.format_exc()
+        )
     return model
 
 
-def _probe_mwaa(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_mwaa(
+    host: Optional[str], auth_config, verify: bool, original_error: Exception
+) -> Optional[str]:  # noqa: UP045
     hint = None
     if not isinstance(auth_config, MwaaAuthentication):
         hint = (
@@ -325,16 +358,16 @@ def _probe_mwaa(host: Optional[str], auth_config, verify: bool, original_error: 
     else:
         message = str(original_error).lower()
         if "expiredtoken" in message or "expired" in message:
-            hint = (
-                "AWS credentials are expired. Refresh them (re-run aws sso login or rotate the access key) and retry."
-            )
+            hint = "AWS credentials are expired. Refresh them (re-run aws sso login or rotate the access key) and retry."
         elif "accessdenied" in message or "not authorized" in message:
             hint = (
                 "AWS credentials authenticated but the IAM principal cannot call MWAA. "
                 "Grant airflow:CreateWebLoginToken and airflow:InvokeRestApi on the environment."
             )
         elif "resourcenotfound" in message or "no such" in message:
-            env_name = getattr(getattr(auth_config, "mwaaConfig", None), "mwaaEnvironmentName", None)
+            env_name = getattr(
+                getattr(auth_config, "mwaaConfig", None), "mwaaEnvironmentName", None
+            )
             hint = (
                 f"MWAA environment '{env_name}' was not found in the configured region. "
                 "Verify the environment name (case-sensitive) and that the AWS region matches the environment."
@@ -342,7 +375,9 @@ def _probe_mwaa(host: Optional[str], auth_config, verify: bool, original_error: 
     return hint
 
 
-def _probe_astronomer(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_astronomer(
+    host: Optional[str], auth_config, verify: bool, original_error: Exception
+) -> Optional[str]:  # noqa: UP045
     hint = None
     if isinstance(auth_config, BasicAuth):
         hint = (
@@ -367,7 +402,9 @@ def _is_astronomer_control_plane(netloc: str) -> bool:
     return netloc == "cloud.astronomer.io" or netloc.endswith(".cloud.astronomer.io")
 
 
-def _probe_self_hosted(host: Optional[str], auth_config, verify: bool, original_error: Exception) -> Optional[str]:  # noqa: UP045
+def _probe_self_hosted(
+    host: Optional[str], auth_config, verify: bool, original_error: Exception
+) -> Optional[str]:  # noqa: UP045
     hint = None
     if host:
         try:

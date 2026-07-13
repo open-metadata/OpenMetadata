@@ -39,6 +39,7 @@ import { TagLabel, TagSource } from '../../../generated/type/tagLabel';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useFqn } from '../../../hooks/useFqn';
 import { useFqnDeepLink } from '../../../hooks/useFqnDeepLink';
+import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 import { getColumnSorter, getEntityName } from '../../../utils/EntityUtils';
 import {
   columnFilterIcon,
@@ -55,7 +56,6 @@ import TableDescription from '../../Database/TableDescription/TableDescription.c
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ModalWithMarkdownEditor } from '../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor';
 import TasksDAGView from '../TasksDAGView/TasksDAGView';
-import { useTreeTagFilter } from '../../../hooks/useTreeTagFilter';
 
 export const PipelineTaskTab = () => {
   const {

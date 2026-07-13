@@ -211,7 +211,7 @@ jest.mock('../../utils/PermissionsUtils', () => ({
   getPrioritizedViewPermission: jest.fn().mockReturnValue(true),
 }));
 
-jest.mock('../../utils/StringsUtils', () => ({
+jest.mock('../../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   getEncodedFqn: jest.fn().mockImplementation((fqn) => fqn),
   stringToHTML: jest.fn().mockImplementation((str) => str),

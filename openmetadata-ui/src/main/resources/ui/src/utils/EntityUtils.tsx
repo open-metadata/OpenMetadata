@@ -77,6 +77,7 @@ import { Topic } from '../generated/entity/data/topic';
 import { Worksheet } from '../generated/entity/data/worksheet';
 import { DataProduct } from '../generated/entity/domains/dataProduct';
 import { Team } from '../generated/entity/teams/team';
+import { User } from '../generated/entity/teams/user';
 import {
   AlertType,
   EventSubscription,
@@ -91,13 +92,13 @@ import {
   TableColumnSearchSource,
 } from '../interface/search.interface';
 import { DataQualityPageTabs } from '../pages/DataQuality/DataQualityPage.interface';
-import {
-  getPartialNameFromTableFQN,
-  getTableFQNFromColumnFQN,
-} from './CommonUtils';
 import { getDataInsightPathWithFqn } from './DataInsightUtils';
 import EntityLink from './EntityLink';
 import Fqn from './Fqn';
+import {
+  getPartialNameFromTableFQN,
+  getTableFQNFromColumnFQN,
+} from './FqnUtils';
 import i18n from './i18next/LocalUtil';
 import {
   getApplicationDetailsPath,
@@ -124,7 +125,7 @@ import {
   getTestCaseDetailPagePath,
 } from './RouterUtils';
 import { getServiceRouteFromServiceType } from './ServiceUtils';
-import { getEncodedFqn } from './StringsUtils';
+import { getEncodedFqn } from './StringUtils';
 import { getDataTypeString, getTagsWithoutTier } from './TableUtils';
 import { getTableTags } from './TagsUtils';
 
@@ -227,10 +228,6 @@ export const getEntityFeedLink = (
 */
 export const getEntityUserLink = (userName: string): string => {
   return `<#E${ENTITY_LINK_SEPARATOR}user${ENTITY_LINK_SEPARATOR}${userName}>`;
-};
-
-export const getTitleCase = (text?: string) => {
-  return text ? startCase(text) : '';
 };
 
 /**
@@ -1751,3 +1748,16 @@ export const hasLineageTab = (entityType: EntityType): boolean =>
 
 export const hasCustomPropertiesTab = (entityType: EntityType): boolean =>
   CUSTOM_PROPERTIES_TABS_SET.has(entityType);
+
+export const hasEditAccess = (owners: EntityReference[], currentUser: User) => {
+  return owners.some((owner) => {
+    if (owner.type === 'user') {
+      return owner.id === currentUser.id;
+    } else {
+      return Boolean(
+        currentUser.teams?.length &&
+          currentUser.teams.some((team) => team.id === owner.id)
+      );
+    }
+  });
+};

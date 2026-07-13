@@ -169,12 +169,8 @@ def install_clidriver(clidriver_version: str) -> None:
     import platform
     import subprocess
     import sys
-    from importlib.metadata import (
-        PackageNotFoundError,
-        distribution,
-    )
+    from importlib.metadata import PackageNotFoundError, distribution
     from urllib.request import URLError, urlopen
-
 
     clidriver_version = f"v{clidriver_version}"
     system = platform.system().lower()

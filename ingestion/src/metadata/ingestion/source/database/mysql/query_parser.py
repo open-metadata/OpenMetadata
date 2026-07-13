@@ -62,7 +62,9 @@ class MysqlQueryParserSource(QueryParserSource, ABC):
         else:
             self.sql_stmt = MYSQL_SQL_STATEMENT
             default_query_history_table = "mysql.general_log"
-        query_history_table = self.service_connection.queryHistoryTable or default_query_history_table
+        query_history_table = (
+            self.service_connection.queryHistoryTable or default_query_history_table
+        )
         return self.sql_stmt.format(
             start_time=start_time,
             end_time=end_time,

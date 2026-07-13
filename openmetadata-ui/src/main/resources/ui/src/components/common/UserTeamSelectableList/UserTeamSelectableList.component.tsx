@@ -31,7 +31,7 @@ import {
   formatTeamsResponse,
   formatUsersResponse,
 } from '../../../utils/APIUtils';
-import { getCountBadge } from '../../../utils/CommonUtils';
+import { getCountBadge } from '../../../utils/EntityDisplayUtils';
 import {
   getEntityName,
   getEntityReferenceListFromEntities,
