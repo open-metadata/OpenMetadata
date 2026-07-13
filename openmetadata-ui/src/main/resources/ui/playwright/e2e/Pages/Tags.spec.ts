@@ -492,8 +492,6 @@ test('Classification Page', async ({ page }) => {
 
     await page.click('[data-testid="delete-button"]');
 
-    await page.click('[data-testid="hard-delete"]');
-
     const deleteClassification = page.waitForResponse(
       (response) =>
         response.request().method() === 'DELETE' &&

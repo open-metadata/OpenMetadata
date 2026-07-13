@@ -29,6 +29,7 @@ import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import ArticleStatusBadge from '../ArticleStatusBadge/ArticleStatusBadge.component';
+import AttachmentWidget from '../AttachmentWidget/AttachmentWidget';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 
 interface KnowledgePageDetailRightPanelProps {
@@ -123,6 +124,8 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
           onRelatedDataAssetsUpdate={handleRelatedEntitiesUpdate}
         />
 
+        <AttachmentWidget entityFqn={knowledgePage?.fullyQualifiedName} />
+
         {knowledgePage?.id && (
           <div>
             {knowledgePage.processingStatus && (
@@ -136,7 +139,7 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
                 />
               </div>
             )}
-            <ExtractedMemoriesCard sourceId={knowledgePage.id} />
+            <ExtractedMemoriesCard collapsible sourceId={knowledgePage.id} />
           </div>
         )}
       </Card.Content>
