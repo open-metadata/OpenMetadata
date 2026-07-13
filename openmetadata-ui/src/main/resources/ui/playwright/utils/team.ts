@@ -131,7 +131,11 @@ export const softDeleteTeam = async (page: Page) => {
   expect(response.status()).toBe(200);
 };
 
-export const hardDeleteTeam = async (page: Page, teamName: string) => {
+export const hardDeleteTeam = async (
+  page: Page,
+  teamName: string,
+  isSoftDeleted = false
+) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
@@ -140,7 +144,12 @@ export const hardDeleteTeam = async (page: Page, teamName: string) => {
 
   await page.getByTestId('delete-modal').waitFor();
 
-  await page.click('[data-testid="hard-delete"]');
+  // A live team shows the radio-based modal (defaults to soft delete), so the
+  // hard-delete option must be selected. An already soft-deleted team shows the
+  // hard-delete-only modal where the radio is absent.
+  if (!isSoftDeleted) {
+    await page.click('[data-testid="hard-delete"]');
+  }
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=true&recursive=true'

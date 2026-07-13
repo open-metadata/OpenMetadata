@@ -50,7 +50,7 @@ import {
 } from '../../utils/odcsImportExport';
 import { test } from '../fixtures/pages';
 
-test.describe.fixme('ODCS Import/Export', () => {
+test.describe('ODCS Import/Export', () => {
   test.slow(true);
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
