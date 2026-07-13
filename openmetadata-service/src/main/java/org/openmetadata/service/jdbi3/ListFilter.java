@@ -231,7 +231,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(assigneeFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("assigneeFqnHash", hashCsv);
     return String.format(
@@ -249,6 +249,19 @@ public class ListFilter extends Filter<ListFilter> {
         Relationship.ASSIGNED_TO.ordinal(),
         inCondition,
         Relationship.ASSIGNED_TO.ordinal());
+  }
+
+  /**
+   * Hash a user/team name (assignee, creator, approver) the same way its stored {@code nameHash} was
+   * computed. A user or team {@code nameHash} is {@code buildHash(fullyQualifiedName)} where the FQN
+   * is the quoted name (e.g. {@code "john.doe"} for a name containing a dot). Calling {@code
+   * buildHash} on the raw name would split it on the dot into two FQN parts and produce a compound
+   * hash that never matches, so any name containing a dot would resolve to zero tasks. Quoting first
+   * treats the whole name as a single FQN component; {@code quoteName} is a no-op for names that need
+   * no quoting, so non-dotted names are unaffected.
+   */
+  private static String hashUserName(String name) {
+    return FullyQualifiedName.buildHash(FullyQualifiedName.quoteName(name));
   }
 
   /**
@@ -303,7 +316,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(createdBy.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("createdByFqnHash", hashCsv);
     return String.format(
@@ -1211,7 +1224,7 @@ public class ListFilter extends Filter<ListFilter> {
         Arrays.stream(approverFqn.split(","))
             .map(String::trim)
             .filter(s -> !s.isEmpty())
-            .map(FullyQualifiedName::buildHash)
+            .map(ListFilter::hashUserName)
             .collect(Collectors.joining(","));
     String inCondition = buildIndexedBindParams("approverFqnHash", hashCsv);
     return String.format(

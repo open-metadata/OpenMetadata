@@ -7,6 +7,7 @@ import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class ListFilterTest {
   @Test
@@ -140,6 +141,27 @@ class ListFilterTest {
     assertEquals(
         "11111111-1111-1111-1111-111111111111",
         filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
+  void getAssignee_dottedUsername_hashesNameAsSingleFqnComponent() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("assignee", "john.doe");
+    filter.getCondition("task");
+
+    String actual = filter.getQueryParams().get("assigneeFqnHash_0");
+    assertEquals(FullyQualifiedName.buildHash(FullyQualifiedName.quoteName("john.doe")), actual);
+    assertNotEquals(FullyQualifiedName.buildHash("john.doe"), actual);
+  }
+
+  @Test
+  void getAssignee_plainUsername_hashUnchanged() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("assignee", "admin");
+    filter.getCondition("task");
+
+    assertEquals(
+        FullyQualifiedName.buildHash("admin"), filter.getQueryParams().get("assigneeFqnHash_0"));
   }
 
   @Test
