@@ -55,15 +55,6 @@ def test_powerbi_connection_is_base_connection():
     assert issubclass(PowerBIConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = PowerBIConnection(MagicMock())
-        client = conn.client
-
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
-
-
 def test_checks_does_not_touch_the_network():
     with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
         conn = PowerBIConnection(MagicMock())

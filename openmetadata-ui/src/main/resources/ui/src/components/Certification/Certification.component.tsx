@@ -160,7 +160,7 @@ const Certification = ({
             const isIcon = iconURL && !isImageUrl(iconURL);
             const renderedIcon = iconURL
               ? renderIcon(iconURL, {
-                  size: isIcon ? 28 : 40,
+                  size: 28,
                   alt: title,
                 })
               : null;

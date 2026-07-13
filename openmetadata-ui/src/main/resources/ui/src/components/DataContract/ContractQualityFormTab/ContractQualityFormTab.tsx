@@ -49,10 +49,12 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericCo
 import { TestLevel } from '../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import './contract-quality-form-tab.less';
 
-const TestCaseFormV1 = withSuspenseFallback(
+const TestCaseFormDrawer = withSuspenseFallback(
   lazy(
     () =>
-      import('../../DataQuality/AddDataQualityTest/components/TestCaseFormV1')
+      import(
+        '../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer'
+      )
   )
 );
 
@@ -293,17 +295,13 @@ export const ContractQualityFormTab: React.FC<{
         </Button>
       </div>
 
-      {isTestCaseDrawerOpen && (
-        <TestCaseFormV1
-          drawerProps={{
-            open: isTestCaseDrawerOpen,
-          }}
-          table={table}
-          testLevel={TestLevel.TABLE}
-          onCancel={handleCloseTestCaseDrawer}
-          onFormSubmit={handleTestCaseSubmit}
-        />
-      )}
+      <TestCaseFormDrawer
+        open={isTestCaseDrawerOpen}
+        table={table}
+        testLevel={TestLevel.TABLE}
+        onClose={handleCloseTestCaseDrawer}
+        onFormSubmit={handleTestCaseSubmit}
+      />
     </Card>
   );
 };
