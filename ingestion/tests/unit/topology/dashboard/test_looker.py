@@ -962,6 +962,29 @@ class LookerUnitTest(TestCase):
         counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
         self.assertEqual(counter.total, 2)
 
+    def test_list_datamodels_excludes_filtered_explore_from_total(self):
+        """
+        Check that a dataModelFilterPattern matching an explore's composite
+        datamodel name (model_explore) excludes only that explore from the
+        total, mirroring the per-explore filter in yield_bulk_datamodel.
+        """
+        models = [
+            SimpleNamespace(
+                name="m1",
+                project_name="p",
+                explores=[SimpleNamespace(name="e1"), SimpleNamespace(name="e2")],
+            ),
+            SimpleNamespace(name="m2", project_name="p", explores=[SimpleNamespace(name="e3")]),
+        ]
+        self.looker.client.all_lookml_models = MagicMock(return_value=models)
+        self.looker.client.lookml_model_explore = MagicMock(side_effect=Exception("skip detail"))
+        self.looker.source_config.dataModelFilterPattern = FilterPattern(excludes=["m1_e2"])
+
+        list(self.looker.list_datamodels())
+
+        counter = self.looker.progress_tracking.registry._global["DashboardDataModel"]
+        self.assertEqual(counter.total, 2)
+
     def test_get_dashboards_list_declares_dashboard_total(self):
         """
         Check that get_dashboards_list declares the Dashboard progress total
@@ -978,6 +1001,27 @@ class LookerUnitTest(TestCase):
         self.assertEqual(len(result), 2)
         registry = self.looker.progress_tracking.registry
         self.assertEqual(registry._global["Dashboard"].total, 2)
+
+    def test_get_dashboards_list_reconcilable_when_project_filtered(self):
+        """
+        projectFilterPattern is applied downstream in the base get_dashboard
+        (needs per-dashboard project detail), so get_dashboards_list falls back
+        to a reconcilable running count instead of an unreachable pre-filter
+        total.
+        """
+        dashboards = [
+            SimpleNamespace(id="1", title="Keep"),
+            SimpleNamespace(id="2", title="Keep2"),
+        ]
+        self.looker.client.all_dashboards = MagicMock(return_value=dashboards)
+        self.looker.source_config.projectFilterPattern = FilterPattern(excludes=["^skip$"])
+
+        result = self.looker.get_dashboards_list()
+
+        self.assertEqual(len(result), 2)
+        registry = self.looker.progress_tracking.registry
+        self.assertTrue(registry._global["Dashboard"].reconcilable)
+        self.assertIsNone(registry._global["Dashboard"].total)
 
     def test_yield_bulk_datamodel_tracks_progress(self):
         """

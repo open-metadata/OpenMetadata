@@ -1058,6 +1058,20 @@ class TableauUnitTest(TestCase):
         registry = self.tableau.progress_tracking.registry
         assert registry._global["Dashboard"].total == 7
 
+    def test_get_dashboards_list_reconcilable_when_filtered(self):
+        self.tableau.client = SimpleNamespace(
+            get_workbook_count=MagicMock(return_value=7),
+            get_workbooks=MagicMock(return_value=iter([])),
+        )
+        self.tableau.source_config.dashboardFilterPattern = FilterPattern(excludes=["^skip$"])
+
+        list(self.tableau.get_dashboards_list())
+
+        registry = self.tableau.progress_tracking.registry
+        assert registry._global["Dashboard"].reconcilable is True
+        assert registry._global["Dashboard"].total is None
+        self.tableau.client.get_workbook_count.assert_not_called()
+
     def test_yield_dashboard_tracks_progress(self):
         self.tableau.progress_tracking.manual.set_total(Dashboard.__name__, 3)
 

@@ -134,6 +134,7 @@ from metadata.utils.filters import (
     filter_by_chart,
     filter_by_dashboard,
     filter_by_datamodel,
+    filter_pattern_enabled,
 )
 from metadata.utils.helpers import clean_uri, get_standard_chart_type
 from metadata.utils.logger import ingestion_logger
@@ -432,9 +433,14 @@ class LookerSource(DashboardServiceSource):
                 self._all_lookml_models = all_lookml_models
 
                 explore_total = sum(
-                    len(model.explores)
+                    1
                     for model in all_lookml_models
                     if model.explores and not filter_by_datamodel(self.source_config.dataModelFilterPattern, model.name)
+                    for explore in model.explores
+                    if not filter_by_datamodel(
+                        self.source_config.dataModelFilterPattern,
+                        build_datamodel_name(model.name, explore.name),
+                    )
                 )
                 manual = self.progress_tracking.manual
                 manual.set_total(DashboardDataModel.__name__, explore_total)
@@ -1204,7 +1210,14 @@ class LookerSource(DashboardServiceSource):
                 )
             ]
             manual = self.progress_tracking.manual
-            manual.set_total(Dashboard.__name__, len(kept))
+            if filter_pattern_enabled(self.source_config.projectFilterPattern):
+                # projectFilterPattern is applied downstream in the base
+                # get_dashboard (needs per-dashboard project detail), so the
+                # kept count over-counts — show a running count instead of a
+                # bar stuck below 100%.
+                manual.mark_reconcilable(Dashboard.__name__)
+            else:
+                manual.set_total(Dashboard.__name__, len(kept))
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Wild error trying to obtain dashboard list {err}")
