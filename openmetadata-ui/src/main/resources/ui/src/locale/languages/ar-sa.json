@@ -2323,6 +2323,7 @@
     "show-nested": "إظهار المتداخل",
     "show-or-hide-advanced-config": "{{showAdv}} التكوين المتقدم",
     "show-or-hide-column-plural": "إظهار / إخفاء الأعمدة",
+    "show-property-plural": "إظهار الخصائص",
     "show-raw-logs": "إظهار السجلات الأولية",
     "showing-count-of-total-assets": "عرض {{count}} من أصل {{total}} أصل",
     "showing-total-failure-plural": "إجمالي {{total}} حالات فشل",

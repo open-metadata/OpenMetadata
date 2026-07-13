@@ -2323,6 +2323,7 @@
     "show-nested": "Verschachtelte anzeigen",
     "show-or-hide-advanced-config": "{{showAdv}} Erweiterte Konfiguration anzeigen/ausblenden",
     "show-or-hide-column-plural": "Spalten anzeigen/verbergen",
+    "show-property-plural": "Eigenschaften anzeigen",
     "show-raw-logs": "Rohprotokolle anzeigen",
     "showing-count-of-total-assets": "{{count}} von {{total}} Assets werden angezeigt",
     "showing-total-failure-plural": "Insgesamt {{total}} Ausfälle",

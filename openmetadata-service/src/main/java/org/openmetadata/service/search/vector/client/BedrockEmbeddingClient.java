@@ -182,6 +182,7 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         BedrockRuntimeClient.builder()
             .credentialsProvider(AwsCredentialsUtil.buildCredentialsProvider(awsConfig))
             .region(Region.of(awsConfig.getRegion()))
+            .overrideConfiguration(AwsCredentialsUtil.throttleResilientOverrideConfiguration())
             .build();
 
     LOG.info(

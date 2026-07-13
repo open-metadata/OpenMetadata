@@ -2323,6 +2323,7 @@
     "show-nested": "Показать вложенные",
     "show-or-hide-advanced-config": "{{showAdv}} Расширенная конфигурация",
     "show-or-hide-column-plural": "Показать / скрыть столбцы",
+    "show-property-plural": "Показать свойства",
     "show-raw-logs": "Показать необработанные логи",
     "showing-count-of-total-assets": "Показано {{count}} из {{total}} активов",
     "showing-total-failure-plural": "Всего ошибок {{total}}",
