@@ -1,0 +1,82 @@
+{
+  "$id": "https://open-metadata.org/schema/system/testLoginResult.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TestLoginResult",
+  "description": "Result of a dry-run SSO Test Login. Resolves the identity, roles, teams and domain outcome a candidate security configuration would produce for a real login, WITHOUT creating a user, issuing any token, or starting a session.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.system.TestLoginResult",
+  "definitions": {
+    "domainCheck": {
+      "javaType": "org.openmetadata.schema.system.TestLoginDomainCheck",
+      "description": "Outcome of applying the authorizer domain rules to the resolved identity.",
+      "type": "object",
+      "properties": {
+        "enforced": {
+          "description": "Whether enforcePrincipalDomain is enabled.",
+          "type": "boolean"
+        },
+        "principalDomain": {
+          "description": "Configured principal domain.",
+          "type": "string"
+        },
+        "resolvedDomain": {
+          "description": "Domain extracted from the resolved email/principal.",
+          "type": "string"
+        },
+        "passed": {
+          "description": "Whether the resolved identity satisfies the domain rules.",
+          "type": "boolean"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "status": {
+      "description": "Overall outcome of the test login.",
+      "type": "string",
+      "enum": ["success", "failed"]
+    },
+    "stage": {
+      "description": "Furthest stage reached: TOKEN_VALIDATED (token failed validation), CLAIMS_EXTRACTED (identity could not be resolved from claims), or DOMAIN_CHECKED (identity resolved and domain rules applied).",
+      "type": "string"
+    },
+    "resolvedPrincipal": {
+      "description": "Username/principal that would be used for the login.",
+      "type": "string"
+    },
+    "resolvedEmail": {
+      "description": "Email that would be associated with the login.",
+      "type": "string"
+    },
+    "mappedRoles": {
+      "description": "Roles that would be assigned from the provider claims.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "mappedTeams": {
+      "description": "Teams that would be derived from the team claim mapping.",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    },
+    "domainCheck": {
+      "$ref": "#/definitions/domainCheck"
+    },
+    "errors": {
+      "description": "Human-readable failure reasons (only present when status is 'failed').",
+      "type": "array",
+      "items": {
+        "type": "string"
+      },
+      "default": []
+    }
+  },
+  "required": ["status"],
+  "additionalProperties": false
+}

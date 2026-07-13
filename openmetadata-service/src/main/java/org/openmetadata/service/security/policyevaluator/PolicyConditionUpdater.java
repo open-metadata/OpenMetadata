@@ -16,6 +16,7 @@ package org.openmetadata.service.security.policyevaluator;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
+import java.util.UUID;
 import java.util.function.UnaryOperator;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
@@ -23,8 +24,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.policies.Policy;
 import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityDAO;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.util.EntityUtil.Fields;
@@ -42,6 +45,9 @@ public final class PolicyConditionUpdater {
   public static final Set<String> TEAM_FUNCTIONS = Set.of("inAnyTeam");
 
   private static final Pattern SINGLE_QUOTED_ARG = Pattern.compile("'([^']*)'");
+
+  private static final int MAX_REWRITE_RETRIES = 5;
+  private static final int POLICY_PAGE_SIZE = 1000;
 
   private PolicyConditionUpdater() {}
 
@@ -121,37 +127,109 @@ public final class PolicyConditionUpdater {
 
   /**
    * Find all non-deleted policies, apply conditionRewriter to each rule's condition, and persist
-   * any changes.
+   * any changes. Each changed policy is written with an optimistic content-based compare-and-swap
+   * (re-read, re-apply, retry on conflict) so concurrent tag/glossary renames touching overlapping
+   * policies cannot clobber each other's rewrites.
    */
   public static void updateAllPolicyConditions(UnaryOperator<String> conditionRewriter) {
     try {
       @SuppressWarnings("unchecked")
       EntityRepository<Policy> policyRepo =
           (EntityRepository<Policy>) Entity.getEntityRepository(Entity.POLICY);
-      ListFilter filter = new ListFilter(Include.NON_DELETED);
-      ResultList<Policy> policies =
-          policyRepo.listAfter(null, Fields.EMPTY_FIELDS, filter, 10000, null);
-
-      boolean anyChanged = false;
-      for (Policy policy : policies.getData()) {
-        if (rewritePolicyConditions(policy, conditionRewriter)) {
-          // Direct DAO update to avoid creating version history entries for automated rewrites.
-          policyRepo.getDao().update(policy);
-          // DAO.update skips EntityUpdater.invalidateCachesAfterStore, so the cached policy
-          // still has the pre-rewrite condition embedded. Drop every cache variant for this
-          // policy so the next read rebuilds from the freshly-updated row.
-          EntityRepository.invalidateCacheForEntity(
-              Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
-          anyChanged = true;
-          LOG.info("Updated policy conditions for '{}'", policy.getFullyQualifiedName());
-        }
-      }
+      boolean anyChanged = rewriteMatchingPolicies(policyRepo, conditionRewriter);
       if (anyChanged) {
         SubjectCache.invalidateAll();
       }
     } catch (Exception e) {
       LOG.error("Failed to update policy conditions", e);
     }
+  }
+
+  /**
+   * Page through every non-deleted policy (no fixed cap) and rewrite each one whose conditions
+   * reference the renamed/deleted entity.
+   */
+  private static boolean rewriteMatchingPolicies(
+      EntityRepository<Policy> policyRepo, UnaryOperator<String> conditionRewriter) {
+    ListFilter filter = new ListFilter(Include.NON_DELETED);
+    boolean anyChanged = false;
+    String after = null;
+    do {
+      ResultList<Policy> page =
+          policyRepo.listAfter(null, Fields.EMPTY_FIELDS, filter, POLICY_PAGE_SIZE, after);
+      for (Policy policy : page.getData()) {
+        if (conditionsWouldChange(policy, conditionRewriter)
+            && rewriteSinglePolicy(policyRepo, policy.getId(), conditionRewriter)) {
+          anyChanged = true;
+        }
+      }
+      after = page.getPaging() == null ? null : page.getPaging().getAfter();
+    } while (after != null);
+    return anyChanged;
+  }
+
+  /** Cheap, non-mutating pre-check: would the rewriter change any of this policy's conditions? */
+  private static boolean conditionsWouldChange(
+      Policy policy, UnaryOperator<String> conditionRewriter) {
+    boolean wouldChange = false;
+    for (Rule rule : policy.getRules()) {
+      String condition = rule.getCondition();
+      if (condition != null && !condition.equals(conditionRewriter.apply(condition))) {
+        wouldChange = true;
+        break;
+      }
+    }
+    return wouldChange;
+  }
+
+  /**
+   * Re-read the policy's current row with a {@code FOR UPDATE} lock, re-apply the rewriter to that
+   * fresh copy, and persist it with a content-based compare-and-swap. The locking read is essential:
+   * this runs inside the enclosing rename/delete transaction, so under MySQL's default REPEATABLE
+   * READ a plain re-read would return the transaction's stale snapshot and the CAS could never
+   * converge. {@code FOR UPDATE} returns the latest committed row and serializes conflicting
+   * writers. On a lost-update conflict it retries up to {@link #MAX_REWRITE_RETRIES} times. Avoids
+   * the EntityUpdater path so automated rewrites neither bump the version nor create version
+   * history.
+   */
+  private static boolean rewriteSinglePolicy(
+      EntityRepository<Policy> policyRepo, UUID policyId, UnaryOperator<String> conditionRewriter) {
+    EntityDAO<Policy> dao = policyRepo.getDao();
+    boolean changed = false;
+    boolean retryable = true;
+    int attempt = 0;
+    while (attempt < MAX_REWRITE_RETRIES && retryable && !changed) {
+      attempt++;
+      String currentJson = dao.findJsonByIdForUpdate(policyId, Include.NON_DELETED);
+      Policy policy = currentJson == null ? null : JsonUtils.readValue(currentJson, Policy.class);
+      if (policy == null || !rewritePolicyConditions(policy, conditionRewriter)) {
+        retryable = false;
+      } else {
+        changed = casWritePolicy(dao, policy, currentJson);
+      }
+    }
+    if (retryable && !changed) {
+      LOG.warn(
+          "Gave up rewriting conditions for policy {} after {} attempts due to concurrent modifications",
+          policyId,
+          MAX_REWRITE_RETRIES);
+    }
+    return changed;
+  }
+
+  /**
+   * Persist the rewritten policy only if its stored row still matches {@code expectedJson}. On
+   * success, drop every cache variant for the policy so the next read rebuilds from the fresh row
+   * (the DAO write skips EntityUpdater's cache invalidation).
+   */
+  private static boolean casWritePolicy(EntityDAO<Policy> dao, Policy policy, String expectedJson) {
+    boolean written = dao.updateIfMatches(policy, expectedJson) == 1;
+    if (written) {
+      EntityRepository.invalidateCacheForEntity(
+          Entity.POLICY, policy.getId(), policy.getFullyQualifiedName());
+      LOG.info("Updated policy conditions for '{}'", policy.getFullyQualifiedName());
+    }
+    return written;
   }
 
   private static boolean rewritePolicyConditions(

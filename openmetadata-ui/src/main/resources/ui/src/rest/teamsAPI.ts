@@ -21,7 +21,7 @@ import { Team } from '../generated/entity/teams/team';
 import { TeamHierarchy } from '../generated/entity/teams/teamHierarchy';
 import { ListParams } from '../interface/API.interface';
 import { CSVImportAsyncResponse } from '../pages/EntityImport/BulkEntityImportPage/BulkEntityImportPage.interface';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export const getTeams = async (

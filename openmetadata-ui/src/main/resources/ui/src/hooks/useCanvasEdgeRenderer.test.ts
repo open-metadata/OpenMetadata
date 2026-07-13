@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Theme } from '@mui/material';
 import { renderHook } from '@testing-library/react';
 import { RefObject } from 'react';
 import { Edge, Node } from 'reactflow';
+import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
 import { useCanvasEdgeRenderer } from './useCanvasEdgeRenderer';
 
 const mockGetNode = jest.fn();
@@ -66,7 +66,7 @@ jest.mock('../utils/EdgeStyleUtils', () => ({
   }),
 }));
 
-jest.mock('../utils/EntityLineageUtils', () => ({
+jest.mock('../utils/EntityLineageEdgeUtils', () => ({
   getEdgePathData: jest.fn().mockReturnValue({
     edgePath: 'M 0,0 C 100,0 100,100 200,100',
     edgeCenterX: 100,
@@ -104,16 +104,11 @@ const createMockCanvas = () => {
   return { canvas, ctx };
 };
 
-const createMockTheme = (): Theme =>
-  ({
-    palette: {
-      primary: { main: '#1890ff' },
-      allShades: {
-        indigo: { 600: '#3F51B5' },
-        error: { 600: '#F44336' },
-      },
-    },
-  } as unknown as Theme);
+const createMockColors = (): LineageEdgeColors => ({
+  primary: '#1890ff',
+  columnHighlight: '#3F51B5',
+  dqHighlight: '#F44336',
+});
 
 const createMockEdge = (overrides: Partial<Edge> = {}): Edge => ({
   id: 'edge-1',
@@ -168,7 +163,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -184,7 +179,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -216,7 +211,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -236,7 +231,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -264,7 +259,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -306,7 +301,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -344,7 +339,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -393,7 +388,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -448,7 +443,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -466,7 +461,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })
@@ -503,7 +498,7 @@ describe('useCanvasEdgeRenderer', () => {
         canvasRef,
         edges: [edge],
         dqHighlightedEdges: new Set(),
-        theme: createMockTheme(),
+        colors: createMockColors(),
         containerWidth: 800,
         containerHeight: 600,
       })

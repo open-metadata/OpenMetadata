@@ -14,7 +14,9 @@
 package org.openmetadata.service;
 
 import java.util.Objects;
+import lombok.extern.slf4j.Slf4j;
 
+@Slf4j
 public final class OpenMetadataApplicationConfigHolder {
 
   private static volatile OpenMetadataApplicationConfig instance;
@@ -26,14 +28,17 @@ public final class OpenMetadataApplicationConfigHolder {
   public static void initialize(OpenMetadataApplicationConfig config) {
     Objects.requireNonNull(config, "OpenMetadataApplicationConfig cannot be null");
     if (instance != null) {
-      throw new IllegalStateException("OpenMetadataApplicationConfig has already been initialized");
+      if (instance != config) {
+        LOG.warn("OpenMetadataApplicationConfigHolder is already initialized; ignoring new config");
+      }
+      return;
     }
     synchronized (OpenMetadataApplicationConfigHolder.class) {
-      if (instance != null) {
-        throw new IllegalStateException(
-            "OpenMetadataApplicationConfig has already been initialized");
+      if (instance == null) {
+        instance = config;
+      } else if (instance != config) {
+        LOG.warn("OpenMetadataApplicationConfigHolder is already initialized; ignoring new config");
       }
-      instance = config;
     }
   }
 

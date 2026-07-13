@@ -21,7 +21,7 @@ import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/type/entityReference';
-import { getEntityLinkFromType } from '../../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { DomainAssetDryRunModalProps } from './DomainAssetDryRunModal.interface';
 

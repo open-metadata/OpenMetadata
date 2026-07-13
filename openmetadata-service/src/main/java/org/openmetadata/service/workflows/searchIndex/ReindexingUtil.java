@@ -21,14 +21,20 @@ import com.fasterxml.jackson.databind.node.ArrayNode;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
 import jakarta.ws.rs.core.Response;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.List;
+import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
+import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.system.EntityError;
 import org.openmetadata.schema.system.EntityStats;
@@ -37,9 +43,12 @@ import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.EntityTimeSeriesRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
@@ -52,6 +61,64 @@ public class ReindexingUtil {
   public static final String TIMESTAMP_KEY = "@timestamp";
   public static final String TARGET_INDEX_KEY = "targetIndex";
   public static final String RECREATE_CONTEXT = "recreateContext";
+
+  /**
+   * Batch-prefetches per-entity {@link DocBuildContext} for {@code entities} and stuffs the
+   * resulting {@code Map<UUID, DocBuildContext>} into {@code contextData} under {@link
+   * BulkSink#DOC_BUILD_CONTEXT_KEY}. The sink reads that map, hands the per-entity entry to {@code
+   * buildSearchIndexDoc(ctx)}, and stays ignorant of what the context carries — keeping the sink
+   * transport-only. No-op when the batch is empty or the entity type does not benefit from
+   * prefetch.
+   */
+  public static void populateDocBuildContext(
+      Map<String, Object> contextData,
+      String entityType,
+      List<? extends EntityInterface> entities) {
+    Map<UUID, List<EsLineageData>> prefetchedLineage = null;
+    Map<UUID, Optional<Style>> prefetchedServiceStyles = null;
+    try {
+      prefetchedLineage = SearchIndex.prefetchLineageIfSupported(entityType, entities);
+      prefetchedServiceStyles = SearchIndex.prefetchServiceStylesIfSupported(entityType, entities);
+    } catch (Exception | LinkageError t) {
+      // Best-effort: if the prefetch (or SearchIndex class init) blows up — e.g. in a unit
+      // test that hasn't bootstrapped Entity.searchRepository — the sinks fall through to the
+      // per-entity DB lookup path, which is the original pre-PR behaviour. LinkageError covers
+      // NoClassDefFoundError (not an Exception); fatal errors like OutOfMemoryError /
+      // StackOverflowError still propagate.
+      LOG.warn(
+          "Skipping doc-build context prefetch for type '{}'; doc-build will fall back to per-entity DB lookups",
+          entityType,
+          t);
+    }
+    if (prefetchedLineage != null || prefetchedServiceStyles != null) {
+      int contextSize =
+          Math.max(
+              prefetchedLineage != null ? prefetchedLineage.size() : 0,
+              prefetchedServiceStyles != null ? prefetchedServiceStyles.size() : 0);
+      Map<UUID, DocBuildContext> docBuildContexts = new HashMap<>(contextSize);
+      for (EntityInterface entity : entities) {
+        UUID entityId = entity.getId();
+        if (entityId == null) {
+          continue;
+        }
+        List<EsLineageData> lineage =
+            prefetchedLineage != null ? prefetchedLineage.get(entityId) : null;
+        boolean hasStyle =
+            prefetchedServiceStyles != null && prefetchedServiceStyles.containsKey(entityId);
+        // No prefetched data: an entry would equal empty(), the sink's fallback on a miss.
+        if (lineage == null && !hasStyle) {
+          continue;
+        }
+        DocBuildContext.ServiceStylePrefetch serviceStylePrefetch =
+            hasStyle
+                ? DocBuildContext.ServiceStylePrefetch.prefetched(
+                    prefetchedServiceStyles.get(entityId))
+                : DocBuildContext.ServiceStylePrefetch.notPrefetched();
+        docBuildContexts.put(entityId, DocBuildContext.of(lineage, serviceStylePrefetch));
+      }
+      contextData.put(BulkSink.DOC_BUILD_CONTEXT_KEY, docBuildContexts);
+    }
+  }
 
   public static void getUpdatedStats(StepStats stats, int currentSuccess, int currentFailed) {
     stats.setSuccessRecords(stats.getSuccessRecords() + currentSuccess);
@@ -87,7 +154,14 @@ public class ReindexingUtil {
     if (error == null || error.getMessage() == null) {
       return false;
     }
-    String message = error.getMessage().toLowerCase(java.util.Locale.ROOT);
+    return isStaleReferenceMessage(error.getMessage());
+  }
+
+  public static boolean isStaleReferenceMessage(String errorMessage) {
+    if (errorMessage == null) {
+      return false;
+    }
+    String message = errorMessage.toLowerCase(java.util.Locale.ROOT);
     return message.contains("instance for")
         || message.contains("entity not found")
         || message.contains("entity with id")

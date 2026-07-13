@@ -335,11 +335,6 @@
           "matchType": "exact"
         },
         {
-          "field": "columns.children.name.keyword",
-          "boost": 1.0,
-          "matchType": "exact"
-        },
-        {
           "field": "columnNamesFuzzy",
           "boost": 1.5,
           "matchType": "standard"
@@ -704,11 +699,6 @@
         },
         {
           "field": "messageSchema.schemaFields.name.keyword",
-          "boost": 1.0,
-          "matchType": "exact"
-        },
-        {
-          "field": "messageSchema.schemaFields.children.name.keyword",
           "boost": 1.0,
           "matchType": "exact"
         },
@@ -1309,8 +1299,7 @@
         "displayName",
         "description",
         "dataModel.columns.name",
-        "dataModel.columns.description",
-        "dataModel.columns.children.name"
+        "dataModel.columns.description"
       ],
       "matchTypeBoostMultipliers": {
         "exactMatchMultiplier": 2.0,
@@ -1387,18 +1376,8 @@
           "matchType": "exact"
         },
         {
-          "field": "responseSchema.schemaFields.children.keyword",
-          "boost": 5.0,
-          "matchType": "exact"
-        },
-        {
           "field": "requestSchema.schemaFields.name.keyword",
           "boost": 8.0,
-          "matchType": "exact"
-        },
-        {
-          "field": "requestSchema.schemaFields.children.keyword",
-          "boost": 5.0,
           "matchType": "exact"
         }
       ],
@@ -2394,6 +2373,132 @@
     ],
     "highlightFields": [],
     "aggregations": [],
+    "ranking": {
+      "enabled": true,
+      "algorithm": "nameFirstLexicalThenSignals",
+      "stages": [
+        {
+          "name": "exactName",
+          "purpose": "Exact identity match on name, displayName, or fullyQualifiedName.",
+          "fields": [
+            "displayName.keyword",
+            "name.keyword",
+            "fullyQualifiedName"
+          ],
+          "matchType": "exact",
+          "weight": 100.0
+        },
+        {
+          "name": "phraseName",
+          "purpose": "Exact phrase identity match on analyzed name fields.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "phrase",
+          "weight": 70.0
+        },
+        {
+          "name": "closeName",
+          "purpose": "Close identity match after removing weak query words such as 'in' or 'of'.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "tokenCoverage",
+          "weight": 40.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "fuzzyName",
+          "purpose": "Typo-tolerant identity fallback for short name searches.",
+          "fields": [
+            "displayName",
+            "name",
+            "displayName.compound",
+            "name.compound",
+            "fullyQualifiedName"
+          ],
+          "matchType": "fuzzy",
+          "weight": 24.0,
+          "minimumShouldMatch": "2<70%"
+        },
+        {
+          "name": "partialName",
+          "purpose": "Substring and prefix matches via name and displayName edge n-grams so partial-name queries still surface the entity.",
+          "fields": [
+            "displayName.ngram",
+            "name.ngram"
+          ],
+          "matchType": "standard",
+          "weight": 16.0
+        },
+        {
+          "name": "structuralContext",
+          "purpose": "Secondary asset structure such as columns, fields, parent names, and FQN parts.",
+          "fields": [
+            "fqnParts"
+          ],
+          "matchType": "standard",
+          "weight": 12.0
+        },
+        {
+          "name": "descriptionContext",
+          "purpose": "Broad descriptive text match used after identity and structural matches.",
+          "fields": [
+            "description"
+          ],
+          "matchType": "standard",
+          "weight": 4.0
+        }
+      ],
+      "stopWords": [],
+      "stopWordsByLanguage": {
+        "en": [
+          "a",
+          "an",
+          "and",
+          "are",
+          "as",
+          "at",
+          "by",
+          "for",
+          "from",
+          "in",
+          "into",
+          "is",
+          "of",
+          "on",
+          "or",
+          "the",
+          "to",
+          "with"
+        ],
+        "ru": [],
+        "zh": [],
+        "jp": [],
+        "ja": []
+      },
+      "disMaxTieBreaker": 0.05,
+      "signals": {
+        "purpose": "Use Tier, Usage, and Votes only to break ties between similarly relevant results.",
+        "boostMode": "sum",
+        "scoreMode": "sum",
+        "maxBoost": 2.0,
+        "fields": [
+          "tier.tagFQN",
+          "usageSummary.weeklyStats.count",
+          "usageSummary.weeklyStats.percentileRank",
+          "totalVotes"
+        ]
+      }
+    },
     "matchTypeBoostMultipliers": {
       "exactMatchMultiplier": 2.0,
       "phraseMatchMultiplier": 1.5,
@@ -2535,10 +2640,6 @@
           "description": "Exact match on column display names. Useful for finding tables with columns having specific user-friendly names."
         },
         {
-          "name": "columns.children.name.keyword",
-          "description": "Search for nested columns within complex data types. Helps find tables with specific nested fields."
-        },
-        {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find tables with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
         },
@@ -2561,10 +2662,6 @@
         {
           "name": "columns.description",
           "description": "Full-text search on column descriptions to find tables based on specific column purposes or contents."
-        },
-        {
-          "name": "columns.children.description",
-          "description": "Search on descriptions of nested columns within complex data types. Helps find tables with nested fields serving specific purposes."
         }
       ]
     },
@@ -2771,14 +2868,6 @@
           "description": "Search within field descriptions in the message schema to find topics with fields serving specific purposes."
         },
         {
-          "name": "messageSchema.schemaFields.children.name",
-          "description": "Search on nested field names within complex schema structures."
-        },
-        {
-          "name": "messageSchema.schemaFields.children.name.keyword",
-          "description": "Exact match on nested field names for precise lookups of nested structures."
-        },
-        {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find topics with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
         },
@@ -2951,10 +3040,6 @@
         {
           "name": "columns.description",
           "description": "Search on column descriptions to find data models with fields serving specific purposes."
-        },
-        {
-          "name": "columns.children.name",
-          "description": "Search on nested field names within complex column structures."
         },
         {
           "name": "tags.tagFQN.text",
@@ -3225,10 +3310,6 @@
           "description": "Search on column descriptions to find containers with fields serving specific purposes."
         },
         {
-          "name": "dataModel.columns.children.name",
-          "description": "Search on nested field names within complex data structures in the container."
-        },
-        {
           "name": "tags.tagFQN.text",
           "description": "Search within parts of tag names. Use this to find containers with tags containing specific terms like 'Sensitive' or 'PII', regardless of the full tag hierarchy."
         },
@@ -3298,14 +3379,6 @@
           "description": "Search on field descriptions in the response schema to find endpoints with fields serving specific purposes."
         },
         {
-          "name": "responseSchema.schemaFields.children.name",
-          "description": "Search on nested field names within complex response schema structures."
-        },
-        {
-          "name": "responseSchema.schemaFields.children.keyword",
-          "description": "Exact match on nested field names in the response schema."
-        },
-        {
           "name": "requestSchema.schemaFields.name",
           "description": "Search on field names in the API request schema to find endpoints accepting specific data fields."
         },
@@ -3316,14 +3389,6 @@
         {
           "name": "requestSchema.schemaFields.description",
           "description": "Search on field descriptions in the request schema to find endpoints with fields serving specific purposes."
-        },
-        {
-          "name": "requestSchema.schemaFields.children.name",
-          "description": "Search on nested field names within complex request schema structures."
-        },
-        {
-          "name": "requestSchema.schemaFields.children.keyword",
-          "description": "Exact match on nested field names in the request schema."
         },
         {
           "name": "tags.tagFQN.text",

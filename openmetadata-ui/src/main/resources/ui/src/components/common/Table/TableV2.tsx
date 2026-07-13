@@ -38,6 +38,7 @@ import {
   Button,
   Dropdown,
   Table as UntitledTable,
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { ChevronDown, ChevronRight } from '@untitledui/icons';
 import type { ColumnsType } from 'antd/es/table/interface';
@@ -75,11 +76,11 @@ import {
   getCustomizeColumnDetails,
   getReorderedColumns,
 } from '../../../utils/CustomizeColumnUtils';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import Loader from '../Loader/Loader';
 import NextPrevious from '../NextPrevious/NextPrevious';
 import Searchbar from '../SearchBarComponent/SearchBar.component';
-import DraggableMenuItem from './DraggableMenu/DraggableMenuItem.component';
+import DraggableMenuItemV2 from './DraggableMenu/DraggableMenuItemV2.component';
 import {
   TableColumnDropdownList,
   TableComponentProps,
@@ -533,7 +534,11 @@ const TableV2 = <T extends object>(
 
   return (
     <div
-      className={classNames('table-container', rest.containerClassName)}
+      className={classNames(
+        'table-container',
+        'tw:[&_tbody_tr:hover_td]:bg-secondary',
+        rest.containerClassName
+      )}
       ref={ref}>
       <div
         className={classNames('p-x-md', {
@@ -572,36 +577,39 @@ const TableV2 = <T extends object>(
                     {t('label.customize')}
                   </Button>
                   <Dropdown.Popover>
-                    <div className="d-flex justify-between items-center w-52 p-x-md p-b-xss border-bottom">
-                      <span
-                        className="text-sm text-grey-muted font-medium"
-                        data-testid="column-dropdown-title">
-                        {t('label.column')}
-                      </span>
-                      <Button
-                        color="link-color"
-                        data-testid="column-dropdown-action-button"
-                        size="sm"
-                        onPress={() => handleBulkColumnAction()}>
-                        {dropdownColumnList.length ===
-                        columnDropdownSelections.length
-                          ? t('label.hide-all')
-                          : t('label.view-all')}
-                      </Button>
-                    </div>
-                    {dropdownColumnList.map(
-                      (item: TableColumnDropdownList, index: number) => (
-                        <DraggableMenuItem
-                          currentItem={item}
-                          index={index}
-                          itemList={dropdownColumnList}
-                          key={item.value}
-                          selectedOptions={columnDropdownSelections}
-                          onMoveItem={handleMoveItem}
-                          onSelect={handleColumnItemSelect}
-                        />
-                      )
-                    )}
+                    <Dropdown.Menu>
+                      <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
+                        <Typography
+                          className="tw:text-tertiary"
+                          weight="medium">
+                          {t('label.column')}
+                        </Typography>
+                        <Button
+                          color="link-color"
+                          size="xs"
+                          onClick={handleBulkColumnAction}>
+                          {dropdownColumnList.length ===
+                          columnDropdownSelections.length
+                            ? t('label.hide-all')
+                            : t('label.view-all')}
+                        </Button>
+                      </Dropdown.SectionHeader>
+
+                      <Dropdown.Separator />
+                      <Dropdown.Section>
+                        {dropdownColumnList.map((item, index) => (
+                          <DraggableMenuItemV2
+                            currentItem={item}
+                            index={index}
+                            itemList={dropdownColumnList}
+                            key={item.value}
+                            selectedOptions={columnDropdownSelections}
+                            onMoveItem={handleMoveItem}
+                            onSelect={handleColumnItemSelect}
+                          />
+                        ))}
+                      </Dropdown.Section>
+                    </Dropdown.Menu>
                   </Dropdown.Popover>
                 </Dropdown.Root>
               )}
@@ -615,7 +623,7 @@ const TableV2 = <T extends object>(
         data-testid={dataTestId}
         style={scrollStyle}>
         {isLoading && (
-          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-white/60">
+          <div className="tw:absolute tw:inset-0 tw:z-10 tw:flex tw:items-center tw:justify-center tw:bg-primary/60">
             <Loader />
           </div>
         )}
@@ -656,6 +664,9 @@ const TableV2 = <T extends object>(
               <UntitledTable.Header className="tw:px-2">
                 {propsColumns.map((col, colIdx) => {
                   const colType = col as ColumnType<T>;
+                  const rowHeaderColumn = colType as ColumnType<T> & {
+                    isRowHeader?: boolean;
+                  };
                   const colKey = String(col.key ?? colType.dataIndex ?? colIdx);
                   const colWidth =
                     columnWidths[colKey] ??
@@ -668,6 +679,7 @@ const TableV2 = <T extends object>(
                       allowsSorting={!!colType.sorter}
                       className="tw:py-2 tw:pl-4 tw:pr-2 tw:text-sm tw:text-tertiary"
                       id={colKey}
+                      isRowHeader={rowHeaderColumn.isRowHeader ?? colIdx === 0}
                       key={colKey}
                       style={{
                         ...(rest.size === 'small' ? { padding: '8px' } : {}),

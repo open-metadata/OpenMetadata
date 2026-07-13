@@ -18,7 +18,7 @@ import {
   screen,
   waitFor,
 } from '@testing-library/react';
-import { EntityType } from '../enums/entity.enum';
+import { EntityType, TabSpecificField } from '../enums/entity.enum';
 import {
   Container,
   DataType as ContainerDataType,
@@ -36,7 +36,9 @@ import {
 import { Topic } from '../generated/entity/data/topic';
 import { DataType } from '../generated/settings/settings';
 import { DataTypeTopic, Field } from '../generated/type/schema';
+import { getContainerByFQN } from '../rest/storageAPI';
 import { getEntityChildDetailsV1 } from './EntitySummaryPanelUtilsV1';
+import { showErrorToast } from './ToastUtils';
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
@@ -72,6 +74,16 @@ jest.mock('../rest/dataModelsAPI', () => ({
   getDataModelColumnsByFQN: jest.fn(),
 }));
 
+jest.mock('../rest/storageAPI', () => ({
+  getContainerByFQN: jest
+    .fn()
+    .mockResolvedValue({ dataModel: { columns: [] } }),
+}));
+
+jest.mock('./ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+}));
+
 jest.mock('../components/common/FieldCard', () => ({
   FieldCard: jest.fn(({ fieldName, dataType, description }) => (
     <div data-testid={`field-card-${fieldName}`}>
@@ -87,8 +99,8 @@ jest.mock('../components/common/Loader/Loader', () => ({
   default: jest.fn(() => <div data-testid="loader">Loading...</div>),
 }));
 
-jest.mock('../utils/TableUtils', () => ({
-  ...jest.requireActual('../utils/TableUtils'),
+jest.mock('../utils/TablePureUtils', () => ({
+  ...jest.requireActual('../utils/TablePureUtils'),
   pruneEmptyChildren: jest.fn((columns) => columns),
 }));
 
@@ -1398,6 +1410,81 @@ describe('EntitySummaryPanelUtilsV1 - Nested Search (Topic, Container, SearchInd
       render(<div>{result}</div>);
 
       expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+    });
+  });
+
+  describe('ContainerFieldCardsV1 - on-demand dataModel fetch', () => {
+    beforeEach(() => {
+      jest.clearAllMocks();
+    });
+
+    it('fetches dataModel on demand when columns are absent from the search hit', async () => {
+      (getContainerByFQN as jest.Mock).mockResolvedValue({
+        dataModel: {
+          columns: [
+            { name: 'fetched_col', dataType: ContainerDataType.String },
+          ],
+        },
+      });
+      const containerWithoutColumns = {
+        id: 'c1',
+        name: 'no-cols',
+        fullyQualifiedName: 's3.no-cols',
+      } as Container;
+
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        containerWithoutColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(getContainerByFQN).toHaveBeenCalledWith('s3.no-cols', {
+          fields: TabSpecificField.DATAMODEL,
+        });
+      });
+    });
+
+    it('does not fetch when columns are already inline on the search hit', async () => {
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        mockContainerWithNestedColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(screen.getByTestId('field-card-top_column')).toBeInTheDocument();
+      });
+
+      expect(getContainerByFQN).not.toHaveBeenCalled();
+    });
+
+    it('surfaces an error toast when the on-demand fetch fails', async () => {
+      (getContainerByFQN as jest.Mock).mockRejectedValue(new Error('boom'));
+      const containerWithoutColumns = {
+        id: 'c2',
+        name: 'err',
+        fullyQualifiedName: 's3.err',
+      } as Container;
+
+      const result = getEntityChildDetailsV1(
+        EntityType.CONTAINER,
+        containerWithoutColumns,
+        undefined,
+        false,
+        ''
+      );
+      render(<div>{result}</div>);
+
+      await waitFor(() => {
+        expect(showErrorToast).toHaveBeenCalled();
+      });
     });
   });
 });

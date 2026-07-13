@@ -18,7 +18,7 @@ jest.mock('../utils/useRequiredParams', () => ({
   useRequiredParams: jest.fn(),
 }));
 
-jest.mock('../utils/StringsUtils', () => ({
+jest.mock('../utils/StringUtils', () => ({
   getDecodedFqn: jest.fn((fqn) => decodeURIComponent(fqn)),
 }));
 

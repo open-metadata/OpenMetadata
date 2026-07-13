@@ -76,7 +76,7 @@ export const addOwnerInKCPanel = async (page: Page, ownerName: string) => {
 
   const patchResponse = page.waitForResponse(
     (r) =>
-      r.url().includes('/api/v1/knowledgeCenter/') &&
+      r.url().includes('/api/v1/contextCenter/pages/') &&
       r.request().method() === 'PATCH'
   );
   await page.getByRole('listitem', { name: ownerName }).click();

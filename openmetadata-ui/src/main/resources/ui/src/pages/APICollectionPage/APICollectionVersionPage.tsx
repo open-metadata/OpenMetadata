@@ -60,12 +60,12 @@ import {
   getApiEndPoints,
   GetApiEndPointsType,
 } from '../../rest/apiEndpointsAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getBasicEntityInfoFromVersionData,
   getCommonDiffsFromVersionData,
   getCommonExtraInfoForVersionDetails,
-} from '../../utils/EntityVersionUtils';
+} from '../../utils/EntityVersionUtilsPure';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,
@@ -74,7 +74,6 @@ import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import APIEndpointsTab from './APIEndpointsTab';
-
 const APICollectionVersionPage = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();

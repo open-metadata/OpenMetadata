@@ -26,7 +26,7 @@ import {
   getCommonExtraInfoForVersionDetails,
   getEntityVersionByField,
   getEntityVersionTags,
-} from '../../../utils/EntityVersionUtils';
+} from '../../../utils/EntityVersionUtilsPure';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getVersionPath } from '../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
@@ -40,7 +40,6 @@ import DataProductsContainer from '../../DataProducts/DataProductsContainer/Data
 import EntityVersionTimeLine from '../../Entity/EntityVersionTimeLine/EntityVersionTimeLine';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { StoredProcedureVersionProp } from './StoredProcedureVersion.interface';
-
 const StoredProcedureVersion = ({
   version,
   currentVersionData,

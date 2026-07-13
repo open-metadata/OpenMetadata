@@ -412,7 +412,11 @@ function buildNestedTypedQuery(propertyName, nestedField, value, operator) {
   // Build the value query based on operator
   if (isRangeOperator(operator)) {
     const rangeQuery = {};
-    if (operator === 'between' && Array.isArray(value) && value.length >= 2) {
+    if (
+      (operator === 'between' || operator === 'not_between') &&
+      Array.isArray(value) &&
+      value.length >= 2
+    ) {
       rangeQuery.gte = value[0];
       rangeQuery.lte = value[1];
     } else if (operator === 'less') {
@@ -777,6 +781,16 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     return undefined;
   } // rule is not fully entered
 
+  if (
+    (operator === 'between' || operator === 'not_between') &&
+    (!Array.isArray(value) ||
+      value.length < 2 ||
+      value[0] === undefined ||
+      value[1] === undefined)
+  ) {
+    return undefined;
+  }
+
   // Check if field has custom elasticsearch field mapping or handle extension fields
   let actualFieldName = fieldName;
   let isNestedExtensionField = false;
@@ -818,10 +832,26 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
       extensionPropertyName
     );
 
+    // For range operators (between / not_between) the value is a two-element
+    // array [from, to]. Pass the full array so buildExtensionQuery can build
+    // a proper gte/lte range query. This is scoped to numeric types where ES
+    // range queries work correctly. Non-numeric types (e.g. dateTime-cp)
+    // store values as formatted strings where ES range comparison is unreliable.
+    const isBetweenOp = op === 'between';
+    const isNumericOmType =
+      omPropertyType === 'integer' ||
+      omPropertyType === 'number' ||
+      omPropertyType === 'timestamp';
+    const extensionValue = hasValue
+      ? isBetweenOp && isNumericOmType
+        ? value
+        : value[0]
+      : null;
+
     return buildExtensionQuery(
       extensionPropertyName,
       entityType,
-      hasValue ? value[0] : null,
+      extensionValue,
       op,
       not,
       omPropertyType

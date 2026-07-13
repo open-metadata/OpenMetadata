@@ -19,6 +19,7 @@ from typing import (  # noqa: UP035
     Protocol,
     Set,
     Union,
+    cast,
     runtime_checkable,
 )
 
@@ -40,6 +41,7 @@ from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.tests.testCase import TestCase
 from metadata.utils import fqn
 from metadata.utils.collections import CaseInsensitiveList
+from metadata.utils.entity_reference import require_entity_reference_id
 
 
 @runtime_checkable
@@ -89,8 +91,12 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
         self.get_service_url = service_url_getter
 
     def get_parameters(self, test_case) -> TableDiffRuntimeParameters:
-        service1: DatabaseService = self.ometa_client.get_by_id(
-            DatabaseService, self.table_entity.service.id, nullable=False
+        if self.table_entity.service is None:
+            raise ValueError("Table service must be set")
+        service1_id = require_entity_reference_id(self.table_entity.service, "Table service")
+        service1 = cast(
+            "DatabaseService",
+            self.ometa_client.get_by_id(DatabaseService, service1_id, nullable=False),
         )
 
         table2_fqn = self.get_parameter(test_case, "table2")
@@ -98,7 +104,13 @@ class TableDiffParamsSetter(RuntimeParameterSetter):
             raise ValueError("table2 not set")
 
         table2: Table = self.ometa_client.get_by_name(Table, fqn=table2_fqn, nullable=False)
-        service2: DatabaseService = self.ometa_client.get_by_id(DatabaseService, table2.service.id, nullable=False)
+        if table2.service is None:
+            raise ValueError("Table2 service must be set")
+        service2_id = require_entity_reference_id(table2.service, "Table2 service")
+        service2 = cast(
+            "DatabaseService",
+            self.ometa_client.get_by_id(DatabaseService, service2_id, nullable=False),
+        )
 
         table1_param_setter = self.get_param_setter(service1)
         table2_param_setter = self.get_param_setter(service2)

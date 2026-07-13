@@ -22,8 +22,10 @@ import org.flowable.bpmn.model.ServiceTask;
 import org.flowable.bpmn.model.StartEvent;
 import org.flowable.bpmn.model.SubProcess;
 import org.flowable.bpmn.model.TerminateEventDefinition;
+import org.flowable.bpmn.model.TimerEventDefinition;
 import org.flowable.bpmn.model.UserTask;
 import org.openmetadata.schema.governance.workflows.WorkflowConfiguration;
+import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.ExpiryTimer;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
@@ -32,6 +34,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.governance.workflows.elements.NodeInterface;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ApprovalTaskCompletionValidator;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.AutoApproveServiceTaskImpl;
+import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.ExpireOnTimerImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetApprovalAssigneesImpl;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.impl.SetCandidateUsersImpl;
 import org.openmetadata.service.governance.workflows.flowable.builders.EndEventBuilder;
@@ -204,6 +207,8 @@ public class UserApprovalTask implements NodeInterface {
     subProcess.addFlowElement(terminationEvent);
     subProcess.addFlowElement(terminatedEvent);
 
+    attachExpiryTimerIfConfigured(nodeDefinition, subProcess, subProcessId, userTask, endEvent);
+
     // Start -> SetAssignees
     subProcess.addFlowElement(new SequenceFlow(startEvent.getId(), setAssigneesVariable.getId()));
 
@@ -313,6 +318,74 @@ public class UserApprovalTask implements NodeInterface {
         .build();
   }
 
+  /**
+   * Attach an interrupting timer boundary event to the user task when {@code config.expiryTimer}
+   * is set. On fire, a ServiceTask writes {@code result = transitionId} (the node variable that
+   * outgoing edges condition on); when the workflow author also set
+   * {@code expiryTimer.closeAsResolution}, the OM Task entity is closed with that resolutionType
+   * (status derived by TaskRepository — e.g. Expired → Expired). Skip the close when a
+   * downstream node owns the task lifecycle (e.g. GrantedAccess routes to RevokeAccess which
+   * closes as Revoked).
+   */
+  private void attachExpiryTimerIfConfigured(
+      UserApprovalTaskDefinition nodeDefinition,
+      SubProcess subProcess,
+      String subProcessId,
+      UserTask userTask,
+      EndEvent endEvent) {
+    ExpiryTimer expiryTimer = nodeDefinition.getConfig().getExpiryTimer();
+    if (expiryTimer == null) {
+      return;
+    }
+    String durationVariable = expiryTimer.getDurationVariable();
+    String transitionId = expiryTimer.getTransitionId();
+    // Fail fast on a broken workflow definition: silently skipping the timer would strand
+    // instances in the parent user task forever with no visible cause. Force the workflow author
+    // to fix the JSON at deploy time instead of debugging a stuck task at runtime.
+    if (durationVariable == null || durationVariable.isBlank()) {
+      throw new IllegalArgumentException(
+          "expiryTimer.durationVariable is required on node '" + nodeDefinition.getName() + "'");
+    }
+    if (transitionId == null || transitionId.isBlank()) {
+      throw new IllegalArgumentException(
+          "expiryTimer.transitionId is required on node '" + nodeDefinition.getName() + "'");
+    }
+
+    TimerEventDefinition timerDef = new TimerEventDefinition();
+    timerDef.setTimeDuration("${" + durationVariable + "}");
+
+    BoundaryEvent expiryBoundary = new BoundaryEvent();
+    expiryBoundary.setId(getFlowableElementId(subProcessId, "expiryTimerBoundary"));
+    expiryBoundary.setCancelActivity(true);
+    expiryBoundary.setAttachedToRef(userTask);
+    expiryBoundary.addEventDefinition(timerDef);
+
+    FieldExtension transitionIdExpr =
+        new FieldExtensionBuilder().fieldName("transitionIdExpr").fieldValue(transitionId).build();
+
+    ServiceTaskBuilder expireOnTimerBuilder =
+        new ServiceTaskBuilder()
+            .id(getFlowableElementId(subProcessId, "expireOnTimer"))
+            .implementation(ExpireOnTimerImpl.class.getName())
+            .addFieldExtension(transitionIdExpr)
+            .setAsync(false);
+
+    if (expiryTimer.getCloseAsResolution() != null) {
+      expireOnTimerBuilder.addFieldExtension(
+          new FieldExtensionBuilder()
+              .fieldName("resolutionTypeExpr")
+              .fieldValue(expiryTimer.getCloseAsResolution().value())
+              .build());
+    }
+
+    ServiceTask expireOnTimer = expireOnTimerBuilder.build();
+
+    subProcess.addFlowElement(expiryBoundary);
+    subProcess.addFlowElement(expireOnTimer);
+    subProcess.addFlowElement(new SequenceFlow(expiryBoundary.getId(), expireOnTimer.getId()));
+    subProcess.addFlowElement(new SequenceFlow(expireOnTimer.getId(), endEvent.getId()));
+  }
+
   private BoundaryEvent getTerminationEvent(String subProcessId) {
     String uniqueMessageName = getFlowableElementId(subProcessId, "terminateProcess");
 
@@ -345,6 +418,7 @@ public class UserApprovalTask implements NodeInterface {
     if (config != null) {
       result.put("addReviewers", config.getOrDefault("addReviewers", true));
       result.put("addOwners", config.getOrDefault("addOwners", false));
+      result.put("emptyAssigneeStrategy", config.getOrDefault("emptyAssigneeStrategy", "none"));
 
       Set<String> users = new HashSet<>();
       Set<String> teams = new HashSet<>();

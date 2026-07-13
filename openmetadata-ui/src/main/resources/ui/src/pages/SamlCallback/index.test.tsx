@@ -25,7 +25,7 @@
 
 import { getByTestId, render } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import SamlCallback from './index';
+import SamlCallback, { getSamlCallbackParams } from './index';
 
 describe('Test SamlCallback Component', () => {
   it('Component should render', () => {
@@ -35,5 +35,25 @@ describe('Test SamlCallback Component', () => {
     const message = getByTestId(container, 'redirect-message');
 
     expect(message).toBeInTheDocument();
+  });
+
+  it('getSamlCallbackParams should prefer fragment params', () => {
+    const params = getSamlCallbackParams({
+      hash: '#id_token=fragment-token&email=user%40example.com&name=User',
+      search: '?id_token=query-token',
+    });
+
+    expect(params.get('id_token')).toBe('fragment-token');
+    expect(params.get('email')).toBe('user@example.com');
+    expect(params.get('name')).toBe('User');
+  });
+
+  it('getSamlCallbackParams should fall back to query params', () => {
+    const params = getSamlCallbackParams({
+      hash: '',
+      search: '?id_token=query-token',
+    });
+
+    expect(params.get('id_token')).toBe('query-token');
   });
 });

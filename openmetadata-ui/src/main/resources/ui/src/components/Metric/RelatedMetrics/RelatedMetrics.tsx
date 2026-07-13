@@ -20,8 +20,8 @@ import { Link } from 'react-router-dom';
 import { NO_DATA_PLACEHOLDER } from '../../../constants/constants';
 import { Metric } from '../../../generated/entity/data/metric';
 import { EntityReference } from '../../../generated/type/entityReference';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
 import { getEntityIcon } from '../../../utils/TableUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';
@@ -29,7 +29,7 @@ import {
   EditIconButton,
   PlusIconButton,
 } from '../../common/IconButtons/EditIconButton';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import { DataAssetOption } from '../../DataAssets/DataAssetAsyncSelectList/DataAssetAsyncSelectList.interface';
 import './related-metrics.less';
 import { RelatedMetricsForm } from './RelatedMetricsForm';

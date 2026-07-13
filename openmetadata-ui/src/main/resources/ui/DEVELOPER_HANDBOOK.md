@@ -184,6 +184,12 @@ Recommended project layout for MUI and icons:
 - Use absolute imports from `@src/` (configure `tsconfig.json` paths)
 - Keep third-party code and wrappers in a separate folder if needed
 
+## 16. Forms
+
+- New forms use the `react-hook-form` + `react-aria` stack from `@openmetadata/ui-core-components` (`getField`/`FieldProp`/`FieldTypes`/`HookForm`/`FormFields`): a form is `FieldProp[]` config objects + RHF state + a pure values→payload transform.
+- Full reference: [docs/formutils.md](./docs/formutils.md) — field types, validation, composition, escape hatches, and the drawer caller pattern.
+- Do not use the legacy Ant Design `getField`/`generateFormFields` from `@utils/formUtils` for new forms.
+
 ---
 
 This handbook ensures a clean, scalable, and consistent codebase for all developers.

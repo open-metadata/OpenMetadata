@@ -25,13 +25,13 @@ import { TABLE_FRESHNESS_KEY } from '../../../../constants/TestSuite.constant';
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
-import { formatNumberWithComma } from '../../../../utils/CommonUtils';
 import {
   convertSecondsToHumanReadableFormat,
   formatDateTime,
 } from '../../../../utils/date-time/DateTimeUtils';
+import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
-import { getTaskDetailPath } from '../../../../utils/TasksUtils';
+import { getTaskDetailPath } from '../../../../utils/TaskNavigationUtils';
 import { OwnerLabel } from '../../../common/OwnerLabel/OwnerLabel.component';
 import './test-summary-custom-tooltip.less';
 

@@ -37,7 +37,8 @@ chmod -R 777 "$VOLUMES_PATH"
 
 # Start Fuseki
 echo "Starting Apache Jena Fuseki..."
-# Use Rosetta 2 emulation on ARM64 for stain/jena-fuseki:5.0.0
+# Use Rosetta 2 emulation on ARM64 because the local Fuseki Dockerfile
+# bases on a Linux x86_64 image; the Rosetta variant pins platform=linux/amd64.
 if [[ $(uname -m) == "arm64" ]] || [[ $(uname -m) == "aarch64" ]]; then
     echo "Detected ARM64 architecture, using Rosetta 2 emulation..."
     docker compose -f docker-compose-fuseki-rosetta.yml up -d

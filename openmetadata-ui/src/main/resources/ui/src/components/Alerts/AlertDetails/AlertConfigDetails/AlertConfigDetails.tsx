@@ -70,19 +70,19 @@ function AlertConfigDetails({
   const [templateResourcePermission, setTemplateResourcePermission] =
     useState<OperationPermission>(DEFAULT_ENTITY_PERMISSION);
 
-  const { supportedFilters, supportedTriggers } = useMemo(
-    () => ({
-      supportedFilters: filterResources.find(
+  const { supportedFilters, supportedTriggers, containerEntities } =
+    useMemo(() => {
+      const resource = filterResources.find(
         (resource) =>
           resource.name === alertDetails.filteringRules?.resources[0]
-      )?.supportedFilters,
-      supportedTriggers: filterResources.find(
-        (resource) =>
-          resource.name === alertDetails.filteringRules?.resources[0]
-      )?.supportedActions,
-    }),
-    [filterResources, alertDetails]
-  );
+      );
+
+      return {
+        supportedFilters: resource?.supportedFilters,
+        supportedTriggers: resource?.supportedActions,
+        containerEntities: resource?.containerEntities,
+      };
+    }, [filterResources, alertDetails]);
 
   const fetchFunctions = useCallback(async () => {
     try {
@@ -172,6 +172,7 @@ function AlertConfigDetails({
             <Col span={24}>
               <ObservabilityFormFiltersItem
                 isViewMode
+                containerEntities={containerEntities}
                 supportedFilters={supportedFilters}
               />
             </Col>

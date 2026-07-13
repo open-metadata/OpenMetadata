@@ -12,7 +12,7 @@
  */
 
 import { CheckOutlined, CloseOutlined } from '@ant-design/icons';
-import { Button, Card, Col, Input, Row, Typography } from 'antd';
+import { Button, Card, Col, Input, Row, Tag, Tooltip, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, toLower, uniqBy } from 'lodash';
 import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
@@ -24,7 +24,7 @@ import { useLimitStore } from '../../../../context/LimitsProvider/useLimitsStore
 import { EntityType } from '../../../../enums/entity.enum';
 import { Role } from '../../../../generated/entity/teams/role';
 import { searchRoles } from '../../../../rest/rolesAPIV1';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
@@ -192,6 +192,16 @@ const BotDetails: FC<BotsDetailProps> = ({
                     </>
                   )}
                 </div>
+                {botUserData.allowImpersonation && (
+                  <Tooltip title={t('message.allow-impersonation-help')}>
+                    <Tag
+                      className="w-fit-content"
+                      color="blue"
+                      data-testid="impersonation-enabled-badge">
+                      {t('label.impersonation-enabled')}
+                    </Tag>
+                  </Tooltip>
+                )}
                 <DescriptionV1
                   description={botData.description}
                   entityName={getEntityName(botData)}

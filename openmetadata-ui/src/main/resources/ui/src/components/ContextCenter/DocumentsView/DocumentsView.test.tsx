@@ -12,15 +12,76 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import { ContextFile } from '../../../generated/entity/data/contextFile';
 import DocumentsView from './DocumentsView.component';
-import { DocFile } from './DocumentsView.interface';
 
 jest.mock(
   '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
   () => jest.fn(() => <div data-testid="error-placeholder" />)
 );
 
+jest.mock('react-aria-components', () => ({
+  Menu: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  MenuItem: jest.fn(
+    ({
+      children,
+      onAction,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode | (() => React.ReactNode);
+      onAction?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <div
+        data-testid={testId}
+        role="menuitem"
+        onClick={onAction}
+        onKeyDown={undefined}>
+        {typeof children === 'function' ? children() : children}
+      </div>
+    )
+  ),
+  Popover: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  SubmenuTrigger: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+}));
+
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(
+    ({
+      children,
+      className,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      className?: string;
+      'data-testid'?: string;
+    }) => (
+      <div className={className} data-testid={testId}>
+        {children}
+      </div>
+    )
+  ),
+  Button: jest.fn(
+    ({
+      children,
+      onClick,
+      'data-testid': testId,
+    }: {
+      children: React.ReactNode;
+      onClick?: () => void;
+      'data-testid'?: string;
+    }) => (
+      <button data-testid={testId} onClick={onClick}>
+        {children}
+      </button>
+    )
+  ),
   ButtonUtility: jest.fn(
     ({
       onClick,
@@ -60,10 +121,37 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         onAction?: (key: string) => void;
       }) => <div data-onaction={String(onAction)}>{children}</div>
     ),
-    Item: jest.fn(({ id, label }: { id: string; label: string }) => (
-      <button data-testid={`dropdown-item-${id}`}>{label}</button>
-    )),
+    Item: jest.fn(
+      ({
+        id,
+        label,
+        children,
+        'data-testid': testId,
+      }: {
+        id?: string;
+        label?: string;
+        children?: React.ReactNode | (() => React.ReactNode);
+        'data-testid'?: string;
+      }) => (
+        <button data-testid={testId ?? `dropdown-item-${id}`}>
+          {label ?? (typeof children === 'function' ? children() : children)}
+        </button>
+      )
+    ),
   },
+  Dot: jest.fn(() => <span>·</span>),
+  Checkbox: jest.fn(
+    ({
+      onChange,
+      'aria-label': ariaLabel,
+    }: {
+      onChange?: () => void;
+      'aria-label'?: string;
+    }) => <input aria-label={ariaLabel} type="checkbox" onChange={onChange} />
+  ),
+  FileIcon: jest.fn(({ type }: { type: string }) => (
+    <span data-testid={`file-icon-${type}`} />
+  )),
   Skeleton: jest.fn(() => <div data-testid="skeleton" />),
   Tooltip: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -76,20 +164,20 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   )),
 }));
 
-const mockFiles: DocFile[] = [
+const mockFiles: ContextFile[] = [
   {
     id: 'file-1',
     name: 'report.pdf',
-    fileType: 'pdf',
-    sizeLabel: '2 MB',
+    fileExtension: 'pdf',
+    fileSize: 2097152,
     updatedBy: 'alice',
     updatedAt: 1778756959299,
   },
   {
     id: 'file-2',
     name: 'data.csv',
-    fileType: 'csv',
-    sizeLabel: '500 KB',
+    fileExtension: 'csv',
+    fileSize: 512000,
   },
 ];
 
@@ -111,9 +199,9 @@ describe('DocumentsView', () => {
     render(<DocumentsView data={mockFiles} isLoading={false} />);
 
     expect(screen.getByText('report.pdf')).toBeInTheDocument();
-    expect(screen.getByText('2 MB')).toBeInTheDocument();
+    expect(screen.getByText('2.0 MB')).toBeInTheDocument();
     expect(screen.getByText('data.csv')).toBeInTheDocument();
-    expect(screen.getByText('500 KB')).toBeInTheDocument();
+    expect(screen.getByText('500.0 KB')).toBeInTheDocument();
   });
 
   it('renders uploadedBy and uploadedAt when provided', () => {
@@ -122,16 +210,16 @@ describe('DocumentsView', () => {
     expect(screen.getByText('alice')).toBeInTheDocument();
   });
 
-  it('renders the PDF badge label for pdf files', () => {
+  it('renders the file icon for pdf files', () => {
     render(<DocumentsView data={[mockFiles[0]]} isLoading={false} />);
 
-    expect(screen.getByText('PDF')).toBeInTheDocument();
+    expect(screen.getByTestId('file-icon-pdf')).toBeInTheDocument();
   });
 
-  it('renders the CSV badge label for csv files', () => {
+  it('renders the file icon for csv files', () => {
     render(<DocumentsView data={[mockFiles[1]]} isLoading={false} />);
 
-    expect(screen.getByText('CSV')).toBeInTheDocument();
+    expect(screen.getByTestId('file-icon-csv')).toBeInTheDocument();
   });
 
   it('renders the error placeholder when data is empty and not loading', () => {

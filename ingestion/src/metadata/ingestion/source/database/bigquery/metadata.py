@@ -75,6 +75,7 @@ from metadata.ingestion.source.connections import get_test_connection_fn
 from metadata.ingestion.source.database.bigquery.helper import (
     clear_constraint_cache,
     clear_constraint_cache_for_schema,
+    clone_connection_for_project,
     get_foreign_keys,
     get_inspector_details,
     get_pk_constraint,
@@ -107,7 +108,6 @@ from metadata.ingestion.source.database.life_cycle_query_mixin import (
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.utils import fqn
 from metadata.utils.credentials import GOOGLE_CREDENTIALS
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.filters import filter_by_database, filter_by_schema
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
@@ -347,11 +347,11 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
 
     def _test_connection(self) -> None:
         for project_id in self.project_ids:
-            inspector_details = get_inspector_details(
+            project_connection = clone_connection_for_project(
                 database_name=project_id, service_connection=self.service_connection
             )
-            test_connection_fn = get_test_connection_fn(self.service_connection)
-            test_connection_fn(self.metadata, inspector_details.engine, self.service_connection)
+            test_connection_fn = get_test_connection_fn(project_connection)
+            test_connection_fn(self.metadata)
             # GOOGLE_CREDENTIALS may not have been set,
             # to avoid key error, we use `get` for dict
             if os.environ.get(GOOGLE_CREDENTIALS):
@@ -409,7 +409,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
         return []
 
     # pylint: disable=arguments-differ
-    @calculate_execution_time()
     def get_table_description(self, schema_name: str, table_name: str, inspector: Inspector) -> str:
         schema_name = f"{self.context.get().database}.{schema_name}"
         return super().get_table_description(schema_name=schema_name, table_name=table_name, inspector=inspector)
@@ -915,7 +914,6 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
             logger.warning(f"Error getting partition column name for {partition_field_name}: {exc}")
         return None
 
-    @calculate_execution_time()
     def update_table_constraints(
         self,
         table_name,
@@ -1229,7 +1227,7 @@ class BigquerySource(LifeCycleQueryMixin, CommonDbSourceService, MultiDBSource):
                     self.metadata,
                     entity_type=Table,
                     entity_names=self.context.get_global().deleted_tables,
-                    mark_deleted_entity=self.source_config.markDeletedTables,
+                    recursive=self.source_config.markDeletedTables,
                 )
         else:
             yield from super().mark_tables_as_deleted()

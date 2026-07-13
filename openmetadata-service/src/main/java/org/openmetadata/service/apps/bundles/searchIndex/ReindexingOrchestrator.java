@@ -434,7 +434,7 @@ public class ReindexingOrchestrator {
         String jobIdStr =
             distributedJobId != null ? distributedJobId : (appId != null ? appId.toString() : null);
         if (jobIdStr != null) {
-          int failureCount = collectionDAO.searchIndexFailureDAO().countByJobId(jobIdStr);
+          int failureCount = collectionDAO.searchIndexFailureDAO().countFailuresByJobId(jobIdStr);
           if (failureCount > 0) {
             successContext.withAdditionalProperty("failureRecordCount", failureCount);
           }

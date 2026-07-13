@@ -22,7 +22,7 @@ export const TagCheckbox = ({
         size === 'sm' && 'tw:size-3.5',
         size === 'md' && 'tw:size-4',
         size === 'lg' && 'tw:size-4.5',
-        isSelected && 'tw:bg-brand-solid tw:ring-bg-brand-solid',
+        isSelected && 'tw:bg-brand-solid tw:ring-brand-solid',
         isDisabled &&
           'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled',
         isFocused && 'tw:outline-2 tw:outline-offset-2 tw:outline-focus-ring',

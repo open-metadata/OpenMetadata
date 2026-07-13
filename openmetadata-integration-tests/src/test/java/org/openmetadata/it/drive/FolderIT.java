@@ -33,7 +33,7 @@ import org.openmetadata.sdk.test.util.TestNamespaceExtension;
 @ExtendWith(TestNamespaceExtension.class)
 class FolderIT {
 
-  private static final String PATH = "v1/drive/folders";
+  private static final String PATH = "v1/contextCenter/drive/folders";
 
   private Folder createFolder(RestClient rest, CreateFolder request) throws HttpResponseException {
     return rest.create(PATH, request, Folder.class);
@@ -346,7 +346,7 @@ class FolderIT {
 
     ContextFile file =
         rest.create(
-            "v1/drive/files",
+            "v1/contextCenter/drive/files",
             new CreateContextFile()
                 .withName(ns.prefix("contents-file"))
                 .withDisplayName("Contents File")

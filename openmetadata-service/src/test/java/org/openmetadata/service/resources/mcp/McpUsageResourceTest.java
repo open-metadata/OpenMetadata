@@ -36,13 +36,10 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.MockedConstruction;
-import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.security.AuthorizationException;
@@ -53,7 +50,6 @@ class McpUsageResourceTest {
   private Authorizer authorizer;
   private McpUsageResource resource;
   private MockedConstruction<AppRepository> appRepositoryConstruction;
-  private MockedStatic<ApplicationContext> appContextStatic;
   private SecurityContext adminContext;
   private SecurityContext userContext;
 
@@ -63,14 +59,6 @@ class McpUsageResourceTest {
     appRepositoryConstruction =
         Mockito.mockConstruction(AppRepository.class, (mock, ctx) -> stubRepo(mock));
 
-    ApplicationContext appContext = mock(ApplicationContext.class);
-    AbstractNativeApplication nativeApp = mock(AbstractNativeApplication.class);
-    when(nativeApp.getApp())
-        .thenReturn(new App().withId(UUID.randomUUID()).withName(McpAppConstants.MCP_APP_NAME));
-    when(appContext.getAppIfExists(McpAppConstants.MCP_APP_NAME)).thenReturn(nativeApp);
-    appContextStatic = Mockito.mockStatic(ApplicationContext.class);
-    appContextStatic.when(ApplicationContext::getInstance).thenReturn(appContext);
-
     resource = new McpUsageResource(authorizer);
     adminContext = stubSecurityContext("admin");
     userContext = stubSecurityContext("alice");
@@ -79,7 +67,6 @@ class McpUsageResourceTest {
   @AfterEach
   void tearDown() {
     appRepositoryConstruction.close();
-    appContextStatic.close();
   }
 
   @Test
@@ -122,10 +109,12 @@ class McpUsageResourceTest {
     Response toolsResp = resource.getByTool(adminContext, null, null);
 
     long summaryTotal = ((Number) bodyAsMap(summaryResp).get("total")).longValue();
+    Map<String, Map<String, Object>> tools =
+        (Map<String, Map<String, Object>>) toolsResp.getEntity();
     long toolsTotal =
-        ((Map<String, Long>) toolsResp.getEntity())
-            .values().stream().mapToLong(Long::longValue).sum();
+        tools.values().stream().mapToLong(row -> ((Number) row.get("calls")).longValue()).sum();
     assertThat(toolsTotal).isEqualTo(summaryTotal);
+    assertThat(tools.get("search_metadata").get("errors")).isEqualTo(0L);
   }
 
   @Test
@@ -140,10 +129,10 @@ class McpUsageResourceTest {
 
     Response response = resource.getByUser(adminContext, null, null);
 
-    Map<String, Long> body = (Map<String, Long>) response.getEntity();
+    Map<String, Map<String, Object>> body = (Map<String, Map<String, Object>>) response.getEntity();
     assertThat(body).containsOnlyKeys("alice", "robot-overlord");
-    assertThat(body.get("alice")).isEqualTo(1L);
-    assertThat(body.get("robot-overlord")).isEqualTo(1L);
+    assertThat(body.get("alice").get("calls")).isEqualTo(1L);
+    assertThat(body.get("robot-overlord").get("calls")).isEqualTo(1L);
   }
 
   @Test
@@ -159,10 +148,106 @@ class McpUsageResourceTest {
     Response response =
         resource.getHistory(adminContext, twoDaysAgo, today + Duration.ofDays(1).toMillis());
 
-    Map<Long, Long> body = (Map<Long, Long>) response.getEntity();
-    assertThat(body.get(twoDaysAgo)).isEqualTo(1L);
-    assertThat(body.get(yesterday)).isEqualTo(0L);
-    assertThat(body.get(today)).isEqualTo(2L);
+    Map<String, Map<String, Long>> body = (Map<String, Map<String, Long>>) response.getEntity();
+    String todayIso = McpUsageResource.isoDate(today);
+    String yesterdayIso = McpUsageResource.isoDate(yesterday);
+    String twoDaysAgoIso = McpUsageResource.isoDate(twoDaysAgo);
+    assertThat(body.get(twoDaysAgoIso)).containsEntry("ok", 1L).containsEntry("fail", 0L);
+    assertThat(body.get(yesterdayIso)).containsEntry("ok", 0L).containsEntry("fail", 0L);
+    assertThat(body.get(todayIso)).containsEntry("ok", 2L).containsEntry("fail", 0L);
+  }
+
+  @Test
+  void historySplitsOkAndFail() {
+    long today = McpUsageResource.startOfDay(Instant.now().toEpochMilli());
+    stubRows(
+        row("a", "alice", true, today + 1000),
+        row("a", "alice", false, today + 2000),
+        row("a", "alice", false, today + 3000));
+
+    Response response =
+        resource.getHistory(adminContext, today, today + Duration.ofDays(1).toMillis());
+
+    Map<String, Map<String, Long>> body = (Map<String, Map<String, Long>>) response.getEntity();
+    Map<String, Long> bucket = body.get(McpUsageResource.isoDate(today));
+    assertThat(bucket).containsEntry("ok", 1L).containsEntry("fail", 2L);
+  }
+
+  @Test
+  void summaryAggregatesLatencyAndErrorCategory() {
+    long now = Instant.now().toEpochMilli();
+    stubRows(
+        rowWithMetadata("search_metadata", "alice", true, daysAgo(1), 120L, null, "Claude Desktop"),
+        rowWithMetadata("search_metadata", "alice", true, daysAgo(1), 240L, null, "Claude Desktop"),
+        rowWithMetadata(
+            "search_metadata",
+            "bob",
+            false,
+            daysAgo(1),
+            500L,
+            McpToolCallUsage.ErrorCategory.AUTH,
+            "Cursor"),
+        rowWithMetadata(
+            "search_metadata",
+            "bob",
+            false,
+            daysAgo(1),
+            null,
+            McpToolCallUsage.ErrorCategory.AUTH,
+            "Cursor"));
+
+    Response response = resource.getSummary(adminContext, null, null);
+
+    Map<String, Object> body = bodyAsMap(response);
+    assertThat(body.get("total")).isEqualTo(4L);
+    assertThat(body.get("totalSuccess")).isEqualTo(2L);
+    assertThat(body.get("totalFailed")).isEqualTo(2L);
+    // Latencies present on three of four rows; avg = (120+240+500)/3 = 286.7
+    assertThat((Double) body.get("avgLatencyMs"))
+        .isCloseTo(286.7, org.assertj.core.data.Offset.offset(0.1));
+    assertThat(body.get("p95LatencyMs")).isEqualTo(500L);
+    @SuppressWarnings("unchecked")
+    Map<String, Long> errorByCategory = (Map<String, Long>) body.get("errorByCategory");
+    assertThat(errorByCategory).containsEntry("AUTH", 2L);
+    // Suppress unused-variable warning for the explicit timestamp we built the rows around.
+    assertThat(now).isPositive();
+  }
+
+  @Test
+  void byUserCarriesLatestClient() {
+    stubRows(
+        rowWithMetadata("a", "alice", true, daysAgo(2), 100L, null, "Cursor"),
+        rowWithMetadata("a", "alice", true, daysAgo(1), 120L, null, "Claude Desktop"));
+
+    Response response = resource.getByUser(adminContext, null, null);
+
+    Map<String, Map<String, Object>> body = (Map<String, Map<String, Object>>) response.getEntity();
+    assertThat(body.get("alice").get("calls")).isEqualTo(2L);
+    assertThat(body.get("alice").get("client")).isEqualTo("Claude Desktop");
+  }
+
+  @Test
+  void byToolReportsErrorsAndLatencyPercentiles() {
+    stubRows(
+        rowWithMetadata("search_metadata", "alice", true, daysAgo(1), 100L, null, null),
+        rowWithMetadata("search_metadata", "alice", true, daysAgo(1), 200L, null, null),
+        rowWithMetadata("search_metadata", "alice", true, daysAgo(1), 300L, null, null),
+        rowWithMetadata(
+            "search_metadata",
+            "bob",
+            false,
+            daysAgo(1),
+            null,
+            McpToolCallUsage.ErrorCategory.VALIDATION,
+            null));
+
+    Response response = resource.getByTool(adminContext, null, null);
+
+    Map<String, Map<String, Object>> body = (Map<String, Map<String, Object>>) response.getEntity();
+    Map<String, Object> row = body.get("search_metadata");
+    assertThat(row.get("calls")).isEqualTo(4L);
+    assertThat(row.get("errors")).isEqualTo(1L);
+    assertThat(row.get("latencyP95")).isEqualTo(300L);
   }
 
   @Test
@@ -200,16 +285,36 @@ class McpUsageResourceTest {
   }
 
   @Test
-  void mcpAppNotInitializedReturnsZeroCounts() {
-    appContextStatic.close();
-    ApplicationContext emptyContext = mock(ApplicationContext.class);
-    when(emptyContext.getAppIfExists(McpAppConstants.MCP_APP_NAME)).thenReturn(null);
-    appContextStatic = Mockito.mockStatic(ApplicationContext.class);
-    appContextStatic.when(ApplicationContext::getInstance).thenReturn(emptyContext);
+  void historySkipsRowsWithNullTimestamp() {
+    long today = McpUsageResource.startOfDay(Instant.now().toEpochMilli());
+    McpToolCallUsage rowWithoutTs =
+        new McpToolCallUsage()
+            .withAppId(UUID.randomUUID())
+            .withAppName(McpAppConstants.MCP_APP_NAME)
+            .withExtension(AppExtension.ExtensionType.LIMITS)
+            .withToolName("search_metadata")
+            .withUserName("alice")
+            .withSuccess(true);
+    stubRows(rowWithoutTs, row("search_metadata", "alice", true, today + 1000));
 
-    Response response = resource.getSummary(adminContext, null, null);
+    Response response =
+        resource.getHistory(adminContext, today, today + Duration.ofDays(1).toMillis());
 
-    assertThat(bodyAsMap(response).get("total")).isEqualTo(0L);
+    Map<String, Map<String, Long>> body = (Map<String, Map<String, Long>>) response.getEntity();
+    assertThat(body.get(McpUsageResource.isoDate(today)))
+        .containsEntry("ok", 1L)
+        .containsEntry("fail", 0L);
+  }
+
+  @Test
+  void latencySampleBoundsMemoryViaReservoirSampling() {
+    McpUsageResource.LatencySample sample = new McpUsageResource.LatencySample();
+    int feed = McpUsageResource.MAX_LATENCY_SAMPLES * 5;
+    for (int i = 0; i < feed; i++) {
+      sample.add(i);
+    }
+
+    assertThat(sample.values()).hasSize(McpUsageResource.MAX_LATENCY_SAMPLES);
   }
 
   private void stubRepo(AppRepository mock) {
@@ -257,6 +362,20 @@ class McpUsageResourceTest {
         .withUserName(user)
         .withSuccess(success)
         .withTimestamp(ts);
+  }
+
+  private static McpToolCallUsage rowWithMetadata(
+      String tool,
+      String user,
+      boolean success,
+      long ts,
+      Long latencyMs,
+      McpToolCallUsage.ErrorCategory errorCategory,
+      String clientName) {
+    return row(tool, user, success, ts)
+        .withLatencyMs(latencyMs)
+        .withErrorCategory(errorCategory)
+        .withClientName(clientName);
   }
 
   private static long daysAgo(int days) {

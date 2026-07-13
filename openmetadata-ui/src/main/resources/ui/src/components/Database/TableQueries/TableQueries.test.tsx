@@ -17,6 +17,7 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -28,6 +29,38 @@ import {
 import { searchQuery } from '../../../rest/searchAPI';
 import TableQueries from './TableQueries';
 import { TableQueriesProp } from './TableQueries.interface';
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  Button: jest
+    .fn()
+    .mockImplementation(({ children, ...props }) => (
+      <button {...props}>{children}</button>
+    )),
+  Dropdown: {
+    Root: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div data-testid="dropdown" {...props}>
+        {children}
+      </div>
+    )),
+    Popover: jest
+      .fn()
+      .mockImplementation(({ children }) => <div>{children}</div>),
+    Menu: jest.fn().mockImplementation(({ children, ...props }) => (
+      <div role="menu" {...props}>
+        {children}
+      </div>
+    )),
+    Item: jest.fn().mockImplementation(({ children, onClick, ...props }) => (
+      <div role="menuitem" onClick={onClick} {...props}>
+        {children}
+      </div>
+    )),
+  },
+}));
+
+jest.mock('@untitledui/icons', () => ({
+  ChevronDown: () => <span>ChevronDown</span>,
+}));
 
 const mockTableQueriesProp: TableQueriesProp = {
   tableId: 'id',
@@ -96,10 +129,10 @@ jest.mock('../../../rest/miscAPI', () => ({
 jest.mock('../../../hooks/paging/usePaging', () => ({
   usePaging: jest.fn().mockReturnValue({
     currentPage: 1,
-    pageSize: 25,
+    pageSize: 15,
     paging: {
       currentPage: 1,
-      pageSize: 25,
+      pageSize: 15,
     },
     showPagination: true,
     handlePageChange: jest.fn(),
@@ -179,5 +212,14 @@ describe('Test TableQueries Component', () => {
       mockUsePaging.mock.results[0].value.handlePageSizeChange;
 
     expect(mockHandlePageSizeChange).toHaveBeenCalledWith(25);
+
+    await waitFor(() =>
+      expect(searchQuery).toHaveBeenLastCalledWith(
+        expect.objectContaining({
+          pageNumber: 1,
+          pageSize: 25,
+        })
+      )
+    );
   });
 });

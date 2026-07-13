@@ -1,8 +1,9 @@
 # Simple Fuseki build that works on ARM64
-FROM openjdk:17-slim
+# eclipse-temurin replaces the deprecated openjdk Docker Hub images.
+FROM eclipse-temurin:17-jre-jammy
 
 # Set Fuseki version and paths
-ENV FUSEKI_VERSION=4.10.0
+ENV FUSEKI_VERSION=5.6.0
 ENV FUSEKI_HOME=/fuseki
 ENV FUSEKI_BASE=/fuseki
 

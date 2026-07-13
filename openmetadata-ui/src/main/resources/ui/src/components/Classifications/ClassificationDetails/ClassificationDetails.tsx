@@ -43,18 +43,18 @@ import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { useFqn } from '../../../hooks/useFqn';
 import { getTags } from '../../../rest/tagAPI';
+import { getClassificationInfo } from '../../../utils/ClassificationPureUtils';
 import {
   getClassificationExtraDropdownContent,
-  getClassificationInfo,
   getTagsTableColumn,
 } from '../../../utils/ClassificationUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import {
   getClassificationDetailsPath,
   getClassificationVersionsPath,
 } from '../../../utils/RouterUtils';
-import { getErrorText } from '../../../utils/StringsUtils';
+import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';

@@ -27,7 +27,7 @@ import { PipelineServiceClientResponse } from '../generated/entity/services/inge
 import { Paging } from '../generated/type/paging';
 import { ListParams } from '../interface/API.interface';
 import { IngestionPipelineLogByIdInterface } from '../pages/LogsViewerPage/LogsViewerPage.interfaces';
-import { getEncodedFqn } from '../utils/StringsUtils';
+import { getEncodedFqn } from '../utils/StringUtils';
 import APIClient from './index';
 
 export const addIngestionPipeline = async (data: CreateIngestionPipeline) => {

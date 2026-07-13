@@ -86,7 +86,7 @@ jest.mock('../../../constants/HelperTextUtil', () => ({
   NO_PERMISSION_TO_VIEW: '',
 }));
 
-jest.mock('../../../utils/CommonUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue(''),
 }));
 

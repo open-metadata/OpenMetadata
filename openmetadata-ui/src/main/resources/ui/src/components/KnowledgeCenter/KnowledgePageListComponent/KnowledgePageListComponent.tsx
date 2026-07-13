@@ -48,6 +48,7 @@ import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.const
 import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
+import { SearchIndex } from '../../../enums/search.enum';
 import { Paging } from '../../../generated/type/paging';
 import LimitWrapper from '../../../hoc/LimitWrapper';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
@@ -66,6 +67,7 @@ import {
   unFollowKnowledgePage,
   updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
+import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { showErrorToast } from '../../../utils/ToastUtils';
@@ -82,6 +84,7 @@ interface KnowledgePageListComponentProps {
   permissions: OperationPermission;
   hideAddButton?: boolean;
   rightPanelSlot?: React.ReactNode;
+  searchQuery?: string;
 }
 
 const KnowledgePageListComponent = forwardRef<
@@ -89,7 +92,13 @@ const KnowledgePageListComponent = forwardRef<
   KnowledgePageListComponentProps
 >(
   (
-    { onPageChange, permissions, hideAddButton = false, rightPanelSlot },
+    {
+      onPageChange,
+      permissions,
+      hideAddButton = false,
+      rightPanelSlot,
+      searchQuery,
+    },
     ref
   ) => {
     const { currentUser, theme } = useApplicationStore();
@@ -101,6 +110,7 @@ const KnowledgePageListComponent = forwardRef<
     const [isLoadingMore, setIsLoadingMore] = useState<boolean>(false);
     const [knowledgePages, setKnowledgePages] = useState<KnowledgePage[]>([]);
     const [paging, setPaging] = useState<Paging>({ total: 0 });
+    const [pageOffset, setPageOffset] = useState<number>(0);
     const [isCreatingNewPage, setIsCreatingNewPage] = useState<boolean>(false);
     const [showAddLinkModal, setShowAddLinkModal] = useState<boolean>(false);
     const { getResourceLimit } = useLimitStore();
@@ -116,22 +126,38 @@ const KnowledgePageListComponent = forwardRef<
     const handleRefreshTagsCategory = (value: boolean) =>
       setRefreshTagsCategory(value);
 
-    const fetchKnowledgePages = async (after?: string) => {
-      if (after) {
+    const fetchKnowledgePages = async (offset = 0) => {
+      if (offset > 0) {
         setIsLoadingMore(true);
       } else {
         setIsLoading(true);
       }
       try {
-        const { data, paging: pagingObj } = await getListKnowledgePages({
-          fields: getKnowledgePageFields(),
-          after,
-          limit: PAGE_SIZE_MEDIUM,
-        });
-        setKnowledgePages((prev) =>
-          uniqBy(after ? [...prev, ...data] : data, 'id')
-        );
-        setPaging(pagingObj);
+        if (searchQuery) {
+          const results = await fetchSearchResults({
+            query: searchQuery,
+            searchIndex: SearchIndex.KNOWLEDGE_PAGE_INDEX,
+            sortField: 'updatedAt',
+            sortOrder: 'desc',
+            pageSize: PAGE_SIZE_MEDIUM,
+          });
+          setKnowledgePages(
+            results.hits.hits.map((hit) => hit._source as KnowledgePage)
+          );
+          setPaging({ total: results.hits.total.value });
+        } else {
+          const { data, paging: pagingObj } = await getListKnowledgePages({
+            fields: getKnowledgePageFields(),
+            limit: PAGE_SIZE_MEDIUM,
+            offset,
+            sortBy: 'updatedAt',
+            sortOrder: 'desc',
+          });
+          setKnowledgePages((prev) =>
+            uniqBy<KnowledgePage>(offset > 0 ? [...prev, ...data] : data, 'id')
+          );
+          setPaging(pagingObj);
+        }
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
@@ -299,21 +325,34 @@ const KnowledgePageListComponent = forwardRef<
 
     useEffect(() => {
       if (hasViewPermission) {
-        fetchKnowledgePages();
+        setPageOffset(0);
+        fetchKnowledgePages(0);
       } else {
         setIsLoading(false);
       }
-    }, [hasViewPermission]);
+    }, [hasViewPermission, searchQuery]);
 
-    /**
-     * Handle infinite scrolling
-     */
     useEffect(() => {
-      const after = paging.after;
-      if (isInView && after && !isLoadingMore && hasViewPermission) {
-        fetchKnowledgePages(after);
+      const hasMore = knowledgePages.length < paging.total;
+      if (
+        isInView &&
+        hasMore &&
+        !isLoadingMore &&
+        !searchQuery &&
+        hasViewPermission
+      ) {
+        const nextOffset = pageOffset + PAGE_SIZE_MEDIUM;
+        setPageOffset(nextOffset);
+        fetchKnowledgePages(nextOffset);
       }
-    }, [isInView, paging, isLoadingMore, hasViewPermission]);
+    }, [
+      isInView,
+      paging.total,
+      knowledgePages.length,
+      isLoadingMore,
+      searchQuery,
+      hasViewPermission,
+    ]);
 
     const items: MenuProps['items'] = [
       {

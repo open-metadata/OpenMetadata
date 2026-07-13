@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.security;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.security.JwtFilter.BOT_CLAIM;
 import static org.openmetadata.service.security.JwtFilter.EMAIL_CLAIM_KEY;
@@ -28,17 +29,24 @@ import jakarta.ws.rs.core.MultivaluedHashMap;
 import jakarta.ws.rs.core.MultivaluedMap;
 import jakarta.ws.rs.core.SecurityContext;
 import java.io.IOException;
+import java.net.URI;
+import java.net.URISyntaxException;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.security.Principal;
 import java.util.ArrayList;
 import java.util.Collection;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.api.configuration.LoginConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -46,6 +54,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 @Slf4j
 public final class SecurityUtil {
   public static final String DEFAULT_PRINCIPAL_DOMAIN = "openmetadata.org";
+  public static final String ISSUER_CLAIM = "iss";
 
   private SecurityUtil() {}
 
@@ -303,6 +312,19 @@ public final class SecurityUtil {
     return null;
   }
 
+  /**
+   * Builds the principal-claims mapping (logical name -> claim name) from the configured
+   * "name:claim" entries. Shared by {@link JwtFilter} and the SSO Test Login dry-run so both resolve
+   * identities with identical semantics.
+   */
+  public static Map<String, String> buildPrincipalClaimsMapping(
+      List<String> jwtPrincipalClaimsMapping) {
+    return listOrEmpty(jwtPrincipalClaimsMapping).stream()
+        .map(s -> s.split(":"))
+        .filter(parts -> parts.length == 2)
+        .collect(Collectors.toMap(s -> s[0], s -> s[1]));
+  }
+
   public static void validatePrincipalClaimsMapping(Map<String, String> mapping) {
     if (!nullOrEmpty(mapping)) {
       String username = mapping.get(USERNAME_CLAIM_KEY);
@@ -379,7 +401,22 @@ public final class SecurityUtil {
     response.setCharacterEncoding("UTF-8");
     response.getOutputStream().print(message);
     response.getOutputStream().flush();
-    response.setStatus(HttpServletResponse.SC_OK);
+  }
+
+  public static void writeErrorResponse(HttpServletResponse response, int status, String message)
+      throws IOException {
+    response.setStatus(status);
+    writeJsonResponse(
+        response,
+        JsonUtils.pojoToJson(Map.of("error", message == null ? StringUtils.EMPTY : message)));
+  }
+
+  public static void writeMessageResponse(HttpServletResponse response, int status, String message)
+      throws IOException {
+    response.setStatus(status);
+    writeJsonResponse(
+        response,
+        JsonUtils.pojoToJson(Map.of("message", message == null ? StringUtils.EMPTY : message)));
   }
 
   public static boolean isBot(Map<String, Claim> claims) {
@@ -389,5 +426,157 @@ public final class SecurityUtil {
   public static boolean isBotW(Map<String, ?> claims) {
     Claim isBotClaim = (Claim) claims.get("isBot");
     return isBotClaim != null && Boolean.TRUE.equals(isBotClaim.asBoolean());
+  }
+
+  /**
+   * Returns true only when the token was provably minted by OpenMetadata itself. A token qualifies
+   * when its key id matches OpenMetadata's own signing key id and its issuer matches OpenMetadata's
+   * configured issuer. The key id is the trust anchor: the signature has already been verified
+   * against the public key served for that key id, so a matching key id proves OpenMetadata's
+   * private key produced the signature - an external identity provider cannot forge it. The issuer
+   * check is defense in depth against a key id collision in a multi-source JWK provider.
+   */
+  public static boolean isOpenMetadataIssuedToken(
+      Map<String, Claim> claims,
+      String tokenKeyId,
+      String openMetadataIssuer,
+      String openMetadataKeyId) {
+    boolean issuedByOpenMetadata = false;
+    if (!nullOrEmpty(openMetadataIssuer) && !nullOrEmpty(openMetadataKeyId)) {
+      boolean keyIdMatches = openMetadataKeyId.equals(tokenKeyId);
+      boolean issuerMatches = openMetadataIssuer.equals(getClaimOrObject(claims.get(ISSUER_CLAIM)));
+      issuedByOpenMetadata = keyIdMatches && issuerMatches;
+    }
+    return issuedByOpenMetadata;
+  }
+
+  public static String validateRedirectUri(
+      String redirectUri, Collection<String> trustedRedirects) {
+    if (StringUtils.isBlank(redirectUri)) {
+      throw new IllegalArgumentException("Redirect URI is required");
+    }
+
+    List<URI> trustedUris =
+        new ArrayList<>(
+            trustedRedirects == null
+                ? List.of()
+                : trustedRedirects.stream()
+                    .filter(StringUtils::isNotBlank)
+                    .map(SecurityUtil::parseTrustedRedirectUri)
+                    .toList());
+    if (trustedUris.isEmpty()) {
+      throw new IllegalArgumentException("No trusted redirect URI is configured");
+    }
+
+    String normalizedRedirect = redirectUri.trim();
+    if (normalizedRedirect.startsWith("//")) {
+      throw new IllegalArgumentException("Redirect URI must be same-origin");
+    }
+
+    URI candidate = parseTrustedRedirectUri(normalizedRedirect);
+    List<URI> normalizedCandidates;
+    if (!candidate.isAbsolute()) {
+      String rawPath = candidate.getRawPath();
+      if (nullOrEmpty(rawPath) || !rawPath.startsWith("/")) {
+        throw new IllegalArgumentException("Redirect URI must be absolute or root-relative");
+      }
+      normalizedCandidates =
+          trustedUris.stream()
+              .map(trustedUri -> parseTrustedRedirectUri(canonicalize(trustedUri, candidate)))
+              .toList();
+    } else {
+      if (!nullOrEmpty(candidate.getRawUserInfo())) {
+        throw new IllegalArgumentException("Redirect URI must not contain user-info");
+      }
+      normalizedCandidates = List.of(candidate.normalize());
+    }
+
+    URI matchedTrustedUri =
+        trustedUris.stream()
+            .map(URI::normalize)
+            .filter(
+                trustedUri ->
+                    normalizedCandidates.stream()
+                        .anyMatch(candidateUri -> sameRedirect(trustedUri, candidateUri)))
+            .findFirst()
+            .orElseThrow(
+                () ->
+                    new IllegalArgumentException(
+                        "Redirect URI must exactly match a trusted redirect URI"));
+    return matchedTrustedUri.toString();
+  }
+
+  private static String canonicalize(URI trustedBase, URI candidate) {
+    URI resolved = trustedBase.resolve(candidate);
+    try {
+      return new URI(
+              trustedBase.getScheme(),
+              null,
+              trustedBase.getHost(),
+              trustedBase.getPort(),
+              resolved.getPath(),
+              resolved.getQuery(),
+              resolved.getFragment())
+          .toString();
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException("Redirect URI cannot be canonicalized", e);
+    }
+  }
+
+  public static String buildRedirectWithToken(
+      String redirectUri, String accessToken, String email, String name) {
+    String fragment =
+        "id_token="
+            + URLEncoder.encode(accessToken, StandardCharsets.UTF_8)
+            + "&email="
+            + URLEncoder.encode(email, StandardCharsets.UTF_8)
+            + "&name="
+            + URLEncoder.encode(name, StandardCharsets.UTF_8);
+    return redirectUri + "#" + fragment;
+  }
+
+  public static Set<String> trustedRedirects(String... trustedRedirects) {
+    LinkedHashSet<String> redirects = new LinkedHashSet<>();
+    if (trustedRedirects == null) {
+      return redirects;
+    }
+    for (String trustedRedirect : trustedRedirects) {
+      if (StringUtils.isNotBlank(trustedRedirect)) {
+        redirects.add(trustedRedirect);
+      }
+    }
+    return redirects;
+  }
+
+  private static URI parseTrustedRedirectUri(String value) {
+    try {
+      return new URI(value);
+    } catch (URISyntaxException e) {
+      throw new IllegalArgumentException("Redirect URI is invalid", e);
+    }
+  }
+
+  private static boolean sameRedirect(URI trustedUri, URI candidate) {
+    if (StringUtils.isBlank(trustedUri.getHost()) || StringUtils.isBlank(candidate.getHost())) {
+      return false;
+    }
+    return StringUtils.equalsIgnoreCase(trustedUri.getScheme(), candidate.getScheme())
+        && StringUtils.equalsIgnoreCase(trustedUri.getHost(), candidate.getHost())
+        && normalizedPort(trustedUri) == normalizedPort(candidate)
+        && StringUtils.equals(normalizedPath(trustedUri), normalizedPath(candidate))
+        && StringUtils.equals(trustedUri.getRawQuery(), candidate.getRawQuery())
+        && StringUtils.equals(trustedUri.getRawFragment(), candidate.getRawFragment());
+  }
+
+  private static String normalizedPath(URI uri) {
+    String path = uri.normalize().getPath();
+    return nullOrEmpty(path) ? "/" : path;
+  }
+
+  private static int normalizedPort(URI uri) {
+    if (uri.getPort() != -1) {
+      return uri.getPort();
+    }
+    return "https".equalsIgnoreCase(uri.getScheme()) ? 443 : 80;
   }
 }

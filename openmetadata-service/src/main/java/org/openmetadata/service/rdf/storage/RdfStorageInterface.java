@@ -18,6 +18,32 @@ public interface RdfStorageInterface {
   void storeEntity(String entityType, UUID entityId, Model entityModel);
 
   /**
+   * Bulk-write multiple entity models in a single SPARQL transaction.
+   *
+   * <p>The default loops over {@link #storeEntity(String, UUID, Model)} per
+   * entity — backward-compatible for backends that don't expose a batch path.
+   * Backends with a streaming/transactional protocol (e.g. Fuseki's SPARQL
+   * UPDATE) SHOULD override this to issue one combined DELETE+INSERT per
+   * batch, reducing both request count and Fuseki transaction overhead during
+   * re-indexing.
+   *
+   * <p>Failure semantics: a batch is all-or-nothing — if the combined update
+   * fails, the caller MUST fall back to per-entity {@link #storeEntity} to
+   * preserve fine-grained success / failure accounting in the indexer stats.
+   */
+  default void bulkStoreEntities(List<EntityWriteRequest> requests) {
+    if (requests == null || requests.isEmpty()) {
+      return;
+    }
+    for (EntityWriteRequest req : requests) {
+      storeEntity(req.entityType(), req.entityId(), req.model());
+    }
+  }
+
+  /** Payload for {@link #bulkStoreEntities}. */
+  record EntityWriteRequest(String entityType, UUID entityId, Model model) {}
+
+  /**
    * Store a relationship between two entities
    */
   void storeRelationship(
@@ -95,6 +121,27 @@ public interface RdfStorageInterface {
    * Clear all triples from a specific graph
    */
   void clearGraph(String graphUri);
+
+  /**
+   * Compact the underlying storage to reclaim disk space after large deletes.
+   *
+   * <p>Apache Jena TDB2 (the Fuseki backend) marks deleted triples as free space
+   * in its B+Tree indexes but never returns blocks to the OS, and its write-ahead
+   * journal grows monotonically until compaction is invoked. Without an explicit
+   * compaction call after {@code CLEAR ALL} / {@code DELETE WHERE}, the on-disk
+   * dataset keeps growing across re-index runs even though the live triple count
+   * stays bounded.
+   *
+   * <p>Implementations should run compaction synchronously (block until the task
+   * finishes on the server) so callers can safely resume writes against a fresh
+   * dataset directory. Failures should be logged and swallowed — a missing
+   * compaction degrades disk usage, not correctness, so it must not fail the
+   * caller's higher-level operation (e.g. the re-index run).
+   *
+   * <p>Default implementation is a no-op for storage backends that auto-compact
+   * or don't expose a compaction API.
+   */
+  default void compactStorage() {}
 
   /**
    * Test connection to the remote store

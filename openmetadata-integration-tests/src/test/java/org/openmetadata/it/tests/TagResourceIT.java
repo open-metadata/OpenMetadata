@@ -2046,4 +2046,90 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     return refreshed.getTags() != null
         && refreshed.getTags().stream().anyMatch(t -> tagFqn.equals(t.getTagFQN()));
   }
+
+  // ===================================================================
+  // Issue #28696 (tag analogue): renaming a tag so the new name keeps the old
+  // name as a PREFIX must rewrite that tag's FQN on linked assets and must NOT
+  // corrupt a sibling tag under the same classification that merely shares the
+  // textual prefix. Tag asset propagation runs through the shared, now
+  // boundary-aware UPDATE_FQN_PREFIX_SCRIPT (propagateToRelatedEntities, gated
+  // on the displayName change a UI rename sends) — single-pass, so the exact
+  // rename was already fine; the sibling assertion is what the boundary fix
+  // protects.
+  // ===================================================================
+  @Test
+  void test_renameTagPrefixExtension_rewritesAssetTagButNotSibling(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+
+    Classification classification = createClassification(ns);
+    Tag tag =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptag")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("tag renamed via prefix extension (#28696)"));
+    Tag sibling =
+        client
+            .tags()
+            .create(
+                new CreateTag()
+                    .withName("ptagx")
+                    .withClassification(classification.getFullyQualifiedName())
+                    .withDescription("sibling tag sharing the textual prefix"));
+    String oldTagFqn = tag.getFullyQualifiedName();
+    String siblingFqn = sibling.getFullyQualifiedName();
+
+    Table asset = createTableTaggedWith(ns, tag, "p");
+    Table assetSibling = createTableTaggedWith(ns, sibling, "px");
+
+    awaitTableTag(client, mapper, asset.getId().toString(), oldTagFqn);
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+
+    tag.setName("ptag renamed");
+    tag.setDisplayName("Renamed Tag");
+    Tag renamed = patchEntity(tag.getId().toString(), tag);
+    String newTagFqn = renamed.getFullyQualifiedName();
+    assertTrue(
+        !oldTagFqn.equals(newTagFqn) && newTagFqn.startsWith(oldTagFqn),
+        "rename must extend the FQN as a prefix: " + newTagFqn);
+
+    // The renamed tag's FQN follows on the linked asset...
+    awaitTableTag(client, mapper, asset.getId().toString(), newTagFqn);
+    // ...and the prefix-sharing sibling tag is left untouched.
+    awaitTableTag(client, mapper, assetSibling.getId().toString(), siblingFqn);
+  }
+
+  private void awaitTableTag(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedTagFqn) {
+    Awaitility.await("table search doc carries tag " + expectedTagFqn)
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> tagFqns = new ArrayList<>();
+              for (JsonNode tag : hits.get(0).path("_source").path("tags")) {
+                tagFqns.add(tag.path("tagFQN").asText());
+              }
+              assertTrue(
+                  tagFqns.contains(expectedTagFqn),
+                  "Expected tagFQN '"
+                      + expectedTagFqn
+                      + "' on table search doc but found "
+                      + tagFqns);
+            });
+  }
 }

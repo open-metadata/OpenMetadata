@@ -469,6 +469,58 @@ describe('ProfileSampleConfigField', () => {
     });
   });
 
+  describe('Cross-discriminator field leakage', () => {
+    it('drops Dynamic-only keys when sampleConfigType is STATIC', () => {
+      const polluted: ProfileSampleConfig = {
+        sampleConfigType: SampleConfigType.Static,
+        config: {
+          smartSampling: true,
+          thresholds: [],
+          profileSample: 10,
+        },
+      };
+
+      render(
+        <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
+      );
+
+      fireEvent.change(screen.getByTestId('profile-sample-input'), {
+        target: { value: '25' },
+      });
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Static,
+        config: { profileSample: 25 },
+      });
+    });
+
+    it('drops Static-only keys when sampleConfigType is DYNAMIC', () => {
+      const polluted: ProfileSampleConfig = {
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [],
+          profileSample: 10,
+          profileSampleType: ProfileSampleType.Percentage,
+        } as ProfileSampleConfig['config'],
+      };
+
+      render(
+        <ProfileSampleConfigField {...baseFieldProps} formData={polluted} />
+      );
+
+      fireEvent.click(screen.getByTestId('add-threshold-btn'));
+
+      expect(mockOnChange).toHaveBeenCalledWith({
+        sampleConfigType: SampleConfigType.Dynamic,
+        config: {
+          smartSampling: false,
+          thresholds: [{ rowCountThreshold: 1, profileSample: 100 }],
+        },
+      });
+    });
+  });
+
   describe('Label rendering', () => {
     it('renders all field labels in STATIC mode', () => {
       render(

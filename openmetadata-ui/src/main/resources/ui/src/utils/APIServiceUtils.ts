@@ -13,13 +13,31 @@
 import { cloneDeep } from 'lodash';
 import { COMMON_UI_SCHEMA } from '../constants/ServiceUISchema.constant';
 import { APIServiceType } from '../generated/entity/services/apiService';
-import restConnection from '../jsons/connectionSchemas/connections/api/restConnection.json';
 
-export const getAPIConfig = (type: APIServiceType) => {
-  let schema = {};
+type SchemaModule =
+  | { default: Record<string, unknown> }
+  | Record<string, unknown>;
+type SchemaLoader = () => Promise<SchemaModule>;
+
+const apiSchemaLoaders: Partial<Record<APIServiceType, SchemaLoader>> = {
+  [APIServiceType.REST]: () =>
+    import('../jsons/connectionSchemas/connections/api/restConnection.json'),
+};
+
+const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {
+  const maybeDefault = (mod as { default?: Record<string, unknown> }).default;
+
+  return maybeDefault ?? (mod as Record<string, unknown>);
+};
+
+export const getAPIConfig = async (type: APIServiceType) => {
+  const loader = apiSchemaLoaders[type];
+  let schema: Record<string, unknown> = {};
   const uiSchema = { ...COMMON_UI_SCHEMA };
-  if (type === APIServiceType.REST) {
-    schema = restConnection;
+
+  if (loader) {
+    const mod = await loader();
+    schema = resolveSchemaModule(mod);
   }
 
   return cloneDeep({ schema, uiSchema });

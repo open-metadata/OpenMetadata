@@ -495,7 +495,7 @@ EXPECTED_COLUMN_TYPE = ["VARCHAR", "VARCHAR", "VARCHAR", "UNKNOWN"]
 
 class SalesforceUnitTest(TestCase):
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
-    @patch("simple_salesforce.api.Salesforce")
+    @patch("metadata.ingestion.source.database.salesforce.connection.Salesforce")
     def __init__(self, methodName, salesforce, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
@@ -523,7 +523,7 @@ class SalesforceUnitTest(TestCase):
             assert result == EXPECTED_COLUMN_TYPE[i]
 
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
-    @patch("simple_salesforce.api.Salesforce")
+    @patch("metadata.ingestion.source.database.salesforce.connection.Salesforce")
     def test_oauth_connection(self, salesforce, test_connection) -> None:
         test_connection.return_value = False
         self.config = OpenMetadataWorkflowConfig.model_validate(mock_salesforce_oauth_config)
@@ -535,7 +535,7 @@ class SalesforceUnitTest(TestCase):
         self.assertTrue(self.salesforce_source.config.serviceConnection.root.config.consumerSecret)
 
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
-    @patch("simple_salesforce.api.Salesforce")
+    @patch("metadata.ingestion.source.database.salesforce.connection.Salesforce")
     def test_check_ssl(self, salesforce, test_connection) -> None:
         mock_salesforce_config["source"]["serviceConnection"]["config"]["sslConfig"] = {
             "caCertificate": """
@@ -567,7 +567,7 @@ class SalesforceUnitTest(TestCase):
         self.assertTrue(self.salesforce_source.ssl_manager.key_file_path)
 
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
-    @patch("simple_salesforce.api.Salesforce")
+    @patch("metadata.ingestion.source.database.salesforce.connection.Salesforce")
     def test_sobject_names_config(self, salesforce, test_connection) -> None:
         """Test that sobjectNames array is properly parsed from config"""
         test_connection.return_value = False
@@ -584,7 +584,7 @@ class SalesforceUnitTest(TestCase):
         )
 
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
-    @patch("simple_salesforce.api.Salesforce")
+    @patch("metadata.ingestion.source.database.salesforce.connection.Salesforce")
     def test_ingestion_with_sobject_names_list(self, salesforce, test_connection) -> None:
         """Test that sobjectNames list correctly filters which objects to ingest"""
         test_connection.return_value = False
@@ -622,7 +622,7 @@ class SalesforceUnitTest(TestCase):
         self.assertNotIn("Case", table_names)
 
     @patch("metadata.ingestion.source.database.salesforce.metadata.SalesforceSource.test_connection")
-    @patch("simple_salesforce.api.Salesforce")
+    @patch("metadata.ingestion.source.database.salesforce.connection.Salesforce")
     def test_ingestion_without_sobject_names(self, salesforce, test_connection) -> None:
         """Test that without sobjectNames, all objects from describe are ingested"""
         test_connection.return_value = False

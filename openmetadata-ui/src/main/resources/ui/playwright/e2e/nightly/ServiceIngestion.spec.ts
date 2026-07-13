@@ -13,7 +13,7 @@
 
 import test, { expect } from '@playwright/test';
 import { PLAYWRIGHT_INGESTION_TAG_OBJ } from '../../constant/config';
-import { POSTGRES, REDSHIFT } from '../../constant/service';
+import { MYSQL, POSTGRES, REDSHIFT } from '../../constant/service';
 import { GlobalSettingOptions } from '../../constant/settings';
 import AirflowIngestionClass from '../../support/entity/ingestion/AirflowIngestionClass';
 import ApiIngestionClass from '../../support/entity/ingestion/ApiIngestionClass';
@@ -33,7 +33,7 @@ import {
   redirectToHomePage,
 } from '../../utils/common';
 import { visitServiceDetailsPage } from '../../utils/service';
-import { makeRetryRequest } from '../../utils/serviceIngestion';
+import { getAgentCard, makeRetryRequest } from '../../utils/serviceIngestion';
 import { settingClick, SettingOptionsType } from '../../utils/sidebar';
 
 const table = new TableClass();
@@ -115,17 +115,23 @@ Object.entries(services).forEach(([key, ServiceClass]) => {
       await service.updateScheduleOptions(page);
     });
 
-    // TODO: Need to fix MYSQL service specific test - #28125
     if (
-      [POSTGRES.serviceType, REDSHIFT.serviceType].includes(service.serviceType)
+      [POSTGRES.serviceType, REDSHIFT.serviceType, MYSQL].includes(
+        service.serviceType
+      )
     ) {
       /**
        * Tests database-specific ingestion behaviors
        * @description Runs additional checks for Postgres, Redshift, and MySQL services
        */
-      test(`Service specific tests`, async ({ page }) => {
-        await service.runAdditionalTests(page, test);
-      });
+      test(
+        service.serviceType === MYSQL
+          ? 'Profiler ingestion workflow'
+          : `Service specific tests`,
+        async ({ page }) => {
+          await service.runAdditionalTests(page, test);
+        }
+      );
     }
   });
 });
@@ -366,19 +372,29 @@ test.describe.serial(
           .getByTestId('loader')
           .waitFor({ state: 'detached' });
 
-        const pipelineRow = page.locator(`[data-row-key*="${pipeline.name}"]`);
+        const agentCard = getAgentCard(page, pipeline.name);
 
-        await expect(pipelineRow).toBeVisible();
+        await expect(agentCard).toBeVisible();
 
-        const runStatusBadges = pipelineRow.getByTestId('pipeline-status');
+        const runDots = agentCard.getByTestId('agent-run-dot');
 
-        await expect(runStatusBadges).toHaveCount(TOTAL_RUNS);
+        await expect(runDots).toHaveCount(TOTAL_RUNS);
 
-        const latestBadge = runStatusBadges.last();
-
-        await expect(latestBadge).toContainText(
-          /(Success|Failed|PartialSuccess)/i
+        await expect(agentCard.getByTestId('pipeline-status')).toContainText(
+          /(Success|Failed)/i
         );
+
+        // Latest run dot opens the run history drawer with the full run list
+        await runDots.first().click();
+
+        await expect(page.getByTestId('run-history-drawer')).toBeVisible();
+        await expect(
+          page.getByTestId('run-history-item').first()
+        ).toBeVisible();
+
+        expect(
+          await page.getByTestId('run-history-item').count()
+        ).toBeGreaterThanOrEqual(TOTAL_RUNS);
       });
     });
   }
@@ -498,26 +514,20 @@ test.describe.serial(
         await metadataTab.click();
       }
 
-      const pipelineRow = page.locator(
-        `[data-row-key*="${slowTestPipeline.name}"]`
-      );
+      const agentCard = getAgentCard(page, slowTestPipeline.name);
 
-      await expect(pipelineRow).toBeVisible();
-
-      // skeleton while the slow pipelineStatus API is still in-flight —
-      // confirming the UI reflects the pending state in both columns
-      await expect(pipelineRow.locator('.ant-skeleton-input')).toHaveCount(2);
+      await expect(agentCard).toBeVisible();
 
       // Action buttons must be visible immediately — before the slow pipelineStatus
       // API resolves — verifying permissions don't wait on run history
-      await expect(pipelineRow.getByTestId('pause-button')).toBeVisible();
+      await expect(agentCard.getByTestId('logs-button')).toBeVisible();
 
-      await expect(pipelineRow.getByTestId('logs-button')).toBeVisible();
+      await expect(agentCard.getByTestId('run-agent-button')).toBeVisible();
 
-      await expect(pipelineRow.getByTestId('more-actions')).toBeVisible();
+      await expect(agentCard.getByTestId('more-actions')).toBeVisible();
 
       // Open the more-actions dropdown and verify the run button is present
-      await pipelineRow.getByTestId('more-actions').click();
+      await agentCard.getByTestId('more-actions').click();
       await expect(page.getByTestId('run-button')).toBeVisible();
 
       // Trigger a pipeline run via the run button.
@@ -538,10 +548,8 @@ test.describe.serial(
       await triggerResponse;
       await statusRefreshResponse;
 
-      // Verify the run was triggered by checking the pipeline row shows a running state
-      await expect(
-        pipelineRow.getByTestId('pipeline-status').first()
-      ).toBeVisible();
+      // Verify the run was triggered by checking the card shows a status pill
+      await expect(agentCard.getByTestId('pipeline-status')).toBeVisible();
     });
   }
 );

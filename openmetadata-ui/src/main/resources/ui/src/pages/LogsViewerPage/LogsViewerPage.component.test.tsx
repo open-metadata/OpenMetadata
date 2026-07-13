@@ -46,7 +46,7 @@ jest.mock('react-router-dom', () => ({
   useSearchParams: jest.fn(() => [new URLSearchParams(), jest.fn()]),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.name || entity?.displayName || ''),
 }));
 
@@ -179,6 +179,13 @@ jest.mock('../../hooks/useDownloadProgressStore', () => ({
     reset: jest.fn(),
     updateProgress: jest.fn(),
   })),
+}));
+
+jest.mock('../../hooks/useScheduleDescriptionTexts', () => ({
+  useScheduleDescriptionTexts: jest.fn().mockReturnValue({
+    descriptionFirstPart: 'Every day',
+    descriptionSecondPart: 'at 12:00 AM',
+  }),
 }));
 
 let mockScrollPosition = {

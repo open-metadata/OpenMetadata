@@ -102,7 +102,13 @@ export interface AirflowConnectionClass {
      *
      * Host and port of the SQLite service. Blank for in-memory database.
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?:       string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.

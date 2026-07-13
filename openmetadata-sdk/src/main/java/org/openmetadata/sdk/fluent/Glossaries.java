@@ -193,6 +193,11 @@ public final class Glossaries {
     public GlossaryDeleter delete() {
       return new GlossaryDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Glossary> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.glossaries(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -503,5 +508,15 @@ public final class Glossaries {
     public String apply() {
       return execute();
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().glossaries().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().glossaries().getContextByName(fqn);
   }
 }

@@ -214,17 +214,11 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
 
-jest.mock('../../../utils/CommonUtils', () => {
-  return {
-    getEntityName: jest.fn().mockReturnValue('entityName'),
-    getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceholder'),
-    getOwnerValue: jest.fn().mockReturnValue('Owner'),
-    getEmptyPlaceholder: jest.fn().mockReturnValue(<p>ErrorPlaceHolder</p>),
-    getCountBadge: jest.fn().mockReturnValue(<p>1</p>),
-  };
-});
+jest.mock('../../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('entityName'),
+}));
 
-jest.mock('../../../utils/TableUtils', () => {
+jest.mock('../../../utils/TablePureUtils', () => {
   return {
     getTagsWithoutTier: jest.fn().mockReturnValue([]),
     getTierTags: jest.fn().mockReturnValue(undefined),

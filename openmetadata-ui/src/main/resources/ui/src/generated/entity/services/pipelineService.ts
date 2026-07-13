@@ -92,6 +92,7 @@ export interface PipelineService {
      * Type of pipeline service such as Airflow or Prefect...
      */
     serviceType: PipelineServiceType;
+    style?:      Style;
     /**
      * Tags for this Pipeline Service.
      */
@@ -236,6 +237,8 @@ export interface PipelineConnection {
  * MuleSoft Anypoint Platform Connection Config
  *
  * Microsoft Fabric Data Factory Pipeline Connection Config
+ *
+ * SAP BW/4HANA Pipeline Connection Config for Process Chain extraction.
  */
 export interface ConfigObject {
     /**
@@ -260,6 +263,8 @@ export interface ConfigObject {
      *
      * MuleSoft Anypoint Platform URL. Use https://anypoint.mulesoft.com for US cloud,
      * https://eu1.anypoint.mulesoft.com for EU cloud, or your on-premises URL.
+     *
+     * Host and port of the SAP HANA instance underlying BW/4HANA, e.g. hana-host:30015.
      */
     hostPort?: string;
     /**
@@ -272,6 +277,8 @@ export interface ConfigObject {
      * Regex to filter MuleSoft applications by name.
      *
      * Regex to only include/exclude pipelines that matches the pattern.
+     *
+     * Regex to only include/exclude Process Chains that match the pattern.
      */
     pipelineFilterPattern?:      FilterPattern;
     supportsMetadataExtraction?: boolean;
@@ -283,6 +290,9 @@ export interface ConfigObject {
     type?: PipelineServiceType;
     /**
      * Underlying database connection
+     *
+     * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+     * mode and run history is not extracted.
      */
     databaseConnection?: DatabaseConnectionClass;
     /**
@@ -513,6 +523,19 @@ export interface ConfigObject {
      * The Microsoft Fabric workspace ID where the pipelines are located.
      */
     workspaceId?: string;
+    /**
+     * Schema name in HANA where BW/4HANA ABAP metadata tables reside (e.g. SAPHANADB). Check
+     * your system with: SELECT SCHEMA_NAME FROM SYS.TABLES WHERE TABLE_NAME = 'RSOADSO'.
+     */
+    abapSchema?: string;
+    /**
+     * Password for the HANA database user.
+     */
+    password?: string;
+    /**
+     * HANA database username with access to BW metadata tables.
+     */
+    username?: string;
     [property: string]: any;
 }
 
@@ -895,7 +918,13 @@ export interface ConnectionClass {
      *
      * Matillion Host
      */
-    hostPort?:                string;
+    hostPort?: string;
+    /**
+     * Table name to fetch the query history. When set, this overrides the default
+     * 'mysql.general_log' (or 'mysql.slow_log' when 'useSlowLogs' is enabled). The custom table
+     * must expose columns compatible with the selected log path.
+     */
+    queryHistoryTable?:       string;
     sampleDataStorageConfig?: SampleDataStorageConfig;
     /**
      * Regex to only include/exclude schemas that matches the pattern.
@@ -1226,6 +1255,8 @@ export interface AuthConfigurationType {
  * Regex to filter MuleSoft applications by name.
  *
  * Regex to only include/exclude pipelines that matches the pattern.
+ *
+ * Regex to only include/exclude Process Chains that match the pattern.
  */
 export interface FilterPattern {
     /**
@@ -1375,6 +1406,9 @@ export enum Type {
  * Underlying database connection
  *
  * Mssql Database Connection Config
+ *
+ * Optional. Underlying SSISDB connection. When omitted, the connector runs in file-only
+ * mode and run history is not extracted.
  */
 export interface DatabaseConnectionClass {
     connectionArguments?: { [key: string]: any };
@@ -1561,6 +1595,8 @@ export enum S3Type {
  *
  * Custom pipeline service type
  *
+ * SAP BW/4HANA pipeline service type.
+ *
  * Type of pipeline service such as Airflow or Prefect...
  *
  * Type of pipeline service - Airflow or Prefect.
@@ -1584,6 +1620,7 @@ export enum PipelineServiceType {
     Mulesoft = "Mulesoft",
     Nifi = "Nifi",
     OpenLineage = "OpenLineage",
+    SapBw4HanaPipeline = "SapBw4HanaPipeline",
     Snowplow = "Snowplow",
     Spark = "Spark",
     Spline = "Spline",
@@ -1675,6 +1712,43 @@ export enum EntityStatus {
     InReview = "In Review",
     Rejected = "Rejected",
     Unprocessed = "Unprocessed",
+}
+
+/**
+ * UI Style is used to associate a color code and/or icon to entity to customize the look of
+ * that entity in UI.
+ */
+export interface Style {
+    /**
+     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
+     */
+    color?: string;
+    /**
+     * Cover image configuration for the entity.
+     */
+    coverImage?: CoverImage;
+    /**
+     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
+     */
+    iconURL?: string;
+}
+
+/**
+ * Cover image configuration for the entity.
+ *
+ * Cover image configuration for an entity. This is used to display a banner or header image
+ * for entities like Domain, Glossary, Data Product, etc.
+ */
+export interface CoverImage {
+    /**
+     * Position of the cover image in CSS background-position format. Supports keywords (top,
+     * center, bottom) or pixel values (e.g., '20px 30px').
+     */
+    position?: string;
+    /**
+     * URL of the cover image.
+     */
+    url?: string;
 }
 
 /**
@@ -1841,43 +1915,6 @@ export enum State {
 }
 
 /**
- * UI Style is used to associate a color code and/or icon to entity to customize the look of
- * that entity in UI.
- */
-export interface Style {
-    /**
-     * Hex Color Code to mark an entity such as GlossaryTerm, Tag, Domain or Data Product.
-     */
-    color?: string;
-    /**
-     * Cover image configuration for the entity.
-     */
-    coverImage?: CoverImage;
-    /**
-     * An icon to associate with GlossaryTerm, Tag, Domain or Data Product.
-     */
-    iconURL?: string;
-}
-
-/**
- * Cover image configuration for the entity.
- *
- * Cover image configuration for an entity. This is used to display a banner or header image
- * for entities like Domain, Glossary, Data Product, etc.
- */
-export interface CoverImage {
-    /**
-     * Position of the cover image in CSS background-position format. Supports keywords (top,
-     * center, bottom) or pixel values (e.g., '20px 30px').
-     */
-    position?: string;
-    /**
-     * URL of the cover image.
-     */
-    url?: string;
-}
-
-/**
  * Last test connection results for this service
  *
  * TestConnectionResult is the definition that will encapsulate result of running the test
@@ -1915,9 +1952,21 @@ export enum StatusType {
  */
 export interface TestConnectionStepResult {
     /**
+     * Classified, actionable explanation of a failure, separate from the raw errorLog.
+     */
+    diagnosis?: Diagnosis;
+    /**
+     * Wall-clock time the step took, in milliseconds.
+     */
+    durationMs?: number;
+    /**
      * In case of failed step, this field would contain the actual error faced during the step.
      */
     errorLog?: string;
+    /**
+     * The command or statement the step actually ran, when applicable.
+     */
+    executedCommand?: string;
     /**
      * Is this step mandatory to be passed?
      */
@@ -1935,4 +1984,54 @@ export interface TestConnectionStepResult {
      * Did the step pass successfully?
      */
     passed: boolean;
+    /**
+     * Human-readable summary of what the step found on success.
+     */
+    resultSummary?: string;
+    /**
+     * Why a step did not run, when status is Skipped.
+     */
+    skipReason?: SkipReason;
+    /**
+     * Lifecycle state of this step.
+     */
+    status?: Status;
+}
+
+/**
+ * Classified, actionable explanation of a failure, separate from the raw errorLog.
+ */
+export interface Diagnosis {
+    /**
+     * Link to relevant documentation.
+     */
+    docUrl?: string;
+    /**
+     * What the user can do to fix it.
+     */
+    remediation?: string;
+    /**
+     * Short statement of what went wrong.
+     */
+    title?: string;
+}
+
+/**
+ * Why a step did not run, when status is Skipped.
+ */
+export enum SkipReason {
+    ConnectionNotEstablished = "ConnectionNotEstablished",
+    NotImplemented = "NotImplemented",
+}
+
+/**
+ * Lifecycle state of this step.
+ */
+export enum Status {
+    Failed = "Failed",
+    Passed = "Passed",
+    Queued = "Queued",
+    Running = "Running",
+    Skipped = "Skipped",
+    Warning = "Warning",
 }

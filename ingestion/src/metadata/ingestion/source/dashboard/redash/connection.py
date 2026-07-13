@@ -19,11 +19,12 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.dashboard.redashConnection import (
-    RedashConnection,
+    RedashConnection as RedashConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import (
     SourceConnectionException,
     test_connection_steps,
@@ -33,35 +34,34 @@ from metadata.ingestion.source.dashboard.redash.client import RedashApiClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: RedashConnection) -> RedashApiClient:
-    """
-    Create connection
-    """
-    try:
-        return RedashApiClient(connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
+class RedashConnection(BaseConnection[RedashConnectionConfig, RedashApiClient]):
+    def _get_client(self) -> RedashApiClient:
+        connection = self.service_connection
+        try:
+            return RedashApiClient(connection)
+        except Exception as exc:
+            msg = f"Unknown error connecting with {connection}: {exc}."
+            raise SourceConnectionException(msg) from exc
 
+    def test_connection(
+        self,
+        metadata: OpenMetadata,
+        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
+        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
+    ) -> TestConnectionResult:
+        """
+        Test connection. This can be executed either as part
+        of a metadata workflow or during an Automation Workflow
+        """
+        client = self.client
+        service_connection = self.service_connection
 
-def test_connection(
-    metadata: OpenMetadata,
-    client: RedashApiClient,
-    service_connection: RedashConnection,
-    automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-    timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-) -> TestConnectionResult:
-    """
-    Test connection. This can be executed either as part
-    of a metadata workflow or during an Automation Workflow
-    """
+        test_fn = {"GetDashboards": client.dashboards}
 
-    test_fn = {"GetDashboards": client.dashboards}
-
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )

@@ -36,13 +36,22 @@ permissions:
 
 concurrency:
   group: playwright-ci-pr-mysql-${{ github.event.pull_request.number || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   playwright-ci-mysql:
     runs-on: ubuntu-latest
-    if: ${{ !github.event.pull_request.draft }}
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     environment: test
+    permissions:
+      contents: read
+      id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
+    env:
+      # Playwright logs the admin user in many times (performAdminLogin per test, parallel
+      # workers, retries). The production default of 5 active sessions per user would evict the
+      # long-lived storageState session the page fixtures rely on and 401 every request. Raise
+      # the cap for E2E only; docker compose reads this for ${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-5}.
+      AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER: "10000"
     strategy:
       fail-fast: false
       matrix:
@@ -60,7 +69,7 @@ jobs:
           swap-storage: true
           docker-images: false
       - name: Wait for the labeler
-        uses: lewagon/wait-on-check-action@v1.3.4
+        uses: lewagon/wait-on-check-action@v1.7.0
         if: ${{ github.event_name == 'pull_request_target' }}
         with:
           ref: ${{ github.event.pull_request.head.sha }}

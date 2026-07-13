@@ -32,6 +32,7 @@ import { UserSelectableList } from '../../../components/common/UserSelectableLis
 import EntityHeaderTitle from '../../../components/Entity/EntityHeaderTitle/EntityHeaderTitle.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
 import { CustomizeUI } from '../../../components/Settings/Persona/CustomizeUI/CustomizeUI';
+import { PersonaAIContext } from '../../../components/Settings/Persona/PersonaAIContext/PersonaAIContext.component';
 import { UsersTab } from '../../../components/Settings/Users/UsersTab/UsersTabs.component';
 import { GlobalSettingsMenuCategory } from '../../../constants/GlobalSettings.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
@@ -45,7 +46,7 @@ import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocatio
 import { useFqn } from '../../../hooks/useFqn';
 import { getPersonaByName, updatePersona } from '../../../rest/PersonaAPI';
 import { getUserById } from '../../../rest/userAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
 import { getCustomizePageCategories } from '../../../utils/Persona/PersonaUtils';
 import {
@@ -177,7 +178,7 @@ export const PersonaDetailsPage = () => {
   const handlePersonaUpdate = useCallback(
     async (data: Partial<Persona>, shouldRefetch = false) => {
       if (!personaDetails) {
-        return;
+        return false;
       }
       const diff = compare(personaDetails, { ...personaDetails, ...data });
 
@@ -187,11 +188,15 @@ export const PersonaDetailsPage = () => {
         if (shouldRefetch) {
           await fetchCurrentUser();
         }
+
+        return true;
       } catch (error) {
         showErrorToast(error as AxiosError);
+
+        return false;
       }
     },
-    [personaDetails]
+    [fetchCurrentUser, personaDetails]
   );
 
   const handleRemoveUser = useCallback(
@@ -202,7 +207,7 @@ export const PersonaDetailsPage = () => {
 
       handlePersonaUpdate({ users: updatedUsers }, true);
     },
-    [personaDetails]
+    [handlePersonaUpdate, personaDetails]
   );
 
   const handleAfterDeleteAction = async () => {
@@ -275,6 +280,16 @@ export const PersonaDetailsPage = () => {
         children: <CustomizeUI />,
       },
       {
+        label: t('label.ai-context'),
+        key: 'ai-context',
+        children: personaDetails ? (
+          <PersonaAIContext
+            canEdit={entityPermission.EditAll}
+            persona={personaDetails}
+          />
+        ) : null,
+      },
+      {
         label: t('label.user-plural'),
         key: 'users',
         children: (
@@ -285,7 +300,7 @@ export const PersonaDetailsPage = () => {
         ),
       },
     ];
-  }, [personaDetails]);
+  }, [entityPermission.EditAll, personaDetails, t]);
 
   const extraDropdownContent = useMemo(() => {
     const isDefault = personaDetails?.default;
@@ -351,7 +366,9 @@ export const PersonaDetailsPage = () => {
               entityName={personaDetails.name}
               entityType={EntityType.PERSONA}
               extraDropdownContent={extraDropdownContent}
-              onEditDisplayName={(data) => handlePersonaUpdate(data, true)}
+              onEditDisplayName={async (data) => {
+                await handlePersonaUpdate(data, true);
+              }}
             />
           </div>
         </Col>
@@ -364,9 +381,9 @@ export const PersonaDetailsPage = () => {
               entityPermission.EditAll || entityPermission.EditDescription
             }
             showCommentsIcon={false}
-            onDescriptionUpdate={(description) =>
-              handlePersonaUpdate({ description })
-            }
+            onDescriptionUpdate={async (description) => {
+              await handlePersonaUpdate({ description });
+            }}
           />
         </Col>
         <Col span={24}>
@@ -380,7 +397,9 @@ export const PersonaDetailsPage = () => {
                   hasPermission
                   multiSelect
                   selectedUsers={personaDetails.users ?? []}
-                  onUpdate={(users) => handlePersonaUpdate({ users }, true)}>
+                  onUpdate={async (users) => {
+                    await handlePersonaUpdate({ users }, true);
+                  }}>
                   <Button
                     data-testid="add-persona-button"
                     size="small"

@@ -11,13 +11,21 @@
  *  limitations under the License.
  */
 
-import { act, render, screen, waitFor } from '@testing-library/react';
+import { act, screen, waitFor } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { getSearchIndexDetailsByFQN } from '../../rest/SearchIndexAPI';
+import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import SearchIndexDetailsPage from './SearchIndexDetailsPage';
+
+const renderPage = () =>
+  renderWithQueryClient(
+    <MemoryRouter>
+      <SearchIndexDetailsPage />
+    </MemoryRouter>
+  );
 
 const mockEntityPermissionByFqn = jest
   .fn()
@@ -115,9 +123,13 @@ jest.mock('react-router-dom', () => ({
   useLocation: jest.fn().mockImplementation(() => ({ pathname: 'mockPath' })),
 }));
 
-jest.mock('../../components/common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => <>testLoader</>);
-});
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <>testLoader</>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('./SearchIndexFieldsTab/SearchIndexFieldsTab', () => {
   return jest.fn().mockImplementation(() => <p>testSearchIndexFieldsTab</p>);
@@ -162,11 +174,7 @@ jest.mock('../../hooks/useFqn', () => ({
 
 describe('SearchIndexDetailsPage component', () => {
   it('SearchIndexDetailsPage should fetch permissions', async () => {
-    render(
-      <MemoryRouter>
-        <SearchIndexDetailsPage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     await waitFor(() => {
       expect(mockEntityPermissionByFqn).toHaveBeenCalledWith(
@@ -180,11 +188,7 @@ describe('SearchIndexDetailsPage component', () => {
     // Reset mocks to ensure clean state
     jest.clearAllMocks();
 
-    render(
-      <MemoryRouter>
-        <SearchIndexDetailsPage />
-      </MemoryRouter>
-    );
+    renderPage();
 
     await waitFor(() => {
       // Should try to resolve FQN first, so it MIGHT be called to resolve
@@ -212,11 +216,7 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <SearchIndexDetailsPage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     await waitFor(
@@ -241,11 +241,7 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <SearchIndexDetailsPage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     await waitFor(
@@ -275,11 +271,7 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <SearchIndexDetailsPage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     await waitFor(
@@ -320,11 +312,7 @@ describe('SearchIndexDetailsPage component', () => {
     }));
 
     await act(async () => {
-      render(
-        <MemoryRouter>
-          <SearchIndexDetailsPage />
-        </MemoryRouter>
-      );
+      renderPage();
     });
 
     await waitFor(

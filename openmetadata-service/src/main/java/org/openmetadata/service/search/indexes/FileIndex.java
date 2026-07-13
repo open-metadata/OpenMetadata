@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
+import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.entity.data.File;
@@ -31,6 +32,16 @@ public class FileIndex implements DataAssetIndex {
   @Override
   public Object getIndexServiceType() {
     return file.getServiceType();
+  }
+
+  @Override
+  public Set<String> getRequiredReindexFields() {
+    Set<String> fields = new HashSet<>(DataAssetIndex.super.getRequiredReindexFields());
+    // FileRepository.clearFields nulls columns when "columns" is absent from the field set.
+    // Without requesting it, file column-name search breaks after reindex — same pattern as
+    // WorksheetIndex.
+    fields.add("columns");
+    return Set.copyOf(fields);
   }
 
   public Map<String, Object> buildSearchIndexDocInternal(Map<String, Object> doc) {

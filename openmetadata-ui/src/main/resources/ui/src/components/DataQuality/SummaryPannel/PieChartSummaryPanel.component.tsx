@@ -11,137 +11,85 @@
  *  limitations under the License.
  */
 import { Col, Row } from 'antd';
-import { useMemo } from 'react';
-import { useTranslation } from 'react-i18next';
+import { ReactNode } from 'react';
 import { ReactComponent as AllTestsIcon } from '../../../assets/svg/all-activity-v2.svg';
 import { ReactComponent as DataAssetsCoverageIcon } from '../../../assets/svg/ic-data-assets-coverage.svg';
 import { ReactComponent as HealthCheckIcon } from '../../../assets/svg/ic-green-heart-border.svg';
 import {
-  BLUE_2,
-  GREEN_3,
+  DQ_CHART_BLUE_COLOR,
+  DQ_CHART_FAILED_COLOR,
+  DQ_CHART_SUCCESS_COLOR,
+  DQ_CHART_WARNING_COLOR,
   GREY_200,
-  RED_3,
-  YELLOW_2,
 } from '../../../constants/Color.constants';
-import { calculatePercentage } from '../../../utils/CommonUtils';
-import { SummaryPanelProps } from './SummaryPanel.interface';
+import {
+  SummaryPanelProps,
+  TestSummaryCardKey,
+  TestSummarySegmentId,
+} from './SummaryPanel.interface';
 import SummaryPieChartCard from './SummaryPieChartCard/SummaryPieChartCard.component';
+import { useTestSummaryCards } from './useTestSummaryCards';
+
+const SEGMENT_COLORS: Record<TestSummarySegmentId, string> = {
+  [TestSummarySegmentId.Success]: DQ_CHART_SUCCESS_COLOR,
+  [TestSummarySegmentId.Aborted]: DQ_CHART_WARNING_COLOR,
+  [TestSummarySegmentId.Failed]: DQ_CHART_FAILED_COLOR,
+  [TestSummarySegmentId.Healthy]: DQ_CHART_SUCCESS_COLOR,
+  [TestSummarySegmentId.Unhealthy]: GREY_200,
+  [TestSummarySegmentId.Covered]: DQ_CHART_BLUE_COLOR,
+  [TestSummarySegmentId.Uncovered]: GREY_200,
+};
+
+const CARD_ICONS: Record<
+  TestSummaryCardKey,
+  { icon: ReactNode; className: string }
+> = {
+  [TestSummaryCardKey.TotalTests]: {
+    icon: <AllTestsIcon />,
+    className: 'all-tests-icon',
+  },
+  [TestSummaryCardKey.Healthy]: {
+    icon: <HealthCheckIcon />,
+    className: 'health-check-icon',
+  },
+  [TestSummaryCardKey.Coverage]: {
+    icon: <DataAssetsCoverageIcon />,
+    className: 'data-assets-coverage-icon',
+  },
+};
 
 const PieChartSummaryPanel = ({
   testSummary,
   isLoading = false,
   showAdditionalSummary = true,
 }: SummaryPanelProps) => {
-  const { t } = useTranslation();
-  const {
-    total: totalTests = 0,
-    success: successTests = 0,
-    failed: failedTests = 0,
-    aborted: abortedTests = 0,
-    healthy: healthyDataAssets = 0,
-    totalDQEntities = 0,
-    totalEntityCount = 0,
-  } = testSummary || {};
-
-  const testData = useMemo(
-    () => [
-      { name: 'Success', value: successTests, color: GREEN_3 },
-      { name: 'Aborted', value: abortedTests, color: YELLOW_2 },
-      { name: 'Failed', value: failedTests, color: RED_3 },
-    ],
-    [successTests, abortedTests, failedTests]
-  );
-
-  const healthyData = useMemo(
-    () => [
-      { name: 'Healthy', value: healthyDataAssets, color: GREEN_3 },
-      {
-        name: 'Unhealthy',
-        value: totalDQEntities - healthyDataAssets,
-        color: GREY_200,
-      },
-    ],
-    [healthyDataAssets, totalDQEntities]
-  );
-
-  const coverageData = useMemo(
-    () => [
-      { name: 'Covered', value: totalDQEntities, color: BLUE_2 },
-      {
-        name: 'Uncovered',
-        value: totalEntityCount - totalDQEntities,
-        color: GREY_200,
-      },
-    ],
-    [totalDQEntities, totalEntityCount]
-  );
-
-  const percentages = useMemo(
-    () => ({
-      testSuccess: calculatePercentage(successTests, totalTests, 2, true),
-      healthy: calculatePercentage(healthyDataAssets, totalDQEntities, 2, true),
-      coverage: calculatePercentage(totalDQEntities, totalEntityCount, 2, true),
-    }),
-    [
-      successTests,
-      totalTests,
-      healthyDataAssets,
-      totalDQEntities,
-      totalEntityCount,
-    ]
-  );
+  const cards = useTestSummaryCards(testSummary);
+  const visibleCards = showAdditionalSummary ? cards : cards.slice(0, 1);
 
   return (
     <Row gutter={[16, 16]}>
-      <Col md={8} sm={24} xs={24}>
-        <SummaryPieChartCard
-          showLegends
-          chartData={testData}
-          iconData={{
-            icon: <AllTestsIcon />,
-            className: 'all-tests-icon',
-          }}
-          isLoading={isLoading}
-          paddingAngle={2}
-          percentage={percentages.testSuccess}
-          title={t('label.total-entity', {
-            entity: t('label.test-plural'),
-          })}
-          value={totalTests}
-        />
-      </Col>
+      {visibleCards.map((card) => {
+        const isTotalTests = card.key === TestSummaryCardKey.TotalTests;
 
-      {showAdditionalSummary && (
-        <>
-          <Col md={8} sm={24} xs={24}>
+        return (
+          <Col key={card.key} md={8} sm={24} xs={24}>
             <SummaryPieChartCard
-              chartData={healthyData}
-              iconData={{
-                icon: <HealthCheckIcon />,
-                className: 'health-check-icon',
-              }}
+              chartData={card.segments.map((segment) => ({
+                name: segment.name,
+                value: segment.value,
+                color: SEGMENT_COLORS[segment.id],
+              }))}
+              iconData={CARD_ICONS[card.key]}
               isLoading={isLoading}
-              percentage={percentages.healthy}
-              title={t('label.healthy-data-asset-plural')}
-              value={healthyDataAssets}
+              paddingAngle={isTotalTests ? 2 : 0}
+              percentage={card.percentage}
+              showLegends={isTotalTests}
+              title={card.title}
+              value={card.value}
             />
           </Col>
-
-          <Col md={8} sm={24} xs={24}>
-            <SummaryPieChartCard
-              chartData={coverageData}
-              iconData={{
-                icon: <DataAssetsCoverageIcon />,
-                className: 'data-assets-coverage-icon',
-              }}
-              isLoading={isLoading}
-              percentage={percentages.coverage}
-              title={t('label.data-asset-plural-coverage')}
-              value={totalDQEntities}
-            />
-          </Col>
-        </>
-      )}
+        );
+      })}
     </Row>
   );
 };

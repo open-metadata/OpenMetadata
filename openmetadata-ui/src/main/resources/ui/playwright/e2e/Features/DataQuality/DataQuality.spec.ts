@@ -33,8 +33,10 @@ import {
   uuid,
 } from '../../../utils/common';
 import {
+  dismissTagSuggestions,
   ObservabilityFeature,
   selectAddObservabilityFeature,
+  selectTestType,
 } from '../../../utils/dataQuality';
 import { getCurrentMillis } from '../../../utils/dateTime';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
@@ -190,15 +192,10 @@ test.describe(
        */
       await test.step('Create', async () => {
         await page.fill(
-          '[data-testid="test-case-name"]',
+          '[data-testid="test-case-name"] input',
           NEW_TABLE_TEST_CASE.name
         );
-        await page.click('[id="root\\/testType"]');
-        await page
-          .locator(`text=${NEW_TABLE_TEST_CASE.label}`)
-          .first()
-          .waitFor();
-        await page.click(`[data-testid="${NEW_TABLE_TEST_CASE.type}"]`);
+        await selectTestType(page, NEW_TABLE_TEST_CASE.label);
         await page.fill(
           '#testCaseFormV1_params_columnName',
           NEW_TABLE_TEST_CASE.field
@@ -219,10 +216,10 @@ test.describe(
         );
         await tagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
         // Add glossary terms to test case
         await page.click('[data-testid="glossary-terms-selector"] input');
         const glossarySearchResponse = page.waitForResponse(
@@ -235,11 +232,11 @@ test.describe(
         await glossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await dismissTagSuggestions(page);
         await submitTestCaseForm(page);
 
         await expect(page.getByTestId(NEW_TABLE_TEST_CASE.name)).toBeVisible();
@@ -255,17 +252,20 @@ test.describe(
           .click();
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toHaveText(`Edit ${NEW_TABLE_TEST_CASE.name}`);
+        await expect(page.getByTestId('form-heading')).toHaveText(
+          `Edit ${NEW_TABLE_TEST_CASE.name}`
+        );
 
-        await page.locator('#tableTestForm_params_columnName').clear();
-        await page.fill('#tableTestForm_params_columnName', 'new_column_name');
+        await page.locator('#testCaseFormV1_params_columnName').clear();
+        await page.fill('#testCaseFormV1_params_columnName', 'new_column_name');
 
         // Remove existing tag and add new one
-        await page.click(
-          `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
-        );
+        await page
+          .locator(
+            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
 
         await page.click('[data-testid="tags-selector"] input');
         const newTagsSearchResponse = page.waitForResponse(
@@ -277,15 +277,18 @@ test.describe(
         );
         await newTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one
-        await page.click(
-          `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
-        );
+        await page
+          .locator(
+            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const newGlossarySearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=glossaryTerm*`
@@ -297,17 +300,17 @@ test.describe(
         await newGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await dismissTagSuggestions(page);
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
         await toastNotification(page, 'Test case updated successfully.');
         await page.getByTestId('alert-bar').waitFor({
@@ -324,10 +327,10 @@ test.describe(
         await page.click(`[data-testid="edit-${NEW_TABLE_TEST_CASE.name}"]`);
         await testDefinitionResponse;
 
-        await page.locator('#tableTestForm_params_columnName').waitFor();
+        await page.locator('#testCaseFormV1_params_columnName').waitFor();
 
         await expect(
-          page.locator('#tableTestForm_params_columnName')
+          page.locator('#testCaseFormV1_params_columnName')
         ).toHaveValue('new_column_name');
 
         await page.getByRole('button', { name: 'Cancel' }).click();
@@ -390,15 +393,18 @@ test.describe(
           '/api/v1/dataQuality/testDefinitions?limit=*&entityType=COLUMN&testPlatform=OpenMetadata&supportedDataType=VARCHAR&supportedService=Mysql*'
         );
         await page.click('[id="root\\/column"]');
-        await page.click(`[title="${NEW_COLUMN_TEST_CASE.column}"]`);
+        await page
+          .getByRole('option')
+          .filter({ hasText: NEW_COLUMN_TEST_CASE.column })
+          .first()
+          .click();
         await testDefinitionResponse;
 
         await page.fill(
-          '[data-testid="test-case-name"]',
+          '[data-testid="test-case-name"] input',
           NEW_COLUMN_TEST_CASE.name
         );
-        await page.click('[id="root\\/testType"]');
-        await page.click(`[data-testid="${NEW_COLUMN_TEST_CASE.type}"]`);
+        await selectTestType(page, NEW_COLUMN_TEST_CASE.label);
         await page.fill(
           '#testCaseFormV1_params_minLength',
           NEW_COLUMN_TEST_CASE.min
@@ -423,10 +429,10 @@ test.describe(
         );
         await columnTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag1.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag1.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
 
         // Add glossary terms to column test case
         await page.click('[data-testid="glossary-terms-selector"] input');
@@ -440,11 +446,11 @@ test.describe(
         await columnGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm1.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm1.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await dismissTagSuggestions(page);
 
         await submitTestCaseForm(page);
 
@@ -456,14 +462,17 @@ test.describe(
           .getByTestId(`action-dropdown-${NEW_COLUMN_TEST_CASE.name}`)
           .click();
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
-        await page.locator('#tableTestForm_params_minLength').waitFor();
-        await page.locator('#tableTestForm_params_minLength').clear();
-        await page.fill('#tableTestForm_params_minLength', '4');
+        await page.locator('#testCaseFormV1_params_minLength').waitFor();
+        await page.locator('#testCaseFormV1_params_minLength').clear();
+        await page.fill('#testCaseFormV1_params_minLength', '4');
 
         // Remove existing tag and add new one for column test case
-        await page.click(
-          `[data-testid="selected-tag-${testTag1.responseData.fullyQualifiedName}"] svg`
-        );
+        await page
+          .locator(
+            '[data-testid="tags-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="tags-selector"] input');
         const columnNewTagsSearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=tag*`
@@ -474,15 +483,18 @@ test.describe(
         );
         await columnNewTagsSearchResponse;
         await page
-          .getByTestId(`tag-${testTag2.responseData.fullyQualifiedName}`)
+          .getByTestId(`tag-option-${testTag2.responseData.fullyQualifiedName}`)
           .click();
 
-        await page.getByRole('heading', { name: 'Tags' }).click();
+        await dismissTagSuggestions(page);
 
         // Remove existing glossary term and add new one for column test case
-        await page.click(
-          `[data-testid="glossary-terms-selector"] [data-testid="remove-tags"]`
-        );
+        await page
+          .locator(
+            '[data-testid="glossary-terms-selector"] [data-testid="tag-suggestion"] button'
+          )
+          .first()
+          .click();
         await page.click('[data-testid="glossary-terms-selector"] input');
         const columnNewGlossarySearchResponse = page.waitForResponse(
           `/api/v1/search/query?q=*index=glossaryTerm*`
@@ -494,17 +506,17 @@ test.describe(
         await columnNewGlossarySearchResponse;
         await page
           .getByTestId(
-            `tag-${testGlossaryTerm2.responseData.fullyQualifiedName}`
+            `tag-option-${testGlossaryTerm2.responseData.fullyQualifiedName}`
           )
           .click();
 
-        await page.getByRole('heading', { name: 'Glossary Terms' }).click();
+        await dismissTagSuggestions(page);
 
         const updateTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/*'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await updateTestCaseResponse;
         await toastNotification(page, 'Test case updated successfully.');
 
@@ -517,9 +529,9 @@ test.describe(
         );
         await page.click(`[data-testid="edit-${NEW_COLUMN_TEST_CASE.name}"]`);
         await testDefinitionResponse;
-        await page.locator('#tableTestForm_params_minLength').waitFor();
+        await page.locator('#testCaseFormV1_params_minLength').waitFor();
         await expect(
-          page.locator('#tableTestForm_params_minLength')
+          page.locator('#testCaseFormV1_params_minLength')
         ).toHaveValue('4');
 
         await page.locator('button').getByText('Cancel').click();
@@ -567,13 +579,13 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_0_value')
+          page.locator('#testCaseFormV1_params_allowedValues_0_value')
         ).toHaveValue('gmail');
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_1_value')
+          page.locator('#testCaseFormV1_params_allowedValues_1_value')
         ).toHaveValue('yahoo');
         await expect(
-          page.locator('#tableTestForm_params_allowedValues_2_value')
+          page.locator('#testCaseFormV1_params_allowedValues_2_value')
         ).toHaveValue('collate');
       });
 
@@ -583,18 +595,25 @@ test.describe(
           'Table test case display name'
         );
 
-        await expect(page.locator('[id="root\\/selected-entity"]')).toHaveValue(
+        // In edit mode the immutable table / column / test-type fields are
+        // disabled react-aria comboboxes/selects: the prefilled value renders as
+        // a chip/label inside the field container (the underlying input is hidden
+        // and empty), so assert on the container text. The table chip shows the
+        // fully qualified name (which contains the table name) and the test-type
+        // chip shows the test definition name. The name field is a plain disabled
+        // text input, so its value is asserted directly.
+        await expect(page.getByTestId('selectedTable')).toContainText(
           table2.entityResponseData?.['name']
         );
-        await expect(page.locator('[id="root\\/column"]')).toHaveValue(
+        await expect(page.locator('[id="root\\/column"]')).toContainText(
           table2.entity?.columns[3].name
         );
         await expect(page.locator('[id="root\\/name"]')).toHaveValue(
           testCaseName
         );
-        await expect(
-          page.locator('[id="root\\/columnValuesToBeInSet"]')
-        ).toHaveValue('Column Values To Be In Set');
+        await expect(page.getByTestId('test-type')).toContainText(
+          'columnValuesToBeInSet'
+        );
 
         // Edit test case display name
         const updateTestCaseResponse = page.waitForResponse(
@@ -603,7 +622,7 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse1 = await updateTestCaseResponse;
         const body1 = await updateResponse1.request().postData();
 
@@ -626,7 +645,7 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
         await testDefinitionResponse;
         await page
-          .getByTestId('edit-test-form')
+          .getByTestId('test-case-form-v1')
           .locator(descriptionBox)
           .fill('Test case description');
         const updateTestCaseResponse2 = page.waitForResponse(
@@ -635,7 +654,7 @@ test.describe(
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse2 = await updateTestCaseResponse2;
         const body2 = await updateResponse2.request().postData();
 
@@ -658,16 +677,16 @@ test.describe(
         await page.click(`[data-testid="edit-${testCaseName}"]`);
         await testDefinitionResponse3;
         await page
-          .locator('#tableTestForm_params_allowedValues_0_value')
+          .locator('#testCaseFormV1_params_allowedValues_0_value')
           .clear();
-        await page.fill('#tableTestForm_params_allowedValues_0_value', 'test');
+        await page.fill('#testCaseFormV1_params_allowedValues_0_value', 'test');
         const updateTestCaseResponse3 = page.waitForResponse(
           (response) =>
             response.url().includes('/api/v1/dataQuality/testCases/') &&
             response.request().method() === 'PATCH'
         );
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         const updateResponse3 = await updateTestCaseResponse3;
         const body3 = await updateResponse3.request().postData();
 
@@ -693,21 +712,17 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*q=*${testCaseName}*`
         );
         await page.fill(
-          '[data-testid="test-case-container"] [data-testid="searchbar"]',
+          '[data-testid="searchbar-component"] input',
           testCaseName
         );
         await searchTestCaseResponse;
-        await page.locator('.ant-spin').waitFor({
-          state: 'detached',
-        });
+        await waitForAllLoadersToDisappear(page);
 
         await page.getByTestId(`action-dropdown-${testCaseName}`).click();
 
         await page.click(`[data-testid="edit-${testCaseName}"]`);
 
-        await expect(
-          page.getByTestId('edit-test-case-drawer-title')
-        ).toBeVisible();
+        await expect(page.getByTestId('form-heading')).toBeVisible();
 
         await expect(page.locator('[id="root\\/displayName"]')).toHaveValue(
           'Table test case display name'
@@ -716,7 +731,7 @@ test.describe(
         await page.locator('[id="root\\/displayName"]').clear();
         await page.fill('[id="root\\/displayName"]', 'Updated display name');
 
-        await page.getByTestId('update-btn').click();
+        await page.getByTestId('create-btn').click();
         await toastNotification(page, 'Test case updated successfully.');
 
         await expect(
@@ -860,10 +875,10 @@ test.describe(
             url.url().includes('/api/v1/dataQuality/testCases/search/list') &&
             url.url().includes(testCases[0])
         );
-        await page.fill(
-          '[data-testid="test-case-container"] [data-testid="searchbar"]',
-          testCases[0]
-        );
+        await page
+          .getByTestId('searchbar-component')
+          .locator('input')
+          .fill(testCases[0]);
         await searchTestCaseResponse;
 
         await expect(
@@ -874,7 +889,7 @@ test.describe(
         const getTestCaseResponse = page.waitForResponse(
           '/api/v1/dataQuality/testCases/search/list?*'
         );
-        await page.locator('.ant-input-clear-icon').click();
+        await page.getByTestId('searchbar-component').locator('input').clear();
         await getTestCaseResponse;
 
         // Test case filter by service name
@@ -985,7 +1000,7 @@ test.describe(
           `/api/v1/dataQuality/testCases/search/list?*testCaseType=column*`
         );
         await page.getByTestId('test-case-type-select-filter').click();
-        await page.getByTitle('Column').click();
+        await page.getByTitle('Column', { exact: true }).click();
         await testCaseTypeByColumn;
 
         await expect(
@@ -1237,6 +1252,86 @@ test.describe(
         });
       } finally {
         await paginationTable.delete(apiContext);
+        await afterAction();
+      }
+    });
+
+    test('Editing display name does not emit a phantom tags patch op', async ({
+      page,
+    }) => {
+      test.slow();
+
+      const { apiContext, afterAction } = await getApiContext(page);
+      const phantomTagsTable = new TableClass();
+
+      try {
+        await phantomTagsTable.create(apiContext);
+        await phantomTagsTable.createTestCase(apiContext, {
+          name: `phantom_tags_test_case_${uuid()}`,
+          entityLink: `<#E::table::${phantomTagsTable.entityResponseData?.['fullyQualifiedName']}::columns::${phantomTagsTable.entity?.columns[3].name}>`,
+          parameterValues: [
+            { name: 'allowedValues', value: '["gmail","yahoo","collate"]' },
+          ],
+          testDefinition: 'columnValuesToBeInSet',
+        });
+
+        const testCaseName =
+          phantomTagsTable.testCasesResponseData[0]?.['name'];
+
+        // Drop `tags` from the list response to mimic the search-backed
+        // listing that omits relationship fields, reproducing the regression.
+        await page.route(
+          /dataQuality\/testCases\/search\/list/,
+          async (route) => {
+            const response = await route.fetch();
+            const json = await response.json();
+            json.data = (json.data ?? []).map(
+              (item: Record<string, unknown>) => {
+                const strippedItem = { ...item };
+                delete strippedItem.tags;
+
+                return strippedItem;
+              }
+            );
+            await route.fulfill({ json, response });
+          }
+        );
+
+        await visitDataQualityTab(page, phantomTagsTable);
+
+        await expect(
+          page.locator(`[data-testid="${testCaseName}"]`)
+        ).toBeVisible();
+
+        await page.getByTestId(`action-dropdown-${testCaseName}`).click();
+        await page.click(`[data-testid="edit-${testCaseName}"]`);
+
+        await page.fill(
+          '[id="root\\/displayName"]',
+          'Phantom tags display name'
+        );
+
+        const updateResponse = page.waitForResponse(
+          (response) =>
+            response.url().includes('/api/v1/dataQuality/testCases/') &&
+            response.request().method() === 'PATCH'
+        );
+        await page.getByTestId('create-btn').click();
+        const patchRequest = await updateResponse;
+        const patchBody = JSON.parse(
+          (await patchRequest.request().postData()) ?? '[]'
+        );
+
+        expect(
+          patchBody.some((op: { path: string }) => op.path === '/tags')
+        ).toBe(false);
+        expect(patchBody).toContainEqual({
+          op: 'replace',
+          path: '/displayName',
+          value: 'Phantom tags display name',
+        });
+      } finally {
+        await phantomTagsTable.delete(apiContext);
         await afterAction();
       }
     });

@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
+import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
 import { fireEvent, render, screen } from '@testing-library/react';
-import { TitleLink } from '../../common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import ContextCenterHeader from './ContextCenterHeader.component';
 
-jest.mock('../../common/TitleBreadcrumb/TitleBreadcrumb.component', () =>
-  jest.fn(() => <nav data-testid="title-breadcrumb" />)
-);
+jest.mock('react-router-dom', () => ({
+  useNavigate: jest.fn(() => jest.fn()),
+}));
 
 jest.mock('@openmetadata/ui-core-components', () => ({
+  Box: jest.fn(({ children }: { children: React.ReactNode }) => (
+    <div>{children}</div>
+  )),
+  Breadcrumbs: jest.fn(() => <nav data-testid="title-breadcrumb" />),
   Button: jest.fn(
     ({
       children,
@@ -32,14 +36,34 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Card: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
   )),
+  Input: jest.fn(
+    ({
+      onChange,
+      value,
+      placeholder,
+      'data-testid': testId,
+    }: {
+      onChange?: (value: string) => void;
+      value?: string;
+      placeholder?: string;
+      'data-testid'?: string;
+    }) => (
+      <input
+        data-testid={testId}
+        placeholder={placeholder}
+        value={value}
+        onChange={(e) => onChange?.(e.target.value)}
+      />
+    )
+  ),
   Typography: jest.fn(({ children }: { children: React.ReactNode }) => (
     <span>{children}</span>
   )),
 }));
 
-const mockBreadcrumbs: TitleLink[] = [
-  { name: 'Home', url: '/' },
-  { name: 'Context Center', url: '/context-center' },
+const mockBreadcrumbs: BreadcrumbItemType[] = [
+  { id: 'home', label: 'Home', href: '/' },
+  { id: 'context-center', label: 'Context Center', href: '/context-center' },
 ];
 
 describe('ContextCenterHeader', () => {

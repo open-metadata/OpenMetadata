@@ -35,7 +35,7 @@ import {
 } from '../../../../interface/FormUtils.interface';
 import { createPersona, updatePersona } from '../../../../rest/PersonaAPI';
 import { getUserById } from '../../../../rest/userAPI';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { generateFormFields, getField } from '../../../../utils/formUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import { UserTag } from '../../../common/UserTag/UserTag.component';

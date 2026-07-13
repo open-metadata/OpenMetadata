@@ -14,13 +14,14 @@
 import { HintText, Label, Tooltip } from '@openmetadata/ui-core-components';
 import { FieldProps } from '@rjsf/utils';
 import { Copy01, XClose } from '@untitledui/icons';
-import { isEmpty, startCase } from 'lodash';
+import { isEmpty } from 'lodash';
 import { useCallback, useState } from 'react';
 import { Input as AriaInput } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useClipboard } from '../../../../hooks/useClipBoard';
-import { splitCSV } from '../../../../utils/CSV/CSV.utils';
+import { getFormDisplayLabel } from '../formBuilderV1LabelUtils';
 
+import { splitCSV } from '../../../../utils/CSV/CSVPureUtils';
 const CoreArrayField = (props: FieldProps) => {
   const {
     idSchema,
@@ -109,14 +110,14 @@ const CoreArrayField = (props: FieldProps) => {
     ? t('message.filter-pattern-placeholder')
     : '';
 
-  const fieldLabel = label || schema.title || startCase(fieldName);
+  const fieldLabel = label || schema.title || getFormDisplayLabel(fieldName);
 
   return (
     <div className="tw:flex tw:flex-col tw:gap-1.5">
       {fieldLabel && <Label isRequired={required}>{fieldLabel}</Label>}
       <div
         className={[
-          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-[38px] tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5 tw:ring-1 tw:ring-inset tw:transition-shadow tw:duration-100 tw:ease-linear',
+          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5 tw:ring-1 tw:ring-inset tw:transition-shadow tw:duration-100 tw:ease-linear',
           isInvalid ? 'tw:ring-error_subtle' : 'tw:ring-primary',
           isDisabled
             ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled'

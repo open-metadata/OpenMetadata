@@ -22,7 +22,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 1.2,
     updatedAt: 1695189199255,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/8e6427d6-98cc-4334-b2f2-15fb62bde887',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/8e6427d6-98cc-4334-b2f2-15fb62bde887',
     changeDescription: {
       fieldsAdded: [],
       fieldsUpdated: [
@@ -87,7 +87,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 0.2,
     updatedAt: 1695188836184,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/1e62e2f6-7441-4c1b-bd15-15a23af23181',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/1e62e2f6-7441-4c1b-bd15-15a23af23181',
     changeDescription: {
       fieldsAdded: [],
       fieldsUpdated: [
@@ -150,7 +150,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 0.2,
     updatedAt: 1695188120073,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/1ee6cf19-3427-4476-ad1f-a74be497ce9a',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/1ee6cf19-3427-4476-ad1f-a74be497ce9a',
     changeDescription: {
       fieldsAdded: [
         {
@@ -203,7 +203,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 0.2,
     updatedAt: 1695050294702,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/cb58b70c-ce70-4fed-8e01-26a367dbb996',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/cb58b70c-ce70-4fed-8e01-26a367dbb996',
     changeDescription: {
       fieldsAdded: [
         {
@@ -265,7 +265,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 0.2,
     updatedAt: 1695187956364,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/2f2fdc1c-7c36-4e2c-b69f-2de6dc02c813',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/2f2fdc1c-7c36-4e2c-b69f-2de6dc02c813',
     changeDescription: {
       fieldsAdded: [
         {
@@ -327,7 +327,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 0.2,
     updatedAt: 1695188033746,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/b9c5f499-52bd-4684-b40f-572503a6f6cc',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/b9c5f499-52bd-4684-b40f-572503a6f6cc',
     changeDescription: {
       fieldsAdded: [
         {
@@ -389,7 +389,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 0.2,
     updatedAt: 1695187936462,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/62ae87df-fad2-461f-a0a5-7a68a10848a0',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/62ae87df-fad2-461f-a0a5-7a68a10848a0',
     changeDescription: {
       fieldsAdded: [
         {
@@ -451,7 +451,7 @@ export const MOCK_KNOWLEDGE_PAGE_LIST = [
     version: 0.1,
     updatedAt: 1695058778578,
     updatedBy: 'admin',
-    href: 'http://localhost:8585/api/v1/knowledgeCenter/bdea47a9-46d6-401a-a58e-a80882c9c68c',
+    href: 'http://localhost:8585/api/v1/contextCenter/pages/bdea47a9-46d6-401a-a58e-a80882c9c68c',
     owners: [
       {
         id: '9304f330-2e9a-4513-883b-c939e29683a8',

@@ -10,7 +10,9 @@ import static org.openmetadata.it.bootstrap.SharedEntities.*;
 
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +20,7 @@ import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.SharedEntities;
 import org.openmetadata.it.factories.DashboardServiceTestFactory;
 import org.openmetadata.it.factories.MessagingServiceTestFactory;
@@ -47,6 +50,7 @@ import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.schema.services.connections.database.MysqlConnection;
 import org.openmetadata.schema.services.connections.database.common.basicAuth;
 import org.openmetadata.schema.type.ApiStatus;
+import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
@@ -1144,6 +1148,148 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
         SdkClients.adminClient().dataProducts().get(updated.getId().toString(), "domains");
     assertEquals(1, fetched.getDomains().size());
     assertEquals(domain2.getId(), fetched.getDomains().get(0).getId());
+  }
+
+  @Test
+  void test_changeDataProductDomain_thenDeleteOriginalDomain_preservesDataProduct(
+      TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain1 = createTestDomain(ns, "domain_delete_original_1");
+    Domain domain2 = createTestDomain(ns, "domain_delete_original_2");
+
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_delete_original_domain"))
+                .withDescription("Data product moved before original domain deletion")
+                .withDomains(List.of(domain1.getFullyQualifiedName())));
+
+    dataProduct.setDomains(List.of(domain2.getEntityReference()));
+    DataProduct updated = patchEntity(dataProduct.getId().toString(), dataProduct);
+    assertEquals(1, updated.getDomains().size());
+    assertEquals(domain2.getId(), updated.getDomains().getFirst().getId());
+
+    client
+        .domains()
+        .delete(domain1.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    DataProduct fetched = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertFalse(Boolean.TRUE.equals(fetched.getDeleted()));
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().getFirst().getId());
+
+    ListResponse<DataProduct> listed =
+        client
+            .dataProducts()
+            .list(
+                new ListParams()
+                    .setFields("domains")
+                    .withDomain(domain2.getFullyQualifiedName())
+                    .withLimit(100));
+    assertTrue(
+        listed.getData().stream().anyMatch(dp -> dp.getId().equals(dataProduct.getId())),
+        "Moved data product must remain visible under its target domain after original domain deletion");
+  }
+
+  @Test
+  @ResourceLock("MULTI_DOMAIN_RULE")
+  void test_deleteOneDomainForMultiDomainDataProduct_preservesDataProductUntilLastDomain(
+      TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Domain domain1 = createTestDomain(ns, "multi_domain_delete_1");
+    Domain domain2 = createTestDomain(ns, "multi_domain_delete_2");
+
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(ns.prefix("dp_multi_domain_delete"))
+                .withDescription("Data product shared by multiple domains")
+                .withDomains(List.of(domain1.getFullyQualifiedName())));
+    updateDataProductDomainsWithMultiDomainRuleDisabled(client, dataProduct, domain1, domain2);
+
+    DataProduct sharedDataProduct =
+        client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    Double versionBeforeDomainDelete = sharedDataProduct.getVersion();
+    assertEquals(2, sharedDataProduct.getDomains().size());
+    assertTrue(
+        sharedDataProduct.getDomains().stream()
+            .anyMatch(domain -> domain.getId().equals(domain1.getId())));
+    assertTrue(
+        sharedDataProduct.getDomains().stream()
+            .anyMatch(domain -> domain.getId().equals(domain2.getId())));
+
+    long eventsSince = System.currentTimeMillis();
+    client
+        .domains()
+        .delete(domain1.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    DataProduct fetched = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+    assertFalse(Boolean.TRUE.equals(fetched.getDeleted()));
+    assertEquals(1, fetched.getDomains().size());
+    assertEquals(domain2.getId(), fetched.getDomains().getFirst().getId());
+    assertTrue(fetched.getVersion() > versionBeforeDomainDelete);
+    assertDomainDetachChangeEvent(
+        client, dataProduct.getId(), versionBeforeDomainDelete, fetched.getVersion(), eventsSince);
+
+    ListResponse<DataProduct> listed =
+        client
+            .dataProducts()
+            .list(
+                new ListParams()
+                    .setFields("domains")
+                    .withDomain(domain2.getFullyQualifiedName())
+                    .withLimit(100));
+    assertTrue(
+        listed.getData().stream().anyMatch(dp -> dp.getId().equals(dataProduct.getId())),
+        "Data product must remain visible under the surviving domain");
+
+    client
+        .domains()
+        .delete(domain2.getId().toString(), Map.of("hardDelete", "true", "recursive", "true"));
+
+    assertThrows(
+        Exception.class,
+        () -> client.dataProducts().get(dataProduct.getId().toString(), "domains"));
+  }
+
+  private void assertDomainDetachChangeEvent(
+      OpenMetadataClient client,
+      UUID dataProductId,
+      Double previousVersion,
+      Double currentVersion,
+      long eventsSince) {
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(10))
+        .untilAsserted(
+            () -> {
+              ListResponse<ChangeEvent> events =
+                  client.changeEvents().listUpdated("dataProduct", eventsSince);
+              assertTrue(
+                  events.getData().stream()
+                      .anyMatch(
+                          event ->
+                              dataProductId.equals(event.getEntityId())
+                                  && previousVersion.equals(event.getPreviousVersion())
+                                  && currentVersion.equals(event.getCurrentVersion())
+                                  && event.getChangeDescription() != null
+                                  && event.getChangeDescription().getFieldsDeleted() != null
+                                  && event.getChangeDescription().getFieldsDeleted().stream()
+                                      .anyMatch(field -> "domains".equals(field.getName()))),
+                  "Domain detach should emit a data product change event");
+            });
+  }
+
+  private DataProduct updateDataProductDomainsWithMultiDomainRuleDisabled(
+      OpenMetadataClient client, DataProduct dataProduct, Domain... domains) {
+    boolean originalRuleState = EntityRulesUtil.isMultiDomainRuleEnabled(client);
+    EntityRulesUtil.toggleMultiDomainRule(client, false);
+    try {
+      DataProduct update = client.dataProducts().get(dataProduct.getId().toString(), "domains");
+      update.setDomains(List.of(domains).stream().map(Domain::getEntityReference).toList());
+      return client.dataProducts().update(dataProduct.getId().toString(), update);
+    } finally {
+      EntityRulesUtil.toggleMultiDomainRule(client, originalRuleState);
+    }
   }
 
   @Test
@@ -3134,5 +3280,78 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
     SdkClients.adminClient()
         .getHttpClient()
         .execute(HttpMethod.PUT, addPath, addRequest, BulkOperationResult.class);
+  }
+
+  // ===================================================================
+  // Issue #28696 (data product analogue): a prefix-extension rename must keep
+  // the linked asset's dataProducts[].fullyQualifiedName pointing at the new
+  // FQN in search. Data products are flat and their reference update uses an
+  // EXACT-match term query + script (==oldFqn -> newFqn), so this path is
+  // idempotent and prefix-safe by construction (no sibling concern, no
+  // double-apply); this confirms it empirically.
+  // ===================================================================
+  @Test
+  void test_renameDataProductPrefixExtension_keepsAssetReference(TestNamespace ns)
+      throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    ObjectMapper mapper = new ObjectMapper();
+    Domain domain = getOrCreateDomain(ns);
+
+    String dpName = "dp_" + ns.shortPrefix();
+    DataProduct dataProduct =
+        createEntity(
+            new CreateDataProduct()
+                .withName(dpName)
+                .withDisplayName("Revenue")
+                .withDescription("Data product renamed via prefix extension (#28696)")
+                .withDomains(List.of(domain.getFullyQualifiedName())));
+    String oldFqn = dataProduct.getFullyQualifiedName();
+
+    Table asset = createTestTable(ns, "dp_asset", domain);
+    bulkAddAssets(
+        dataProduct.getFullyQualifiedName(),
+        new BulkAssets().withAssets(List.of(asset.getEntityReference())));
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), oldFqn);
+
+    dataProduct.setName(dpName + " Renamed");
+    dataProduct.setDisplayName("Revenue Renamed");
+    DataProduct renamed = patchEntity(dataProduct.getId().toString(), dataProduct);
+    String newFqn = renamed.getFullyQualifiedName();
+    assertNotEquals(oldFqn, newFqn);
+    assertTrue(newFqn.startsWith(oldFqn), "rename must extend the FQN as a prefix: " + newFqn);
+
+    awaitAssetDataProduct(client, mapper, asset.getId().toString(), newFqn);
+  }
+
+  private void awaitAssetDataProduct(
+      OpenMetadataClient client, ObjectMapper mapper, String tableId, String expectedDpFqn) {
+    Awaitility.await("asset " + tableId + " carries data product " + expectedDpFqn + " in search")
+        .atMost(Duration.ofSeconds(60))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .untilAsserted(
+            () -> {
+              String response =
+                  client
+                      .search()
+                      .query("id:" + tableId)
+                      .index("table_search_index")
+                      .size(1)
+                      .execute();
+              JsonNode hits = mapper.readTree(response).path("hits").path("hits");
+              assertTrue(hits.isArray() && !hits.isEmpty(), "table should be indexed");
+              List<String> dpFqns = new ArrayList<>();
+              for (JsonNode dp : hits.get(0).path("_source").path("dataProducts")) {
+                dpFqns.add(dp.path("fullyQualifiedName").asText());
+              }
+              assertTrue(
+                  dpFqns.contains(expectedDpFqn),
+                  "Expected data product FQN '"
+                      + expectedDpFqn
+                      + "' on table search doc but found "
+                      + dpFqns);
+            });
   }
 }

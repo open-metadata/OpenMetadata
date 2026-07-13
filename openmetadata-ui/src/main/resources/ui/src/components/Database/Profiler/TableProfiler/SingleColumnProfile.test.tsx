@@ -95,14 +95,18 @@ jest.mock('recharts', () => ({
   Tooltip: () => <div data-testid="tooltip" />,
 }));
 
-jest.mock('../../../../utils/CommonUtils', () => ({
-  formatNumberWithComma: (value: number) => value.toString(),
+jest.mock('../../../../utils/i18next/LocalUtil', () => ({
+  ...jest.requireActual('../../../../utils/i18next/LocalUtil'),
   Transi18next: ({ children }: { children: React.ReactNode }) => (
     <>{children}</>
   ),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/NumberUtils', () => ({
+  formatNumberWithComma: (value: number) => value.toString(),
+}));
+
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: (entity: { name?: string }) => entity.name ?? '',
 }));
 

@@ -1,0 +1,9 @@
+{
+  "name": "memory-bot",
+  "roles": [
+    {
+        "name": "IngestionBotRole",
+        "type": "role"
+    }
+  ]
+}

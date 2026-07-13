@@ -93,12 +93,45 @@ class FilterEntityImplTest {
   }
 
   @Test
+  void testInputOutputPortsAndGlossaryTermsAreRecognizedAsTriggerFields() throws Exception {
+    assertTrue(invokeFilter(List.of(fieldChange("inputPorts")), null, null));
+    assertTrue(invokeFilter(List.of(fieldChange("outputPorts")), null, null));
+    assertTrue(invokeFilter(List.of(fieldChange("glossaryTerms")), null, null));
+  }
+
+  @Test
+  void testInputOutputPortsCanBeIncludedOrExcluded() throws Exception {
+    List<String> includePortFields = List.of("inputPorts", "outputPorts");
+    assertTrue(invokeFilter(List.of(fieldChange("inputPorts")), includePortFields, null));
+    assertTrue(invokeFilter(List.of(fieldChange("outputPorts")), includePortFields, null));
+    assertFalse(invokeFilter(List.of(fieldChange("description")), includePortFields, null));
+
+    List<String> excludePortFields = List.of("inputPorts", "outputPorts");
+    assertFalse(invokeFilter(List.of(fieldChange("inputPorts")), null, excludePortFields));
+    assertFalse(invokeFilter(List.of(fieldChange("outputPorts")), null, excludePortFields));
+    assertTrue(invokeFilter(List.of(fieldChange("description")), null, excludePortFields));
+  }
+
+  @Test
   void testUnknownFieldIsNotRecognizedAsTriggerField() throws Exception {
     assertFalse(invokeFilter(List.of(fieldChange("someUnknownField")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("updatedAt")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("version")), null, null));
     assertFalse(invokeFilter(List.of(fieldChange("href")), null, null));
-    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
+  }
+
+  @Test
+  void testEntityStatusIsRecognizedAsTriggerField() throws Exception {
+    assertTrue(invokeFilter(List.of(fieldChange("entityStatus")), null, null));
+  }
+
+  @Test
+  void testEntityStatusCanBeExcludedPerWorkflow() throws Exception {
+    List<String> excludeStatus = List.of("entityStatus");
+    assertFalse(invokeFilter(List.of(fieldChange("entityStatus")), null, excludeStatus));
+    assertTrue(
+        invokeFilter(
+            List.of(fieldChange("entityStatus"), fieldChange("description")), null, excludeStatus));
   }
 
   @Test

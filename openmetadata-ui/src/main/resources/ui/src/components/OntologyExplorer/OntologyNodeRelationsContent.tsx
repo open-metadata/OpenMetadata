@@ -22,8 +22,9 @@ import {
 import React, { useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
-import { RELATION_META } from './OntologyExplorer.constants';
+import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
+import { getEffectiveRelationColor } from './utils/graphStyles';
 
 export interface OntologyNodeRelationsContentProps {
   readonly node: OntologyNode;
@@ -78,14 +79,16 @@ export const OntologyNodeRelationsContent: React.FC<
   const getDisplayName = useCallback(
     (relationType: string) => {
       const relationMeta = relationTypeMap.get(relationType);
+      const builtInLabelKey = RELATION_META[relationType]?.labelKey;
 
       return (
-        relationMeta?.displayName ??
-        relationLabelOverrides[relationType] ??
-        relationType
+        (relationMeta?.displayName ||
+          relationMeta?.name ||
+          relationLabelOverrides[relationType]) ??
+        (builtInLabelKey ? t(builtInLabelKey) : relationType)
       );
     },
-    [relationTypeMap, relationLabelOverrides]
+    [relationTypeMap, relationLabelOverrides, t]
   );
 
   const totalRelations =
@@ -134,7 +137,14 @@ export const OntologyNodeRelationsContent: React.FC<
               const labelText = relatedDisplayName(rel);
               const hasRowBelow = rowIndex < rows.length - 1;
 
-              const meta = RELATION_META[rel.relationType];
+              const customRelation = relationTypeMap.get(rel.relationType);
+              const effectiveColor = getEffectiveRelationColor(
+                rel.relationType,
+                customRelation
+              );
+              const meta = effectiveColor
+                ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()]
+                : undefined;
 
               return (
                 <li

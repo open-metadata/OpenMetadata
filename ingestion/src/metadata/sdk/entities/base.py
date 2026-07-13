@@ -62,6 +62,54 @@ class CsvExportOperation(Generic[TEntity]):
 
 
 @dataclass
+class AsyncJobResponse:
+    """Response shape for server-side async operations.
+
+    Returned with HTTP 202 Accepted by endpoints such as ``PUT /restore?async=true``
+    (issue #4003). The ``job_id`` correlates with WebSocket notifications on the
+    ``restoreEntityChannel`` channel emitted when the work completes.
+    """
+
+    job_id: str
+    message: Optional[str] = None  # noqa: UP045
+
+    @classmethod
+    def from_response(cls, payload: Any) -> "AsyncJobResponse":  # noqa: UP037
+        if isinstance(payload, AsyncJobResponse):
+            return payload
+        if isinstance(payload, dict):
+            job_id = payload.get("jobId")
+            if not job_id:
+                raise ValueError(f"Async response is missing a non-empty jobId: {payload!r}")
+            return cls(job_id=str(job_id), message=payload.get("message"))
+        raise TypeError(f"Cannot coerce {type(payload).__name__} into AsyncJobResponse")
+
+
+@dataclass
+class RestoreOperation(Generic[TEntity]):
+    """Fluent restore builder with optional server-side async dispatch.
+
+    Mirrors the Java SDK's ``Tables.find(id).restore().async().execute()`` style.
+    ``execute()`` runs the synchronous restore and returns the restored entity;
+    ``with_async()`` switches to the server-side async path that returns an
+    :class:`AsyncJobResponse` with a job id (issue #4003).
+    """
+
+    entity_cls: Any  # the BaseEntity subclass that owns this operation
+    entity_id: str
+    async_enabled: bool = field(default=False, init=False)
+
+    def with_async(self) -> "RestoreOperation[TEntity]":  # noqa: UP037
+        self.async_enabled = True
+        return self
+
+    def execute(self) -> Any:
+        if self.async_enabled:
+            return self.entity_cls._restore_server_async(self.entity_id)
+        return self.entity_cls._restore_sync(self.entity_id)
+
+
+@dataclass
 class CsvImportOperation(Generic[TEntity]):
     """Stateful helper for CSV import operations."""
 
@@ -388,8 +436,12 @@ class BaseEntity(Generic[TEntity, TCreate]):
 
     @classmethod
     def restore(cls, entity_id: UuidLike) -> TEntity:
-        """Restore a soft-deleted entity."""
+        """Restore a soft-deleted entity (synchronous)."""
 
+        return cls._restore_sync(entity_id)
+
+    @classmethod
+    def _restore_sync(cls, entity_id: UuidLike) -> TEntity:
         client = cls._get_client()
         rest_client = cls._get_rest_client(client)
         endpoint = cls._get_endpoint_path(client)
@@ -398,6 +450,50 @@ class BaseEntity(Generic[TEntity, TCreate]):
             json={"id": cls._stringify_identifier(entity_id)},
         )
         return cls._coerce_entity(response)
+
+    @classmethod
+    def restore_async(cls, entity_id: UuidLike) -> "AsyncJobResponse":  # noqa: UP037
+        """Trigger a server-side async restore.
+
+        Issues ``PUT /restore?async=true`` and returns the 202 Accepted payload
+        containing the job id. Use this for hierarchies large enough that the
+        synchronous response would exceed proxy / ALB idle timeouts (issue #4003).
+        """
+
+        return cls._restore_server_async(entity_id)
+
+    @classmethod
+    def _restore_server_async(cls, entity_id: UuidLike) -> "AsyncJobResponse":  # noqa: UP037
+        client = cls._get_client()
+        rest_client = cls._get_rest_client(client)
+        endpoint = cls._get_endpoint_path(client)
+        response = rest_client.put(
+            f"{endpoint}/restore?async=true",
+            json={"id": cls._stringify_identifier(entity_id)},
+        )
+        try:
+            return AsyncJobResponse.from_response(response)
+        except ValueError as missing_job_id:
+            # Defensive guard for older servers that don't honor ?async=true (or any
+            # future case where the resource short-circuits with a 200 + entity payload).
+            # Without this, the generic AsyncJobResponse jobId-missing error would be
+            # confusing.
+            raise ValueError(
+                f"Server did not return an async job for {endpoint}/restore. "
+                f"The server may be older than the async-restore release."
+            ) from missing_job_id
+
+    @classmethod
+    def restore_request(cls, entity_id: UuidLike) -> "RestoreOperation[TEntity]":  # noqa: UP037
+        """Return a fluent restore builder.
+
+        Examples::
+
+            restored = Table.restore_request(table_id).execute()
+            job = Table.restore_request(table_id).with_async().execute()
+        """
+
+        return RestoreOperation(entity_cls=cls, entity_id=cls._stringify_identifier(entity_id))
 
     @classmethod
     def update_custom_properties(cls, identifier: UuidLike):

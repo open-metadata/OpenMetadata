@@ -24,6 +24,7 @@ from sqlalchemy.sql.selectable import TableSample
 from sqlalchemy.sql.sqltypes import Enum
 
 from metadata.generated.schema.entity.data.table import (
+    ColumnProfilerConfig,
     PartitionProfilerConfig,
     TableData,
 )
@@ -40,10 +41,12 @@ from metadata.profiler.orm.functions.table_metric_computer import (
 )
 from metadata.profiler.processor.handle_partition import build_partition_predicate
 from metadata.profiler.processor.runner import QueryRunner
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.constants import UTF_8
 from metadata.utils.helpers import is_safe_sql_query
 from metadata.utils.logger import profiler_interface_registry_logger
+from metadata.utils.ssl_manager import get_ssl_connection
 
 logger = profiler_interface_registry_logger()
 
@@ -80,8 +83,41 @@ class SQASampler(SamplerInterface, SQAInterfaceMixin):
 
     def __init__(self, *args, **kwargs):
         super().__init__(*args, **kwargs)
+        db_config = kwargs.get("config") or DatabaseSamplerConfig()
+        self.connection = get_ssl_connection(self.service_connection_config)
+        self.include_columns: list[ColumnProfilerConfig] = db_config.include_columns or []
+        self.exclude_columns: list[str] = db_config.exclude_columns or []
+        self.partition_details: PartitionProfilerConfig | None = db_config.partition_details
+        self.sample_query: str | None = db_config.sample_query
+        self.processing_engine = db_config.processing_engine
         self._table = self.build_table_orm(self.entity, self.service_connection_config, self.ometa_client)
         self.session_factory = create_and_bind_thread_safe_session(self.connection)
+
+    def _get_excluded_columns(self) -> set[str]:
+        if self.exclude_columns:
+            return set(self.exclude_columns)
+        return set()
+
+    def _get_included_columns(self) -> set[str]:
+        if self.include_columns:
+            return {col.columnName for col in self.include_columns if col.columnName}
+        return set()
+
+    @property
+    def columns(self):
+        """Return columns filtered by include/exclude lists."""
+        if self._columns:
+            return self._columns
+
+        if self._get_included_columns():
+            self._columns = [col for col in self.get_columns() if col.name in self._get_included_columns()]
+
+        if not self._get_included_columns():
+            self._columns = [
+                col for col in self._columns or self.get_columns() if col.name not in self._get_excluded_columns()
+            ]
+
+        return self._columns
 
     @property
     def raw_dataset(self):

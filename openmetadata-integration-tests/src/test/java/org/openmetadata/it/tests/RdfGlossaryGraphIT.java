@@ -78,7 +78,9 @@ public class RdfGlossaryGraphIT {
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
 
-  private static final String FUSEKI_IMAGE = "stain/jena-fuseki:latest";
+  // See TestSuiteBootstrap for why we use secoresearch/fuseki:5.5.0 instead
+  // of the unmaintained stain/jena-fuseki image.
+  private static final String FUSEKI_IMAGE = "secoresearch/fuseki:5.5.0";
   private static final int FUSEKI_PORT = 3030;
   private static final String FUSEKI_DATASET = "openmetadata";
   private static final String FUSEKI_ADMIN_PASSWORD = "test-admin";
@@ -91,12 +93,15 @@ public class RdfGlossaryGraphIT {
     if (TestSuiteBootstrap.isFusekiEnabled()) {
       fusekiEndpoint = TestSuiteBootstrap.getFusekiEndpoint();
     } else {
+      // No FUSEKI_DATASET_1 here: that was stain-specific. The dataset is
+      // created via /$/datasets by JenaFusekiStorage.ensureDatasetExists().
+      // tmpfs the TDB2 dataset dir so writes never hit the container's
+      // writable layer — keeps a long IT run from bloating it.
       localFusekiContainer =
           new GenericContainer<>(DockerImageName.parse(FUSEKI_IMAGE))
               .withExposedPorts(FUSEKI_PORT)
               .withEnv("ADMIN_PASSWORD", FUSEKI_ADMIN_PASSWORD)
-              .withEnv("FUSEKI_DATASET_1", FUSEKI_DATASET)
-              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m,uid=100,gid=101"))
+              .withTmpFs(java.util.Map.of("/fuseki/databases", "rw,size=256m"))
               .waitingFor(
                   Wait.forHttp("/$/ping")
                       .forPort(FUSEKI_PORT)
@@ -183,37 +188,39 @@ public class RdfGlossaryGraphIT {
     Glossary glossary = GlossaryTestFactory.createWithName(ns, "labeled");
     GlossaryTerm term = GlossaryTermTestFactory.createWithName(ns, glossary, "t1");
 
+    // The term node and its `group`/`glossaryId` projection land in RDF separately, so wait for the
+    // full projection — not just node presence — before asserting. Otherwise the node can already
+    // be
+    // present while `group` is still null on a slower run, which is exactly the flake this guards.
     Awaitility.await()
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
         .untilAsserted(
-            () ->
-                assertTrue(
-                    nodeIds(fetchGlossaryGraph(glossary.getId())).contains(term.getId()),
-                    "Term should be projected to RDF before assertion"));
+            () -> {
+              JsonNode scoped = fetchGlossaryGraph(glossary.getId());
+              JsonNode termNode = null;
+              for (JsonNode node : scoped.get("nodes")) {
+                JsonNode idNode = node.get("id");
+                if (idNode != null && term.getId().toString().equals(idNode.asText())) {
+                  termNode = node;
+                  break;
+                }
+              }
+              assertNotNull(termNode, "Scoped response should include the created term");
 
-    JsonNode scoped = fetchGlossaryGraph(glossary.getId());
-    JsonNode termNode = null;
-    for (JsonNode node : scoped.get("nodes")) {
-      JsonNode idNode = node.get("id");
-      if (idNode != null && term.getId().toString().equals(idNode.asText())) {
-        termNode = node;
-        break;
-      }
-    }
-    assertNotNull(termNode, "Scoped response should include the created term");
+              JsonNode groupNode = termNode.get("group");
+              assertNotNull(
+                  groupNode,
+                  "Term node should carry a `group` field with the parent glossary's name");
+              assertEquals(
+                  glossary.getName(),
+                  groupNode.asText(),
+                  "Group label should match the parent glossary's name");
 
-    JsonNode groupNode = termNode.get("group");
-    assertNotNull(
-        groupNode, "Term node should carry a `group` field with the parent glossary's name");
-    assertEquals(
-        glossary.getName(),
-        groupNode.asText(),
-        "Group label should match the parent glossary's name");
-
-    JsonNode glossaryIdNode = termNode.get("glossaryId");
-    assertNotNull(glossaryIdNode, "Term node should carry the parent glossary's id");
-    assertEquals(glossary.getId().toString(), glossaryIdNode.asText());
+              JsonNode glossaryIdNode = termNode.get("glossaryId");
+              assertNotNull(glossaryIdNode, "Term node should carry the parent glossary's id");
+              assertEquals(glossary.getId().toString(), glossaryIdNode.asText());
+            });
   }
 
   @Test
@@ -383,6 +390,180 @@ public class RdfGlossaryGraphIT {
     // Membership and label survive all of it.
     awaitMembershipAndLabel(glossary, a, a.getName());
     awaitMembershipAndLabel(glossary, b, b.getName());
+  }
+
+  @Test
+  void customRdfPredicateRelationSurfacesInGraphEndpoint(TestNamespace ns) throws Exception {
+    // Regression: GlossaryTermRelationSettings lets operators define custom
+    // relation types with arbitrary rdfPredicate URIs (e.g. "Enrolls In" with
+    // rdfPredicate https://example.com/ontology/enrolls). The writer
+    // (bulkAddGlossaryTermRelations / addGlossaryTermRelation) honoured those
+    // custom predicates and wrote the triples to Fuseki correctly. The reader
+    // (RdfRepository.buildGlossaryTermGraphQuery) hardcoded its SPARQL
+    // FILTER ?relationType IN (...) to the built-in CURIE list, silently
+    // dropping every custom-typed edge. Customer environments saw their
+    // relations in the Overview tab (DB-backed) but the term-page Relations
+    // Graph (the RDF-backed view) rendered only the source node alone — the
+    // image-v6 / image-v8 case in the bug report. None of the existing tests
+    // exercised this writer/reader symmetry because they all stuck to built-in
+    // relation types.
+    //
+    // This test registers a custom relation type via the settings API, points
+    // two terms at each other through it, and asserts the graph endpoint
+    // returns the edge. Cleans up the settings entry on the way out so
+    // parallel/subsequent tests aren't affected.
+    String customTypeName = "regressionCustomRel";
+    URI customPredicate = URI.create("https://example.com/regression/customRel");
+    addCustomRelationTypeToSettings(customTypeName, customPredicate);
+    try {
+      Glossary glossary = GlossaryTestFactory.createWithName(ns, "customRdfPred");
+      GlossaryTerm a = GlossaryTermTestFactory.createWithName(ns, glossary, "alpha");
+      GlossaryTerm b = GlossaryTermTestFactory.createWithName(ns, glossary, "beta");
+
+      awaitTermInGraph(glossary.getId(), a.getId());
+      awaitTermInGraph(glossary.getId(), b.getId());
+
+      addRelation(a.getId(), b.getId(), customTypeName);
+      awaitRelatedTermInDb(a.getId(), b.getId(), customTypeName);
+
+      // The fix: buildGlossaryTermGraphQuery must read configured custom
+      // predicates from GlossaryTermRelationSettings and append them to the
+      // FILTER list. Without the fix this edge is silently filtered out
+      // and the graph endpoint returns nodes-but-no-edges for the source
+      // term — exactly the customer's symptom.
+      awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
+    } finally {
+      removeCustomRelationTypeFromSettings(customTypeName);
+    }
+  }
+
+  @Test
+  void customRelationWithNullRdfPredicateSurfacesInGraphEndpoint(TestNamespace ns)
+      throws Exception {
+    // Companion to customRdfPredicateRelationSurfacesInGraphEndpoint covering
+    // the OTHER half of the customer's actual configuration: a custom relation
+    // type registered in GlossaryTermRelationSettings WITHOUT a populated
+    // rdfPredicate (the Novartis instance had `definedby`, `enabledby`,
+    // `enrollsin` all stored with rdfPredicate=null). On the writer side
+    // getGlossaryTermRelationPredicate falls back to
+    // `https://open-metadata.org/ontology/<name>`; the reader fix must mirror
+    // that fallback or the edges still don't surface.
+    String customTypeName = "regressionNullPredRel";
+    addCustomRelationTypeToSettings(customTypeName, /* rdfPredicate */ null);
+    try {
+      Glossary glossary = GlossaryTestFactory.createWithName(ns, "nullRdfPred");
+      GlossaryTerm a = GlossaryTermTestFactory.createWithName(ns, glossary, "gamma");
+      GlossaryTerm b = GlossaryTermTestFactory.createWithName(ns, glossary, "delta");
+
+      awaitTermInGraph(glossary.getId(), a.getId());
+      awaitTermInGraph(glossary.getId(), b.getId());
+
+      addRelation(a.getId(), b.getId(), customTypeName);
+      awaitRelatedTermInDb(a.getId(), b.getId(), customTypeName);
+
+      // Without the null-rdfPredicate fallback in the reader's FILTER assembly,
+      // this edge (written as om:regressionNullPredRel) is filtered out.
+      awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
+    } finally {
+      removeCustomRelationTypeFromSettings(customTypeName);
+    }
+  }
+
+  /**
+   * PUT a new relation type onto the system-level GlossaryTermRelationSettings.
+   * Preserves whatever's already configured (defaults + any types from earlier
+   * tests still on the way out) and appends our custom one. Pass {@code null}
+   * for {@code rdfPredicate} to exercise the "operator added a type but didn't
+   * fill in the RDF predicate URI" case — the writer falls back to
+   * {@code om:<name>} and the reader must mirror that fallback.
+   */
+  private void addCustomRelationTypeToSettings(String name, URI rdfPredicate) throws Exception {
+    JsonNode existing = fetchGlossaryTermRelationSettings();
+    com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
+    payload.put("config_type", "glossaryTermRelationSettings");
+    com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode types = MAPPER.createArrayNode();
+    if (existing != null && existing.has("relationTypes")) {
+      existing.get("relationTypes").forEach(types::add);
+    }
+    com.fasterxml.jackson.databind.node.ObjectNode custom = MAPPER.createObjectNode();
+    custom.put("name", name);
+    if (rdfPredicate != null) {
+      custom.put("rdfPredicate", rdfPredicate.toString());
+    }
+    types.add(custom);
+    value.set("relationTypes", types);
+    payload.set("config_value", value);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(
+        200,
+        response.statusCode(),
+        () -> "PUT settings failed: " + response.statusCode() + " " + response.body());
+  }
+
+  private void removeCustomRelationTypeFromSettings(String name) {
+    try {
+      JsonNode existing = fetchGlossaryTermRelationSettings();
+      if (existing == null || !existing.has("relationTypes")) {
+        return;
+      }
+      com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
+      payload.put("config_type", "glossaryTermRelationSettings");
+      com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
+      com.fasterxml.jackson.databind.node.ArrayNode kept = MAPPER.createArrayNode();
+      for (JsonNode t : existing.get("relationTypes")) {
+        if (!name.equals(t.path("name").asText(null))) {
+          kept.add(t);
+        }
+      }
+      value.set("relationTypes", kept);
+      payload.set("config_value", value);
+      HttpRequest request =
+          HttpRequest.newBuilder()
+              .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+              .header("Content-Type", "application/json")
+              .timeout(Duration.ofSeconds(30))
+              .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
+              .build();
+      HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    } catch (Exception e) {
+      LOG.warn("Failed to remove custom relation type {} from settings", name, e);
+    }
+  }
+
+  private JsonNode fetchGlossaryTermRelationSettings() throws Exception {
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .GET()
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    if (response.statusCode() != 200) {
+      return null;
+    }
+    JsonNode all = MAPPER.readTree(response.body());
+    for (JsonNode s : all.path("data")) {
+      if ("glossaryTermRelationSettings".equals(s.path("config_type").asText(null))) {
+        JsonNode value = s.get("config_value");
+        if (value != null && value.isTextual()) {
+          return MAPPER.readTree(value.asText());
+        }
+        return value;
+      }
+    }
+    return null;
   }
 
   @Test

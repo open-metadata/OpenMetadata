@@ -25,7 +25,6 @@ import {
   ALERT_WITH_PERMISSION_ROLE_NAME,
 } from '../constant/alert';
 import { AlertDetails, EventDetails } from '../constant/alert.interface';
-import { DELETE_TERM } from '../constant/common';
 import { Domain } from '../support/domain/Domain';
 import { DashboardClass } from '../support/entity/DashboardClass';
 import { TableClass } from '../support/entity/TableClass';
@@ -199,12 +198,6 @@ export const deleteAlertSteps = async (
   displayName: string
 ) => {
   await page.getByTestId(`alert-delete-${name}`).click();
-
-  await expect(page.locator('.ant-modal-header')).toHaveText(
-    `Delete subscription "${displayName}"`
-  );
-
-  await page.fill('[data-testid="confirmation-text-input"]', DELETE_TERM);
 
   const deleteAlert = page.waitForResponse(
     (response) =>
@@ -398,6 +391,11 @@ export const addEntityFQNFilter = async ({
 
   // Ensure no dropdowns visible before searching
   await ensureNoDropdownVisible(page);
+
+  // Focus the combobox before filling — Ant Design Select with mode="multiple"
+  // renders the search input as readonly until it receives focus, which makes
+  // page.fill() fail with "element is not editable".
+  await page.click('[data-testid="fqn-list-select"] [role="combobox"]');
 
   // Search and select entity
   const getSearchResult = page.waitForResponse('/api/v1/search/query?q=*');

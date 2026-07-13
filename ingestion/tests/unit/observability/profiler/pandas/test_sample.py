@@ -42,6 +42,7 @@ from metadata.sampler.models import (
     SampleConfig,
 )
 from metadata.sampler.pandas.sampler import DatalakeSampler
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 
 
 class Base(DeclarativeBase):
@@ -154,7 +155,7 @@ class DatalakeSampleTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def setUpClass(cls, mock_get_connection, mock_sample_get_connection) -> None:
@@ -177,10 +178,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=cls.table_entity,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=SampleConfigType.STATIC,
-                        config=StaticSamplingConfig(profileSample=50.0),
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(profileSample=50.0),
+                        )
                     )
                 ),
             )
@@ -194,7 +197,7 @@ class DatalakeSampleTest(TestCase):
             )
 
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_random_sampler(self, _):
@@ -218,10 +221,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=SampleConfigType.STATIC,
-                        config=StaticSamplingConfig(profileSample=50.0),
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(profileSample=50.0),
+                        )
                     )
                 ),
             )
@@ -234,7 +239,7 @@ class DatalakeSampleTest(TestCase):
         return_value=FakeConnection(),
     )
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_sample_property(self, *_):
@@ -257,10 +262,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=SampleConfigType.STATIC,
-                        config=StaticSamplingConfig(profileSample=50.0),
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(profileSample=50.0),
+                        )
                     )
                 ),
             )
@@ -320,7 +327,7 @@ class DatalakeSampleTest(TestCase):
         assert sum(res.get(User.age.name)[Metrics.histogram.name]["frequencies"]) < 30
 
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_sample_data(self, *_):
@@ -343,10 +350,12 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=SampleConfigType.STATIC,
-                        config=StaticSamplingConfig(profileSample=50.0),
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(profileSample=50.0),
+                        )
                     )
                 ),
             )
@@ -357,7 +366,7 @@ class DatalakeSampleTest(TestCase):
             assert len(sample_data.rows) == 4
 
     @mock.patch(
-        "metadata.sampler.sampler_interface.get_ssl_connection",
+        "metadata.sampler.pandas.sampler.get_ssl_connection",
         return_value=FakeConnection(),
     )
     def test_sample_from_user_query(self, *_):
@@ -380,13 +389,15 @@ class DatalakeSampleTest(TestCase):
                 service_connection_config=DatalakeConnection(configSource={}),
                 ometa_client=None,
                 entity=self.table_entity,
-                default_sample_config=SampleConfig(
-                    profileSampleConfig=ProfileSampleConfig(
-                        sampleConfigType=SampleConfigType.STATIC,
-                        config=StaticSamplingConfig(profileSample=50.0),
-                    )
+                config=DatabaseSamplerConfig(
+                    sample_config=SampleConfig(
+                        profileSampleConfig=ProfileSampleConfig(
+                            sampleConfigType=SampleConfigType.STATIC,
+                            config=StaticSamplingConfig(profileSample=50.0),
+                        )
+                    ),
+                    sample_query="`age` > 30",
                 ),
-                sample_query="`age` > 30",
             )
             sample_data = sampler.fetch_sample_data()
 

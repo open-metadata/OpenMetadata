@@ -29,9 +29,11 @@ import {
   visitEntityPage,
   waitForAllLoadersToDisappear,
 } from '../../../utils/entity';
+import { expandAdvancedConfig } from '../../../utils/profilerForm';
 import { visitServiceDetailsPage } from '../../../utils/service';
 import {
   checkServiceFieldSectionHighlighting,
+  getAgentCard,
   Services,
 } from '../../../utils/serviceIngestion';
 import ServiceBaseClass from './ServiceBaseClass';
@@ -93,15 +95,37 @@ class MysqlIngestionClass extends ServiceBaseClass {
 
   async fillIngestionDetails(page: Page) {
     for (const filter of this.tableFilter) {
-      await page.fill('#root\\/tableFilterPattern\\/includes', filter);
+      await waitForAllLoadersToDisappear(page);
+      const ingestionFilterSection = page.getByTestId(
+        'ingestion-section-filters'
+      );
+      if (await ingestionFilterSection.isVisible()) {
+        ingestionFilterSection.click();
+      }
+      await page.getByTestId('filter-section-tableFilterPattern').click();
+      await page.getByTestId('tableFilterPattern-only-specific-button').click();
       await page
-        .locator('#root\\/tableFilterPattern\\/includes')
+        .getByTestId('filter-section-tableFilterPattern')
+        .getByTestId('include-filter-input')
+        .locator('input')
+        .fill(filter);
+      await page
+        .getByTestId('filter-section-tableFilterPattern')
+        .getByTestId('include-filter-input')
+        .locator('input')
         .press('Enter');
     }
     for (const schema of this.excludeSchemas) {
-      await page.fill('#root\\/schemaFilterPattern\\/excludes', schema);
+      await page.getByTestId('filter-section-schemaFilterPattern').click();
       await page
-        .locator('#root\\/schemaFilterPattern\\/excludes')
+        .getByTestId('filter-section-schemaFilterPattern')
+        .getByTestId('exclude-filter-input')
+        .locator('input')
+        .fill(schema);
+      await page
+        .getByTestId('filter-section-schemaFilterPattern')
+        .getByTestId('exclude-filter-input')
+        .locator('input')
         .press('Enter');
     }
   }
@@ -137,18 +161,28 @@ class MysqlIngestionClass extends ServiceBaseClass {
       }
       await page.click('[data-testid="add-new-ingestion-button"]');
 
-      await page
-        .locator('.ant-dropdown:visible [data-menu-id*="profiler"]')
-        .waitFor();
+      const profilerMenuItem = page
+        .locator('.ant-dropdown:visible')
+        .getByTestId('agent-item-profiler');
+      await expect(profilerMenuItem).toBeVisible();
+      await profilerMenuItem.click();
 
-      await page.click('[data-menu-id*="profiler"]');
+      await waitForAllLoadersToDisappear(page);
+      await expandAdvancedConfig(page);
+
+      const sampleConfigTypeSelect = page.getByTestId(
+        'sample-config-type-select'
+      );
+      await expect(sampleConfigTypeSelect).toBeVisible();
+      await sampleConfigTypeSelect.click();
+      await page.locator('[data-key="STATIC"]').click();
 
       await page.getByTestId('profile-sample-input').waitFor();
       await page
         .getByTestId('profile-sample-input')
         .locator('input')
         .fill('10');
-      await page.click('[data-testid="submit-btn"]');
+      await page.click('[data-testid="next-button"]');
       // Make sure we create ingestion with None schedule to avoid conflict between Airflow and Argo behavior
       await this.scheduleIngestion(page);
 
@@ -179,9 +213,9 @@ class MysqlIngestionClass extends ServiceBaseClass {
       // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
       await page.waitForTimeout(3000);
 
-      await page.click(
-        `[data-row-key*="${response.data[0].name}"] [data-testid="more-actions"]`
-      );
+      await getAgentCard(page, response.data[0].name)
+        .getByTestId('more-actions')
+        .click();
       await page.getByTestId('run-button').click();
 
       await toastNotification(page, `Pipeline triggered successfully!`);
@@ -209,21 +243,30 @@ class MysqlIngestionClass extends ServiceBaseClass {
   }
 
   async validateIngestionDetails(page: Page) {
-    const tableIncludes = page.getByTestId(
-      'workflow-array-field-root/tableFilterPattern/includes'
+    await waitForAllLoadersToDisappear(page);
+    const ingestionFilterSection = page.getByTestId(
+      'ingestion-section-filters'
     );
+    if (await ingestionFilterSection.isVisible()) {
+      ingestionFilterSection.click();
+    }
+    await page.getByTestId('filter-section-tableFilterPattern').click();
+    await page.getByTestId('filter-section-schemaFilterPattern').click();
+    const tableIncludes = page.getByTestId('filter-section-tableFilterPattern');
     const schemaExcludes = page.getByTestId(
-      'workflow-array-field-root/schemaFilterPattern/excludes'
+      'filter-section-schemaFilterPattern'
     );
-
-    await tableIncludes.waitFor();
 
     for (const filter of this.tableFilter) {
-      await expect(tableIncludes.locator(`[title="${filter}"]`)).toBeVisible();
+      await expect(
+        tableIncludes.getByTestId(`include-chip-contains:${filter}`)
+      ).toBeVisible();
     }
 
     for (const schema of this.excludeSchemas) {
-      await expect(schemaExcludes.locator(`[title="${schema}"]`)).toBeVisible();
+      await expect(
+        schemaExcludes.getByTestId(`exclude-chip-startsWith:^${schema}`)
+      ).toBeVisible();
     }
   }
 }

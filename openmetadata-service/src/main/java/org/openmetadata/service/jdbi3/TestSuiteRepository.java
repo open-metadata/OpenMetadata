@@ -33,9 +33,12 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.Queue;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.sqlobject.transaction.Transaction;
@@ -45,10 +48,14 @@ import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipel
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.DataQualityReportBatchRequest;
+import org.openmetadata.schema.tests.DataQualityReportBatchResponse;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.ColumnTestSummaryDefinition;
+import org.openmetadata.schema.tests.type.DataQualityReportRequest;
+import org.openmetadata.schema.tests.type.DataQualityReportResult;
 import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -73,6 +80,7 @@ import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.search.SearchListFilter;
 import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.vector.TestSuiteBodyTextContributor;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.DeleteEntityResponse;
@@ -87,6 +95,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public static final String SUMMARY_FIELD = "summary";
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
+  private static final int MAX_CONCURRENT_REPORT_QUERIES = 10;
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
@@ -136,6 +145,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         UPDATE_FIELDS);
     quoteFqn = false;
     supportsSearch = true;
+    TestSuiteBodyTextContributor.INSTANCE.register();
     EntityLifecycleEventDispatcher.getInstance()
         .registerHandler(new TestSuitePipelineStatusHandler());
     fieldFetchers.put(SUMMARY_FIELD, this::fetchAndSetTestCaseResultSummary);
@@ -198,10 +208,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public void setInheritedFields(TestSuite testSuite, EntityUtil.Fields fields) {
     if (Boolean.TRUE.equals(testSuite.getBasic()) && testSuite.getBasicEntityReference() != null) {
       Table table =
-          Entity.getEntity(
-              TABLE, testSuite.getBasicEntityReference().getId(), "owners,domains", ALL);
-      inheritOwners(testSuite, fields, table);
-      inheritDomains(testSuite, fields, table);
+          Entity.getEntityOrNull(testSuite.getBasicEntityReference(), "owners,domains", ALL);
+      if (table != null) {
+        inheritOwners(testSuite, fields, table);
+        inheritDomains(testSuite, fields, table);
+      }
     }
   }
 
@@ -243,8 +254,8 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
     return records.stream()
         .filter(r -> TEST_CASE.equals(r.getToEntity()))
+        .filter(rel -> idToRefMap.get(rel.getToId()) != null)
         .map(rel -> Map.entry(UUID.fromString(rel.getFromId()), idToRefMap.get(rel.getToId())))
-        .filter(entry -> entry.getValue() != null)
         .collect(
             Collectors.groupingBy(
                 Map.Entry::getKey, Collectors.mapping(Map.Entry::getValue, Collectors.toList())));
@@ -367,6 +378,44 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     SearchAggregation searchAggregation = SearchIndexUtils.buildAggregationTree(aggQuery);
     return searchRepository.genericAggregation(
         queryWithDomain, index, searchAggregation, subjectContext);
+  }
+
+  public DataQualityReportBatchResponse getDataQualityReportBatch(
+      DataQualityReportBatchRequest request, SubjectContext subjectContext) {
+    List<DataQualityReportResult> results =
+        runReportsConcurrently(request.getRequests(), subjectContext);
+    return new DataQualityReportBatchResponse().withResults(results);
+  }
+
+  private List<DataQualityReportResult> runReportsConcurrently(
+      List<DataQualityReportRequest> requests, SubjectContext subjectContext) {
+    Queue<DataQualityReportResult> results = new ConcurrentLinkedQueue<>();
+    int concurrency = Math.min(requests.size(), MAX_CONCURRENT_REPORT_QUERIES);
+    try (ExecutorService executor = Executors.newFixedThreadPool(concurrency)) {
+      for (DataQualityReportRequest item : requests) {
+        executor.submit(() -> results.add(runSingleReport(item, subjectContext)));
+      }
+    }
+    return new ArrayList<>(results);
+  }
+
+  private DataQualityReportResult runSingleReport(
+      DataQualityReportRequest item, SubjectContext subjectContext) {
+    DataQualityReportResult result = new DataQualityReportResult().withKey(item.getKey());
+    try {
+      DataQualityReport report =
+          getDataQualityReport(
+              item.getQ(),
+              item.getAggregationQuery(),
+              item.getIndex(),
+              item.getDomain(),
+              subjectContext);
+      result.withReport(report);
+    } catch (IOException | RuntimeException e) {
+      LOG.error("Failed to compute data quality report for key '{}'", item.getKey(), e);
+      result.withError(e.getMessage() != null ? e.getMessage() : e.getClass().getSimpleName());
+    }
+    return result;
   }
 
   private String addDomainFilter(String query, String domain, String index) {
@@ -700,7 +749,7 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
       updater.update();
       changeType = ENTITY_SOFT_DELETED;
     } else {
-      cleanup(updated);
+      cleanup(updatedBy, updated);
       changeType = ENTITY_DELETED;
     }
     LOG.info("{} deleted {}", hardDelete ? "Hard" : "Soft", updated.getFullyQualifiedName());
@@ -803,28 +852,33 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
   public void onTestSuiteExecutionComplete(IngestionPipeline pipeline) {
     try {
-      TestSuite testSuite =
-          Entity.getEntity(
-              pipeline.getService().getType(),
-              pipeline.getService().getId(),
-              "*",
-              Include.NON_DELETED);
+      var latestStatus = IngestionPipelineRepository.latestPipelineStatus(pipeline);
+      if (latestStatus == null) {
+        LOG.warn(
+            "Pipeline {} completed but has no pipeline statuses; skipping test suite update",
+            pipeline.getFullyQualifiedName());
+      } else {
+        TestSuite testSuite =
+            Entity.getEntity(
+                pipeline.getService().getType(),
+                pipeline.getService().getId(),
+                "*",
+                Include.NON_DELETED);
+        PipelineStatusType state = latestStatus.getPipelineState();
 
-      PipelineStatusType state = pipeline.getPipelineStatuses().getPipelineState();
+        Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
+        createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
 
-      Double previousVersion = persistSuiteUpdate(testSuite, pipeline.getUpdatedBy());
-      createTestSuiteCompletionChangeEvent(testSuite, previousVersion);
+        LOG.info("Pipeline {} completed with status {}", pipeline.getFullyQualifiedName(), state);
 
-      LOG.info("Pipeline {} completed with status {}", pipeline.getFullyQualifiedName(), state);
+        if (testSuite.getDataContract() != null) {
+          DataContractRepository dataContractRepository =
+              (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
+          dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+        }
 
-      if (testSuite.getDataContract() != null) {
-        DataContractRepository dataContractRepository =
-            (DataContractRepository) Entity.getEntityRepository(Entity.DATA_CONTRACT);
-        dataContractRepository.updateContractDQResults(testSuite.getDataContract(), testSuite);
+        updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
       }
-
-      updateRelatedSuites(testSuite, pipeline.getUpdatedBy());
-
     } catch (Exception e) {
       LOG.error(
           "Failed to process test suite completion for pipeline {}: {}",
@@ -932,10 +986,11 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
 
       Optional.of(pipeline)
           .filter(p -> p.getPipelineType() == PipelineType.TEST_SUITE)
-          .filter(p -> p.getPipelineStatuses() != null)
+          .filter(p -> !nullOrEmpty(p.getPipelineStatuses()))
           .filter(
               p -> {
-                PipelineStatusType state = p.getPipelineStatuses().getPipelineState();
+                PipelineStatusType state =
+                    IngestionPipelineRepository.latestPipelineStatus(p).getPipelineState();
                 return state == PipelineStatusType.SUCCESS
                     || state == PipelineStatusType.FAILED
                     || state == PipelineStatusType.PARTIAL_SUCCESS;

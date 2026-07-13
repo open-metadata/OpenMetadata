@@ -94,15 +94,11 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await assigneeUser.login(page);
     await table.visitEntityPage(page);
 
+    // Stay on the default "All" activity-feed view (do NOT switch to the
+    // Tasks-only split layout) — there each task renders as a single
+    // task-feed-card with its approve/reject buttons inline.
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
-
-    // Navigate to Tasks tab
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
-    if (await tasksTab.isVisible()) {
-      await tasksTab.click();
-      await waitForPageLoaded(page);
-    }
 
     const taskCard = page.locator('[data-testid="task-feed-card"]').first();
 
@@ -125,7 +121,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -170,7 +166,7 @@ test.describe('Task Resolution - Approve/Reject', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -352,7 +348,7 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);
@@ -377,7 +373,7 @@ test.describe('Task Resolution - Team Assignee', () => {
     await page.getByTestId('activity_feed').click();
     await waitForPageLoaded(page);
 
-    const tasksTab = page.getByRole('button', { name: /tasks/i });
+    const tasksTab = page.getByRole('menuitem', { name: /tasks/i });
     if (await tasksTab.isVisible()) {
       await tasksTab.click();
       await waitForPageLoaded(page);

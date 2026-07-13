@@ -27,7 +27,7 @@ permissions:
 
 concurrency:
   group: openmetadata-service-unit-tests-${{ github.head_ref || github.run_id }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test' }}
 
 jobs:
   # Detect whether relevant paths changed. When no Java service files
@@ -37,7 +37,7 @@ jobs:
   changes:
     name: Detect Changes
     runs-on: ubuntu-latest
-    if: ${{ github.event_name != 'pull_request' || !github.event.pull_request.draft }}
+    if: ${{ (github.event_name != 'pull_request' || !github.event.pull_request.draft) && (github.event_name != 'pull_request' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     outputs:
       java: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.java }}
       k8s_operator: ${{ github.event_name == 'workflow_dispatch' && 'true' || steps.filter.outputs.k8s_operator }}

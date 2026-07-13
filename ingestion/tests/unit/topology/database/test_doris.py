@@ -59,7 +59,7 @@ mock_doris_config = {
 
 
 class DorisUnitTest(TestCase):
-    @patch("metadata.ingestion.source.database.doris.connection.get_connection")
+    @patch("metadata.ingestion.source.database.common_db_source.get_connection")
     @patch("metadata.ingestion.source.database.common_db_source.CommonDbSourceService.test_connection")
     def __init__(self, methodName, test_connection, get_connection) -> None:  # noqa: N803
         super().__init__(methodName)

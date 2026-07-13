@@ -13,7 +13,7 @@
 
 import { test } from '@playwright/test';
 import { PipelineClass } from '../../../support/entity/PipelineClass';
-import { registerFilterSeparationSuite } from './searchSeparationSuite';
+import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

@@ -246,6 +246,11 @@ public final class Databases {
     public DatabaseDeleter delete() {
       return new DatabaseDeleter(client, identifier);
     }
+
+    public org.openmetadata.sdk.fluent.common.EntityRestorer<Database> restore() {
+      return new org.openmetadata.sdk.fluent.common.EntityRestorer<>(
+          client.databases(), identifier);
+    }
   }
 
   // ==================== Deleter ====================
@@ -428,5 +433,15 @@ public final class Databases {
     protected String performAsyncImport() {
       return client.databases().importCsvAsync(databaseName, csvData, dryRun);
     }
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by id. */
+  public static String getContext(String id) {
+    return getClient().databases().getContext(id);
+  }
+
+  /** AI Context (OKF-style markdown) for this entity by fully qualified name. */
+  public static String getContextByName(String fqn) {
+    return getClient().databases().getContextByName(fqn);
   }
 }

@@ -11,6 +11,7 @@ import {
 import { HintText } from '@/components/base/input/hint-text';
 import { Label } from '@/components/base/input/label';
 import { cx } from '@/utils/cx';
+import { fontSizeClass } from '@/utils';
 
 // Creates a data URL for an SVG resize handle with a given color.
 const getResizeHandleBg = (color: string) => {
@@ -21,15 +22,20 @@ const getResizeHandleBg = (color: string) => {
 
 interface TextAreaBaseProps extends AriaTextAreaProps {
   ref?: Ref<HTMLTextAreaElement>;
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
-export const TextAreaBase = ({ className, ...props }: TextAreaBaseProps) => {
+export const TextAreaBase = ({
+  className,
+  size,
+  ...props
+}: TextAreaBaseProps) => {
   return (
     <AriaTextArea
       {...props}
       className={(state) =>
         cx(
-          'tw:w-full tw:scroll-py-3 tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-3 tw:text-md tw:text-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary tw:focus:outline-hidden',
+          'tw:w-full tw:scroll-py-3 tw:rounded-lg tw:bg-primary tw:px-3.5 tw:py-3 tw:text-primary tw:shadow-xs tw:ring-1 tw:ring-primary tw:transition tw:duration-100 tw:ease-linear tw:ring-inset tw:placeholder:text-placeholder tw:autofill:rounded-lg tw:autofill:text-primary tw:focus:outline-hidden',
 
           // Resize handle
           'tw:[&::-webkit-resizer]:bg-(image:--resize-handle-bg) tw:[&::-webkit-resizer]:bg-contain tw:dark:[&::-webkit-resizer]:bg-(image:--resize-handle-bg-dark)',
@@ -39,6 +45,8 @@ export const TextAreaBase = ({ className, ...props }: TextAreaBaseProps) => {
             'tw:cursor-not-allowed tw:bg-disabled_subtle tw:text-disabled tw:ring-disabled',
           state.isInvalid && 'tw:ring-error_subtle',
           state.isInvalid && state.isFocused && 'tw:ring-2 tw:ring-error',
+
+          fontSizeClass[size || 'md'],
 
           typeof className === 'function' ? className(state) : className
         )
@@ -76,6 +84,8 @@ interface TextFieldProps extends AriaTextFieldProps {
   rows?: number;
   /** Visible width of textarea in columns. */
   cols?: number;
+  /** Size of the textarea. */
+  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 }
 
 export const TextArea = ({
@@ -89,6 +99,7 @@ export const TextArea = ({
   className,
   rows,
   cols,
+  size,
   ...props
 }: TextFieldProps) => {
   return (
@@ -118,6 +129,7 @@ export const TextArea = ({
             placeholder={placeholder}
             ref={textAreaRef}
             rows={rows}
+            size={size}
           />
 
           {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}

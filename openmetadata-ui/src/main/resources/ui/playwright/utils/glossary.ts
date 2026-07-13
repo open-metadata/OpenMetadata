@@ -12,7 +12,7 @@
  */
 import { APIRequestContext, expect, Locator, Page } from '@playwright/test';
 import { get, isUndefined } from 'lodash';
-import { ASSET_FILTER_NAMES } from '../constant/common';
+import { ASSET_FILTER_KEYS } from '../constant/common';
 import { SidebarItem } from '../constant/sidebar';
 import { GLOSSARY_TERM_PATCH_PAYLOAD } from '../constant/version';
 import { PolicyClass } from '../support/access-control/PoliciesClass';
@@ -390,16 +390,12 @@ export const deleteGlossary = async (page: Page, glossary: GlossaryData) => {
   await page.click('[data-testid="manage-button"]');
   await page.click('[data-testid="delete-button"]');
 
-  await page.getByTestId('delete-confirmation-modal').waitFor();
+  await page.locator('[role="dialog"]').waitFor();
 
   await expect(page.locator('[role="dialog"]')).toBeVisible();
-  await expect(page.locator('[data-testid="modal-header"]')).toBeVisible();
-
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     glossary.displayName
   );
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const deleteGlossary = page.waitForResponse(
     (response) =>
@@ -791,10 +787,10 @@ export const addAssetToGlossaryTerm = async (
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -825,7 +821,7 @@ export const addAssetToGlossaryTerm = async (
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
-
+    await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
         `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
@@ -858,15 +854,11 @@ const testFilterWithSpecificOption = async (
 
   await filterResponse;
 
-  await expect(
-    page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-  ).toBeVisible();
+  await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
   const clearFilterResponse = page.waitForResponse('/api/v1/search/query?*');
 
-  await page
-    .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-    .click();
+  await filterWrapper.getByTestId('clear-filters').click();
 
   await clearFilterResponse;
 };
@@ -879,9 +871,10 @@ const testFilterWithFirstOption = async (
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
-  await page.getByTestId('drop-down-menu').waitFor();
+  const dropdownMenu = page.getByTestId('drop-down-menu');
+  await dropdownMenu.waitFor();
 
-  const options = page.locator('[data-testid="drop-down-menu"]');
+  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
@@ -899,17 +892,13 @@ const testFilterWithFirstOption = async (
 
       await filterResponse;
 
-      await expect(
-        page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-      ).toBeVisible();
+      await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
       const clearFilterResponse = page.waitForResponse(
         '/api/v1/search/query?*'
       );
 
-      await page
-        .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-        .click();
+      await filterWrapper.getByTestId('clear-filters').click();
 
       await clearFilterResponse;
     }
@@ -929,10 +918,10 @@ export const verifyAssetModalFilters = async (
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -946,9 +935,9 @@ export const verifyAssetModalFilters = async (
 
   await expect(filterButton).not.toBeVisible();
 
-  for (const filterName of ASSET_FILTER_NAMES) {
+  for (const filterKey of ASSET_FILTER_KEYS) {
     await expect(
-      page.locator(`[data-testid="search-dropdown-${filterName}"]`)
+      page.locator(`[data-testid="search-dropdown-${filterKey}"]`)
     ).toBeVisible();
   }
 
@@ -958,25 +947,29 @@ export const verifyAssetModalFilters = async (
   await testFilterWithSpecificOption(
     page,
     filterWrapper,
-    'Entity Type',
-    'table',
+    'entityType',
+    'table-checkbox',
     'table'
   );
 
   await testFilterWithSpecificOption(
     page,
     filterWrapper,
-    'Service Type',
-    'mysql',
+    'serviceType',
+    'mysql-checkbox',
     'mysql'
   );
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Tag');
+  await testFilterWithFirstOption(page, filterWrapper, 'tags.tagFQN');
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Domains');
+  await testFilterWithFirstOption(
+    page,
+    filterWrapper,
+    'domains.displayName.keyword'
+  );
 
-  await testFilterWithFirstOption(page, filterWrapper, 'Tier');
-  await testFilterWithFirstOption(page, filterWrapper, 'Owners');
+  await testFilterWithFirstOption(page, filterWrapper, 'tier.tagFQN');
+  await testFilterWithFirstOption(page, filterWrapper, 'ownerDisplayName');
 };
 
 export const updateNameForGlossaryTerm = async (
@@ -1124,8 +1117,6 @@ export const deleteGlossaryOrGlossaryTerm = async (
   await expect(page.locator('[data-testid="modal-header"]')).toContainText(
     entityName
   );
-
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
 
   const endpoint = isGlossaryTerm
     ? '/api/v1/glossaryTerms/async/*'

@@ -36,6 +36,7 @@ from metadata.sampler.models import (
     ProfileSampleConfig,
     SampleConfig,
 )
+from metadata.sampler.sampler_config import DatabaseSamplerConfig
 from metadata.sampler.sqlalchemy.azuresql.sampler import AzureSQLSampler
 from metadata.sampler.sqlalchemy.sampler import SQASampler
 
@@ -97,13 +98,15 @@ class SampleTest(TestCase):
             service_connection_config=self.azuresql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=SampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
                 )
             ),
         )
@@ -123,13 +126,15 @@ class SampleTest(TestCase):
             service_connection_config=self.azuresql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=SampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50,
-                        profileSampleType=ProfileSampleType.ROWS,
-                    ),
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50,
+                            profileSampleType=ProfileSampleType.ROWS,
+                        ),
+                    )
                 )
             ),
         )
@@ -155,7 +160,6 @@ class SampleTest(TestCase):
             service_connection_config=self.azuresql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(),
         )
 
         valid_from_col = MagicMock()
@@ -213,7 +217,6 @@ class SampleTest(TestCase):
             service_connection_config=self.azuresql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(),
         )
 
         valid_from_col = MagicMock()
@@ -256,20 +259,22 @@ class SampleTest(TestCase):
             service_connection_config=self.azuresql_conn,
             ometa_client=None,
             entity=self.table_entity,
-            sample_config=SampleConfig(
-                profileSampleConfig=ProfileSampleConfig(
-                    sampleConfigType=SampleConfigType.STATIC,
-                    config=StaticSamplingConfig(
-                        profileSample=50.0,
-                        profileSampleType=ProfileSampleType.PERCENTAGE,
-                    ),
-                )
-            ),
-            partition_details=PartitionProfilerConfig(
-                enablePartitioning=True,
-                partitionColumnName="id",
-                partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
-                partitionValues=["1", "2"],
+            config=DatabaseSamplerConfig(
+                sample_config=SampleConfig(
+                    profileSampleConfig=ProfileSampleConfig(
+                        sampleConfigType=SampleConfigType.STATIC,
+                        config=StaticSamplingConfig(
+                            profileSample=50.0,
+                            profileSampleType=ProfileSampleType.PERCENTAGE,
+                        ),
+                    )
+                ),
+                partition_details=PartitionProfilerConfig(
+                    enablePartitioning=True,
+                    partitionColumnName="id",
+                    partitionIntervalType=PartitionIntervalTypes.COLUMN_VALUE,
+                    partitionValues=["1", "2"],
+                ),
             ),
         )
         query: CTE = sampler.get_sample_query(sampler._resolve_sample_config)

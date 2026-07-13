@@ -43,6 +43,7 @@ import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.schema.type.change.ChangeSource;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.governance.workflows.WorkflowEventConsumer;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
@@ -208,8 +209,7 @@ public class TaskWorkflowHandler {
                   "Non-terminal transition '%s' failed for task '%s' and no active Flowable task exists",
                   transitionId, taskId));
         }
-        if (task.getStatus() != TaskEntityStatus.Open
-            && task.getStatus() != TaskEntityStatus.InProgress) {
+        if (TaskRepository.isTerminalStatus(task.getStatus())) {
           throw new IllegalStateException(
               String.format("Task '%s' is already in status '%s'", taskId, task.getStatus()));
         }
@@ -881,7 +881,8 @@ public class TaskWorkflowHandler {
           user,
           action.entityField(),
           value == null ? null : String.valueOf(value),
-          true);
+          true,
+          WorkflowEventConsumer.GOVERNANCE_BOT);
     } catch (Exception e) {
       LOG.error(
           "[TaskWorkflowHandler] Failed to apply patchEntityField action for task '{}': {}",
@@ -1172,6 +1173,7 @@ public class TaskWorkflowHandler {
       case Cancelled -> "cancel";
       case Revoked -> "revoke";
       case TimedOut -> "timeout";
+      case Expired -> "expired";
     };
   }
 
@@ -1192,7 +1194,9 @@ public class TaskWorkflowHandler {
       return defaultTransitionId;
     }
 
-    if (task != null && TaskEntityType.DataQualityReview == task.getType()) {
+    if (task != null
+        && (TaskEntityType.RecognizerFeedbackApproval == task.getType()
+            || TaskEntityType.DataQualityReview == task.getType())) {
       return isPositiveResolution(resolutionType) ? "true" : "false";
     }
 
@@ -1239,7 +1243,8 @@ public class TaskWorkflowHandler {
         case Cancelled -> TaskResolutionType.Cancelled;
         case Revoked -> TaskResolutionType.Revoked;
         case Failed -> TaskResolutionType.TimedOut;
-        case Open, InProgress, Pending, Approved, Granted -> null;
+        case Expired -> TaskResolutionType.Expired;
+        case Open, InProgress, Pending, Approved, Granted, ManualRevoke -> null;
       };
     }
 

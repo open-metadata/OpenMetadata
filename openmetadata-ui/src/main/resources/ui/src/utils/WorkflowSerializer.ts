@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 
-import { Edge, MarkerType, Node } from 'reactflow';
+import type { Edge, Node } from 'reactflow';
+import { MarkerType } from 'reactflow';
 import { ConditionValue } from '../constants/WorkflowBuilder.constants';
 import { NodeSubType } from '../generated/governance/workflows/elements/nodeSubType';
 import { NodeType } from '../generated/governance/workflows/elements/nodeType';

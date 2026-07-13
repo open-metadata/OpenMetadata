@@ -29,20 +29,24 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { restoreApiEndPoint } from '../../../rest/apiEndpointsAPI';
 import apiEndpointClassBase from '../../../utils/APIEndpoints/APIEndpointClassBase';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import {
   checkIfExpandViewSupported,
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
-} from '../../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+} from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import {
+  fetchEntityActivityCountInto,
+  fetchEntityTaskCountsInto,
+  getFeedCounts,
+} from '../../../utils/FeedUtilsPure';
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
-import { getTagsWithoutTier, getTierTags } from '../../../utils/TableUtils';
+import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import {
   updateCertificationTag,
   updateTierTag,
-} from '../../../utils/TagsUtils';
+} from '../../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
@@ -53,7 +57,6 @@ import { DataAssetsHeader } from '../../DataAssets/DataAssetsHeader/DataAssetsHe
 import { EntityName } from '../../Modals/EntityNameModal/EntityNameModal.interface';
 import PageLayoutV1 from '../../PageLayoutV1/PageLayoutV1';
 import { APIEndpointDetailsProps } from './APIEndpointDetails.interface';
-
 const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   apiEndpointDetails,
   apiEndpointPermissions,
@@ -179,6 +182,22 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
       handleFeedCount
     );
 
+  const fetchTaskCounts = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityTaskCountsInto(decodedApiEndpointFqn, setFeedCount);
+    }
+  }, [decodedApiEndpointFqn]);
+
+  const fetchActivityCount = useCallback(() => {
+    if (decodedApiEndpointFqn) {
+      fetchEntityActivityCountInto(
+        EntityType.API_ENDPOINT,
+        decodedApiEndpointFqn,
+        setFeedCount
+      );
+    }
+  }, [decodedApiEndpointFqn]);
+
   const afterDeleteAction = useCallback(
     (isSoftDelete?: boolean) => !isSoftDelete && navigate('/'),
     [navigate]
@@ -209,7 +228,8 @@ const APIEndpointDetails: React.FC<APIEndpointDetailsProps> = ({
   );
 
   useEffect(() => {
-    getEntityFeedCount();
+    fetchTaskCounts();
+    fetchActivityCount();
   }, [apiEndpointPermissions, decodedApiEndpointFqn]);
 
   const tabs = useMemo(() => {

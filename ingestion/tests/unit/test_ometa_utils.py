@@ -17,25 +17,36 @@ import base64
 import json
 from unittest import TestCase
 
+from metadata.generated.schema.entity.data.apiCollection import APICollection
 from metadata.generated.schema.entity.data.apiEndpoint import APIEndpoint
+from metadata.generated.schema.entity.data.chart import Chart
+from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.dashboard import Dashboard
 from metadata.generated.schema.entity.data.dashboardDataModel import DashboardDataModel
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
+from metadata.generated.schema.entity.data.directory import Directory
 from metadata.generated.schema.entity.data.mlmodel import MlModel
 from metadata.generated.schema.entity.data.pipeline import Pipeline
 from metadata.generated.schema.entity.data.searchIndex import SearchIndex
+from metadata.generated.schema.entity.data.storedProcedure import StoredProcedure
 from metadata.generated.schema.entity.data.table import Column, Table
 from metadata.generated.schema.entity.data.topic import Topic
+from metadata.generated.schema.entity.services.apiService import ApiService
 from metadata.generated.schema.entity.services.dashboardService import DashboardService
 from metadata.generated.schema.entity.services.databaseService import DatabaseService
+from metadata.generated.schema.entity.services.driveService import DriveService
 from metadata.generated.schema.entity.services.messagingService import MessagingService
+from metadata.generated.schema.entity.services.mlmodelService import MlModelService
 from metadata.generated.schema.entity.services.pipelineService import PipelineService
+from metadata.generated.schema.entity.services.searchService import SearchService
+from metadata.generated.schema.entity.services.storageService import StorageService
 from metadata.generated.schema.entity.teams.user import User
 from metadata.generated.schema.type import basic
 from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.connections.headers import render_query_header
 from metadata.ingestion.models.topology import (
+    _UNKNOWN_DEPTH,
     get_entity_hierarchy,
     get_entity_hierarchy_depth,
 )
@@ -343,7 +354,29 @@ class OMetaUtilsTest(TestCase):
             pass
 
         depth = get_entity_hierarchy_depth(UnknownEntity)
-        self.assertEqual(depth, 999, "Unknown entities should return depth 999")
+        self.assertEqual(
+            depth,
+            _UNKNOWN_DEPTH,
+            "Unknown entities should return the unknown-depth sentinel",
+        )
+
+    def test_get_entity_hierarchy_dashboard_children_before_dashboard(self):
+        """Charts and data models must be created before the dashboard that
+        references them, so they must sort ahead of Dashboard in the hierarchy."""
+        chart_depth = get_entity_hierarchy_depth(Chart)
+        datamodel_depth = get_entity_hierarchy_depth(DashboardDataModel)
+        dashboard_depth = get_entity_hierarchy_depth(Dashboard)
+
+        self.assertLess(
+            chart_depth,
+            dashboard_depth,
+            "Chart should be created before Dashboard in hierarchy",
+        )
+        self.assertLess(
+            datamodel_depth,
+            dashboard_depth,
+            "DashboardDataModel should be created before Dashboard in hierarchy",
+        )
 
     def test_get_entity_hierarchy_depth_all_entities_have_valid_depth(self):
         """Test that all entities in the hierarchy have valid (non-negative) depths"""
@@ -357,10 +390,15 @@ class OMetaUtilsTest(TestCase):
     def test_get_entity_hierarchy_services_at_root(self):
         """Test that all service types are at depth 0 (root level)"""
         service_types = [
-            DatabaseService,
+            ApiService,
             DashboardService,
+            DatabaseService,
+            DriveService,
             MessagingService,
+            MlModelService,
             PipelineService,
+            SearchService,
+            StorageService,
         ]
 
         for service_type in service_types:
@@ -371,3 +409,91 @@ class OMetaUtilsTest(TestCase):
                     0,
                     f"{service_type.__name__} should be at root level (depth 0)",
                 )
+
+    def test_every_service_entity_created_before_its_children(self):
+        """The stage-order depth change touches every topology, not just dashboards.
+        For each service type, every child entity must keep a deeper (later-created)
+        depth than its service so bulk create never sends a child before its parent."""
+        service_to_children = {
+            ApiService: [APICollection, APIEndpoint],
+            DashboardService: [DashboardDataModel, Chart, Dashboard],
+            DatabaseService: [Database, DatabaseSchema, Table, StoredProcedure],
+            DriveService: [Directory],
+            MessagingService: [Topic],
+            MlModelService: [MlModel],
+            PipelineService: [Pipeline],
+            SearchService: [SearchIndex],
+            StorageService: [Container],
+        }
+
+        for service_type, children in service_to_children.items():
+            service_depth = get_entity_hierarchy_depth(service_type)
+            for child in children:
+                with self.subTest(service=service_type.__name__, child=child.__name__):
+                    self.assertLess(
+                        service_depth,
+                        get_entity_hierarchy_depth(child),
+                        f"{service_type.__name__} should be created before {child.__name__}",
+                    )
+
+    def test_nested_children_ordered_parent_before_child(self):
+        """Multi-level hierarchies must stay ordered shallow-to-deep across topologies."""
+        chains = [
+            [DatabaseService, Database, DatabaseSchema, Table],
+            [ApiService, APICollection, APIEndpoint],
+            [DashboardService, DashboardDataModel, Chart, Dashboard],
+        ]
+        for chain in chains:
+            depths = [get_entity_hierarchy_depth(entity) for entity in chain]
+            with self.subTest(chain=[entity.__name__ for entity in chain]):
+                self.assertEqual(
+                    depths,
+                    sorted(depths),
+                    f"{[entity.__name__ for entity in chain]} must be ordered parent before child",
+                )
+
+    def test_hierarchy_base_exceeds_max_stages_per_node(self):
+        """The depth encoding (node_depth * HIERARCHY_BASE + stage_index) only keeps
+        parents ahead of children while HIERARCHY_BASE stays larger than the largest
+        stage count of any single node across all topologies. Guard that invariant."""
+        from metadata.ingestion.models.topology import HIERARCHY_BASE, get_entity_hierarchy
+
+        # Force the cached hierarchy to be built (imports + registers all topologies)
+        get_entity_hierarchy()
+
+        from metadata.ingestion.source.api.api_service import ApiServiceTopology
+        from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceTopology
+        from metadata.ingestion.source.database.database_service import DatabaseServiceTopology
+        from metadata.ingestion.source.database.dbt.dbt_service import DbtServiceTopology
+        from metadata.ingestion.source.drive.drive_service import DriveServiceTopology
+        from metadata.ingestion.source.messaging.messaging_service import MessagingServiceTopology
+        from metadata.ingestion.source.mlmodel.mlmodel_service import MlModelServiceTopology
+        from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceTopology
+        from metadata.ingestion.source.search.search_service import SearchServiceTopology
+        from metadata.ingestion.source.security.security_service import SecurityServiceTopology
+        from metadata.ingestion.source.storage.storage_service import StorageServiceTopology
+
+        topologies = [
+            ApiServiceTopology(),
+            DashboardServiceTopology(),
+            DatabaseServiceTopology(),
+            DbtServiceTopology(),
+            DriveServiceTopology(),
+            MessagingServiceTopology(),
+            MlModelServiceTopology(),
+            PipelineServiceTopology(),
+            SearchServiceTopology(),
+            SecurityServiceTopology(),
+            StorageServiceTopology(),
+        ]
+        max_stages = max(
+            len(node.stages)
+            for topology in topologies
+            for node in topology.__dict__.values()
+            if hasattr(node, "stages")
+        )
+        self.assertLess(
+            max_stages,
+            HIERARCHY_BASE,
+            f"HIERARCHY_BASE ({HIERARCHY_BASE}) must exceed the max stages per node ({max_stages})",
+        )

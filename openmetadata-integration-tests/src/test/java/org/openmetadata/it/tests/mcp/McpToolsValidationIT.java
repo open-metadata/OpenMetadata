@@ -4,12 +4,15 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.time.Duration;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.MethodOrderer;
 import org.junit.jupiter.api.Order;
@@ -36,8 +39,13 @@ import org.openmetadata.service.Entity;
 public class McpToolsValidationIT extends McpTestBase {
 
   private static Table testTable;
+  private static Table wideTable;
   private static DatabaseSchema testSchema;
   private static String testGlossaryName;
+  private static String createdTestCaseName;
+
+  private static final int WIDE_TABLE_COLUMN_COUNT = 400;
+  private static final int WIDE_COLUMN_DESCRIPTION_CHARS = 400;
 
   @BeforeAll
   static void setUp() throws Exception {
@@ -105,12 +113,32 @@ public class McpToolsValidationIT extends McpTestBase {
 
     testTable = post("tables", createTable, Table.class);
 
+    wideTable = post("tables", createWideTable(), Table.class);
+
     testGlossaryName = "McpValidationGlossary" + System.currentTimeMillis();
     CreateGlossary createGlossary =
         new CreateGlossary()
             .withName(testGlossaryName)
             .withDescription("Test glossary for MCP validation");
     post("glossaries", createGlossary, Glossary.class);
+  }
+
+  private static CreateTable createWideTable() {
+    List<Column> columns = new ArrayList<>();
+    String description = "w".repeat(WIDE_COLUMN_DESCRIPTION_CHARS);
+    for (int i = 0; i < WIDE_TABLE_COLUMN_COUNT; i++) {
+      columns.add(
+          new Column()
+              .withName("col_" + i)
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(64)
+              .withDescription(description));
+    }
+    return new CreateTable()
+        .withName("mcp_val_wide_table")
+        .withDescription("Wide table for MCP column pagination validation")
+        .withDatabaseSchema(testSchema.getFullyQualifiedName())
+        .withColumns(columns);
   }
 
   private JsonNode executeToolCall(Map<String, Object> toolCallRequest) throws Exception {
@@ -135,6 +163,34 @@ public class McpToolsValidationIT extends McpTestBase {
         McpTestUtils.createGetEntityToolCall("table", testTable.getFullyQualifiedName());
     JsonNode result = executeToolCall(toolCall);
     validateGetEntityDetailsResponse(result, testTable.getFullyQualifiedName());
+  }
+
+  @Test
+  @Order(21)
+  void testGetEntityDetailsWideTableIsPaginatedNotDiscarded() throws Exception {
+    String fqn = wideTable.getFullyQualifiedName();
+
+    Map<String, Object> firstPageCall = McpTestUtils.createGetEntityToolCall("table", fqn);
+    JsonNode firstPage = readEntityText(executeToolCall(firstPageCall));
+
+    assertThat(firstPage.has("id")).isTrue();
+    assertThat(firstPage.get("fullyQualifiedName").asText()).isEqualTo(fqn);
+    assertThat(firstPage.get("columnsTruncated").asBoolean()).isTrue();
+    assertThat(firstPage.get("totalColumns").asInt()).isEqualTo(WIDE_TABLE_COLUMN_COUNT);
+    assertThat(firstPage.get("hasMoreColumns").asBoolean()).isTrue();
+    assertThat(firstPage.get("columns").isArray()).isTrue();
+    int firstReturned = firstPage.get("returnedColumns").asInt();
+    assertThat(firstReturned).isGreaterThan(0).isLessThan(WIDE_TABLE_COLUMN_COUNT);
+    assertThat(firstPage.get("columns").size()).isEqualTo(firstReturned);
+
+    Map<String, Object> explicitPageCall =
+        McpTestUtils.createGetEntityToolCall("table", fqn, firstReturned, 25);
+    JsonNode explicitPage = readEntityText(executeToolCall(explicitPageCall));
+
+    assertThat(explicitPage.get("columnOffset").asInt()).isEqualTo(firstReturned);
+    assertThat(explicitPage.get("returnedColumns").asInt()).isEqualTo(25);
+    assertThat(explicitPage.get("columns").get(0).get("name").asText())
+        .isEqualTo("col_" + firstReturned);
   }
 
   @Test
@@ -281,7 +337,8 @@ public class McpToolsValidationIT extends McpTestBase {
   @Test
   @Order(12)
   void testCreateTestCase() throws Exception {
-    String testCaseName = "mcp_test_case_" + System.currentTimeMillis();
+    createdTestCaseName = "mcp_test_case_" + System.currentTimeMillis();
+    String testCaseName = createdTestCaseName;
     List<Map<String, String>> parameterValues =
         List.of(
             Map.of("name", "minValue", "value", "0"), Map.of("name", "maxValue", "value", "100"));
@@ -430,6 +487,75 @@ public class McpToolsValidationIT extends McpTestBase {
     validateNoDeletedEntities(defaultResult);
   }
 
+  @Test
+  @Order(19)
+  void testSearchTestCasesByEntityType() throws Exception {
+    assertThat(createdTestCaseName).isNotNull();
+
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              Map<String, Object> toolCall =
+                  McpTestUtils.createSearchMetadataToolCall(
+                      createdTestCaseName, 10, Entity.TEST_CASE);
+              JsonNode result = executeToolCall(toolCall);
+              JsonNode response =
+                  OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
+
+              JsonNode match = findResultByName(response, createdTestCaseName);
+              assertThat(match)
+                  .withFailMessage(
+                      "Expected test case '%s' in search results: %s",
+                      createdTestCaseName, response.get("results"))
+                  .isNotNull();
+              assertThat(match.get("entityType").asText()).isEqualTo(Entity.TEST_CASE);
+              assertThat(match.has("entityFQN"))
+                  .withFailMessage("Test case search result must include 'entityFQN'")
+                  .isTrue();
+              assertThat(match.get("entityFQN").asText())
+                  .isEqualTo(testTable.getFullyQualifiedName());
+            });
+  }
+
+  @Test
+  @Order(20)
+  void testSearchTestSuitesByEntityType() throws Exception {
+    Awaitility.await()
+        .atMost(Duration.ofSeconds(30))
+        .pollInterval(Duration.ofSeconds(2))
+        .untilAsserted(
+            () -> {
+              Map<String, Object> toolCall =
+                  McpTestUtils.createSearchMetadataToolCall("mcp_val_table", 10, Entity.TEST_SUITE);
+              JsonNode result = executeToolCall(toolCall);
+              JsonNode response =
+                  OBJECT_MAPPER.readTree(result.get("content").get(0).get("text").asText());
+
+              boolean hasSuite = false;
+              for (JsonNode r : response.get("results")) {
+                if (Entity.TEST_SUITE.equals(r.get("entityType").asText())) {
+                  hasSuite = true;
+                }
+              }
+              assertThat(hasSuite)
+                  .withFailMessage(
+                      "Expected at least one testSuite in search results: %s",
+                      response.get("results"))
+                  .isTrue();
+            });
+  }
+
+  private JsonNode findResultByName(JsonNode response, String name) {
+    for (JsonNode r : response.get("results")) {
+      if (name.equals(r.get("name").asText())) {
+        return r;
+      }
+    }
+    return null;
+  }
+
   private Map<String, Object> createSearchToolCallWithDeletedParam(
       String query, int limit, String entityType, boolean includeDeleted) {
     Map<String, Object> arguments = new HashMap<>();
@@ -477,6 +603,17 @@ public class McpToolsValidationIT extends McpTestBase {
               expectedQuery, matchingEntities)
           .isTrue();
     }
+  }
+
+  private JsonNode readEntityText(JsonNode result) throws Exception {
+    assertThat(result.has("content")).isTrue();
+    JsonNode content = result.get("content");
+    assertThat(content.isArray()).isTrue();
+    assertThat(content.size()).isGreaterThan(0);
+
+    JsonNode firstResult = content.get(0);
+    assertThat(firstResult.has("text")).isTrue();
+    return OBJECT_MAPPER.readTree(firstResult.get("text").asText());
   }
 
   private void validateGetEntityDetailsResponse(JsonNode result, String expectedFqn)
@@ -577,15 +714,17 @@ public class McpToolsValidationIT extends McpTestBase {
     String responseText = firstResult.get("text").asText();
 
     JsonNode lineageData = OBJECT_MAPPER.readTree(responseText);
-    assertThat(lineageData.has("entity")).isTrue();
+    assertThat(lineageData.has("root"))
+        .withFailMessage("Lineage response payload: %s", responseText)
+        .isTrue();
+    assertThat(lineageData.get("root").asText()).isEqualTo(expectedEntityFqn);
+    assertThat(lineageData.has("rootId")).isTrue();
+    assertThat(lineageData.has("rootType")).isTrue();
 
-    JsonNode entity = lineageData.get("entity");
-    assertThat(entity.has("fullyQualifiedName")).isTrue();
-    assertThat(entity.get("fullyQualifiedName").asText()).isEqualTo(expectedEntityFqn);
-
-    assertThat(lineageData.has("nodes")).isTrue();
-    assertThat(lineageData.has("upstreamEdges")).isTrue();
-    assertThat(lineageData.has("downstreamEdges")).isTrue();
+    assertThat(lineageData.has("upstream")).isTrue();
+    assertThat(lineageData.get("upstream").isArray()).isTrue();
+    assertThat(lineageData.has("downstream")).isTrue();
+    assertThat(lineageData.get("downstream").isArray()).isTrue();
   }
 
   private void validateDeletedFieldPresence(JsonNode result, boolean expectedDeleted)

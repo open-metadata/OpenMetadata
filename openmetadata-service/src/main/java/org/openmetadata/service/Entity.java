@@ -221,6 +221,9 @@ public final class Entity {
   public static final String PROMPT_TEMPLATE = "promptTemplate";
   public static final String AGENT_EXECUTION = "agentExecution";
   public static final String AI_GOVERNANCE_POLICY = "aiGovernancePolicy";
+  public static final String AI_GOVERNANCE_FRAMEWORK = "aiGovernanceFramework";
+  public static final String AI_FRAMEWORK_CONTROL = "aiFrameworkControl";
+  public static final String AUDIT_REPORT = "auditReport";
   public static final String MCP_SERVER = "mcpServer";
   public static final String MCP_EXECUTION = "mcpExecution";
   public static final String TEST_DEFINITION = "testDefinition";
@@ -267,6 +270,7 @@ public final class Entity {
   public static final String DATA_PRODUCT = "dataProduct";
   public static final String DATA_CONTRACT = "dataContract";
   public static final String DATA_CONTRACT_RESULT = "dataContractResult";
+  public static final String INTAKE_FORM = "intakeForm";
 
   //
   // Other entities
@@ -310,6 +314,7 @@ public final class Entity {
 
   public static final String DOCUMENT = "document";
   public static final String LEARNING_RESOURCE = "learningResource";
+  public static final String CONTEXT_MEMORY = "contextMemory";
   // ServiceType - Service Entity name map
   static final Map<ServiceType, String> SERVICE_TYPE_ENTITY_MAP = new EnumMap<>(ServiceType.class);
   // entity type to service entity name map

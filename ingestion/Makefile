@@ -102,7 +102,7 @@ sonar_ingestion:  ## Run the Sonar analysis based on the tests results and push 
 .PHONY: run_apis_tests
 run_apis_tests:  ## Run the openmetadata airflow apis tests
 	coverage erase
-	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml -a --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
+	coverage run --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml --branch -m pytest -c $(INGESTION_DIR)/pyproject.toml --junitxml=$(ROOT_DIR)/openmetadata-airflow-apis/junit/test-results.xml $(ROOT_DIR)/openmetadata-airflow-apis/tests
 	coverage report --rcfile $(ROOT_DIR)/openmetadata-airflow-apis/pyproject.toml
 
 .PHONY: coverage_apis

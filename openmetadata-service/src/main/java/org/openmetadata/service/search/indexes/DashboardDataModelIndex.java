@@ -55,7 +55,7 @@ public record DashboardDataModelIndex(DashboardDataModel dashboardDataModel)
     fields.put("columns.name", 2.0f);
     fields.put("columns.displayName", 1.0f);
     fields.put("columns.description", 1.0f);
-    fields.put("columns.children.name", 2.0f);
+    fields.put("columnNamesFuzzy", 2.0f);
     return fields;
   }
 }

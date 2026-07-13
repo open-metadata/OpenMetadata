@@ -20,11 +20,11 @@ import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { EntityReference } from '../../../generated/entity/type';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import {
-  getEntityBreadcrumbs,
-  getEntityName,
-} from '../../../utils/EntityUtils';
-import { getServiceIcon, getUsagePercentile } from '../../../utils/TableUtils';
+import { getEntityBreadcrumbs } from '../../../utils/EntityBreadcrumbPureUtils';
+import { getEntityLinkFromType } from '../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getUsagePercentile } from '../../../utils/TablePureUtils';
+import { getServiceIcon } from '../../../utils/TableUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import TableDataCardBody from '../../Database/TableDataCardBody/TableDataCardBody';
 import { EntityHeader } from '../../Entity/EntityHeader/EntityHeader.component';
@@ -134,6 +134,21 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
       [source]
     );
 
+    const entityUrl = useMemo(() => {
+      if (!source.fullyQualifiedName) {
+        return undefined;
+      }
+      const entityPath = getEntityLinkFromType(
+        source.fullyQualifiedName,
+        source.entityType as EntityType,
+        source
+      );
+
+      return entityPath
+        ? `${globalThis.location.origin}${entityPath}`
+        : undefined;
+    }, [source]);
+
     return (
       <div
         className={classNames(
@@ -161,6 +176,7 @@ const TableDataCardV2: React.FC<TableDataCardPropsV2> = forwardRef<
               displayNameClassName={displayNameClassName}
               entityData={source}
               entityType={source.entityType as EntityType}
+              entityUrl={entityUrl}
               icon={serviceIcon}
               nameClassName={nameClassName}
               openEntityInNewPage={openEntityInNewPage}

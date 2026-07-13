@@ -30,9 +30,11 @@ export {
   TaskPriority,
   TaskType as TaskEntityType,
 } from '../generated/api/tasks/createTask';
+export type { CreateTask } from '../generated/api/tasks/createTask';
 export { ResolutionType as TaskResolutionType } from '../generated/api/tasks/resolveTask';
+export type { ResolveTask } from '../generated/api/tasks/resolveTask';
 export { TaskStatus as TaskEntityStatus } from '../generated/entity/tasks/task';
-export type { TaskComment } from '../generated/entity/tasks/task';
+export type { Task, TaskComment } from '../generated/entity/tasks/task';
 export type { GenericTaskPayload as TaskPayload } from '../generated/type/genericTaskPayload';
 
 // Data access type enum - matches backend DataAccessType
@@ -76,6 +78,8 @@ interface TaskScopedListParams {
   limit?: number;
   before?: string;
   after?: string;
+  startTs?: number;
+  endTs?: number;
   include?: Include;
 }
 
@@ -98,12 +102,14 @@ export interface ListTasksParams {
   limit?: number;
   before?: string;
   after?: string;
+  startTs?: number;
+  endTs?: number;
   include?: Include;
 }
 
 export interface ListDataAccessRequestsParams {
   fields?: string;
-  status?: TaskStatus;
+  status?: TaskStatus | TaskStatus[];
   statusGroup?: TaskStatusGroup;
   dataset?: string;
   service?: string;
@@ -111,8 +117,10 @@ export interface ListDataAccessRequestsParams {
   requestedById?: string;
   approver?: string;
   approverId?: string;
-  accessType?: DataAccessType;
+  assignee?: string;
+  accessType?: DataAccessType | DataAccessType[];
   domain?: string;
+  q?: string;
   sortOrder?: 'asc' | 'desc';
   limit?: number;
   offset?: number;

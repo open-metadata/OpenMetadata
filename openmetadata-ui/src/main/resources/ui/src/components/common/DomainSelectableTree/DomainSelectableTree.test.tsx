@@ -17,6 +17,7 @@ import { EntityType } from '../../../enums/entity.enum';
 import { Domain, DomainType } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import * as domainAPI from '../../../rest/domainAPI';
+import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import DomainSelectableTree from './DomainSelectableTree';
 
 const mockDomains: Domain[] = [
@@ -87,10 +88,13 @@ jest.mock('../../../utils/DomainUtils', () => ({
         : undefined,
     }))
   ),
+}));
+
+jest.mock('../../../utils/DomainFilterUtils', () => ({
   isDomainExist: jest.fn().mockReturnValue(false),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityReferenceUtils', () => ({
   getEntityReferenceFromEntity: jest
     .fn()
     .mockImplementation((entity: Domain) => ({
@@ -102,7 +106,7 @@ jest.mock('../../../utils/EntityUtils', () => ({
     })),
 }));
 
-jest.mock('../../../utils/StringsUtils', () => ({
+jest.mock('../../../utils/StringUtils', () => ({
   escapeESReservedCharacters: jest.fn().mockImplementation((value) => value),
   getEncodedFqn: jest.fn().mockImplementation((value) => value),
 }));
@@ -407,6 +411,47 @@ describe('DomainSelectableTree', () => {
 
     await waitFor(() => {
       expect(domainAPI.getDomainChildrenPaginated).toHaveBeenCalled();
+    });
+  });
+
+  it('should only render allowed domains when restrictedDomains is provided', async () => {
+    const allowedDomain: EntityReference = {
+      id: '1',
+      name: 'Engineering',
+      fullyQualifiedName: 'Engineering',
+      type: EntityType.DOMAIN,
+    };
+
+    renderComponent({ restrictedDomains: [allowedDomain] });
+
+    await waitFor(() => {
+      expect(domainAPI.getDomainChildrenPaginated).toHaveBeenCalled();
+    });
+
+    await waitFor(() => {
+      const lastCall = (convertDomainsToTreeOptions as jest.Mock).mock.calls.at(
+        -1
+      );
+      const renderedDomains = lastCall?.[0] as Domain[];
+
+      expect(
+        renderedDomains.map((domain) => domain.fullyQualifiedName)
+      ).toEqual(['Engineering']);
+    });
+  });
+
+  it('should render empty state when restrictedDomains filters out everything', async () => {
+    const foreignDomain: EntityReference = {
+      id: '99',
+      name: 'Finance',
+      fullyQualifiedName: 'Finance',
+      type: EntityType.DOMAIN,
+    };
+
+    renderComponent({ restrictedDomains: [foreignDomain] });
+
+    await waitFor(() => {
+      expect(screen.getByText('label.no-entity-available')).toBeInTheDocument();
     });
   });
 });

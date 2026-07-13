@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { File06, Home02 } from '@untitledui/icons';
+import { Card, Skeleton } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import TitleBreadcrumb from '../../../components/common/TitleBreadcrumb/TitleBreadcrumb.component';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
+import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 
 interface ArticleVersionHeaderProps {
   knowledgePage?: KnowledgePage;
@@ -29,25 +29,16 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
 
-  const breadcrumbs = [
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
+  const breadcrumbItems = [
+    contextCenterClassBase.getContextCenterRootBreadcrumb(t),
     {
-      name: '',
-      icon: <Home02 size={14} />,
-      url: '/',
-      activeTitle: true,
+      label: t('label.article-plural'),
+      href: contextCenterClassBase.getArticlesListPath(),
     },
     {
-      name: t('label.context-center'),
-      url: contextCenterClassBase.getContextCenterPath(),
-    },
-    {
-      name: t('label.article-plural'),
-      url: contextCenterClassBase.getArticlesListPath(),
-    },
-    {
-      activeTitle: true,
-      name: getEntityName(knowledgePage) || t('label.untitled'),
-      url: '',
+      label: getKnowledgePageName(knowledgePage),
     },
   ];
 
@@ -65,46 +56,20 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   }
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
+
+  const breadcrumbEl = (
+    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
+  );
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:gap-3 tw:mb-5"
-      data-testid="article-version-header">
-      {!breadcrumbInsideCard && (
-        <TitleBreadcrumb
-          useCustomArrow
-          className={breadcrumbClassName}
-          titleLinks={breadcrumbs}
-        />
-      )}
-
-      <Card className="tw:mb-0 tw:p-6" style={cardStyle}>
-        {breadcrumbInsideCard && (
-          <div className="tw:mb-4">
-            <TitleBreadcrumb
-              useCustomArrow
-              className={breadcrumbClassName}
-              titleLinks={breadcrumbs}
-            />
-          </div>
-        )}
-        <div className="tw:flex tw:gap-4 tw:items-center">
-          <div className="tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
-            <File06
-              className="tw:text-gray-500"
-              height={40}
-              style={{ verticalAlign: 'middle', flexShrink: 0 }}
-              width={40}
-            />
-          </div>
-
-          <Typography as="h3">
-            {getEntityName(knowledgePage) || t('label.untitled')}
-          </Typography>
-        </div>
-      </Card>
+    <div data-testid="article-version-header">
+      {!breadcrumbInsideCard && breadcrumbEl}
+      <HeaderShell
+        breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
+        padding="comfortable"
+        title={getKnowledgePageName(knowledgePage, t)}
+        variant={isEmbedded ? 'gradient' : 'flat'}
+      />
     </div>
   );
 };

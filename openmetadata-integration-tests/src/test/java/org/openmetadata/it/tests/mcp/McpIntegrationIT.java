@@ -90,6 +90,45 @@ public class McpIntegrationIT extends McpTestBase {
   }
 
   @Test
+  void testGetEntityDetailsSurfacesCustomProperties() throws Exception {
+    String propertyName = "mcpCustomProperty";
+    String propertyValue = "mcp-value-" + UUID.randomUUID().toString().substring(0, 8);
+    addStringCustomProperty(Entity.TABLE, propertyName);
+
+    String jsonPatch =
+        String.format(
+            "[{\"op\":\"add\",\"path\":\"/extension\",\"value\":{\"%s\":\"%s\"}}]",
+            propertyName, propertyValue);
+    patch("tables/" + testTable.getId(), jsonPatch);
+
+    Map<String, Object> toolCallRequest =
+        McpTestUtils.createGetEntityToolCall(Entity.TABLE, testTable.getFullyQualifiedName());
+    JsonNode responseJson = executeMcpRequest(toolCallRequest);
+
+    String responseText = responseJson.get("result").get("content").get(0).get("text").asText();
+    assertThat(responseText).contains("extension");
+    assertThat(responseText).contains(propertyValue);
+  }
+
+  private static void addStringCustomProperty(String entityType, String propertyName)
+      throws Exception {
+    JsonNode entityTypeNode =
+        get("metadata/types/name/" + entityType + "?category=Field", JsonNode.class);
+    JsonNode stringTypeNode = get("metadata/types/name/string", JsonNode.class);
+
+    Map<String, Object> propertyType = new HashMap<>();
+    propertyType.put("id", stringTypeNode.get("id").asText());
+    propertyType.put("type", "type");
+
+    Map<String, Object> customProperty = new HashMap<>();
+    customProperty.put("name", propertyName);
+    customProperty.put("description", "MCP custom property test");
+    customProperty.put("propertyType", propertyType);
+
+    put("metadata/types/" + entityTypeNode.get("id").asText(), customProperty, JsonNode.class);
+  }
+
+  @Test
   void testMcpToolCall() throws Exception {
     Map<String, Object> toolCallRequest =
         McpTestUtils.createSearchMetadataToolCall("test", 5, Entity.TABLE);

@@ -92,6 +92,14 @@ runs:
     # ------------------------------------------------------------------------------
 
     # ---- Start OpenMetadata Server and ingest Sample Data ------------------------
+    - name: Configure Test Session Limit
+      if: ${{ inputs.install-server == 'true' }}
+      run: |
+        if [ -z "${AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER:-}" ]; then
+          echo "AUTHENTICATION_MAX_ACTIVE_SESSIONS_PER_USER=10000" >> "$GITHUB_ENV"
+        fi
+      shell: bash
+
     - name: Start Server and Ingest Sample Data
       if: ${{ inputs.install-server == 'true' }}
       uses: nick-fields/retry@v3.0.2

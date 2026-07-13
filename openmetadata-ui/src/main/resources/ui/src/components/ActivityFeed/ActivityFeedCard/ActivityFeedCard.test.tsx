@@ -20,7 +20,7 @@ import {
 } from '../../../generated/entity/feed/thread';
 import ActivityFeedCard from './ActivityFeedCard';
 
-jest.mock('../../../utils/FeedUtils', () => ({
+jest.mock('../../../utils/FeedUtilsPure', () => ({
   getEntityField: jest.fn(),
   getEntityFQN: jest.fn(),
   getEntityType: jest.fn(),

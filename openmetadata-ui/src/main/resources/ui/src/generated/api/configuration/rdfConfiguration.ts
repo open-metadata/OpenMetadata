@@ -19,9 +19,21 @@ export interface RDFConfiguration {
      */
     baseUri?: string;
     /**
+     * Maximum number of entity models written to RDF storage in a single bulk request.
+     */
+    bulkEntityBatchSize?: number;
+    /**
+     * Maximum number of source entities reconciled in a single RDF relationship bulk request.
+     */
+    bulkRelationshipSourceBatchSize?: number;
+    /**
      * Cache inferred triples for better query performance (requires more storage)
      */
     cacheInferredTriples?: boolean;
+    /**
+     * Timeout in milliseconds for establishing connections to RDF storage.
+     */
+    connectTimeoutMs?: number;
     /**
      * Dataset name in RDF storage
      */
@@ -50,6 +62,10 @@ export interface RDFConfiguration {
      */
     remoteEndpoint?: string;
     /**
+     * Timeout in milliseconds for individual RDF storage requests.
+     */
+    requestTimeoutMs?: number;
+    /**
      * Type of RDF storage backend
      */
     storageType: StorageType;
@@ -57,6 +73,18 @@ export interface RDFConfiguration {
      * Username for RDF storage authentication
      */
     username?: string;
+    /**
+     * Maximum number of retries for idempotent RDF write requests after the initial attempt.
+     */
+    writeMaxRetries?: number;
+    /**
+     * Initial backoff in milliseconds before retrying an RDF write request.
+     */
+    writeRetryInitialBackoffMs?: number;
+    /**
+     * Maximum backoff in milliseconds between RDF write request retries.
+     */
+    writeRetryMaxBackoffMs?: number;
 }
 
 /**

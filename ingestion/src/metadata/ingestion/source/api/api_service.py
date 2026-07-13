@@ -73,7 +73,6 @@ class ApiServiceTopology(ServiceTopology):
                 processor="yield_create_request_api_service",
                 overwrite=False,
                 must_return=True,
-                cache_entities=True,
             ),
         ],
         children=["api_collection"],
@@ -87,14 +86,12 @@ class ApiServiceTopology(ServiceTopology):
                 context="api_collections",
                 processor="yield_api_collection",
                 consumer=["api_service"],
-                use_cache=True,
             ),
             NodeStage(
                 type_=APIEndpoint,
                 context="api_endpoints",
                 processor="yield_api_endpoint",
                 consumer=["api_service"],
-                use_cache=True,
             ),
         ],
     )
@@ -172,7 +169,7 @@ class ApiServiceSource(TopologyRunnerMixin, Source, ABC):
                 metadata=self.metadata,
                 entity_type=APICollection,
                 entity_source_state=self.api_collection_source_state,
-                mark_deleted_entity=self.source_config.markDeletedApiCollections,
+                recursive=self.source_config.markDeletedApiCollections,
                 params={"service": self.context.get().api_service},
             )
 

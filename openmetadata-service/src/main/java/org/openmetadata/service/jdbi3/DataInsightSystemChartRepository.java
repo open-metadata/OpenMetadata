@@ -98,8 +98,6 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
   public static final String FORMULA_FUNC_REGEX =
       "\\b(count|sum|min|max|avg|unique)+\\((k='([^']*)')?,?\\s*(q='([^']*)')?\\)?";
 
-  public static final String NUMERIC_VALIDATION_REGEX = "[\\d\\.+-\\/\\*\\(\\) ]+";
-
   public DataInsightSystemChartRepository() {
     super(
         DataInsightSystemChartResource.COLLECTION_PATH,
@@ -577,82 +575,7 @@ public class DataInsightSystemChartRepository extends EntityRepository<DataInsig
    * @return List of pipeline statuses
    */
   private List<Map> parseIngestionPipelineResponse(String responseBody) {
-    try {
-      // Parse the JSON response
-      Map<String, Object> responseMap = JsonUtils.readValue(responseBody, Map.class);
-
-      if (responseMap == null || !responseMap.containsKey("hits")) {
-        LOG.warn("Invalid search response format");
-        return List.of();
-      }
-
-      Map<String, Object> hits = (Map<String, Object>) responseMap.get("hits");
-      if (hits == null || !hits.containsKey("hits")) {
-        LOG.warn("No hits found in search response");
-        return List.of();
-      }
-
-      List<Map<String, Object>> hitsList = (List<Map<String, Object>>) hits.get("hits");
-      if (hitsList == null || hitsList.isEmpty()) {
-        LOG.info("No ingestion pipelines found");
-        return List.of();
-      }
-
-      List<Map> pipelineStatuses = new ArrayList<>();
-
-      for (Map<String, Object> hit : hitsList) {
-        Map<String, Object> source = (Map<String, Object>) hit.get("_source");
-        if (source == null) {
-          continue;
-        }
-
-        // Extract required information
-        String id = (String) source.get("id");
-        String name = (String) source.get("name");
-        String displayName = (String) source.get("displayName");
-        String fqn = (String) source.get("fullyQualifiedName");
-        String pipelineType = (String) source.get("pipelineType");
-        String provider = (String) source.get("provider");
-
-        // Get pipeline state from pipelineStatuses
-        String pipelineState = "unknown";
-        Map<String, Object> pipelineStatusesMap =
-            (Map<String, Object>) source.get("pipelineStatuses");
-        if (pipelineStatusesMap != null) {
-          pipelineState = (String) pipelineStatusesMap.get("pipelineState");
-          if (pipelineState == null) {
-            pipelineState = "unknown";
-          }
-        }
-
-        // Add metadata with the required information
-        Map<String, Object> metadata = new HashMap<>();
-        metadata.put("id", id);
-        metadata.put("name", name);
-        metadata.put("displayName", displayName);
-        metadata.put("fullyQualifiedName", fqn);
-        metadata.put("pipelineType", pipelineType);
-        metadata.put("provider", provider);
-        metadata.put("status", pipelineState);
-
-        pipelineStatuses.add(metadata);
-
-        LOG.info(
-            "Found pipeline: {} ({}), Type: {}, Status: {}, Provider: {}",
-            displayName,
-            fqn,
-            pipelineType,
-            pipelineState,
-            provider);
-      }
-
-      LOG.info("Parsed {} ingestion pipelines for service", pipelineStatuses.size());
-      return pipelineStatuses;
-
-    } catch (Exception e) {
-      LOG.error("Error parsing ingestion pipeline response", e);
-      return List.of();
-    }
+    return IngestionPipelineStatusParser.parse(responseBody);
   }
 
   @Override

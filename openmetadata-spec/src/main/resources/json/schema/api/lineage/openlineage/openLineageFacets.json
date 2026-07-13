@@ -249,7 +249,7 @@
       }
     },
     "ownershipFacet": {
-      "description": "Ownership facet providing owner information for the dataset.",
+      "description": "Ownership facet providing owner information for the dataset or job.",
       "type": "object",
       "allOf": [
         { "$ref": "#/definitions/baseFacet" }
@@ -386,6 +386,9 @@
       "properties": {
         "sql": {
           "$ref": "#/definitions/sqlJobFacet"
+        },
+        "ownership": {
+          "$ref": "#/definitions/ownershipFacet"
         }
       },
       "additionalProperties": true

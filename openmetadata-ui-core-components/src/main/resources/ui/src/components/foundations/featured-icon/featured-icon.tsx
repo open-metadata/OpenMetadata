@@ -10,9 +10,26 @@ const iconsSizes = {
   xl: 'tw:*:data-icon:size-7',
 };
 
+type FeaturedIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+
+const squareRadii: Record<'sm' | 'md' | 'lg' | 'xl', string> = {
+  sm: 'tw:rounded-sm',
+  md: 'tw:rounded-md',
+  lg: 'tw:rounded-lg',
+  xl: 'tw:rounded-xl',
+};
+
+const outlineBorders: Record<FeaturedIconColor, string> = {
+  brand: 'tw:border tw:border-utility-brand-200',
+  gray: 'tw:border tw:border-utility-gray-200',
+  error: 'tw:border tw:border-utility-error-200',
+  warning: 'tw:border tw:border-utility-warning-200',
+  success: 'tw:border tw:border-utility-success-200',
+};
+
 const styles = sortCx({
   light: {
-    base: 'tw:rounded-full',
+    base: 'tw:rounded-full tw:dark:text-fg-white',
     sizes: {
       sm: 'tw:size-8',
       md: 'tw:size-10',
@@ -20,11 +37,15 @@ const styles = sortCx({
       xl: 'tw:size-14',
     },
     colors: {
-      brand: 'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand',
-      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray',
-      error: 'tw:bg-error-secondary tw:text-featured-icon-light-fg-error',
-      warning: 'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning',
-      success: 'tw:bg-success-secondary tw:text-featured-icon-light-fg-success',
+      brand:
+        'tw:bg-brand-secondary tw:text-featured-icon-light-fg-brand tw:dark:bg-brand-solid',
+      error:
+        'tw:bg-error-secondary tw:text-featured-icon-light-fg-error tw:dark:bg-error-solid',
+      gray: 'tw:bg-tertiary tw:text-featured-icon-light-fg-gray tw:dark:bg-secondary-solid',
+      success:
+        'tw:bg-success-secondary tw:text-featured-icon-light-fg-success tw:dark:bg-success-solid',
+      warning:
+        'tw:bg-warning-secondary tw:text-featured-icon-light-fg-warning tw:dark:bg-warning-solid',
     },
   },
 
@@ -50,7 +71,7 @@ const styles = sortCx({
   },
 
   dark: {
-    base: 'tw:text-fg-white tw:shadow-xs-skeumorphic tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
+    base: 'tw:text-fg-white tw:shadow-xs-skeuomorphic tw:before:absolute tw:before:inset-px tw:before:border tw:before:border-white/12 tw:before:mask-b-from-0%',
     sizes: {
       sm: 'tw:size-8 tw:rounded-md tw:before:rounded-[5px]',
       md: 'tw:size-10 tw:rounded-lg tw:before:rounded-[7px]',
@@ -67,7 +88,7 @@ const styles = sortCx({
   },
 
   modern: {
-    base: 'tw:bg-primary tw:shadow-xs-skeumorphic tw:ring-1 tw:ring-inset',
+    base: 'tw:bg-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-inset',
     sizes: {
       sm: 'tw:size-8 tw:rounded-md',
       md: 'tw:size-10 tw:rounded-lg',
@@ -131,8 +152,16 @@ interface FeaturedIconProps {
   className?: string;
   icon?: FC<{ className?: string }> | ReactNode;
   size?: 'sm' | 'md' | 'lg' | 'xl';
-  color: 'brand' | 'gray' | 'success' | 'warning' | 'error';
+  color: FeaturedIconColor;
   theme?: 'light' | 'gradient' | 'dark' | 'outline' | 'modern' | 'modern-neue';
+  /** 'square' overrides the circular shape of the light theme with a rounded rectangle */
+  shape?: 'circle' | 'square';
+  /** Corner radius applied when shape='square'; ignored for circle */
+  radius?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Adds a variant-coloured border ring around the container */
+  outlined?: boolean;
+  /** 'white' overrides the themed background colour with a plain white background */
+  bgColor?: 'colored' | 'white';
 }
 
 export const FeaturedIcon = (props: FeaturedIconProps) => {
@@ -144,6 +173,10 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
     theme: variant = 'light',
     color = 'brand',
     icon: Icon,
+    shape = 'circle',
+    radius = 'md',
+    outlined = false,
+    bgColor = 'colored',
     ...otherProps
   } = props;
 
@@ -154,12 +187,13 @@ export const FeaturedIcon = (props: FeaturedIconProps) => {
       data-featured-icon
       className={cx(
         'tw:relative tw:flex tw:shrink-0 tw:items-center tw:justify-center',
-
         iconsSizes[size],
         styles[variant].base,
         styles[variant].sizes[size],
         styles[variant].colors[color],
-
+        shape === 'square' && squareRadii[radius],
+        outlined && outlineBorders[color],
+        bgColor === 'white' && 'tw:bg-white',
         className
       )}>
       {isReactComponent(Icon) && <Icon data-icon className="tw:z-1" />}

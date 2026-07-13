@@ -13,24 +13,12 @@ Helper module to handle data sampling
 for the profiler
 """
 
-from typing import Dict, Optional, Union  # noqa: UP035
-
 from sqlalchemy import Table, func, text
 from sqlalchemy.sql.selectable import CTE
 
-from metadata.generated.schema.entity.services.connections.connectionBasicType import (
-    DataStorageConfig,
-)
-from metadata.generated.schema.entity.services.connections.database.datalakeConnection import (
-    DatalakeConnection,
-)
-from metadata.generated.schema.entity.services.databaseService import DatabaseConnection
 from metadata.generated.schema.type.basic import ProfileSampleType, SamplingMethodType
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.sampler.models import SampleConfig
 from metadata.sampler.sqlalchemy.sampler import SQASampler
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 
 
 class SnowflakeSampler(SQASampler):
@@ -39,35 +27,12 @@ class SnowflakeSampler(SQASampler):
     run the query in the whole table.
     """
 
-    # pylint: disable=too-many-arguments
-    def __init__(
-        self,
-        service_connection_config: Union[DatabaseConnection, DatalakeConnection],  # noqa: UP007
-        ometa_client: OpenMetadata,
-        entity: Table,
-        sample_config: Optional[SampleConfig] = None,  # noqa: UP045
-        partition_details: Optional[Dict] = None,  # noqa: UP006, UP045
-        sample_query: Optional[str] = None,  # noqa: UP045
-        storage_config: DataStorageConfig = None,
-        sample_data_count: Optional[int] = SAMPLE_DATA_DEFAULT_COUNT,  # noqa: UP045
-        **kwargs,
-    ):
-        super().__init__(
-            service_connection_config=service_connection_config,
-            ometa_client=ometa_client,
-            entity=entity,
-            sample_config=sample_config,
-            partition_details=partition_details,
-            sample_query=sample_query,
-            storage_config=storage_config,
-            sample_data_count=sample_data_count,
-            **kwargs,
-        )
+    def __init__(self, *args, **kwargs):
+        super().__init__(*args, **kwargs)
         self.sampling_method_type = func.bernoulli
-        if sample_config:
-            static = self._resolve_sample_config
-            if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
-                self.sampling_method_type = func.system
+        static = self._resolve_sample_config
+        if static and static.samplingMethodType == SamplingMethodType.SYSTEM:
+            self.sampling_method_type = func.system
 
     def set_tablesample(self, static: StaticSamplingConfig | None, selectable: Table):
         """Set the TABLESAMPLE clause for Snowflake

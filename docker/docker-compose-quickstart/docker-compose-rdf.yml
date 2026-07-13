@@ -18,7 +18,10 @@ volumes:
   ingestion-volume-dags:
   ingestion-volume-tmp:
   es-data:
-  fuseki-data:
+  # See ../development/docker-compose-fuseki.yml — renamed from `fuseki-data`
+  # because the new Dockerfile uses a different on-disk layout and reusing
+  # the old volume name silently mounts stale state.
+  fuseki-tdb2-data:
 
 services:
   mysql:
@@ -70,20 +73,27 @@ services:
         reservations:
           memory: 2G
 
-  # Apache Jena Fuseki for RDF/Knowledge Graph storage
+  # Apache Jena Fuseki for RDF/Knowledge Graph storage. Built from the
+  # in-repo Dockerfile (Fuseki 5.6.0) — see ../development/docker-compose-fuseki.yml
+  # for why we don't use the unmaintained stain/jena-fuseki image.
   fuseki:
     container_name: openmetadata_fuseki
-    image: stain/jena-fuseki:4.10.0
+    build:
+      context: ../rdf-store
+      dockerfile: Dockerfile
+    image: openmetadata-fuseki:5.6.0
     restart: always
     environment:
-      - ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
-      - FUSEKI_DATASET_1=openmetadata
+      # Local-dev defaults — production deployments MUST override via the
+      # FUSEKI_ADMIN_PASSWORD / FUSEKI_OPENMETADATA_PASSWORD env vars before
+      # bringing this stack up. The entrypoint envsubsts these into shiro.ini.
+      - FUSEKI_ADMIN_PASSWORD=${FUSEKI_ADMIN_PASSWORD:-admin}
+      - FUSEKI_OPENMETADATA_PASSWORD=${FUSEKI_OPENMETADATA_PASSWORD:-openmetadata-secret}
       - JVM_ARGS=-Xmx4g -Xms2g
-      - FUSEKI_BASE=/fuseki
     ports:
       - "3030:3030"
     volumes:
-      - fuseki-data:/fuseki
+      - fuseki-tdb2-data:/fuseki-data
     networks:
       - app_net
     healthcheck:

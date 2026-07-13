@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { APIRequestContext, expect, Page } from '@playwright/test';
-import { getEncodedFqn } from '../../src/utils/StringsUtils';
+import { getEncodedFqn } from '../../src/utils/StringUtils';
 import { SidebarItem } from '../constant/sidebar';
 import { ResponseDataType } from '../support/entity/Entity.interface';
 import { TableClass } from '../support/entity/TableClass';
@@ -325,7 +325,9 @@ export const triggerTestSuitePipelineAndWaitForSuccess = async (data: {
 
         const ingestionPipeline = await ingestionPipelineResponse.json();
 
-        return ingestionPipeline?.pipelineStatuses?.pipelineState ?? 'running';
+        return (
+          ingestionPipeline?.pipelineStatuses?.[0]?.pipelineState ?? 'running'
+        );
       },
       {
         // Custom expect message for reporting, optional.

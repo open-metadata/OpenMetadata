@@ -187,6 +187,6 @@ public class CreateMetricTool implements McpTool {
     RestUtil.PutResponse<Metric> response =
         repo.createOrUpdate(null, metric, userName, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
-    return JsonUtils.getMap(response.getEntity());
+    return McpResponseUtils.compact(response.getEntity(), response.getChangeType());
   }
 }

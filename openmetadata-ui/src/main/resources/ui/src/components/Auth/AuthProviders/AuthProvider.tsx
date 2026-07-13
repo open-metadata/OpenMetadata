@@ -23,7 +23,7 @@ import {
 } from 'axios';
 import { CookieStorage } from 'cookie-storage';
 import { isNil, isNumber } from 'lodash';
-import { WebStorageStateStore } from 'oidc-client';
+import type { WebStorageStateStore } from 'oidc-client';
 import {
   ComponentType,
   createContext,
@@ -53,7 +53,10 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
+import { useExploreCache } from '../../../hooks/useExploreCache';
+import { queryClient } from '../../../queryClient';
 import axiosClient from '../../../rest';
+import { clearEtagCache } from '../../../rest/etagInterceptor';
 import {
   fetchAuthenticationConfig,
   fetchAuthorizerConfig,
@@ -217,6 +220,22 @@ export const AuthProvider = ({
 
     // Clear tokens properly during logout
     await clearOidcToken();
+
+    // Drop every in-memory client-side cache keyed by the current principal so the next user
+    // that signs in within this SPA session cannot see the previous user's cached responses.
+    // The app navigates to /signin without a hard reload, so global Zustand / module-level
+    // caches would otherwise survive across users.
+    //
+    // Three caches need clearing:
+    //   * useExploreCache — SWR cache for Explore search results (Zustand store)
+    //   * clearEtagCache() — ETag interceptor's response cache; without it, a freshly-
+    //     authenticated user could pick up another principal's cached body via 304.
+    //   * queryClient.clear() — React Query cache. Entries are keyed without the principal
+    //     in the key (auth comes from the Authorization header), so without an explicit
+    //     clear the next user would see the previous user's bodies until staleTime + gcTime.
+    useExploreCache.getState().clearCache();
+    clearEtagCache();
+    queryClient.clear();
 
     setApplicationLoading(false);
 

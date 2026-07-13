@@ -29,15 +29,12 @@ import { DataProduct } from '../../../generated/entity/domains/dataProduct';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useMarketplaceRecentSearches } from '../../../hooks/useMarketplaceRecentSearches';
 import { useMarketplaceStore } from '../../../hooks/useMarketplaceStore';
-import {
-  getNLPEnabledStatus,
-  nlqSearch,
-  searchQuery,
-} from '../../../rest/searchAPI';
+import { useSearchStore } from '../../../hooks/useSearchStore';
+import { nlqSearch, searchQuery } from '../../../rest/searchAPI';
 import { getDataProductIconByUrl } from '../../../utils/DataProductUtils';
 import { getDomainIcon } from '../../../utils/DomainUtils';
 import { getDomainDetailsPath } from '../../../utils/RouterUtils';
-import { getEncodedFqn } from '../../../utils/StringsUtils';
+import { getEncodedFqn } from '../../../utils/StringUtils';
 import './marketplace-search-bar.less';
 
 const PAGE_SIZE = 5;
@@ -46,8 +43,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { dataProductBasePath } = useMarketplaceStore();
-  const [isNLPEnabled, setIsNLPEnabled] = useState(false);
-  const [isNLQActive, setIsNLQActive] = useState(false);
+  const { isNLPEnabled, isNLPActive, setNLPActive, initNLP } = useSearchStore();
   const [searchValue, setSearchValue] = useState('');
   const [isOpen, setIsOpen] = useState(false);
   const [dataProducts, setDataProducts] = useState<DataProduct[]>([]);
@@ -56,11 +52,10 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const { addSearch } = useMarketplaceRecentSearches();
 
+  // GlobalSearchBar is absent on marketplace pages, so bootstrap the store if not yet populated.
   useEffect(() => {
-    getNLPEnabledStatus()
-      .then(setIsNLPEnabled)
-      .catch(() => setIsNLPEnabled(false));
-  }, []);
+    initNLP();
+  }, [initNLP]);
 
   const fetchResults = useCallback(
     async (query: string) => {
@@ -72,7 +67,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
       }
       setIsSearching(true);
       try {
-        if (isNLPEnabled && isNLQActive) {
+        if (isNLPEnabled && isNLPActive) {
           const res = await nlqSearch({
             query,
             pageNumber: INITIAL_PAGING_VALUE,
@@ -121,7 +116,7 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
         setIsSearching(false);
       }
     },
-    [isNLPEnabled, isNLQActive]
+    [isNLPEnabled, isNLPActive]
   );
 
   const debouncedFetch = useMemo(
@@ -293,16 +288,16 @@ const MarketplaceSearchBar = ({ isEditView }: { isEditView?: boolean }) => {
           {isNLPEnabled ? (
             <button
               className={`marketplace-nlq-button${
-                isNLQActive ? ' active' : ''
+                isNLPActive ? ' active' : ''
               }`}
               data-testid="marketplace-nlq-toggle"
               title={
-                isNLQActive
+                isNLPActive
                   ? t('message.natural-language-search-active')
                   : t('label.use-natural-language-search')
               }
-              onClick={() => setIsNLQActive((prev) => !prev)}>
-              {isNLQActive ? (
+              onClick={() => setNLPActive(!isNLPActive)}>
+              {isNLPActive ? (
                 <IconSuggestionsActive />
               ) : (
                 <IconSuggestionsBlue />

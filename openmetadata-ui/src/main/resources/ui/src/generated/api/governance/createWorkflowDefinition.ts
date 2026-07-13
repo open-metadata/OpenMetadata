@@ -37,7 +37,7 @@ export interface CreateWorkflowDefinition {
     /**
      * List of processes used on the workflow.
      */
-    nodes?: Definition[];
+    nodes?: CheckEntityAttributesTaskDefinition[];
     /**
      * Owners of this API Collection
      */
@@ -84,8 +84,19 @@ export interface EdgeDefinition {
  * StartEvent.
  *
  * Defines a Task for a given User to approve.
+ *
+ * Runs the Policy Agent to enforce data access on supported connectors, or falls back to a
+ * manual grant step.
+ *
+ * Creates (or updates) a service-scoped AI Automation from a seed template and runs it.
  */
-export interface Definition {
+export interface CheckEntityAttributesTaskDefinition {
+    /**
+     * Outgoing branches this node's delegate can emit. Grant path uses ['granted', 'manual',
+     * 'denied']; revoke path (accessType override = Revoke) uses ['revoked', 'manual']. Node
+     * authors declare only the branches their delegate actually emits, and each declared branch
+     * must have a matching outgoing edge in the workflow.
+     */
     branches?: string[];
     config?:   NodeConfiguration;
     /**
@@ -137,6 +148,13 @@ export interface NodeConfiguration {
      */
     assigneeStrategy?: string;
     /**
+     * Auto-fires after the ISO 8601 duration in the named process variable elapses. The
+     * boundary timer interrupts the user task and exits the subprocess with the configured
+     * transitionId as the node's result, so an outgoing edge with that condition routes the
+     * workflow downstream (e.g. to auto-revoke or auto-close).
+     */
+    expiryTimer?: ExpiryTimer;
+    /**
      * Number of reviewers that must reject for the task to be rejected. Default is 1 (any
      * single reviewer can reject). This allows for scenarios where you want multiple approvals
      * but a single rejection can veto.
@@ -158,6 +176,59 @@ export interface NodeConfiguration {
      * Transitions available from this stage. Edge conditions should match these transition ids.
      */
     transitionMetadata?: TransitionMetadatum[];
+    /**
+     * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+     * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+     * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+     * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+     * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+     * to decide what to tear down. When unset, the agent uses the accessType from the request
+     * payload.
+     */
+    accessType?: AccessType;
+    /**
+     * Maximum seconds to wait for the Policy Agent pipeline to complete.
+     *
+     * Seconds to wait before treating the run as timed out.
+     */
+    timeoutSeconds?: number;
+    /**
+     * If true, waits for the Policy Agent ingestion pipeline to finish before continuing.
+     *
+     * Set if this step should wait until the Automation run finishes.
+     */
+    waitForCompletion?: boolean;
+    /**
+     * If True, it will be created/updated and run. Otherwise it will only be created/updated.
+     */
+    shouldRun?: boolean;
+    /**
+     * Name of the seed AI Automation template to instantiate per service (e.g.
+     * DescriptionAutomation).
+     */
+    template?: string;
+}
+
+/**
+ * When set, forces the accessType sent to the Policy Agent for every asset, overriding the
+ * value on the Data Access Request payload. Set to 'Revoke' to tear down previously granted
+ * access (the connector emits REVOKE instead of GRANT); on revoke the connector strips
+ * whatever the principal holds on the scope (a revoke takes back everything, not a specific
+ * level) — requestedAccess on the payload is preserved for audit/UI display but is not used
+ * to decide what to tear down. When unset, the agent uses the accessType from the request
+ * payload.
+ *
+ * Access operation the Policy Agent should perform. Grant variants — FullAccess (all
+ * columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked
+ * (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down
+ * whatever the principal currently holds at the scope (a revoke takes back everything, not
+ * a specific level).
+ */
+export enum AccessType {
+    ColumnLevel = "ColumnLevel",
+    FullAccess = "FullAccess",
+    Masked = "Masked",
+    Revoke = "Revoke",
 }
 
 /**
@@ -176,6 +247,13 @@ export interface Assignees {
      * List of specific candidates (users or teams) assigned to this task.
      */
     candidates?: EntityReference[];
+    /**
+     * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+     * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+     * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+     * excluding the requester so self-approval can never happen.
+     */
+    emptyAssigneeStrategy?: EmptyAssigneeStrategy;
 }
 
 /**
@@ -235,6 +313,63 @@ export interface EntityReference {
 }
 
 /**
+ * Strategy applied when no reviewers, owners, or candidates resolve to assignees. 'none'
+ * keeps the default behavior (the gateway auto-approves event-driven approvals and leaves
+ * workflow-managed tasks unassigned); 'assignAdmins' falls back to all platform admins,
+ * excluding the requester so self-approval can never happen.
+ */
+export enum EmptyAssigneeStrategy {
+    AssignAdmins = "assignAdmins",
+    None = "none",
+}
+
+/**
+ * Auto-fires after the ISO 8601 duration in the named process variable elapses. The
+ * boundary timer interrupts the user task and exits the subprocess with the configured
+ * transitionId as the node's result, so an outgoing edge with that condition routes the
+ * workflow downstream (e.g. to auto-revoke or auto-close).
+ */
+export interface ExpiryTimer {
+    /**
+     * When set, the underlying Task entity is closed at the moment the timer fires with this
+     * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+     * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+     * for closing the Task (avoids double-resolve).
+     */
+    closeAsResolution?: ResolutionType;
+    /**
+     * Name of the process variable holding the ISO 8601 duration (e.g. 'accessDuration' →
+     * 'P14D').
+     */
+    durationVariable: string;
+    /**
+     * Result value emitted when the timer fires. Must match an outgoing edge condition from
+     * this node.
+     */
+    transitionId: string;
+}
+
+/**
+ * When set, the underlying Task entity is closed at the moment the timer fires with this
+ * resolutionType (the final taskStatus is derived from it by TaskRepository — Expired maps
+ * to Expired; TimedOut maps to Failed). Leave unset when a downstream node is responsible
+ * for closing the Task (avoids double-resolve).
+ *
+ * How the task was resolved.
+ */
+export enum ResolutionType {
+    Approved = "Approved",
+    AutoApproved = "AutoApproved",
+    AutoRejected = "AutoRejected",
+    Cancelled = "Cancelled",
+    Completed = "Completed",
+    Expired = "Expired",
+    Rejected = "Rejected",
+    Revoked = "Revoked",
+    TimedOut = "TimedOut",
+}
+
+/**
  * Coarse task status mapped while this user task is active.
  *
  * Current status of the task in its lifecycle.
@@ -243,9 +378,11 @@ export enum TaskStatus {
     Approved = "Approved",
     Cancelled = "Cancelled",
     Completed = "Completed",
+    Expired = "Expired",
     Failed = "Failed",
     Granted = "Granted",
     InProgress = "InProgress",
+    ManualRevoke = "ManualRevoke",
     Open = "Open",
     Pending = "Pending",
     Rejected = "Rejected",
@@ -260,20 +397,6 @@ export interface TransitionMetadatum {
     resolutionType?:  ResolutionType;
     targetStageId:    string;
     targetTaskStatus: TaskStatus;
-}
-
-/**
- * How the task was resolved.
- */
-export enum ResolutionType {
-    Approved = "Approved",
-    AutoApproved = "AutoApproved",
-    AutoRejected = "AutoRejected",
-    Cancelled = "Cancelled",
-    Completed = "Completed",
-    Rejected = "Rejected",
-    Revoked = "Revoked",
-    TimedOut = "TimedOut",
 }
 
 export interface InputNamespaceMap {

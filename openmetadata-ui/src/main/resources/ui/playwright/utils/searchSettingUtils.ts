@@ -41,7 +41,6 @@ export const mockEntitySearchConfig = {
     { field: 'fqnParts', boost: 5, matchType: 'standard' },
     { field: 'columns.name.keyword', boost: 2, matchType: 'exact' },
     { field: 'columns.displayName.keyword', boost: 2, matchType: 'exact' },
-    { field: 'columns.children.name.keyword', boost: 1, matchType: 'exact' },
     { field: 'columnNamesFuzzy', boost: 1.5, matchType: 'standard' },
   ],
   highlightFields: ['name', 'description', 'displayName'],
@@ -110,6 +109,28 @@ export async function setSliderValue(
   await page.mouse.move(valuePosition, box.y);
   await page.mouse.up();
 }
+
+// The entity search settings page opens with the "Ranking Details" accordion
+// panel expanded by default, so the "Matching Fields" panel (and its field
+// configuration rows) is collapsed and not mounted. Expand it before
+// interacting with any field-configuration control.
+export const openMatchingFieldsPanel = async (page: Page) => {
+  const firstFieldHeader = page.getByTestId('field-container-header').first();
+
+  const isMatchingFieldsPanelOpen = await firstFieldHeader
+    .isVisible()
+    .catch(() => false);
+
+  if (!isMatchingFieldsPanelOpen) {
+    await page
+      .locator('.ant-collapse-header')
+      .filter({ hasText: 'Matching Fields' })
+      .getByText('Matching Fields')
+      .click();
+
+    await firstFieldHeader.waitFor({ state: 'visible' });
+  }
+};
 
 export const restoreDefaultSearchSettings = async (page: Page) => {
   const { apiContext } = await getApiContext(page);

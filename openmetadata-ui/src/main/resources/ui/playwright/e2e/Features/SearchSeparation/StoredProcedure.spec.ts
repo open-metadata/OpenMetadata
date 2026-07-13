@@ -13,7 +13,7 @@
 
 import { test } from '@playwright/test';
 import { StoredProcedureClass } from '../../../support/entity/StoredProcedureClass';
-import { registerFilterSeparationSuite } from './searchSeparationSuite';
+import { registerFilterSeparationSuite } from './SearchSeparationSuite';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 

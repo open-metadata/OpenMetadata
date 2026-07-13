@@ -17,7 +17,7 @@ import classNames from 'classnames';
 import { isUndefined, split } from 'lodash';
 import { Duration } from 'luxon';
 import Qs from 'qs';
-import { FC, useMemo, useState } from 'react';
+import { FC, lazy, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as ExitFullScreen } from '../../../assets/svg/exit-full-screen.svg';
@@ -40,11 +40,15 @@ import { customFormatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { parseSearchParams } from '../../../utils/Query/QueryUtils';
 import queryClassBase from '../../../utils/QueryClassBase';
 import { getEntityDetailsPath, getQueryPath } from '../../../utils/RouterUtils';
-import SchemaEditor from '../SchemaEditor/SchemaEditor';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import QueryCardExtraOption from './QueryCardExtraOption/QueryCardExtraOption.component';
 import QueryUsedByOtherTable from './QueryUsedByOtherTable/QueryUsedByOtherTable.component';
 import './table-queries.style.less';
 import { QueryCardProp } from './TableQueries.interface';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../SchemaEditor/SchemaEditor'))
+);
 
 const { Text } = Typography;
 

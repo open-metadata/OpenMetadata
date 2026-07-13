@@ -27,7 +27,6 @@ public record SearchEntityIndex(org.openmetadata.schema.entity.data.SearchIndex 
     fields.put("fields.name.keyword", 50f);
     fields.put("fields.children.description", 1.0f);
     fields.put("fields.children.name", 7.0f);
-    fields.put("fields.children.name.keyword", 5.0f);
     return fields;
   }
 }

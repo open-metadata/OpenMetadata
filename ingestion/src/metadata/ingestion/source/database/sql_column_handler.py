@@ -31,7 +31,6 @@ from metadata.ingestion.source.database.column_type_parser import ColumnTypePars
 from metadata.ingestion.source.database.json_schema_extractor import (
     infer_json_schema_from_sample,
 )
-from metadata.utils.execution_time_tracker import calculate_execution_time
 from metadata.utils.helpers import clean_up_starting_ending_double_quotes_in_string
 from metadata.utils.logger import ingestion_logger
 
@@ -243,7 +242,6 @@ class SqlColumnHandlerMixin:
 
         return inspector.get_columns(table_name, schema_name, table_type=table_type, db_name=db_name)
 
-    @calculate_execution_time()
     def get_columns_and_constraints(  # pylint: disable=too-many-locals
         self,
         schema_name: str,

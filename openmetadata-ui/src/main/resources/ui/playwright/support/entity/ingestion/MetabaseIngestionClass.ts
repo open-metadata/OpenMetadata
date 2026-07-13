@@ -71,11 +71,18 @@ class MetabaseIngestionClass extends ServiceBaseClass {
 
   async fillIngestionDetails(page: Page) {
     await page
-      .locator('#root\\/dashboardFilterPattern\\/includes')
+      .getByTestId('dashboardFilterPattern-only-specific-button')
+      .click();
+    await page
+      .getByTestId('filter-section-dashboardFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .fill(this.tableName);
 
     await page
-      .locator('#root\\/dashboardFilterPattern\\/includes')
+      .getByTestId('filter-section-dashboardFilterPattern')
+      .getByTestId('include-filter-input')
+      .locator('input')
       .press('Enter');
   }
 

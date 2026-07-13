@@ -14,7 +14,9 @@
 import React from 'react';
 import { FEED_COUNT_INITIAL_DATA } from '../../constants/entity.constants';
 import { EntityTabs } from '../../enums/entity.enum';
-import { GlossaryTermDetailPageTabProps } from './GlossaryTermClassBase';
+import glossaryTermClassBase, {
+  GlossaryTermDetailPageTabProps,
+} from './GlossaryTermClassBase';
 import { getGlossaryTermDetailPageTabs } from './GlossaryTermUtils';
 
 jest.mock(
@@ -56,8 +58,8 @@ jest.mock(
   () => ({ __esModule: true, default: () => null })
 );
 
-jest.mock('../../utils/CommonUtils', () => ({
-  ...jest.requireActual('../../utils/CommonUtils'),
+jest.mock('../EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../EntityDisplayPureUtils'),
   getCountBadge: jest.fn().mockReturnValue(null),
 }));
 
@@ -249,6 +251,52 @@ describe('getGlossaryTermDetailPageTabs', () => {
       const childProps = (customPropsTab?.children as React.ReactElement).props;
 
       expect(childProps.hasEditAccess).toBe(false);
+    });
+  });
+
+  // Invariant: every tab rendered by the glossary term page MUST also be
+  // registered in the customize-page tab IDs list. Without this guard, the
+  // Customize UI seeds personas from an incomplete tab list, and saving any
+  // edit (even unrelated, like moving a widget) silently drops the missing
+  // tabs for that persona — exactly the regression from PR #25886 that hid
+  // Relations Graph on the glossary term page.
+  describe('tab registration invariant', () => {
+    it('every key from getGlossaryTermDetailPageTabs is registered in getGlossaryTermDetailPageTabsIds', () => {
+      const renderedKeys = getGlossaryTermDetailPageTabs(mockProps).map(
+        (t) => t.key
+      );
+      const registeredIds = glossaryTermClassBase
+        .getGlossaryTermDetailPageTabsIds()
+        .map((t) => t.id);
+
+      renderedKeys.forEach((key) => {
+        expect(registeredIds).toContain(key);
+      });
+    });
+
+    it('every key from glossaryTermClassBase.getGlossaryTermDetailPageTabs is registered (covers wrapper-added tabs like DATA_OBSERVABILITY)', () => {
+      const renderedKeys = glossaryTermClassBase
+        .getGlossaryTermDetailPageTabs(mockProps)
+        .map((t) => t.key);
+      const registeredIds = glossaryTermClassBase
+        .getGlossaryTermDetailPageTabsIds()
+        .map((t) => t.id);
+
+      renderedKeys.forEach((key) => {
+        expect(registeredIds).toContain(key);
+      });
+    });
+
+    it('RELATIONS_GRAPH is rendered AND registered', () => {
+      const renderedKeys = getGlossaryTermDetailPageTabs(mockProps).map(
+        (t) => t.key
+      );
+      const registeredIds = glossaryTermClassBase
+        .getGlossaryTermDetailPageTabsIds()
+        .map((t) => t.id);
+
+      expect(renderedKeys).toContain(EntityTabs.RELATIONS_GRAPH);
+      expect(registeredIds).toContain(EntityTabs.RELATIONS_GRAPH);
     });
   });
 });

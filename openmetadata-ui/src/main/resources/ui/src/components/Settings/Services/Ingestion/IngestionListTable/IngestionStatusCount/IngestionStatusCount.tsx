@@ -13,7 +13,7 @@
 import { Col, Row, Typography } from 'antd';
 import classNames from 'classnames';
 import { useMemo } from 'react';
-import { getIngestionStatusCountData } from '../../../../../../utils/IngestionUtils';
+import { getIngestionStatusCountData } from '../../../../../../utils/IngestionConfigUtils';
 import './ingestion-status-count.less';
 import { IngestionStatusCountProps } from './IngestionStatusCount.interface';
 

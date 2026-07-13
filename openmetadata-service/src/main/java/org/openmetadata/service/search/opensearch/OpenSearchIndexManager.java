@@ -411,35 +411,46 @@ public class OpenSearchIndexManager implements IndexManagementClient {
   }
 
   @Override
-  public boolean swapAliases(Set<String> oldIndices, String newIndex, Set<String> aliases) {
+  public boolean swapAliases(
+      Set<String> oldIndices, String newIndex, Set<String> aliases, Set<String> indicesToRemove) {
     if (!isClientAvailable) {
       LOG.error("OpenSearch client is not available. Cannot swap aliases.");
       return false;
     }
-    if (aliases == null || aliases.isEmpty()) {
-      LOG.debug("No aliases to swap for index {}", newIndex);
+    Set<String> finalAliases = aliases == null ? Set.of() : aliases;
+    Set<String> finalIndicesToRemove = indicesToRemove == null ? Set.of() : indicesToRemove;
+    if (finalAliases.isEmpty() && finalIndicesToRemove.isEmpty()) {
+      LOG.debug("No aliases to swap and no indices to remove for index {}", newIndex);
       return true;
     }
-    if (oldIndices == null) {
-      oldIndices = new HashSet<>();
-    }
-
-    Set<String> finalOldIndices = oldIndices;
+    Set<String> finalOldIndices = oldIndices == null ? new HashSet<>() : oldIndices;
     try {
       UpdateAliasesRequest request =
           UpdateAliasesRequest.of(
               updateBuilder -> {
                 // First, remove aliases from all old indices
                 for (String oldIndex : finalOldIndices) {
-                  for (String alias : aliases) {
+                  for (String alias : finalAliases) {
                     updateBuilder.actions(
                         actionBuilder ->
                             actionBuilder.remove(
                                 removeBuilder -> removeBuilder.index(oldIndex).alias(alias)));
                   }
                 }
-                // Then, add aliases to the new index
-                for (String alias : aliases) {
+                // Then delete any concrete index sharing the alias name, atomically, so the alias
+                // add below cannot race a separate delete and orphan the canonical name.
+                // Do NOT set must_exist: OpenSearch's _aliases parser rejects it on remove_index
+                // ("unknown field [must_exist]") and fails the whole request. It is unnecessary
+                // here anyway — resolveCanonicalRemoval only forwards indices it has already
+                // confirmed exist via indexExists().
+                for (String indexToRemove : finalIndicesToRemove) {
+                  updateBuilder.actions(
+                      actionBuilder ->
+                          actionBuilder.removeIndex(
+                              removeIndexBuilder -> removeIndexBuilder.index(indexToRemove)));
+                }
+                // Finally, add aliases to the new index
+                for (String alias : finalAliases) {
                   updateBuilder.actions(
                       actionBuilder ->
                           actionBuilder.add(addBuilder -> addBuilder.index(newIndex).alias(alias)));
@@ -451,25 +462,18 @@ public class OpenSearchIndexManager implements IndexManagementClient {
 
       if (response.acknowledged()) {
         LOG.info(
-            "Atomically swapped aliases {} from indices {} to index {}",
-            aliases,
-            finalOldIndices,
-            newIndex);
+            "Atomically swapped aliases {} to index {} (removed indices {}, detached from {})",
+            finalAliases,
+            newIndex,
+            finalIndicesToRemove,
+            finalOldIndices);
         return true;
       } else {
-        LOG.warn(
-            "Alias swap from indices {} to index {} was not acknowledged",
-            finalOldIndices,
-            newIndex);
+        LOG.warn("Alias swap to index {} was not acknowledged", newIndex);
         return false;
       }
     } catch (Exception e) {
-      LOG.error(
-          "Failed to swap aliases {} from indices {} to index {}",
-          aliases,
-          finalOldIndices,
-          newIndex,
-          e);
+      LOG.error("Failed to swap aliases {} to index {}", finalAliases, newIndex, e);
       return false;
     }
   }
@@ -580,12 +584,16 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       }
       IndicesStats stats = entry.getValue();
       long docs = 0;
+      long indexedOps = 0;
       long sizeBytes = 0;
       int primaryShards = 0;
       int replicaShards = 0;
       if (stats.primaries() != null) {
         if (stats.primaries().docs() != null) {
           docs = stats.primaries().docs().count();
+        }
+        if (stats.primaries().indexing() != null) {
+          indexedOps = stats.primaries().indexing().indexTotal();
         }
         if (stats.primaries().store() != null) {
           sizeBytes = stats.primaries().store().sizeInBytes();
@@ -606,7 +614,14 @@ public class OpenSearchIndexManager implements IndexManagementClient {
       Set<String> aliases = getAliases(indexName);
       result.add(
           new IndexStats(
-              indexName, docs, primaryShards, replicaShards, sizeBytes, health, aliases));
+              indexName,
+              docs,
+              indexedOps,
+              primaryShards,
+              replicaShards,
+              sizeBytes,
+              health,
+              aliases));
     }
     return result;
   }
