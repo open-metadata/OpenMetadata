@@ -4,7 +4,6 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
