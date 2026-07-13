@@ -505,6 +505,10 @@ describe('ServiceDocPanel Component', () => {
           '### Password $(id="password")',
           'Password guidance.',
           '$$',
+          '$$section',
+          '### Private Key $(id="privateKey")',
+          'Private key guidance.',
+          '$$',
         ].join('\n')
       );
 
@@ -529,7 +533,77 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should show the auth section docs without guidance cards for other auth fields', async () => {
+    it('should show guidance cards for any auth field when the connector offers password and key pair', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Connection Details',
+          '$$section',
+          '### Password $(id="password")',
+          'Password guidance.',
+          '$$',
+          '$$section',
+          '### Private Key $(id="privateKey")',
+          'Private key guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/authType/password"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-doc-auth-grid')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('message.password-auth-doc-description')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('message.key-pair-auth-doc-description')
+        ).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Password guidance.')
+        );
+      });
+    });
+
+    it('should not show guidance cards when the connector has no key-pair option', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Mysql',
+          '## Connection Details',
+          '$$section',
+          '### Password $(id="password")',
+          'Password guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/authType"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.authentication-doc-title')
+        ).toBeInTheDocument();
+        expect(
+          container.querySelector('.focused-doc-auth-grid')
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it('should show the auth section docs without guidance cards for other auth fields when key pair is unavailable', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Snowflake',

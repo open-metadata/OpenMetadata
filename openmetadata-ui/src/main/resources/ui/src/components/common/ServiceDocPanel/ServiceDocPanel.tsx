@@ -599,6 +599,17 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
     [activeFieldName, markdownContent]
   );
 
+  // The password/key-pair guidance cards only make sense for connectors that
+  // actually offer that choice — detected from the connector markdown.
+  const hasAuthMethodGuidance = useMemo(
+    () =>
+      Boolean(
+        extractSectionById(markdownContent, 'password') &&
+          extractSectionById(markdownContent, 'privateKey')
+      ),
+    [markdownContent]
+  );
+
   const focusedDocDetails = useMemo<FocusedDocDetails>(() => {
     const section = resolveFocusedSection(
       activeFieldName,
@@ -618,7 +629,7 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
         markdown: section === 'identity' ? '' : activeFieldMarkdown,
         showRequirements: section === 'connection',
         beforeRequirements:
-          activeFieldName === 'authType' ? (
+          section === 'authentication' && hasAuthMethodGuidance ? (
             <AuthGuidance
               keyPairDescription={t('message.key-pair-auth-doc-description')}
               keyPairLabel={t('label.key-pair')}
@@ -666,7 +677,14 @@ const ServiceDocPanel: FC<ServiceDocPanelProp> = ({
       markdown: fieldBody,
       showRequirements: !activeFieldName,
     };
-  }, [activeFieldMarkdown, activeFieldMeta, activeFieldName, isWorkflow, t]);
+  }, [
+    activeFieldMarkdown,
+    activeFieldMeta,
+    activeFieldName,
+    hasAuthMethodGuidance,
+    isWorkflow,
+    t,
+  ]);
 
   const showFocusedRequirements = focusedDocDetails.showRequirements;
 
