@@ -21,6 +21,7 @@ import { Popover } from '@/components/base/select/popover';
 import {
   type SelectCommonProps,
   SelectContext,
+  SelectEmptyState,
   type SelectItemType,
   sizes,
 } from '@/components/base/select/select';
@@ -209,6 +210,7 @@ export const ComboBox = ({
   children,
   items,
   shortcutClassName,
+  emptyState,
   ...otherProps
 }: ComboBoxProps) => {
   const triggerRef = useRef<HTMLDivElement>(null);
@@ -247,7 +249,10 @@ export const ComboBox = ({
               triggerRef={triggerRef}>
               <AriaListBox
                 className="tw:size-full tw:outline-hidden"
-                items={items}>
+                items={items}
+                renderEmptyState={() => (
+                  <SelectEmptyState emptyState={emptyState} />
+                )}>
                 {children}
               </AriaListBox>
             </Popover>
