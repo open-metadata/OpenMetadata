@@ -96,14 +96,9 @@ public class OpenSearchVectorService implements VectorIndexService {
             .set(
                 "score-ranker-processor",
                 MAPPER.createObjectNode().set("combination", combination));
-    var collapse =
-        MAPPER
-            .createObjectNode()
-            .set("collapse", MAPPER.createObjectNode().put("field", "parentId"));
 
     var pipeline = MAPPER.createObjectNode();
     pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
-    pipeline.set("response_processors", MAPPER.createArrayNode().add(collapse));
 
     executeGenericRequest("PUT", "/_search/pipeline/" + HYBRID_PIPELINE_NAME, pipeline.toString());
     LOG.info(
