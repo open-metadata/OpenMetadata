@@ -82,6 +82,7 @@ export const getAggregationOptions = async (
         fieldName: key,
         fieldValue: value,
         query: filter,
+        ...(queryText ? { queryText } : {}),
         size,
       })
     : getAggregateFieldOptions(

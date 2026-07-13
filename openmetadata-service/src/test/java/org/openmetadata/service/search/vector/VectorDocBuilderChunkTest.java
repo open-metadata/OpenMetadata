@@ -13,14 +13,20 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.type.Column;
+import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 /**
@@ -32,9 +38,14 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 class VectorDocBuilderChunkTest {
 
   private static final class MockEmbeddingClient extends EmbeddingClient {
+    final AtomicInteger embedCalls = new AtomicInteger();
+
     @Override
     protected float[] doEmbed(String text) {
-      return new float[] {0.1f, 0.2f, 0.3f};
+      embedCalls.incrementAndGet();
+      // Vary the vector by text so reuse-vs-recompute can be told apart.
+      float h = (text == null ? 0 : text.hashCode()) % 1000 / 1000f;
+      return new float[] {0.1f + h, 0.2f, 0.3f};
     }
 
     @Override
@@ -106,5 +117,105 @@ class VectorDocBuilderChunkTest {
     assertEquals(1, docs.size());
     assertEquals(0, docs.get(0).get("chunkIndex"));
     assertEquals(1, docs.get(0).get("chunkCount"));
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void fromEntity_denormalizesLexicalAndFilterFieldsOnEveryChunk() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withDisplayName("Orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("revenue ".repeat(900))
+            .withColumns(
+                List.of(
+                    new Column().withName("amount").withDataType(ColumnDataType.DOUBLE),
+                    new Column().withName("country").withDataType(ColumnDataType.STRING)))
+            .withOwners(List.of(new EntityReference().withName("finance").withType("team")))
+            .withService(new EntityReference().withName("snowflake").withDisplayName("Snowflake"))
+            .withDatabase(new EntityReference().withName("db"))
+            .withDatabaseSchema(new EntityReference().withName("sch"));
+
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, new MockEmbeddingClient());
+    assertTrue(docs.size() > 1, "long body must yield multiple chunks");
+
+    for (Map<String, Object> doc : docs) {
+      assertEquals(VectorDocBuilder.CHUNK_DOC_VERSION, doc.get("docVersion"));
+      // Lexical parity is present on EVERY chunk, not just chunk 0 — this is the #862 fix.
+      assertNotNull(doc.get("description"), "description must be denormalized onto every chunk");
+      assertTrue(doc.get("fqnParts") instanceof List, "fqnParts denormalized");
+      assertTrue(((List<String>) doc.get("fqnParts")).containsAll(List.of("svc", "db", "sch")));
+      List<Map<String, Object>> columns = (List<Map<String, Object>>) doc.get("columns");
+      assertNotNull(columns);
+      assertEquals("amount", columns.get(0).get("name"));
+      // Filter parity so NLQ facet filters don't exclude chunk docs.
+      assertEquals("Snowflake", ((Map<String, Object>) doc.get("service")).get("displayName"));
+      assertEquals("db", ((Map<String, Object>) doc.get("database")).get("name"));
+      assertEquals("sch", ((Map<String, Object>) doc.get("databaseSchema")).get("name"));
+      List<Map<String, Object>> owners = (List<Map<String, Object>>) doc.get("owners");
+      assertEquals("finance", owners.get(0).get("name"));
+    }
+  }
+
+  @Test
+  void addFilterFields_capsDenormalizedDescription() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("t")
+            .withDescription("x".repeat(VectorDocBuilder.MAX_CHUNK_DESCRIPTION_CHARS + 5000));
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, new MockEmbeddingClient());
+    String description = (String) docs.get(0).get("description");
+    assertEquals(VectorDocBuilder.MAX_CHUNK_DESCRIPTION_CHARS, description.length());
+  }
+
+  @Test
+  void docVersion_doesNotChangeFingerprint_soNoReembedStorm() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("revenue report")
+            .withOwners(List.of(new EntityReference().withName("finance").withType("team")));
+    List<Map<String, Object>> docs = VectorDocBuilder.fromEntity(table, new MockEmbeddingClient());
+    // The denormalized fields (owners, docVersion, ...) live outside the fingerprint, so a
+    // docVersion bump never forces a re-embed of the whole catalog.
+    assertEquals(
+        VectorDocBuilder.computeFingerprintForEntity(table), docs.get(0).get("fingerprint"));
+  }
+
+  @Test
+  void fromEntity_reuseOverloadDoesNotCallEmbeddingClient() {
+    Table table =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("revenue ".repeat(900));
+
+    MockEmbeddingClient client = new MockEmbeddingClient();
+    List<Map<String, Object>> original = VectorDocBuilder.fromEntity(table, client);
+    int callsAfterOriginal = client.embedCalls.get();
+
+    Map<Integer, float[]> reuse = new HashMap<>();
+    for (int i = 0; i < original.size(); i++) {
+      reuse.put(i, (float[]) original.get(i).get("embedding"));
+    }
+
+    List<Map<String, Object>> rebuilt = VectorDocBuilder.fromEntityReusingEmbeddings(table, reuse);
+
+    assertEquals(callsAfterOriginal, client.embedCalls.get(), "reuse path must not call embed()");
+    assertEquals(original.size(), rebuilt.size());
+    for (int i = 0; i < original.size(); i++) {
+      assertEquals(
+          original.get(i).get("embedding"),
+          rebuilt.get(i).get("embedding"),
+          "reused vector must be the stored one");
+      assertEquals(VectorDocBuilder.CHUNK_DOC_VERSION, rebuilt.get(i).get("docVersion"));
+    }
+    assertFalse(rebuilt.isEmpty());
   }
 }

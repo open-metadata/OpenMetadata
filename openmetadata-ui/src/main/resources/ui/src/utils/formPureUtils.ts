@@ -114,3 +114,31 @@ export const createScrollToErrorHandler = (
     }, delay);
   };
 };
+
+/**
+ * Re-opens a react-aria combobox menu after focus settles on its input.
+ *
+ * Clicking a combobox while another popover is open (or while a focus-driven
+ * re-render is in flight) can cancel the menu that click just opened. Checks
+ * on the next frame and again after the popover teardown window; if the input
+ * is still focused with a closed menu, re-opens it via the trigger's built-in
+ * ArrowDown key handling.
+ */
+export const ensureComboboxMenuOpen = (
+  getInput: () => HTMLInputElement | null | undefined
+): void => {
+  const check = () => {
+    const input = getInput();
+    if (
+      input &&
+      document.activeElement === input &&
+      input.getAttribute('aria-expanded') !== 'true'
+    ) {
+      input.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true })
+      );
+    }
+  };
+  requestAnimationFrame(check);
+  setTimeout(check, 150);
+};

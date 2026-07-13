@@ -88,13 +88,6 @@ jest.mock(
 );
 
 jest.mock(
-  '../../../components/Modals/EntityDeleteModal/EntityDeleteModal',
-  () => {
-    return jest.fn().mockImplementation(() => <p>EntityDeleteModal</p>);
-  }
-);
-
-jest.mock(
   '../../../components/Modals/EntityNameModal/EntityNameModal.component',
   () => {
     return jest.fn().mockImplementation(() => <p>EntityNameModal</p>);
