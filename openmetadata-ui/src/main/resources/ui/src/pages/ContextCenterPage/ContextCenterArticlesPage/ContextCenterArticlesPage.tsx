@@ -226,7 +226,6 @@ const ContextCenterArticlesPage = () => {
           onFollowChange={
             page.handlers?.onFollowChange ?? (async () => undefined)
           }
-          onSave={page.handlers?.onSave}
           onSetThreadLink={page.handlers?.onSetThreadLink ?? (() => undefined)}
           onTabChange={page.onTabChange}
           onToggleRightPanel={handleToggleRightPanel}
@@ -369,7 +368,7 @@ const ContextCenterArticlesPage = () => {
               'left-panel-collapsed': !leftSidebar,
             })}
             data-testid="left-panel"
-            flex={0.2}
+            flex={0.25}
             minSize={280}>
             {leftSidebar}
           </ReflexElement>

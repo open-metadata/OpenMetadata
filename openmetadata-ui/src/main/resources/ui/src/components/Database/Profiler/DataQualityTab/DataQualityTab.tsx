@@ -46,7 +46,9 @@ import { TestCaseResolutionStatus } from '../../../../generated/tests/testCaseRe
 import { TestSuite } from '../../../../generated/tests/testSuite';
 import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
+import { deleteEntity } from '../../../../rest/miscAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
+import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
@@ -55,16 +57,16 @@ import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { replacePlus } from '../../../../utils/StringUtils';
-import { showErrorToast } from '../../../../utils/ToastUtils';
+import { showErrorToast, showSuccessToast } from '../../../../utils/ToastUtils';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
-import DeleteWidgetModal from '../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../../common/DeleteModal/DeleteModal';
 import FilterTablePlaceHolder from '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import NextPrevious from '../../../common/NextPrevious/NextPrevious';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
-import EditTestCaseModalV1 from '../../../DataQuality/AddDataQualityTest/components/EditTestCaseModalV1';
+import TestCaseFormDrawer from '../../../DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
 import AddToBundleSuiteModal from '../../../DataQuality/AddToBundleSuiteModal/AddToBundleSuiteModal.component';
-import BundleSuiteForm from '../../../DataQuality/BundleSuiteForm/BundleSuiteForm';
+import BundleSuiteFormDrawer from '../../../DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
 import TestCaseIncidentManagerStatus from '../../../DataQuality/IncidentManager/TestCaseStatus/TestCaseIncidentManagerStatus.component';
 import ConfirmationModal from '../../../Modals/ConfirmationModal/ConfirmationModal';
 import {
@@ -125,6 +127,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   tableHeader,
   removeTableBorder = false,
   enableBulkActions = false,
+  editVariant = getDefaultTestCaseFormVariant(),
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -136,6 +139,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   >([]);
   const [isTestCaseRemovalLoading, setIsTestCaseRemovalLoading] =
     useState(false);
+  const [isDeletingTestCase, setIsDeletingTestCase] = useState(false);
   const [isPermissionLoading, setIsPermissionLoading] = useState(true);
   const [testCasePermissions, setTestCasePermissions] = useState<
     TestCasePermission[]
@@ -244,6 +248,28 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
       showErrorToast(error as AxiosError);
     } finally {
       setIsTestCaseRemovalLoading(false);
+    }
+  };
+
+  const handleDeleteTestCase = async () => {
+    const entityId = selectedTestCase?.data?.id;
+    if (!entityId) {
+      return;
+    }
+    setIsDeletingTestCase(true);
+    try {
+      await deleteEntity('dataQuality/testCases', entityId, true, true);
+      showSuccessToast(
+        t('server.entity-deleted-successfully', {
+          entity: getEntityName(selectedTestCase?.data),
+        })
+      );
+      afterDeleteAction?.();
+      handleCancel();
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    } finally {
+      setIsDeletingTestCase(false);
     }
   };
 
@@ -853,22 +879,21 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onCancel={() => setIsAddToBundleSuiteModalOpen(false)}
         />
       )}
-      {isBundleSuiteFormOpen && (
-        <BundleSuiteForm
-          drawerProps={{ open: isBundleSuiteFormOpen }}
-          initialValues={{ testCases: bundleSuiteFormInitialCases }}
-          onCancel={() => {
-            setIsBundleSuiteFormOpen(false);
-            setBundleSuiteFormInitialCases([]);
-          }}
-          onSuccess={handleBundleSuiteSuccess}
-        />
-      )}
+      <BundleSuiteFormDrawer
+        initialValues={{ testCases: bundleSuiteFormInitialCases }}
+        open={isBundleSuiteFormOpen}
+        onClose={() => {
+          setIsBundleSuiteFormOpen(false);
+          setBundleSuiteFormInitialCases([]);
+        }}
+        onSuccess={handleBundleSuiteSuccess}
+      />
       {selectedTestCase?.action === 'UPDATE' && (
-        <EditTestCaseModalV1
+        <TestCaseFormDrawer
           open
           testCase={selectedTestCase?.data}
-          onCancel={handleCancel}
+          variant={editVariant}
+          onClose={handleCancel}
           onUpdate={onTestUpdate}
         />
       )}
@@ -891,15 +916,15 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
           onConfirm={handleConfirmClick}
         />
       ) : (
-        <DeleteWidgetModal
-          isRecursiveDelete
-          afterDeleteAction={afterDeleteAction}
-          allowSoftDelete={false}
-          entityId={selectedTestCase?.data?.id ?? ''}
-          entityName={getEntityName(selectedTestCase?.data)}
-          entityType={EntityType.TEST_CASE}
-          visible={selectedTestCase?.action === 'DELETE'}
+        <DeleteModal
+          entityTitle={getEntityName(selectedTestCase?.data)}
+          isDeleting={isDeletingTestCase}
+          message={t('message.delete-entity-message', {
+            entity: getEntityName(selectedTestCase?.data),
+          })}
+          open={selectedTestCase?.action === 'DELETE'}
           onCancel={handleCancel}
+          onDelete={handleDeleteTestCase}
         />
       )}
     </div>

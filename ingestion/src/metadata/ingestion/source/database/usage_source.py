@@ -108,12 +108,12 @@ class UsageSource(QueryParserSource, ABC):
             )
             query = None
             try:
-                query = self.get_sql_statement(
-                    start_time=self.start + timedelta(days=days),
-                    end_time=self.start + timedelta(days=days + 1),
-                )
-                logger.debug(f"Executing usage query: {query}")
                 for engine in self.get_engine():
+                    query = self.get_sql_statement(
+                        start_time=self.start + timedelta(days=days),
+                        end_time=self.start + timedelta(days=days + 1),
+                    )
+                    logger.debug(f"Executing usage query: {query}")
                     with engine.connect() as conn:
                         rows = conn.execute(text(query))
                         queries = []
@@ -166,12 +166,12 @@ class UsageSource(QueryParserSource, ABC):
         days = max(1, (self.end - self.start).days)
         result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
         if result_limit is not None:
-            self.progress.seed_scope_total("Queries", "run", result_limit * days)
+            self.progress_tracking.manual.seed_scope_total("Queries", "run", result_limit * days)
         processed = 0
         for table_queries in self.get_table_query():
             if table_queries:
                 count = len(table_queries.queries)  # pyright: ignore[reportAttributeAccessIssue]
-                self.progress.track("Queries", count)
+                self.progress_tracking.manual.track("Queries", count)
                 processed += count
                 yield Either(right=table_queries)
-        self.progress.reconcile_scope_total("Queries", "run", processed)
+        self.progress_tracking.manual.reconcile_scope_total("Queries", "run", processed)
