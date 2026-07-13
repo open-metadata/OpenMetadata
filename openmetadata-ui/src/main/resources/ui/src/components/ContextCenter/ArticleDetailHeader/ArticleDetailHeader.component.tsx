@@ -320,8 +320,8 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   }
 
   const metaEl = (
-    <Box align='center' gap={3} wrap='wrap'>
-      <Box align='center' gap={1}>
+    <Box align="center" gap={3} wrap="wrap">
+      <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className="tw:leading-0">
             <GlobeIcon
@@ -367,7 +367,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
       <Dot className="tw:text-fg-quaternary" size="xs" />
 
-      <Box align='center' gap={1}>
+      <Box align="center" gap={1}>
         <Tooltip title={t('label.owner-plural')}>
           <TooltipTrigger className="tw:leading-0">
             <UserIcon
@@ -421,7 +421,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       {editors.length > 0 && (
         <>
           <Dot className="tw:text-fg-quaternary" size="xs" />
-          <Box align='center' gap={1}>
+          <Box align="center" gap={1}>
             <Tooltip title={t('label.editor')}>
               <TooltipTrigger className="tw:leading-0">
                 <EditorIcon
@@ -555,7 +555,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
                 }
               }}>
               <Dropdown.Item data-testid="delete-btn" id="delete">
-                <Box align='center' gap={2}>
+                <Box align="center" gap={2}>
                   <TrashIcon
                     aria-hidden="true"
                     className="ttw:shrink-0 tw:text-error-primary"
