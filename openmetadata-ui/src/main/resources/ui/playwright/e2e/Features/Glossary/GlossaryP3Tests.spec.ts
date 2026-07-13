@@ -389,24 +389,18 @@ test.describe('Glossary P3 Tests', () => {
   test('should show loading state during navigation', async ({ page }) => {
     const { apiContext, afterAction } = await getApiContext(page);
     const glossary = new Glossary();
+    const glossaryTerm = new GlossaryTerm(glossary);
 
     try {
       await glossary.create(apiContext);
+      await glossaryTerm.create(apiContext);
 
-      // Navigate to glossary page
       await sidebarClick(page, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(page, glossary.data.displayName);
 
-      // The page should eventually load without errors
-
-      // Verify page is loaded (loader should be gone or the table is rendered)
-      const loader = page.getByTestId('loader');
-      const table = page.getByTestId('glossary-terms-table');
-
-      const isLoaded =
-        (await loader.isVisible().catch(() => false)) === false ||
-        (await table.isVisible().catch(() => false));
-
-      expect(isLoaded).toBeTruthy();
+      await expect(page.getByTestId('glossary-terms-table')).toBeVisible({
+        timeout: 10000,
+      });
     } finally {
       await glossary.delete(apiContext);
       await afterAction();

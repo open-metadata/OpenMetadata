@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { expect } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
@@ -28,6 +28,80 @@ test.describe('Large Glossary Performance Tests', () => {
   const TOTAL_TERMS = 100; // Reduced for test performance
   const glossary = new Glossary();
   const glossaryTerms: GlossaryTerm[] = [];
+
+  const getGlossaryTermsScrollTop = async (page: Page) =>
+    page.evaluate(() => {
+      const table = document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      );
+      let container = table?.parentElement;
+
+      while (container) {
+        const overflowY = window.getComputedStyle(container).overflowY;
+        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      container ??= document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"]'
+      );
+
+      return container?.scrollTop ?? 0;
+    });
+
+  const setGlossaryTermsScrollTop = async (page: Page, scrollTop: number) => {
+    await page.evaluate((top) => {
+      const table = document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      );
+      let container = table?.parentElement;
+
+      while (container) {
+        const overflowY = window.getComputedStyle(container).overflowY;
+        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      container ??= document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"]'
+      );
+
+      if (container) {
+        container.scrollTop = top;
+        container.dispatchEvent(new Event('scroll', { bubbles: true }));
+      }
+    }, scrollTop);
+  };
+
+  const scrollGlossaryTermsToBottom = async (page: Page) => {
+    await page.evaluate(() => {
+      const table = document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      );
+      let container = table?.parentElement;
+
+      while (container) {
+        const overflowY = window.getComputedStyle(container).overflowY;
+        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      container ??= document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"]'
+      );
+
+      if (container) {
+        container.scrollTo({ top: container.scrollHeight });
+        container.dispatchEvent(new Event('scroll', { bubbles: true }));
+      }
+    });
+  };
 
   test.beforeAll(async ({ browser }) => {
     test.setTimeout(8 * 60 * 1000);
@@ -89,27 +163,14 @@ test.describe('Large Glossary Performance Tests', () => {
     expect(initialTerms).toBe(50);
 
     const infiniteScrollRequest = page.waitForResponse(
-      'api/v1/glossaryTerms?directChildrenOf*'
+      (response) =>
+        response.url().includes('/api/v1/glossaryTerms') &&
+        response.url().includes('directChildrenOf=') &&
+        response.url().includes('after=') &&
+        response.status() === 200
     );
 
-    // Scroll to bottom to trigger infinite scroll. The table owns its own
-    // vertical scroll region (the element wrapping the inner <table>), so scroll
-    // that element rather than the outer container which does not overflow.
-    await page.evaluate(() => {
-      const innerScroller = document.querySelector(
-        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
-      )?.parentElement;
-      const outerContainer = document.querySelector<HTMLElement>(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-      const scrollContainer =
-        innerScroller && innerScroller.scrollHeight > innerScroller.clientHeight
-          ? innerScroller
-          : outerContainer;
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-    });
+    await scrollGlossaryTermsToBottom(page);
 
     // Wait for more terms to load
     await infiniteScrollRequest;
@@ -229,43 +290,10 @@ test.describe('Large Glossary Performance Tests', () => {
   test('should maintain scroll position when loading more terms', async ({
     page,
   }) => {
-    // Get initial scroll position
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
+    await setGlossaryTermsScrollTop(page, 200);
 
-      return scrollContainer?.scrollTop || 0;
-    });
-
-    // Scroll down partially
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = 200;
-      }
-    });
-
-    const scrollPositionBeforeLoad = await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-
-      return scrollContainer?.scrollTop || 0;
-    });
-
-    // Trigger infinite scroll
-
-    await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollContainer.scrollHeight;
-      }
-    });
+    const scrollPositionBeforeLoad = await getGlossaryTermsScrollTop(page);
+    await scrollGlossaryTermsToBottom(page);
 
     // Wait for more terms to load
     await page
@@ -274,25 +302,9 @@ test.describe('Large Glossary Performance Tests', () => {
       )
       .waitFor({ state: 'detached' });
 
-    // Scroll back to previous position
-    await page.evaluate((scrollPos) => {
-      const scrollContainer = document.querySelector(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-      if (scrollContainer) {
-        scrollContainer.scrollTop = scrollPos;
-      }
-    }, scrollPositionBeforeLoad);
+    await setGlossaryTermsScrollTop(page, scrollPositionBeforeLoad);
 
-    // Verify we can still see the same content
-
-    const currentScrollTop = await page.evaluate(() => {
-      const scrollContainer = document.querySelector(
-        '[data-testid="glossary-terms-scroll-container"]'
-      );
-
-      return scrollContainer?.scrollTop || 0;
-    });
+    const currentScrollTop = await getGlossaryTermsScrollTop(page);
 
     expect(Math.abs(currentScrollTop - scrollPositionBeforeLoad)).toBeLessThan(
       10

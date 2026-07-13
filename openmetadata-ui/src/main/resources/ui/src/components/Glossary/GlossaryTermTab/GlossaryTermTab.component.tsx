@@ -511,18 +511,28 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
   }, []);
 
   const findScrollContainer = useCallback(() => {
-    // The table owns its own vertical scroll region (scroll.y), which is the
-    // element wrapping the <table> inside the TableV2 card. Sticky headers and
-    // infinite scroll both key off this internal scroller.
-    const tableScrollContainer = document.querySelector(
+    const tableElement = document.querySelector<HTMLElement>(
       '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
-    )?.parentElement;
-    if (tableScrollContainer) {
-      return tableScrollContainer;
+    );
+    let scrollContainerCandidate = tableElement?.parentElement;
+
+    while (scrollContainerCandidate) {
+      const overflowY = window.getComputedStyle(
+        scrollContainerCandidate
+      ).overflowY;
+
+      if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+        return scrollContainerCandidate;
+      }
+
+      if (scrollContainerCandidate === scrollContainerRef.current) {
+        break;
+      }
+
+      scrollContainerCandidate = scrollContainerCandidate.parentElement;
     }
 
-    // Fallback to the scroll container itself if it is the scrolling element
-    const scrollContainer = document.querySelector(
+    const scrollContainer = document.querySelector<HTMLElement>(
       '[data-testid="glossary-terms-scroll-container"]'
     );
     if (
@@ -532,7 +542,7 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
       return scrollContainer;
     }
 
-    return null;
+    return tableElement?.parentElement ?? null;
   }, []);
 
   // Monitor for DOM changes to detect when the table becomes scrollable

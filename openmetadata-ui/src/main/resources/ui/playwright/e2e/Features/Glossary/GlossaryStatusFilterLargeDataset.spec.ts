@@ -138,11 +138,26 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   // Reusable helper to scroll and load more
   const scrollToLoadMore = async (page: Page) => {
     await page.evaluate(() => {
-      const container = document.querySelector(
+      const table = document.querySelector<HTMLElement>(
+        '[data-testid="glossary-terms-scroll-container"] [data-testid="glossary-terms-table"] table'
+      );
+      let container = table?.parentElement;
+
+      while (container) {
+        const overflowY = window.getComputedStyle(container).overflowY;
+        if (['auto', 'scroll', 'overlay'].includes(overflowY)) {
+          break;
+        }
+        container = container.parentElement;
+      }
+
+      container ??= document.querySelector<HTMLElement>(
         '[data-testid="glossary-terms-scroll-container"]'
       );
+
       if (container) {
-        container.scrollTop = container.scrollHeight;
+        container.scrollTo({ top: container.scrollHeight });
+        container.dispatchEvent(new Event('scroll', { bubbles: true }));
       }
     });
 
