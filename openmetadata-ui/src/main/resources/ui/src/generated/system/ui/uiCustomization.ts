@@ -300,10 +300,11 @@ export interface Tab {
  */
 export interface PersonaPreferences {
     /**
-     * App mode this persona forces on login (e.g. 'default', 'ai'). When unset, the user's own
-     * localStorage value (or the built-in default) takes over.
+     * App experience this persona forces on login. Classic keeps the standard OpenMetadata UI;
+     * AI enables the assistant-driven experience and requires the AI plugin (e.g. Collate) to
+     * be installed.
      */
-    appMode?: string;
+    appMode?: AppMode;
     /**
      * User's personal customizations for the landing page.
      */
@@ -316,6 +317,16 @@ export interface PersonaPreferences {
      * Name of the persona for quick reference and linking.
      */
     personaName: string;
+}
+
+/**
+ * App experience this persona forces on login. Classic keeps the standard OpenMetadata UI;
+ * AI enables the assistant-driven experience and requires the AI plugin (e.g. Collate) to
+ * be installed.
+ */
+export enum AppMode {
+    AI = "AI",
+    Classic = "classic",
 }
 
 /**

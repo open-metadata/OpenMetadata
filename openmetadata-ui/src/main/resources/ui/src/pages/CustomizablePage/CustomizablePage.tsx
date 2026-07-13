@@ -31,10 +31,11 @@ import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
+import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import {
+  AppMode,
   PersonaPreferences,
-  UICustomization,
-} from '../../generated/system/ui/uiCustomization';
+} from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -257,7 +258,7 @@ export const CustomizablePage = () => {
     }
   };
 
-  const handleAppModeSave = async (appMode: string) => {
+  const handleAppModeSave = async (appMode: AppMode) => {
     if (!document) {
       return;
     }

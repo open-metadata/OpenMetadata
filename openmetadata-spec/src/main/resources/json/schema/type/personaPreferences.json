@@ -30,8 +30,10 @@
       "additionalProperties": false
     },
     "appMode": {
-      "description": "App mode this persona forces on login (e.g. 'default', 'ai'). When unset, the user's own localStorage value (or the built-in default) takes over.",
-      "type": "string"
+      "description": "App experience this persona forces on login. Classic keeps the standard OpenMetadata UI; AI enables the assistant-driven experience and requires the AI plugin (e.g. Collate) to be installed.",
+      "type": "string",
+      "enum": ["classic", "AI"],
+      "default": "classic"
     }
   },
   "required": ["personaId", "personaName"],

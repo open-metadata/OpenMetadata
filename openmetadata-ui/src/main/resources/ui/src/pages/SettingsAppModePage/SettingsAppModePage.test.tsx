@@ -12,8 +12,8 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
-import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
 import { Persona } from '../../generated/entity/teams/persona';
+import { AppMode } from '../../generated/type/personaPreferences';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 import { SettingsAppModePage } from './SettingsAppModePage';
@@ -65,7 +65,7 @@ jest.mock(
 const personaId = 'persona-1';
 const persona = { id: personaId, name: 'analytics' } as Persona;
 
-const seedDoc = (appMode?: string) => {
+const seedDoc = (appMode?: AppMode) => {
   useCustomizeStore.setState({
     document: {
       id: 'doc-1',
@@ -87,36 +87,40 @@ describe('SettingsAppModePage', () => {
     seedDoc(undefined);
   });
 
-  it('renders Classic + registered non-default modes as options', () => {
+  it('renders Classic and AI as the only options', () => {
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 
-    expect(screen.getByTestId('app-mode-option-default')).toBeInTheDocument();
-    expect(screen.getByTestId('app-mode-option-ai')).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`app-mode-option-${AppMode.Classic}`)
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId(`app-mode-option-${AppMode.AI}`)
+    ).toBeInTheDocument();
   });
 
-  it('selects the persisted appMode from the store on mount', () => {
-    seedDoc('ai');
+  it('selects the persisted appMode on mount', () => {
+    seedDoc(AppMode.AI);
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 
     const aiOption = screen.getByTestId(
-      'app-mode-option-ai'
+      `app-mode-option-${AppMode.AI}`
     ) as HTMLInputElement;
 
     expect(aiOption.checked).toBe(true);
   });
 
-  it('falls back to DEFAULT_APP_MODE when no appMode is persisted', () => {
+  it('falls back to Classic when the persona has no appMode', () => {
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 
-    const defaultOption = screen.getByTestId(
-      `app-mode-option-${DEFAULT_APP_MODE}`
+    const classicOption = screen.getByTestId(
+      `app-mode-option-${AppMode.Classic}`
     ) as HTMLInputElement;
 
-    expect(defaultOption.checked).toBe(true);
+    expect(classicOption.checked).toBe(true);
   });
 
   it('disables save when selection equals persisted value', () => {
-    seedDoc('ai');
+    seedDoc(AppMode.AI);
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 
     expect((screen.getByTestId('save-btn') as HTMLButtonElement).disabled).toBe(
@@ -124,29 +128,29 @@ describe('SettingsAppModePage', () => {
     );
   });
 
-  it('enables save and calls onSave with the selected mode', () => {
+  it('enables save and calls onSave with the selected AppMode enum value', () => {
     const onSave = jest.fn().mockResolvedValue(undefined);
     render(<SettingsAppModePage personaDetails={persona} onSave={onSave} />);
 
-    fireEvent.click(screen.getByTestId('app-mode-option-ai'));
+    fireEvent.click(screen.getByTestId(`app-mode-option-${AppMode.AI}`));
     fireEvent.click(screen.getByTestId('save-btn'));
 
-    expect(onSave).toHaveBeenCalledWith('ai');
+    expect(onSave).toHaveBeenCalledWith(AppMode.AI);
   });
 
-  it('reset returns the selection to DEFAULT_APP_MODE', () => {
-    seedDoc('ai');
+  it('reset returns the selection to Classic', () => {
+    seedDoc(AppMode.AI);
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 
     fireEvent.click(screen.getByTestId('reset-btn'));
-    const defaultOption = screen.getByTestId(
-      `app-mode-option-${DEFAULT_APP_MODE}`
+    const classicOption = screen.getByTestId(
+      `app-mode-option-${AppMode.Classic}`
     ) as HTMLInputElement;
 
-    expect(defaultOption.checked).toBe(true);
+    expect(classicOption.checked).toBe(true);
   });
 
-  it('shows a placeholder when no non-default mode is registered', () => {
+  it('shows the unavailable placeholder when no non-default mode is registered', () => {
     useAppRoutesRegistry.setState({ routes: {} });
     render(<SettingsAppModePage personaDetails={persona} onSave={jest.fn()} />);
 

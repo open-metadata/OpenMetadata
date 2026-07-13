@@ -11,8 +11,14 @@
  *  limitations under the License.
  */
 
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
-import { DEFAULT_APP_MODE } from '../constants/appMode.constants';
+import { createElement, ReactNode } from 'react';
+import {
+  AI_APP_MODE,
+  DEFAULT_APP_MODE,
+} from '../constants/appMode.constants';
+import { AppMode } from '../generated/type/personaPreferences';
 import { useApplicationStore } from './useApplicationStore';
 import { useAppModeStore } from './useAppMode';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
@@ -46,6 +52,17 @@ const seedRegistry = (hasAi: boolean) => {
   });
 };
 
+const makeWrapper = () => {
+  const client = new QueryClient({
+    defaultOptions: {
+      queries: { retry: false, gcTime: Infinity, staleTime: Infinity },
+    },
+  });
+
+  return ({ children }: { children: ReactNode }) =>
+    createElement(QueryClientProvider, { client }, children);
+};
+
 describe('useSyncAppModeFromPersona', () => {
   beforeEach(() => {
     useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
@@ -60,12 +77,16 @@ describe('useSyncAppModeFromPersona', () => {
     getDocumentByFQN.mockResolvedValue({
       data: {
         personaPreferences: [
-          { personaId: 'persona-1', personaName: 'analytics', appMode: 'ai' },
+          {
+            personaId: 'persona-1',
+            personaName: 'analytics',
+            appMode: AppMode.AI,
+          },
         ],
       },
     });
 
-    renderHook(() => useSyncAppModeFromPersona());
+    renderHook(() => useSyncAppModeFromPersona(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
       expect(getDocumentByFQN).not.toHaveBeenCalled();
@@ -77,7 +98,7 @@ describe('useSyncAppModeFromPersona', () => {
     seedRegistry(true);
     seedPersona(undefined);
 
-    renderHook(() => useSyncAppModeFromPersona());
+    renderHook(() => useSyncAppModeFromPersona(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
       expect(getDocumentByFQN).not.toHaveBeenCalled();
@@ -85,22 +106,49 @@ describe('useSyncAppModeFromPersona', () => {
     });
   });
 
-  it('force-writes persona.appMode into useAppModeStore when present', async () => {
+  it('force-writes the AI runtime mode when the persona picks AppMode.AI', async () => {
     seedRegistry(true);
     seedPersona('persona-1', 'analytics');
     getDocumentByFQN.mockResolvedValue({
       data: {
         personaPreferences: [
-          { personaId: 'persona-1', personaName: 'analytics', appMode: 'ai' },
+          {
+            personaId: 'persona-1',
+            personaName: 'analytics',
+            appMode: AppMode.AI,
+          },
         ],
       },
     });
 
-    renderHook(() => useSyncAppModeFromPersona());
+    renderHook(() => useSyncAppModeFromPersona(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
       expect(getDocumentByFQN).toHaveBeenCalledWith('persona.analytics');
-      expect(useAppModeStore.getState().currentMode).toBe('ai');
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    });
+  });
+
+  it('force-writes DEFAULT_APP_MODE when the persona picks AppMode.Classic', async () => {
+    seedRegistry(true);
+    seedPersona('persona-1', 'analytics');
+    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+    getDocumentByFQN.mockResolvedValue({
+      data: {
+        personaPreferences: [
+          {
+            personaId: 'persona-1',
+            personaName: 'analytics',
+            appMode: AppMode.Classic,
+          },
+        ],
+      },
+    });
+
+    renderHook(() => useSyncAppModeFromPersona(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
     });
   });
 
@@ -115,7 +163,7 @@ describe('useSyncAppModeFromPersona', () => {
       },
     });
 
-    renderHook(() => useSyncAppModeFromPersona());
+    renderHook(() => useSyncAppModeFromPersona(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
       expect(getDocumentByFQN).toHaveBeenCalled();
@@ -128,7 +176,7 @@ describe('useSyncAppModeFromPersona', () => {
     seedPersona('persona-1', 'analytics');
     getDocumentByFQN.mockRejectedValue(new Error('boom'));
 
-    renderHook(() => useSyncAppModeFromPersona());
+    renderHook(() => useSyncAppModeFromPersona(), { wrapper: makeWrapper() });
 
     await waitFor(() => {
       expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);

@@ -18,54 +18,49 @@ import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/Error
 import { NavigationBlocker } from '../../components/common/NavigationBlocker/NavigationBlocker';
 import { CustomizablePageHeader } from '../../components/MyData/CustomizableComponents/CustomizablePageHeader/CustomizablePageHeader';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
-import { DEFAULT_APP_MODE } from '../../constants/appMode.constants';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { Persona } from '../../generated/entity/teams/persona';
-import { PersonaPreferences } from '../../generated/system/ui/uiCustomization';
+import {
+  AppMode,
+  PersonaPreferences,
+} from '../../generated/type/personaPreferences';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
 import { useCustomizeStore } from '../CustomizablePage/CustomizeStore';
 
 interface Props {
   personaDetails?: Persona;
-  onSave: (appMode: string) => Promise<void>;
+  onSave: (appMode: AppMode) => Promise<void>;
 }
 
-const labelFor = (
-  t: (key: string, options?: { defaultValue: string }) => string,
-  modeKey: string
-): string => {
-  if (modeKey === DEFAULT_APP_MODE) {
-    return t('label.app-mode-classic');
-  }
+const APP_MODE_OPTIONS: readonly AppMode[] = [AppMode.Classic, AppMode.AI];
 
-  return t(`label.app-mode-${modeKey}`, {
-    defaultValue: modeKey,
-  });
+const labelFor = (t: (key: string) => string, mode: AppMode): string => {
+  switch (mode) {
+    case AppMode.Classic:
+      return t('label.app-mode-classic');
+    case AppMode.AI:
+      return t('label.app-mode-ai');
+  }
 };
 
 export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
   const { t } = useTranslation();
   const { document } = useCustomizeStore();
-  const nonDefaultModes = useAppRoutesRegistry((state) =>
-    Object.keys(state.routes)
+  const hasNonDefaultMode = useAppRoutesRegistry(
+    (state) => Object.keys(state.routes).length > 0
   );
 
-  const persistedAppMode = useMemo(() => {
+  const persistedAppMode = useMemo<AppMode>(() => {
     const preferences = (document?.data?.personaPreferences ??
       []) as PersonaPreferences[];
 
     return (
       preferences.find((entry) => entry.personaId === personaDetails?.id)
-        ?.appMode ?? DEFAULT_APP_MODE
+        ?.appMode ?? AppMode.Classic
     );
   }, [document, personaDetails?.id]);
 
-  const [selectedMode, setSelectedMode] = useState<string>(persistedAppMode);
-
-  const options = useMemo(
-    () => [DEFAULT_APP_MODE, ...nonDefaultModes],
-    [nonDefaultModes]
-  );
+  const [selectedMode, setSelectedMode] = useState<AppMode>(persistedAppMode);
 
   const disableSave = selectedMode === persistedAppMode;
 
@@ -74,10 +69,10 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
   };
 
   const handleReset = () => {
-    setSelectedMode(DEFAULT_APP_MODE);
+    setSelectedMode(AppMode.Classic);
   };
 
-  if (nonDefaultModes.length === 0) {
+  if (!hasNonDefaultMode) {
     return (
       <PageLayoutV1 className="bg-grey" pageTitle="Settings App Mode Page">
         <div data-testid="app-mode-unavailable-placeholder">
@@ -114,9 +109,9 @@ export const SettingsAppModePage = ({ personaDetails, onSave }: Props) => {
 
               <Radio.Group
                 value={selectedMode}
-                onChange={(e) => setSelectedMode(e.target.value)}>
+                onChange={(e) => setSelectedMode(e.target.value as AppMode)}>
                 <Space direction="vertical">
-                  {options.map((mode) => (
+                  {APP_MODE_OPTIONS.map((mode) => (
                     <Radio
                       data-testid={`app-mode-option-${mode}`}
                       key={mode}
