@@ -97,11 +97,6 @@ public class OpenSearchVectorService implements VectorIndexService {
                 "score-ranker-processor",
                 MAPPER.createObjectNode().set("combination", combination));
 
-    // Only RRF fusion here — no collapse response processor. Chunk dedup by parentId is applied by
-    // the caller: OSS vector search groups hits in Java (see #search), and Collate's NLQ hybrid
-    // search emits a query-level collapse{parentId} in the request body. A pipeline-level collapse
-    // on the same field double-collapses that request and OpenSearch rejects it with
-    // "Cannot collapse on parentId. Results already collapsed on parentId" (HTTP 500).
     var pipeline = MAPPER.createObjectNode();
     pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
 
