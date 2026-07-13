@@ -467,13 +467,22 @@ class TestUpdateMssqlIschemaNames:
         assert result == set()
 
     def test_load_description_maps_degrades_gracefully(self):
-        """A failing description query is logged, not raised, so ingestion continues"""
+        """A failing description query is isolated: it is logged, not raised, and the
+        remaining independent description loads still run so ingestion continues"""
         self.mssql.encrypted_procedures_cache = {("db", "dbo"): {"sp"}}
 
-        with patch.object(MssqlSource, "set_schema_description_map", side_effect=Exception("boom")):
-            # Must not raise even though a description query failed
+        with (
+            patch.object(MssqlSource, "set_schema_description_map", side_effect=Exception("boom")) as schema_map,
+            patch.object(MssqlSource, "set_database_description_map") as database_map,
+            patch.object(MssqlSource, "set_stored_procedure_description_map") as procedure_map,
+        ):
+            # Must not raise even though the first description query failed
             self.mssql._load_description_maps()
 
+        # A failure in one load must not skip the other independent loads
+        schema_map.assert_called_once()
+        database_map.assert_called_once()
+        procedure_map.assert_called_once()
         assert self.mssql.encrypted_procedures_cache == {}
 
     def test_load_description_maps_resets_encrypted_cache(self):

@@ -200,13 +200,17 @@ class MssqlSource(CommonDbSourceService, MultiDBSource):
         abort the run: it is logged and ingestion continues without them.
         """
         self.encrypted_procedures_cache.clear()
-        try:
-            self.set_schema_description_map()
-            self.set_database_description_map()
-            self.set_stored_procedure_description_map()
-        except Exception as exc:
-            logger.debug(traceback.format_exc())
-            logger.debug(f"Could not load MSSQL description metadata, continuing without it: {exc}")
+        description_loaders = {
+            "schema": self.set_schema_description_map,
+            "database": self.set_database_description_map,
+            "stored procedure": self.set_stored_procedure_description_map,
+        }
+        for description_type, load_description_map in description_loaders.items():
+            try:
+                load_description_map()
+            except Exception as exc:
+                logger.debug(traceback.format_exc())
+                logger.debug(f"Could not load MSSQL {description_type} descriptions, continuing without them: {exc}")
 
     def get_database_names(self) -> Iterable[str]:
         if not self.config.serviceConnection.root.config.ingestAllDatabases:  # pyright: ignore[reportAttributeAccessIssue]
