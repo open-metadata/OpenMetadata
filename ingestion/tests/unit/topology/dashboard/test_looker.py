@@ -965,7 +965,7 @@ class LookerUnitTest(TestCase):
     def test_get_dashboards_list_declares_dashboard_total(self):
         """
         Check that get_dashboards_list declares the Dashboard progress total
-        from the name-filtered dashboard list, and marks Chart reconcilable.
+        from the name-filtered dashboard list.
         """
         dashboards = [
             SimpleNamespace(id="1", title="Keep"),
@@ -978,7 +978,6 @@ class LookerUnitTest(TestCase):
         self.assertEqual(len(result), 2)
         registry = self.looker.progress_tracking.registry
         self.assertEqual(registry._global["Dashboard"].total, 2)
-        self.assertTrue(registry._global["Chart"].reconcilable)
 
     def test_yield_bulk_datamodel_tracks_progress(self):
         """
@@ -1044,16 +1043,4 @@ class LookerUnitTest(TestCase):
             list(self.looker.yield_dashboard(MOCK_LOOKER_DASHBOARD))
 
         counter = self.looker.progress_tracking.registry._global["Dashboard"]
-        self.assertGreaterEqual(counter.done, 1)
-
-    def test_yield_dashboard_chart_tracks_progress(self):
-        """
-        Check that yield_dashboard_chart advances the Chart counter after
-        successfully yielding a chart request.
-        """
-        self.looker.progress_tracking.manual.set_total("Chart", 5)
-
-        list(self.looker.yield_dashboard_chart(MOCK_LOOKER_DASHBOARD))
-
-        counter = self.looker.progress_tracking.registry._global["Chart"]
         self.assertGreaterEqual(counter.done, 1)

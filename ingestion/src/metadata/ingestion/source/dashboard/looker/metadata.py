@@ -1205,7 +1205,6 @@ class LookerSource(DashboardServiceSource):
             ]
             manual = self.progress_tracking.manual
             manual.set_total(Dashboard.__name__, len(kept))
-            manual.mark_reconcilable(Chart.__name__)
         except Exception as err:
             logger.debug(traceback.format_exc())
             logger.error(f"Wild error trying to obtain dashboard list {err}")
@@ -1648,7 +1647,6 @@ class LookerSource(DashboardServiceSource):
                     service=self.context.get().dashboard_service,
                 )
                 yield Either(right=chart_request)
-                self.progress_tracking.manual.track(Chart.__name__)
                 self.register_record_chart(chart_request=chart_request)
 
             except Exception as exc:
