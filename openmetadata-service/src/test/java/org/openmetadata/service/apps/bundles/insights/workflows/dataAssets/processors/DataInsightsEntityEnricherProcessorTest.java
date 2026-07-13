@@ -34,6 +34,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentContext;
 import org.openmetadata.service.apps.bundles.insights.workflows.dataAssets.processors.enricher.EnrichmentTarget;
@@ -155,6 +156,33 @@ class DataInsightsEntityEnricherProcessorTest {
     assertFalse(result.containsKey("numberOfColumns"));
     assertFalse(result.containsKey("numberOfColumnsWithDescription"));
     assertFalse(result.containsKey("hasColumnDescription"));
+  }
+
+  @Test
+  void testOwnerNameProjectedForOwnedEntity() {
+    List<EntityReference> owners =
+        List.of(
+            new EntityReference().withName("alice").withType(Entity.USER),
+            new EntityReference().withName("data-team").withType(Entity.TEAM));
+    Map<String, Object> result = enrichEntity(new MockOwnedEntity(owners), "pipeline");
+
+    assertEquals(List.of("alice", "data-team"), result.get("ownerName"));
+  }
+
+  @Test
+  void testOwnerNameAbsentForUnownedEntity() {
+    Map<String, Object> result = enrichEntity(new MockEntity("test description"), "pipeline");
+
+    assertFalse(result.containsKey("ownerName"));
+  }
+
+  @Test
+  void testOwnerNameAbsentWhenOwnerNamesBlank() {
+    List<EntityReference> owners =
+        List.of(new EntityReference().withName(null).withType(Entity.USER));
+    Map<String, Object> result = enrichEntity(new MockOwnedEntity(owners), "pipeline");
+
+    assertFalse(result.containsKey("ownerName"));
   }
 
   @Test
@@ -524,6 +552,20 @@ class DataInsightsEntityEnricherProcessorTest {
     @Override
     public <T extends EntityInterface> T withHref(URI href) {
       return (T) this;
+    }
+  }
+
+  static class MockOwnedEntity extends MockEntity {
+    private final List<EntityReference> owners;
+
+    MockOwnedEntity(List<EntityReference> owners) {
+      super("test description");
+      this.owners = owners;
+    }
+
+    @Override
+    public List<EntityReference> getOwners() {
+      return owners;
     }
   }
 }

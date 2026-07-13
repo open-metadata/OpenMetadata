@@ -3,6 +3,7 @@ import { SelectContext } from '@/components/base/select/select';
 import type { SelectItemType } from '@/components/base/select/select';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
+import { fontSizeClass } from '@/utils/tailwindClasses';
 import { Check } from '@untitledui/icons';
 import type { ReactNode } from 'react';
 import { isValidElement, useContext } from 'react';
@@ -74,6 +75,7 @@ const renderItemIcon = (
 interface DefaultItemContentProps {
   state: ListBoxItemRenderProps;
   size: 'sm' | 'md';
+  fontSize: keyof typeof fontSizeClass;
   label: string | undefined;
   avatarUrl: string | undefined;
   supportingText: string | undefined;
@@ -85,6 +87,7 @@ interface DefaultItemContentProps {
 const DefaultItemContent = ({
   state,
   size,
+  fontSize,
   label,
   avatarUrl,
   supportingText,
@@ -107,7 +110,8 @@ const DefaultItemContent = ({
     <div className="tw:flex tw:w-full tw:min-w-0 tw:flex-1 tw:flex-wrap tw:gap-x-2">
       <AriaText
         className={cx(
-          'tw:truncate tw:text-md tw:font-medium tw:whitespace-nowrap tw:text-primary',
+          'tw:truncate tw:font-medium tw:whitespace-nowrap tw:text-primary',
+          fontSizeClass[fontSize],
           state.isDisabled && 'tw:text-disabled'
         )}
         slot="label">
@@ -117,7 +121,8 @@ const DefaultItemContent = ({
       {supportingText && (
         <AriaText
           className={cx(
-            'tw:text-md tw:whitespace-nowrap tw:text-tertiary',
+            'tw:basis-full tw:whitespace-normal tw:text-tertiary',
+            fontSizeClass[fontSize],
             state.isDisabled && 'tw:text-disabled'
           )}
           slot="description">
@@ -172,7 +177,7 @@ export const AutocompleteItem = ({
   'data-testid': dataTestId,
   ...props
 }: AutocompleteItemProps) => {
-  const { size } = useContext(SelectContext);
+  const { size, fontSize } = useContext(SelectContext);
 
   const stringChild = typeof children === 'string' ? children : '';
   const labelOrChildren = label || stringChild;
@@ -216,6 +221,7 @@ export const AutocompleteItem = ({
           <DefaultItemContent
             avatarUrl={avatarUrl}
             dataTestId={dataTestId}
+            fontSize={fontSize}
             icon={Icon}
             label={label}
             size={size}

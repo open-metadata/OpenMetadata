@@ -66,6 +66,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
+    conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
@@ -312,6 +313,23 @@ public class ListFilter extends Filter<ListFilter> {
             + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d))",
         inCondition, Relationship.CREATED.ordinal());
+  }
+
+  /**
+   * Filter by the user recorded in the entity's {@code updatedBy} column (the last writer). For a
+   * soft-deleted entity this is the user who archived it, since an archived entity cannot be edited.
+   * Matches the generated {@code updatedBy} column directly (plain username, comma-separated list
+   * supported). Qualifies the column with the table name when available so it stays unambiguous if a
+   * joined table ever exposes its own {@code updatedBy}.
+   */
+  private String getUpdatedByCondition(String tableName) {
+    String updatedBy = queryParams.get("updatedBy");
+    if (nullOrEmpty(updatedBy)) {
+      return "";
+    }
+    String columnName = tableName == null ? "updatedBy" : tableName + ".updatedBy";
+    String inCondition = buildIndexedBindParams("updatedBy", updatedBy);
+    return String.format("%s IN (%s)", columnName, inCondition);
   }
 
   private String getWorkflowDefinitionIdCondition() {

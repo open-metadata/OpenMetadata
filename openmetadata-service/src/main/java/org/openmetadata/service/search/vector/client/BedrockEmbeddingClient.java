@@ -8,6 +8,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.OptionalInt;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.commons.lang3.StringUtils;
 import org.openmetadata.schema.configuration.LLMBedrockEmbeddingConfig;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
@@ -19,6 +20,7 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.bedrockruntime.BedrockRuntimeClient;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelRequest;
 import software.amazon.awssdk.services.bedrockruntime.model.InvokeModelResponse;
+import software.amazon.awssdk.services.bedrockruntime.model.ValidationException;
 
 @Slf4j
 public final class BedrockEmbeddingClient extends EmbeddingClient implements AutoCloseable {
@@ -44,6 +46,22 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   // before the Cohere-side `truncate` directive runs, so oversized text must be capped client-side.
   private static final int COHERE_MAX_INPUT_CHARS = 2048;
 
+  // Titan text-embedding models accept at most 8192 input tokens and — unlike Cohere — expose no
+  // request-side truncate directive, so oversized text throws a ValidationException (issue #4930).
+  // Capping at 16384 chars keeps even token-dense input (~2 chars/token worst case) under the limit
+  // while staying well above the 380-word chunk bound, so normal text is never truncated.
+  // ponytail: char/token ratio is empirical — lower this knob if a denser corpus still overflows.
+  private static final int TITAN_MAX_INPUT_CHARS = 16384;
+
+  // The char cap is a fast-path that keeps typical English input to a single call; token-dense
+  // scripts (CJK, emoji) where chars approx tokens can still exceed it. AWS lumps token overflow
+  // under a generic ValidationException with no machine-readable code, so detection matches the
+  // message marker; the amount, though, we don't parse — we cap the input up front and then halve
+  // the *capped* value on each retry, so halving converges within these retries and the char cap
+  // already bounds the starting size. This beats depending on AWS's exact error wording to cut.
+  private static final int MAX_TOKEN_LIMIT_RETRIES = 3;
+  private static final String TOKEN_LIMIT_ERROR_MARKER = "input token";
+
   private static final BedrockEmbeddingFamily DEFAULT_FAMILY = BedrockEmbeddingFamily.TITAN_V2;
 
   private static final List<FamilyMatcher> FAMILY_MATCHERS =
@@ -60,11 +78,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
    * adding one constant plus a {@link FamilyMatcher} entry.
    */
   enum BedrockEmbeddingFamily {
-    TITAN_V1(OptionalInt.of(TITAN_V1_FIXED_DIMENSION)) {
+    TITAN_V1(OptionalInt.of(TITAN_V1_FIXED_DIMENSION), TITAN_MAX_INPUT_CHARS) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
-        payload.put(FIELD_INPUT_TEXT, text);
+        payload.put(FIELD_INPUT_TEXT, cap(text));
         return payload;
       }
 
@@ -73,11 +91,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         return root.get(FIELD_EMBEDDING);
       }
     },
-    TITAN_V2(OptionalInt.empty()) {
+    TITAN_V2(OptionalInt.empty(), TITAN_MAX_INPUT_CHARS) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
-        payload.put(FIELD_INPUT_TEXT, text);
+        payload.put(FIELD_INPUT_TEXT, cap(text));
         payload.put(FIELD_DIMENSIONS, dimension);
         payload.put(FIELD_NORMALIZE, true);
         return payload;
@@ -88,11 +106,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         return root.get(FIELD_EMBEDDING);
       }
     },
-    COHERE(OptionalInt.of(COHERE_FIXED_DIMENSION)) {
+    COHERE(OptionalInt.of(COHERE_FIXED_DIMENSION), COHERE_MAX_INPUT_CHARS) {
       @Override
       ObjectNode buildRequest(String text, int dimension, boolean isQuery) {
         ObjectNode payload = MAPPER.createObjectNode();
-        payload.putArray(FIELD_TEXTS).add(capToCohereLimit(text));
+        payload.putArray(FIELD_TEXTS).add(cap(text));
         payload.put(
             FIELD_INPUT_TYPE,
             isQuery ? COHERE_INPUT_TYPE_SEARCH_QUERY : COHERE_INPUT_TYPE_SEARCH_DOCUMENT);
@@ -107,9 +125,11 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
     };
 
     private final OptionalInt fixedDimension;
+    private final int maxInputChars;
 
-    BedrockEmbeddingFamily(OptionalInt fixedDimension) {
+    BedrockEmbeddingFamily(OptionalInt fixedDimension, int maxInputChars) {
       this.fixedDimension = fixedDimension;
+      this.maxInputChars = maxInputChars;
     }
 
     abstract ObjectNode buildRequest(String text, int dimension, boolean isQuery);
@@ -120,12 +140,8 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
       return fixedDimension;
     }
 
-    private static String capToCohereLimit(String text) {
-      String capped = text;
-      if (text != null && text.length() > COHERE_MAX_INPUT_CHARS) {
-        capped = text.substring(0, COHERE_MAX_INPUT_CHARS);
-      }
-      return capped;
+    String cap(String text) {
+      return StringUtils.truncate(text, maxInputChars);
     }
   }
 
@@ -175,6 +191,18 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
         awsConfig.getRegion());
   }
 
+  BedrockEmbeddingClient(
+      BedrockRuntimeClient bedrockClient,
+      String modelId,
+      int dimension,
+      BedrockEmbeddingFamily family) {
+    super(1);
+    this.bedrockClient = bedrockClient;
+    this.modelId = modelId;
+    this.dimension = dimension;
+    this.family = family;
+  }
+
   @Override
   protected float[] doEmbed(String text) {
     return invokeEmbedding(text, false);
@@ -186,29 +214,68 @@ public final class BedrockEmbeddingClient extends EmbeddingClient implements Aut
   }
 
   private float[] invokeEmbedding(String text, boolean isQuery) {
-    try {
-      String body = buildRequestBody(family, text, dimension, isQuery);
+    String input = family.cap(text);
+    float[] embedding = null;
+    int attempt = 0;
+    while (embedding == null) {
+      try {
+        embedding = invokeOnce(input, isQuery);
+      } catch (AwsServiceException e) {
+        requireRetryable(e, attempt++);
+        input = halveInput(input);
+        LOG.warn("Bedrock rejected oversized input; retrying at {} chars", input.length());
+      } catch (SdkClientException e) {
+        LOG.error("SDK client error calling Bedrock: {}", e.getMessage(), e);
+        throw new RuntimeException("Bedrock embedding generation failed (SDK client error)", e);
+      } catch (IOException e) {
+        LOG.error("IO error calling Bedrock: {}", e.getMessage(), e);
+        throw new RuntimeException("Bedrock embedding generation failed (IO error)", e);
+      }
+    }
+    return embedding;
+  }
 
-      InvokeModelRequest request =
-          InvokeModelRequest.builder()
-              .modelId(modelId)
-              .contentType("application/json")
-              .accept("application/json")
-              .body(SdkBytes.fromUtf8String(body))
-              .build();
+  private float[] invokeOnce(String text, boolean isQuery) throws IOException {
+    String body = buildRequestBody(family, text, dimension, isQuery);
+    InvokeModelRequest request =
+        InvokeModelRequest.builder()
+            .modelId(modelId)
+            .contentType("application/json")
+            .accept("application/json")
+            .body(SdkBytes.fromUtf8String(body))
+            .build();
+    InvokeModelResponse response = bedrockClient.invokeModel(request);
+    return parseEmbeddingResponse(family, response.body().asUtf8String());
+  }
 
-      InvokeModelResponse response = bedrockClient.invokeModel(request);
-      return parseEmbeddingResponse(family, response.body().asUtf8String());
-    } catch (AwsServiceException e) {
+  /**
+   * Rethrow unless the call is worth retrying: only a token-limit {@link ValidationException} within
+   * the retry budget is, since halving the input is the only thing that can help it. Everything else
+   * (throttling, auth, non-token validation) is surfaced immediately. The input is already capped to
+   * {@link #TITAN_MAX_INPUT_CHARS} up front, so halving quickly converges below the token limit even
+   * for token-dense scripts (CJK, emoji) that the char cap alone can't bound.
+   */
+  private void requireRetryable(AwsServiceException e, int attempt) {
+    boolean retryable = attempt < MAX_TOKEN_LIMIT_RETRIES && isTokenLimitError(e);
+    if (!retryable) {
       LOG.error("AWS service error calling Bedrock: {}", e.getMessage(), e);
       throw new RuntimeException("Bedrock embedding generation failed (AWS service error)", e);
-    } catch (SdkClientException e) {
-      LOG.error("SDK client error calling Bedrock: {}", e.getMessage(), e);
-      throw new RuntimeException("Bedrock embedding generation failed (SDK client error)", e);
-    } catch (IOException e) {
-      LOG.error("IO error calling Bedrock: {}", e.getMessage(), e);
-      throw new RuntimeException("Bedrock embedding generation failed (IO error)", e);
     }
+  }
+
+  private static boolean isTokenLimitError(AwsServiceException e) {
+    String message = e.getMessage();
+    return e instanceof ValidationException
+        && message != null
+        && message.toLowerCase(Locale.ROOT).contains(TOKEN_LIMIT_ERROR_MARKER);
+  }
+
+  static String halveInput(String input) {
+    int cut = input.length() / 2;
+    if (cut > 0 && Character.isHighSurrogate(input.charAt(cut - 1))) {
+      cut--;
+    }
+    return input.substring(0, cut);
   }
 
   @Override

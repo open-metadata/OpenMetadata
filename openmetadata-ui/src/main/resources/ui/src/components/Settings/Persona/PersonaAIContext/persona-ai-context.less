@@ -1,0 +1,605 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+@import '../../../../styles/variables.less';
+
+.persona-ai-context {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 8px 0 24px;
+
+  .ant-typography {
+    margin-bottom: 0;
+  }
+}
+
+.persona-ai-context-header,
+.persona-ai-context-preview-toolbar,
+.persona-ai-context-rule-card {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.persona-ai-context-header .ant-typography-paragraph {
+  margin-top: 4px;
+}
+
+.persona-ai-context-header .ant-btn {
+  min-height: 44px;
+}
+
+.persona-ai-context-settings-card,
+.persona-ai-context-rule-card {
+  border-color: @border-color;
+  border-radius: @border-rad-sm;
+  background: @background-color;
+  box-shadow: @box-shadow-card-subtle;
+}
+
+.persona-ai-context-settings-card .ant-card-body {
+  padding: 18px 20px;
+}
+
+.persona-ai-context-settings-card[data-disabled='true'] {
+  opacity: 0.55;
+}
+
+.persona-ai-context-settings-grid {
+  display: grid;
+  grid-template-columns: minmax(120px, 0.7fr) repeat(2, minmax(180px, 1fr)) minmax(
+      240px,
+      1.5fr
+    );
+  align-items: end;
+  gap: 24px;
+}
+
+.persona-ai-context-setting {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+
+  .ant-input-number {
+    width: 100%;
+  }
+}
+
+.persona-ai-context-enabled-setting {
+  flex-direction: row;
+  align-items: center;
+  align-self: center;
+}
+
+.persona-ai-context-generation-status {
+  display: flex;
+  align-self: center;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+  text-align: right;
+}
+
+.persona-ai-context-error {
+  display: block;
+  margin-top: 12px;
+}
+
+.persona-ai-context-rules-header {
+  margin-bottom: -8px;
+}
+
+.persona-ai-context-rules-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.persona-ai-context-rule-card {
+  align-items: stretch;
+  padding: 16px 18px;
+  border: @global-border;
+}
+
+.persona-ai-context-rule-main {
+  display: flex;
+  min-width: 0;
+  flex: 1;
+  flex-direction: column;
+  gap: 9px;
+}
+
+.persona-ai-context-rule-title-row,
+.persona-ai-context-condition-row,
+.persona-ai-context-section-pills,
+.persona-ai-context-rule-actions {
+  display: flex;
+  align-items: center;
+}
+
+.persona-ai-context-rule-title-row {
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.persona-ai-context-rule-title {
+  color: @text-color;
+  font-size: 15px;
+  font-weight: 600;
+}
+
+.persona-ai-context-type-tag {
+  display: inline-flex;
+  align-items: center;
+  padding: 2px 9px;
+  border: @global-border;
+  border-radius: 9999px;
+  background: @grey-50;
+  color: @text-color-tertiary;
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 18px;
+}
+
+.persona-ai-context-condition-row {
+  min-width: 0;
+}
+
+.persona-ai-context-condition {
+  overflow: hidden;
+  max-width: 900px;
+  padding: 3px 10px;
+  border-radius: @border-rad-xs;
+  color: @text-color-tertiary;
+  font-size: 12px;
+  line-height: 18px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.persona-ai-context-condition--match-all {
+  border: 1px dashed @border-color-2;
+  background: @grey-50;
+}
+
+.persona-ai-context-condition--filtered {
+  border: @global-border;
+  background: @grey-26;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+}
+
+.persona-ai-context-section-pills {
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.persona-ai-context-section-pill {
+  display: inline-flex;
+  min-height: 24px;
+  align-items: center;
+  padding: 2px 9px;
+  border: @global-border;
+  border-radius: 9999px;
+  background: @grey-50;
+  color: @text-color-tertiary;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.persona-ai-context-section-pill--rendered {
+  border-color: @primary-6;
+  background: @primary-25;
+  color: @primary-7;
+  font-weight: 500;
+}
+
+.persona-ai-context-section-pill--always {
+  font-weight: 600;
+}
+
+.persona-ai-context-heavy-suffix {
+  margin-left: 4px;
+  padding: 0 4px;
+  border-radius: 9999px;
+  background: @grey-100;
+  color: @grey-600;
+  font-size: 10px;
+  font-weight: 600;
+  line-height: 16px;
+}
+
+.persona-ai-context-rule-footnote {
+  color: @grey-500;
+  font-size: 12px;
+  line-height: 18px;
+}
+
+.persona-ai-context-rule-aside {
+  display: flex;
+  min-width: 132px;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.persona-ai-context-matched-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 3px 10px;
+  border: 1px solid @green-16;
+  border-radius: 9999px;
+  background: @green-9;
+  color: @green-17;
+  font-size: 13px;
+  font-weight: 600;
+  line-height: 18px;
+  white-space: nowrap;
+}
+
+.persona-ai-context-matched-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 9999px;
+  background: @green-500;
+}
+
+.persona-ai-context-rule-actions {
+  gap: 8px;
+  flex-shrink: 0;
+
+  .ant-btn {
+    width: 34px;
+    height: 34px;
+    padding: 0;
+    border-color: @border-color-2;
+    border-radius: @border-rad-xs;
+    background: @background-color;
+    color: @text-color-tertiary;
+    box-shadow: @button-box-shadow-default;
+  }
+
+  .ant-btn:hover,
+  .ant-btn:focus {
+    border-color: @primary-3;
+    background: @primary-25;
+    color: @primary-7;
+  }
+
+  .persona-ai-context-delete-rule:hover,
+  .persona-ai-context-delete-rule:focus {
+    border-color: @red-13;
+    background: @red-9;
+    color: @red-14;
+  }
+}
+
+.persona-ai-context-empty-state {
+  display: flex;
+  min-height: 280px;
+  align-items: center;
+  justify-content: center;
+  flex-direction: column;
+  gap: 16px;
+  border: 1px dashed @border-color-2;
+  border-radius: @border-rad-sm;
+  background: @grey-50;
+}
+
+.persona-ai-context-empty-icon {
+  color: @primary-6;
+  font-size: 44px;
+}
+
+.persona-ai-context-rule-form {
+  display: flex;
+  flex-direction: column;
+  gap: 0;
+
+  .ant-form-item {
+    width: 100%;
+    margin-bottom: 20px;
+  }
+
+  .ant-form-item-row {
+    display: block;
+  }
+
+  .ant-form-item-label {
+    display: block;
+    overflow: visible;
+    padding: 0 0 7px;
+    text-align: left;
+    white-space: normal;
+  }
+
+  .ant-form-item-label > label {
+    height: auto;
+    color: @text-color;
+    font-size: 13px;
+    font-weight: 600;
+    line-height: 20px;
+  }
+
+  .ant-form-item-label > label::after {
+    display: none;
+  }
+
+  .ant-form-item-control {
+    max-width: 100%;
+  }
+
+  .ant-input,
+  .ant-input-number,
+  .ant-select-selector {
+    border-radius: @border-rad-xs;
+  }
+
+  .ant-input:not(textarea),
+  .ant-input-number,
+  .ant-select-single .ant-select-selector {
+    min-height: 42px;
+  }
+
+  .ant-select-single .ant-select-selector .ant-select-selection-item,
+  .ant-select-single .ant-select-selector .ant-select-selection-placeholder {
+    line-height: 40px;
+  }
+
+  textarea.ant-input {
+    min-height: 92px;
+  }
+}
+
+.persona-ai-context-rule-drawer {
+  [role='dialog'] {
+    overflow: hidden;
+    gap: 0;
+  }
+
+  [role='dialog'] > header {
+    flex: 0 0 auto;
+    padding: 20px 56px 20px 24px;
+    border-bottom: @global-border;
+    background: @background-color;
+  }
+
+  .drawer-form-content {
+    overflow-y: auto;
+    width: 100%;
+    height: auto;
+    min-height: 0;
+    flex: 1 1 auto;
+    gap: 0;
+    padding: 24px;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  [role='dialog'] > footer {
+    flex: 0 0 auto;
+    padding: 16px 24px;
+    background: @background-color;
+    box-shadow: @box-shadow-drawer-footer;
+  }
+}
+
+.persona-ai-context-entity-type-popup {
+  .rc-virtual-list-holder {
+    overflow-y: auto !important;
+    max-height: min(280px, calc(100vh - 96px)) !important;
+    overscroll-behavior: contain;
+    scrollbar-width: thin;
+  }
+
+  .ant-select-item-group {
+    color: @grey-500;
+    font-size: 12px;
+    font-weight: 600;
+    text-transform: uppercase;
+  }
+}
+
+.persona-ai-context-match-preview {
+  margin-top: 12px;
+
+  &.ant-alert-error .ant-btn-link {
+    color: @red-14;
+  }
+}
+
+.persona-ai-context-match-preview-content {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+
+  .ant-btn {
+    min-height: 40px;
+    padding: 0;
+  }
+}
+
+.persona-ai-context-knowledge-note {
+  margin-bottom: 20px;
+  border-style: dashed;
+  background: @grey-50;
+}
+
+.persona-ai-context-behavior-list {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 20px;
+}
+
+.persona-ai-context-behavior-card {
+  display: flex;
+  min-height: 70px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  padding: 13px 16px;
+  border: @global-border;
+  border-radius: @border-rad-sm;
+
+  .ant-typography-paragraph {
+    margin: 2px 0 0;
+    font-size: 12px;
+  }
+}
+
+.persona-ai-context-sections-field .ant-typography-paragraph {
+  margin: -4px 0 12px;
+  font-size: 12px;
+}
+
+.persona-ai-context-section-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 12px 8px;
+
+  .ant-checkbox-wrapper {
+    min-height: 44px;
+    align-items: center;
+    margin-inline-start: 0;
+    padding: 10px 12px;
+    border: @global-border;
+    border-radius: @border-rad-sm;
+  }
+
+  .ant-checkbox-wrapper:has(.ant-checkbox-checked) {
+    border-color: @primary-6;
+    background: @primary-50;
+  }
+
+  &.ant-checkbox-group-disabled {
+    opacity: 0.5;
+  }
+}
+
+.persona-ai-context-max-assets {
+  width: 120px;
+}
+
+.persona-ai-context-preview-modal {
+  .ant-modal-content {
+    overflow: hidden;
+    padding: 0;
+  }
+
+  .ant-modal-header {
+    margin: 0;
+    padding: 20px 24px;
+    border-bottom: @global-border;
+  }
+
+  .ant-modal-close {
+    top: 14px;
+  }
+
+  .ant-modal-body {
+    height: min(78vh, 820px);
+  }
+
+  .ant-spin-nested-loading,
+  .ant-spin-container {
+    height: 100%;
+  }
+}
+
+.persona-ai-context-preview-empty {
+  display: flex;
+  height: min(78vh, 820px);
+  align-items: center;
+  justify-content: center;
+}
+
+.persona-ai-context-preview-toolbar {
+  align-items: center;
+  padding: 12px 24px;
+  border-bottom: @global-border;
+  background: @grey-50;
+}
+
+.persona-ai-context-preview-layout {
+  display: grid;
+  height: calc(min(78vh, 820px) - 65px);
+  grid-template-columns: 220px minmax(0, 1fr);
+}
+
+.persona-ai-context-preview-toc {
+  display: flex;
+  overflow: auto;
+  flex-direction: column;
+  gap: 10px;
+  padding: 20px;
+  border-right: @global-border;
+  background: @grey-50;
+}
+
+.persona-ai-context-toc-item {
+  height: auto;
+  min-height: 36px;
+  justify-content: flex-start;
+  padding: 7px 10px;
+  text-align: left;
+
+  > span {
+    width: 100%;
+    text-align: left;
+  }
+}
+
+.persona-ai-context-preview-document {
+  overflow: auto;
+  padding: 28px 36px;
+}
+
+.persona-ai-context-raw-editor {
+  overflow: auto;
+  height: calc(min(78vh, 820px) - 65px);
+  margin: 0;
+  padding: 26px 34px 60px;
+  color: @text-color-tertiary;
+  font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
+  font-size: 13px;
+  line-height: 1.7;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+@media (max-width: 1100px) {
+  .persona-ai-context-settings-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .persona-ai-context-generation-status {
+    text-align: left;
+  }
+
+  .persona-ai-context-rule-card {
+    flex-direction: column;
+  }
+
+  .persona-ai-context-rule-aside {
+    width: 100%;
+    min-width: 0;
+    flex-direction: row;
+    align-items: center;
+  }
+}
