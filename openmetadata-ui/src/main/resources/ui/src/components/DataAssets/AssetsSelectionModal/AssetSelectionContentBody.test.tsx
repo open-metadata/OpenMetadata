@@ -109,32 +109,29 @@ jest.mock('../../Explore/ExploreQuickFilters', () => {
   return jest.fn(() => <div data-testid="explore-quick-filters" />);
 });
 
-jest.mock(
-  '../DomainAssetDryRunModal/DomainAssetDryRunModal.component',
-  () => {
-    return jest.fn(
-      ({
-        visible,
-        onConfirm,
-        onCancel,
-      }: {
-        visible: boolean;
-        onConfirm: () => void;
-        onCancel: () => void;
-      }) =>
-        visible ? (
-          <div data-testid="dry-run-modal">
-            <button data-testid="dry-run-confirm" onClick={onConfirm}>
-              confirm
-            </button>
-            <button data-testid="dry-run-cancel" onClick={onCancel}>
-              cancel
-            </button>
-          </div>
-        ) : null
-    );
-  }
-);
+jest.mock('../DomainAssetDryRunModal/DomainAssetDryRunModal.component', () => {
+  return jest.fn(
+    ({
+      visible,
+      onConfirm,
+      onCancel,
+    }: {
+      visible: boolean;
+      onConfirm: () => void;
+      onCancel: () => void;
+    }) =>
+      visible ? (
+        <div data-testid="dry-run-modal">
+          <button data-testid="dry-run-confirm" onClick={onConfirm}>
+            confirm
+          </button>
+          <button data-testid="dry-run-cancel" onClick={onCancel}>
+            cancel
+          </button>
+        </div>
+      ) : null
+  );
+});
 
 const mockSetSearch = jest.fn();
 const mockHandleCardClick = jest.fn();
@@ -221,10 +218,7 @@ describe('AssetSelectionContentBody', () => {
 
   it('should render info banner when infoBannerText is provided', () => {
     render(
-      <AssetSelectionContentBody
-        {...defaultProps}
-        infoBannerText="some info"
-      />
+      <AssetSelectionContentBody {...defaultProps} infoBannerText="some info" />
     );
 
     expect(screen.getByText('some info')).toBeInTheDocument();

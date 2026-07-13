@@ -217,9 +217,7 @@ const AssetSelectionContentBody = ({
                             <CoreDivider className="tw:mt-0 tw:my-2" />
                           </div>
                           <div className="d-flex gap-3 p-x-sm p-b-sm">
-                            <ExclamationCircleOutlined
-                              className="tw:text-2xl tw:text-error-primary"
-                            />
+                            <ExclamationCircleOutlined className="tw:text-2xl tw:text-error-primary" />
                             <Typography as="span" className="tw:break-all">
                               {errorMessage}
                             </Typography>

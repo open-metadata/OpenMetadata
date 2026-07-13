@@ -108,11 +108,7 @@ describe('AssetSelectionFooter', () => {
 
   it('should disable save button when isLoading is true', () => {
     render(
-      <AssetSelectionFooter
-        {...defaultProps}
-        isLoading
-        selectedCount={1}
-      />
+      <AssetSelectionFooter {...defaultProps} isLoading selectedCount={1} />
     );
 
     expect(screen.getByTestId('save-btn')).toBeDisabled();
@@ -120,11 +116,7 @@ describe('AssetSelectionFooter', () => {
 
   it('should disable save button when isSaveLoading is true', () => {
     render(
-      <AssetSelectionFooter
-        {...defaultProps}
-        isSaveLoading
-        selectedCount={1}
-      />
+      <AssetSelectionFooter {...defaultProps} isSaveLoading selectedCount={1} />
     );
 
     expect(screen.getByTestId('save-btn')).toBeDisabled();
@@ -150,11 +142,7 @@ describe('AssetSelectionFooter', () => {
 
   it('should show loading state on save button when isSaveLoading is true', () => {
     render(
-      <AssetSelectionFooter
-        {...defaultProps}
-        isSaveLoading
-        selectedCount={1}
-      />
+      <AssetSelectionFooter {...defaultProps} isSaveLoading selectedCount={1} />
     );
 
     expect(screen.getByTestId('save-btn')).toHaveAttribute(

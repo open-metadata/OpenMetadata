@@ -81,13 +81,7 @@ jest.mock('./AssetSelectionContentBody', () => {
 
 jest.mock('./AssetSelectionFooter', () => {
   return jest.fn(
-    ({
-      onSave,
-      onCancel,
-    }: {
-      onSave?: () => void;
-      onCancel?: () => void;
-    }) => (
+    ({ onSave, onCancel }: { onSave?: () => void; onCancel?: () => void }) => (
       <div data-testid="footer">
         <button data-testid="footer-save" onClick={onSave}>
           save

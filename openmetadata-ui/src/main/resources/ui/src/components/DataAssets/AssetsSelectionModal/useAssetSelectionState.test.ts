@@ -390,9 +390,9 @@ describe('useAssetSelectionState', () => {
     });
 
     expect(result.current.quickFilterQuery).toBeUndefined();
-    expect(
-      result.current.filters.every((f) => f?.value?.length === 0)
-    ).toBe(true);
+    expect(result.current.filters.every((f) => f?.value?.length === 0)).toBe(
+      true
+    );
   });
 
   describe('save flow', () => {
@@ -539,10 +539,7 @@ describe('useAssetSelectionState', () => {
         result.current.onSaveAction();
       });
 
-      expect(addAssetsToTags).toHaveBeenCalledWith(
-        'tag-id',
-        expect.any(Array)
-      );
+      expect(addAssetsToTags).toHaveBeenCalledWith('tag-id', expect.any(Array));
     });
 
     it('should set failedStatus when the save response is not successful', async () => {
@@ -569,9 +566,10 @@ describe('useAssetSelectionState', () => {
         expect(result.current.failedStatus).toEqual(failedResult);
       });
 
-      expect(
-        result.current.getErrorStatusAndMessage('1')
-      ).toEqual({ isError: true, errorMessage: 'could not save' });
+      expect(result.current.getErrorStatusAndMessage('1')).toEqual({
+        isError: true,
+        errorMessage: 'could not save',
+      });
       expect(mockOnSave).not.toHaveBeenCalled();
     });
 
