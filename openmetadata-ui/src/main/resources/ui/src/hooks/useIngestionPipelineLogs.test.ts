@@ -12,6 +12,7 @@
  */
 import { act, renderHook, waitFor } from '@testing-library/react';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
+import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import {
   getApplicationByName,
   getExternalApplicationRuns,
@@ -105,10 +106,11 @@ describe('useIngestionPipelineLogs', () => {
     });
     (getIngestionPipelineLogById as jest.Mock)
       .mockResolvedValueOnce({
-        data: { ingestion_task: 'line1', after: '2', total: '4' },
+        data: { ingestion_task: 'line1', after: '1', total: '2' },
       })
+      // Last page omits `after` (backend behaviour) → tail, hasMore=false.
       .mockResolvedValueOnce({
-        data: { ingestion_task: 'line2', after: '4', total: '4' },
+        data: { ingestion_task: 'line2' },
       });
 
     const { result } = renderHook(() =>
@@ -119,6 +121,8 @@ describe('useIngestionPipelineLogs', () => {
     );
 
     await waitFor(() => expect(result.current.logs).toBe('line1'));
+
+    expect(result.current.hasMore).toBe(true);
 
     await act(async () => {
       result.current.loadMore();
@@ -176,5 +180,70 @@ describe('useIngestionPipelineLogs', () => {
     expect(downloadIngestionLog).toHaveBeenCalledWith('pid');
     expect(mockUpdateProgress).toHaveBeenCalled();
     expect(mockReset).toHaveBeenCalled();
+  });
+});
+
+describe('useIngestionPipelineLogs — live (polling) state', () => {
+  it('is live while the ingestion run is running', async () => {
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
+      id: 'pid',
+      name: 'My Pipeline',
+      pipelineType: 'Metadata',
+      pipelineStatuses: [{ pipelineState: PipelineState.Running }],
+    });
+    (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
+      data: { ingestion_task: 'line1', after: '4', total: '4' },
+    });
+
+    const { result } = renderHook(() =>
+      useIngestionPipelineLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(result.current.isLive).toBe(true));
+  });
+
+  it('is not live once the ingestion run reaches a terminal state', async () => {
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
+      id: 'pid',
+      name: 'My Pipeline',
+      pipelineType: 'Metadata',
+      pipelineStatuses: [{ pipelineState: PipelineState.Success }],
+    });
+    (getIngestionPipelineLogById as jest.Mock).mockResolvedValue({
+      data: { ingestion_task: 'line1', after: '4', total: '4' },
+    });
+
+    const { result } = renderHook(() =>
+      useIngestionPipelineLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('line1'));
+
+    expect(result.current.isLive).toBe(false);
+  });
+
+  it('is live while an application run is in progress', async () => {
+    (getApplicationByName as jest.Mock).mockResolvedValue({ name: 'My App' });
+    (getExternalApplicationRuns as jest.Mock).mockResolvedValue({ data: [] });
+    (getLatestApplicationRuns as jest.Mock).mockResolvedValue({
+      data_insight_task: '',
+      application_task: 'app log',
+      pipelineStatus: { pipelineState: PipelineState.Running },
+    });
+
+    const { result } = renderHook(() =>
+      useIngestionPipelineLogs({
+        logEntityType: GlobalSettingOptions.APPLICATIONS,
+        fqn: 'my-app',
+      })
+    );
+
+    await waitFor(() => expect(result.current.isLive).toBe(true));
   });
 });

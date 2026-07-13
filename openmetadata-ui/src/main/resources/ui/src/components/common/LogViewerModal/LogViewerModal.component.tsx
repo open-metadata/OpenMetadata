@@ -43,7 +43,6 @@ import Loader from '../Loader/Loader';
 import './log-viewer-modal.less';
 import { LogViewerModalProps } from './LogViewerModal.interface';
 import { formatLogPart } from './LogViewerModal.utils';
-import { useLogStream } from './useLogStream';
 
 const SCROLL_BOTTOM_THRESHOLD_PX = 40;
 
@@ -67,7 +66,13 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     hasMore = false,
     loadingMore = false,
     downloading = false,
+    logs,
+    mode = 'static',
   } = props;
+
+  // 'stream' == live run. Today the caller polls and grows `logs` while active,
+  // flipping to 'static' on terminal state. Reserved for future SSE self-fetch.
+  const isLive = mode === 'stream';
 
   const { t } = useTranslation();
   const [searchText, setSearchText] = useState('');
@@ -81,41 +86,11 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
     }
   }, [open]);
 
-  const isStream = props.mode === 'stream';
-  const fqn = isStream ? props.fqn : '';
-  const streamRunId = isStream ? props.runId : '';
-  const seedLogs = isStream ? props.logs ?? '' : props.logs;
-
-  const {
-    logs: streamLogs,
-    loading: streamLoading,
-    streamDone,
-    error: streamError,
-  } = useLogStream(fqn, streamRunId, isStream && open);
-
-  const resolvedLogs = useMemo(() => {
-    if (!isStream) {
-      return seedLogs;
-    }
-
-    const parts = [seedLogs, streamLogs];
-
-    if (streamError) {
-      parts.push(`[ERROR] Could not connect to log stream: ${streamError}`);
-    }
-
-    return parts.filter(Boolean).join('\n');
-  }, [isStream, seedLogs, streamLogs, streamError]);
-
-  const resolvedLoading = isStream ? streamLoading : loading;
-  const resolvedFollow = isStream && !streamDone ? true : follow;
-  const resolvedTotalLines = useMemo(
-    () =>
-      isStream
-        ? resolvedLogs.split('\n').filter(Boolean).length || undefined
-        : totalLines,
-    [isStream, resolvedLogs, totalLines]
-  );
+  const resolvedLogs = logs;
+  const resolvedLoading = loading;
+  // While a run is live (polled), auto-follow the tail; otherwise respect the prop.
+  const resolvedFollow = isLive ? true : follow;
+  const resolvedTotalLines = totalLines;
 
   const hasFooter = Boolean(
     status || resolvedTotalLines !== undefined || runId || lastRun
@@ -222,18 +197,11 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                 </span>
               </div>
               <div className="lvm-actions tw:flex tw:items-center tw:gap-2">
-                {isStream && !streamDone && (
+                {isLive && (
                   <span
                     aria-label={t('label.live')}
                     className="lvm-dot lvm-dot--live"
                     data-testid="log-viewer-live-indicator"
-                  />
-                )}
-                {isStream && streamDone && (
-                  <span
-                    aria-label={t('label.done')}
-                    className="lvm-dot lvm-dot--done"
-                    data-testid="log-viewer-done-indicator"
                   />
                 )}
                 {enableSearch && (

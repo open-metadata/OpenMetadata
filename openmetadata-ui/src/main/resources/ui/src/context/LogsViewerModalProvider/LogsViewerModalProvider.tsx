@@ -53,6 +53,7 @@ const LogsViewerModalContainer: FunctionComponent<
     totalLines,
     title,
     downloading,
+    isLive,
     loadMore,
     download,
   } = useIngestionPipelineLogs({ logEntityType, fqn, runId });
@@ -65,6 +66,7 @@ const LogsViewerModalContainer: FunctionComponent<
       loading={loading}
       loadingMore={loadingMore}
       logs={logs}
+      mode={isLive ? 'stream' : 'static'}
       title={`${title} · ${t('label.log-plural')}`}
       totalLines={totalLines}
       onClose={onClose}

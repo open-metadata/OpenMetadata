@@ -12,15 +12,17 @@
  */
 
 import { AxiosError } from 'axios';
-import { isNil, isUndefined, toNumber } from 'lodash';
+import { noop } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../enums/entity.enum';
 import { App } from '../generated/entity/applications/app';
-import { IngestionPipeline } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  IngestionPipeline,
+  PipelineState,
+} from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Include } from '../generated/type/include';
-import { Paging } from '../generated/type/paging';
 import {
   getApplicationByName,
   getExternalApplicationRuns,
@@ -30,14 +32,19 @@ import {
   getIngestionPipelineByFqn,
   getIngestionPipelineLogById,
 } from '../rest/ingestionPipelineAPI';
+import { downloadBlob } from '../utils/ContextCenterPureUtils';
 import { getEpochMillisForPastDays } from '../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../utils/EntityNameUtils';
+import { downloadFile } from '../utils/Export/ExportUtils';
 import {
   downloadAppLogs,
   downloadIngestionLog,
 } from '../utils/IngestionLogs/LogsUtils';
+import { isPipelineRunActive } from '../utils/logsPolling';
 import { showErrorToast } from '../utils/ToastUtils';
 import { useDownloadProgressStore } from './useDownloadProgressStore';
+import { usePaginatedLiveLog } from './usePaginatedLiveLog';
+import { usePollingEffect } from './usePollingEffect';
 
 export interface UseIngestionPipelineLogsParams {
   logEntityType: string;
@@ -53,6 +60,9 @@ export interface UseIngestionPipelineLogsResult {
   totalLines: number;
   title: string;
   downloading: boolean;
+  // True while the underlying run is still active (running/queued) — drives the
+  // modal's live indicator + tail polling.
+  isLive: boolean;
   loadMore: () => void;
   download: () => void;
 }
@@ -63,123 +73,133 @@ export const useIngestionPipelineLogs = ({
   runId,
 }: UseIngestionPipelineLogsParams): UseIngestionPipelineLogsResult => {
   const { progress, reset, updateProgress } = useDownloadProgressStore();
-  const [logs, setLogs] = useState<string>('');
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
+  const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
   const [appData, setAppData] = useState<App>();
-  const [paging, setPaging] = useState<Paging>();
-  const [loading, setLoading] = useState<boolean>(false);
-  const [loadingMore, setLoadingMore] = useState<boolean>(false);
+  const [appLogs, setAppLogs] = useState<string>('');
+  const [appLoading, setAppLoading] = useState<boolean>(false);
+  const [appRunState, setAppRunState] = useState<PipelineState>();
 
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
     [logEntityType]
   );
 
-  const fetchLogs = useCallback(
-    async (ingestion?: IngestionPipeline) => {
-      setLoadingMore(true);
-      try {
-        if (isApplicationType) {
-          const currentTime = Date.now();
-          const oneDayAgo = getEpochMillisForPastDays(1);
-          await getExternalApplicationRuns(fqn, {
-            startTs: oneDayAgo,
-            endTs: currentTime,
-          });
-          const appLogs = await getLatestApplicationRuns(fqn, runId);
-          setLogs(appLogs.data_insight_task || appLogs.application_task);
+  const isLive = useMemo(() => {
+    const state = isApplicationType
+      ? appRunState
+      : ingestionDetails?.pipelineStatuses?.[0]?.pipelineState;
 
-          return;
-        }
+    return isPipelineRunActive(state);
+  }, [isApplicationType, appRunState, ingestionDetails]);
 
-        const pipeline = ingestion ?? ingestionDetails;
-        const response = await getIngestionPipelineLogById(
-          pipeline?.id ?? '',
-          paging?.total === paging?.after ? '' : paging?.after
-        );
+  // --- Ingestion logs: paginated (infinite scroll) + tail polling ---
+  const ingestionId = ingestionDetails?.id ?? '';
+  const ingestionType = ingestionDetails?.pipelineType;
 
-        setPaging({
-          after: response.data.after,
-          total: toNumber(response.data.total),
-        });
-
-        if (pipeline?.pipelineType) {
-          const chunk = getLogTaskFieldForType(
-            response.data,
-            pipeline.pipelineType
-          );
-          setLogs((previous) => previous.concat(chunk));
-        }
-      } catch (error) {
-        showErrorToast(error as AxiosError);
-      } finally {
-        setLoadingMore(false);
-      }
-    },
-    [isApplicationType, fqn, runId, ingestionDetails, paging]
+  const fetchIngestionPage = useCallback(
+    (cursor?: string) =>
+      getIngestionPipelineLogById(ingestionId, cursor).then((res) => ({
+        content: ingestionType
+          ? getLogTaskFieldForType(res.data, ingestionType)
+          : '',
+        after: res.data.after,
+        total: res.data.total,
+      })),
+    [ingestionId, ingestionType]
   );
 
-  const fetchIngestionDetails = useCallback(async () => {
-    setLoading(true);
+  const paginated = usePaginatedLiveLog({
+    fetchPage: fetchIngestionPage,
+    resetKey: ingestionId,
+    enabled: !isApplicationType && Boolean(ingestionId),
+    isLive: !isApplicationType && isLive,
+  });
+
+  // Ingestion logs don't carry run status, so poll it separately to stop.
+  const refreshIngestionStatus = useCallback(async () => {
     try {
-      const response = await getIngestionPipelineByFqn(fqn, {
+      const res = await getIngestionPipelineByFqn(fqn, {
         fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINE_STATUSES],
       });
-      setIngestionDetails(response);
-      await fetchLogs(response);
+      setIngestionDetails(res);
     } catch (error) {
       showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
     }
-  }, [fqn, fetchLogs]);
+  }, [fqn]);
 
-  const fetchAppDetails = useCallback(async () => {
-    setLoading(true);
+  usePollingEffect(refreshIngestionStatus, {
+    enabled: !isApplicationType && isLive,
+  });
+
+  // --- Application logs: one-shot snapshot (replace) ---
+  const fetchAppLogs = useCallback(async () => {
     try {
-      const data = await getApplicationByName(fqn, {
+      const currentTime = Date.now();
+      const oneDayAgo = getEpochMillisForPastDays(1);
+      await getExternalApplicationRuns(fqn, {
+        startTs: oneDayAgo,
+        endTs: currentTime,
+      });
+      const latest = await getLatestApplicationRuns(fqn, runId);
+      setAppLogs(latest.data_insight_task || latest.application_task);
+      setAppRunState(latest.pipelineStatus?.pipelineState);
+    } catch (error) {
+      showErrorToast(error as AxiosError);
+    }
+  }, [fqn, runId]);
+
+  usePollingEffect(fetchAppLogs, { enabled: isApplicationType && isLive });
+
+  useEffect(() => {
+    if (!fqn) {
+      return;
+    }
+    if (isApplicationType) {
+      setAppLoading(true);
+      setAppLogs('');
+      getApplicationByName(fqn, {
         fields: TabSpecificField.OWNERS,
         include: Include.All,
-      });
-      setAppData(data);
-      await fetchLogs();
-    } catch (error) {
-      showErrorToast(error as AxiosError);
-    } finally {
-      setLoading(false);
-    }
-  }, [fqn, fetchLogs]);
+      })
+        .then((data) => {
+          setAppData(data);
 
-  const loadMore = useCallback(() => {
-    fetchLogs(ingestionDetails);
-  }, [fetchLogs, ingestionDetails]);
+          return fetchAppLogs();
+        })
+        .catch((error) => showErrorToast(error as AxiosError))
+        .finally(() => setAppLoading(false));
+    } else {
+      setDetailsLoading(true);
+      getIngestionPipelineByFqn(fqn, {
+        fields: [TabSpecificField.OWNERS, TabSpecificField.PIPELINE_STATUSES],
+      })
+        .then((res) => setIngestionDetails(res))
+        .catch((error) => showErrorToast(error as AxiosError))
+        .finally(() => setDetailsLoading(false));
+    }
+  }, [fqn, runId, isApplicationType]);
 
   const download = useCallback(async () => {
     try {
       reset();
       updateProgress(1);
       if (isApplicationType) {
-        const appLogs = await downloadAppLogs(fqn, runId);
-        const element = document.createElement('a');
-        const file = new Blob([appLogs || ''], { type: 'text/plain' });
-        element.href = URL.createObjectURL(file);
-        element.download = `${fqn}.log`;
-        document.body.appendChild(element);
-        element.click();
-        element.remove();
+        const logs = await downloadAppLogs(fqn, runId);
+        downloadFile(logs, `${fqn}.log`);
 
         return;
       }
 
-      const logsBlob = await downloadIngestionLog(ingestionDetails?.id);
-      const element = document.createElement('a');
-      element.href = URL.createObjectURL(logsBlob as Blob);
-      element.download = `${getEntityName(ingestionDetails)}-${
-        ingestionDetails?.pipelineType
-      }.log`;
-      document.body.appendChild(element);
-      element.click();
-      element.remove();
+      const blob = await downloadIngestionLog(ingestionDetails?.id);
+      if (blob) {
+        downloadBlob(
+          blob as Blob,
+          `${getEntityName(ingestionDetails)}-${
+            ingestionDetails?.pipelineType
+          }.log`
+        );
+      }
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
@@ -187,33 +207,12 @@ export const useIngestionPipelineLogs = ({
     }
   }, [isApplicationType, fqn, runId, ingestionDetails, reset, updateProgress]);
 
-  useEffect(() => {
-    if (!fqn) {
-      return;
-    }
-    setLogs('');
-    setPaging(undefined);
-    if (isApplicationType) {
-      fetchAppDetails();
-    } else {
-      fetchIngestionDetails();
-    }
-  }, [fqn, runId, isApplicationType]);
-
-  const hasMore = useMemo(
-    () =>
-      !isApplicationType &&
-      !isNil(paging) &&
-      !isUndefined(paging.after) &&
-      toNumber(paging.after) < toNumber(paging.total),
-    [isApplicationType, paging]
-  );
-
   const title = useMemo(
     () => getEntityName(ingestionDetails) || getEntityName(appData),
     [ingestionDetails, appData]
   );
 
+  const logs = isApplicationType ? appLogs : paginated.logs;
   const totalLines = useMemo(
     () => (logs ? logs.split('\n').length : 0),
     [logs]
@@ -221,13 +220,16 @@ export const useIngestionPipelineLogs = ({
 
   return {
     logs,
-    loading,
-    loadingMore,
-    hasMore,
+    loading: isApplicationType
+      ? appLoading
+      : detailsLoading || paginated.loading,
+    loadingMore: isApplicationType ? false : paginated.loadingMore,
+    hasMore: isApplicationType ? false : paginated.hasMore,
     totalLines,
     title,
     downloading: Boolean(progress),
-    loadMore,
+    isLive,
+    loadMore: isApplicationType ? noop : paginated.loadMore,
     download,
   };
 };

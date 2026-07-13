@@ -82,10 +82,21 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // The `agents` prop updates live (service progress stream), so read the
+  // current status of the open agent from it rather than the click-time
+  // snapshot — this is what tells polling when the run has finished.
+  const liveLogsAgent = useMemo(
+    () => agents.find((agent) => agent.id === logsFor?.id) ?? logsFor,
+    [agents, logsFor]
+  );
+  const isLogsAgentActive =
+    liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued';
+
   const { rawText, isLoading: isLogsLoading } = useAgentLogs(
     logsFor?.id ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
-    Boolean(logsFor)
+    Boolean(logsFor),
+    isLogsAgentActive
   );
 
   const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
@@ -238,6 +249,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           lastRun={logsFor.finishedAt}
           loading={isLogsLoading}
           logs={rawText}
+          mode={isLogsAgentActive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
           status={getLogViewerStatusFromAgentStatus(logsFor.status)}
           title={`${logsFor.name} · ${t('label.log-plural')}`}
