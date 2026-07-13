@@ -142,8 +142,6 @@ class TableauSource(DashboardServiceSource):
         except Exception as exc:
             logger.warning("Could not prefetch Tableau workbook count for progress: %s", exc)
             manual.mark_reconcilable(Dashboard.__name__)
-        manual.mark_reconcilable(Chart.__name__)
-        manual.mark_reconcilable(DashboardDataModel.__name__)
         yield from self.client.get_workbooks(include_owners=self.source_config.includeOwners)
 
     def get_dashboard_name(self, dashboard: TableauDashboard) -> str:
@@ -262,7 +260,6 @@ class TableauSource(DashboardServiceSource):
                 project=data_model.projectName or self.get_project_name(dashboard_details=dashboard_details),
             )
             yield Either(right=data_model_request)
-            self.progress_tracking.manual.track(DashboardDataModel.__name__)
             self.register_record_datamodel(datamodel_request=data_model_request)
 
         except Exception as exc:
@@ -750,7 +747,6 @@ class TableauSource(DashboardServiceSource):
                     service=FullyQualifiedEntityName(self.context.get().dashboard_service),
                 )
                 yield Either(right=chart_request)
-                self.progress_tracking.manual.track(Chart.__name__)
                 self.register_record_chart(chart_request=chart_request)
             except Exception as exc:
                 yield Either(
