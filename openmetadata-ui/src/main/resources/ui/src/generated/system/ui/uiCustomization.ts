@@ -300,6 +300,11 @@ export interface Tab {
  */
 export interface PersonaPreferences {
     /**
+     * App mode this persona forces on login (e.g. 'default', 'ai'). When unset, the user's own
+     * localStorage value (or the built-in default) takes over.
+     */
+    appMode?: string;
+    /**
      * User's personal customizations for the landing page.
      */
     landingPageSettings?: LandingPageSettings;

@@ -28,6 +28,10 @@
         }
       },
       "additionalProperties": false
+    },
+    "appMode": {
+      "description": "App mode this persona forces on login (e.g. 'default', 'ai'). When unset, the user's own localStorage value (or the built-in default) takes over.",
+      "type": "string"
     }
   },
   "required": ["personaId", "personaName"],
