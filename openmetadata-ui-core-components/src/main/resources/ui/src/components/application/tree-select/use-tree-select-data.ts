@@ -108,8 +108,6 @@ export const useTreeSelectData = <T = unknown>({
             nextLoadingNodes.delete(params.parentId);
             loadingNodesRef.current = nextLoadingNodes;
             setState((prev) => ({ ...prev, loadingNodes: nextLoadingNodes }));
-          } else {
-            setState((prev) => ({ ...prev, loading: false }));
           }
 
           return;
@@ -154,8 +152,6 @@ export const useTreeSelectData = <T = unknown>({
             nextLoadingNodes.delete(params.parentId);
             loadingNodesRef.current = nextLoadingNodes;
             setState((prev) => ({ ...prev, loadingNodes: nextLoadingNodes }));
-          } else {
-            setState((prev) => ({ ...prev, loading: false }));
           }
 
           return;
