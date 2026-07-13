@@ -1371,6 +1371,36 @@ class TestKafkaConnectTopicRoutingTransforms(TestCase):
         assert source._build_outbox_topic_pattern(config) is None
         assert source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka") == []
 
+    def test_outbox_fanout_identifies_outbox_table_by_route_field(self):
+        """In a multi-table connector only the table owning route.by.field fans out."""
+        from metadata.generated.schema.entity.data.table import Column, DataType, Table
+
+        config = {
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+        }
+        source = self._make_source()
+        pipeline = SimpleNamespace(config=config)
+        outbox = Table.model_construct(
+            columns=[
+                Column(name="id", dataType=DataType.BIGINT),
+                Column(name="aggregatetype", dataType=DataType.VARCHAR),
+            ]
+        )
+        orders = Table.model_construct(
+            columns=[
+                Column(name="id", dataType=DataType.BIGINT),
+                Column(name="total", dataType=DataType.BIGINT),
+            ]
+        )
+        topics = {"prod.global.sales.orderCreated_v1": object()}
+
+        # Multi-table: only the outbox table (has aggregatetype) fans out.
+        assert source._is_outbox_fanout(pipeline, outbox, topics, single_dataset=False) is True
+        assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=False) is False
+        # Single-table connector is unambiguously the outbox.
+        assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=True) is True
+
 
 class TestKafkaConnectTransformLineageEdges(TestCase):
     """

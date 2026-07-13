@@ -1398,16 +1398,33 @@ class KafkaconnectSource(PipelineServiceSource):
         Return True when an outbox EventRouter connector should fan the source
         table out to every resolved topic.
 
-        Restricted to single-table connectors: the routed topics cannot be
-        attributed to a specific table, so with several captured tables we cannot
-        tell which one is the outbox and must not create speculative lineage.
+        Routed topics carry no table attribution. A single-table connector is
+        unambiguously the outbox; with several captured tables we only fan out the
+        one that owns the EventRouter routing column (route.by.field, default
+        ``aggregatetype``), so unrelated tables don't get speculative lineage.
         """
         return (
-            single_dataset
-            and self._has_outbox_event_router(pipeline_details.config)
+            self._has_outbox_event_router(pipeline_details.config)
             and dataset_entity is not None
             and bool(topic_entities_map)
+            and (single_dataset or self._dataset_owns_outbox_field(dataset_entity, pipeline_details.config))
         )
+
+    def _outbox_route_by_field(self, connector_config: dict) -> str:
+        """Return the EventRouter routing column (route.by.field), defaulting to aggregatetype."""
+        route_by_field = "aggregatetype"
+        transforms = [name.strip() for name in connector_config.get("transforms", "").split(",") if name.strip()]
+        for transform in transforms:
+            if "EventRouter" in connector_config.get(f"transforms.{transform}.type", ""):
+                route_by_field = connector_config.get(f"transforms.{transform}.route.by.field", "aggregatetype")
+                break
+        return route_by_field
+
+    def _dataset_owns_outbox_field(self, dataset_entity, connector_config: dict) -> bool:
+        """Return True if the dataset's table has the EventRouter routing column (i.e. is the outbox table)."""
+        route_by_field = self._outbox_route_by_field(connector_config).lower()
+        columns = getattr(dataset_entity, "columns", None) or []
+        return any(model_str(column.name).lower() == route_by_field for column in columns)
 
     def _iter_outbox_lineage(
         self,
