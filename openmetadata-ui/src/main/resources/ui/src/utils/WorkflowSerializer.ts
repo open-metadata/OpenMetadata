@@ -269,8 +269,7 @@ const convertBackendEdgeToReactFlow = (
             {
               field: 'result',
               operator: 'equals',
-              value:
-                isPositive || isNegative ? condition.toUpperCase() : condition,
+              value: isTrue || isFalse ? condition.toUpperCase() : condition,
             },
           ],
           condition: condition,
