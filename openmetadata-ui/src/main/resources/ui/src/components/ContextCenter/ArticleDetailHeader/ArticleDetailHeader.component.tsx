@@ -320,7 +320,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   }
 
   const metaEl = (
-    <Box align="center" gap={3} wrap="wrap">
+    <Box align="center" className="tw:text-sm" gap={3} wrap="wrap">
       <Box align="center" gap={1}>
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className="tw:leading-0">
