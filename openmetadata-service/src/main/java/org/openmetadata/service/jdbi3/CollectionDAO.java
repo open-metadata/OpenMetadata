@@ -2259,13 +2259,30 @@ public interface CollectionDAO {
     // page even when rows are deleted mid-scan, letting the relationship cleanup delete orphans
     // batch-by-batch without skipping rows or paying an ever-growing OFFSET cost. Seed the first
     // page with fromId='', toId='', relation=-1, relationType=''.
-    @SqlQuery(
-        "SELECT toId, toEntity, fromId, fromEntity, relation, relationType, json, jsonSchema FROM entity_relationship "
-            + "WHERE fromId > :fromId "
-            + "   OR (fromId = :fromId AND toId > :toId) "
-            + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
-            + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation AND relationType > :relationType) "
-            + "ORDER BY fromId, toId, relation, relationType LIMIT :limit")
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation, "
+                + "COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), 'relatedTo') AS relationType, "
+                + "json, jsonSchema FROM entity_relationship "
+                + "WHERE fromId > :fromId "
+                + "   OR (fromId = :fromId AND toId > :toId) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation "
+                + "       AND COALESCE(JSON_UNQUOTE(JSON_EXTRACT(json, '$.relationType')), 'relatedTo') > :relationType) "
+                + "ORDER BY fromId, toId, relation, relationType LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT toId, toEntity, fromId, fromEntity, relation, "
+                + "COALESCE(json->>'relationType', 'relatedTo') AS relationType, "
+                + "json, jsonSchema FROM entity_relationship "
+                + "WHERE fromId > :fromId "
+                + "   OR (fromId = :fromId AND toId > :toId) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation > :relation) "
+                + "   OR (fromId = :fromId AND toId = :toId AND relation = :relation "
+                + "       AND COALESCE(json->>'relationType', 'relatedTo') > :relationType) "
+                + "ORDER BY fromId, toId, relation, relationType LIMIT :limit",
+        connectionType = POSTGRES)
     @RegisterRowMapper(RelationshipWithTypeObjectMapper.class)
     List<EntityRelationshipObject> getAllRelationshipsAfter(
         @Bind("fromId") String fromId,

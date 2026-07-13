@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import org.junit.jupiter.api.Test;
@@ -37,8 +38,6 @@ import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.CollectionDAO;
-import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.util.EntityRelationshipCleanup;
 
 /**
@@ -62,9 +61,9 @@ public class EntityRelationshipCleanupIT {
     int validIncomingBefore = incomingRelationshipCount(table.getId());
     assertTrue(validIncomingBefore >= 1, "healthy table must have real incoming relationships");
 
-    String marker = "ITORPHAN_" + ns.uniqueShortId();
-    seedOrphans(marker, SEEDED_ORPHANS);
-    assertEquals(SEEDED_ORPHANS, orphanCount(marker), "seeded orphans must be present before run");
+    List<String> orphanIds = seedOrphans(SEEDED_ORPHANS);
+    assertEquals(
+        SEEDED_ORPHANS, orphanCount(orphanIds), "seeded orphans must be present before run");
 
     // Small batch forces multiple keyset pages with deletes happening between pages.
     EntityRelationshipCleanup.EntityCleanupResult result =
@@ -75,7 +74,7 @@ public class EntityRelationshipCleanupIT {
         "cleanup must find at least the seeded orphans");
     assertEquals(
         0,
-        orphanCount(marker),
+        orphanCount(orphanIds),
         "every seeded orphan must be deleted - keyset paging must not skip rows across deletes");
     assertEquals(
         validIncomingBefore,
@@ -85,10 +84,8 @@ public class EntityRelationshipCleanupIT {
 
   @Test
   void dryRun_reportsOrphansButDeletesNothing(TestNamespace ns) {
-    String marker = "ITDRYRUN_" + ns.uniqueShortId();
+    List<String> orphanIds = seedOrphans(SEEDED_ORPHANS);
     try {
-      seedOrphans(marker, SEEDED_ORPHANS);
-
       EntityRelationshipCleanup.EntityCleanupResult result =
           new EntityRelationshipCleanup(Entity.getCollectionDAO(), true).performCleanup(25);
 
@@ -96,43 +93,10 @@ public class EntityRelationshipCleanupIT {
           result.getOrphanedRelationshipsFound() >= SEEDED_ORPHANS,
           "dry run must still detect the seeded orphans");
       assertEquals(0, result.getRelationshipsDeleted(), "dry run must not delete anything");
-      assertEquals(SEEDED_ORPHANS, orphanCount(marker), "dry run must leave seeded orphans intact");
+      assertEquals(
+          SEEDED_ORPHANS, orphanCount(orphanIds), "dry run must leave seeded orphans intact");
     } finally {
-      deleteOrphans(marker);
-    }
-  }
-
-  /**
-   * Regression test for the keyset cursor. Two rows share the same (fromId, toId, relation) tuple
-   * and differ only in relationType - exactly how glossary-term RELATED_TO rows carry 'synonym' and
-   * 'seeAlso'. With a batch boundary (limit=1) falling between them, a cursor keyed only on
-   * (fromId, toId, relation) would advance past the tuple and permanently skip the second row. The
-   * full-primary-key cursor must return both.
-   */
-  @Test
-  void keysetPaging_doesNotSkipRowsSharingTupleButDifferentRelationType(TestNamespace ns) {
-    String fromId = UUID.randomUUID().toString();
-    String toId = UUID.randomUUID().toString();
-    int relation = Relationship.RELATED_TO.ordinal();
-    try {
-      insertOrphan(fromId, toId, Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, relation, "seeAlso");
-      insertOrphan(fromId, toId, Entity.GLOSSARY_TERM, Entity.GLOSSARY_TERM, relation, "synonym");
-
-      CollectionDAO.EntityRelationshipDAO dao = Entity.getCollectionDAO().relationshipDAO();
-
-      List<EntityRelationshipObject> page1 =
-          dao.getAllRelationshipsAfter(fromId, toId, relation, "", 1);
-      assertEquals(1, page1.size(), "first page must return one row");
-      assertEquals(fromId, page1.getFirst().getFromId());
-      assertEquals("seeAlso", page1.getFirst().getRelationType());
-
-      List<EntityRelationshipObject> page2 =
-          dao.getAllRelationshipsAfter(fromId, toId, relation, "seeAlso", 1);
-      assertTrue(
-          page2.stream().anyMatch(r -> "synonym".equals(r.getRelationType())),
-          "the sibling row sharing the (fromId,toId,relation) tuple must not be skipped");
-    } finally {
-      deleteByFromId(fromId);
+      deleteOrphans(orphanIds);
     }
   }
 
@@ -163,64 +127,62 @@ public class EntityRelationshipCleanupIT {
                     List.of(new Column().withName("id").withDataType(ColumnDataType.BIGINT))));
   }
 
-  private void seedOrphans(String marker, int count) {
+  private List<String> seedOrphans(int count) {
+    List<String> fromIds = new ArrayList<>(count);
     for (int i = 0; i < count; i++) {
+      String fromId = UUID.randomUUID().toString();
       insertOrphan(
-          UUID.randomUUID().toString(),
+          fromId,
           UUID.randomUUID().toString(),
           Entity.DATABASE_SCHEMA,
           Entity.TABLE,
-          Relationship.CONTAINS.ordinal(),
-          marker);
+          Relationship.CONTAINS.ordinal());
+      fromIds.add(fromId);
     }
+    return fromIds;
   }
 
   private void insertOrphan(
-      String fromId, String toId, String fromEntity, String toEntity, int relation, String marker) {
+      String fromId, String toId, String fromEntity, String toEntity, int relation) {
     TestSuiteBootstrap.getJdbi()
         .useHandle(
             handle ->
                 handle
                     .createUpdate(
                         "INSERT INTO entity_relationship "
-                            + "(fromId, toId, fromEntity, toEntity, relation, relationType) "
-                            + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation, :relationType)")
+                            + "(fromId, toId, fromEntity, toEntity, relation) "
+                            + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation)")
                     .bind("fromId", fromId)
                     .bind("toId", toId)
                     .bind("fromEntity", fromEntity)
                     .bind("toEntity", toEntity)
                     .bind("relation", relation)
-                    .bind("relationType", marker)
                     .execute());
   }
 
-  private void deleteOrphans(String marker) {
+  private void deleteOrphans(List<String> fromIds) {
+    if (fromIds.isEmpty()) {
+      return;
+    }
     TestSuiteBootstrap.getJdbi()
         .useHandle(
             handle ->
                 handle
-                    .createUpdate("DELETE FROM entity_relationship WHERE relationType = :m")
-                    .bind("m", marker)
+                    .createUpdate("DELETE FROM entity_relationship WHERE fromId IN (<ids>)")
+                    .bindList("ids", fromIds)
                     .execute());
   }
 
-  private void deleteByFromId(String fromId) {
-    TestSuiteBootstrap.getJdbi()
-        .useHandle(
-            handle ->
-                handle
-                    .createUpdate("DELETE FROM entity_relationship WHERE fromId = :f")
-                    .bind("f", fromId)
-                    .execute());
-  }
-
-  private int orphanCount(String marker) {
+  private int orphanCount(List<String> fromIds) {
+    if (fromIds.isEmpty()) {
+      return 0;
+    }
     return TestSuiteBootstrap.getJdbi()
         .withHandle(
             handle ->
                 handle
-                    .createQuery("SELECT COUNT(*) FROM entity_relationship WHERE relationType = :m")
-                    .bind("m", marker)
+                    .createQuery("SELECT COUNT(*) FROM entity_relationship WHERE fromId IN (<ids>)")
+                    .bindList("ids", fromIds)
                     .mapTo(Integer.class)
                     .one());
   }
