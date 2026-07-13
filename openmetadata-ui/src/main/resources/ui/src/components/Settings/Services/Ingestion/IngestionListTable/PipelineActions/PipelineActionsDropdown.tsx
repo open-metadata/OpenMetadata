@@ -29,7 +29,7 @@ import {
   PipelineType,
 } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { getLoadingStatus } from '../../../../../../utils/EntityDisplayUtils';
-import { getEntityName } from '../../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../../utils/EntityNameUtils';
 import {
   getEditIngestionPath,
   getTestSuiteIngestionPath,

@@ -233,7 +233,7 @@ jest.mock('../../utils/DirectoryDetailsUtils', () => ({
   defaultFields: 'owners,tags,followers,dataProducts,domains',
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Test Directory'),
 }));
 

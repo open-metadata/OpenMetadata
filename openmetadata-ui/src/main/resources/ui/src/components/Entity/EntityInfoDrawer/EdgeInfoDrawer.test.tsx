@@ -52,7 +52,7 @@ jest.mock('../../../utils/FqnUtils', () => ({
   getNameFromFQN: jest.fn().mockReturnValue('getNameFromFQN'),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 

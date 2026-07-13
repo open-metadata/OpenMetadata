@@ -63,7 +63,7 @@ import {
   getNameFromFQN,
   getPartialNameFromTableFQN,
 } from '../../utils/CommonUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   getEntityDetailsPath,
   getTestCaseDetailPagePath,

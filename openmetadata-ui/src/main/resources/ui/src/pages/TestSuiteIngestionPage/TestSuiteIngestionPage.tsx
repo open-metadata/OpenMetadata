@@ -29,7 +29,7 @@ import { withPageLayout } from '../../hoc/withPageLayout';
 import { useFqn } from '../../hooks/useFqn';
 import { getIngestionPipelineByFqn } from '../../rest/ingestionPipelineAPI';
 import { getTestSuiteByName } from '../../rest/testAPI';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { getDataQualityPagePath } from '../../utils/RouterUtils';
 import { getTestSuiteDetailsPath } from '../../utils/TestSuiteUtils';
 import { showErrorToast } from '../../utils/ToastUtils';

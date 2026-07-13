@@ -70,7 +70,7 @@ jest.mock('../../../constants/constants', () => ({
   getUserPath: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(),
 }));
 
@@ -83,10 +83,6 @@ jest.mock('../../../utils/RouterUtils', () => ({
 jest.mock('../../../components/PageLayoutV1/PageLayoutV1', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
-
-jest.mock('../../../utils/EntityUtils', () => ({
-  getEntityName: jest.fn(),
-}));
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),

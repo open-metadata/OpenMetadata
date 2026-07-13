@@ -45,7 +45,7 @@ import {
   getEntityMissingError,
 } from '../../utils/CommonUtils';
 import { defaultFields } from '../../utils/DashboardDetailsUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedViewPermission,

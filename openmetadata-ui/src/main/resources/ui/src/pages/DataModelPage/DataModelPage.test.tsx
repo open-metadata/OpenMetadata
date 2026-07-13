@@ -153,7 +153,7 @@ jest.mock('fast-json-patch', () => ({
   compare: jest.fn(),
 }));
 
-jest.mock('../../utils/EntityUtils', () => ({
+jest.mock('../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'testEntityName'),
 }));
 

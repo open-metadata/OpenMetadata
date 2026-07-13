@@ -32,7 +32,7 @@ import {
   removeFollower,
   updateDomainVotes,
 } from '../../../rest/domainAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { checkPermission } from '../../../utils/PermissionsUtils';
 import { getDomainPath } from '../../../utils/RouterUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';

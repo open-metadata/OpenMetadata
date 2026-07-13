@@ -50,7 +50,7 @@ jest.mock('../../../../constants/LeftSidebar.constants', () => ({
   SIDEBAR_LIST: [],
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('username'),
 }));
 

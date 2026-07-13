@@ -20,7 +20,7 @@ import { ReactComponent as LineArrowRight } from '../../../assets/svg/line-arrow
 import { ROUTES } from '../../../constants/constants';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import brandClassBase from '../../../utils/BrandData/BrandClassBase';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import './welcome-screen.style.less';
 
 const { Paragraph, Text } = Typography;

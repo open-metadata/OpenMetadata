@@ -34,7 +34,7 @@ import {
   getTabLabelMapFromTabs,
 } from '../../../../utils/CustomizePage/CustomizePageUtils';
 import dashboardDataModelClassBase from '../../../../utils/DashboardDataModelClassBase';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getPrioritizedEditPermission } from '../../../../utils/PermissionsUtils';
 import {
   getEntityDetailsPath,
