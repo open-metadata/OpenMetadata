@@ -333,6 +333,30 @@ public class OpenSearchVectorService implements VectorIndexService {
    * the filter fields the vector query uses) and attaches the {@code dataAssetEmbeddings} alias so
    * reads cover both legacy entity-doc embeddings and the new chunk docs.
    */
+  /**
+   * Drops and recreates the dedicated chunk index. Used by recreate-style reindexes: chunk docs
+   * are otherwise deleted only by entity-delete events, so entities that vanish without one (DB
+   * restore, wipe-and-remigrate) leave orphan chunks that AI retrieval keeps finding — and the
+   * "recreate" recovery path must actually recover. Callers must only invoke this when the run
+   * will re-embed every vector-indexable entity type; the index is empty until they do.
+   */
+  public void recreateChunkIndex() {
+    synchronized (this) {
+      String indexName = getChunkIndexName();
+      try {
+        boolean exists = client.indices().exists(e -> e.index(indexName)).value();
+        if (exists) {
+          executeGenericRequest("DELETE", "/" + indexName, null);
+          LOG.info("Deleted vector chunk index {} for recreate", indexName);
+        }
+        chunkIndexEnsured = false;
+      } catch (Exception e) {
+        LOG.error("Failed to delete vector chunk index {} for recreate", indexName, e);
+      }
+    }
+    ensureChunkIndex();
+  }
+
   private void ensureChunkIndex() {
     if (!chunkIndexEnsured) {
       synchronized (this) {
