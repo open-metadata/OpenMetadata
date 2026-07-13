@@ -10,25 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  CheckOutlined,
-  CloseOutlined,
-  ExclamationCircleOutlined,
-} from '@ant-design/icons';
-import {
-  Box,
-  Button,
-  Divider as MuiDivider,
-  Typography as MuiTypography,
-  useTheme,
-} from '@mui/material';
-import { AlertCircle, CheckCircle } from '@untitledui/icons';
-import { Alert, Checkbox, Divider, List, Space, Typography } from 'antd';
 import { AxiosError } from 'axios';
-import classNames from 'classnames';
 import { isUndefined } from 'lodash';
 import { EntityDetailUnion } from 'Models';
-import VirtualList from 'rc-virtual-list';
 import { UIEventHandler, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
@@ -51,7 +35,6 @@ import {
   Response as BulkResponse,
   Status,
 } from '../../../generated/type/bulkOperationResult';
-import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { Aggregations } from '../../../interface/search.interface';
 import { QueryFilterInterface } from '../../../pages/ExplorePage/ExplorePage.interface';
 import {
@@ -76,23 +59,15 @@ import {
   getQuickFilterQuery,
 } from '../../../utils/ExplorePureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import Banner from '../../common/Banner/Banner';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import Loader from '../../common/Loader/Loader';
-import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
-import TableDataCardV2 from '../../common/TableDataCardV2/TableDataCardV2';
 import {
   CSVExportJob,
   CSVExportResponse,
 } from '../../Entity/EntityExportModalProvider/EntityExportModalProvider.interface';
 import { ExploreQuickFilterField } from '../../Explore/ExplorePage.interface';
-import ExploreQuickFilters from '../../Explore/ExploreQuickFilters';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
-import DomainAssetDryRunModal from '../DomainAssetDryRunModal/DomainAssetDryRunModal.component';
-import './asset-selection-model.style.less';
 
-export interface AssetSelectionContentProps {
+export interface UseAssetSelectionStateProps {
   entityFqn: string;
   open?: boolean;
   type?: AssetsOfEntity;
@@ -100,11 +75,11 @@ export interface AssetSelectionContentProps {
   onSave?: () => void;
   onCancel?: () => void;
   queryFilter?: QueryFilterInterface;
-  emptyPlaceHolderText?: string;
-  infoBannerText?: string;
 }
 
-export const useAssetSelectionContent = ({
+const SCROLL_BOTTOM_THRESHOLD_PX = 50;
+
+export const useAssetSelectionState = ({
   entityFqn,
   onCancel,
   onSave,
@@ -112,11 +87,7 @@ export const useAssetSelectionContent = ({
   type = AssetsOfEntity.GLOSSARY,
   variant = 'modal',
   queryFilter,
-  emptyPlaceHolderText,
-  infoBannerText,
-}: AssetSelectionContentProps) => {
-  const { theme } = useApplicationStore();
-  const muiTheme = useTheme();
+}: UseAssetSelectionStateProps) => {
   const { t } = useTranslation();
   const [search, setSearch] = useState('');
   const [items, setItems] = useState<SearchedDataProps['data']>([]);
@@ -441,12 +412,13 @@ export const useAssetSelectionContent = ({
 
   const onScroll: UIEventHandler<HTMLElement> = useCallback(
     (e) => {
-      const scrollHeight =
-        e.currentTarget.scrollHeight - e.currentTarget.scrollTop;
+      const remainingScrollHeight =
+        e.currentTarget.scrollHeight -
+        e.currentTarget.scrollTop -
+        e.currentTarget.clientHeight;
 
       if (
-        scrollHeight > 499 &&
-        scrollHeight < 501 &&
+        remainingScrollHeight < SCROLL_BOTTOM_THRESHOLD_PX &&
         items.length < totalCount
       ) {
         const combinedQueryFilter = getCombinedQueryFilterObject(
@@ -455,7 +427,6 @@ export const useAssetSelectionContent = ({
         );
 
         if (isLoading) {
-          // No need to fetchEntities if already loading
           return;
         }
 
@@ -579,271 +550,33 @@ export const useAssetSelectionContent = ({
     };
   }, [socket]);
 
-  const modalFooter = (
-    <div className="d-flex justify-between">
-      <div className="d-flex items-center gap-2">
-        {selectedItems && selectedItems.size >= 1 && (
-          <Typography.Text className="gap-2">
-            <CheckOutlined className="text-success m-r-xs" />
-            {selectedItems.size} {t('label.selected-lowercase')}
-          </Typography.Text>
-        )}
-        {failedStatus?.failedRequest &&
-          failedStatus.failedRequest.length > 0 && (
-            <>
-              <Divider className="m-x-xss" type="vertical" />
-              <Typography.Text type="danger">
-                <CloseOutlined className="m-r-xs" />
-                {failedStatus.failedRequest.length} {t('label.error')}
-              </Typography.Text>
-            </>
-          )}
-      </div>
-
-      <div>
-        <Button data-testid="cancel-btn" onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="save-btn"
-          disabled={!selectedItems?.size || isLoading}
-          loading={isSaveLoading || !isUndefined(assetJobResponse)}
-          variant="contained"
-          onClick={onSaveAction}>
-          {t('label.save')}
-        </Button>
-      </div>
-    </div>
-  );
-
-  const drawerFooter = (
-    <Box
-      sx={{
-        display: 'flex',
-        justifyContent: 'space-between',
-        alignItems: 'center',
-      }}>
-      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-        {selectedItems && selectedItems.size >= 1 && (
-          <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-            <CheckCircle color={muiTheme.palette.success.main} size={20} />
-            <MuiTypography variant="body2">
-              {selectedItems.size} {t('label.selected-lowercase')}
-            </MuiTypography>
-          </Box>
-        )}
-        {failedStatus?.failedRequest &&
-          failedStatus.failedRequest.length > 0 && (
-            <>
-              <MuiDivider flexItem orientation="vertical" sx={{ mx: 1 }} />
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 0.5 }}>
-                <AlertCircle color={muiTheme.palette.error.main} size={20} />
-                <MuiTypography color="error" variant="body2">
-                  {failedStatus.failedRequest.length} {t('label.error')}
-                </MuiTypography>
-              </Box>
-            </>
-          )}
-      </Box>
-
-      <Box sx={{ display: 'flex', gap: 2 }}>
-        <Button data-testid="cancel-btn" onClick={onCancel}>
-          {t('label.cancel')}
-        </Button>
-        <Button
-          data-testid="save-btn"
-          disabled={
-            !selectedItems?.size ||
-            isLoading ||
-            isSaveLoading ||
-            !isUndefined(assetJobResponse)
-          }
-          startIcon={
-            (isSaveLoading || !isUndefined(assetJobResponse)) && (
-              <Loader size="x-small" />
-            )
-          }
-          variant="contained"
-          onClick={onSaveAction}>
-          {t('label.save')}
-        </Button>
-      </Box>
-    </Box>
-  );
-
-  const footer = variant === 'drawer' ? drawerFooter : modalFooter;
-
-  const content = (
-    <Space
-      className="w-full h-full overflow-hidden asset-selection-space"
-      direction="vertical"
-      size={16}>
-      {(assetJobResponse || exportJob?.error) && (
-        <Banner
-          className="border-radius"
-          isLoading={isUndefined(exportJob?.error)}
-          message={exportJob?.error ?? assetJobResponse?.message ?? ''}
-          type={exportJob?.error ? 'error' : 'success'}
-        />
-      )}
-
-      {infoBannerText && (
-        <Alert showIcon message={infoBannerText} type="info" />
-      )}
-
-      <div className="d-flex items-center gap-3">
-        <div className="flex-1">
-          <Searchbar
-            removeMargin
-            showClearSearch
-            placeholder={t('label.search-entity', {
-              entity: t('label.asset-plural'),
-            })}
-            searchValue={search}
-            onSearch={setSearch}
-          />
-        </div>
-      </div>
-
-      <div className="asset-filters-wrapper">
-        <ExploreQuickFilters
-          aggregations={aggregations}
-          fields={filters}
-          index={SearchIndex.ALL}
-          showDeleted={false}
-          untitledDropdown={variant === 'drawer'}
-          onFieldValueSelect={handleQuickFiltersValueSelect}
-        />
-        {quickFilterQuery && (
-          <Typography.Text
-            className="text-primary cursor-pointer"
-            onClick={clearFilters}>
-            {t('label.clear-entity', {
-              entity: '',
-            })}
-          </Typography.Text>
-        )}
-      </div>
-
-      {failedStatus?.failedRequest && failedStatus.failedRequest.length > 0 && (
-        <Alert
-          closable
-          className="w-full"
-          description={
-            <Typography.Text className="text-grey-muted">
-              {t('message.validation-error-assets')}
-            </Typography.Text>
-          }
-          message={
-            <div className="d-flex items-center gap-3">
-              <ExclamationCircleOutlined
-                style={{
-                  color: theme.errorColor,
-                  fontSize: '24px',
-                }}
-              />
-              <Typography.Text className="font-semibold text-sm">
-                {t('label.validation-error-plural')}
-              </Typography.Text>
-            </div>
-          }
-          type="error"
-        />
-      )}
-
-      {items.length > 0 && (
-        <div className="border p-xs asset-list-wrapper">
-          <Checkbox
-            className="assets-checkbox p-x-sm"
-            onChange={(e) => onSelectAll(e.target.checked)}>
-            {t('label.select-field', {
-              field: t('label.all'),
-            })}
-          </Checkbox>
-          <List>
-            <VirtualList
-              data={items}
-              height={variant === 'modal' ? 500 : undefined}
-              itemKey="id"
-              onScroll={onScroll}>
-              {({ _source: item }) => {
-                const { isError, errorMessage } = getErrorStatusAndMessage(
-                  item.id ?? ''
-                );
-
-                return (
-                  <div
-                    className={classNames({
-                      'm-y-sm border-danger rounded-4': isError,
-                    })}
-                    key={item.id}>
-                    <TableDataCardV2
-                      openEntityInNewPage
-                      showCheckboxes
-                      checked={selectedItems?.has(item.id ?? '')}
-                      className="border-none asset-selection-model-card cursor-pointer"
-                      displayNameClassName="text-md"
-                      handleSummaryPanelDisplay={handleCardClick}
-                      id={`tabledatacard-${item.id}`}
-                      key={item.id}
-                      nameClassName="text-md"
-                      showBody={false}
-                      showName={false}
-                      source={{ ...item, tags: [] }}
-                    />
-                    {isError && (
-                      <>
-                        <div className="p-x-sm">
-                          <Divider className="m-t-0 m-y-sm " />
-                        </div>
-                        <div className="d-flex gap-3 p-x-sm p-b-sm">
-                          <ExclamationCircleOutlined
-                            style={{
-                              color: theme.errorColor,
-                              fontSize: '24px',
-                            }}
-                          />
-                          <Typography.Text className="break-all">
-                            {errorMessage}
-                          </Typography.Text>
-                        </div>
-                      </>
-                    )}
-                  </div>
-                );
-              }}
-            </VirtualList>
-          </List>
-          {isLoading && items.length < totalCount && (
-            <div className="d-flex justify-center p-y-sm">
-              <Loader size="small" />
-            </div>
-          )}
-        </div>
-      )}
-
-      {!isLoading && items.length === 0 && (
-        <ErrorPlaceHolder>
-          {emptyPlaceHolderText && (
-            <Typography.Paragraph>{emptyPlaceHolderText}</Typography.Paragraph>
-          )}
-        </ErrorPlaceHolder>
-      )}
-
-      {isLoading && <Loader size="small" />}
-
-      <DomainAssetDryRunModal
-        confirmText={t('label.move-anyway')}
-        header={t('label.confirm-asset-move')}
-        isLoading={isSaveLoading}
-        visible={!isUndefined(dryRunWarnings)}
-        warnings={dryRunWarnings ?? []}
-        warningsTestId="add-dry-run-warnings"
-        onCancel={cancelDomainAssetMove}
-        onConfirm={confirmDomainAssetMove}
-      />
-    </Space>
-  );
-
-  return { content, footer };
+  return {
+    search,
+    setSearch,
+    items,
+    failedStatus,
+    dryRunWarnings,
+    exportJob,
+    selectedItems,
+    isLoading,
+    isSaveLoading,
+    assetJobResponse,
+    aggregations,
+    quickFilterQuery,
+    filters,
+    totalCount,
+    handleCardClick,
+    onSaveAction,
+    confirmDomainAssetMove,
+    cancelDomainAssetMove,
+    onScroll,
+    onSelectAll,
+    getErrorStatusAndMessage,
+    handleQuickFiltersValueSelect,
+    clearFilters,
+  };
 };
+
+export type UseAssetSelectionStateReturn = ReturnType<
+  typeof useAssetSelectionState
+>;
