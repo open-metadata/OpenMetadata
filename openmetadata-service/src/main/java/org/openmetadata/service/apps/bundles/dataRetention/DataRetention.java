@@ -4,7 +4,6 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +17,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 import org.openmetadata.schema.system.EntityStats;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -29,6 +29,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
+import org.openmetadata.service.util.OrphanIngestionPipelineCleanup;
 import org.openmetadata.service.util.OrphanTestCaseCleanup;
 import org.openmetadata.service.util.OrphanTestCaseRelationshipCleanup;
 import org.openmetadata.service.util.TagUsageCleanup;
@@ -44,7 +45,7 @@ public class DataRetention extends AbstractNativeApplication {
   private JobExecutionContext jobExecutionContext;
 
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
-  private Map<String, Object> failureDetails = null;
+  private IndexingError failureDetails = null;
 
   private final FeedRepository feedRepository;
   private final CollectionDAO.FeedDAO feedDAO;
@@ -93,9 +94,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("DataRetention job failed.", ex);
       internalStatus = AppRunRecord.Status.FAILED;
 
-      failureDetails = new HashMap<>();
-      failureDetails.put("message", ex.getMessage());
-      failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      failureDetails = toIndexingError(ex);
 
       updateRecordToDbAndNotify(ex);
     }
@@ -126,6 +125,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphaned_test_cases", new StepStats());
     entityStats.withAdditionalProperty("test_cases_missing_test_definition", new StepStats());
     entityStats.withAdditionalProperty("test_cases_missing_executable_suite", new StepStats());
+    entityStats.withAdditionalProperty("orphaned_ingestion_pipelines", new StepStats());
     entityStats.withAdditionalProperty("orphan_test_case_resolution_status", new StepStats());
     entityStats.withAdditionalProperty("orphan_agent_execution", new StepStats());
     entityStats.withAdditionalProperty("orphan_mcp_execution", new StepStats());
@@ -163,6 +163,13 @@ public class DataRetention extends AbstractNativeApplication {
     // repaired is not mistaken for missing.
     LOG.info("Starting cleanup for test cases with missing relationships.");
     cleanTestCasesWithMissingRelationships();
+
+    // Clean up ingestion pipelines whose container (service/test suite) CONTAINS row is gone. Such
+    // a pipeline can never run and breaks search indexing ("does not have expected relationship
+    // contains to/from entity type null"). Runs after the relationship/hierarchy cleanup above so a
+    // container relationship that was just repaired is not mistaken for missing.
+    LOG.info("Starting cleanup for orphaned ingestion pipelines.");
+    cleanOrphanedIngestionPipelines();
 
     // Run after orphan test case cleanup so resolution-status rows for deleted test cases
     // also get swept up.
@@ -272,11 +279,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphaned relationships and hierarchies", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -295,11 +298,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphaned tag usages", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -317,11 +316,7 @@ public class DataRetention extends AbstractNativeApplication {
     } catch (Exception ex) {
       LOG.error("Failed to clean orphan test cases", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -348,6 +343,25 @@ public class DataRetention extends AbstractNativeApplication {
           result.getMissingExecutableSuiteFailures());
     } catch (Exception ex) {
       LOG.error("Failed to clean test cases with missing relationships", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      recordFirstFailure(ex);
+    }
+  }
+
+  private void cleanOrphanedIngestionPipelines() {
+    try {
+      OrphanIngestionPipelineCleanup cleanup =
+          new OrphanIngestionPipelineCleanup(collectionDAO, false);
+      OrphanIngestionPipelineCleanup.Result result = cleanup.performCleanup(BATCH_SIZE);
+      updateStats(
+          "orphaned_ingestion_pipelines", result.getOrphansDeleted(), result.getOrphanFailures());
+      LOG.info(
+          "Orphan ingestion pipeline cleanup completed - Scanned: {}, Deleted: {}, Failed: {}",
+          result.getTotalScanned(),
+          result.getOrphansDeleted(),
+          result.getOrphanFailures());
+    } catch (Exception ex) {
+      LOG.error("Failed to clean orphan ingestion pipelines", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
       if (failureDetails == null) {
         failureDetails = new HashMap<>();
@@ -442,11 +456,7 @@ public class DataRetention extends AbstractNativeApplication {
         totalFailed += BATCH_SIZE;
         internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-        if (failureDetails == null) {
-          failureDetails = new HashMap<>();
-          failureDetails.put("message", ex.getMessage());
-          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-        }
+        recordFirstFailure(ex);
         stoppedByCondition = true;
         break;
       }
@@ -477,11 +487,7 @@ public class DataRetention extends AbstractNativeApplication {
         totalFailed += BATCH_SIZE;
         internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-        if (failureDetails == null) {
-          failureDetails = new HashMap<>();
-          failureDetails.put("message", ex.getMessage());
-          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-        }
+        recordFirstFailure(ex);
         break;
       }
     }
@@ -514,13 +520,25 @@ public class DataRetention extends AbstractNativeApplication {
     jobStats.setFailedRecords(jobStats.getFailedRecords() + failureCount);
   }
 
+  private void recordFirstFailure(Exception ex) {
+    if (failureDetails == null) {
+      failureDetails = toIndexingError(ex);
+    }
+  }
+
+  private static IndexingError toIndexingError(Exception ex) {
+    return new IndexingError()
+        .withErrorSource(IndexingError.ErrorSource.JOB)
+        .withMessage(ex.getMessage())
+        .withStackTrace(ExceptionUtils.getStackTrace(ex));
+  }
+
   private void updateRecordToDbAndNotify(Exception error) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
     appRecord.setStatus(internalStatus);
 
     if (failureDetails != null) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", failureDetails));
+      appRecord.setFailureContext(new FailureContext().withFailure(failureDetails));
     }
 
     if (WebSocketManager.getInstance() != null) {
