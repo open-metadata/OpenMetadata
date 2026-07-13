@@ -62,6 +62,19 @@ class OMetaLineageMixin(Generic[T]):
     def _lineage_reference_cache_key(entity_reference: EntityReference) -> str:
         return f"{entity_reference.type}:id:{model_str(entity_reference.id)}"
 
+    @staticmethod
+    def _entity_ref_summary(reference: EntityReference) -> Dict[str, Any]:  # noqa: UP006
+        """Minimal ``{"entity": ...}`` payload the sink reads (fullyQualifiedName), rebuilt
+        from a reference we already hold so we can skip the post-write lineage-graph GET.
+        fullyQualifiedName degrades to None if the reference does not carry one."""
+        return {
+            "fullyQualifiedName": (
+                model_str(reference.fullyQualifiedName) if reference.fullyQualifiedName else None
+            ),
+            "id": model_str(reference.id),
+            "type": reference.type,
+        }
+
     @classmethod
     def _lineage_edge_cache_key(cls, from_entity: EntityReference, to_entity: EntityReference) -> str:
         return f"{cls._lineage_reference_cache_key(from_entity)}->{cls._lineage_reference_cache_key(to_entity)}"
@@ -227,10 +240,16 @@ class OMetaLineageMixin(Generic[T]):
     ) -> bool:
         return model_str(to_entity.id) == downstream_edge_to_id
 
-    def add_lineage(self, data: AddLineageRequest, check_patch: bool = False) -> Dict[str, Any]:  # noqa: UP006
+    def add_lineage(
+        self, data: AddLineageRequest, check_patch: bool = False, return_lineage: bool = True
+    ) -> Dict[str, Any]:  # noqa: UP006
         """
         Add lineage relationship between two entities and returns
-        the entity information of the origin node
+        the entity information of the origin node.
+
+        When ``return_lineage`` is False, the expensive post-write GET that fetches the
+        source entity's full lineage graph is skipped; callers that only need the source
+        FQN (e.g. the metadata sink) get it rebuilt from the request they already hold.
         """
         data = deepcopy(data)
         try:
@@ -284,6 +303,12 @@ class OMetaLineageMixin(Generic[T]):
             logger.error(error)
             return {"error": error}
 
+        if not return_lineage:
+            # Skip the full-graph fetch below. This also skips _update_cache seeding, which is
+            # only an optimization: the edge cache refills via the patch-check GET on the next
+            # write of the same edge, and that lookup is independently LRU-cached.
+            return {"entity": self._entity_ref_summary(data.edge.fromEntity)}
+
         from_entity_lineage = self.get_lineage_by_id(data.edge.fromEntity.type, model_str(data.edge.fromEntity.id))
 
         if from_entity_lineage:
@@ -298,6 +323,7 @@ class OMetaLineageMixin(Generic[T]):
         to_entity_type: str,
         lineage_details: Optional[LineageDetails] = None,  # noqa: UP045
         check_patch: bool = False,
+        return_lineage: bool = True,
     ) -> Dict[str, Any]:  # noqa: UP006
         lineage_details = deepcopy(lineage_details) if lineage_details else LineageDetails.model_validate({})
         try:
@@ -365,6 +391,11 @@ class OMetaLineageMixin(Generic[T]):
             )
             logger.error(error)
             return {"error": error}
+
+        if not return_lineage:
+            # See add_lineage: skip the full-graph GET when the caller only needs the source
+            # FQN, which we already have. Mirrors the fallback shape used below.
+            return {"entity": {"fullyQualifiedName": from_entity_fqn}}
 
         return self.get_lineage_by_name(from_entity_type, from_entity_fqn) or {
             "entity": {"fullyQualifiedName": from_entity_fqn}

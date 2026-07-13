@@ -42,6 +42,10 @@ class StubbedLineage(OMetaLineageMixin):
     def __init__(self, existing_edge):
         self.client = MagicMock()
         self._existing_edge = existing_edge
+        # MagicMocks so tests can assert whether the post-write graph GET / cache seeding ran.
+        self.get_lineage_by_id = MagicMock(return_value={})
+        self.get_lineage_by_name = MagicMock(return_value={})
+        self._update_cache = MagicMock(return_value=None)
 
     def _get_lineage_edge_for_references(self, from_entity, to_entity):
         return self._existing_edge
@@ -51,15 +55,6 @@ class StubbedLineage(OMetaLineageMixin):
 
     def get_suffix(self, entity):
         return "/lineage"
-
-    def get_lineage_by_id(self, *args, **kwargs):
-        return {}
-
-    def get_lineage_by_name(self, *args, **kwargs):
-        return {}
-
-    def _update_cache(self, *args, **kwargs):
-        return None
 
 
 def edge_lookup(stored_query=None):
@@ -139,3 +134,101 @@ class TestAddLineageByNameSqlQuery:
         )
 
         assert_patched(service.client, expected)
+
+
+FROM_FQN = "svc.db.sch.source"
+TO_FQN = "svc.db.sch.target"
+
+
+def id_request(with_fqn=True):
+    """add_lineage request whose fromEntity optionally carries an FQN."""
+    from_entity = (
+        EntityReference(id=FROM_ID, type="table", fullyQualifiedName=FROM_FQN)
+        if with_fqn
+        else EntityReference(id=FROM_ID, type="table")
+    )
+    return AddLineageRequest(
+        edge=EntitiesEdge(
+            fromEntity=from_entity,
+            toEntity=EntityReference(id=TO_ID, type="table"),
+            lineageDetails=incoming_details(INCOMING_QUERY),
+        )
+    )
+
+
+class TestReturnLineageSkipsGraphGet:
+    """return_lineage=False must skip the expensive post-write lineage-graph GET while
+    still writing the edge and returning the source FQN the sink needs."""
+
+    def test_add_lineage_skips_graph_get_and_cache(self):
+        service = StubbedLineage(edge_lookup(None))
+
+        result = service.add_lineage(id_request(), check_patch=True, return_lineage=False)
+
+        service.get_lineage_by_id.assert_not_called()
+        service._update_cache.assert_not_called()
+        assert service.client.put.called
+        assert result == {
+            "entity": {"fullyQualifiedName": FROM_FQN, "id": FROM_ID, "type": "table"}
+        }
+
+    def test_add_lineage_default_fetches_graph(self):
+        service = StubbedLineage(edge_lookup(None))
+
+        service.add_lineage(id_request(), check_patch=True)
+
+        service.get_lineage_by_id.assert_called_once()
+
+    def test_add_lineage_by_name_skips_graph_get(self):
+        service = StubbedLineage(edge_lookup(None))
+
+        result = service.add_lineage_by_name(
+            from_entity_fqn=FROM_FQN,
+            from_entity_type="table",
+            to_entity_fqn=TO_FQN,
+            to_entity_type="table",
+            lineage_details=incoming_details(INCOMING_QUERY),
+            check_patch=True,
+            return_lineage=False,
+        )
+
+        service.get_lineage_by_name.assert_not_called()
+        assert service.client.put.called
+        assert result == {"entity": {"fullyQualifiedName": FROM_FQN}}
+
+    def test_add_lineage_by_name_default_fetches_graph(self):
+        service = StubbedLineage(edge_lookup(None))
+
+        service.add_lineage_by_name(
+            from_entity_fqn=FROM_FQN,
+            from_entity_type="table",
+            to_entity_fqn=TO_FQN,
+            to_entity_type="table",
+            lineage_details=incoming_details(INCOMING_QUERY),
+            check_patch=True,
+        )
+
+        service.get_lineage_by_name.assert_called_once()
+
+
+class TestEntityRefSummary:
+    """_entity_ref_summary rebuilds the minimal sink payload, degrading FQN to None
+    when the reference does not carry one."""
+
+    def test_with_fqn(self):
+        reference = EntityReference(id=FROM_ID, type="table", fullyQualifiedName=FROM_FQN)
+
+        assert OMetaLineageMixin._entity_ref_summary(reference) == {
+            "fullyQualifiedName": FROM_FQN,
+            "id": FROM_ID,
+            "type": "table",
+        }
+
+    def test_without_fqn(self):
+        reference = EntityReference(id=FROM_ID, type="table")
+
+        assert OMetaLineageMixin._entity_ref_summary(reference) == {
+            "fullyQualifiedName": None,
+            "id": FROM_ID,
+            "type": "table",
+        }

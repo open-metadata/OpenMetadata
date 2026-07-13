@@ -546,7 +546,9 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[dict[str, Any]]:
-        created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True)
+        # return_lineage=False: we only read the source FQN below, so skip the expensive
+        # per-edge full-graph GET that otherwise dominates lineage-heavy ingestions.
+        created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True, return_lineage=False)
         if created_lineage.get("error"):
             return Either(left=StackTraceError(name="AddLineageRequestError", error=created_lineage["error"]))
 
@@ -561,6 +563,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             to_entity_type=add_lineage.to_entity_type,
             lineage_details=add_lineage.lineage_details,
             check_patch=True,
+            return_lineage=False,
         )
         if not created_lineage or created_lineage.get("error"):
             error = (created_lineage or {}).get("error", "Failed to add lineage - no response")
