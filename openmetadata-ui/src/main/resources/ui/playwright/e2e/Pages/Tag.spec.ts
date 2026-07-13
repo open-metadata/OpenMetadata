@@ -168,7 +168,9 @@ test.describe('Tag Page with Admin Roles', () => {
     await expect(adminPage.getByRole('dialog')).toBeVisible();
 
     await adminPage.getByTestId('icon-picker-btn').click();
-    await adminPage.getByRole('button', { name: `Select icon Cube01` }).click();
+    await adminPage
+      .getByRole('button', { name: 'Cube01', exact: true })
+      .click();
     await adminPage
       .getByRole('button', { name: 'Select color #F14C75' })
       .click();

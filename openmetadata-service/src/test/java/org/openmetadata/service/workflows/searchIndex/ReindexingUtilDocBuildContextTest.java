@@ -15,6 +15,7 @@ import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
@@ -23,6 +24,7 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.entity.type.Style;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.search.SearchRepository;
@@ -47,13 +49,16 @@ class ReindexingUtilDocBuildContextTest {
   }
 
   @Test
-  void populateDocBuildContextDoesNothingWhenPrefetchReturnsNull() {
+  void populateDocBuildContextDoesNothingWhenAllPrefetchesReturnNull() {
     Map<String, Object> contextData = new HashMap<>();
     EntityInterface entity = mock(EntityInterface.class);
 
     try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class)) {
       indexMock
           .when(() -> SearchIndex.prefetchLineageIfSupported(eq(TABLE), any()))
+          .thenReturn(null);
+      indexMock
+          .when(() -> SearchIndex.prefetchServiceStylesIfSupported(eq(TABLE), any()))
           .thenReturn(null);
 
       ReindexingUtil.populateDocBuildContext(contextData, TABLE, List.of(entity));
@@ -93,6 +98,9 @@ class ReindexingUtilDocBuildContextTest {
       indexMock
           .when(() -> SearchIndex.prefetchLineageIfSupported(eq(TABLE), any()))
           .thenReturn(Map.of(id1, edgesForFirst, id2, Collections.<EsLineageData>emptyList()));
+      indexMock
+          .when(() -> SearchIndex.prefetchServiceStylesIfSupported(eq(TABLE), any()))
+          .thenReturn(null);
 
       ReindexingUtil.populateDocBuildContext(contextData, TABLE, List.of(e1, e2));
 
@@ -103,6 +111,40 @@ class ReindexingUtilDocBuildContextTest {
       assertEquals(2, stored.size());
       assertSame(edgesForFirst, stored.get(id1).prefetchedUpstreamLineage());
       assertTrue(stored.get(id2).prefetchedUpstreamLineage().isEmpty());
+      assertFalse(stored.get(id1).serviceStylePrefetch().prefetched());
+    }
+  }
+
+  @Test
+  void populateDocBuildContextWrapsEachEntityServiceStyleInDocBuildContext() {
+    Map<String, Object> contextData = new HashMap<>();
+    UUID id1 = UUID.randomUUID();
+    UUID id2 = UUID.randomUUID();
+    EntityInterface e1 = mock(EntityInterface.class);
+    EntityInterface e2 = mock(EntityInterface.class);
+    Style style = new Style().withColor("#123456");
+    when(e1.getId()).thenReturn(id1);
+    when(e2.getId()).thenReturn(id2);
+
+    try (MockedStatic<SearchIndex> indexMock = mockStatic(SearchIndex.class)) {
+      indexMock
+          .when(() -> SearchIndex.prefetchLineageIfSupported(eq(TABLE), any()))
+          .thenReturn(null);
+      indexMock
+          .when(() -> SearchIndex.prefetchServiceStylesIfSupported(eq(TABLE), any()))
+          .thenReturn(Map.of(id1, Optional.of(style), id2, Optional.empty()));
+
+      ReindexingUtil.populateDocBuildContext(contextData, TABLE, List.of(e1, e2));
+
+      @SuppressWarnings("unchecked")
+      Map<UUID, DocBuildContext> stored =
+          (Map<UUID, DocBuildContext>) contextData.get(BulkSink.DOC_BUILD_CONTEXT_KEY);
+      assertNotNull(stored);
+      assertEquals(2, stored.size());
+      assertTrue(stored.get(id1).serviceStylePrefetch().prefetched());
+      assertSame(style, stored.get(id1).serviceStylePrefetch().style().orElseThrow());
+      assertTrue(stored.get(id2).serviceStylePrefetch().prefetched());
+      assertTrue(stored.get(id2).serviceStylePrefetch().style().isEmpty());
     }
   }
 }

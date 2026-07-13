@@ -676,10 +676,15 @@ describe('ServiceDocPanel Component', () => {
 
       await waitFor(() => {
         expect(mockQuerySelector).toHaveBeenCalledWith('[data-id="name"]');
+        // The mock element has no scrollable ancestor, so the panel falls back
+        // to scrollIntoView. It uses inline: 'nearest' to avoid horizontal
+        // scrolling of the shared flex container (the scroll-parent path,
+        // exercised in the real layout, scrolls only that container so an open
+        // react-aria field popover is not dismissed).
         expect(mockScrollIntoView).toHaveBeenCalledWith({
           block: 'center',
           behavior: 'smooth',
-          inline: 'center',
+          inline: 'nearest',
         });
         expect(mockElement.dataset.highlighted).toBe('true');
       });

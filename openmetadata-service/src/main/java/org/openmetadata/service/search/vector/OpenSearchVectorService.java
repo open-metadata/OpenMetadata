@@ -97,14 +97,9 @@ public class OpenSearchVectorService implements VectorIndexService {
             .set(
                 "score-ranker-processor",
                 MAPPER.createObjectNode().set("combination", combination));
-    var collapse =
-        MAPPER
-            .createObjectNode()
-            .set("collapse", MAPPER.createObjectNode().put("field", "parentId"));
 
     var pipeline = MAPPER.createObjectNode();
     pipeline.set("phase_results_processors", MAPPER.createArrayNode().add(scoreRanker));
-    pipeline.set("response_processors", MAPPER.createArrayNode().add(collapse));
 
     executeGenericRequest("PUT", "/_search/pipeline/" + HYBRID_PIPELINE_NAME, pipeline.toString());
     LOG.info(
@@ -236,9 +231,17 @@ public class OpenSearchVectorService implements VectorIndexService {
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-      boolean chunksStale = header == null || !currentFingerprint.equals(header.fingerprint());
+      boolean fingerprintChanged =
+          header == null || !currentFingerprint.equals(header.fingerprint());
+      boolean chunksStale = fingerprintChanged || docVersionStale(header);
       if (entityDocStale || chunksStale) {
-        List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+        // Reuse cached vectors only when nothing content-related changed and the chunks are stale
+        // purely by docVersion; any content change (entity doc or chunks) re-embeds for
+        // correctness.
+        List<Map<String, Object>> chunkDocs =
+            (chunksStale && !fingerprintChanged && !entityDocStale)
+                ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
+                : VectorDocBuilder.fromEntity(entity, embeddingClient);
         if (chunksStale) {
           replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
         }
@@ -344,26 +347,104 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private boolean createChunkIndexIfAbsent() {
     String indexName = getChunkIndexName();
-    boolean ensured = false;
     try {
       boolean exists = client.indices().exists(e -> e.index(indexName)).value();
       if (!exists) {
         executeGenericRequest("PUT", "/" + indexName, buildChunkIndexMapping());
         LOG.info("Created dedicated vector chunk index {}", indexName);
-      } else {
-        // The alias is normally attached at creation, but an index left over from a partial or
-        // manual setup may miss it — and reads via the alias would then silently skip all chunk
-        // docs. The alias PUT is idempotent.
-        executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
+        return true;
       }
-      ensured = true;
+      // The alias is normally attached at creation, but an index left over from a partial or manual
+      // setup may miss it — and reads via the alias would then silently skip all chunk docs. The
+      // alias PUT is idempotent. Only report "ensured" once the mapping is at the current version
+      // so
+      // a failed upgrade does not latch (and so docs are not stamped with the new docVersion into a
+      // still-stale mapping).
+      executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
+      return applyChunkMappingUpgradeIfStale(indexName);
     } catch (Exception e) {
       LOG.error("Failed to ensure chunk index {}: {}", indexName, e.getMessage());
+      return false;
     }
-    return ensured;
+  }
+
+  /**
+   * When the chunk index already exists, compare its {@code _meta.chunkDocVersion} against the code
+   * {@link VectorDocBuilder#CHUNK_DOC_VERSION}; if the index is older, apply the additive
+   * {@code PUT _mapping} so the new denormalized fields become mappable. This is legal on a
+   * {@code dynamic:false} index and safe pre-backfill: old docs simply lack the new fields until a
+   * Search Reindex re-materializes them (the reindex reuses embeddings, so there is no re-embed
+   * cost — see {@link #updateEntityEmbeddingChunks(EntityInterface, String)}).
+   *
+   * @return {@code true} when the index is (already or now) at the current version; {@code false}
+   *     when the upgrade could not be applied, so the caller leaves the index un-ensured and the
+   *     PUT is retried on the next write rather than silently proceeding with a stale mapping.
+   */
+  private boolean applyChunkMappingUpgradeIfStale(String indexName) {
+    try {
+      String mappingJson = executeGenericRequest("GET", "/" + indexName + "/_mapping", null);
+      JsonNode mappings = MAPPER.readTree(mappingJson).path(indexName).path("mappings");
+      int existingVersion = mappings.path("_meta").path("chunkDocVersion").asInt(0);
+      if (existingVersion >= VectorDocBuilder.CHUNK_DOC_VERSION) {
+        return true;
+      }
+      executeGenericRequest("PUT", "/" + indexName + "/_mapping", buildChunkMappingUpgradeBody());
+      LOG.info(
+          "Upgraded chunk index {} mapping chunkDocVersion {} -> {} (denormalized fields backfill "
+              + "on next Search Reindex)",
+          indexName,
+          existingVersion,
+          VectorDocBuilder.CHUNK_DOC_VERSION);
+      return true;
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to upgrade chunk index {} mapping; leaving it un-ensured to retry on the next "
+              + "write rather than stamping docs with the new docVersion into a stale mapping: {}",
+          indexName,
+          e.getMessage());
+      return false;
+    }
   }
 
   private String buildChunkIndexMapping() {
+    var mappings = MAPPER.createObjectNode().put("dynamic", false);
+    mappings.set("properties", buildChunkProperties());
+    mappings.set("_meta", chunkMeta());
+    var root = MAPPER.createObjectNode();
+    root.set(
+        "settings",
+        MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
+    root.set("mappings", mappings);
+    root.set("aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
+    return root.toString();
+  }
+
+  /**
+   * Additive {@code PUT _mapping} body applied by {@link #applyChunkMappingUpgradeIfStale}. Sends the
+   * property set <b>minus the {@code embedding} knn_vector</b> plus the bumped
+   * {@code _meta.chunkDocVersion}. Re-declaring the existing {@code knn_vector} is rejected by some
+   * OpenSearch versions/plugins even with identical parameters; because {@code PUT _mapping} is
+   * atomic, that would fail the whole request and silently leave the genuinely new denormalized
+   * fields unmapped (on a {@code dynamic:false} index) while docs are still stamped with the new
+   * {@code docVersion} — defeating the rollout. Omitting the unchanged vector avoids that
+   * all-or-nothing failure; the remaining fields are additive (new fields) or legal no-ops
+   * (unchanged keyword/text/integer). Absent-on-old-docs fields simply do not match until a Search
+   * Reindex backfills them, so there is zero regression before the backfill runs.
+   */
+  private String buildChunkMappingUpgradeBody() {
+    ObjectNode properties = buildChunkProperties();
+    properties.remove("embedding");
+    var body = MAPPER.createObjectNode();
+    body.set("properties", properties);
+    body.set("_meta", chunkMeta());
+    return body.toString();
+  }
+
+  private ObjectNode chunkMeta() {
+    return MAPPER.createObjectNode().put("chunkDocVersion", VectorDocBuilder.CHUNK_DOC_VERSION);
+  }
+
+  private ObjectNode buildChunkProperties() {
     var method =
         MAPPER
             .createObjectNode()
@@ -380,33 +461,56 @@ public class OpenSearchVectorService implements VectorIndexService {
     var properties = MAPPER.createObjectNode();
     properties.set("embedding", embedding);
     for (String keyword :
-        List.of(
-            "parentId", "fingerprint", "entityType", "name", "displayName", "fullyQualifiedName")) {
+        List.of("parentId", "fingerprint", "entityType", "fullyQualifiedName", "serviceType")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
-    for (String integer : List.of("chunkIndex", "chunkCount")) {
+    // name/displayName keep a keyword root but gain a `.keyword` subfield so the shard-fair exact
+    // (case_insensitive term) clauses, which target `<field>.keyword`, resolve on chunk docs.
+    for (String keywordWithSub : List.of("name", "displayName")) {
+      properties.set(keywordWithSub, keywordWithKeywordSubfield());
+    }
+    for (String integer : List.of("chunkIndex", "chunkCount", "docVersion")) {
       properties.set(integer, MAPPER.createObjectNode().put("type", "integer"));
     }
-    for (String text : List.of("textToEmbed", "textToLLMContext")) {
+    // Analyzed lexical parity fields. The dedicated chunk index defines no custom analyzers, so
+    // these use the default standard analyzer; full om_analyzer/compound parity is a Phase 4
+    // index recreate.
+    for (String text :
+        List.of("textToEmbed", "textToLLMContext", "description", "fqnParts", "synonyms")) {
       properties.set(text, MAPPER.createObjectNode().put("type", "text"));
     }
     properties.set("deleted", MAPPER.createObjectNode().put("type", "boolean"));
-    properties.set("tags", nestedKeyword("tagFQN"));
-    properties.set("domains", nestedKeyword("name"));
-    properties.set("tier", nestedKeyword("tagFQN"));
+    properties.set("tags", objectKeyword("tagFQN"));
+    properties.set("domains", objectKeyword("name"));
+    properties.set("tier", objectKeyword("tagFQN"));
+    properties.set("certification", certificationMapping());
+    // owners is a `nested` type: NLQ owner filters run a nested query over owners.name.
+    properties.set("owners", nestedNameKeyword());
+    properties.set("service", nameDisplayNameObject());
+    properties.set("database", nameDisplayNameObject());
+    // Map name+displayName like service/database: buildDenormalizedFields copies both onto the
+    // chunk doc, so mapping only `name` would leave the denormalized displayName in _source but
+    // unindexed (dynamic:false), silently unfilterable and inconsistent with the entity index.
+    properties.set("databaseSchema", nameDisplayNameObject());
+    properties.set("columns", columnsMapping());
     properties.set(
         "relatedTerms", MAPPER.createObjectNode().put("type", "object").put("enabled", false));
-    var mappings = MAPPER.createObjectNode().put("dynamic", false).set("properties", properties);
-    var root = MAPPER.createObjectNode();
-    root.set(
-        "settings",
-        MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
-    root.set("mappings", mappings);
-    root.set("aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
-    return root.toString();
+    return properties;
   }
 
-  private ObjectNode nestedKeyword(String field) {
+  private ObjectNode keywordWithKeywordSubfield() {
+    return (ObjectNode)
+        MAPPER
+            .createObjectNode()
+            .put("type", "keyword")
+            .set(
+                "fields",
+                MAPPER
+                    .createObjectNode()
+                    .set("keyword", MAPPER.createObjectNode().put("type", "keyword")));
+  }
+
+  private ObjectNode objectKeyword(String field) {
     return (ObjectNode)
         MAPPER
             .createObjectNode()
@@ -415,6 +519,40 @@ public class OpenSearchVectorService implements VectorIndexService {
                 MAPPER
                     .createObjectNode()
                     .set(field, MAPPER.createObjectNode().put("type", "keyword")));
+  }
+
+  private ObjectNode nestedNameKeyword() {
+    return (ObjectNode)
+        MAPPER
+            .createObjectNode()
+            .put("type", "nested")
+            .set(
+                "properties",
+                MAPPER
+                    .createObjectNode()
+                    .set("name", MAPPER.createObjectNode().put("type", "keyword")));
+  }
+
+  private ObjectNode nameDisplayNameObject() {
+    var props = MAPPER.createObjectNode();
+    props.set("name", MAPPER.createObjectNode().put("type", "keyword"));
+    props.set("displayName", MAPPER.createObjectNode().put("type", "keyword"));
+    return (ObjectNode) MAPPER.createObjectNode().set("properties", props);
+  }
+
+  private ObjectNode certificationMapping() {
+    var tagLabel = objectKeyword("tagFQN");
+    return (ObjectNode)
+        MAPPER
+            .createObjectNode()
+            .put("type", "object")
+            .set("properties", MAPPER.createObjectNode().set("tagLabel", tagLabel));
+  }
+
+  private ObjectNode columnsMapping() {
+    var name = keywordWithKeywordSubfield();
+    return (ObjectNode)
+        MAPPER.createObjectNode().set("properties", MAPPER.createObjectNode().set("name", name));
   }
 
   /**
@@ -429,19 +567,116 @@ public class OpenSearchVectorService implements VectorIndexService {
       String parentId = entity.getId().toString();
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      if (header != null && currentFingerprint.equals(header.fingerprint())) {
-        LOG.debug("Skipping chunk embedding for {} - fingerprint unchanged", parentId);
+      boolean fingerprintChanged =
+          header == null || !currentFingerprint.equals(header.fingerprint());
+      boolean docVersionStale = docVersionStale(header);
+      if (!fingerprintChanged && !docVersionStale) {
+        LOG.debug("Skipping chunk embedding for {} - fingerprint and docVersion current", parentId);
         return;
       }
-      List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+      // docVersion-only staleness (content unchanged) reuses the stored vectors so a mapping
+      // upgrade
+      // backfills with zero embedding-provider cost; a content change re-embeds as before.
+      List<Map<String, Object>> chunkDocs =
+          (docVersionStale && !fingerprintChanged)
+              ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
+              : VectorDocBuilder.fromEntity(entity, embeddingClient);
       replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
     } catch (Exception e) {
       LOG.error("Failed to update chunk embeddings for {}: {}", entity.getId(), e.getMessage(), e);
     }
   }
 
+  /**
+   * Rebuild an entity's chunk docs for a docVersion migration by reusing the embeddings already
+   * stored on those chunk docs (fingerprint unchanged ⇒ same body ⇒ same chunking ⇒ 1:1 reusable
+   * vectors), so only the denormalized fields and {@code docVersion} change and no embedding call is
+   * made. Falls back to a full re-embed if the cached vectors can't all be recovered (partial/corrupt
+   * chunk set) or the re-chunk disagrees with the cached count.
+   */
+  private List<Map<String, Object>> rebuildChunksReusingEmbeddings(
+      EntityInterface entity, String chunkIndexName, String parentId, ChunkHeader header) {
+    Map<Integer, float[]> vectors =
+        fetchExistingChunkVectors(chunkIndexName, parentId, header.chunkCount());
+    if (vectors.size() != header.chunkCount()) {
+      LOG.info(
+          "Chunk docVersion rebuild for {} recovered {}/{} cached vectors; re-embedding",
+          parentId,
+          vectors.size(),
+          header.chunkCount());
+      return VectorDocBuilder.fromEntity(entity, embeddingClient);
+    }
+    try {
+      return VectorDocBuilder.fromEntityReusingEmbeddings(entity, vectors);
+    } catch (RuntimeException e) {
+      LOG.info(
+          "Chunk docVersion rebuild for {} fell back to re-embedding: {}",
+          parentId,
+          e.getMessage());
+      return VectorDocBuilder.fromEntity(entity, embeddingClient);
+    }
+  }
+
+  /**
+   * Batch-fetch the stored embedding vectors for an entity's chunk docs ({@code <parentId>_0..N-1}),
+   * keyed by {@code chunkIndex}. Pulls only {@code embedding}+{@code chunkIndex} so the large vector
+   * payload is the only thing on the wire.
+   */
+  private Map<Integer, float[]> fetchExistingChunkVectors(
+      String chunkIndexName, String parentId, int chunkCount) {
+    Map<Integer, float[]> vectors = new HashMap<>();
+    if (chunkCount <= 0) {
+      return vectors;
+    }
+    try {
+      List<String> ids = new ArrayList<>(chunkCount);
+      for (int i = 0; i < chunkCount; i++) {
+        ids.add(parentId + "_" + i);
+      }
+      MgetResponse<JsonData> response =
+          client.mget(
+              m ->
+                  m.index(chunkIndexName)
+                      .ids(ids)
+                      .sourceIncludes(List.of("embedding", "chunkIndex")),
+              JsonData.class);
+      for (MultiGetResponseItem<JsonData> item : response.docs()) {
+        if (!item.isResult()) {
+          continue;
+        }
+        GetResult<JsonData> doc = item.result();
+        if (!doc.found() || doc.source() == null) {
+          continue;
+        }
+        JsonNode source = doc.source().to(JsonNode.class, JACKSON_JSONP_MAPPER);
+        float[] vector = toFloatArray(source.path("embedding"));
+        if (vector != null) {
+          vectors.put(source.path("chunkIndex").asInt(0), vector);
+        }
+      }
+    } catch (Exception e) {
+      LOG.debug("Failed to fetch existing chunk vectors for {}: {}", parentId, e.getMessage());
+    }
+    return vectors;
+  }
+
+  private static float[] toFloatArray(JsonNode node) {
+    if (node == null || !node.isArray() || node.isEmpty()) {
+      return null;
+    }
+    float[] out = new float[node.size()];
+    for (int i = 0; i < node.size(); i++) {
+      out[i] = (float) node.get(i).asDouble();
+    }
+    return out;
+  }
+
   /** Header of an entity's chunk set, read from chunk 0. */
-  private record ChunkHeader(String fingerprint, int chunkCount) {}
+  private record ChunkHeader(String fingerprint, int chunkCount, int docVersion) {}
+
+  private static boolean docVersionStale(ChunkHeader header) {
+    return header != null && header.docVersion() < VectorDocBuilder.CHUNK_DOC_VERSION;
+  }
 
   private static int previousCount(ChunkHeader header) {
     return header == null ? 0 : header.chunkCount();
@@ -463,7 +698,7 @@ public class OpenSearchVectorService implements VectorIndexService {
                       + indexName
                       + "/_doc/"
                       + parentId
-                      + "_0?_source_includes=fingerprint,chunkCount")
+                      + "_0?_source_includes=fingerprint,chunkCount,docVersion")
               .method("GET")
               .build();
       try (var response = genericClient.execute(request)) {
@@ -485,7 +720,9 @@ public class OpenSearchVectorService implements VectorIndexService {
             JsonNode source = root.path("_source");
             header =
                 new ChunkHeader(
-                    source.path("fingerprint").asText(null), source.path("chunkCount").asInt(0));
+                    source.path("fingerprint").asText(null),
+                    source.path("chunkCount").asInt(0),
+                    source.path("docVersion").asInt(0));
           }
         }
       }
@@ -891,7 +1128,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   String executeGenericRequest(String method, String endpoint, String body) {
     try {
       OpenSearchGenericClient genericClient = client.generic();
-      var request = Requests.builder().endpoint(endpoint).method(method).json(body).build();
+      var builder = Requests.builder().endpoint(endpoint).method(method);
+      if (body != null) {
+        builder.json(body);
+      }
+      var request = builder.build();
       try (var response = genericClient.execute(request)) {
         if (response.getStatus() >= 400) {
           String errorBody = response.getBody().map(Body::bodyAsString).orElse("no body");
