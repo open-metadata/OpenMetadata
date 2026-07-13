@@ -3137,6 +3137,13 @@
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
+    "doc-field-test-definition-data-quality-dimension": "Die Datenqualitätsdimension, die dieser Test misst, z. B. Vollständigkeit, Genauigkeit oder Eindeutigkeit.",
+    "doc-field-test-definition-description": "Beschreiben Sie, was die Testdefinition validiert, wann sie verwendet werden sollte und welches wichtige Verhalten Benutzer kennen sollten, bevor sie daraus Testfälle erstellen.",
+    "doc-field-test-definition-display-name": "Ein optionaler benutzerfreundlicher Name, der in der UI angezeigt wird, wenn der technische Name klarere Abstände, Groß-/Kleinschreibung oder Formulierung benötigt.",
+    "doc-field-test-definition-entity-type": "Der Asset-Typ, für den dieser Test gilt (z. B. Tabelle oder Spalte). Der SQL-Ausdruck und die unterstützten Datentypen sollten dazu passen.",
+    "doc-field-test-definition-name": "Ein eindeutiger Name, um die Definition in APIs, Testfällen und Regelkonfigurationen zu referenzieren. Verwenden Sie einen prägnanten Namen, der die Validierung beschreibt.",
+    "doc-field-test-definition-supported-data-types": "Für OpenMetadata-native Tests die Spaltendatentypen, gegen die dieser Test ausgeführt werden kann. Erforderlich, wenn OpenMetadata als Plattform ausgewählt ist.",
+    "doc-field-test-definition-test-platforms": "Die Plattformen, die diesen Test ausführen können (z. B. OpenMetadata, dbt, Great Expectations). Wählen Sie alle zutreffenden aus.",
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "Wie viele der wichtigsten Dimensionswerte einzeln in den Ergebnissen angezeigt werden (1–50, Standard 5). Übrige Werte werden in einer Kategorie „Sonstige“ zusammengefasst.",
@@ -4217,7 +4224,7 @@
     "unauthorized-user": "Unbefugter Benutzer! Bitte überprüfen Sie E-Mail oder Passwort.",
     "unexpected-error": "Ein unerwarteter Fehler ist aufgetreten.",
     "unexpected-response": "Unerwartete Antwort vom Server.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "Fehler beim Aktualisieren von {{entity}}!",
     "update-entity-success": "{{entity}} erfolgreich aktualisiert."
   }
 }

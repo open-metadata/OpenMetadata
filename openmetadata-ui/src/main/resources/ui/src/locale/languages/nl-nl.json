@@ -3137,6 +3137,13 @@
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
+    "doc-field-test-definition-data-quality-dimension": "De datakwaliteitsdimensie die deze test meet, zoals Volledigheid, Nauwkeurigheid of Uniekheid.",
+    "doc-field-test-definition-description": "Beschrijf wat de testdefinitie valideert, wanneer deze moet worden gebruikt en welk belangrijk gedrag gebruikers moeten kennen voordat ze er testgevallen van maken.",
+    "doc-field-test-definition-display-name": "Een optionele gebruiksvriendelijke naam die in de UI wordt getoond wanneer de technische naam duidelijkere spatiëring, hoofdlettergebruik of formulering nodig heeft.",
+    "doc-field-test-definition-entity-type": "Het assettype waarop deze test van toepassing is (bijv. Tabel of Kolom). De SQL-expressie en de ondersteunde gegevenstypen moeten hiermee overeenkomen.",
+    "doc-field-test-definition-name": "Een unieke naam om de definitie te refereren in API's, testgevallen en regelconfiguratie. Gebruik een beknopte naam die de validatie beschrijft.",
+    "doc-field-test-definition-supported-data-types": "Voor OpenMetadata-native tests, de kolomgegevenstypen waarop deze test kan worden uitgevoerd. Vereist wanneer OpenMetadata een geselecteerd platform is.",
+    "doc-field-test-definition-test-platforms": "De platforms die deze test kunnen uitvoeren (bijv. OpenMetadata, dbt, Great Expectations). Selecteer alle die van toepassing zijn.",
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "Hoeveel belangrijkste dimensiewaarden afzonderlijk in de resultaten worden getoond (1-50, standaard 5). Overige waarden worden gegroepeerd in een categorie 'Overige'.",
@@ -4217,7 +4224,7 @@
     "unauthorized-user": "Ongeautoriseerde gebruiker! controleer e-mail of wachtwoord",
     "unexpected-error": "Er is een onverwachte fout opgetreden.",
     "unexpected-response": "Onverwachte respons van de server.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "Fout bij het updaten van {{entity}}!",
     "update-entity-success": "{{entity}} succesvol bijgewerkt."
   }
 }

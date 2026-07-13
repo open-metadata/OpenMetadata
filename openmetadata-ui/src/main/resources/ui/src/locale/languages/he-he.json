@@ -3137,6 +3137,13 @@
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
+    "doc-field-test-definition-data-quality-dimension": "מימד איכות הנתונים שבדיקה זו מודדת, כגון שלמות, דיוק או ייחודיות.",
+    "doc-field-test-definition-description": "תארו מה הגדרת הבדיקה מאמתת, מתי יש להשתמש בה וכל התנהגות חשובה שמשתמשים צריכים להכיר לפני יצירת מקרי בדיקה ממנה.",
+    "doc-field-test-definition-display-name": "שם ידידותי אופציונלי המוצג בממשק כאשר השם הטכני זקוק לריווח, לאותיות רישיות או לניסוח ברורים יותר.",
+    "doc-field-test-definition-entity-type": "סוג הנכס שאליו חלה בדיקה זו (למשל טבלה או עמודה). ביטוי ה-SQL וסוגי הנתונים הנתמכים צריכים להתאים לו.",
+    "doc-field-test-definition-name": "שם ייחודי המשמש להפניה להגדרה ב-APIs, במקרי בדיקה ובתצורת כללים. השתמשו בשם תמציתי שמתאר את האימות.",
+    "doc-field-test-definition-supported-data-types": "עבור בדיקות מקוריות של OpenMetadata, סוגי הנתונים של העמודה שכנגדם ניתן להריץ בדיקה זו. נדרש כאשר OpenMetadata היא פלטפורמה נבחרת.",
+    "doc-field-test-definition-test-platforms": "הפלטפורמות שיכולות להריץ בדיקה זו (למשל OpenMetadata, dbt, Great Expectations). בחרו את כל אלה הרלוונטיות.",
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "כמה מערכי המימד המובילים יוצגו בנפרד בתוצאות (1–50, ברירת מחדל 5). הערכים הנותרים מקובצים לקטגוריית \"אחרים\".",
@@ -4217,7 +4224,7 @@
     "unauthorized-user": "משתמש לא מורשה! יש לבדוק את כתובת האימייל או הסיסמה",
     "unexpected-error": "אירעה שגיאה לא צפויה.",
     "unexpected-response": "תגובה לא צפויה מהשרת.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "שגיאה במהלך עדכון {{entity}}!",
     "update-entity-success": "{{entity}} עודכן בהצלחה."
   }
 }

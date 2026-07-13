@@ -3137,6 +3137,13 @@
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
+    "doc-field-test-definition-data-quality-dimension": "A dimensión de calidade de datos que mide esta proba, como Completitude, Exactitude ou Unicidade.",
+    "doc-field-test-definition-description": "Describe que valida a definición de proba, cando se debe usar e calquera comportamento importante que os usuarios deban coñecer antes de crear casos de proba a partir dela.",
+    "doc-field-test-definition-display-name": "Un nome opcional e fácil de usar que se mostra na interface cando o nome técnico precisa un espazamento, maiúsculas ou redacción máis claros.",
+    "doc-field-test-definition-entity-type": "O tipo de activo ao que se aplica esta proba (por exemplo, Táboa ou Columna). A expresión SQL e os tipos de datos admitidos deben coincidir con el.",
+    "doc-field-test-definition-name": "Un nome único para referenciar a definición nas APIs, nos casos de proba e na configuración de regras. Usa un nome conciso que describa a validación.",
+    "doc-field-test-definition-supported-data-types": "Para as probas nativas de OpenMetadata, os tipos de datos de columna cos que se pode executar esta proba. Obrigatorio cando OpenMetadata é unha plataforma seleccionada.",
+    "doc-field-test-definition-test-platforms": "As plataformas que poden executar esta proba (por exemplo, OpenMetadata, dbt, Great Expectations). Selecciona todas as que correspondan.",
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "Cantos valores de dimensión principais se amosan individualmente nos resultados (1-50, predeterminado 5). Os valores restantes agrúpanse nunha categoría «Outros».",
@@ -4217,7 +4224,7 @@
     "unauthorized-user": "Usuario non autorizado! Comproba o correo electrónico ou o contrasinal",
     "unexpected-error": "Produciuse un erro inesperado.",
     "unexpected-response": "Resposta inesperada do servidor.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "Erro ao actualizar {{entity}}!",
     "update-entity-success": "{{entity}} actualizado correctamente."
   }
 }

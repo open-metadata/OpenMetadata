@@ -3137,6 +3137,13 @@
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
+    "doc-field-test-definition-data-quality-dimension": "Den datakvalitetsdimension som detta test mäter, till exempel fullständighet, noggrannhet eller unikhet.",
+    "doc-field-test-definition-description": "Beskriv vad testdefinitionen validerar, när den ska användas och eventuellt viktigt beteende som användare bör känna till innan de skapar testfall från den.",
+    "doc-field-test-definition-display-name": "Ett valfritt användarvänligt namn som visas i gränssnittet när det tekniska namnet behöver tydligare mellanrum, versaler eller formulering.",
+    "doc-field-test-definition-entity-type": "Den tillgångstyp som detta test gäller (t.ex. Tabell eller Kolumn). SQL-uttrycket och de datatyper som stöds bör matcha den.",
+    "doc-field-test-definition-name": "Ett unikt namn för att referera till definitionen i API:er, testfall och regelkonfiguration. Använd ett kortfattat namn som beskriver valideringen.",
+    "doc-field-test-definition-supported-data-types": "För OpenMetadata-inbyggda tester, de kolumndatatyper som detta test kan köras mot. Krävs när OpenMetadata är en vald plattform.",
+    "doc-field-test-definition-test-platforms": "Plattformarna som kan köra detta test (t.ex. OpenMetadata, dbt, Great Expectations). Välj alla som gäller.",
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "Hur många av de främsta dimensionsvärdena som visas separat i resultaten (1–50, standard 5). Övriga värden grupperas i kategorin ”Övriga”.",
@@ -4217,7 +4224,7 @@
     "unauthorized-user": "Obehörig användare! Kontrollera e-post eller lösenord",
     "unexpected-error": "Ett oväntat fel inträffade.",
     "unexpected-response": "Oväntat svar från servern.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "Fel vid uppdatering av {{entity}}!",
     "update-entity-success": "{{entity}} uppdaterades."
   }
 }

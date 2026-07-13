@@ -3137,6 +3137,13 @@
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
+    "doc-field-test-definition-data-quality-dimension": "بُعد کیفیت داده‌ای که این آزمون اندازه‌گیری می‌کند، مانند کامل بودن، دقت یا یکتایی.",
+    "doc-field-test-definition-description": "توضیح دهید که تعریف آزمون چه چیزی را اعتبارسنجی می‌کند، چه زمانی باید استفاده شود و هر رفتار مهمی که کاربران باید پیش از ساختن موارد آزمون از آن بدانند.",
+    "doc-field-test-definition-display-name": "یک نام اختیاری و کاربرپسند که وقتی نام فنی به فاصله‌گذاری، حروف بزرگ یا عبارت‌بندی واضح‌تری نیاز دارد در رابط کاربری نمایش داده می‌شود.",
+    "doc-field-test-definition-entity-type": "نوع دارایی‌ای که این آزمون بر آن اعمال می‌شود (مثلاً جدول یا ستون). عبارت SQL و انواع داده پشتیبانی‌شده باید با آن مطابقت داشته باشند.",
+    "doc-field-test-definition-name": "یک نام یکتا برای ارجاع به تعریف در APIها، موارد آزمون و پیکربندی قوانین. از نامی مختصر که اعتبارسنجی را توصیف می‌کند استفاده کنید.",
+    "doc-field-test-definition-supported-data-types": "برای آزمون‌های بومی OpenMetadata، انواع داده ستون‌هایی که این آزمون می‌تواند روی آن‌ها اجرا شود. زمانی که OpenMetadata پلتفرم انتخاب‌شده باشد الزامی است.",
+    "doc-field-test-definition-test-platforms": "پلتفرم‌هایی که می‌توانند این آزمون را اجرا کنند (مثلاً OpenMetadata، dbt، Great Expectations). همه موارد مرتبط را انتخاب کنید.",
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "تعداد مقادیر برتر بُعد که به‌صورت جداگانه در نتایج نمایش داده می‌شوند (۱ تا ۵۰، پیش‌فرض ۵). مقادیر باقی‌مانده در دستهٔ «سایر» گروه‌بندی می‌شوند.",
@@ -4217,7 +4224,7 @@
     "unauthorized-user": "کاربر غیرمجاز! لطفاً ایمیل یا رمز عبور را بررسی کنید.",
     "unexpected-error": "یک خطای غیرمنتظره رخ داده است.",
     "unexpected-response": "پاسخ غیرمنتظره‌ای از سرور.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "خطا در به‌روزرسانی {{entity}}!",
     "update-entity-success": "{{entity}} با موفقیت به‌روزرسانی شد."
   }
 }

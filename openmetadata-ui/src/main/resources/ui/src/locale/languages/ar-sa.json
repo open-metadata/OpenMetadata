@@ -3137,6 +3137,13 @@
     "doc-field-selected-table": "The table this test runs against. Search for it by name. You need edit access on the table to add a test.",
     "doc-field-tags": "Optionally add tags to classify and organize this test case. Search to find and apply existing tags.",
     "doc-field-test-case-name": "A unique name for this test case. It defaults from the table, column, and test type, but you can override it.",
+    "doc-field-test-definition-data-quality-dimension": "بُعد جودة البيانات الذي يقيسه هذا الاختبار، مثل الاكتمال أو الدقة أو التفرد.",
+    "doc-field-test-definition-description": "صِف ما الذي يتحقق منه تعريف الاختبار، ومتى ينبغي استخدامه، وأي سلوك مهم يجب أن يعرفه المستخدمون قبل إنشاء حالات اختبار منه.",
+    "doc-field-test-definition-display-name": "اسم اختياري سهل الاستخدام يظهر في الواجهة عندما يحتاج الاسم التقني إلى تباعد أو حالة أحرف أو صياغة أوضح.",
+    "doc-field-test-definition-entity-type": "نوع الأصل الذي ينطبق عليه هذا الاختبار (مثل جدول أو عمود). يجب أن يتطابق معه تعبير SQL وأنواع البيانات المدعومة.",
+    "doc-field-test-definition-name": "اسم فريد يُستخدم للإشارة إلى التعريف في واجهات برمجة التطبيقات وحالات الاختبار وتكوين القواعد. استخدم اسمًا موجزًا يصف عملية التحقق.",
+    "doc-field-test-definition-supported-data-types": "بالنسبة إلى اختبارات OpenMetadata الأصلية، أنواع بيانات الأعمدة التي يمكن تشغيل هذا الاختبار عليها. مطلوب عندما تكون OpenMetadata منصة مختارة.",
+    "doc-field-test-definition-test-platforms": "المنصات التي يمكنها تشغيل هذا الاختبار (مثل OpenMetadata وdbt وGreat Expectations). حدد كل ما ينطبق.",
     "doc-field-test-level": "Choose whether the test runs at the table, column, or dimension level. The fields below adapt to the level you pick.",
     "doc-field-test-type": "The kind of validation to run. Choose a table- or column-level test; the parameters below adapt to your selection.",
     "doc-field-top-dimensions": "عدد أهم قيم الأبعاد التي تُعرض بشكل منفرد في النتائج (من 1 إلى 50، والافتراضي 5). تُجمَّع القيم المتبقية في فئة \"أخرى\".",
@@ -4217,7 +4224,7 @@
     "unauthorized-user": "مستخدم غير مصرح به! يرجى التحقق من البريد الإلكتروني أو كلمة المرور",
     "unexpected-error": "حدث خطأ غير متوقع.",
     "unexpected-response": "استجابة غير متوقعة من الخادم.",
-    "update-entity-error": "Error while updating {{entity}}!",
+    "update-entity-error": "خطأ أثناء تحديث {{entity}}!",
     "update-entity-success": "تم تحديث {{entity}} بنجاح."
   }
 }
