@@ -26,6 +26,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -119,7 +120,7 @@ public class AIContextFinder {
     KnowledgeItem item = null;
     String fqn = asString(hit.get("fullyQualifiedName"));
     KnowledgeItem.Type kind = knowledgeType(asString(hit.get("entityType")));
-    if (!nullOrEmpty(fqn) && kind != null) {
+    if (!nullOrEmpty(fqn) && kind != null && isApprovedForContext(hit, kind)) {
       item =
           new KnowledgeItem()
               .withType(kind)
@@ -129,6 +130,18 @@ public class AIContextFinder {
               .withContent(content(hit));
     }
     return item;
+  }
+
+  /**
+   * Draft / in-review glossary terms are untrusted as business-rule context — mirror the Approved
+   * filter the asset-anchored path applies in {@link AIContextBuilder}. Other knowledge types keep
+   * their existing behavior (a missing status means no review workflow applies).
+   */
+  static boolean isApprovedForContext(Map<String, Object> hit, KnowledgeItem.Type kind) {
+    String status = asString(hit.get("entityStatus"));
+    return kind != KnowledgeItem.Type.GLOSSARY_TERM
+        || nullOrEmpty(status)
+        || EntityStatus.APPROVED.value().equals(status);
   }
 
   static KnowledgeItem.Type knowledgeType(String entityType) {

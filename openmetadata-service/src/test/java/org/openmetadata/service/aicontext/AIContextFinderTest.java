@@ -78,6 +78,37 @@ class AIContextFinderTest {
   }
 
   @Test
+  void toKnowledgeItem_filtersDraftGlossaryTerms() {
+    assertNull(
+        AIContextFinder.toKnowledgeItem(
+            Map.of(
+                "entityType", "glossaryTerm",
+                "fullyQualifiedName", "Business.Draft",
+                "name", "Draft",
+                "entityStatus", "Draft")),
+        "non-Approved glossary terms are untrusted as business-rule context");
+    assertEquals(
+        KnowledgeItem.Type.GLOSSARY_TERM,
+        AIContextFinder.toKnowledgeItem(
+                Map.of(
+                    "entityType", "glossaryTerm",
+                    "fullyQualifiedName", "Business.Live",
+                    "name", "Live",
+                    "entityStatus", "Approved"))
+            .getType());
+    assertEquals(
+        KnowledgeItem.Type.PAGE,
+        AIContextFinder.toKnowledgeItem(
+                Map.of(
+                    "entityType", "page",
+                    "fullyQualifiedName", "Article_1",
+                    "name", "Guide",
+                    "entityStatus", "Draft"))
+            .getType(),
+        "the Approved filter applies to glossary terms only");
+  }
+
+  @Test
   void renderFound_emitsKnowledgeAndCandidateAssets() {
     AIContextFinder.FoundContext found =
         new AIContextFinder.FoundContext(
