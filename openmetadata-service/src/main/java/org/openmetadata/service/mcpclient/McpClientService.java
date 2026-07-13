@@ -49,6 +49,8 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.McpConversationRepository;
 import org.openmetadata.service.jdbi3.McpMessageRepository;
+import org.openmetadata.service.security.ActivePersonaContext;
+import org.openmetadata.service.security.ImpersonationContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
@@ -561,7 +563,7 @@ public class McpClientService implements AutoCloseable {
     }
   }
 
-  private CatalogSecurityContext toCatalogSecurityContext(SecurityContext securityContext) {
+  static CatalogSecurityContext toCatalogSecurityContext(SecurityContext securityContext) {
     if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
       return catalogSecurityContext;
     }
@@ -569,7 +571,10 @@ public class McpClientService implements AutoCloseable {
         securityContext.getUserPrincipal(),
         securityContext.isSecure() ? "https" : "http",
         securityContext.getAuthenticationScheme(),
-        Collections.emptySet());
+        Collections.emptySet(),
+        false,
+        ImpersonationContext.getImpersonatedBy(),
+        ActivePersonaContext.getActivePersona());
   }
 
   private void requireChatEnabled() {

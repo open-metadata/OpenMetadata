@@ -401,9 +401,7 @@ public class PersonaRepository extends EntityRepository<Persona> {
           updatedUsers,
           false);
       if (assignmentsChanged) {
-        List<EntityReference> affectedUsers = new ArrayList<>(origUsers);
-        affectedUsers.addAll(updatedUsers);
-        deferReactOperation(() -> SubjectCache.invalidateUserContexts(affectedUsers));
+        deferReactOperation(() -> invalidateUserContexts(origUsers, updatedUsers));
       }
     }
 
