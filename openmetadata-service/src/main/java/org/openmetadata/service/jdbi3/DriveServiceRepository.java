@@ -205,10 +205,10 @@ public class DriveServiceRepository extends ServiceEntityRepository<DriveService
                 .withFullyQualifiedName(directoryFqn);
       }
 
-      // Update directory fields from CSV
+      // Update directory fields from CSV (header order: name, displayName, description, ...)
       directory
-          .withDescription(csvRecord.get(1))
-          .withDisplayName(csvRecord.get(2))
+          .withDisplayName(csvRecord.get(1))
+          .withDescription(csvRecord.get(2))
           .withOwners(getOwners(printer, csvRecord, 3))
           .withTags(
               getTagLabels(
