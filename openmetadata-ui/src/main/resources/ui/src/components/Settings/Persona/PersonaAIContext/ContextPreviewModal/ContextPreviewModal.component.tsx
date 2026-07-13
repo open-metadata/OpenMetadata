@@ -212,7 +212,7 @@ export const ContextPreviewModal = ({
     t('message.persona-context-token-estimate', {
       count: contextDocument?.tokensEst ?? 0,
       formattedCount: (contextDocument?.tokensEst ?? 0).toLocaleString(
-        i18n.language
+        i18n?.language
       ),
     }),
     t('message.persona-context-size', {

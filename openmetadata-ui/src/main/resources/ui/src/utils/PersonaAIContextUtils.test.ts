@@ -209,7 +209,10 @@ describe('PersonaAIContextUtils', () => {
         },
         {
           key: 'message.persona-context-history-budget',
-          values: { from: '120,000', to: '150,000' },
+          values: {
+            from: (120000).toLocaleString(),
+            to: (150000).toLocaleString(),
+          },
         },
       ]);
       expect(entries[2].changes).toEqual([
