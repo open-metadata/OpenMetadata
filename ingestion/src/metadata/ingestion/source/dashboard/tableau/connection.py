@@ -54,6 +54,7 @@ from metadata.ingestion.source.dashboard.tableau.client import (
     TableauOwnersNotFound,
     TableauWorkBookException,
 )
+from metadata.utils.constants import THREE_MIN
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
 
@@ -305,6 +306,10 @@ class TableauChecks:
 
 
 class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
+    # The workbook and Metadata API steps can be slow on large servers; keep the
+    # legacy 3-minute budget the imperative handler used, now applied per step.
+    step_timeout_seconds = THREE_MIN
+
     def _get_client(self) -> TableauClient:
         return get_connection(self.service_connection)
 
