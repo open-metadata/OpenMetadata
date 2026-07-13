@@ -32,7 +32,9 @@ from metadata.pii.conflict_resolver import ConflictResolver
 from metadata.pii.models import ScoredTag
 
 
-def _scored_tag(name: str, score: float, column_name_matched: bool, priority: int) -> ScoredTag:
+def _scored_tag(
+    name: str, score: float, column_name_matched: bool, priority: int
+) -> ScoredTag:
     return ScoredTagFactory.create(
         tag__tag_name=name,
         tag__tag_classification__fqn="General",
@@ -292,30 +294,48 @@ class TestConflictResolver:
 
     def test_select_winner_column_name_match_breaks_score_tie(self):
         """Siblings tie on score (shared content recognizer); the column-name match wins."""
-        datetime_tag = _scored_tag("DateTime", score=1.0, column_name_matched=True, priority=50)
-        birthdate_tag = _scored_tag("BirthDate", score=1.0, column_name_matched=False, priority=50)
+        datetime_tag = _scored_tag(
+            "DateTime", score=1.0, column_name_matched=True, priority=50
+        )
+        birthdate_tag = _scored_tag(
+            "BirthDate", score=1.0, column_name_matched=False, priority=50
+        )
 
         resolver = ConflictResolver()
-        winner = resolver._select_winner([birthdate_tag, datetime_tag], ConflictResolution.highest_confidence)
+        winner = resolver._select_winner(
+            [birthdate_tag, datetime_tag], ConflictResolution.highest_confidence
+        )
 
         assert winner.tag.name.root == "DateTime"
 
     def test_select_winner_column_name_match_outranks_priority(self):
         """A column-name match beats a higher static priority: per-column evidence wins over the prior."""
-        location_tag = _scored_tag("Location", score=0.85, column_name_matched=True, priority=50)
-        address_tag = _scored_tag("Address", score=0.85, column_name_matched=False, priority=80)
+        location_tag = _scored_tag(
+            "Location", score=0.85, column_name_matched=True, priority=50
+        )
+        address_tag = _scored_tag(
+            "Address", score=0.85, column_name_matched=False, priority=80
+        )
 
         resolver = ConflictResolver()
-        winner = resolver._select_winner([address_tag, location_tag], ConflictResolution.highest_confidence)
+        winner = resolver._select_winner(
+            [address_tag, location_tag], ConflictResolution.highest_confidence
+        )
 
         assert winner.tag.name.root == "Location"
 
     def test_select_winner_priority_breaks_tie_when_both_match(self):
         """When both siblings match the column name, higher priority (more specific) wins."""
-        datetime_tag = _scored_tag("DateTime", score=1.0, column_name_matched=True, priority=50)
-        birthdate_tag = _scored_tag("BirthDate", score=1.0, column_name_matched=True, priority=60)
+        datetime_tag = _scored_tag(
+            "DateTime", score=1.0, column_name_matched=True, priority=50
+        )
+        birthdate_tag = _scored_tag(
+            "BirthDate", score=1.0, column_name_matched=True, priority=60
+        )
 
         resolver = ConflictResolver()
-        winner = resolver._select_winner([datetime_tag, birthdate_tag], ConflictResolution.highest_confidence)
+        winner = resolver._select_winner(
+            [datetime_tag, birthdate_tag], ConflictResolution.highest_confidence
+        )
 
         assert winner.tag.name.root == "BirthDate"
