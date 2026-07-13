@@ -590,7 +590,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   const footerEl = (
-    <Box align='center' className="tw:mt-6" justify='between'>
+    <Box align="center" className="tw:mt-6" justify="between">
       <Tabs
         className="tw:w-auto"
         selectedKey={activeTab}

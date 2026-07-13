@@ -53,7 +53,7 @@ export const WidgetPlusButton = ({
         <ButtonUtility
           className="tw:p-1"
           color="tertiary"
-          icon={<PlusIcon height={15} width={15}/>}
+          icon={<PlusIcon height={15} width={15} />}
           size="xs"
           onClick={onClick}
           {...props}
