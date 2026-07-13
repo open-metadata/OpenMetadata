@@ -385,7 +385,6 @@ export const PersonaDetailsPage = () => {
               entityPermission.EditAll || entityPermission.EditDescription
             }
             showCommentsIcon={false}
-            showHeaderTitle={false}
             onDescriptionUpdate={async (description) => {
               await handlePersonaUpdate({ description });
             }}
