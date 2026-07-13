@@ -1340,6 +1340,37 @@ class TestKafkaConnectTopicRoutingTransforms(TestCase):
 
         assert [t.name for t in topics] == ["prod.global.sales.orderCreated_v1"]
 
+    def test_apply_regex_router_named_group(self):
+        """Java named groups (?<name>...) with ${name} replacement convert and apply."""
+        from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+            apply_topic_routing_transforms,
+        )
+
+        config = {
+            "transforms": "route",
+            "transforms.route.type": "org.apache.kafka.connect.transforms.RegexRouter",
+            "transforms.route.regex": r"outbox\.event\.(?<agg>.*)",
+            "transforms.route.replacement": "prod.global.${agg}_v1",
+        }
+
+        assert apply_topic_routing_transforms("outbox.event.orderCreated", config) == "prod.global.orderCreated_v1"
+
+    def test_outbox_bare_replacement_is_not_catch_all(self):
+        """A replacement with no static part must NOT match every topic in the service."""
+        config = {
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "${routedByValue}",
+        }
+        source = self._make_source()
+        source.metadata.list_all_entities.return_value = [
+            self._topic("some.unrelated.topic"),
+            self._topic("another.domain.topic"),
+        ]
+
+        assert source._build_outbox_topic_pattern(config) is None
+        assert source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka") == []
+
 
 class TestKafkaConnectTransformLineageEdges(TestCase):
     """
@@ -1470,6 +1501,25 @@ class TestKafkaConnectTransformLineageEdges(TestCase):
         for edge in edges:
             assert edge.edge.fromEntity.id.root == table_entity.id
             assert edge.edge.toEntity.type == "topic"
+
+    def test_multi_table_outbox_connector_does_not_fan_out(self):
+        """
+        A connector capturing several tables cannot attribute routed topics to a
+        specific table, so it must NOT fan the outbox topics out to every table.
+        """
+        config = {
+            "connector.class": "io.debezium.connector.postgresql.PostgresConnector",
+            "topic.prefix": "ecommerce.sales",
+            "table.include.list": "prod.sales.outbox,prod.sales.orders",
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "prod.global.sales.${routedByValue}_v1",
+        }
+        routed = ["prod.global.sales.orderCreated_v1"]
+
+        _table_entity, edges = self._run_lineage(config, routed)
+
+        assert edges == []
 
     def test_regex_router_yields_lineage_edge(self):
         """A RegexRouter-renamed CDC topic must still match its table and emit an edge."""

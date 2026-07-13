@@ -1335,11 +1335,17 @@ class KafkaconnectSource(PipelineServiceSource):
             routed_value_token = "routedByValuePlaceholderToken"
             templated = re.sub(r"\$\{[^}]*\}", routed_value_token, template)
             templated = apply_topic_routing_transforms(templated, connector_config)
-            escaped = re.escape(templated).replace(routed_value_token, ".*")
-            try:
-                pattern = re.compile(f"^{escaped}$")
-            except re.error as exc:
-                logger.warning(f"Unable to build outbox topic pattern from '{template}': {exc}")
+            if not templated.replace(routed_value_token, ""):
+                logger.warning(
+                    f"Outbox route.topic.replacement '{template}' has no static part; refusing to build a "
+                    "catch-all pattern that would link the outbox table to every topic."
+                )
+            else:
+                escaped = re.escape(templated).replace(routed_value_token, ".*")
+                try:
+                    pattern = re.compile(f"^{escaped}$")
+                except re.error as exc:
+                    logger.warning(f"Unable to build outbox topic pattern from '{template}': {exc}")
 
         return pattern
 
@@ -1387,10 +1393,18 @@ class KafkaconnectSource(PipelineServiceSource):
             )
         return self._topics_cache[messaging_service_name]
 
-    def _is_outbox_fanout(self, pipeline_details, dataset_entity, topic_entities_map) -> bool:
-        """Return True when an outbox EventRouter connector should fan out to every resolved topic."""
+    def _is_outbox_fanout(self, pipeline_details, dataset_entity, topic_entities_map, single_dataset: bool) -> bool:
+        """
+        Return True when an outbox EventRouter connector should fan the source
+        table out to every resolved topic.
+
+        Restricted to single-table connectors: the routed topics cannot be
+        attributed to a specific table, so with several captured tables we cannot
+        tell which one is the outbox and must not create speculative lineage.
+        """
         return (
-            self._has_outbox_event_router(pipeline_details.config)
+            single_dataset
+            and self._has_outbox_event_router(pipeline_details.config)
             and dataset_entity is not None
             and bool(topic_entities_map)
         )
@@ -1652,7 +1666,9 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 # Outbox EventRouter: one source table fans out to many routed
                 # topics, so link the table to every pattern-resolved topic.
-                if self._is_outbox_fanout(pipeline_details, current_dataset_entity, topic_entities_map):
+                if self._is_outbox_fanout(
+                    pipeline_details, current_dataset_entity, topic_entities_map, len(datasets_to_process) == 1
+                ):
                     yield from self._iter_outbox_lineage(
                         dataset_entity=current_dataset_entity,
                         topic_entities_map=topic_entities_map,

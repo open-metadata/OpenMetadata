@@ -106,9 +106,22 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
     return {}
 
 
-# Java-style replacement backreference ($1) used by Kafka Connect's RegexRouter,
-# converted to Python's re named-group form (\g<1>) so "$12" is unambiguous.
-JAVA_BACKREF_PATTERN = re.compile(r"\$(\d+)")
+# Kafka Connect's RegexRouter uses Java replacement backreferences: numbered
+# ($1 / ${1}) and named (${name}). Both convert to Python's re \g<...> form,
+# which also disambiguates "$12" from "$1" followed by "2".
+JAVA_NAMED_BACKREF_PATTERN = re.compile(r"\$\{(\w+)\}")
+JAVA_NUMBERED_BACKREF_PATTERN = re.compile(r"\$(\d+)")
+
+
+# Java named capture group (?<name>...) -> Python (?P<name>...); the negative
+# lookahead keeps lookbehind (?<= / (?<! untouched.
+JAVA_NAMED_GROUP_PATTERN = re.compile(r"\(\?<(?![=!])(\w+)>")
+
+
+def _to_python_replacement(replacement: str) -> str:
+    """Convert Java RegexRouter backreferences ($1, ${1}, ${name}) to Python \\g<...>."""
+    replacement = JAVA_NAMED_BACKREF_PATTERN.sub(r"\\g<\1>", replacement)
+    return JAVA_NUMBERED_BACKREF_PATTERN.sub(r"\\g<\1>", replacement)
 
 
 def _apply_regex_router(topic_name: str, connector_config: dict, transform: str) -> str:
@@ -118,8 +131,8 @@ def _apply_regex_router(topic_name: str, connector_config: dict, transform: str)
     result = topic_name
     if regex:
         try:
-            python_replacement = JAVA_BACKREF_PATTERN.sub(r"\\g<\1>", replacement)
-            result = re.sub(regex, python_replacement, topic_name)
+            python_regex = JAVA_NAMED_GROUP_PATTERN.sub(r"(?P<\1>", regex)
+            result = re.sub(python_regex, _to_python_replacement(replacement), topic_name)
         except re.error as exc:
             logger.warning(f"Invalid RegexRouter config for transform '{transform}': {exc}")
     return result
