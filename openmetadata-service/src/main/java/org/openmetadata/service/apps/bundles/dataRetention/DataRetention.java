@@ -4,6 +4,7 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -364,9 +365,9 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphan ingestion pipelines", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
       if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+        failureDetails = new IndexingError();
+        failureDetails.setMessage(ex.getMessage());
+        failureDetails.setStackTrace(ExceptionUtils.getStackTrace(ex));
       }
     }
   }
