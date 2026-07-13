@@ -3,9 +3,8 @@ package org.openmetadata.service.apps.bundles.dataContracts;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_STATS;
 
-import java.util.HashMap;
+import java.util.ArrayList;
 import java.util.List;
-import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
 import org.openmetadata.schema.EntityInterface;
@@ -14,6 +13,8 @@ import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.data.DataContract;
 import org.openmetadata.schema.entity.datacontract.DataContractResult;
 import org.openmetadata.schema.entity.domains.DataProduct;
+import org.openmetadata.schema.system.EntityError;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.type.EntityReference;
@@ -36,7 +37,8 @@ public class DataContractValidationApp extends AbstractNativeApplication {
 
   private final Stats stats = new Stats();
   private JobExecutionContext jobExecutionContext;
-  private final Map<String, Object> failureDetails = new HashMap<>();
+  private final IndexingError failureDetails =
+      new IndexingError().withFailedEntities(new ArrayList<>());
 
   public DataContractValidationApp(CollectionDAO collectionDAO, SearchRepository searchRepository) {
     super(collectionDAO, searchRepository);
@@ -76,8 +78,10 @@ public class DataContractValidationApp extends AbstractNativeApplication {
       updateStatsRecord(AppRunRecord.Status.COMPLETED);
     } catch (Exception e) {
       LOG.error("Error running DataContractValidationApp", e);
-      failureDetails.put("message", e.getMessage());
-      failureDetails.put("stackTrace", ExceptionUtils.getStackTrace(e));
+      failureDetails
+          .withErrorSource(IndexingError.ErrorSource.JOB)
+          .withMessage(e.getMessage())
+          .withStackTrace(ExceptionUtils.getStackTrace(e));
       updateStatsRecord(AppRunRecord.Status.FAILED);
     }
   }
@@ -120,7 +124,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
                   "Failed to validate data contract %s: %s",
                   dataContract.getFullyQualifiedName(), e.getMessage());
           LOG.error(msg, e);
-          failureDetails.put(dataContract.getFullyQualifiedName(), msg);
+          recordEntityFailure(dataContract.getFullyQualifiedName(), msg);
           totalErrors++;
         }
       }
@@ -230,7 +234,7 @@ public class DataContractValidationApp extends AbstractNativeApplication {
                         "Failed to process asset %s from Data Product %s: %s",
                         assetRef.getName(), dataProduct.getName(), e.getMessage());
                 LOG.error(msg, e);
-                failureDetails.put(assetRef.getFullyQualifiedName(), msg);
+                recordEntityFailure(assetRef.getFullyQualifiedName(), msg);
                 totalErrors++;
               }
             }
@@ -244,13 +248,13 @@ public class DataContractValidationApp extends AbstractNativeApplication {
               String.format(
                   "Failed to process Data Product %s: %s", dataProduct.getName(), e.getMessage());
           LOG.error(msg, e);
-          failureDetails.put(dataProduct.getFullyQualifiedName(), msg);
+          recordEntityFailure(dataProduct.getFullyQualifiedName(), msg);
           totalErrors++;
         }
       }
     } catch (Exception e) {
       LOG.error("Error processing Data Products: {}", e.getMessage(), e);
-      failureDetails.put("dataProductProcessing", e.getMessage());
+      recordEntityFailure("dataProductProcessing", e.getMessage());
     }
 
     return new int[] {totalProcessed, totalErrors};
@@ -265,13 +269,22 @@ public class DataContractValidationApp extends AbstractNativeApplication {
     stats.setJobStats(jobStats);
   }
 
+  private void recordEntityFailure(String entity, String message) {
+    failureDetails
+        .getFailedEntities()
+        .add(new EntityError().withEntity(entity).withMessage(message));
+  }
+
+  private boolean hasFailures() {
+    return failureDetails.getMessage() != null || !nullOrEmpty(failureDetails.getFailedEntities());
+  }
+
   private void updateStatsRecord(AppRunRecord.Status status) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
     appRecord.setStatus(status);
 
-    if (!nullOrEmpty(failureDetails)) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", failureDetails));
+    if (hasFailures()) {
+      appRecord.setFailureContext(new FailureContext().withFailure(failureDetails));
       appRecord.setStatus(AppRunRecord.Status.FAILED);
     }
 
