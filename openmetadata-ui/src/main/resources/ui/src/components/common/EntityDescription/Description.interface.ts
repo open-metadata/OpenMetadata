@@ -29,6 +29,7 @@ export interface DescriptionProps {
   onEntityFieldSelect?: (value: string) => void;
   wrapInCard?: boolean;
   showActions?: boolean;
+  showHeaderTitle?: boolean;
   showCommentsIcon?: boolean;
   reduceDescription?: boolean;
   className?: string;

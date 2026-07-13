@@ -13,6 +13,7 @@
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
 import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   DEFAULT_PERSONA_CONTEXT_DEFINITION,
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
@@ -30,6 +31,7 @@ import {
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
+import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
 
 export const normalizePersonaContextDefinition = (
@@ -113,6 +115,26 @@ export const getRuleFilterTree = (
   } catch {
     return undefined;
   }
+};
+
+export const getRuleExplorePath = (
+  entityType: string,
+  filterJsonTree?: string,
+  queryFilter?: string
+): string => {
+  const tree = getRuleFilterTree(filterJsonTree, queryFilter);
+  const searchIndex = searchClassBase.getEntityTypeSearchIndexMapping()[
+    entityType
+  ] as ExploreSearchIndex | undefined;
+  const tab = searchIndex
+    ? searchClassBase.getTabsInfo()[searchIndex]?.path
+    : undefined;
+
+  return getExplorePath({
+    extraParameters: tree ? { queryFilter: JSON.stringify(tree) } : undefined,
+    isPersistFilters: false,
+    tab,
+  });
 };
 
 export const getRuleConditionCount = (
@@ -282,7 +304,8 @@ const diffContextRules = (
           : 'message.persona-context-history-rule-not-always',
         values: { name: rule.name },
       });
-    } else if (
+    }
+    if (
       !isEqual(
         omit(previousRule, ['alwaysInContext']),
         omit(rule, ['alwaysInContext'])

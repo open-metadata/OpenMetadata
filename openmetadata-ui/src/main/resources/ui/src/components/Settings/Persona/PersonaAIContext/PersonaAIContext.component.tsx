@@ -90,6 +90,7 @@ export const PersonaAIContext = ({
   const [editorOpen, setEditorOpen] = useState(false);
   const [editingRuleId, setEditingRuleId] = useState<string>();
   const [budgetDraft, setBudgetDraft] = useState<string>();
+  const [ttlDraft, setTtlDraft] = useState<string>();
   // Guards overlapping optimistic mutations: only the latest one is allowed to
   // apply its server response or roll back, so a slow request can't clobber a
   // newer one.
@@ -330,7 +331,9 @@ export const PersonaAIContext = ({
       <Card
         className={`tw:mb-6 tw:rounded-[10px] tw:px-5 tw:py-4.5 tw:shadow-xs ${
           hasRules ? '' : 'tw:opacity-60'
-        }`}>
+        }`}
+        data-disabled={settingsDisabled}
+        data-testid="persona-ai-context-settings-card">
         <Box align="center" gap={7} wrap="wrap">
           <Box align="center" gap={3}>
             <Typography
@@ -403,11 +406,16 @@ export const PersonaAIContext = ({
                 inputDataTestId="persona-context-cache-ttl"
                 inputMode="numeric"
                 isDisabled={settingsDisabled}
-                value={String(cacheTtlMinutes)}
+                value={ttlDraft ?? String(cacheTtlMinutes)}
                 wrapperClassName="tw:w-16"
-                onBlur={() => persistSettings(definition)}
+                onBlur={() => {
+                  setTtlDraft(undefined);
+                  persistSettings(definition);
+                }}
                 onChange={(value) => {
-                  const parsed = Number(value.replace(/[^0-9]/g, ''));
+                  const digits = value.replace(/[^0-9]/g, '');
+                  setTtlDraft(digits);
+                  const parsed = Number(digits);
                   setDefinition((current) => ({
                     ...current,
                     cacheTtlMinutes:

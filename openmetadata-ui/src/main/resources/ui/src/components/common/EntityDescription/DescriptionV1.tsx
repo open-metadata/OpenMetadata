@@ -15,6 +15,8 @@ import { Space, Typography } from 'antd';
 import classNames from 'classnames';
 import { lazy, useCallback, useMemo, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as EditIcon } from '../../../assets/svg/edit-new.svg';
+import { DE_ACTIVE_COLOR } from '../../../constants/constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { useFqn } from '../../../hooks/useFqn';
@@ -66,6 +68,7 @@ const DescriptionV1 = ({
   entityType,
   wrapInCard = false,
   showActions = true,
+  showHeaderTitle = true,
   showCommentsIcon = true,
   reduceDescription,
   showSuggestions = false,
@@ -248,10 +251,14 @@ const DescriptionV1 = ({
           }
         )}>
         <div className="description-v1-title-row d-flex items-center gap-2">
-          <Text
-            className={classNames('description-v1-title text-sm font-medium')}>
-            {t('label.description')}
-          </Text>
+          {showHeaderTitle && (
+            <Text
+              className={classNames(
+                'description-v1-title text-sm font-medium'
+              )}>
+              {t('label.description')}
+            </Text>
+          )}
           <DescriptionSourceBadge
             changeSummaryEntry={descriptionChangeSummary}
             showAcceptedBy={false}
@@ -264,6 +271,7 @@ const DescriptionV1 = ({
     );
   }, [
     showActions,
+    showHeaderTitle,
     actionButtons,
     suggestions,
     showSuggestions,
@@ -281,9 +289,30 @@ const DescriptionV1 = ({
         className={classNames('schema-description d-flex', className)}
         direction="vertical"
         size={16}>
-        {wrapInCard ? null : header}
+        {wrapInCard || !showHeaderTitle ? null : header}
         <div>
-          {descriptionContent}
+          <div
+            className={classNames({
+              'd-flex items-center gap-2': !showHeaderTitle,
+            })}>
+            {descriptionContent}
+            {!showHeaderTitle &&
+              showActions &&
+              !isVersionView &&
+              !isReadOnly &&
+              hasEditAccess && (
+                <EditIconButton
+                  newLook
+                  data-testid="edit-description"
+                  icon={<EditIcon color={DE_ACTIVE_COLOR} width="12px" />}
+                  size="small"
+                  title={t('label.edit-entity', {
+                    entity: t('label.description'),
+                  })}
+                  onClick={handleEditDescription}
+                />
+              )}
+          </div>
           {!suggestionData && shouldShowDescriptionMetadata && (
             <div className="description-v1-metadata">
               <DescriptionSourceBadge

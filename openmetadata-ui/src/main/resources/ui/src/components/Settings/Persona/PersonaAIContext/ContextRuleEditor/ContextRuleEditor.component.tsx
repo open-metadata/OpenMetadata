@@ -57,9 +57,9 @@ import {
 import {
   getDefaultPersonaContextSections,
   getPersonaContextSections,
+  getRuleExplorePath,
   isKnowledgeContextRule,
 } from '../../../../../utils/PersonaAIContextUtils';
-import { getExplorePath } from '../../../../../utils/RouterUtils';
 import { useFormDrawerWithHook } from '../../../../common/atoms/drawer/useFormDrawer';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
@@ -162,6 +162,7 @@ export const ContextRuleEditor = ({
   const [preview, setPreview] = useState<PersonaContextRulePreview>();
   const [previewError, setPreviewError] = useState(false);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [maxAssetsDraft, setMaxAssetsDraft] = useState<string>();
   const isKnowledgeRule = isKnowledgeContextRule({
     ...getDefaultRule(rule),
     entityType,
@@ -253,6 +254,7 @@ export const ContextRuleEditor = ({
   const handleDismiss = useCallback(() => {
     previewRequestRef.current++;
     setPreview(undefined);
+    setMaxAssetsDraft(undefined);
     form.reset(getDefaultRule(rule));
     onClose();
   }, [form, onClose, rule]);
@@ -411,12 +413,7 @@ export const ContextRuleEditor = ({
             <Button
               className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
               color="link-color"
-              href={getExplorePath({
-                extraParameters: filterJsonTree
-                  ? { queryFilter: filterJsonTree }
-                  : undefined,
-                isPersistFilters: false,
-              })}
+              href={getRuleExplorePath(entityType, filterJsonTree, queryFilter)}
               iconTrailing={ViewInExploreIcon}
               size="sm"
               target="_blank">
@@ -573,17 +570,28 @@ export const ContextRuleEditor = ({
       <Controller
         control={form.control}
         name="maxAssets"
-        render={({ field }) => (
-          <Field isRequired label={t('label.max-assets')}>
+        render={({ field, fieldState }) => (
+          <Field
+            isRequired
+            error={fieldState.error?.message}
+            label={t('label.max-assets')}>
             <Input
               aria-label={t('label.max-assets')}
               inputDataTestId="context-rule-max-assets"
               inputMode="numeric"
-              value={String(field.value ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS)}
+              value={
+                maxAssetsDraft ??
+                (field.value == null ? '' : String(field.value))
+              }
               wrapperClassName="tw:w-40"
-              onBlur={field.onBlur}
+              onBlur={() => {
+                setMaxAssetsDraft(undefined);
+                field.onBlur();
+              }}
               onChange={(value) => {
-                const parsed = Number(value.replace(/[^0-9]/g, ''));
+                const digits = value.replace(/[^0-9]/g, '');
+                setMaxAssetsDraft(digits);
+                const parsed = Number(digits);
                 field.onChange(parsed ? Math.min(parsed, 1000) : undefined);
               }}
             />
@@ -592,7 +600,9 @@ export const ContextRuleEditor = ({
             </HintText>
           </Field>
         )}
-        rules={{ max: 1000, min: 1 }}
+        rules={{
+          min: 1,
+        }}
       />
     </HookForm>
   );
@@ -632,6 +642,7 @@ export const ContextRuleEditor = ({
       const ruleId = activeRuleId ?? 'new';
       if (!isOpen || lastResetRuleIdRef.current !== ruleId) {
         form.reset(getDefaultRule(ruleForResetRef.current));
+        setMaxAssetsDraft(undefined);
         lastResetRuleIdRef.current = ruleId;
       }
       openDrawer();

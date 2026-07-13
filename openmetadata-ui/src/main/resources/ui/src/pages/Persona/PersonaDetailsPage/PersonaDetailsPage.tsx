@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Tabs } from '@openmetadata/ui-core-components';
+import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import { User03 } from '@untitledui/icons';
 import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
@@ -22,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
-import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
@@ -352,9 +351,7 @@ export const PersonaDetailsPage = () => {
               <EntityHeaderTitle
                 className="m-t-xs"
                 displayName={personaDetails.displayName}
-                icon={
-                  <Icon component={IconPersona} style={{ fontSize: '36px' }} />
-                }
+                icon={<FeaturedIcon color="brand" icon={User03} size="lg" />}
                 name={personaDetails?.name}
                 serviceName={personaDetails.name}
               />
@@ -388,6 +385,7 @@ export const PersonaDetailsPage = () => {
               entityPermission.EditAll || entityPermission.EditDescription
             }
             showCommentsIcon={false}
+            showHeaderTitle={false}
             onDescriptionUpdate={async (description) => {
               await handlePersonaUpdate({ description });
             }}
