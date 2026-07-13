@@ -157,7 +157,8 @@
     "postcss": "8.5.10",
     "rollup": "4.59.0",
     "uuid": "^14.0.0",
-    "esbuild": "^0.28.1"
+    "esbuild": "^0.28.1",
+    "ws": "8.21.0"
   },
   "publishConfig": {
     "access": "restricted",
