@@ -14,7 +14,6 @@
 import { Card, Skeleton } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
@@ -62,23 +61,11 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
     <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
-  const leadingEl = (
-    <div className="tw:w-auto tw:shrink-0 tw:bg-tertiary tw:rounded-xl tw:flex tw:items-center tw:p-2">
-      <FileIcon
-        className="tw:text-quaternary"
-        height={40}
-        style={{ verticalAlign: 'middle', flexShrink: 0 }}
-        width={40}
-      />
-    </div>
-  );
-
   return (
     <div data-testid="article-version-header">
       {!breadcrumbInsideCard && breadcrumbEl}
       <HeaderShell
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
-        leading={leadingEl}
         padding="comfortable"
         title={getKnowledgePageName(knowledgePage, t)}
         variant={isEmbedded ? 'gradient' : 'flat'}

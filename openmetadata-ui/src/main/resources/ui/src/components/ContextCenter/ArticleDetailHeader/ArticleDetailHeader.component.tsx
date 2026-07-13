@@ -321,7 +321,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
   const metaEl = (
     <div className="tw:flex tw:items-center tw:gap-3 tw:flex-wrap tw:text-sm">
-      <div className="tw:flex tw:items-center tw:gap-1.5">
+      <div className="tw:flex tw:items-center tw:gap-1">
         <Tooltip title={t('label.domain')}>
           <TooltipTrigger className="tw:leading-0">
             <GlobeIcon
@@ -367,7 +367,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
 
       <Dot className="tw:text-fg-quaternary" size="xs" />
 
-      <div className="tw:flex tw:items-center tw:gap-1.5">
+      <div className="tw:flex tw:items-center tw:gap-1">
         <Tooltip title={t('label.owner-plural')}>
           <TooltipTrigger className="tw:leading-0">
             <UserIcon
@@ -590,7 +590,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
   );
 
   const footerEl = (
-    <div className="tw:flex tw:items-center tw:justify-between">
+    <Box align='center' className="tw:mt-6" justify='between'>
       <Tabs
         className="tw:w-auto"
         selectedKey={activeTab}
@@ -633,7 +633,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
           </TooltipTrigger>
         </Tooltip>
       )}
-    </div>
+    </Box>
   );
 
   return (
