@@ -15,7 +15,7 @@ import { ReactNode } from 'react';
 import { CreateTestCase } from '../../../generated/api/tests/createTestCase';
 import { Table } from '../../../generated/entity/data/table';
 import { IngestionPipeline } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { TagLabel, TestCase } from '../../../generated/tests/testCase';
+import { TagLabel } from '../../../generated/tests/testCase';
 import { TestDefinition } from '../../../generated/tests/testDefinition';
 import { TestSuite } from '../../../generated/tests/testSuite';
 import { ListTestCaseParamsBySearch } from '../../../rest/testAPI';
@@ -74,14 +74,6 @@ export type SelectTestSuiteType = {
 export interface ParameterFormProps {
   definition: TestDefinition;
   table?: Table;
-}
-
-export interface EditTestCaseModalProps {
-  visible: boolean;
-  testCase: TestCase;
-  showOnlyParameter?: boolean;
-  onCancel: () => void;
-  onUpdate?: (testCase: TestCase) => void;
 }
 
 export type TestCaseFormType = {
