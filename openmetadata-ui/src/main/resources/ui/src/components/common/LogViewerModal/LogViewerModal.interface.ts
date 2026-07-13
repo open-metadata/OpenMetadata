@@ -32,6 +32,13 @@ export interface LogViewerModalBaseProps {
   totalLines?: number;
   runId?: string;
   lastRun?: string;
+  // Infinite-scroll pagination: the caller owns fetching/paging and appends to
+  // `logs`; the modal invokes `onLoadMore` when the viewport nears the bottom.
+  onLoadMore?: () => void;
+  hasMore?: boolean;
+  loadingMore?: boolean;
+  // Shows a loader in place of the download button while a download is running.
+  downloading?: boolean;
 }
 
 export type LogViewerModalProps = LogViewerModalBaseProps &

@@ -18,11 +18,14 @@ import { mockPipelineActionsProps } from '../../../../../../mocks/IngestionListT
 import { DEFAULT_ENTITY_PERMISSION } from '../../../../../../utils/PermissionsUtils';
 import PipelineActions from './PipelineActions';
 
-const mockNavigate = jest.fn();
+const mockOpenLogs = jest.fn();
 
-jest.mock('react-router-dom', () => ({
-  useNavigate: jest.fn().mockImplementation(() => mockNavigate),
-}));
+jest.mock(
+  '../../../../../../context/LogsViewerModalProvider/LogsViewerModalProvider',
+  () => ({
+    useLogsViewerModal: () => ({ openLogs: mockOpenLogs }),
+  })
+);
 
 jest.mock('./PipelineActionsDropdown', () =>
   jest.fn().mockImplementation(() => <div>PipelineActionsDropdown</div>)
@@ -137,7 +140,7 @@ describe('PipelineAction', () => {
     expect(screen.getByText('label.pause')).toBeInTheDocument();
   });
 
-  it('should redirect to logs page when clicked on logs button', async () => {
+  it('should open the logs modal when clicked on logs button', async () => {
     await act(async () => {
       render(<PipelineActions {...mockPipelineActionsProps} />, {
         wrapper: MemoryRouter,
@@ -148,9 +151,10 @@ describe('PipelineAction', () => {
 
     fireEvent.click(logsButton);
 
-    expect(mockNavigate).toHaveBeenCalledWith(
-      '/searchServices/OpenMetadata.OpenMetadata_elasticSearchReIndex/logs'
-    );
+    expect(mockOpenLogs).toHaveBeenCalledWith({
+      logEntityType: 'searchServices',
+      fqn: 'OpenMetadata.OpenMetadata_elasticSearchReIndex',
+    });
   });
 
   it('should call handleEnableDisableIngestion when clicked on pause or resume click', async () => {

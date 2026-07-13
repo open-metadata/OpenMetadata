@@ -93,56 +93,34 @@ test.describe(
             r.url().includes('/api/v1/services/ingestionPipelines') &&
             r.status() === 200
         );
-        const logsLastResponse = page.waitForResponse((r) => {
-          const url = r.url();
-          return (
-            url.includes('/api/v1/services/ingestionPipelines/logs/') &&
-            url.includes('/last') &&
-            r.status() === 200
-          );
-        });
         await expect(page.getByTestId('logs-button').first()).toBeVisible();
         await page.getByTestId('logs-button').first().click();
         await pipelinesResponse;
-        await logsLastResponse;
       });
 
-      await test.step('Wait for logs page to load and verify all key elements', async () => {
-        await page.waitForURL(/\/testSuite\/.*\/logs/);
+      await test.step('The logs viewer modal opens in place with its toolbar', async () => {
+        await expect(page.getByTestId('log-viewer-title')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-fullscreen')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-jump-to-end')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-close')).toBeVisible();
 
-        await waitForAllLoadersToDisappear(page);
-
-        await expect(page.getByTestId('skeleton-container')).not.toBeVisible();
-
-        await expect(page.getByTestId('breadcrumb')).toBeVisible();
-        await expect(page.getByTestId('summary-card')).toBeVisible();
-
-        const hasLogContent = await page.getByTestId('lazy-log').isVisible();
-        const hasNoLogsEmptyState = await page
-          .getByTestId('no-data-placeholder')
-          .filter({
-            has: page.getByText(/no .* log|logs.*available/i),
-          })
-          .isVisible();
-
-        expect(hasLogContent || hasNoLogsEmptyState).toBeTruthy();
+        // The URL must NOT change — the logs viewer is now an in-place modal.
+        expect(page.url()).not.toContain('/logs');
       });
 
-      await test.step('Verify action buttons when logs exist, or skip if empty state', async () => {
-        const noLogsAvailable = page.getByText(/No logs are available/i);
+      await test.step('Toggling fullscreen expands and restores the modal', async () => {
+        const fullScreen = page.getByTestId('log-viewer-fullscreen');
 
-        // If no logs are available, skip the test
-        if (await noLogsAvailable.isVisible()) {
-          return;
-        }
+        await expect(fullScreen).toHaveAttribute('aria-pressed', 'false');
+        await fullScreen.click();
+        await expect(fullScreen).toHaveAttribute('aria-pressed', 'true');
+        await fullScreen.click();
+        await expect(fullScreen).toHaveAttribute('aria-pressed', 'false');
+      });
 
-        const jumpToEnd = page.getByTestId('jump-to-end-button');
-        const downloadBtn = page.getByTestId('download');
-        const copyToClipboardBtn = page.getByTestId('copy-secret');
-
-        await expect(jumpToEnd).toBeEnabled();
-        await expect(downloadBtn).toBeVisible();
-        await expect(copyToClipboardBtn).toBeVisible();
+      await test.step('Closing the modal returns to the pipeline tab', async () => {
+        await page.getByTestId('log-viewer-close').click();
+        await expect(page.getByTestId('log-viewer-title')).not.toBeVisible();
       });
     });
   }

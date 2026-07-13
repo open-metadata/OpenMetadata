@@ -24,13 +24,13 @@ import {
   useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
-import { useNavigate } from 'react-router-dom';
 import {
   NO_DATA_PLACEHOLDER,
   SOCKET_EVENTS,
   STATUS_LABEL,
 } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
+import { useLogsViewerModal } from '../../../../context/LogsViewerModalProvider/LogsViewerModalProvider';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { AppType } from '../../../../generated/entity/applications/app';
@@ -42,7 +42,11 @@ import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
 import { getApplicationRuns } from '../../../../rest/applicationAPI';
-import { getStatusTypeForApplication } from '../../../../utils/ApplicationUtils';
+import {
+  getAppRunFailureLogs,
+  getStatusTypeForApplication,
+  hasAppRunStats,
+} from '../../../../utils/ApplicationUtils';
 import {
   formatDateTime,
   formatDurationToHHMMSS,
@@ -50,10 +54,10 @@ import {
   getIntervalInMilliseconds,
 } from '../../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
-import { getLogsViewerPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FormBuilder from '../../../common/FormBuilder/FormBuilder';
+import LogViewerModal from '../../../common/LogViewerModal/LogViewerModal.component';
 import { PagingHandlerParams } from '../../../common/NextPrevious/NextPrevious.interface';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
 import { StatusType } from '../../../common/StatusBadge/StatusBadge.interface';
@@ -79,12 +83,15 @@ const AppRunsHistory = forwardRef(
   ) => {
     const { socket } = useWebSocketConnector();
     const { t } = useTranslation();
+    const { openLogs } = useLogsViewerModal();
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [appRunsHistoryData, setAppRunsHistoryData] = useState<
       AppRunRecordWithId[]
     >([]);
     const [expandedRowKeys, setExpandedRowKeys] = useState<string[]>([]);
+    const [logsModalRecord, setLogsModalRecord] =
+      useState<AppRunRecordWithId | null>(null);
     const [isStopModalOpen, setIsStopModalOpen] = useState<boolean>(false);
     const [selectedRunId, setSelectedRunId] = useState<string | undefined>(
       undefined
@@ -111,8 +118,6 @@ const AppRunsHistory = forwardRef(
       showPagination: paginationVisible,
     } = usePaging();
 
-    const navigate = useNavigate();
-
     const isExternalApp = useMemo(
       () => appData?.appType === AppType.External,
       [appData]
@@ -138,18 +143,17 @@ const AppRunsHistory = forwardRef(
       (key?: string, record?: AppRunRecordWithId) => {
         if (key) {
           if (isExternalApp && appData) {
-            const basePath = getLogsViewerPath(
-              GlobalSettingOptions.APPLICATIONS,
-              appData.name ?? '',
-              appData.name ?? ''
-            );
             const rawRunId = record?.properties?.pipelineRunId;
             const runId = typeof rawRunId === 'string' ? rawRunId : undefined;
-            const path = runId
-              ? `${basePath}?runId=${encodeURIComponent(runId)}`
-              : basePath;
 
-            return navigate(path);
+            return openLogs({
+              logEntityType: GlobalSettingOptions.APPLICATIONS,
+              fqn: appData.name ?? '',
+              runId,
+            });
+          }
+          if (record && !hasAppRunStats(record)) {
+            return setLogsModalRecord(record);
           }
           if (expandedRowKeys.includes(key)) {
             setExpandedRowKeys((prev) => prev.filter((item) => item !== key));
@@ -158,7 +162,7 @@ const AppRunsHistory = forwardRef(
           }
         }
       },
-      [expandedRowKeys]
+      [expandedRowKeys, isExternalApp, appData, openLogs]
     );
 
     const showLogAction = useCallback((record: AppRunRecordWithId): boolean => {
@@ -473,7 +477,8 @@ const AppRunsHistory = forwardRef(
               />
             ),
             showExpandColumn: false,
-            rowExpandable: (record) => !showLogAction(record),
+            rowExpandable: (record) =>
+              !showLogAction(record) && hasAppRunStats(record),
             expandedRowKeys,
           }}
           loading={isLoading}
@@ -500,6 +505,13 @@ const AppRunsHistory = forwardRef(
             }}
           />
         )}
+
+        <LogViewerModal
+          logs={logsModalRecord ? getAppRunFailureLogs(logsModalRecord) : ''}
+          open={Boolean(logsModalRecord)}
+          title={t('label.log-plural')}
+          onClose={() => setLogsModalRecord(null)}
+        />
         <Modal
           centered
           destroyOnClose
