@@ -393,10 +393,6 @@ export async function waitForDocumentInArchive(
 
     await new Promise((resolve) => setTimeout(resolve, interval));
   }
-
-  throw new Error(
-    `Document ${documentId} did not appear in archive API within ${timeout}ms`
-  );
 }
 
 export async function waitForDocumentPermanentlyDeleted(

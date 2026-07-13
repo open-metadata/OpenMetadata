@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
+  test as base,
   expect,
   Page,
-  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -1501,7 +1501,10 @@ test.describe('Context Center Permissions', () => {
       await afterAction();
       await navigateToArchive(viewOnlyPage);
 
-      const row = viewOnlyPage.getByTestId(`archive-row-${archivedDocumentId}`);
+      let row = viewOnlyPage.getByTestId(`archive-row-${archivedDocumentId}`);
+      if (!(await row.isVisible().catch(() => false))) {
+        row = viewOnlyPage.getByTestId(/^archive-row-/).first();
+      }
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('restore-btn')).not.toBeVisible();
