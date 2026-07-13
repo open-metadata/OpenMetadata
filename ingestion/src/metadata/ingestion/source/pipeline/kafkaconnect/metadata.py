@@ -1180,7 +1180,7 @@ class KafkaconnectSource(PipelineServiceSource):
             if dataset_details.schema:
                 table_part = f"{dataset_details.schema}.{dataset_details.table}"
             constructed = f"{database_server_name}.{table_part}"
-            expected = apply_topic_routing_transforms(constructed, getattr(pipeline_details, "config", None))
+            expected = apply_topic_routing_transforms(constructed, getattr(pipeline_details, "config", None) or {})
         return expected
 
     def _source_topic_matches(
@@ -1277,7 +1277,7 @@ class KafkaconnectSource(PipelineServiceSource):
         if self._has_outbox_event_router(pipeline_details.config):
             logger.info("Detected Debezium outbox EventRouter - resolving topics by routing pattern")
             topics_to_process = self._resolve_outbox_topics(
-                connector_config=pipeline_details.config,
+                connector_config=pipeline_details.config or {},
                 messaging_service_name=effective_messaging_service,
             )
 
@@ -1320,25 +1320,21 @@ class KafkaconnectSource(PipelineServiceSource):
         applied to the template so the two transforms compose.
         """
         pattern = None
-        template = None
-        transforms = [name.strip() for name in connector_config.get("transforms", "").split(",") if name.strip()]
-        for transform in transforms:
-            transform_type = connector_config.get(f"transforms.{transform}.type", "")
-            if "EventRouter" in transform_type:
-                template = connector_config.get(
-                    f"transforms.{transform}.route.topic.replacement",
-                    "outbox.event.${routedByValue}",
-                )
-                break
-
+        transform = self._event_router_transform(connector_config)
+        template = (
+            connector_config.get(f"transforms.{transform}.route.topic.replacement", "outbox.event.${routedByValue}")
+            if transform
+            else None
+        )
         if template:
             routed_value_token = "routedByValuePlaceholderToken"
             templated = re.sub(r"\$\{[^}]*\}", routed_value_token, template)
             templated = apply_topic_routing_transforms(templated, connector_config)
-            if not templated.replace(routed_value_token, ""):
+            static_text = re.sub(r"[^A-Za-z0-9]", "", templated.replace(routed_value_token, ""))
+            if not static_text:
                 logger.warning(
-                    f"Outbox route.topic.replacement '{template}' has no static part; refusing to build a "
-                    "catch-all pattern that would link the outbox table to every topic."
+                    f"Outbox route.topic.replacement '{template}' has no static text; refusing to build a "
+                    "near-catch-all pattern that would link the outbox table to unrelated topics."
                 )
             else:
                 escaped = re.escape(templated).replace(routed_value_token, ".*")
@@ -1348,6 +1344,16 @@ class KafkaconnectSource(PipelineServiceSource):
                     logger.warning(f"Unable to build outbox topic pattern from '{template}': {exc}")
 
         return pattern
+
+    def _event_router_transform(self, connector_config: dict) -> Optional[str]:  # noqa: UP045
+        """Return the name of the connector's Debezium outbox EventRouter transform, if any."""
+        transform_name = None
+        transforms = [name.strip() for name in connector_config.get("transforms", "").split(",") if name.strip()]
+        for transform in transforms:
+            if "EventRouter" in connector_config.get(f"transforms.{transform}.type", ""):
+                transform_name = transform
+                break
+        return transform_name
 
     def _resolve_outbox_topics(
         self,
@@ -1400,31 +1406,42 @@ class KafkaconnectSource(PipelineServiceSource):
 
         Routed topics carry no table attribution. A single-table connector is
         unambiguously the outbox; with several captured tables we only fan out the
-        one that owns the EventRouter routing column (route.by.field, default
-        ``aggregatetype``), so unrelated tables don't get speculative lineage.
+        one identifiable as the outbox table by its EventRouter columns, so
+        unrelated tables don't get speculative lineage.
         """
         return (
             self._has_outbox_event_router(pipeline_details.config)
             and dataset_entity is not None
             and bool(topic_entities_map)
-            and (single_dataset or self._dataset_owns_outbox_field(dataset_entity, pipeline_details.config))
+            and (single_dataset or self._dataset_is_outbox_table(dataset_entity, pipeline_details.config))
         )
 
-    def _outbox_route_by_field(self, connector_config: dict) -> str:
-        """Return the EventRouter routing column (route.by.field), defaulting to aggregatetype."""
-        route_by_field = "aggregatetype"
-        transforms = [name.strip() for name in connector_config.get("transforms", "").split(",") if name.strip()]
-        for transform in transforms:
-            if "EventRouter" in connector_config.get(f"transforms.{transform}.type", ""):
-                route_by_field = connector_config.get(f"transforms.{transform}.route.by.field", "aggregatetype")
-                break
-        return route_by_field
+    def _outbox_event_columns(self, connector_config: dict, transform: str) -> set:
+        """Return the source columns the EventRouter reads: routing field, id, key and payload."""
+        prefix = f"transforms.{transform}"
+        return {
+            connector_config.get(f"{prefix}.route.by.field", "aggregatetype"),
+            connector_config.get(f"{prefix}.table.field.event.id", "id"),
+            connector_config.get(f"{prefix}.table.field.event.key", "aggregateid"),
+            connector_config.get(f"{prefix}.table.field.event.payload", "payload"),
+        }
 
-    def _dataset_owns_outbox_field(self, dataset_entity, connector_config: dict) -> bool:
-        """Return True if the dataset's table has the EventRouter routing column (i.e. is the outbox table)."""
-        route_by_field = self._outbox_route_by_field(connector_config).lower()
-        columns = getattr(dataset_entity, "columns", None) or []
-        return any(model_str(column.name).lower() == route_by_field for column in columns)
+    def _dataset_is_outbox_table(self, dataset_entity, connector_config: dict) -> bool:
+        """
+        Return True if the dataset is the outbox table.
+
+        Identified by carrying the full set of columns the EventRouter reads
+        (routing field, id, key, payload). A normal captured table would not have
+        aggregatetype, aggregateid and payload together, so this avoids fanning a
+        non-outbox table out to the routed topics on a single column-name match.
+        """
+        transform = self._event_router_transform(connector_config)
+        is_outbox = False
+        if transform:
+            required = {name.lower() for name in self._outbox_event_columns(connector_config, transform)}
+            columns = {model_str(column.name).lower() for column in (getattr(dataset_entity, "columns", None) or [])}
+            is_outbox = required.issubset(columns)
+        return is_outbox
 
     def _iter_outbox_lineage(
         self,
@@ -1450,7 +1467,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     }
                 )
                 logger.info(f"Created outbox lineage: {model_str(dataset_entity.fullyQualifiedName)} → {topic_name}")
-                yield Either(
+                yield Either(  # pyright: ignore[reportCallIssue]
                     right=self._build_lineage_request(dataset_entity, topic_entity, pipeline_entity, column_lineage)
                 )
 
@@ -1472,18 +1489,18 @@ class KafkaconnectSource(PipelineServiceSource):
 
     def _build_lineage_request(self, from_entity, to_entity, pipeline_entity, column_lineage) -> AddLineageRequest:
         """Construct an AddLineageRequest edge between two data assets."""
-        lineage_details = LineageDetails(
-            pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),
+        lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
+            pipeline=EntityReference(id=pipeline_entity.id.root, type="pipeline"),  # pyright: ignore[reportCallIssue]
             source=LineageSource.PipelineLineage,
             columnsLineage=column_lineage,
         )
         return AddLineageRequest(
             edge=EntitiesEdge(
-                fromEntity=EntityReference(
+                fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                     id=from_entity.id,
                     type=ENTITY_REFERENCE_TYPE_MAP[type(from_entity).__name__],
                 ),
-                toEntity=EntityReference(
+                toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                     id=to_entity.id,
                     type=ENTITY_REFERENCE_TYPE_MAP[type(to_entity).__name__],
                 ),

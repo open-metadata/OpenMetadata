@@ -1371,8 +1371,8 @@ class TestKafkaConnectTopicRoutingTransforms(TestCase):
         assert source._build_outbox_topic_pattern(config) is None
         assert source._resolve_outbox_topics(connector_config=config, messaging_service_name="Kafka") == []
 
-    def test_outbox_fanout_identifies_outbox_table_by_route_field(self):
-        """In a multi-table connector only the table owning route.by.field fans out."""
+    def test_outbox_fanout_identifies_outbox_table_by_event_columns(self):
+        """In a multi-table connector only the table with the full outbox schema fans out."""
         from metadata.generated.schema.entity.data.table import Column, DataType, Table
 
         config = {
@@ -1385,21 +1385,36 @@ class TestKafkaConnectTopicRoutingTransforms(TestCase):
             columns=[
                 Column(name="id", dataType=DataType.BIGINT),
                 Column(name="aggregatetype", dataType=DataType.VARCHAR),
+                Column(name="aggregateid", dataType=DataType.VARCHAR),
+                Column(name="payload", dataType=DataType.JSON),
             ]
         )
+        # A normal table that happens to share one outbox column must NOT be treated as outbox.
         orders = Table.model_construct(
             columns=[
                 Column(name="id", dataType=DataType.BIGINT),
+                Column(name="aggregatetype", dataType=DataType.VARCHAR),
                 Column(name="total", dataType=DataType.BIGINT),
             ]
         )
         topics = {"prod.global.sales.orderCreated_v1": object()}
 
-        # Multi-table: only the outbox table (has aggregatetype) fans out.
+        # Multi-table: only the table with the full outbox schema fans out.
         assert source._is_outbox_fanout(pipeline, outbox, topics, single_dataset=False) is True
         assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=False) is False
         # Single-table connector is unambiguously the outbox.
         assert source._is_outbox_fanout(pipeline, orders, topics, single_dataset=True) is True
+
+    def test_outbox_separator_only_replacement_is_not_a_pattern(self):
+        """A replacement whose static part is only separators must not build a near-catch-all pattern."""
+        config = {
+            "transforms": "outbox",
+            "transforms.outbox.type": "io.debezium.transforms.outbox.EventRouter",
+            "transforms.outbox.route.topic.replacement": "${routedByValue}.${aggregateid}",
+        }
+        source = self._make_source()
+
+        assert source._build_outbox_topic_pattern(config) is None
 
 
 class TestKafkaConnectTransformLineageEdges(TestCase):
