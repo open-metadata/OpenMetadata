@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { TooltipProps as MUITooltipProps } from '@mui/material/Tooltip';
 import {
   Input as UTInput,
   Select as UTSelect,
@@ -40,7 +39,6 @@ import React, { ComponentProps, Fragment, ReactNode } from 'react';
 import AsyncSelectList from '../components/common/AsyncSelectList/AsyncSelectList';
 import { AsyncSelectListProps } from '../components/common/AsyncSelectList/AsyncSelectList.interface';
 import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncSelectList';
-import { ColorSwatchPicker } from '../components/common/ColorPicker';
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
@@ -56,6 +54,7 @@ import { MUIIconPicker } from '../components/common/IconPicker';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import MUIFormItemLabel from '../components/common/MUIFormItemLabel';
 import MUITextField from '../components/common/MUITextField/MUITextField';
+import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
 import SanitizedInput from '../components/common/SanitizedInput/SanitizedInput';
@@ -128,19 +127,6 @@ export const getField = (field: FieldProp) => {
     ...formItemProps,
   };
 
-  // Define MUI label for MUI field types
-  const muiLabel = field.muiLabel || (
-    <MUIFormItemLabel
-      helperText={helperText}
-      helperTextType={helperTextType}
-      isBeta={isBeta}
-      label={label}
-      placement={props?.tooltipPlacement as MUITooltipProps['placement']}
-      showHelperText={showHelperText}
-      slotProps={props?.slotProps as Partial<MUITooltipProps>}
-    />
-  );
-
   switch (type) {
     case FieldTypes.TEXT:
       fieldElement = (
@@ -148,29 +134,6 @@ export const getField = (field: FieldProp) => {
       );
 
       break;
-
-    case FieldTypes.TEXT_MUI: {
-      const { error, ...muiProps } = props;
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUITextField
-            error={Boolean(error)}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-            {...muiProps}
-          />
-        </Form.Item>
-      );
-    }
 
     case FieldTypes.UT_TEXT: {
       const isRequired = fieldRules.some(
@@ -218,30 +181,6 @@ export const getField = (field: FieldProp) => {
             placeholder={placeholder}>
             {(item: SelectItemType) => <UTSelect.Item {...item} />}
           </UTSelect>
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.PASSWORD_MUI: {
-      const { error, ...muiProps } = props;
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <MUITextField
-            error={Boolean(error)}
-            helperText={
-              helperTextType === HelperTextType.ALERT ? helperText : undefined
-            }
-            id={id}
-            label={muiLabel}
-            placeholder={placeholder}
-            required={isRequired}
-            type="password"
-            {...muiProps}
-          />
         </Form.Item>
       );
     }
@@ -432,29 +371,6 @@ export const getField = (field: FieldProp) => {
       fieldElement = <ColorPicker {...props} />;
 
       break;
-
-    case FieldTypes.COLOR_PICKER_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <ColorSwatchPicker
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-          />
-        </Form.Item>
-      );
-    }
-
-    case FieldTypes.ICON_PICKER_MUI: {
-      return (
-        <Form.Item {...formProps}>
-          <MUIIconPicker
-            {...(props as Record<string, unknown>)}
-            label={muiLabel as string}
-            toolTip={helperText}
-          />
-        </Form.Item>
-      );
-    }
 
     case FieldTypes.UT_SWITCH: {
       const { isDisabled, onChange, size, ...switchRest } =
