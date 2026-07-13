@@ -8,6 +8,7 @@
         "description": "List all the databases available to the user.",
         "errorMessage": "Failed to fetch databases, please validate the credentials & validate if user has access to fetch databases",
         "shortCircuit": true,
+        "category": "ConnectionGate",
         "mandatory": true
       },
       {

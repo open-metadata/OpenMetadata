@@ -267,7 +267,7 @@ test('Permissions', async ({ userPage, adminPage }) => {
     const saveTestResponse = userPage.waitForResponse(
       '/api/v1/dataQuality/testCases/*'
     );
-    await userPage.getByTestId('update-btn').click();
+    await userPage.getByTestId('create-btn').click();
     await saveTestResponse;
   });
 });

@@ -13,7 +13,7 @@ Grafana source module
 """
 
 import traceback
-from typing import Dict, Iterable, List, Optional, Set  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Set, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createChart import CreateChartRequest
 from metadata.generated.schema.api.data.createDashboard import CreateDashboardRequest
@@ -46,7 +46,9 @@ from metadata.ingestion.lineage.models import ConnectionTypeDialectMapper, Diale
 from metadata.ingestion.lineage.parser import LineageParser
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
-from metadata.ingestion.source.dashboard.grafana.client import GrafanaApiClient  # noqa: TC001
+from metadata.ingestion.source.dashboard.grafana.client import (  # noqa: TC001
+    GrafanaApiClient,
+)
 from metadata.ingestion.source.dashboard.grafana.models import (
     GrafanaDashboardResponse,
     GrafanaDatasource,
@@ -78,7 +80,7 @@ class GrafanaSource(DashboardServiceSource):
         metadata: OpenMetadata,
     ):
         super().__init__(config, metadata)
-        self.client: GrafanaApiClient = self.connection_obj
+        self.client: GrafanaApiClient = cast("GrafanaApiClient", self.client)
         self.folders: List[GrafanaFolder] = []  # noqa: UP006
         self.datasources: Dict[str, GrafanaDatasource] = {}  # noqa: UP006
         self.dashboards: List[GrafanaSearchResult] = []  # noqa: UP006
