@@ -35,6 +35,7 @@ import org.openmetadata.schema.entity.Bot;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Persona;
 import org.openmetadata.schema.entity.teams.User;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.config.OpenMetadataConfig;
 import org.openmetadata.sdk.network.HttpMethod;
@@ -113,7 +114,7 @@ class ActivePersonaHeaderIT {
 
     Persona personaWithUsers =
         SdkClients.adminClient().personas().get(selectedPersona.getId().toString(), "users");
-    personaWithUsers.setUsers(List.of(user.getEntityReference()));
+    personaWithUsers.setUsers(List.of(new EntityReference().withId(user.getId())));
     SdkClients.adminClient()
         .personas()
         .update(selectedPersona.getId().toString(), personaWithUsers);
@@ -130,6 +131,30 @@ class ActivePersonaHeaderIT {
     assertEquals(
         defaultPersona.getId().toString(),
         activePersonaId(user, selectedPersona.getId().toString()));
+  }
+
+  @Test
+  void userDefaultPersonaChangeInvalidatesCachedUserContext(TestNamespace ns) {
+    Persona originalDefault = createPersona(ns, "original_default");
+    Persona updatedDefault = createPersona(ns, "updated_default");
+    User user =
+        createUser(
+            ns,
+            "updated_default_user",
+            new CreateUser()
+                .withPersonas(
+                    List.of(
+                        originalDefault.getEntityReference(), updatedDefault.getEntityReference()))
+                .withDefaultPersona(originalDefault.getEntityReference()));
+
+    assertEquals(originalDefault.getId().toString(), activePersonaId(user, null));
+
+    User updatedUser =
+        SdkClients.adminClient().users().get(user.getId().toString(), "personas,defaultPersona");
+    updatedUser.setDefaultPersona(updatedDefault.getEntityReference());
+    SdkClients.adminClient().users().update(user.getId().toString(), updatedUser);
+
+    assertEquals(updatedDefault.getId().toString(), activePersonaId(user, null));
   }
 
   @Test

@@ -14,13 +14,16 @@
 package org.openmetadata.service.security.policyevaluator;
 
 import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
 
 import com.google.common.cache.CacheBuilder;
 import com.google.common.cache.CacheLoader;
 import com.google.common.cache.LoadingCache;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import javax.annotation.CheckForNull;
@@ -119,6 +122,18 @@ public class SubjectCache {
   public static void invalidateUserContext(String userName) {
     LOG.debug("Invalidating user context cache for user: {}", userName);
     USER_CONTEXT_CACHE.invalidate(userName);
+  }
+
+  public static void invalidateUserContexts(List<EntityReference> users) {
+    Set<String> userNames = new HashSet<>();
+    for (EntityReference user : listOrEmpty(users)) {
+      if (user == null || nullOrEmpty(user.getName())) {
+        invalidateAllUserContexts();
+        return;
+      }
+      userNames.add(user.getName());
+    }
+    userNames.forEach(SubjectCache::invalidateUserContext);
   }
 
   public static void invalidateAllUserContexts() {

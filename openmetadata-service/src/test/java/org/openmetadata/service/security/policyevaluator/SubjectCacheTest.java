@@ -165,6 +165,18 @@ public class SubjectCacheTest {
   }
 
   @Test
+  void testIdOnlyReferenceInvalidatesAllUserContexts() {
+    SubjectCache.getUserContext("testUser");
+    clearInvocations(userRepository);
+
+    SubjectCache.invalidateUserContexts(List.of(new EntityReference().withId(UUID.randomUUID())));
+    SubjectCache.getUserContext("testUser");
+
+    verify(userRepository, times(1))
+        .getByName(isNull(), eq("testUser"), isNull(), any(Include.class), anyBoolean());
+  }
+
+  @Test
   void testCachedPoliciesMatchExpectedOrder() {
     // Get policies through cache
     List<PolicyContext> cachedPolicies = SubjectCache.getPolicies("testUser");

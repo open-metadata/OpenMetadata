@@ -19,6 +19,7 @@ import static org.openmetadata.service.Entity.PERSONA;
 import static org.openmetadata.service.Entity.USER;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -365,16 +366,9 @@ public class PersonaRepository extends EntityRepository<Persona> {
 
   private void invalidateUserContexts(
       List<EntityReference> originalUsers, List<EntityReference> updatedUsers) {
-    Set<String> userNames = new HashSet<>();
-    listOrEmpty(originalUsers).stream()
-        .map(EntityReference::getName)
-        .filter(name -> !nullOrEmpty(name))
-        .forEach(userNames::add);
-    listOrEmpty(updatedUsers).stream()
-        .map(EntityReference::getName)
-        .filter(name -> !nullOrEmpty(name))
-        .forEach(userNames::add);
-    userNames.forEach(SubjectCache::invalidateUserContext);
+    List<EntityReference> affectedUsers = new ArrayList<>(listOrEmpty(originalUsers));
+    affectedUsers.addAll(listOrEmpty(updatedUsers));
+    SubjectCache.invalidateUserContexts(affectedUsers);
   }
 
   /** Handles entity updated from PUT and POST operation. */
