@@ -84,7 +84,7 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitColumnValueLengthsToBeBetween(
       final String testCaseName, final String minLength, final String maxLength) {
-    byTestId("test-case-name").fill(testCaseName);
+    byTestId("test-case-name").locator("input").fill(testCaseName);
     page.locator("[id='root\\/testType']").click();
     byTestId("columnValueLengthsToBeBetween").click();
     page.locator("#testCaseFormV1_params_minLength").fill(minLength);
@@ -104,7 +104,7 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitColumnValuesToBeInSet(
       final String testCaseName, final java.util.List<String> allowedValues) {
-    byTestId("test-case-name").fill(testCaseName);
+    byTestId("test-case-name").locator("input").fill(testCaseName);
     page.locator("[id='root\\/testType']").click();
     byTestId("columnValuesToBeInSet").click();
     // Fill each allowed-value row. UI renders one row by default; click "+" for extras.
@@ -129,7 +129,7 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitTableColumnNameToExist(
       final String testCaseName, final String columnName) {
-    byTestId("test-case-name").fill(testCaseName);
+    byTestId("test-case-name").locator("input").fill(testCaseName);
     page.locator("[id='root\\/testType']").click();
     byTestId("tableColumnNameToExist").click();
     page.locator("#testCaseFormV1_params_columnName").fill(columnName);
