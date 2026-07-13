@@ -29,6 +29,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
+import org.openmetadata.service.util.OrphanIngestionPipelineCleanup;
 import org.openmetadata.service.util.OrphanTestCaseCleanup;
 import org.openmetadata.service.util.OrphanTestCaseRelationshipCleanup;
 import org.openmetadata.service.util.TagUsageCleanup;
@@ -126,6 +127,7 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphaned_test_cases", new StepStats());
     entityStats.withAdditionalProperty("test_cases_missing_test_definition", new StepStats());
     entityStats.withAdditionalProperty("test_cases_missing_executable_suite", new StepStats());
+    entityStats.withAdditionalProperty("orphaned_ingestion_pipelines", new StepStats());
     entityStats.withAdditionalProperty("orphan_test_case_resolution_status", new StepStats());
     entityStats.withAdditionalProperty("orphan_agent_execution", new StepStats());
     entityStats.withAdditionalProperty("orphan_mcp_execution", new StepStats());
@@ -163,6 +165,16 @@ public class DataRetention extends AbstractNativeApplication {
     // repaired is not mistaken for missing.
     LOG.info("Starting cleanup for test cases with missing relationships.");
     cleanTestCasesWithMissingRelationships();
+
+    // Clean up ingestion pipelines whose container (service/test suite) CONTAINS row is gone. Such
+    // a pipeline can never run and breaks search indexing ("does not have expected relationship
+    // contains to/from entity type null"). Runs after the relationship/hierarchy cleanup above so a
+    // container relationship that was just repaired is not mistaken for missing.
+    LOG.info("Starting cleanup for orphaned ingestion pipelines.");
+    cleanOrphanedIngestionPipelines();
+
+    // Run after orphan test case cleanup so resolution-status rows for deleted test cases
+    // also get swept up.
     LOG.info("Starting cleanup for orphaned time-series rows.");
     cleanOrphanedTimeSeriesRows();
 
@@ -352,6 +364,31 @@ public class DataRetention extends AbstractNativeApplication {
         failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
       }
     }
+  }
+
+  private void cleanOrphanedIngestionPipelines() {
+    try {
+      OrphanIngestionPipelineCleanup cleanup =
+          new OrphanIngestionPipelineCleanup(collectionDAO, false);
+      OrphanIngestionPipelineCleanup.Result result = cleanup.performCleanup(BATCH_SIZE);
+      updateStats(
+          "orphaned_ingestion_pipelines", result.getOrphansDeleted(), result.getOrphanFailures());
+      LOG.info(
+          "Orphan ingestion pipeline cleanup completed - Scanned: {}, Deleted: {}, Failed: {}",
+          result.getTotalScanned(),
+          result.getOrphansDeleted(),
+          result.getOrphanFailures());
+    } catch (Exception ex) {
+      LOG.error("Failed to clean orphan ingestion pipelines", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      if (failureDetails == null) {
+        failureDetails = new HashMap<>();
+        failureDetails.put("message", ex.getMessage());
+        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      }
+    }
+  }
+
   private void cleanOrphanedTimeSeriesRows() {
     LOG.info("Initiating orphaned time-series rows cleanup.");
 
