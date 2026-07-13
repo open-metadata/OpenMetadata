@@ -94,15 +94,16 @@ const selectOptionAndWaitForQuery = async (
 ) => {
   await ensureFilterOptionVisible(page, label, optionKey, searchText);
   const option = page.getByTestId('drop-down-menu').getByTestId(optionKey);
+  const queryValue = searchText ?? optionKey;
 
   const queryRes = page.waitForResponse((response) => {
     let isMatch = false;
     if (response.url().includes('/api/v1/search/query')) {
       const queryFilter =
         new URL(response.url()).searchParams.get('query_filter') ?? '';
-      // Match the quoted term value ("table") so short keys can't
-      // incidentally hit field names like "table.name" in the filter.
-      isMatch = queryFilter.includes(`"${optionKey}"`);
+      // Match the quoted query value so checkbox test ids like "table-checkbox"
+      // still assert the actual filter term, e.g. "table".
+      isMatch = queryFilter.includes(`"${queryValue}"`);
     }
 
     return isMatch;
@@ -220,7 +221,12 @@ test('reloading the page preserves composed filters', async ({ page }) => {
 
   await selectOptionAndWaitForQuery(page, 'Tier', TIER1_KEY);
   await page.keyboard.press('Escape');
-  await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
+  await selectOptionAndWaitForQuery(
+    page,
+    'Data Assets',
+    'table-checkbox',
+    'table'
+  );
   await page.keyboard.press('Escape');
 
   await expect(
@@ -308,7 +314,7 @@ test('selecting an asset type grays out and collapses incompatible categories', 
     await selectOptionAndWaitForQuery(
       page,
       'Data Assets',
-      'dashboard',
+      'dashboard-checkbox',
       'dashboard'
     );
     await page.keyboard.press('Escape');
@@ -345,7 +351,12 @@ test('an impossible filter combination shows the no-results placeholder and reco
     const ownerMust = readQuickFilterMust(page);
 
     await openExplore(page);
-    await selectOptionAndWaitForQuery(page, 'Data Assets', 'topic', 'topic');
+    await selectOptionAndWaitForQuery(
+      page,
+      'Data Assets',
+      'topic-checkbox',
+      'topic'
+    );
     await page.keyboard.press('Escape');
     const topicMust = readQuickFilterMust(page);
 
@@ -418,7 +429,12 @@ test('owner filter spans asset types and ANDs with an asset-type filter', async 
     // The previous step left the owned table's name in the search box, which
     // scopes the Data Assets facet to nothing — clear it before opening it.
     await clearGlobalSearch(page);
-    await selectOptionAndWaitForQuery(page, 'Data Assets', 'table', 'table');
+    await selectOptionAndWaitForQuery(
+      page,
+      'Data Assets',
+      'table-checkbox',
+      'table'
+    );
     await page.keyboard.press('Escape');
 
     await expect(
