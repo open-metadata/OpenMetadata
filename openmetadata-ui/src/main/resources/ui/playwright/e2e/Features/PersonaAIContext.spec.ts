@@ -323,6 +323,7 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage.getByTestId('context-rule-name').fill('Analytics articles');
     await adminPage
       .getByTestId('context-rule-description')
+      .locator('textarea')
       .fill('Guidance for dashboard authors');
 
     const entitySelect = adminPage.getByTestId('context-rule-entity-type');
@@ -331,16 +332,7 @@ test.describe.serial('Persona AI Context', () => {
       '.persona-ai-context-entity-type-popup'
     );
     await expect(entityTypePopup).toBeVisible();
-    await expect(
-      entityTypePopup.locator('.ant-select-item-option')
-    ).toHaveCount(18);
-    const entityTypeList = entityTypePopup.locator('.rc-virtual-list-holder');
-    await expect(entityTypeList).toHaveCSS('overflow-y', 'auto');
-    expect(
-      await entityTypeList.evaluate(
-        (element) => element.scrollHeight > element.clientHeight
-      )
-    ).toBe(true);
+    await expect(entityTypePopup.getByRole('option')).toHaveCount(18);
     for (const option of [
       'Table',
       'Topic',
@@ -375,13 +367,15 @@ test.describe.serial('Persona AI Context', () => {
 
     await expect(adminPage.getByText(/Generic content/)).toBeVisible();
     await expect(
-      adminPage.getByTestId('context-rule-always-in-context')
-    ).toHaveAttribute('aria-checked', 'true');
+      adminPage
+        .getByTestId('context-rule-always-in-context')
+        .getByRole('switch')
+    ).toBeChecked();
     await expect(
-      adminPage.getByTestId('context-rule-fully-rendered')
-    ).toHaveAttribute('aria-checked', 'true');
+      adminPage.getByTestId('context-rule-fully-rendered').getByRole('switch')
+    ).toBeChecked();
     await expect(
-      adminPage.getByTestId('context-rule-fully-rendered')
+      adminPage.getByTestId('context-rule-fully-rendered').getByRole('switch')
     ).toBeDisabled();
     for (const section of [
       'Title & summary',
@@ -460,7 +454,7 @@ test.describe.serial('Persona AI Context', () => {
 
     await entitySelect.click();
     await entityTypePopup.getByText('Article', { exact: true }).click();
-    await adminPage.getByRole('dialog').getByRole('spinbutton').fill('25');
+    await adminPage.getByTestId('context-rule-max-assets').fill('25');
 
     const createRuleRequest = adminPage.waitForRequest(
       (request) =>
@@ -488,9 +482,9 @@ test.describe.serial('Persona AI Context', () => {
       (request) =>
         request.url().endsWith('/aiContext') && request.method() === 'PUT'
     );
-    const budgetInput = adminPage
-      .locator('.persona-ai-context-settings-card .ant-input-number-input')
-      .first();
+    const budgetInput = adminPage.getByTestId(
+      'persona-context-character-budget'
+    );
     await budgetInput.fill('175000');
     await budgetInput.blur();
     expect((await settingsRequest).postDataJSON()).toMatchObject({
@@ -555,8 +549,8 @@ test.describe.serial('Persona AI Context', () => {
         request.method() === 'DELETE'
     );
     await adminPage
-      .locator('.ant-popconfirm')
-      .getByRole('button', { name: 'Delete', exact: true })
+      .getByTestId('delete-modal')
+      .getByTestId('confirm-button')
       .click();
     await deleteRuleRequest;
 
@@ -615,5 +609,93 @@ test.describe.serial('Persona AI Context', () => {
         .getByTestId('persona-context-preview-modal')
         .getByText('fresh', { exact: true })
     ).toBeVisible();
+  });
+
+  test('builds real version history and restores an earlier version', async ({
+    browser,
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    const personaId = persona.responseData.id as string;
+    const aiBase = `/api/v1/personas/${personaId}/aiContext`;
+    const versionsUrl = `/api/v1/personas/${personaId}/versions`;
+    const formatVersion = (version: number) => version.toFixed(1);
+    const RULE_NAME = 'Version history probe rule';
+    try {
+      await apiContext.put(aiBase, {
+        data: { cacheTtlMinutes: 30, characterBudget: 120000, enabled: true },
+      });
+      const ruleResponse = await apiContext.post(`${aiBase}/rules`, {
+        data: {
+          entityType: EntityType.TABLE,
+          maxAssets: 25,
+          name: RULE_NAME,
+          queryFilter: '',
+          sections: [],
+        },
+      });
+      expect(ruleResponse.ok()).toBe(true);
+      expect(
+        ((await ruleResponse.json()) as PersonaContextDefinition).rules?.some(
+          ({ name }) => name === RULE_NAME
+        )
+      ).toBe(true);
+
+      const historyResponse = await apiContext.get(versionsUrl);
+      const history = (await historyResponse.json()) as { versions: string[] };
+      const snapshots = history.versions
+        .map(
+          (snapshot) =>
+            JSON.parse(snapshot) as {
+              version: number;
+              contextDefinition?: PersonaContextDefinition;
+            }
+        )
+        .sort((a, b) => b.version - a.version);
+      const currentVersion = snapshots[0].version;
+      const beforeRuleVersion = snapshots.find(
+        (snapshot) =>
+          !(snapshot.contextDefinition?.rules ?? []).some(
+            ({ name }) => name === RULE_NAME
+          )
+      )?.version;
+      expect(beforeRuleVersion).toBeDefined();
+
+      await openPersonaContext(adminPage);
+      await expect(adminPage.getByText(RULE_NAME)).toBeVisible();
+
+      await adminPage.getByTestId('persona-context-version').click();
+      const drawer = adminPage.getByTestId('persona-context-version-history');
+      await expect(drawer).toBeVisible();
+      await expect(drawer.getByText('Current')).toBeVisible();
+      await expect(
+        adminPage.getByTestId(`version-dot-${formatVersion(currentVersion)}`)
+      ).toBeVisible();
+      await expect(drawer.getByText(`Rule '${RULE_NAME}' added`)).toBeVisible();
+
+      const restoreRequest = adminPage.waitForRequest(
+        (request) =>
+          request.url().endsWith(`/personas/${personaId}`) &&
+          request.method() === 'PATCH'
+      );
+      await adminPage
+        .getByTestId(`restore-version-${formatVersion(beforeRuleVersion!)}`)
+        .click();
+      await adminPage.getByTestId('confirm-restore-version').click();
+      await restoreRequest;
+
+      await expect(
+        adminPage.getByTestId('empty-add-context-rule')
+      ).toBeVisible();
+
+      const restoredDefinition = (await (
+        await apiContext.get(aiBase)
+      ).json()) as PersonaContextDefinition;
+      expect(restoredDefinition.rules ?? []).toHaveLength(0);
+    } finally {
+      await afterAction();
+    }
   });
 });

@@ -11,25 +11,30 @@
  *  limitations under the License.
  */
 import {
-  ExclamationCircleOutlined,
-  ExportOutlined,
-  InfoCircleOutlined,
-} from '@ant-design/icons';
-import { HookForm } from '@openmetadata/ui-core-components';
-import {
   Alert,
+  Badge,
+  Box,
   Button,
-  Checkbox,
-  Form,
+  CheckboxBase,
+  HintText,
+  HookForm,
   Input,
-  InputNumber,
+  Label,
   Select,
-  Spin,
-  Switch,
-  Tag,
+  TextArea,
+  Toggle,
   Typography,
-} from 'antd';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+} from '@openmetadata/ui-core-components';
+import { AlertCircle, InfoCircle, LinkExternal01 } from '@untitledui/icons';
+import {
+  FC,
+  ReactNode,
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { Controller, useForm, useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import {
@@ -41,7 +46,10 @@ import {
   PERSONA_CONTEXT_SECTION_LABEL_KEYS,
 } from '../../../../../constants/PersonaAIContext.constants';
 import { EntityType } from '../../../../../enums/entity.enum';
-import { ContextRule } from '../../../../../generated/type/personaContextDefinition';
+import {
+  ContextRule,
+  ContextSection,
+} from '../../../../../generated/type/personaContextDefinition';
 import {
   PersonaContextRulePreview,
   previewPersonaAIContextRule,
@@ -53,7 +61,6 @@ import {
 } from '../../../../../utils/PersonaAIContextUtils';
 import { getExplorePath } from '../../../../../utils/RouterUtils';
 import { useFormDrawerWithHook } from '../../../../common/atoms/drawer/useFormDrawer';
-import { DrawerPopupContainerProvider } from '../../../../common/DrawerPopupContainerProvider';
 import { RuleQueryBuilderField } from './RuleQueryBuilderField.component';
 
 interface ContextRuleEditorProps {
@@ -64,6 +71,41 @@ interface ContextRuleEditorProps {
   onClose: () => void;
   onSubmit: (rule: ContextRule) => Promise<void>;
 }
+
+interface FieldProps {
+  children: ReactNode;
+  className?: string;
+  error?: string;
+  isRequired?: boolean;
+  label?: string;
+}
+
+const Field = ({
+  children,
+  className,
+  error,
+  isRequired,
+  label,
+}: FieldProps) => (
+  <div className={`tw:mb-5 tw:flex tw:flex-col tw:gap-1.5 ${className ?? ''}`}>
+    {label && <Label isRequired={isRequired}>{label}</Label>}
+    {children}
+    {error && <HintText isInvalid>{error}</HintText>}
+  </div>
+);
+
+const SECTION_CARD_CLASS =
+  'tw:flex tw:cursor-pointer tw:select-none tw:items-center tw:justify-between tw:gap-2 tw:rounded-lg tw:border tw:border-secondary tw:bg-primary tw:px-3 tw:py-[11px] tw:transition';
+
+const BEHAVIOR_CARD_CLASS =
+  'tw:min-h-[70px] tw:rounded-lg tw:border tw:border-secondary tw:px-4 tw:py-[13px]';
+
+const ENTITY_TYPE_POPUP_CLASS =
+  'tw:max-h-[min(320px,calc(100vh-96px))] tw:overflow-y-auto tw:overscroll-contain';
+
+const ViewInExploreIcon: FC<{ className?: string }> = ({ className }) => (
+  <LinkExternal01 className={`${className ?? ''} tw:size-4!`} />
+);
 
 const getDefaultRule = (rule?: ContextRule): ContextRule => {
   const entityType = rule?.entityType ?? PERSONA_CONTEXT_ASSET_TYPES[0];
@@ -125,21 +167,23 @@ export const ContextRuleEditor = ({
     entityType,
   });
 
-  const sectionOptions = useMemo(
+  const entityTypeOptions = useMemo(
     () =>
-      getPersonaContextSections(entityType).map((section) => ({
-        label: (
-          <span>
-            {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
-            {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
-              <Tag className="m-l-xs">{t('label.heavy')}</Tag>
-            )}
-          </span>
-        ),
-        value: section,
-      })),
-    [entityType, t]
+      [...PERSONA_CONTEXT_ASSET_TYPES, ...PERSONA_CONTEXT_KNOWLEDGE_TYPES].map(
+        (type) => ({
+          id: type,
+          label: t(PERSONA_CONTEXT_ENTITY_LABEL_KEYS[type]),
+          supportingText: PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
+            type as EntityType
+          )
+            ? t('label.knowledge')
+            : undefined,
+        })
+      ),
+    [t]
   );
+
+  const sectionsDisabled = fullyRendered || isKnowledgeRule;
 
   useEffect(() => {
     if (!open) {
@@ -213,22 +257,67 @@ export const ContextRuleEditor = ({
     onClose();
   }, [form, onClose, rule]);
 
+  const renderPreviewContent = () => {
+    if (previewLoading) {
+      return (
+        <span className="tw:text-[13px] tw:text-brand-secondary">
+          {t('message.persona-context-match-preview-loading')}
+        </span>
+      );
+    }
+    if (previewError) {
+      return (
+        <span className="tw:text-[13px] tw:text-tertiary">
+          {t('server.unexpected-error')}
+        </span>
+      );
+    }
+    if (preview) {
+      return (
+        <span className="tw:flex tw:min-w-0 tw:items-baseline tw:gap-1">
+          <span className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:text-brand-secondary">
+            {t('message.persona-context-match-summary', {
+              count: preview.matchedCount,
+            })}
+          </span>
+          <span className="tw:min-w-0 tw:flex-1 tw:truncate tw:text-[12px] tw:font-normal tw:text-brand-secondary">
+            {t('message.persona-context-match-sample', {
+              sample: preview.sampleNames.join(', ') || t('label.none'),
+            })}
+          </span>
+        </span>
+      );
+    }
+
+    return (
+      <span className="tw:text-[13px] tw:text-brand-secondary">
+        {t('message.persona-context-match-preview-loading')}
+      </span>
+    );
+  };
+
   const formBody = (
     <HookForm
-      className="persona-ai-context-rule-form"
+      className="tw:flex tw:flex-col"
       form={form}
       onSubmit={form.handleSubmit(handleSubmit)}>
       <Controller
         control={form.control}
         name="name"
         render={({ field, fieldState }) => (
-          <Form.Item
-            required
-            help={fieldState.error?.message}
-            label={t('label.name')}
-            validateStatus={fieldState.error ? 'error' : undefined}>
-            <Input {...field} data-testid="context-rule-name" />
-          </Form.Item>
+          <Field
+            isRequired
+            error={fieldState.error?.message}
+            label={t('label.name')}>
+            <Input
+              aria-label={t('label.name')}
+              inputDataTestId="context-rule-name"
+              isInvalid={Boolean(fieldState.error)}
+              value={field.value ?? ''}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
+            />
+          </Field>
         )}
         rules={{
           required: t('message.field-text-is-required', {
@@ -245,13 +334,16 @@ export const ContextRuleEditor = ({
         control={form.control}
         name="description"
         render={({ field }) => (
-          <Form.Item label={t('label.description-optional')}>
-            <Input.TextArea
-              {...field}
+          <Field label={t('label.description-optional')}>
+            <TextArea
+              aria-label={t('label.description-optional')}
               data-testid="context-rule-description"
               rows={3}
+              value={field.value ?? ''}
+              onBlur={field.onBlur}
+              onChange={field.onChange}
             />
-          </Form.Item>
+          </Field>
         )}
       />
 
@@ -259,57 +351,45 @@ export const ContextRuleEditor = ({
         control={form.control}
         name="entityType"
         render={({ field }) => (
-          <Form.Item required label={t('label.entity-type')}>
-            <DrawerPopupContainerProvider>
-              <Select
-                {...field}
-                data-testid="context-rule-entity-type"
-                listHeight={280}
-                popupClassName="persona-ai-context-entity-type-popup"
-                virtual={false}
-                onChange={(value) => {
-                  field.onChange(value);
-                  form.setValue('filterJsonTree', undefined, {
-                    shouldDirty: true,
-                  });
-                  form.setValue('queryFilter', '', { shouldDirty: true });
-                  const nextIsKnowledge =
-                    PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(
-                      value as EntityType
-                    );
-                  form.setValue(
-                    'sections',
-                    getDefaultPersonaContextSections(value),
-                    { shouldDirty: true }
-                  );
-                  form.setValue('alwaysInContext', nextIsKnowledge, {
-                    shouldDirty: true,
-                  });
-                  form.setValue('fullyRendered', nextIsKnowledge, {
-                    shouldDirty: true,
-                  });
-                }}>
-                <Select.OptGroup label={t('label.data-asset-plural')}>
-                  {PERSONA_CONTEXT_ASSET_TYPES.map((type) => (
-                    <Select.Option key={type} value={type}>
-                      {t(PERSONA_CONTEXT_ENTITY_LABEL_KEYS[type])}
-                    </Select.Option>
-                  ))}
-                </Select.OptGroup>
-                <Select.OptGroup label={t('label.knowledge')}>
-                  {PERSONA_CONTEXT_KNOWLEDGE_TYPES.map((type) => (
-                    <Select.Option key={type} value={type}>
-                      {t(PERSONA_CONTEXT_ENTITY_LABEL_KEYS[type])}
-                    </Select.Option>
-                  ))}
-                </Select.OptGroup>
-              </Select>
-            </DrawerPopupContainerProvider>
-          </Form.Item>
+          <Field isRequired label={t('label.entity-type')}>
+            <Select
+              aria-label={t('label.entity-type')}
+              data-testid="context-rule-entity-type"
+              items={entityTypeOptions}
+              placeholder={t('label.entity-type')}
+              popoverClassName={ENTITY_TYPE_POPUP_CLASS}
+              selectedKey={field.value}
+              onSelectionChange={(value) => {
+                field.onChange(value);
+                form.setValue('filterJsonTree', undefined, {
+                  shouldDirty: true,
+                });
+                form.setValue('queryFilter', '', { shouldDirty: true });
+                const nextIsKnowledge =
+                  PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(value as EntityType);
+                form.setValue(
+                  'sections',
+                  getDefaultPersonaContextSections(value as string),
+                  { shouldDirty: true }
+                );
+                form.setValue('alwaysInContext', nextIsKnowledge, {
+                  shouldDirty: true,
+                });
+                form.setValue('fullyRendered', nextIsKnowledge, {
+                  shouldDirty: true,
+                });
+              }}>
+              {(item) => (
+                <Select.Item id={item.id} supportingText={item.supportingText}>
+                  {item.label}
+                </Select.Item>
+              )}
+            </Select>
+          </Field>
         )}
       />
 
-      <Form.Item label={t('label.filter')}>
+      <Field label={t('label.filter')}>
         <RuleQueryBuilderField
           entityType={entityType}
           filterJsonTree={filterJsonTree}
@@ -323,91 +403,83 @@ export const ContextRuleEditor = ({
           }}
         />
         <Alert
-          showIcon
-          className="persona-ai-context-match-preview"
+          className="tw:mt-3 tw:items-center! tw:gap-2.5 tw:px-3.5 tw:py-2.75 tw:**:data-[testid=alert-icon]:self-center"
           data-testid="context-rule-match-preview"
-          icon={
-            previewLoading ? (
-              <Spin size="small" />
-            ) : previewError ? (
-              <ExclamationCircleOutlined />
-            ) : (
-              <InfoCircleOutlined />
-            )
+          icon={previewError ? AlertCircle : InfoCircle}
+          iconSize="sm"
+          rightContent={
+            <Button
+              className="tw:shrink-0 tw:text-[13px] tw:font-semibold tw:text-brand-secondary"
+              color="link-color"
+              href={getExplorePath({
+                extraParameters: filterJsonTree
+                  ? { queryFilter: filterJsonTree }
+                  : undefined,
+                isPersistFilters: false,
+              })}
+              iconTrailing={ViewInExploreIcon}
+              size="sm"
+              target="_blank">
+              {t('label.view-in-explore')}
+            </Button>
           }
-          message={
-            <div className="persona-ai-context-match-preview-content">
-              <Typography.Text>
-                {previewLoading
-                  ? t('message.persona-context-match-preview-loading')
-                  : previewError
-                  ? t('server.unexpected-error')
-                  : preview
-                  ? t('message.persona-context-match-preview', {
-                      count: preview.matchedCount,
-                      sample: preview.sampleNames.join(', ') || t('label.none'),
-                    })
-                  : t('message.persona-context-match-preview-loading')}
-              </Typography.Text>
-              <Button
-                href={getExplorePath({
-                  extraParameters: filterJsonTree
-                    ? { queryFilter: filterJsonTree }
-                    : undefined,
-                  isPersistFilters: false,
-                })}
-                icon={<ExportOutlined />}
-                target="_blank"
-                type="link">
-                {t('label.view-in-explore')}
-              </Button>
-            </div>
-          }
-          type={previewError ? 'error' : 'info'}
-        />
-      </Form.Item>
+          title=""
+          variant={previewError ? 'error' : 'brand'}>
+          {renderPreviewContent()}
+        </Alert>
+      </Field>
 
       {isKnowledgeRule && (
         <Alert
-          showIcon
-          className="persona-ai-context-knowledge-note"
-          message={t('message.persona-context-generic-content')}
-          type="info"
+          className="tw:mb-5 tw:border-dashed"
+          title={t('message.persona-context-generic-content')}
+          variant="gray"
         />
       )}
 
-      <div className="persona-ai-context-behavior-list">
+      <Box className="tw:mb-5.5 tw:gap-2.5" direction="col">
         <Controller
           control={form.control}
           name="alwaysInContext"
           render={({ field }) => (
-            <div className="persona-ai-context-behavior-card">
-              <div>
-                <Typography.Text strong>
+            <Box
+              align="center"
+              className={BEHAVIOR_CARD_CLASS}
+              justify="between">
+              <Box className="tw:min-w-0" direction="col" gap={1}>
+                <Typography
+                  className="tw:text-[13px] tw:text-primary"
+                  weight="semibold">
                   {t('label.always-in-context')}
-                </Typography.Text>
-                <Typography.Paragraph type="secondary">
+                </Typography>
+                <Typography className="tw:text-[12px] tw:text-quaternary">
                   {t('message.persona-context-always-description')}
-                </Typography.Paragraph>
-              </div>
-              <Switch
-                checked={field.value}
+                </Typography>
+              </Box>
+              <Toggle
+                aria-label={t('label.always-in-context')}
                 data-testid="context-rule-always-in-context"
+                isSelected={Boolean(field.value)}
                 onChange={field.onChange}
               />
-            </div>
+            </Box>
           )}
         />
         <Controller
           control={form.control}
           name="fullyRendered"
           render={({ field }) => (
-            <div className="persona-ai-context-behavior-card">
-              <div>
-                <Typography.Text strong>
+            <Box
+              align="center"
+              className={BEHAVIOR_CARD_CLASS}
+              justify="between">
+              <Box className="tw:min-w-0" direction="col" gap={1}>
+                <Typography
+                  className="tw:text-[13px] tw:text-primary"
+                  weight="semibold">
                   {t('label.fully-rendered')}
-                </Typography.Text>
-                <Typography.Paragraph type="secondary">
+                </Typography>
+                <Typography className="tw:text-[12px] tw:text-quaternary">
                   {t(
                     isKnowledgeRule
                       ? 'message.persona-context-knowledge-fully-rendered'
@@ -415,57 +487,110 @@ export const ContextRuleEditor = ({
                       ? 'message.persona-context-data-product-fully-rendered-description'
                       : 'message.persona-context-fully-rendered-description'
                   )}
-                </Typography.Paragraph>
-              </div>
-              <Switch
-                checked={isKnowledgeRule || field.value}
+                </Typography>
+              </Box>
+              <Toggle
+                aria-label={t('label.fully-rendered')}
                 data-testid="context-rule-fully-rendered"
-                disabled={isKnowledgeRule}
+                isDisabled={isKnowledgeRule}
+                isSelected={isKnowledgeRule || Boolean(field.value)}
                 onChange={field.onChange}
               />
-            </div>
+            </Box>
           )}
         />
-      </div>
+      </Box>
 
       <Controller
         control={form.control}
         name="sections"
-        render={({ field }) => (
-          <Form.Item
-            className="persona-ai-context-sections-field"
-            label={t('label.context-sections')}>
-            <Typography.Paragraph type="secondary">
-              {fullyRendered || isKnowledgeRule
-                ? t('message.persona-context-sections-disabled')
-                : t('message.persona-context-sections-description')}
-            </Typography.Paragraph>
-            <Checkbox.Group
-              {...field}
-              className="persona-ai-context-section-grid"
-              disabled={fullyRendered || isKnowledgeRule}
-              options={sectionOptions}
-            />
-          </Form.Item>
-        )}
+        render={({ field }) => {
+          const selectedSections = field.value ?? [];
+          const toggleSection = (section: ContextSection) => {
+            if (sectionsDisabled) {
+              return;
+            }
+            field.onChange(
+              selectedSections.includes(section)
+                ? selectedSections.filter((value) => value !== section)
+                : [...selectedSections, section]
+            );
+          };
+
+          return (
+            <Field className="tw:mb-5.5" label={t('label.context-sections')}>
+              <Typography className="tw:text-tertiary" size="text-sm">
+                {sectionsDisabled
+                  ? t('message.persona-context-sections-disabled')
+                  : t('message.persona-context-sections-description')}
+              </Typography>
+              <Box className="tw:grid! tw:grid-cols-3 tw:gap-x-2 tw:gap-y-3">
+                {getPersonaContextSections(entityType).map((section) => {
+                  const selected = selectedSections.includes(section);
+
+                  return (
+                    <div
+                      aria-checked={selected}
+                      aria-disabled={sectionsDisabled}
+                      className={`${SECTION_CARD_CLASS} ${
+                        sectionsDisabled
+                          ? 'tw:cursor-not-allowed tw:opacity-60'
+                          : ''
+                      }`}
+                      key={section}
+                      role="checkbox"
+                      tabIndex={sectionsDisabled ? -1 : 0}
+                      onClick={() => toggleSection(section)}
+                      onKeyDown={(event) => {
+                        if (event.key === 'Enter' || event.key === ' ') {
+                          event.preventDefault();
+                          toggleSection(section);
+                        }
+                      }}>
+                      <span className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+                        <CheckboxBase
+                          isDisabled={sectionsDisabled}
+                          isSelected={selected}
+                        />
+                        <span className="tw:truncate tw:text-[13px]">
+                          {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
+                        </span>
+                      </span>
+                      {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
+                        <Badge color="gray" size="sm">
+                          {t('label.heavy')}
+                        </Badge>
+                      )}
+                    </div>
+                  );
+                })}
+              </Box>
+            </Field>
+          );
+        }}
       />
 
       <Controller
         control={form.control}
         name="maxAssets"
         render={({ field }) => (
-          <Form.Item required label={t('label.max-assets')}>
-            <InputNumber
-              {...field}
-              className="persona-ai-context-max-assets"
-              data-testid="context-rule-max-assets"
-              max={1000}
-              min={1}
+          <Field isRequired label={t('label.max-assets')}>
+            <Input
+              aria-label={t('label.max-assets')}
+              inputDataTestId="context-rule-max-assets"
+              inputMode="numeric"
+              value={String(field.value ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS)}
+              wrapperClassName="tw:w-40"
+              onBlur={field.onBlur}
+              onChange={(value) => {
+                const parsed = Number(value.replace(/[^0-9]/g, ''));
+                field.onChange(parsed ? Math.min(parsed, 1000) : undefined);
+              }}
             />
-            <Typography.Paragraph className="m-t-xs" type="secondary">
+            <HintText className="tw:mt-1.75 tw:text-[12px] tw:font-normal">
               {t('message.persona-context-max-assets-description')}
-            </Typography.Paragraph>
-          </Form.Item>
+            </HintText>
+          </Field>
         )}
         rules={{ max: 1000, min: 1 }}
       />
@@ -474,12 +599,27 @@ export const ContextRuleEditor = ({
 
   const { formDrawer, openDrawer, closeDrawer, isOpen } =
     useFormDrawerWithHook<ContextRule>({
-      className: 'persona-ai-context-rule-drawer',
       closeOnBackdrop: false,
       form: formBody,
+      header: {
+        className: 'tw:border-b tw:border-secondary tw:px-6! tw:py-5!',
+      },
       hookForm: form,
       submitLabel: t('label.save-rule'),
-      title: rule ? t('label.edit-rule') : t('label.add-rule'),
+      title: (
+        <Box className="tw:gap-0.5" direction="col">
+          <Typography
+            as="h4"
+            data-testid="form-heading"
+            size="text-md"
+            weight="medium">
+            {rule ? t('label.edit-rule') : t('label.add-rule')}
+          </Typography>
+          <Typography className="tw:text-tertiary" size="text-sm">
+            {t('message.persona-context-rule-subtitle')}
+          </Typography>
+        </Box>
+      ),
       width: 720,
       onClose: handleDismiss,
       onSubmit: handleSubmit,
