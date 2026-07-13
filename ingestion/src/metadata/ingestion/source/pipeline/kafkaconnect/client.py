@@ -12,6 +12,7 @@
 Client to interact with Kafka Connect REST APIs
 """
 
+import re
 import traceback
 from typing import Iterable, List, Optional  # noqa: UP035
 from urllib.parse import urlparse
@@ -103,6 +104,58 @@ def parse_cdc_topic_name(topic_name: str, database_server_name: str = None) -> d
         return {}
 
     return {}
+
+
+# Java-style replacement backreference ($1) used by Kafka Connect's RegexRouter,
+# converted to Python's re named-group form (\g<1>) so "$12" is unambiguous.
+JAVA_BACKREF_PATTERN = re.compile(r"\$(\d+)")
+
+
+def _apply_regex_router(topic_name: str, connector_config: dict, transform: str) -> str:
+    """Apply a single RegexRouter transform to a topic name."""
+    regex = connector_config.get(f"transforms.{transform}.regex")
+    replacement = connector_config.get(f"transforms.{transform}.replacement", "")
+    result = topic_name
+    if regex:
+        try:
+            python_replacement = JAVA_BACKREF_PATTERN.sub(r"\\g<\1>", replacement)
+            result = re.sub(regex, python_replacement, topic_name)
+        except re.error as exc:
+            logger.warning(f"Invalid RegexRouter config for transform '{transform}': {exc}")
+    return result
+
+
+def apply_topic_routing_transforms(topic_name: str, connector_config: dict) -> str:
+    """
+    Apply Kafka Connect topic-routing SMTs that deterministically rewrite the
+    destination topic name (RegexRouter / TopicRegexRouter).
+
+    Kafka Connect applies transforms in the order listed in the ``transforms``
+    config, so a statically-constructed topic name must be rewritten the same way
+    before it can be matched against the real topic in OpenMetadata. Dynamic
+    routers such as Debezium's EventRouter resolve to a value only known per-row
+    and are handled separately by matching against already-ingested topics.
+
+    Args:
+        topic_name: The statically-constructed topic name.
+        connector_config: The Kafka Connect connector configuration.
+
+    Returns:
+        The topic name after applying deterministic routing transforms.
+    """
+    if not topic_name or not isinstance(connector_config, dict):
+        return topic_name
+
+    transforms = connector_config.get("transforms", "")
+    if not transforms:
+        return topic_name
+
+    result = topic_name
+    for transform in [name.strip() for name in transforms.split(",") if name.strip()]:
+        transform_type = connector_config.get(f"transforms.{transform}.type", "")
+        if "RegexRouter" in transform_type:
+            result = _apply_regex_router(result, connector_config, transform)
+    return result
 
 
 class KafkaConnectClient:
