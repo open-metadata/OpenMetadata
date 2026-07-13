@@ -2323,6 +2323,7 @@
     "show-nested": "ネストを表示",
     "show-or-hide-advanced-config": "{{showAdv}} 高度な設定",
     "show-or-hide-column-plural": "カラムの表示/非表示",
+    "show-property-plural": "プロパティを表示",
     "show-raw-logs": "生ログを表示",
     "showing-count-of-total-assets": "{{total}}件中{{count}}件のアセットを表示中",
     "showing-total-failure-plural": "合計 {{total}} 回の失敗",

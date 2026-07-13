@@ -2323,6 +2323,7 @@
     "show-nested": "नेस्टेड दर्शवा",
     "show-or-hide-advanced-config": "{{showAdv}} प्रगत संरचना दाखवा किंवा लपवा",
     "show-or-hide-column-plural": "स्तंभ दर्शवा / लपवा",
+    "show-property-plural": "गुणधर्म दाखवा",
     "show-raw-logs": "रॉ लॉग दाखवा",
     "showing-count-of-total-assets": "{{total}} पैकी {{count}} मालमत्ता दर्शवित आहे",
     "showing-total-failure-plural": "एकूण {{total}} अपयश",

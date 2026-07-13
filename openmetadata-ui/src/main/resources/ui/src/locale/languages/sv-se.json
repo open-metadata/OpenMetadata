@@ -2323,6 +2323,7 @@
     "show-nested": "Visa nästlade",
     "show-or-hide-advanced-config": "{{showAdv}} avancerad konfiguration",
     "show-or-hide-column-plural": "Visa / dölj kolumner",
+    "show-property-plural": "Visa egenskaper",
     "show-raw-logs": "Visa råloggar",
     "showing-count-of-total-assets": "Visar {{count}} av {{total}} tillgångar",
     "showing-total-failure-plural": "Totalt {{total}} misslyckanden",

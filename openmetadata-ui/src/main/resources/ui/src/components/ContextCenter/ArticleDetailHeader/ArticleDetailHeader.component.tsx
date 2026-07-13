@@ -610,28 +610,23 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
       </Tabs>
 
       {activeTab !== EntityTabs.ACTIVITY_FEED && (
-        <Tooltip
-          title={
-            isRightPanelOpen
-              ? t('label.hide-meta-details')
-              : t('label.show-meta-details')
-          }>
-          <TooltipTrigger>
-            <ButtonUtility
-              className="tw:relative tw:bottom-2.5"
-              color="tertiary"
-              data-testid="right-panel-toggle-btn"
-              icon={
-                <SidebarCollapsible
-                  className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
-                  height={20}
-                  width={20}
-                />
-              }
-              onClick={onToggleRightPanel}
+        <Button
+          className="tw:relative tw:bottom-2.5"
+          color="tertiary"
+          data-testid="right-panel-toggle-btn"
+          iconLeading={
+            <SidebarCollapsible
+              className={isRightPanelOpen ? undefined : 'tw:rotate-180'}
+              height={20}
+              width={20}
             />
-          </TooltipTrigger>
-        </Tooltip>
+          }
+          size="sm"
+          onClick={onToggleRightPanel}>
+          {isRightPanelOpen
+            ? t('label.hide-property-plural')
+            : t('label.show-property-plural')}
+        </Button>
       )}
     </Box>
   );

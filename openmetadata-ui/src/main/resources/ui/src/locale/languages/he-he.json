@@ -2323,6 +2323,7 @@
     "show-nested": "הצג מקוננים",
     "show-or-hide-advanced-config": "{{showAdv}} הצג/הסתר הגדרות מתקדמות",
     "show-or-hide-column-plural": "הצג / הסתר עמודות",
+    "show-property-plural": "הצג מאפיינים",
     "show-raw-logs": "הצגת יומנים גולמיים",
     "showing-count-of-total-assets": "מציג {{count}} מתוך {{total}} נכסים",
     "showing-total-failure-plural": "סך הכל {{total}} כשלים",
