@@ -138,6 +138,7 @@ const AssetSelectionContentBody = ({
             <Typography
               as="span"
               className="tw:text-brand-secondary tw:cursor-pointer"
+              data-testid="clear-filters"
               onClick={clearFilters}>
               {t('label.clear-entity', {
                 entity: '',
