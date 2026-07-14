@@ -203,9 +203,23 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <div {...props}>{children}</div>
   );
 
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+    </div>
+  );
+
   return {
     Box: MockBox,
     Button: MockButton,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Skeleton: () => <span data-testid="skeleton">Loading...</span>,
     Table: MockTable,
     Tooltip: ({
@@ -243,16 +257,6 @@ jest.mock('../../../../rest/testAPI', () => ({
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
-);
-
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => ({
-    __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
-  })
 );
 
 jest.mock(
@@ -533,13 +537,25 @@ describe('DataQualityTab test', () => {
     expect(skeletons.length).toBeGreaterThan(0);
   });
 
-  it('Should show empty placeholder when testCases is empty', async () => {
-    await act(async () => {
-      render(<DataQualityTab {...mockProps} testCases={[]} />);
-    });
+  it('should render the empty placeholder when there are no test cases', () => {
+    render(<DataQualityTab {...mockProps} isLoading={false} testCases={[]} />);
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-test-cases-yet')).toBeInTheDocument();
+  });
+
+  it('should render the filtered empty copy when filters are active', () => {
+    render(
+      <DataQualityTab
+        {...mockProps}
+        hasActiveFilters
+        isLoading={false}
+        testCases={[]}
+      />
+    );
 
     expect(
-      await screen.findByTestId('filter-table-placeholder')
+      screen.getByText('message.no-matching-test-cases')
     ).toBeInTheDocument();
   });
 

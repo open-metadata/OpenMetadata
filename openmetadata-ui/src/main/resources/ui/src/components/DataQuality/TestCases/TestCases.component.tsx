@@ -42,6 +42,7 @@ export const TestCases = () => {
     form,
     searchValue,
     selectedFilter,
+    hasActiveFilters,
     handleMenuClick,
     handleSearchParam,
     handleFilterChange,
@@ -280,6 +281,7 @@ export const TestCases = () => {
           ]}
           enableBulkActions={Boolean(testSuitePermission?.Create)}
           fetchTestCases={sortTestCase}
+          hasActiveFilters={Boolean(searchValue) || hasActiveFilters}
           isLoading={isLoading}
           pagingData={pagingData}
           showPagination={showPagination}
