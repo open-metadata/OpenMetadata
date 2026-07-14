@@ -20,7 +20,6 @@ import {
   useForm,
   useFormContext,
 } from 'react-hook-form';
-import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import CreateMemoryModal from './CreateMemoryModal.component';
 
 jest.mock('react-markdown', () => ({

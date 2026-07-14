@@ -18,7 +18,7 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { Copy06, XClose } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
@@ -54,7 +54,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       folderName: getEntityName(file.folder),
       fileName: getEntityName(file),
       formattedFileSize: formatBytes(file.fileSize),
-      fileName: getEntityName(file),
     };
   }, [file]);
 
@@ -154,11 +153,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               size="text-xs"
               weight="semibold">
               {t('label.detail-plural')}
-            </Typography>
-          </div>
-          <Box align="center" className="tw:py-1.5" justify="between">
-            <Typography className="tw:text-quaternary" size="text-sm">
-              {t('label.status')}
             </Typography>
           </div>
           {folderName && (

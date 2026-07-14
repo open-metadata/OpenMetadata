@@ -76,6 +76,17 @@ export const unpinContextMemory = async (id: string) => {
   return response.data;
 };
 
+export const getContextMemoryById = async (
+  id: string,
+  fields?: string
+): Promise<ContextMemory> => {
+  const response = await APIClient.get<ContextMemory>(`${BASE_URL}/${id}`, {
+    params: fields ? { fields } : undefined,
+  });
+
+  return response.data;
+};
+
 export const getContextMemoryByName = async (
   name: string,
   fields?: string
