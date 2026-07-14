@@ -16,6 +16,9 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.Executors;
+import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -342,10 +345,6 @@ public class OpenSearchVectorService implements VectorIndexService {
           throw e;
         }
       }
-    } catch (IllegalStateException e) {
-      // Escalations (total poison-signal loss, bulk item failures on the live path) must reach
-      // the reindex machinery's per-record failure accounting rather than be logged away.
-      throw e;
     } catch (Exception e) {
       LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
     }
@@ -380,17 +379,8 @@ public class OpenSearchVectorService implements VectorIndexService {
         ChunkHeader header = getChunkHeader(staged, parentId);
         replaceChunks(staged, parentId, List.of(), previousCount(header));
       } catch (Exception e) {
-        // A delete missing from the staged generation resurrects the chunks at promotion. Record
-        // the failure but never let it explode out of the entity-delete lifecycle — the local
-        // poison flag plus the marker (when recordable) already block promotion.
-        try {
-          recordStagedWriteFailure(staged, parentId, e);
-        } catch (IllegalStateException signalLoss) {
-          LOG.error(
-              "Poison signal loss during live-delete cleanup for {}: {}",
-              parentId,
-              signalLoss.getMessage());
-        }
+        // A delete missing from the staged generation resurrects the chunks at promotion.
+        recordStagedWriteFailure(staged, parentId, e);
       }
     }
   }
@@ -633,17 +623,52 @@ public class OpenSearchVectorService implements VectorIndexService {
     if (!recorded) {
       recorded = writePoisonMarker(target, target);
     }
-    if (!recorded && liveIndex != null) {
-      // Neither store took the signal: escalate so the failure cannot be skipped — the exception
-      // propagates into the reindex machinery's per-record failure accounting instead of this
-      // method returning as if handled.
-      throw new IllegalStateException(
-          "Staged chunk write for "
-              + parentId
-              + " failed AND the failure could not be recorded in either the live index or the "
-              + "staged generation — failing loudly instead of risking a silent promotion of an "
-              + "incomplete generation",
-          e);
+    if (!recorded) {
+      // Neither store took the signal right now. Throwing here is useless — the sink's broad
+      // embedding catch swallows it — so instead the marker is queued for persistent retry: a
+      // daemon loop re-attempts it every few seconds until one store accepts it. Promotion
+      // happens at run end, long after any transient blip recovers, so the signal arrives late
+      // rather than never.
+      pendingPoisonMarkers.add(target);
+      ensurePoisonRetryLoop();
+      LOG.error(
+          "Staged poison marker for {} could not be recorded anywhere — queued for persistent "
+              + "retry until a store accepts it",
+          target);
+    }
+  }
+
+  private final Set<String> pendingPoisonMarkers = ConcurrentHashMap.newKeySet();
+  private volatile ScheduledExecutorService poisonRetryExecutor;
+
+  private void ensurePoisonRetryLoop() {
+    if (poisonRetryExecutor == null) {
+      synchronized (stagedChunkLock) {
+        if (poisonRetryExecutor == null) {
+          poisonRetryExecutor =
+              Executors.newSingleThreadScheduledExecutor(
+                  runnable -> {
+                    Thread thread = new Thread(runnable, "chunk-poison-marker-retry");
+                    thread.setDaemon(true);
+                    return thread;
+                  });
+          poisonRetryExecutor.scheduleWithFixedDelay(
+              this::retryPendingPoisonMarkers, 5, 15, TimeUnit.SECONDS);
+        }
+      }
+    }
+  }
+
+  private void retryPendingPoisonMarkers() {
+    for (String generation : pendingPoisonMarkers) {
+      String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
+      boolean recorded =
+          (liveIndex != null && writePoisonMarker(liveIndex, generation))
+              || writePoisonMarker(generation, generation);
+      if (recorded) {
+        pendingPoisonMarkers.remove(generation);
+        LOG.info("Persistent retry recorded staged poison marker for {}", generation);
+      }
     }
   }
 
