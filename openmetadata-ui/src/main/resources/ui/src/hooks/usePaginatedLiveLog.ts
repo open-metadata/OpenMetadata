@@ -84,6 +84,18 @@ export const usePaginatedLiveLog = ({
   const requestIdRef = useRef(0);
   const busyRef = useRef(false);
 
+  // A final tail read requested (on the live→terminal edge) while a request was
+  // in flight; flushed once the lock frees so trailing lines are never lost.
+  const pendingFinalRef = useRef(false);
+  const pollTailRef = useRef<() => Promise<void>>();
+
+  const flushFinalTail = useCallback(() => {
+    if (pendingFinalRef.current && !busyRef.current) {
+      pendingFinalRef.current = false;
+      pollTailRef.current?.();
+    }
+  }, []);
+
   const fetchForward = useCallback(
     async (cursor: string | undefined, isInitial: boolean) => {
       if (busyRef.current) {
@@ -123,10 +135,11 @@ export const usePaginatedLiveLog = ({
           } else {
             setLoadingMore(false);
           }
+          flushFinalTail();
         }
       }
     },
-    []
+    [flushFinalTail]
   );
 
   useEffect(() => {
@@ -186,9 +199,14 @@ export const usePaginatedLiveLog = ({
     } finally {
       if (requestId === requestIdRef.current) {
         busyRef.current = false;
+        flushFinalTail();
       }
     }
-  }, [reachedTail, tailCursor]);
+  }, [reachedTail, tailCursor, flushFinalTail]);
+
+  useEffect(() => {
+    pollTailRef.current = pollTail;
+  });
 
   usePollingEffect(pollTail, {
     enabled: enabled && isLive && reachedTail,
@@ -196,16 +214,18 @@ export const usePaginatedLiveLog = ({
   });
 
   // Tail polling stops the moment `isLive` flips false, so lines written between
-  // the last poll and the run's terminal transition would be lost. Fetch the
-  // tail once more on that true→false edge to capture the final chunk.
+  // the last poll and the run's terminal transition would be lost. Request one
+  // final tail read on that true→false edge; if a request is in flight it is
+  // deferred (via `flushFinalTail`) until the lock frees, so it never no-ops.
   const prevIsLiveRef = useRef(isLive);
   useEffect(() => {
     const wasLive = prevIsLiveRef.current;
     prevIsLiveRef.current = isLive;
     if (wasLive && !isLive && enabled && reachedTail) {
-      pollTail();
+      pendingFinalRef.current = true;
+      flushFinalTail();
     }
-  }, [isLive, enabled, reachedTail, pollTail]);
+  }, [isLive, enabled, reachedTail, flushFinalTail]);
 
   const logs = committed + tail;
   const totalLines = useMemo(

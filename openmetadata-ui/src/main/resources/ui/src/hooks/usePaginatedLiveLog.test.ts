@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { renderHook, waitFor } from '@testing-library/react';
+import { act, renderHook, waitFor } from '@testing-library/react';
 import { LogPage, usePaginatedLiveLog } from './usePaginatedLiveLog';
 
 jest.mock('../utils/ToastUtils', () => ({ showErrorToast: jest.fn() }));
@@ -164,5 +164,46 @@ describe('usePaginatedLiveLog', () => {
     await waitFor(() => expect(result.current.logs).toBe('tail-v2'));
 
     expect(fetchPage).toHaveBeenCalledTimes(2);
+  });
+
+  it('defers the final tail read past an in-flight request when isLive flips false', async () => {
+    let resolveInflight: (value: LogPage) => void = () => undefined;
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page('tail-v1'))
+      .mockImplementationOnce(
+        () =>
+          new Promise<LogPage>((resolve) => {
+            resolveInflight = resolve;
+          })
+      )
+      .mockResolvedValue(page('tail-final'));
+    const { result, rerender } = renderHook(
+      ({ isLive }) =>
+        usePaginatedLiveLog({
+          fetchPage,
+          resetKey: 'k',
+          enabled: true,
+          isLive,
+          intervalMs: 10,
+        }),
+      { initialProps: { isLive: true } }
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('tail-v1'));
+    // The interval fires a tail poll that stays in flight (unresolved).
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
+
+    // Run goes terminal while that poll is still in flight.
+    rerender({ isLive: false });
+
+    // Freeing the lock flushes the deferred final read — the last lines land.
+    await act(async () => {
+      resolveInflight(page('tail-v1'));
+    });
+
+    await waitFor(() => expect(result.current.logs).toBe('tail-final'));
+
+    expect(fetchPage).toHaveBeenCalledTimes(3);
   });
 });
