@@ -179,7 +179,6 @@ const convertBackendEdgeToReactFlow = (
   const isApprove = condition === 'approve';
   const isReject = condition === 'reject';
   const isPositive = isTrue || isApprove;
-  const isNegative = isFalse || isReject;
 
   let edgeStyle = {};
   let labelStyle = {};
