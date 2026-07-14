@@ -59,7 +59,7 @@ export interface FeaturesEmptyPlaceholderProps
   features?: EmptyPlaceholderFeature[];
 }
 
-const FEATURES_BACKGROUND = 'var(--gradient-empty-placeholder-features)';
+const FEATURES_BACKGROUND = 'var(--tw-gradient-empty-placeholder-features)';
 
 export const FeaturesEmptyPlaceholder = ({
   title,
