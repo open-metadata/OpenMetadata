@@ -12,10 +12,10 @@
  */
 
 import {
+  Box,
   Button,
   EmptyPlaceholder,
   Input,
-  Box,
   SlideoutMenu,
   TextArea,
   Typography,
