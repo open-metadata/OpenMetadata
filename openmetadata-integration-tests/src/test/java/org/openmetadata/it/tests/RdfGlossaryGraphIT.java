@@ -36,10 +36,13 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
 import org.junit.jupiter.api.parallel.Isolated;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
@@ -393,6 +396,9 @@ public class RdfGlossaryGraphIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
   void customRdfPredicateRelationSurfacesInGraphEndpoint(TestNamespace ns) throws Exception {
     // Regression: GlossaryTermRelationSettings lets operators define custom
     // relation types with arbitrary rdfPredicate URIs (e.g. "Enrolls In" with
@@ -438,6 +444,9 @@ public class RdfGlossaryGraphIT {
   }
 
   @Test
+  @ResourceLock(
+      value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+      mode = ResourceAccessMode.READ_WRITE)
   void customRelationWithNullRdfPredicateSurfacesInGraphEndpoint(TestNamespace ns)
       throws Exception {
     // Companion to customRdfPredicateRelationSurfacesInGraphEndpoint covering

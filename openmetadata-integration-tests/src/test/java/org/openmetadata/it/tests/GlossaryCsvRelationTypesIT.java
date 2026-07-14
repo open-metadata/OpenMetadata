@@ -43,6 +43,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.entity.data.Glossary;
@@ -432,7 +433,8 @@ public class GlossaryCsvRelationTypesIT {
    * that mutates these settings must use the same key on a {@link ResourceLock} so JUnit serialises
    * across classes; a class-local synchronized block would only guard intra-class concurrency.
    */
-  private static final String SETTINGS_RESOURCE_KEY = "glossaryTermRelationSettings";
+  private static final String SETTINGS_RESOURCE_KEY =
+      SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS;
 
   @Test
   void testImportPreservesMixedRelationsViaApi(TestNamespace ns) throws Exception {
