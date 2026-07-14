@@ -88,6 +88,12 @@ jest.mock('../../DomainTypeWidget/DomainTypeWidget', () => ({
     .mockImplementation(() => <div>DomainTypeWidget</div>),
 }));
 
+jest.mock('../../DomainMembersWidget/DomainMembersWidget', () => ({
+  DomainMembersWidget: jest
+    .fn()
+    .mockImplementation(() => <div>DomainMembersWidget</div>),
+}));
+
 jest.mock('../../../common/ResizablePanels/ResizablePanels', () =>
   jest.fn().mockImplementation(({ firstPanel, secondPanel }) => (
     <div>
@@ -118,6 +124,16 @@ describe('DocumentationTab', () => {
     expect(screen.getByText('DomainExpertWidget')).toBeInTheDocument();
 
     expect(screen.getByText('DomainTypeWidget')).toBeInTheDocument();
+
+    expect(screen.getByText('DomainMembersWidget')).toBeInTheDocument();
+  });
+
+  it('should not render DomainMembersWidget for DATA_PRODUCT type', () => {
+    render(<DocumentationTab type={DocumentationEntity.DATA_PRODUCT} />, {
+      wrapper: MemoryRouter,
+    });
+
+    expect(screen.queryByText('DomainMembersWidget')).not.toBeInTheDocument();
   });
 
   it('should pass DOMAIN entityType to DescriptionV1 when type is DOMAIN', () => {

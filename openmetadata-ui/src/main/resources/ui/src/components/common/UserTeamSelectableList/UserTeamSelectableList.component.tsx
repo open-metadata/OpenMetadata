@@ -60,6 +60,7 @@ export const UserTeamSelectableList = ({
   children,
   popoverProps,
   multiple = { user: false, team: false },
+  includeAllTeamTypes = false,
   label,
   previewSelected = false,
   listHeight = ADD_USER_CONTAINER_HEIGHT,
@@ -83,6 +84,17 @@ export const UserTeamSelectableList = ({
 
   const isMultiUser = multiple.user;
   const isMultiTeam = multiple.team;
+
+  const teamQueryFilter = useMemo(
+    () =>
+      getTermQuery(
+        {},
+        'must',
+        undefined,
+        includeAllTeamTypes ? undefined : { matchTerms: { teamType: 'Group' } }
+      ),
+    [includeAllTeamTypes]
+  );
 
   const { defaultUsers, defaultTeams } = useMemo(() => {
     return {
@@ -132,9 +144,7 @@ export const UserTeamSelectableList = ({
         query: searchText || '',
         pageNumber: afterPage,
         pageSize: PAGE_SIZE_MEDIUM,
-        queryFilter: getTermQuery({}, 'must', undefined, {
-          matchTerms: { teamType: 'Group' },
-        }),
+        queryFilter: teamQueryFilter,
         sortField: 'displayName.keyword',
         sortOrder: 'asc',
         searchIndex: SearchIndex.TEAM,
@@ -211,9 +221,7 @@ export const UserTeamSelectableList = ({
       query: '',
       pageNumber: 1,
       pageSize: 0,
-      queryFilter: getTermQuery({}, 'must', undefined, {
-        matchTerms: { teamType: 'Group' },
-      }),
+      queryFilter: teamQueryFilter,
       searchIndex: SearchIndex.TEAM,
     });
 

@@ -130,6 +130,42 @@ export const removeAssetsFromDomain = async (
   return response.data;
 };
 
+export const addMembersToDomain = async (
+  domainFqn: string,
+  members: EntityReference[],
+  options?: { dryRun?: boolean }
+) => {
+  const data: BulkAssets = {
+    assets: members,
+    ...(options?.dryRun ? { dryRun: true } : {}),
+  };
+
+  const response = await APIClient.put<
+    BulkAssets,
+    AxiosResponse<BulkOperationResult>
+  >(`/domains/${getEncodedFqn(domainFqn)}/members/add`, data);
+
+  return response.data;
+};
+
+export const removeMembersFromDomain = async (
+  domainFqn: string,
+  members: EntityReference[],
+  options?: { dryRun?: boolean }
+) => {
+  const data: BulkAssets = {
+    assets: members,
+    ...(options?.dryRun ? { dryRun: true } : {}),
+  };
+
+  const response = await APIClient.put<
+    BulkAssets,
+    AxiosResponse<BulkOperationResult>
+  >(`/domains/${getEncodedFqn(domainFqn)}/members/remove`, data);
+
+  return response.data;
+};
+
 export const listDomainHierarchy = async (params?: ListParams) => {
   const response = await APIClient.get<PagingResponse<Domain[]>>(
     `${BASE_URL}/hierarchy`,

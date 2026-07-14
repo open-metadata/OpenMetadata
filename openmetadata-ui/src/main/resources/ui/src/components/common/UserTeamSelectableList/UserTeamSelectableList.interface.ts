@@ -27,6 +27,11 @@ export interface UserSelectDropdownProps {
   children?: ReactNode;
   popoverProps?: PopoverProps;
   multiple?: MultipleUserTeam;
+  /**
+   * By default only teams of type `Group` are listed (owner semantics).
+   * Set to true to list teams of all types (e.g. for domain membership).
+   */
+  includeAllTeamTypes?: boolean;
   label?: string;
   previewSelected?: boolean;
   listHeight?: number;
