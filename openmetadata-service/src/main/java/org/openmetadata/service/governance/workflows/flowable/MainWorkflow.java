@@ -113,7 +113,7 @@ public class MainWorkflow {
         String variable = entry.getKey();
         String namespace = entry.getValue();
 
-        if (namespace.equals(GLOBAL_NAMESPACE)) {
+        if (GLOBAL_NAMESPACE.equals(namespace)) {
           if (!(validateGlobalContainsVariable(variable) || triggerIsNoOp())) {
             throw new RuntimeException(
                 String.format(

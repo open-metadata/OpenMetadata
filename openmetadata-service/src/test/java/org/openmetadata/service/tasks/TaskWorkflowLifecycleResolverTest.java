@@ -39,13 +39,16 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.Config__1;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.TransitionMetadatum;
 import org.openmetadata.schema.governance.workflows.elements.nodes.userTask.UserApprovalTaskDefinition;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.TaskAvailableTransition;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityStatus;
 import org.openmetadata.schema.type.TaskEntityType;
+import org.openmetadata.schema.type.TaskPriority;
 import org.openmetadata.schema.type.TaskResolutionType;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.TaskFormSchemaRepository;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 
 class TaskWorkflowLifecycleResolverTest {
 
@@ -404,5 +407,83 @@ class TaskWorkflowLifecycleResolverTest {
 
     assertEquals(TaskEntityType.DescriptionUpdate.value(), variables.get("taskType"));
     assertEquals(TaskCategory.MetadataUpdate.value(), variables.get("taskCategory"));
+  }
+
+  @Test
+  void workflowStartVariablesCarryEveryKeyForAPopulatedTask() {
+    UUID id = UUID.randomUUID();
+    Task task =
+        new Task()
+            .withId(id)
+            .withName("TASK-1")
+            .withDisplayName("Grant access")
+            .withDescription("please review")
+            .withType(TaskEntityType.DescriptionUpdate)
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withPriority(TaskPriority.High)
+            .withPayload("payload-json")
+            .withCreatedBy(new EntityReference().withId(UUID.randomUUID()).withName("alice"))
+            .withUpdatedBy("bob")
+            .withAssignees(
+                List.of(new EntityReference().withId(UUID.randomUUID()).withName("team")));
+
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    // Every documented key must be present — a dropped/renamed key silently breaks downstream
+    // reads.
+    assertTrue(
+        v.keySet()
+            .containsAll(
+                List.of(
+                    WorkflowStartVariables.TASK_ENTITY_ID,
+                    WorkflowStartVariables.TASK_WORKFLOW_MANAGED,
+                    WorkflowStartVariables.TASK_NAME,
+                    WorkflowStartVariables.TASK_DISPLAY_NAME,
+                    WorkflowStartVariables.TASK_DESCRIPTION,
+                    WorkflowStartVariables.TASK_TYPE,
+                    WorkflowStartVariables.TASK_CATEGORY,
+                    WorkflowStartVariables.TASK_PRIORITY,
+                    WorkflowStartVariables.TASK_PAYLOAD,
+                    WorkflowStartVariables.TASK_DUE_DATE,
+                    WorkflowStartVariables.TASK_EXTERNAL_REFERENCE,
+                    WorkflowStartVariables.TASK_TAGS,
+                    WorkflowStartVariables.TASK_CREATED_BY,
+                    WorkflowStartVariables.TASK_UPDATED_BY,
+                    WorkflowStartVariables.TASK_REVIEWERS,
+                    WorkflowStartVariables.TASK_ASSIGNEES)));
+    assertEquals(id.toString(), v.get(WorkflowStartVariables.TASK_ENTITY_ID));
+    assertEquals(true, v.get(WorkflowStartVariables.TASK_WORKFLOW_MANAGED));
+    assertEquals("TASK-1", v.get(WorkflowStartVariables.TASK_NAME));
+    assertEquals(TaskEntityType.DescriptionUpdate.value(), v.get(WorkflowStartVariables.TASK_TYPE));
+    assertEquals(TaskPriority.High.value(), v.get(WorkflowStartVariables.TASK_PRIORITY));
+    assertEquals(
+        "payload-json", v.get(WorkflowStartVariables.TASK_PAYLOAD)); // String passes through
+    assertEquals("bob", v.get(WorkflowStartVariables.TASK_UPDATED_BY));
+    assertNotNull(v.get(WorkflowStartVariables.TASK_CREATED_BY)); // serialized to JSON
+    assertNotNull(v.get(WorkflowStartVariables.TASK_ASSIGNEES));
+    // The public builder delegates to the record — same map.
+    assertEquals(v, TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
+  }
+
+  @Test
+  void workflowStartVariablesTolerateNullOptionalFields() {
+    // Only id set — every optional field null. Keys must still be present (null values), never NPE.
+    Task task = new Task().withId(UUID.randomUUID());
+    Map<String, Object> v = WorkflowStartVariables.of(task).toVariables();
+
+    assertEquals(true, v.get(WorkflowStartVariables.TASK_WORKFLOW_MANAGED));
+    // Priority carries the schema default (Medium) even on a bare task — assert that, not null.
+    assertEquals(TaskPriority.Medium.value(), v.get(WorkflowStartVariables.TASK_PRIORITY));
+    for (String key :
+        List.of(
+            WorkflowStartVariables.TASK_NAME,
+            WorkflowStartVariables.TASK_TYPE,
+            WorkflowStartVariables.TASK_CATEGORY,
+            WorkflowStartVariables.TASK_PAYLOAD,
+            WorkflowStartVariables.TASK_CREATED_BY,
+            WorkflowStartVariables.TASK_ASSIGNEES)) {
+      assertTrue(v.containsKey(key), "missing key: " + key);
+      assertEquals(null, v.get(key), "expected null for: " + key);
+    }
   }
 }

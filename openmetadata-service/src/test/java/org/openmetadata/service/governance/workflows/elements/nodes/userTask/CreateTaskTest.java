@@ -253,6 +253,24 @@ class CreateTaskTest {
   }
 
   @Test
+  void testResolveEffectiveDueDatePreservesRequestedDueDateWhenPayloadIsLiteralNullString() {
+    // Flowable can hand back the literal JSON string "null", which deserializes to a null POJO.
+    // readDataAccessRequestPayload must yield an empty payload, not NPE on getDuration().
+    Long requested = 999L;
+    assertEquals(
+        requested,
+        CreateTask.resolveEffectiveDueDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, "null", requested));
+  }
+
+  @Test
+  void testResolveEffectiveExpirationDateReturnsNullForLiteralNullStringPayload() {
+    assertNull(
+        CreateTask.resolveEffectiveExpirationDate(
+            TaskEntityStatus.Granted, TaskEntityType.DataAccessRequest, "null"));
+  }
+
+  @Test
   void testResolveEffectiveDueDatePreservesRequestedDueDateForNonDarTaskPayload() {
     Long requested = 999L;
     assertEquals(

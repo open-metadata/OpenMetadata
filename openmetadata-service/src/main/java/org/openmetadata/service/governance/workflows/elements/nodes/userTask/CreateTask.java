@@ -931,10 +931,13 @@ public class CreateTask implements TaskListener {
     // reaches this method as a raw JSON String (Flowable variable serialization) or as a
     // deserialized Map/POJO (repository read); handle both here rather than at every caller.
     try {
-      if (payload instanceof String json) {
-        return JsonUtils.readValue(json, DataAccessRequestPayload.class);
-      }
-      return JsonUtils.convertValueLenient(payload, DataAccessRequestPayload.class);
+      DataAccessRequestPayload dar =
+          payload instanceof String json
+              ? JsonUtils.readValue(json, DataAccessRequestPayload.class)
+              : JsonUtils.convertValueLenient(payload, DataAccessRequestPayload.class);
+      // Deserializing a literal JSON null yields a null POJO; hand back an empty payload so
+      // callers can null-check getters instead of guarding every readDataAccessRequestPayload(...).
+      return dar != null ? dar : new DataAccessRequestPayload();
     } catch (RuntimeException invalidPayload) {
       LOG.trace("[CreateTask] Payload is not a DataAccessRequestPayload", invalidPayload);
       throw new IllegalArgumentException("Invalid DataAccessRequest task payload", invalidPayload);
