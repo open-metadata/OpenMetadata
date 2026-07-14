@@ -109,7 +109,6 @@ export const ContextPreviewModal = ({
   useEffect(() => {
     onDocumentLoadedRef.current = onDocumentLoaded;
   }, [onDocumentLoaded]);
-  
 
   const fetchPreview = useCallback(
     async (refresh = false) => {
