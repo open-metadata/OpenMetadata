@@ -249,7 +249,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         replaceChunks(staged, parentId, chunkDocs, previousCount(stagedHeader));
       }
     } catch (Exception e) {
-      LOG.error("Failed staged chunk backfill for {}: {}", entity.getId(), e.getMessage(), e);
+      recordStagedWriteFailure(staged, entity.getId().toString(), e);
     }
   }
 
@@ -310,12 +310,23 @@ public class OpenSearchVectorService implements VectorIndexService {
       // The target is resolved from cluster state so distributed workers on other nodes converge
       // on the coordinator's staged generation without any cross-node coordination.
       String target = resolveChunkSinkTarget();
+      String liveTarget = null;
       if (target == null) {
         requireChunkIndexForWrite();
         target = getChunkIndexName();
+        liveTarget = target;
       }
-      ChunkHeader header = getChunkHeader(target, parentId);
-      replaceChunks(target, parentId, chunkDocs, previousCount(header));
+      try {
+        ChunkHeader header = getChunkHeader(target, parentId);
+        replaceChunks(target, parentId, chunkDocs, previousCount(header));
+      } catch (Exception e) {
+        if (liveTarget == null) {
+          // A hole in the staged generation becomes a silent drop at promotion — poison the run.
+          recordStagedWriteFailure(target, parentId, e);
+        } else {
+          throw e;
+        }
+      }
     } catch (Exception e) {
       LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
     }
@@ -346,7 +357,13 @@ public class OpenSearchVectorService implements VectorIndexService {
     // Also delete from an in-flight staged generation so a promoted run does not resurrect them.
     String staged = resolveChunkSinkTarget();
     if (staged != null) {
-      deleteChunksFrom(staged, parentId);
+      try {
+        ChunkHeader header = getChunkHeader(staged, parentId);
+        replaceChunks(staged, parentId, List.of(), previousCount(header));
+      } catch (Exception e) {
+        // A delete missing from the staged generation resurrects the chunks at promotion.
+        recordStagedWriteFailure(staged, parentId, e);
+      }
     }
   }
 
@@ -460,12 +477,14 @@ public class OpenSearchVectorService implements VectorIndexService {
         }
       } else {
         stagedChunkRunFailed = true;
+        // Poison only — never delete mid-run: writers on other nodes may still be flushing into
+        // the generation, and a write against a deleted index auto-creates a junk index. The
+        // un-promoted generation is swept by the next staged recreate.
         LOG.warn(
-            "Staged chunk recreate: entity type {} failed to reindex — old chunks stay live; "
-                + "abandoning staged index {}",
+            "Staged chunk recreate: entity type {} failed to reindex — promotion blocked, old "
+                + "chunks stay live; staged index {} will be swept by the next recreate",
             entityType,
             stagedChunkIndex);
-        abandonStagedChunkIndex();
       }
     }
   }
@@ -477,6 +496,14 @@ public class OpenSearchVectorService implements VectorIndexService {
   private void promoteStagedChunkIndex() {
     synchronized (stagedChunkLock) {
       String generation = stagedChunkIndex;
+      if (generation != null && stagedGenerationPoisoned(generation)) {
+        LOG.warn(
+            "Staged chunk index {} carries a write-failure poison marker — promotion blocked, "
+                + "old chunks stay live; the generation will be swept by the next recreate",
+            generation);
+        stagedChunkIndex = null;
+        generation = null;
+      }
       if (generation != null) {
         String base = getChunkIndexName();
         String oldTarget = resolveLiveChunkTarget(base);
@@ -495,15 +522,45 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  /** Deletes the staged generation of a poisoned run so distributed workers stop writing to it. */
-  private void abandonStagedChunkIndex() {
-    synchronized (stagedChunkLock) {
-      String generation = stagedChunkIndex;
-      if (generation != null) {
-        deleteOrphanGeneration(generation);
-        stagedChunkIndex = null;
-      }
+  private static final String STAGED_POISON_DOC_ID = "__staged_write_failure__";
+
+  /**
+   * Records a failed write against the staged generation: sets the local poison flag and
+   * best-effort writes a marker document into the generation itself, so promotion is blocked even
+   * when the failure happened on a different node than the coordinator. The marker carries no
+   * embedding or parentId, so it is invisible to every chunk query and dies with the generation.
+   */
+  private void recordStagedWriteFailure(String target, String parentId, Exception e) {
+    stagedChunkRunFailed = true;
+    LOG.error(
+        "Staged chunk write failed for {} in {} — promotion will be blocked so the old chunks "
+            + "stay live: {}",
+        parentId,
+        target,
+        e.getMessage(),
+        e);
+    try {
+      executeGenericRequest(
+          "PUT", "/" + target + "/_doc/" + STAGED_POISON_DOC_ID, "{\"poisoned\":true}");
+    } catch (Exception markerFailure) {
+      LOG.warn(
+          "Could not write staged poison marker to {}: {}", target, markerFailure.getMessage());
     }
+  }
+
+  /** True when the staged generation carries a poison marker written by any node's failed write. */
+  private boolean stagedGenerationPoisoned(String generation) {
+    boolean poisoned = false;
+    try {
+      String response =
+          executeGenericRequest("GET", "/" + generation + "/_doc/" + STAGED_POISON_DOC_ID, null);
+      poisoned = MAPPER.readTree(response).path("found").asBoolean(false);
+    } catch (Exception e) {
+      // 404 = no marker; treat lookup errors as not-poisoned — the local flag still guards, and
+      // failing closed here would turn a transient read blip into a blocked promotion.
+      LOG.debug("Staged poison marker lookup failed for {}: {}", generation, e.getMessage());
+    }
+    return poisoned;
   }
 
   private static final long SINK_TARGET_CACHE_MS = 15_000;
