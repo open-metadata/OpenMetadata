@@ -388,7 +388,7 @@ class ListFilterTest {
   @Test
   void test_taskStatusGroup_openAndClosedAreDisjoint() {
     // Row-aware buckets: every (type, status) combination lands in exactly one of
-    // open/closed so All = Open + Closed for both DAR and legacy task types.
+    // open/closed so All = Open + Closed for both DAR and non-DAR task types.
     ListFilter openFilter = new ListFilter().addQueryParam("taskStatusGroup", "open");
     ListFilter closedFilter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
 
@@ -397,7 +397,7 @@ class ListFilterTest {
 
     assertFalse(
         openCond.contains("<> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
-        "Legacy Approved must not appear in the open bucket: " + openCond);
+        "Non-DAR Approved must not appear in the open bucket: " + openCond);
     assertFalse(
         closedCond.contains(
             "type = 'DataAccessRequest'"

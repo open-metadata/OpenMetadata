@@ -4639,11 +4639,11 @@ public interface CollectionDAO {
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
         // Row-aware bucketing so openCount + completedCount = total across mixed task types.
-        // 'Approved' is terminal for Glossary/DescriptionUpdate but non-terminal for
-        // DataAccessRequest (means "awaiting grant") — CASE WHEN branches on `type` so each
-        // row lands in exactly one bucket. 'Granted' and 'ManualRevoke' are DAR-only
-        // mid-lifecycle statuses that count as open for DAR rows.
-        // Keep in sync with ListFilter.buildTaskStatusGroupCondition and
+        // 'Approved' is terminal for non-DAR task types (Glossary/DescriptionUpdate/...) but
+        // non-terminal for DataAccessRequest (means "awaiting grant") — CASE WHEN branches on
+        // `type` so each row lands in exactly one bucket. 'Granted' and 'ManualRevoke' are
+        // DAR-only non-terminal statuses (live access awaiting revoke) that count as open for
+        // DAR rows. Keep in sync with ListFilter.buildTaskStatusGroupCondition and
         // TaskRepository.NON_TERMINAL_TASK_STATUSES.
         "SELECT "
             + "COUNT(id) AS total, "

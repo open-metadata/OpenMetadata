@@ -33,11 +33,20 @@ public class ListFilter extends Filter<ListFilter> {
   private static final String TASK_STATUS_GROUP_CLOSED = "closed";
   private static final String TASK_TYPE_DAR = TaskEntityType.DataAccessRequest.value();
 
-  private static final List<TaskEntityStatus> OPEN_STATUSES =
+  /** Non-terminal statuses shared by every task type. */
+  private static final List<TaskEntityStatus> SHARED_OPEN_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
-  private static final List<TaskEntityStatus> DAR_MID_LIFECYCLE_STATUSES =
+
+  /**
+   * DataAccessRequest-only non-terminal statuses. {@code Approved} means "awaiting grant",
+   * {@code Granted} means access is live and revocable, {@code ManualRevoke} means the revoke
+   * is pending a human confirmation.
+   */
+  private static final List<TaskEntityStatus> DAR_ONLY_OPEN_STATUSES =
       List.of(TaskEntityStatus.Approved, TaskEntityStatus.Granted, TaskEntityStatus.ManualRevoke);
-  private static final List<TaskEntityStatus> LEGACY_TERMINAL_STATUSES =
+
+  /** Terminal statuses shared by every task type — no type-dependent semantics. */
+  private static final List<TaskEntityStatus> SHARED_TERMINAL_STATUSES =
       List.of(
           TaskEntityStatus.Rejected,
           TaskEntityStatus.Completed,
@@ -45,6 +54,8 @@ public class ListFilter extends Filter<ListFilter> {
           TaskEntityStatus.Failed,
           TaskEntityStatus.Revoked,
           TaskEntityStatus.Expired);
+
+  /** Union of {@link #SHARED_OPEN_STATUSES} and {@link #DAR_ONLY_OPEN_STATUSES}. */
   private static final List<TaskEntityStatus> ACTIVE_STATUSES =
       List.of(
           TaskEntityStatus.Open,
@@ -1147,34 +1158,31 @@ public class ListFilter extends Filter<ListFilter> {
 
   /**
    * Bucket predicates are row-aware on task {@code type} so buckets stay disjoint across the
-   * mixed inbox (Glossary + DataAccessRequest in the same result set):
-   * <ul>
-   *   <li>{@code Approved} is terminal for Glossary/DescriptionUpdate but non-terminal for
-   *       DataAccessRequest (means "awaiting grant"). It counts as closed only for the former
-   *       and as open only for the latter — never both.</li>
-   *   <li>{@code Granted}/{@code ManualRevoke} are DAR-only mid-lifecycle statuses (live access
-   *       awaiting revoke) and are surfaced as open for DAR rows.</li>
-   * </ul>
-   * The {@code active} bucket keeps its existing status-only definition since it is only used
-   * by DAR-scoped callers that already narrow the query to DataAccessRequest rows.
-   * Keep in sync with {@link CollectionDAO.TaskDAO#getTaskCountSummary} and
-   * {@code TaskRepository.NON_TERMINAL_TASK_STATUSES}.
+   * mixed inbox (DataAccessRequest + non-DAR task types in the same result set). {@code Approved}
+   * is the only status with type-dependent lifecycle semantics — terminal for non-DAR task types
+   * (Glossary/DescriptionUpdate/...), non-terminal for DataAccessRequest (means "awaiting grant").
+   * {@code Granted}/{@code ManualRevoke} are DAR-only non-terminal statuses (live access
+   * awaiting revoke). Every (type, status) combination lands in exactly one of open/closed so
+   * {@code All = Open + Closed} reconciles. The {@code active} bucket keeps its existing
+   * status-only definition since it is only used by DAR-scoped callers that already narrow the
+   * query to DataAccessRequest rows. Keep in sync with {@link CollectionDAO.TaskDAO#getTaskCountSummary}
+   * and {@code TaskRepository.NON_TERMINAL_TASK_STATUSES}.
    */
   private String buildTaskStatusGroupCondition(String statusGroup, String column, String typeCol) {
     return switch (statusGroup.toLowerCase(Locale.ROOT)) {
       case TASK_STATUS_GROUP_OPEN -> String.format(
           "(%1$s IN (%2$s) OR (%3$s = '%4$s' AND %1$s IN (%5$s)))",
           column,
-          statusInClause(OPEN_STATUSES),
+          statusInClause(SHARED_OPEN_STATUSES),
           typeCol,
           TASK_TYPE_DAR,
-          statusInClause(DAR_MID_LIFECYCLE_STATUSES));
+          statusInClause(DAR_ONLY_OPEN_STATUSES));
       case TASK_STATUS_GROUP_ACTIVE -> String.format(
           "%s IN (%s)", column, statusInClause(ACTIVE_STATUSES));
       case TASK_STATUS_GROUP_CLOSED -> String.format(
           "(%1$s IN (%2$s) OR (%3$s <> '%4$s' AND %1$s = '%5$s'))",
           column,
-          statusInClause(LEGACY_TERMINAL_STATUSES),
+          statusInClause(SHARED_TERMINAL_STATUSES),
           typeCol,
           TASK_TYPE_DAR,
           TaskEntityStatus.Approved.value());

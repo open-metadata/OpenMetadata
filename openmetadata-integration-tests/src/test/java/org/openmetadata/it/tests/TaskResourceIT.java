@@ -1814,11 +1814,11 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
   /**
    * The count SQL buckets rows row-aware on {@code type} so {@code Approved} lands in Open for
-   * DataAccessRequest (non-terminal — awaiting grant) and in Completed for legacy task types
-   * (terminal). This keeps openCount + completedCount = total across a mixed inbox and was the
-   * regression that produced Open(10) + Closed(4) &gt; All(13) when the UI mapped Open to the
-   * {@code active} bucket. See ListFilter.buildTaskStatusGroupCondition + CollectionDAO
-   * TaskDAO#getTaskCountSummary.
+   * DataAccessRequest (non-terminal — awaiting grant) and in Completed for non-DAR task types
+   * where it is terminal. This keeps openCount + completedCount = total across a mixed inbox
+   * and was the regression that produced Open(10) + Closed(4) &gt; All(13) when the UI mapped
+   * Open to the {@code active} bucket. See ListFilter.buildTaskStatusGroupCondition and
+   * CollectionDAO.TaskDAO#getTaskCountSummary.
    */
   @Test
   void testGetCount_ApprovedDarInOpenBucket_ApprovedGlossaryInClosedBucket(TestNamespace ns) {
