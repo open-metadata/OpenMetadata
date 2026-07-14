@@ -136,10 +136,6 @@ jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockReturnValue('Persona'),
 }));
 
-jest.mock('../../../utils/PermissionsUtils', () => ({
-  DEFAULT_ENTITY_PERMISSION: jest.fn(),
-}));
-
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));

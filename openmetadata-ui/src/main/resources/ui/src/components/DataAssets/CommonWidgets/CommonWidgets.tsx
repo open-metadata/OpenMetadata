@@ -51,7 +51,9 @@ import {
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsPureUtils';
-import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
+import withSuspenseFallback, {
+  TAB_CONTENT_FALLBACK,
+} from '../../AppRouter/withSuspenseFallback';
 import type {
   CustomPropertyProps,
   ExtentionEntitiesKeys,
@@ -64,7 +66,8 @@ type CustomPropertyTableComponent = <T extends ExtentionEntitiesKeys>(
 ) => JSX.Element;
 
 const CertificationWidget = withSuspenseFallback(
-  lazy(() => import('../../common/CertificationWidget/CertificationWidget'))
+  lazy(() => import('../../common/CertificationWidget/CertificationWidget')),
+  TAB_CONTENT_FALLBACK
 );
 
 const CustomPropertyTable = withSuspenseFallback(
@@ -74,7 +77,8 @@ const CustomPropertyTable = withSuspenseFallback(
         default: m.CustomPropertyTable,
       })
     )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 ) as CustomPropertyTableComponent;
 
 const Description = withSuspenseFallback(
@@ -82,7 +86,8 @@ const Description = withSuspenseFallback(
 );
 
 const TierWidget = withSuspenseFallback(
-  lazy(() => import('../../common/TierWidget/TierWidget'))
+  lazy(() => import('../../common/TierWidget/TierWidget')),
+  TAB_CONTENT_FALLBACK
 );
 
 const LeftPanelContainer = withSuspenseFallback(
@@ -90,7 +95,8 @@ const LeftPanelContainer = withSuspenseFallback(
     import('../../Customization/GenericTab/LeftPanelContainer').then((m) => ({
       default: m.LeftPanelContainer,
     }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const DataProductsContainer = withSuspenseFallback(
@@ -99,7 +105,8 @@ const DataProductsContainer = withSuspenseFallback(
       import(
         '../../DataProducts/DataProductsContainer/DataProductsContainer.component'
       )
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const DomainExpertWidget = withSuspenseFallback(
@@ -107,11 +114,13 @@ const DomainExpertWidget = withSuspenseFallback(
     import('../../Domain/DomainExpertsWidget/DomainExpertWidget').then((m) => ({
       default: m.DomainExpertWidget,
     }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const TagsContainerV2 = withSuspenseFallback(
-  lazy(() => import('../../Tag/TagsContainerV2/TagsContainerV2'))
+  lazy(() => import('../../Tag/TagsContainerV2/TagsContainerV2')),
+  TAB_CONTENT_FALLBACK
 );
 
 const DomainLabelV2 = withSuspenseFallback(
@@ -119,7 +128,8 @@ const DomainLabelV2 = withSuspenseFallback(
     import('../DomainLabelV2/DomainLabelV2').then((m) => ({
       default: m.DomainLabelV2,
     }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const OwnerLabelV2 = withSuspenseFallback(
@@ -127,7 +137,8 @@ const OwnerLabelV2 = withSuspenseFallback(
     import('../OwnerLabelV2/OwnerLabelV2').then((m) => ({
       default: m.OwnerLabelV2,
     }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const ReviewerLabelV2 = withSuspenseFallback(
@@ -135,7 +146,8 @@ const ReviewerLabelV2 = withSuspenseFallback(
     import('../ReviewerLabelV2/ReviewerLabelV2').then((m) => ({
       default: m.ReviewerLabelV2,
     }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 const GlossaryUpdateConfirmationModal = withSuspenseFallback(
@@ -143,7 +155,8 @@ const GlossaryUpdateConfirmationModal = withSuspenseFallback(
     import(
       '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal'
     ).then((m) => ({ default: m.GlossaryUpdateConfirmationModal }))
-  )
+  ),
+  TAB_CONTENT_FALLBACK
 );
 
 interface GenericEntity

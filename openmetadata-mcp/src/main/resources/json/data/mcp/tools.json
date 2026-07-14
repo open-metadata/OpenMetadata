@@ -15,6 +15,15 @@
             "type": "integer",
             "description": "Number of pills to return. Default is 10, maximum is 50.",
             "default": 10
+          },
+          "from": {
+            "type": "integer",
+            "description": "Offset to start results from. Default is 0. Prefer using 'cursor' for pagination.",
+            "default": 0
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque pagination token. Pass the 'nextCursor' value from a previous response to fetch the next page. Omit for the first page."
           }
         },
         "required": [
@@ -60,8 +69,12 @@
           },
           "from": {
             "type": "integer",
-            "description": "In case the request more than 'size' results, this is the offset from the first result you want to fetch. Default is 0.",
+            "description": "Offset from the first result. Default is 0. Prefer using 'cursor' for pagination.",
             "default": 0
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque pagination token. Pass the 'nextCursor' value from a previous response to fetch the next page. Omit for the first page."
           },
           "size": {
             "type": "integer",
@@ -193,6 +206,10 @@
             "type": "number",
             "description": "Minimum similarity score threshold (0.0 to 1.0). Results below this score are excluded. Default is 0.0 (no filtering). Use higher values like 0.5 or 0.7 to get only highly relevant results.",
             "default": 0.0
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque pagination token. Pass the 'nextCursor' value from a previous response to fetch the next page. Omit for the first page."
           }
         },
         "required": [
@@ -295,6 +312,35 @@
           "entityType",
           "fqn"
         ]
+      }
+    },
+    {
+      "name": "get_persona_context",
+      "description": "Get the shared AI context document curated for a persona. With no personaName, uses the caller's active persona. The document can contain many assets and is returned in deterministic parts; call again with part=2, part=3, and so on while hasMore is true. Access is limited to persona members, admins, and bots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personaName": {
+            "type": "string",
+            "description": "Optional persona fully qualified name. Omit to use the caller's active persona."
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format to page: markdown (default) or json.",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "default": "markdown"
+          },
+          "part": {
+            "type": "integer",
+            "description": "One-based document part to return. Start at 1 and continue while hasMore is true.",
+            "minimum": 1,
+            "default": 1
+          }
+        },
+        "required": []
       }
     },
     {
@@ -589,7 +635,11 @@
           },
           "after": {
             "type": "string",
-            "description": "This can be used to paginate the results. In the response you will get a nextCursor value, which can be used to get the next set of results. For the first call, this should be ignored."
+            "description": "Legacy pagination token. Prefer 'cursor' instead. For the first call, this should be ignored."
+          },
+          "cursor": {
+            "type": "string",
+            "description": "Opaque pagination token. Pass the 'nextCursor' value from a previous response to fetch the next page. Omit for the first page."
           },
           "limit": {
             "type": "integer",

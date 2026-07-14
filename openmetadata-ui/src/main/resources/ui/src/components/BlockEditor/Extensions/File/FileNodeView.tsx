@@ -10,13 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import {
+  Button,
+  Popover,
+  PopoverTrigger,
+  Tabs,
+} from '@openmetadata/ui-core-components';
 import { NodeViewProps, NodeViewWrapper } from '@tiptap/react';
-import { Popover, Spin, Tabs } from 'antd';
 import classNames from 'classnames';
 import { isEmpty, noop } from 'lodash';
 import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { UPLOADED_ASSETS_URL } from '../../../../constants/BlockEditor.constants';
+import { useEntityAttachment } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import Loader from '../../../common/Loader/Loader';
 import { FileType } from '../../BlockEditor.interface';
 import imageClassBase from '../image/ImageClassBase';
@@ -27,18 +33,34 @@ import ImageAttachment from './AttachmentComponents/ImageAttachment';
 import './file-node.less';
 
 const PopoverContent: FC<ImagePopoverContentProps> = (props) => {
+  const { allowFileUpload } = useEntityAttachment();
   const tabs = useMemo(() => {
-    return imageClassBase.getImageComponentPopoverTab().map((tab) => {
-      const TabComponent = tab.children;
+    return imageClassBase
+      .getImageComponentPopoverTab({ allowFileUpload })
+      .map((tab) => {
+        const TabComponent = tab.children;
 
-      return {
-        ...tab,
-        children: <TabComponent {...props} />,
-      };
-    });
-  }, [imageClassBase]);
+        return {
+          ...tab,
+          children: <TabComponent {...props} />,
+        };
+      });
+  }, [allowFileUpload, props]);
 
-  return <Tabs defaultActiveKey="embed" items={tabs} />;
+  return (
+    <Tabs defaultSelectedKey="embed">
+      <Tabs.List type="underline">
+        {tabs.map((tab) => (
+          <Tabs.Item id={tab.key} key={tab.key} label={tab.label} />
+        ))}
+      </Tabs.List>
+      {tabs.map((tab) => (
+        <Tabs.Panel className="tw:pt-3" id={tab.key} key={tab.key}>
+          {tab.children}
+        </Tabs.Panel>
+      ))}
+    </Tabs>
+  );
 };
 
 const FileNodeView: FC<NodeViewProps> = ({
@@ -48,6 +70,7 @@ const FileNodeView: FC<NodeViewProps> = ({
   editor,
 }) => {
   const { t } = useTranslation();
+  const { setPopoverOpen } = useEntityAttachment();
   const { url, fileName, fileSize, mimeType, isUploading, tempFile, isImage } =
     node.attrs;
   const isValidSource = !isEmpty(url) || isUploading;
@@ -72,7 +95,9 @@ const FileNodeView: FC<NodeViewProps> = ({
     : { downloadFile: noop, isLoading: false };
 
   const handlePopoverVisibleChange = (visible: boolean) => {
-    setIsPopupVisible(visible && editor.isEditable);
+    const nextVisible = visible && editor.isEditable && !isAssetsUrl;
+    setIsPopupVisible(nextVisible);
+    setPopoverOpen(nextVisible);
   };
 
   const handleFileClick = (e: React.MouseEvent) => {
@@ -148,38 +173,44 @@ const FileNodeView: FC<NodeViewProps> = ({
       data-type="file-attachment"
       data-url={url}>
       <div className={classNames(isMedia ? 'media-content' : 'file-content')}>
-        <Popover
-          align={{ targetOffset: [0, 16] }}
-          content={
-            isAssetsUrl ? null : (
-              <PopoverContent
-                deleteNode={deleteNode}
-                fileType={fileType}
-                isUploading={isUploading}
-                isValidSource={isValidSource}
-                src={isMedia ? mediaSrc : url}
-                updateAttributes={({ src, ...rest }) =>
-                  updateAttributes({ url: src, ...rest })
-                }
-                onPopupVisibleChange={(value) => setIsPopupVisible(value)}
-                onUploadingChange={noop}
-              />
-            )
-          }
-          destroyTooltipOnHide={{ keepParent: false }}
-          open={isPopupVisible}
-          overlayClassName="om-image-node-popover"
-          placement="bottom"
-          showArrow={false}
-          trigger="click"
+        <PopoverTrigger
+          isOpen={isPopupVisible}
           onOpenChange={handlePopoverVisibleChange}>
-          <Spin
-            indicator={<Loader size="small" />}
-            spinning={isMediaLoading || isUploading}
-            tip={isUploading ? t('label.uploading') : t('label.loading')}>
+          <Button
+            className="tw:relative tw:block tw:w-full tw:p-0 tw:bg-transparent tw:shadow-none tw:ring-0 hover:tw:bg-transparent tw:[&>span]:flex"
+            data-testid="add-image-container">
+            {!isImage && (isMediaLoading || isUploading) && (
+              <div className="upload-overlay">
+                <div className="upload-spinner">
+                  <Loader size="small" />
+                  <span className="upload-text">
+                    {isUploading ? t('label.uploading') : t('label.loading')}
+                  </span>
+                </div>
+              </div>
+            )}
             {renderContent()}
-          </Spin>
-        </Popover>
+          </Button>
+          <Popover
+            className="om-image-node-popover tw:w-96 tw:p-4"
+            placement="bottom">
+            <PopoverContent
+              deleteNode={deleteNode}
+              fileType={fileType}
+              isUploading={isUploading}
+              isValidSource={isValidSource}
+              src={isMedia ? mediaSrc : url}
+              updateAttributes={({ src, ...rest }) =>
+                updateAttributes({ url: src, ...rest })
+              }
+              onPopupVisibleChange={(value) => {
+                setIsPopupVisible(value);
+                setPopoverOpen(value);
+              }}
+              onUploadingChange={noop}
+            />
+          </Popover>
+        </PopoverTrigger>
       </div>
     </NodeViewWrapper>
   );

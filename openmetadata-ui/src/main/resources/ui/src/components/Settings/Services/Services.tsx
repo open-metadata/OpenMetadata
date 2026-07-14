@@ -45,7 +45,6 @@ import { DatabaseServiceSearchSource } from '../../../interface/search.interface
 import { ServicesType } from '../../../interface/service.interface';
 import { getServices, searchService } from '../../../rest/serviceAPI';
 import connectionsRouterClassBase from '../../../utils/ConnectionsRouterClassBase';
-import { getServiceLogo } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { highlightSearchText } from '../../../utils/EntitySearchUtils';
 import { getColumnSorter } from '../../../utils/EntitySortUtils';
@@ -372,6 +371,17 @@ const Services = ({ serviceName }: ServicesProps) => {
     ]
   );
 
+  const getServiceLogoElement = useCallback(
+    (service: ServicesType, className: string) => (
+      <img
+        alt={getEntityName(service)}
+        className={className}
+        src={serviceUtilClassBase.getServiceTypeLogo(service)}
+      />
+    ),
+    []
+  );
+
   const columns: ColumnsType<ServicesType> = [
     {
       title: t('label.name'),
@@ -381,7 +391,7 @@ const Services = ({ serviceName }: ServicesProps) => {
       sorter: getColumnSorter<ServicesType, 'name'>('name'),
       render: (name, record) => (
         <div className="d-flex gap-2 items-center">
-          {getServiceLogo(record.serviceType || '', 'w-4')}
+          {getServiceLogoElement(record, 'w-4')}
           <Link
             className="max-two-lines"
             data-testid={`service-name-${name}`}
@@ -481,7 +491,7 @@ const Services = ({ serviceName }: ServicesProps) => {
 
             <div className="d-flex flex-col justify-between flex-none">
               <div className="d-flex justify-end" data-testid="service-icon">
-                {getServiceLogo(service.serviceType || '', 'h-7')}
+                {getServiceLogoElement(service, 'h-7')}
               </div>
             </div>
           </div>

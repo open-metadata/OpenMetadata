@@ -173,9 +173,15 @@ jest.mock('../../context/LineageProvider/LineageProvider', () =>
   jest.fn().mockReturnValue(<>LineageProvider</>)
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockReturnValue(<div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)

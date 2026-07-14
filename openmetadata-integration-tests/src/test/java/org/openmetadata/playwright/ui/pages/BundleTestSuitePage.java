@@ -41,7 +41,7 @@ public final class BundleTestSuitePage extends PageObject {
    */
   public BundleTestSuitePage fillNameDescriptionAndAttach(
       final String suiteName, final String description, final String testCaseName) {
-    page.locator("[data-testid='test-suite-name']").fill(suiteName);
+    page.locator("[data-testid='test-suite-name'] input").fill(suiteName);
     page.locator("[data-testid='editor'] [contenteditable='true']").first().fill(description);
 
     // The selection card and its searchbar render after the create form opens; allow

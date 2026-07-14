@@ -199,12 +199,21 @@ public class DefaultAuthorizer implements Authorizer {
     if (securityContext instanceof CatalogSecurityContext catalogSecurityContext) {
       String userName = SecurityUtil.getUserName(securityContext);
       String impersonatedBy = catalogSecurityContext.impersonatedUser();
+      String activePersona = catalogSecurityContext.activePersona();
+      if (activePersona != null) {
+        return SubjectContext.getSubjectContext(userName, impersonatedBy, activePersona);
+      }
       if (impersonatedBy != null) {
         return SubjectContext.getSubjectContext(userName, impersonatedBy);
       }
     } else {
       // Jersey may have wrapped the SecurityContext, try ThreadLocal fallback
       String impersonatedBy = ImpersonationContext.getImpersonatedBy();
+      String activePersona = ActivePersonaContext.getActivePersona();
+      if (activePersona != null) {
+        String userName = SecurityUtil.getUserName(securityContext);
+        return SubjectContext.getSubjectContext(userName, impersonatedBy, activePersona);
+      }
       if (impersonatedBy != null) {
         String userName = SecurityUtil.getUserName(securityContext);
         return SubjectContext.getSubjectContext(userName, impersonatedBy);
