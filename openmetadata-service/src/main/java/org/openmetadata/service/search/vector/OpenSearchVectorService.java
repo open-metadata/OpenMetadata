@@ -553,7 +553,8 @@ public class OpenSearchVectorService implements VectorIndexService {
   private void promoteStagedChunkIndex() {
     synchronized (stagedChunkLock) {
       String generation = stagedChunkIndex;
-      if (generation != null && stagedChunkRunFailed) {
+      if (generation != null
+          && (stagedChunkRunFailed || pendingPoisonMarkers.contains(generation))) {
         // Re-check under the lock: a concurrent live-delete failure may have poisoned the run
         // between the caller's check and this swap.
         LOG.warn(
@@ -661,6 +662,12 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   private void retryPendingPoisonMarkers() {
     for (String generation : pendingPoisonMarkers) {
+      if (!indexExists(generation)) {
+        // The generation was swept — its run is dead and can never be promoted, so the signal is
+        // moot. Writing anyway would auto-create a phantom index squatting on the dead name.
+        pendingPoisonMarkers.remove(generation);
+        continue;
+      }
       String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
       boolean recorded =
           (liveIndex != null && writePoisonMarker(liveIndex, generation))
@@ -668,6 +675,27 @@ public class OpenSearchVectorService implements VectorIndexService {
       if (recorded) {
         pendingPoisonMarkers.remove(generation);
         LOG.info("Persistent retry recorded staged poison marker for {}", generation);
+      }
+    }
+    if (pendingPoisonMarkers.isEmpty()) {
+      stopPoisonRetryLoop();
+    }
+  }
+
+  private boolean indexExists(String indexName) {
+    try {
+      return client.indices().exists(x -> x.index(indexName)).value();
+    } catch (Exception e) {
+      // Unknown — keep the marker pending rather than dropping a live signal.
+      return true;
+    }
+  }
+
+  private void stopPoisonRetryLoop() {
+    synchronized (stagedChunkLock) {
+      if (poisonRetryExecutor != null && pendingPoisonMarkers.isEmpty()) {
+        poisonRetryExecutor.shutdown();
+        poisonRetryExecutor = null;
       }
     }
   }
