@@ -28,6 +28,7 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.unitycatalog.connection import (
+    LINEAGE_PROBE_COMMAND,
     UNITY_CATALOG_ERRORS,
     UnityCatalogChecks,
     UnityCatalogConnection,
@@ -61,6 +62,9 @@ def _named(name: str, **attributes) -> MagicMock:
     mock = MagicMock(**attributes)
     mock.name = name
     return mock
+
+
+WAREHOUSE = {"httpPath": "/sql/1.0/warehouses/abc123"}
 
 
 def _checks(client: MagicMock, sql: MagicMock | None = None, **config_overrides) -> UnityCatalogChecks:
@@ -291,7 +295,7 @@ class TestWarehouseSteps:
     def test_get_queries_reads_the_borrowed_engine(self):
         engine = MagicMock()
         with patch(f"{CONNECTION_MODULE}.read_lineage_tables") as mock_lineage:
-            checks = _checks(MagicMock(), sql=engine)
+            checks = _checks(MagicMock(), sql=engine, **WAREHOUSE)
             evidence = checks.check_queries()
 
         mock_lineage.assert_called_once_with(engine)
@@ -305,14 +309,14 @@ class TestWarehouseSteps:
             patch(f"{CONNECTION_MODULE}.read_lineage_tables", side_effect=PermissionDenied("PERMISSION_DENIED")),
             pytest.raises(CheckError),
         ):
-            _checks(MagicMock(), sql=engine).check_queries()
+            _checks(MagicMock(), sql=engine, **WAREHOUSE).check_queries()
 
         engine.dispose.assert_not_called()
 
     def test_get_tags_probes_the_information_schema_tag_tables(self):
         engine = MagicMock()
         with patch(f"{CONNECTION_MODULE}.read_tag_tables") as mock_tags:
-            checks = _checks(MagicMock(), sql=engine)
+            checks = _checks(MagicMock(), sql=engine, **WAREHOUSE)
             evidence = checks.check_tags()
 
         mock_tags.assert_called_once_with(engine, checks.table_obj)
@@ -381,3 +385,34 @@ def test_closing_disposes_the_sql_engine_on_every_reuse_cycle():
 
     for engine in engines:
         engine.dispose.assert_called_once_with()
+
+
+class TestNoWarehouseConfigured:
+    def test_get_queries_fails_without_building_an_engine(self):
+        with patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine:
+            checks = _checks(MagicMock(), httpPath=None)
+
+            with pytest.raises(CheckError) as exc_info:
+                checks.check_queries()
+
+        mock_engine.assert_not_called()
+        assert exc_info.value.evidence.command == LINEAGE_PROBE_COMMAND
+
+    def test_get_tags_fails_without_building_an_engine(self):
+        with patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine:
+            checks = _checks(MagicMock(), httpPath=None)
+
+            with pytest.raises(CheckError):
+                checks.check_tags()
+
+        mock_engine.assert_not_called()
+
+    def test_the_missing_warehouse_is_still_diagnosed(self):
+        checks = _checks(MagicMock(), httpPath=None)
+
+        with pytest.raises(CheckError) as exc_info:
+            checks.check_queries()
+
+        diagnosis = UNITY_CATALOG_ERRORS.classify(exc_info.value.cause)
+        assert diagnosis is not None
+        assert diagnosis.title == "SQL warehouse not configured"

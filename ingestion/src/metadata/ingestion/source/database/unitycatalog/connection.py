@@ -92,6 +92,10 @@ INTERNAL_CATALOG = "__databricks_internal"
 VIEW_TABLE_TYPES = {TableType.VIEW, TableType.MATERIALIZED_VIEW}
 VIEW_LISTING_SCAN_LIMIT = 100
 DEFAULT_UNITY_CATALOG_PORT = 443
+LINEAGE_PROBE_COMMAND = (
+    "SELECT COUNT(*) FROM system.access.table_lineage; SELECT COUNT(*) FROM system.access.column_lineage"
+)
+TAG_PROBE_COMMAND = "SELECT * FROM information_schema.{catalog_tags,schema_tags,table_tags,column_tags} LIMIT 1"
 
 UNITY_CATALOG_ERRORS = ErrorPack(
     when(Matchers.exception(Unauthenticated)).diagnose(
@@ -419,19 +423,30 @@ class UnityCatalogChecks:
             lambda: f"views enumerated in '{self.table_obj.catalog_name}.{self.table_obj.schema_name}'",
         )
 
+    def _require_warehouse(self, command: str) -> None:
+        """Fail before building an engine that cannot connect: without an httpPath the
+        driver has no warehouse to dial. The message is what the pack diagnoses."""
+        if not self.service_connection.httpPath:
+            cause = SourceConnectionException(
+                "no valid connection settings: the SQL warehouse HTTP Path is not configured"
+            )
+            raise CheckError(cause, Evidence(command=command))
+
     @check(DatabaseStep.GetQueries)
     def check_queries(self) -> Evidence:
+        self._require_warehouse(LINEAGE_PROBE_COMMAND)
         return self._probe(
             lambda: read_lineage_tables(self._sql.client),
-            "SELECT COUNT(*) FROM system.access.table_lineage; SELECT COUNT(*) FROM system.access.column_lineage",
+            LINEAGE_PROBE_COMMAND,
             lambda: "lineage tables accessible",
         )
 
     @check(DatabaseStep.GetTags)
     def check_tags(self) -> Evidence:
+        self._require_warehouse(TAG_PROBE_COMMAND)
         return self._probe(
             lambda: read_tag_tables(self._sql.client, self.table_obj),
-            "SELECT * FROM information_schema.{catalog_tags,schema_tags,table_tags,column_tags} LIMIT 1",
+            TAG_PROBE_COMMAND,
             lambda: "tag tables accessible",
         )
 
