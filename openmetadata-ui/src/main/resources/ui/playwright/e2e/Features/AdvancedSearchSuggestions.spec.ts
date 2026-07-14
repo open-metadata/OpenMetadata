@@ -69,8 +69,6 @@ test.describe('Advanced Search Suggestions', () => {
         '.widget--widget input[role="combobox"]'
       );
 
-      await dropdownInput.click();
-
       const searchText = toLower(
         getFieldsSuggestionSearchText(field.label, testData.fieldSearchData)
       );

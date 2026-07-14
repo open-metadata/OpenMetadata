@@ -1666,7 +1666,10 @@ test.describe(
       );
 
       await expect(comboboxInput).toBeVisible({ timeout: 15000 });
-      await comboboxInput.click();
+      // fill('') focuses the input (menuTrigger="focus" opens the popup)
+      // without pointer-clicking — the overlaid chevron button can intercept
+      // clicks at the input's center in narrow ComboBoxes.
+      await comboboxInput.fill('');
 
       const dropdown = page.locator('[role="listbox"]:visible').last();
 

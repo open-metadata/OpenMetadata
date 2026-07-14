@@ -185,10 +185,11 @@ export const selectOption = async (
     // Single fill (no clear first) — one input event, one async fetch.
     await comboboxInput.fill(optionTitle);
   } else if ((await comboboxInput.count()) > 0) {
-    // Select.ComboBox: clicking the input triggers AriaGroup.handlePointerDown
-    // which calls state.open(null, 'input') — not a toggle, so it only opens.
-    // Fill with '' afterwards to clear any current-value filter so all options show.
-    await comboboxInput.click();
+    // Select.ComboBox: fill('') focuses the input (menuTrigger="focus" opens
+    // the popup) and clears the current-label filter so all options show.
+    // Never pointer-click the input — in narrow ComboBoxes (e.g. the RAQB
+    // operator column) the absolutely positioned chevron button covers the
+    // input's center and intercepts the click, hanging actionability retries.
     await comboboxInput.fill('');
   } else {
     // Plain Select (no combobox input): click the trigger button to open.
@@ -269,8 +270,6 @@ export const fillRule = async (
       const dropdownInput = ruleLocator.locator(
         '.widget--widget input[role="combobox"]'
       );
-
-      await dropdownInput.click();
 
       const aggregateRes2 = page.waitForResponse(
         `/api/v1/search/aggregate?*${getEncodedFqn(
