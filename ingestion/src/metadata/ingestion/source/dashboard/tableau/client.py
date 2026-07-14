@@ -14,10 +14,9 @@ Wrapper module of TableauServerConnection client
 
 import math
 import traceback
-from typing import Callable, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 import validators
-from cached_property import cached_property
 from tableauserverclient import (
     Pager,
     PersonalAccessTokenAuth,
@@ -96,9 +95,8 @@ class TableauClient:
         self.all_projects: List[ProjectItem] = []  # noqa: UP006
         self.ssl_manager = ssl_manager
 
-    @cached_property
-    def server_info(self) -> Callable:
-        return self.tableau_server.server_info.get
+    def server_info(self):
+        return self.tableau_server.server_info.get()
 
     def server_api_version(self) -> str:
         return self.tableau_server.version

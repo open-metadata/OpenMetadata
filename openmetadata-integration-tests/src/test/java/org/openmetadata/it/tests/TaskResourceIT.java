@@ -83,6 +83,9 @@ import org.openmetadata.schema.type.BulkTaskOperationType;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ContainerDataModel;
+import org.openmetadata.schema.type.DataAccessPermission;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
+import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Field;
@@ -1807,6 +1810,80 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
 
     assertEquals(2, countByAbout.getTotal(), "Should have 2 tasks about the table");
     assertEquals(1, countByAbout.getOpen(), "One task should still be open");
+  }
+
+  /**
+   * The count SQL buckets rows row-aware on {@code type} so {@code Approved} lands in Open for
+   * DataAccessRequest (non-terminal — awaiting grant) and in Completed for non-DAR task types
+   * where it is terminal. This keeps openCount + completedCount = total across a mixed inbox
+   * and was the regression that produced Open(10) + Closed(4) &gt; All(13) when the UI mapped
+   * Open to the {@code active} bucket. See ListFilter.buildTaskStatusGroupCondition and
+   * CollectionDAO.TaskDAO#getTaskCountSummary.
+   */
+  @Test
+  void testGetCount_ApprovedDarInOpenBucket_ApprovedGlossaryInClosedBucket(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createSimple(ns, schema.getFullyQualifiedName());
+    String tableFqn = table.getFullyQualifiedName();
+    String tableLink = entityLink("table", tableFqn);
+
+    Task glossaryTask =
+        createEntity(
+            new CreateTask()
+                .withName(ns.prefix("bucket-glossary-approved"))
+                .withCategory(TaskCategory.Approval)
+                .withType(TaskEntityType.GlossaryApproval)
+                .withAbout(tableLink));
+
+    DataAccessRequestPayload darPayload =
+        new DataAccessRequestPayload()
+            .withAccessType(DataAccessType.FullAccess)
+            .withRequestedAccess(DataAccessPermission.Read)
+            .withReason("integration-test")
+            .withDuration("P14D");
+
+    Task darTask =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                new CreateTask()
+                    .withName(ns.prefix("bucket-dar-approved"))
+                    .withCategory(TaskCategory.DataAccess)
+                    .withType(TaskEntityType.DataAccessRequest)
+                    .withAbout(tableLink)
+                    .withPayload(darPayload));
+
+    ResolveTask approve =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withComment("Approved for bucket test");
+
+    Task resolvedGlossary =
+        SdkClients.adminClient().tasks().resolve(glossaryTask.getId().toString(), approve);
+    Task resolvedDar =
+        SdkClients.adminClient().tasks().resolve(darTask.getId().toString(), approve);
+
+    assertEquals(TaskEntityStatus.Approved, resolvedGlossary.getStatus());
+    assertEquals(TaskEntityStatus.Approved, resolvedDar.getStatus());
+
+    TaskCount count = SdkClients.adminClient().tasks().getCountByAboutEntity(tableFqn);
+
+    assertEquals(2, count.getTotal(), "Both tasks are about the same table");
+    assertEquals(1, count.getOpen(), "DAR row with status=Approved must land in the open bucket");
+    assertEquals(
+        1,
+        count.getCompleted(),
+        "Glossary row with status=Approved must land in the completed bucket");
+    assertEquals(
+        count.getTotal(),
+        count.getOpen() + count.getCompleted(),
+        "openCount + completedCount must reconcile with total for a mixed inbox");
+    assertEquals(
+        2,
+        count.getApproved(),
+        "approvedCount is a raw status counter — both rows have status=Approved and land here"
+            + " regardless of the row-aware open/completed bucket routing");
   }
 
   @Test

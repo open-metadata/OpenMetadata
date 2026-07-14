@@ -18,11 +18,13 @@ import {
   Page,
   Response,
 } from '@playwright/test';
+import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { executeSlashCommand } from './KnowledgeCenter';
 
 // ─── Document types ───────────────────────────────────────────────────────────
 
@@ -296,7 +298,7 @@ export const softDeleteDocument = async (
 ): Promise<void> => {
   const docRow = page.getByTestId(docRowId);
   await expect(docRow).toBeVisible();
-  await docRow.locator('button[aria-label="Open menu"]').click();
+  await docRow.getByTestId('manage-button').click();
   await page.getByTestId('delete-btn').click();
 
   const deleteResPromise = page.waitForResponse(
@@ -367,26 +369,25 @@ export const createDisposableArchivedDocument = async (
 export async function waitForDocumentInArchive(
   apiContext: APIRequestContext,
   documentId: string,
-  timeout = 60_000,
-  interval = 2_000
+  timeout = 180_000,
+  interval = 5_000
 ) {
   const start = Date.now();
 
   while (Date.now() - start < timeout) {
     const response = await apiContext.get(
-      '/api/v1/contextCenter/drive/files?include=deleted&limit=1000'
+      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
     );
 
-    expect(response.ok()).toBeTruthy();
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling for document ${documentId} in archive: ${response.status()} ${body}`
+      );
+    }
 
-    const files = await response.json();
-
-    const found = (files?.data ?? []).some(
-      (file: { id: string; deleted: boolean }) =>
-        file.id === documentId && file.deleted === true
-    );
-
-    if (found) {
+    const file = await response.json();
+    if (file.deleted === true) {
       return;
     }
 
@@ -405,32 +406,21 @@ export async function waitForDocumentPermanentlyDeleted(
   interval = 2_000
 ) {
   const start = Date.now();
-  const pageSize = 200;
 
   while (Date.now() - start < timeout) {
-    let after: string | undefined;
-    let foundInArchive = false;
+    const response = await apiContext.get(
+      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
+    );
 
-    do {
-      const response = await apiContext.get(
-        `/api/v1/contextCenter/drive/files?include=deleted&limit=${pageSize}${
-          after ? `&after=${after}` : ''
-        }`
-      );
-
-      expect(response.ok()).toBeTruthy();
-
-      const files = await response.json();
-
-      foundInArchive = (files?.data ?? []).some(
-        (file: { id: string }) => file.id === documentId
-      );
-
-      after = files?.paging?.after;
-    } while (!foundInArchive && after);
-
-    if (!foundInArchive) {
+    if (response.status() === 404) {
       return;
+    }
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling for permanent deletion of document ${documentId}: ${response.status()} ${body}`
+      );
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
@@ -532,12 +522,17 @@ export const scrollHierarchyToNode = async (
       .getAttribute('data-testid');
 
   let previousLastNode = '';
-  for (let attempt = 0; attempt < 50 && !(await node.isVisible()); attempt++) {
-    // Registered before the scroll so it can observe the fetch the scroll
+  // Require 3 consecutive unchanged readings before concluding end-of-list.
+  // A single unchanged reading can be a false positive when the scroll lands
+  // just before the next infinite-scroll fetch threshold.
+  let staleCount = 0;
+
+  for (let attempt = 0; attempt < 100 && !(await node.isVisible()); attempt++) {
+    // Registered before the scroll so it can observe any fetch the scroll
     // triggers; only awaited below if the node list looks unchanged.
     const hierarchyResPromise = page
       .waitForResponse((res) => res.url().includes('/hierarchy'), {
-        timeout: 2000,
+        timeout: 5000,
       })
       .catch(() => null);
 
@@ -550,17 +545,23 @@ export const scrollHierarchyToNode = async (
     let lastNode = await getLastNode();
 
     if (lastNode === previousLastNode) {
-      // The last node may be unchanged because a hierarchy fetch triggered
-      // by this scroll is still in flight rather than the tree truly ending.
-      // Give it a short window to resolve before trusting the comparison.
+      // Wait for any in-flight hierarchy fetch to settle before re-reading.
       await hierarchyResPromise;
 
       lastNode = await getLastNode();
 
       if (lastNode === previousLastNode) {
-        break;
+        staleCount += 1;
+        if (staleCount >= 3) {
+          break;
+        }
+      } else {
+        staleCount = 0;
       }
+    } else {
+      staleCount = 0;
     }
+
     previousLastNode = lastNode ?? '';
   }
 
@@ -762,4 +763,71 @@ export const searchAndGetMemoryRow = async (
   await waitForAllLoadersToDisappear(page);
 
   return page.getByTestId(`memory-row-${memoryId}`);
+};
+export const readDraftStore = async (
+  page: Page
+): Promise<Record<string, unknown>> => {
+  const raw = await page.evaluate(
+    (key: string) => localStorage.getItem(key),
+    'om-article-drafts'
+  );
+
+  if (!raw) {
+    return {};
+  }
+
+  try {
+    const parsed = JSON.parse(raw) as {
+      state?: { drafts?: Record<string, unknown> };
+    };
+
+    return (parsed?.state?.drafts as Record<string, unknown>) ?? {};
+  } catch {
+    return {};
+  }
+};
+
+/**
+ * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
+ * since this repo has no binary image fixtures under playwright/test-data/.
+ */
+const ONE_PIXEL_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+export const insertImageViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'image/png',
+    buffer: Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertImageViaUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
 };

@@ -118,8 +118,8 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify view toggle buttons', async () => {
-      await expect(page.locator('button[title="table"]')).toBeVisible();
-      await expect(page.locator('button[title="card"]')).toBeVisible();
+      await expect(page.getByTestId('table-view-toggle')).toBeVisible();
+      await expect(page.getByTestId('card-view-toggle')).toBeVisible();
     });
   });
 

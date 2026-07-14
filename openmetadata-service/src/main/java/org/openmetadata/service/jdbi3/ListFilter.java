@@ -5,6 +5,7 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.Locale;
 import java.util.Set;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -24,6 +25,10 @@ import org.openmetadata.service.util.FullyQualifiedName;
 
 public class ListFilter extends Filter<ListFilter> {
   public static final String NULL_PARAM = "null";
+
+  private static final String TASK_STATUS_GROUP_OPEN = "open";
+  private static final String TASK_STATUS_GROUP_ACTIVE = "active";
+  private static final String TASK_STATUS_GROUP_CLOSED = "closed";
 
   public ListFilter() {
     this(Include.NON_DELETED);
@@ -66,6 +71,7 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getFileTypeCondition(tableName));
     conditions.add(getAssignee());
     conditions.add(getCreatedByCondition());
+    conditions.add(getUpdatedByCondition(tableName));
     conditions.add(getAboutEntityCondition());
     conditions.add(getMentionedUserCondition());
     conditions.add(getEventSubscriptionAlertType());
@@ -312,6 +318,23 @@ public class ListFilter extends Filter<ListFilter> {
             + "AND u.nameHash IN (%s) "
             + "AND er.relation = %d))",
         inCondition, Relationship.CREATED.ordinal());
+  }
+
+  /**
+   * Filter by the user recorded in the entity's {@code updatedBy} column (the last writer). For a
+   * soft-deleted entity this is the user who archived it, since an archived entity cannot be edited.
+   * Matches the generated {@code updatedBy} column directly (plain username, comma-separated list
+   * supported). Qualifies the column with the table name when available so it stays unambiguous if a
+   * joined table ever exposes its own {@code updatedBy}.
+   */
+  private String getUpdatedByCondition(String tableName) {
+    String updatedBy = queryParams.get("updatedBy");
+    if (nullOrEmpty(updatedBy)) {
+      return "";
+    }
+    String columnName = tableName == null ? "updatedBy" : tableName + ".updatedBy";
+    String inCondition = buildIndexedBindParams("updatedBy", updatedBy);
+    return String.format("%s IN (%s)", columnName, inCondition);
   }
 
   private String getWorkflowDefinitionIdCondition() {
@@ -1126,40 +1149,54 @@ public class ListFilter extends Filter<ListFilter> {
 
   private String getTaskStatusCondition(String tableName) {
     String statusGroup = queryParams.get("taskStatusGroup");
-    if (statusGroup != null) {
-      String column = tableName == null ? "status" : tableName + ".status";
-      if ("open".equalsIgnoreCase(statusGroup)) {
-        return String.format("%s IN ('Open', 'InProgress', 'Pending')", column);
-      } else if ("active".equalsIgnoreCase(statusGroup)) {
-        // ManualRevoke means access is still live at the source waiting for a human to confirm
-        // the revoke — non-terminal, so belongs in 'active'. Keep in sync with
-        // {@code CreateTask.isTerminalTaskStatus} and {@code
-        // TaskRepository.NON_TERMINAL_TASK_STATUSES}.
-        return String.format(
-            "%s IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted', 'ManualRevoke')",
-            column);
-      } else if ("closed".equalsIgnoreCase(statusGroup)) {
-        // 'Approved' is intentionally a member of both 'active' and 'closed' because the
-        // same status maps to different lifecycle meanings depending on the task type:
-        //   - Glossary/DescriptionUpdate/etc.: 'Approved' is the terminal state and must
-        //     surface in the existing Closed tab.
-        //   - DataAccessRequest: 'Approved' means "awaiting grant" — non-terminal — and
-        //     callers reach those tasks via the 'active' group instead.
-        // Removing 'Approved' here would regress the Closed tab UX for the older workflows.
-        // A future refactor could make status group resolution task-type aware.
-        return String.format(
-            "%s IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')",
-            column);
-      }
-    }
-
-    String taskStatus = queryParams.get("taskStatus");
-    if (nullOrEmpty(taskStatus)) {
-      return "";
-    }
     String column = tableName == null ? "status" : tableName + ".status";
-    String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
-    return String.format("%s IN (%s)", column, inCondition);
+    String typeCol = tableName == null ? "type" : tableName + ".type";
+    String condition = null;
+    if (statusGroup != null) {
+      condition = buildTaskStatusGroupCondition(statusGroup, column, typeCol);
+    }
+    if (condition == null) {
+      condition = buildExplicitTaskStatusCondition(column);
+    }
+    return condition;
+  }
+
+  /**
+   * Row-aware bucket predicates driven by {@link TaskBucketSql}. See that class for the bucket
+   * definitions and drift-guard test. Every {@code (type, status)} combination lands in exactly
+   * one of {@code open}/{@code closed} so {@code All = Open + Closed} reconciles for the mixed
+   * inbox. Keep in sync with {@link CollectionDAO.TaskDAO#getTaskCountSummary}.
+   */
+  private String buildTaskStatusGroupCondition(String statusGroup, String column, String typeCol) {
+    return switch (statusGroup.toLowerCase(Locale.ROOT)) {
+      case TASK_STATUS_GROUP_OPEN -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s = '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_OPEN_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      case TASK_STATUS_GROUP_ACTIVE -> String.format(
+          "%s IN (%s)", column, TaskBucketSql.ACTIVE_STATUSES);
+      case TASK_STATUS_GROUP_CLOSED -> String.format(
+          "(%1$s IN (%2$s) OR (%3$s <> '%4$s' AND %1$s = '%5$s'))",
+          column,
+          TaskBucketSql.SHARED_TERMINAL_STATUSES,
+          typeCol,
+          TaskBucketSql.TASK_TYPE_DAR,
+          TaskBucketSql.STATUS_APPROVED);
+      default -> null;
+    };
+  }
+
+  private String buildExplicitTaskStatusCondition(String column) {
+    String taskStatus = queryParams.get("taskStatus");
+    String result = "";
+    if (!nullOrEmpty(taskStatus)) {
+      String inCondition = buildIndexedBindParams("taskStatus", taskStatus);
+      result = String.format("%s IN (%s)", column, inCondition);
+    }
+    return result;
   }
 
   // Restricts tasks to a [startTs, endTs] window on createdAt. Inlines the

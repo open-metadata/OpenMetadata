@@ -257,11 +257,14 @@ test('Classification Page', async ({ page }) => {
 
     await validateForm(page);
 
-    await page.fill('[data-testid="name"]', NEW_CLASSIFICATION.name);
-    await page.fill(
-      '[data-testid="displayName"]',
-      NEW_CLASSIFICATION.displayName
-    );
+    await page
+      .getByTestId('name')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_CLASSIFICATION.displayName);
     await page.locator(descriptionBox).fill(NEW_CLASSIFICATION.description);
     await page.click('[data-testid="mutually-exclusive-button"]');
 
@@ -291,14 +294,14 @@ test('Classification Page', async ({ page }) => {
     await expect(page.getByTestId('tags-form')).toBeVisible();
 
     await validateForm(page);
-
-    await page.fill('[data-testid="name"]', NEW_TAG.name);
-    await page.fill('[data-testid="displayName"]', NEW_TAG.displayName);
+    await page.getByTestId('name').getByRole('textbox').fill(NEW_TAG.name);
+    await page
+      .getByTestId('displayName')
+      .getByRole('textbox')
+      .fill(NEW_TAG.displayName);
     await page.locator(descriptionBox).fill(NEW_TAG.description);
     await page.getByTestId('icon-picker-btn').click();
-    await page
-      .getByRole('button', { name: `Select icon ${NEW_TAG.icon}` })
-      .click();
+    await page.getByRole('button', { name: NEW_TAG.icon }).click();
     await page
       .getByRole('button', { name: `Select color ${NEW_TAG.color}` })
       .click();
@@ -488,8 +491,6 @@ test('Classification Page', async ({ page }) => {
     await page.click('[data-testid="manage-button"]');
 
     await page.click('[data-testid="delete-button"]');
-
-    await page.click('[data-testid="hard-delete"]');
 
     const deleteClassification = page.waitForResponse(
       (response) =>

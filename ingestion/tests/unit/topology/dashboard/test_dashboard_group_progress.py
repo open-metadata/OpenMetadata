@@ -10,6 +10,7 @@
 #  limitations under the License.
 """Reusable per-group progress helpers on DashboardServiceSource."""
 
+from metadata.ingestion.progress.modes import ProgressMode
 from metadata.ingestion.source.dashboard.dashboard_service import DashboardServiceSource
 
 
@@ -19,6 +20,8 @@ class _BareSource(DashboardServiceSource):
     # Overriding the abstract methods clears __abstractmethods__; __new__ then
     # skips the heavy __init__. The helpers and the ``progress`` property only
     # touch ``self.__dict__``, so no further setup is needed.
+    progress_mode = ProgressMode.MANUAL
+
     def create(self, *args, **kwargs): ...
     def get_dashboard_details(self, *args, **kwargs): ...
     def get_dashboard_name(self, *args, **kwargs): ...
@@ -39,10 +42,10 @@ class TestDashboardGroupProgress:
         src._open_group_progress("Sales", {"Dashboard": 3, "Chart": None})
         src._advance_group_progress("Sales", "Dashboard")
         src._advance_group_progress("Sales", "Chart")
-        assert src.progress.global_counters() == [("Workspaces", 0, 2)]
-        assert src.progress.assets_ingested() == 2
+        assert src.progress_tracking.registry.global_counters() == [("Workspaces", 0, 2)]
+        assert src.progress_tracking.registry.assets_ingested() == 2
 
         src._close_group_progress("Sales")
-        assert src.progress.global_counters() == [("Workspaces", 1, 2)]
-        snapshot = src.progress.snapshot()
+        assert src.progress_tracking.registry.global_counters() == [("Workspaces", 1, 2)]
+        snapshot = src.progress_tracking.registry.snapshot()
         assert snapshot is None or all(child.label != "Sales" for child in snapshot.children)
