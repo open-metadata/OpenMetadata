@@ -188,13 +188,18 @@ public abstract class McpTestBase {
   }
 
   protected JsonNode executeMcpRequest(java.util.Map<String, Object> mcpRequest) throws Exception {
+    return executeMcpRequest(mcpRequest, authToken);
+  }
+
+  protected JsonNode executeMcpRequest(java.util.Map<String, Object> mcpRequest, String token)
+      throws Exception {
     String requestBody = OBJECT_MAPPER.writeValueAsString(mcpRequest);
     HttpRequest request =
         HttpRequest.newBuilder()
             .uri(URI.create(getMcpUrl("/mcp")))
             .header("Content-Type", "application/json")
             .header("Accept", "application/json, text/event-stream")
-            .header("Authorization", authToken)
+            .header("Authorization", token)
             .POST(HttpRequest.BodyPublishers.ofString(requestBody))
             .timeout(Duration.ofSeconds(30))
             .build();
@@ -202,9 +207,7 @@ public abstract class McpTestBase {
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
     assertThat(response.statusCode()).isEqualTo(200);
 
-    String responseBody = response.body();
-    String jsonContent = extractJsonFromResponse(responseBody);
-    return OBJECT_MAPPER.readTree(jsonContent);
+    return OBJECT_MAPPER.readTree(extractJsonFromResponse(response.body()));
   }
 
   protected static String extractJsonFromResponse(String responseBody) {
