@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, HTMLAttributes, ReactNode, Ref } from 'react';
-import { isValidElement } from 'react';
+import type { FC, HTMLAttributes, ReactNode } from 'react';
+import { forwardRef, isValidElement } from 'react';
 import { Box } from '@/components/base/box/box';
 import type { GapValues } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
@@ -41,7 +41,6 @@ export interface EmptyPlaceholderFeature {
 
 export interface EmptyPlaceholderShellProps
   extends Omit<HTMLAttributes<HTMLDivElement>, 'title'> {
-  ref?: Ref<HTMLDivElement>;
   /** Buttons rendered below the content */
   actions?: EmptyPlaceholderAction[];
   /** Replaces the generated action buttons entirely */
@@ -91,9 +90,11 @@ export const renderEmptyPlaceholderActions = (
   return node;
 };
 
-export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
+export const EmptyPlaceholderShell = forwardRef<
+  HTMLDivElement,
+  EmptyPlaceholderShellProps
+>((props, ref) => {
   const {
-    ref,
     actions,
     footer,
     width,
@@ -120,4 +121,6 @@ export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
       </Box>
     </Box>
   );
-};
+});
+
+EmptyPlaceholderShell.displayName = 'EmptyPlaceholderShell';
