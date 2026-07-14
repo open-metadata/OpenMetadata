@@ -249,7 +249,7 @@ test.describe('Context Center - Archive Page', () => {
       ).toBeVisible();
     });
 
-    // ── 13. No folder name on restored document ───────────────────────────────
+    // ── 13. folder name visible on restored document ───────────────────────────────
 
     await test.step('restored document has folder name (restored to root)', async () => {
       const docRow = page.getByTestId(`document-row-${documentId}`);
