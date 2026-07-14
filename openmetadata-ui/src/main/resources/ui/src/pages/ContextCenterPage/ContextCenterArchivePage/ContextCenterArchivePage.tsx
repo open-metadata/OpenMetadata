@@ -23,15 +23,15 @@ import ContextCenterHeader from '../../../components/ContextCenter/ContextCenter
 import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-  OperationPermission,
-  ResourceEntity,
+    OperationPermission,
+    ResourceEntity
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-  deleteDriveFile,
-  listArchivedContextFiles,
-  restoreDriveFile,
+    deleteDriveFile,
+    listArchivedContextFiles,
+    restoreDriveFile
 } from '../../../rest/assetAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -186,13 +186,17 @@ const ContextCenterArchivePage: FC = () => {
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
       setItems((prev) => prev.filter((item) => item.id !== itemToDelete.id));
+      handlePagingChange((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+      }));
       setItemToDelete(undefined);
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDeleting(false);
     }
-  }, [itemToDelete, t]);
+  }, [itemToDelete, t, handlePagingChange]);
 
   return (
     <div

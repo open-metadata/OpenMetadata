@@ -1500,11 +1500,7 @@ test.describe('Context Center Permissions', () => {
       await waitForDocumentInArchive(apiContext, archivedDocumentId);
       await afterAction();
       await navigateToArchive(viewOnlyPage);
-
-      let row = viewOnlyPage.getByTestId(`archive-row-${archivedDocumentId}`);
-      if (!(await row.isVisible().catch(() => false))) {
-        row = viewOnlyPage.getByTestId(/^archive-row-/).first();
-      }
+      const row = viewOnlyPage.getByTestId(`archive-row-${archivedDocumentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('restore-btn')).not.toBeVisible();
@@ -2333,7 +2329,7 @@ test.describe('Context Center Permissions', () => {
   });
   // ─── Memories Sort Options ────────────────────────────────────────────
 
-  test.describe.skip('Memories Sort Options', () => {
+  test.describe('Memories Sort Options', () => {
     test('selecting "Updated By" actually reorders rows by updatedBy', async ({
       browser,
     }) => {

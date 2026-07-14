@@ -44,6 +44,7 @@ const ARCHIVE_PAGE_SIZE = 15;
 test.describe('Context Center - Archive Page', () => {
   let folder: ContextCenterFolder;
   let documentId = '';
+  let lazyLoadDocumentIds: string[] = [];
   const folderName = `archive-test-folder-${uuid()}`;
   const documentFileName = `archive-test-${uuid()}.txt`;
 
@@ -54,7 +55,7 @@ test.describe('Context Center - Archive Page', () => {
     const uploads = Array.from({ length: 18 }, (_, i) =>
       createDisposableArchivedDocument(apiContext, `${namePrefix}-${i}`)
     );
-    await Promise.all(uploads);
+    lazyLoadDocumentIds = (await Promise.all(uploads)).map(({ id }) => id);
 
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
@@ -81,6 +82,13 @@ test.describe('Context Center - Archive Page', () => {
         )
         .catch(() => undefined);
     }
+    await Promise.all(
+      lazyLoadDocumentIds.map((id) =>
+        apiContext
+          .delete(`/api/v1/contextCenter/drive/files/${id}?hardDelete=true`)
+          .catch(() => undefined)
+      )
+    );
     if (folder?.id) {
       await apiContext
         .delete(
