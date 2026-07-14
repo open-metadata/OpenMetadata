@@ -326,32 +326,32 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify pagination controls are visible', async () => {
-      const pagination = page.getByTestId('pagination');
+      const pagination = page.getByLabel('Pagination Navigation');
       await expect(pagination).toBeVisible();
       await expect(
-        pagination.getByRole('button', { name: 'page 1', exact: true })
+        pagination.getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate to page 2', async () => {
-      await page.getByTestId('next').click();
+      await page.getByLabel('Next Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 2', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 2', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate back to page 1', async () => {
-      await page.getByTestId('previous').click();
+      await page.getByLabel('Previous Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 1', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
