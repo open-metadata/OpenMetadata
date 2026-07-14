@@ -41,6 +41,7 @@ import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.bootstrap.TestSuiteBootstrap;
 import org.openmetadata.it.factories.GlossaryTermTestFactory;
 import org.openmetadata.it.factories.GlossaryTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
@@ -439,6 +440,7 @@ public class RdfGlossaryGraphIT {
       // term — exactly the customer's symptom.
       awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
     } finally {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
       removeCustomRelationTypeFromSettings(customTypeName);
     }
   }
@@ -474,6 +476,7 @@ public class RdfGlossaryGraphIT {
       // this edge (written as om:regressionNullPredRel) is filtered out.
       awaitEdgeBetween(glossary.getId(), a.getId(), b.getId(), customTypeName);
     } finally {
+      NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
       removeCustomRelationTypeFromSettings(customTypeName);
     }
   }
@@ -497,6 +500,13 @@ public class RdfGlossaryGraphIT {
     }
     com.fasterxml.jackson.databind.node.ObjectNode custom = MAPPER.createObjectNode();
     custom.put("name", name);
+    custom.put("displayName", name);
+    custom.put("isSymmetric", false);
+    custom.put("isTransitive", false);
+    custom.put("isCrossGlossaryAllowed", true);
+    custom.put("category", "associative");
+    custom.put("isSystemDefined", false);
+    custom.put("color", "#4f46e5");
     if (rdfPredicate != null) {
       custom.put("rdfPredicate", rdfPredicate.toString());
     }
@@ -518,35 +528,35 @@ public class RdfGlossaryGraphIT {
         () -> "PUT settings failed: " + response.statusCode() + " " + response.body());
   }
 
-  private void removeCustomRelationTypeFromSettings(String name) {
-    try {
-      JsonNode existing = fetchGlossaryTermRelationSettings();
-      if (existing == null || !existing.has("relationTypes")) {
-        return;
-      }
-      com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
-      payload.put("config_type", "glossaryTermRelationSettings");
-      com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
-      com.fasterxml.jackson.databind.node.ArrayNode kept = MAPPER.createArrayNode();
-      for (JsonNode t : existing.get("relationTypes")) {
-        if (!name.equals(t.path("name").asText(null))) {
-          kept.add(t);
-        }
-      }
-      value.set("relationTypes", kept);
-      payload.set("config_value", value);
-      HttpRequest request =
-          HttpRequest.newBuilder()
-              .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
-              .header("Authorization", "Bearer " + SdkClients.getAdminToken())
-              .header("Content-Type", "application/json")
-              .timeout(Duration.ofSeconds(30))
-              .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
-              .build();
-      HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    } catch (Exception e) {
-      LOG.warn("Failed to remove custom relation type {} from settings", name, e);
+  private void removeCustomRelationTypeFromSettings(String name) throws Exception {
+    JsonNode existing = fetchGlossaryTermRelationSettings();
+    if (existing == null || !existing.has("relationTypes")) {
+      return;
     }
+    com.fasterxml.jackson.databind.node.ObjectNode payload = MAPPER.createObjectNode();
+    payload.put("config_type", "glossaryTermRelationSettings");
+    com.fasterxml.jackson.databind.node.ObjectNode value = MAPPER.createObjectNode();
+    com.fasterxml.jackson.databind.node.ArrayNode kept = MAPPER.createArrayNode();
+    for (JsonNode t : existing.get("relationTypes")) {
+      if (!name.equals(t.path("name").asText(null))) {
+        kept.add(t);
+      }
+    }
+    value.set("relationTypes", kept);
+    payload.set("config_value", value);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .PUT(HttpRequest.BodyPublishers.ofString(MAPPER.writeValueAsString(payload)))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(
+        200,
+        response.statusCode(),
+        () -> "PUT settings failed: " + response.statusCode() + " " + response.body());
   }
 
   private JsonNode fetchGlossaryTermRelationSettings() throws Exception {
