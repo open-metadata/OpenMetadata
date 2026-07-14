@@ -43,6 +43,7 @@ from metadata.generated.schema.entity.services.connections.dashboard.lookerConne
     LookerConnection as LookerConnectionConfig,
 )
 from metadata.ingestion.connections.connection import BaseConnection
+from metadata.utils.constants import THREE_MIN
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -96,9 +97,16 @@ def _login_rejected(error: BaseException) -> bool:
     )
 
 
-def _matches(pattern: re.Pattern[str]) -> Matcher:
-    """Match ``pattern`` against the error (or its cause chain)."""
-    return lambda error: any(pattern.search(str(current)) for current in exception_chain(error))
+def _foreign_404(error: BaseException) -> bool:
+    """Match a 404 from a server that is not Looker.
+
+    Requires the absence of a Looker error document: a Looker error carrying a
+    status this pack does not diagnose (e.g. a 400 reading "parameter not found")
+    keeps its raw errorLog instead of being blamed on Host Port.
+    """
+    chain = list(exception_chain(error))
+    has_error_doc = any(_error_doc(current) is not None for current in chain)
+    return not has_error_doc and any(_FOREIGN_404.search(str(current)) for current in chain)
 
 
 def _contains_any(*tokens: str) -> Matcher:
@@ -176,10 +184,9 @@ LOOKER_ERRORS = ErrorPack(
         "instance. Check the Client ID and Client Secret, then Host Port.",
         doc=API_SDK_DOC,
     ),
-    # Last: a 404 from something that is not Looker - a real one carries an error
-    # document and is matched above. The status is matched on a word boundary so a
-    # port or byte count that happens to contain 404 does not look like one.
-    when(_matches(_FOREIGN_404)).diagnose(
+    # Last: a 404 from something that is not Looker - any Looker error carries an
+    # error document, whether or not this pack diagnoses its status.
+    when(_foreign_404).diagnose(
         "The host is not serving the Looker API",
         fix="A server answered but did not return a Looker error. Check that Host Port points at the Looker instance.",
     ),
@@ -271,6 +278,10 @@ class LookerSettings(ApiSettings):
 
 
 class LookerConnection(BaseConnection[LookerConnectionConfig, Looker40SDK]):
+    # Listing dashboards and LookML models can be slow on large instances; keep the
+    # legacy 3-minute budget the imperative handler used, now applied per step.
+    step_timeout_seconds = THREE_MIN
+
     def _get_client(self) -> Looker40SDK:
         return looker_sdk.init40(config_settings=LookerSettings(self.service_connection))
 

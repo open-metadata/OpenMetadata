@@ -26,12 +26,14 @@ from metadata.ingestion.source.dashboard.looker.connection import (
     LookerSettings,
     UnsupportedApiVersionError,
 )
+from metadata.utils.constants import THREE_MIN
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.looker.connection"
 
 LOGIN_404 = "https://cloud.google.com/looker/docs/r/err/4.0/404/post/api/4.0/login"
 DASHBOARDS_404 = "https://cloud.google.com/looker/docs/r/err/4.0/404/get/api/4.0/dashboards"
 DASHBOARDS_429 = "https://cloud.google.com/looker/docs/r/err/4.0/429/get/api/4.0/dashboards"
+DASHBOARDS_400 = "https://cloud.google.com/looker/docs/r/err/4.0/400/get/api/4.0/dashboards"
 DASHBOARDS_401 = "https://cloud.google.com/looker/docs/r/err/4.0/401/get/api/4.0/dashboards"
 DASHBOARDS_403 = "https://cloud.google.com/looker/docs/r/err/4.0/403/get/api/4.0/dashboards"
 
@@ -313,6 +315,19 @@ def test_a_host_that_is_not_looker_is_diagnosed():
 
     assert diagnosis is not None
     assert diagnosis.title == "The host is not serving the Looker API"
+
+
+def test_a_looker_error_with_an_undiagnosed_status_keeps_its_raw_error():
+    # A Looker 400 whose message reads "parameter not found" must not be blamed on
+    # Host Port: it carries an error document, so it is a Looker answer.
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("parameter not found", documentation_url=DASHBOARDS_400))
+
+    assert diagnosis is None
+
+
+def test_the_step_timeout_keeps_the_legacy_three_minute_budget():
+    # Listing dashboards and LookML models can be slow on large instances.
+    assert LookerConnection.step_timeout_seconds == THREE_MIN
 
 
 def test_a_looker_404_outranks_the_not_a_looker_host_fallback():
