@@ -211,8 +211,46 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbeddingChunks(EntityInterface entity) {
-    requireChunkIndexForWrite();
-    updateEntityEmbeddingChunks(entity, getChunkIndexName());
+    // Reindex-sink entry point (the reused-embedding backfill). During a staged recreate it must
+    // write into the staged generation — chunks written to the live target die at promotion,
+    // silently dropping every unchanged entity from vector retrieval.
+    String staged = resolveChunkSinkTarget();
+    if (staged == null) {
+      requireChunkIndexForWrite();
+      updateEntityEmbeddingChunks(entity, getChunkIndexName());
+    } else {
+      backfillChunksToStagedGeneration(entity, staged);
+    }
+  }
+
+  /**
+   * Staged-recreate variant of the sink backfill: writes the entity's chunk docs into the staged
+   * generation, reusing the live generation's stored vectors when the content fingerprint is
+   * unchanged (the sink only takes this path for unchanged entities), so a full recreate does not
+   * re-embed the whole catalog. Nothing is skipped — the staged generation starts empty, so every
+   * entity passes through exactly once ({@code stagedHeader} short-circuits retries).
+   */
+  private void backfillChunksToStagedGeneration(EntityInterface entity, String staged) {
+    try {
+      String parentId = entity.getId().toString();
+      String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
+      ChunkHeader stagedHeader = getChunkHeader(staged, parentId);
+      boolean alreadyBackfilled =
+          stagedHeader != null
+              && fingerprint.equals(stagedHeader.fingerprint())
+              && !docVersionStale(stagedHeader);
+      if (!alreadyBackfilled) {
+        String live = getChunkIndexName();
+        ChunkHeader liveHeader = getChunkHeader(live, parentId);
+        List<Map<String, Object>> chunkDocs =
+            (liveHeader != null && fingerprint.equals(liveHeader.fingerprint()))
+                ? rebuildChunksReusingEmbeddings(entity, live, parentId, liveHeader)
+                : VectorDocBuilder.fromEntity(entity, embeddingClient);
+        replaceChunks(staged, parentId, chunkDocs, previousCount(stagedHeader));
+      }
+    } catch (Exception e) {
+      LOG.error("Failed staged chunk backfill for {}: {}", entity.getId(), e.getMessage(), e);
+    }
   }
 
   /**
