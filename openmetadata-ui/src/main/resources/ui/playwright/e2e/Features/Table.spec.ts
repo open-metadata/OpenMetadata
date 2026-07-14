@@ -146,10 +146,8 @@ test.describe('Table pagination sorting search scenarios ', () => {
         response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
         response.url().includes(noMatchSearch)
     );
-    await page.locator('[data-testid="searchbar-component"] input').click();
-    await page
-      .locator('[data-testid="searchbar-component"] input')
-      .fill(noMatchSearch);
+    await page.getByTestId('searchbar').click();
+    await page.getByTestId('searchbar').fill(noMatchSearch);
     await emptySearchResponse;
     await page
       .getByTestId('test-case-container')
