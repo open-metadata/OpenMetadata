@@ -448,7 +448,11 @@ public class OpenSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
+        // Recreate detection scopes chunk writes to the staged generation: only recreate-run
+        // writers may target a discovered generation (see OpenSearchVectorService).
+        boolean recreateRun =
+            reindexContext != null && reindexContext.getStagedIndex(entityType).isPresent();
+        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker, recreateRun);
       }
 
       String finalJson = json;
@@ -921,7 +925,8 @@ public class OpenSearchBulkSink implements BulkSink {
       EntityInterface entity,
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
-      StageStatsTracker tracker) {
+      StageStatsTracker tracker,
+      boolean recreateRun) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
       if (vectorService == null) {
@@ -949,7 +954,7 @@ public class OpenSearchBulkSink implements BulkSink {
         // shipped). The call is fingerprint-guarded, so it is a cheap no-op once chunks exist;
         // chunk docs reflect committed entity state, so writing them mid-reindex is safe even if
         // the staged index is never promoted.
-        vectorService.updateEntityEmbeddingChunks(entity);
+        vectorService.backfillEntityChunks(entity, recreateRun);
       } else if (embeddingClient != null && embeddingClient.isAvailable()) {
         // Build the chunk docs once (one embedding call per chunk): chunk 0's embedding fields
         // are spliced into the staged entity doc for hybrid search, and the full set is written to
@@ -962,7 +967,7 @@ public class OpenSearchBulkSink implements BulkSink {
               (ObjectNode)
                   OBJECT_MAPPER.valueToTree(
                       OpenSearchVectorService.legacyEmbeddingFields(chunkDocs.get(0))));
-          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs);
+          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs, recreateRun);
         }
       }
 

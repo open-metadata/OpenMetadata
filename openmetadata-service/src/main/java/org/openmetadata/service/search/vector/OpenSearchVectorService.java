@@ -211,13 +211,21 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbeddingChunks(EntityInterface entity) {
-    // Reindex-sink entry point (the reused-embedding backfill). During a staged recreate it must
-    // write into the staged generation — chunks written to the live target die at promotion,
-    // silently dropping every unchanged entity from vector retrieval.
-    String staged = resolveChunkSinkTarget();
+    requireChunkIndexForWrite();
+    updateEntityEmbeddingChunks(entity, getChunkIndexName());
+  }
+
+  /**
+   * Reindex-sink entry point for the reused-embedding backfill. During a staged recreate the write
+   * must go to the staged generation — chunks written to the live target die at promotion,
+   * silently dropping every unchanged entity from vector retrieval. The {@code recreateRun} flag
+   * comes from the sink's own ReindexContext, so writers of normal (non-recreate) runs never
+   * consult generation discovery and can never land in a crashed run's orphan.
+   */
+  public void backfillEntityChunks(EntityInterface entity, boolean recreateRun) {
+    String staged = recreateRun ? resolveChunkSinkTarget() : null;
     if (staged == null) {
-      requireChunkIndexForWrite();
-      updateEntityEmbeddingChunks(entity, getChunkIndexName());
+      updateEntityEmbeddingChunks(entity);
     } else {
       backfillChunksToStagedGeneration(entity, staged);
     }
@@ -304,12 +312,19 @@ public class OpenSearchVectorService implements VectorIndexService {
    * second embedding pass.
    */
   public void writeEntityChunks(String parentId, List<Map<String, Object>> chunkDocs) {
+    writeEntityChunks(parentId, chunkDocs, false);
+  }
+
+  /**
+   * Reindex-sink chunk write. When the sink's run is a recreate ({@code recreateRun}, from its
+   * ReindexContext), writes go to the staged generation, resolved from cluster state so
+   * distributed workers converge on the coordinator's generation without coordination; normal-run
+   * and live writers never consult discovery, so a crashed run's orphan cannot capture them.
+   */
+  public void writeEntityChunks(
+      String parentId, List<Map<String, Object>> chunkDocs, boolean recreateRun) {
     try {
-      // Reindex-sink writes go to the staged generation while a staged recreate is active (its
-      // empty header lookups force a full re-embed); live-update writers stay on the read alias.
-      // The target is resolved from cluster state so distributed workers on other nodes converge
-      // on the coordinator's staged generation without any cross-node coordination.
-      String target = resolveChunkSinkTarget();
+      String target = recreateRun ? resolveChunkSinkTarget() : null;
       String liveTarget = null;
       if (target == null) {
         requireChunkIndexForWrite();
@@ -603,12 +618,12 @@ public class OpenSearchVectorService implements VectorIndexService {
   private volatile long cachedSinkTargetAt;
 
   /**
-   * Chunk-write target for reindex-sink writes: the coordinator's staged generation when this JVM
-   * began the recreate, else the newest un-promoted generation found in cluster state (a staged
-   * recreate begun on another node — resolved with a short cache so distributed workers converge
-   * within seconds), else null for the normal live-index path. A crashed run's orphan can capture
-   * sink writes only until the next staged recreate sweeps it; live-update writers are never
-   * routed here and always hit the read alias.
+   * Chunk-write target for recreate-run sink writes: the coordinator's staged generation when this
+   * JVM began the recreate, else the newest un-promoted generation found in cluster state (a
+   * staged recreate begun on another node — resolved with a short cache so distributed workers
+   * converge within seconds), else null. Only consulted by recreate-run writers (flag from the
+   * sink's ReindexContext) and by live deletes as an additional idempotent target — so a crashed
+   * run's orphan (swept at the next staged recreate) can never capture normal writes.
    */
   private String resolveChunkSinkTarget() {
     String target = stagedChunkIndex;
