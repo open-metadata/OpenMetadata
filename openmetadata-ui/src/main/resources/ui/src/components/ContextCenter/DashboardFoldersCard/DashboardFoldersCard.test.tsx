@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { Folder } from '../../../generated/entity/data/folder';
 import { listContextFiles } from '../../../rest/assetAPI';
 import DashboardFoldersCard from './DashboardFoldersCard.component';
@@ -51,7 +51,24 @@ describe('DashboardFoldersCard', () => {
   it('renders the empty state when there are no folders', () => {
     render(<DashboardFoldersCard folders={[]} />);
 
-    expect(screen.getByText('label.no-entity')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-folders-yet-create-one')
+    ).toBeInTheDocument();
+  });
+
+  it('renders the New Folder action with a leading icon and triggers onCreateFolder on click', () => {
+    const onCreateFolder = jest.fn();
+    render(<DashboardFoldersCard folders={[]} onCreateFolder={onCreateFolder} />);
+
+    const newFolderButton = screen.getByRole('button', {
+      name: 'label.new-folder',
+    });
+
+    expect(newFolderButton.querySelector('[data-icon]')).toBeInTheDocument();
+
+    fireEvent.click(newFolderButton);
+
+    expect(onCreateFolder).toHaveBeenCalledTimes(1);
   });
 
   it('does not fetch children until a folder is expanded', () => {

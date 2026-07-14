@@ -67,7 +67,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb items={resolvedBreadcrumbs} showHome={!isEmbedded} />
+    <HeaderBreadcrumb noMargin items={resolvedBreadcrumbs} showHome={!isEmbedded} />
   );
 
   const actionsEl = (
@@ -87,8 +87,10 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
   );
 
   return (
-    <div data-testid="context-center-header">
-      {!breadcrumbInsideCard && breadcrumbEl}
+    <div className='tw:mb-5' data-testid="context-center-header">
+      <div className='tw:mb-3'>
+        {!breadcrumbInsideCard && breadcrumbEl}
+      </div>
       <HeaderShell
         actions={actionsEl}
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}

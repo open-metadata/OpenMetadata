@@ -13,6 +13,7 @@
 import type { ReactNode } from 'react';
 import { Box } from '@/components/base/box/box';
 import { Typography } from '@/components/foundations/typography';
+import { cx } from '@/utils/cx';
 import type {
   EmptyPlaceholderIcon,
   EmptyPlaceholderShellProps,
@@ -28,27 +29,36 @@ const DEFAULT_BLANK_WIDTH = 300;
 export interface BlankEmptyPlaceholderProps
   extends Omit<EmptyPlaceholderShellProps, 'children'> {
   icon?: EmptyPlaceholderIcon;
+  /** Extra classes for the icon container (e.g. to override its size) */
+  iconClassName?: string;
   title?: ReactNode;
   description?: ReactNode;
+  /** Extra classes for the title/description column (e.g. to override its max-width) */
+  contentClassName?: string;
 }
 
 export const BlankEmptyPlaceholder = ({
   icon,
+  iconClassName,
   title,
   description,
+  contentClassName,
   width,
   ...rest
 }: BlankEmptyPlaceholderProps) => (
   <EmptyPlaceholderShell width={width ?? DEFAULT_BLANK_WIDTH} {...rest}>
     {icon && (
-      <div className={EMPTY_PLACEHOLDER_ICON_BOX}>
+      <div className={cx(EMPTY_PLACEHOLDER_ICON_BOX, iconClassName)}>
         {renderEmptyPlaceholderIcon(icon, 'tw:size-7')}
       </div>
     )}
     {(title || description) && (
       <Box
         align="center"
-        className="tw:max-w-lg tw:gap-1.5 tw:text-center"
+        className={cx(
+          'tw:gap-1.5 tw:text-center',
+          contentClassName ?? 'tw:max-w-lg'
+        )}
         direction="col">
         {title && (
           <Typography size="text-sm" weight="semibold">

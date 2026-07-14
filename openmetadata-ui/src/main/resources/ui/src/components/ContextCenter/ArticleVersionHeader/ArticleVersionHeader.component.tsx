@@ -58,12 +58,14 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   return (
-    <div data-testid="article-version-header">
-      {!breadcrumbInsideCard && breadcrumbEl}
+    <div className='tw:mb-5' data-testid="article-version-header">
+      <div className='tw:mb-3'>
+        {!breadcrumbInsideCard && breadcrumbEl}
+      </div>
       <HeaderShell
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
         padding="comfortable"

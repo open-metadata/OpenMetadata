@@ -208,34 +208,36 @@ const ContextCenterArchivePage: FC = () => {
         subtitle={t('label.view-archived-document-plural')}
         title={t('label.archive-plural')}
       />
-      <div className="tw:pb-5">
-        <Tabs
-          className="tw:w-max"
-          selectedKey={activeFilter}
-          onSelectionChange={(key) => handleFilterChange(key as FilterKey)}>
-          <Tabs.List
-            className="tw:gap-2"
-            items={filterTabItems}
-            type="button-brand">
-            {(tab) => (
-              <Tabs.Item
-                {...tab}
-                className={({ isSelected }) =>
-                  classNames(
-                    'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
-                    {
-                      'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
-                        isSelected,
-                      'tw:border-primary tw:bg-primary tw:text-secondary':
-                        !isSelected,
-                    }
-                  )
-                }
-              />
-            )}
-          </Tabs.List>
-        </Tabs>
-      </div>
+      {!isLoading && items.length > 0 && (
+        <div className="tw:pb-5">
+          <Tabs
+            className="tw:w-max"
+            selectedKey={activeFilter}
+            onSelectionChange={(key) => handleFilterChange(key as FilterKey)}>
+            <Tabs.List
+              className="tw:gap-2"
+              items={filterTabItems}
+              type="button-brand">
+              {(tab) => (
+                <Tabs.Item
+                  {...tab}
+                  className={({ isSelected }) =>
+                    classNames(
+                      'tw:rounded-md tw:border tw:px-3 tw:py-2 tw:text-sm tw:font-medium tw:cursor-pointer',
+                      {
+                        'tw:border-utility-brand-100 tw:bg-brand-primary_alt tw:text-brand-secondary':
+                          isSelected,
+                        'tw:border-primary tw:bg-primary tw:text-secondary':
+                          !isSelected,
+                      }
+                    )
+                  }
+                />
+              )}
+            </Tabs.List>
+          </Tabs>
+        </div>
+      )}
       <Card className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden">
         <ArchiveView
           canDelete={permissions?.Delete}

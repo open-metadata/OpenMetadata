@@ -16,10 +16,11 @@ import {
   ButtonUtility,
   Dot,
   Dropdown,
+  EmptyPlaceholder,
   Skeleton,
   Tooltip,
   TooltipTrigger,
-  Typography,
+  Typography
 } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -28,11 +29,13 @@ import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-i
 import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
 import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
+import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
   ContextMemory,
-  EntityReference,
+  EntityReference
 } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -40,7 +43,7 @@ import { stripMarkdown } from '../../../utils/StringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
-  MemoryActionsProps,
+  MemoryActionsProps
 } from './MemoriesView.interface';
 import './MemoriesView.less';
 
@@ -323,6 +326,9 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   isPinningMemoryId,
   onTogglePin,
   onViewMemory,
+  isSearching,
+  isFiltered,
+  onClearFilters,
 }) => {
   const { t } = useTranslation();
   if (isLoading) {
@@ -335,26 +341,36 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     );
   }
 
-  if (data.length === 0) {
+  if (data.length === 0 && (isSearching || isFiltered)) {
     return (
-      <Box
-        align="center"
-        className="tw:py-12 tw:text-center"
-        direction="col"
-        gap={1}
-        justify="center">
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.no-entity-available', {
-            entity: t('label.memory-plural'),
-          })}
-        </Typography>
-        <Typography className="tw:text-quaternary" size="text-sm">
-          {t('message.try-a-different-filter-or-search')}
-        </Typography>
-      </Box>
+      <div className="tw:relative tw:min-h-[320px] tw:py-12">
+        <EmptyPlaceholder
+          actions={
+            !isSearching && onClearFilters
+              ? [
+                  {
+                    key: 'clear-filters',
+                    label: t('label.clear-entity', { entity: t('label.all') }),
+                    color: 'primary',
+                    onClick: onClearFilters,
+                  },
+                ]
+              : undefined
+          }
+          description={
+            isSearching
+              ? t('message.check-spelling-or-try-different-term')
+              : t('message.no-results-for-filters-description')
+          }
+          icon={isSearching ? <NoSearchResultIcon className='tw:text-quaternary' /> : <NoFilterResultsIcon className='tw:text-quaternary' />}
+          title={
+            isSearching
+              ? t('label.no-matching-results')
+              : t('label.no-results-for-filters')
+          }
+          variant="blank"
+        />
+      </div>
     );
   }
 

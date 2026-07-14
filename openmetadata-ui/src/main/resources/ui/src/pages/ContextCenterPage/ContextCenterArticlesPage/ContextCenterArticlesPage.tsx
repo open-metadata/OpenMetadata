@@ -11,8 +11,19 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Card, Dropdown } from '@openmetadata/ui-core-components';
-import { ChevronDown } from '@untitledui/icons';
+import {
+  Box,
+  Button,
+  Card,
+  Dropdown,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
+import {
+  ArrowCircleBrokenUp,
+  ChevronDown,
+  Plus,
+  Stars01,
+} from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -20,6 +31,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReflexContainer, ReflexElement, ReflexSplitter } from 'react-reflex';
 import { useNavigate } from 'react-router-dom';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { withActivityFeed } from '../../../components/AppRouter/withActivityFeed';
 import DocumentTitle from '../../../components/common/DocumentTitle/DocumentTitle';
 import ArticleDetailHeader from '../../../components/ContextCenter/ArticleDetailHeader/ArticleDetailHeader.component';
@@ -79,6 +91,7 @@ const ContextCenterArticlesPage = () => {
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [page, setPage] = useState<KnowledgeCenterPageProps>({
     data: undefined,
     header: null,
@@ -89,6 +102,7 @@ const ContextCenterArticlesPage = () => {
   const [showAddLinkModal, setShowAddLinkModal] = useState(false);
   const [editingQuickLink, setEditingQuickLink] = useState<KnowledgePage>();
   const [articleSearchQuery, setArticleSearchQuery] = useState('');
+  const [isArticlesListEmpty, setIsArticlesListEmpty] = useState(false);
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -129,6 +143,8 @@ const ContextCenterArticlesPage = () => {
       setPermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+    } finally {
+      setIsPermissionsLoading(false);
     }
   }, [getResourcePermission]);
 
@@ -326,12 +342,14 @@ const ContextCenterArticlesPage = () => {
     return (
       <KnowledgePageListComponent
         hideAddButton
+        isPermissionsLoading={isPermissionsLoading}
         permissions={permissions}
         ref={knowledgeCenterPageRef}
         rightPanelSlot={
           contextCenterClassBase.isEmbeddedMode() ? null : undefined
         }
         searchQuery={articleSearchQuery}
+        onEmptyStateChange={setIsArticlesListEmpty}
         onPageChange={handlePageChange}
       />
     );
@@ -340,11 +358,15 @@ const ContextCenterArticlesPage = () => {
     fqn,
     isRightPanelOpen,
     permissions,
+    isPermissionsLoading,
     articleSearchQuery,
     handlePageChange,
     handleFetchKnowledgePageHierarchy,
     handleToggleRightPanel,
   ]);
+
+  const showArticlesEmptyState =
+    isArticlesListEmpty && !fqn && !version && !articleSearchQuery;
 
   return (
     <div
@@ -353,13 +375,59 @@ const ContextCenterArticlesPage = () => {
       {renderHeader()}
 
       <Box
-        className="tw:flex-1 tw:min-h-0 "
+        className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl"
         dir={i18n.dir()}
         direction="col"
         id="knowledge-center-layout-container">
         <DocumentTitle title={page.title || t('label.article-plural')} />
+        {showArticlesEmptyState && (
+          <EmptyPlaceholder
+            actions={[
+              {
+                color: 'primary',
+                iconLeading: Plus,
+                key: 'new-article',
+                label: t('label.new-article'),
+                onClick: addArticleKnowledgePage,
+              },
+            ]}
+            description={t('message.context-center-articles-empty-subtitle')}
+            features={[
+              {
+                key: 'create',
+                icon: <FileIcon className="tw:text-fg-brand-primary" />,
+                title: t('label.create-an-article'),
+                description: t(
+                  'message.context-center-articles-empty-feature-create'
+                ),
+              },
+              {
+                key: 'publish',
+                icon: (
+                  <ArrowCircleBrokenUp className="tw:text-fg-warning-primary" />
+                ),
+                title: t('label.publish-and-version'),
+                description: t(
+                  'message.context-center-articles-empty-feature-publish'
+                ),
+              },
+              {
+                key: 'ai',
+                icon: <Stars01 className="tw:text-fg-success-primary" />,
+                title: t('label.ai-takes-it-from-there'),
+                description: t(
+                  'message.context-center-articles-empty-feature-ai'
+                ),
+              },
+            ]}
+            title={t('label.write-it-once-let-ai-answer-it-forever')}
+            variant="features"
+          />
+        )}
         <ReflexContainer
-          className="knowledge-center-layout tw:h-full"
+          className={classNames('knowledge-center-layout tw:h-full', {
+            'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
+          })}
           orientation="vertical">
           {/* left */}
           <ReflexElement
