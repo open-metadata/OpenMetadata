@@ -33,7 +33,6 @@ import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
@@ -72,13 +71,11 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
-import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
   private static final String UPDATE_FIELDS = "relatedMetrics,assets";
   private static final String PATCH_FIELDS = "relatedMetrics,assets";
-  static final String FIELD_DERIVED_FROM = "derivedFrom";
   static final String FIELD_ASSETS = "assets";
 
   public MetricRepository() {
@@ -131,18 +128,12 @@ public class MetricRepository extends EntityRepository<Metric> {
     metric.setRelatedMetrics(
         fields.contains("relatedMetrics") ? getRelatedMetrics(metric) : metric.getRelatedMetrics());
     metric.setAssets(fields.contains(FIELD_ASSETS) ? getAssets(metric) : metric.getAssets());
-    if (fields.contains(FIELD_DERIVED_FROM)) {
-      metric.setDerivedFrom(getDerivedFrom(metric));
-    }
   }
 
   @Override
   protected void clearFields(Metric entity, EntityUtil.Fields fields) {
     entity.setRelatedMetrics(fields.contains("relatedMetrics") ? entity.getRelatedMetrics() : null);
     entity.setAssets(fields.contains(FIELD_ASSETS) ? entity.getAssets() : null);
-    if (!fields.contains(FIELD_DERIVED_FROM)) {
-      entity.setDerivedFrom(null);
-    }
   }
 
   /**
@@ -151,16 +142,6 @@ public class MetricRepository extends EntityRepository<Metric> {
    */
   private List<EntityReference> getAssets(Metric metric) {
     return findTo(metric.getId(), METRIC, Relationship.APPLIED_TO, null);
-  }
-
-  /**
-   * Returns the context memory from which the Memory Agent created this metric.
-   * Edge direction: from=metric → to=memory via DERIVED_FROM; findTo resolves the to-side (memory).
-   */
-  private EntityReference getDerivedFrom(Metric metric) {
-    final List<EntityReference> refs =
-        findTo(metric.getId(), Entity.METRIC, Relationship.DERIVED_FROM, Entity.CONTEXT_MEMORY);
-    return nullOrEmpty(refs) ? null : refs.getFirst();
   }
 
   // Individual field fetchers registered in constructor
@@ -512,15 +493,6 @@ public class MetricRepository extends EntityRepository<Metric> {
           });
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
       compareAndUpdate(FIELD_ASSETS, () -> updateAssets(original, updated));
-      MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
-    }
-
-    private boolean managedFieldChanged() {
-      return !Objects.equals(original.getName(), updated.getName())
-          || !Objects.equals(original.getDisplayName(), updated.getDisplayName())
-          || !Objects.equals(original.getDescription(), updated.getDescription())
-          || !Objects.equals(original.getMetricType(), updated.getMetricType())
-          || !Objects.equals(original.getMetricExpression(), updated.getMetricExpression());
     }
 
     private void updateRelatedMetrics(Metric original, Metric updated) {

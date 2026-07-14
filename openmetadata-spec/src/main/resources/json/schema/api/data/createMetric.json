@@ -86,9 +86,6 @@
     "extension": {
       "description": "Entity extension data with custom attributes added to the entity.",
       "$ref": "../../type/basic.json#/definitions/entityExtension"
-    },
-    "provider": {
-      "$ref": "../../type/basic.json#/definitions/providerType"
     }
   },
   "required": ["name"],

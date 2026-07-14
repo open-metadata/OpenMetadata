@@ -29,6 +29,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.chat.CreateMcpConversation;
 import org.openmetadata.schema.api.chat.CreateMcpMessage;
 import org.openmetadata.schema.configuration.LLMConfiguration;
+import org.openmetadata.schema.entity.app.internal.McpChatAppConfig;
 import org.openmetadata.schema.entity.chat.McpConversation;
 import org.openmetadata.schema.entity.chat.McpMessage;
 import org.openmetadata.schema.entity.chat.TokenUsage;
@@ -71,7 +72,7 @@ public class McpClientService implements AutoCloseable {
 
   private final McpConversationRepository conversationRepository;
   private final McpMessageRepository messageRepository;
-  private final String systemPrompt;
+  private final McpChatAppConfig config;
   private final LlmClient llmClient;
   private final ExecutorService titleExecutor =
       new ThreadPoolExecutor(
@@ -91,10 +92,11 @@ public class McpClientService implements AutoCloseable {
   private volatile List<Map<String, Object>> toolDefinitions = Collections.emptyList();
   private volatile List<Map<String, Object>> lastToolDefinitionsSource;
 
-  public McpClientService(CollectionDAO dao, LLMConfiguration llmConfig, String systemPrompt) {
+  public McpClientService(
+      CollectionDAO dao, LLMConfiguration llmConfig, McpChatAppConfig appConfig) {
     this.conversationRepository = new McpConversationRepository(dao.mcpConversationDAO());
     this.messageRepository = new McpMessageRepository(dao.mcpMessageDAO());
-    this.systemPrompt = systemPrompt;
+    this.config = appConfig;
     this.llmClient = createLlmClient(llmConfig);
   }
 
@@ -465,7 +467,7 @@ public class McpClientService implements AutoCloseable {
 
   private List<LlmMessage> buildLlmMessages(UUID conversationId) {
     List<LlmMessage> llmMessages = new ArrayList<>();
-    llmMessages.add(LlmMessage.system(systemPrompt));
+    llmMessages.add(LlmMessage.system(config.getSystemPrompt()));
 
     List<McpMessage> history =
         messageRepository.listRecentByConversation(conversationId, LLM_CONTEXT_MESSAGE_LIMIT);

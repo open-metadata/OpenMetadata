@@ -100,7 +100,6 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { showSuccessToast } from '../../../utils/ToastUtils';
 import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import DataAssetSelectList from '../../DataAssets/DataAssetSelectList/DataAssetSelectList';
-import DerivedOntologyCard from '../DerivedOntologyCard/DerivedOntologyCard.component';
 import {
   CreateMemoryModalProps,
   MemoryFormValues,
@@ -1087,9 +1086,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                             ))}
                       </Card>
                     </div>
-                    {isViewOnly && memoryToEdit?.id && (
-                      <DerivedOntologyCard memoryId={memoryToEdit.id} />
-                    )}
                   </div>
 
                   {/* Sticky footer */}

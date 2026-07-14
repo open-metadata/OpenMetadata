@@ -52,10 +52,12 @@ import org.openmetadata.schema.entity.chat.McpConversation;
 import org.openmetadata.schema.entity.chat.McpMessage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.service.apps.AbstractNativeApplication;
+import org.openmetadata.service.apps.ApplicationContext;
+import org.openmetadata.service.apps.bundles.mcp.McpChatApplication;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.mcpclient.ChatEvent;
 import org.openmetadata.service.mcpclient.ClientDisconnectedException;
-import org.openmetadata.service.mcpclient.McpChatServiceHolder;
 import org.openmetadata.service.mcpclient.McpClientService;
 import org.openmetadata.service.mcpclient.McpClientService.ChatResponse;
 import org.openmetadata.service.mcpclient.ToolExecutor;
@@ -107,18 +109,6 @@ public class McpClientResource {
   public void registerToolExecutor(
       ToolExecutor toolExecutor, List<Map<String, Object>> toolDefinitions) {
     this.toolRegistration = new ToolRegistration(toolExecutor, toolDefinitions);
-  }
-
-  @GET
-  @Path("/enabled")
-  @Operation(
-      operationId = "isMcpChatEnabled",
-      summary = "Whether MCP Chat is enabled",
-      description =
-          "Returns whether the MCP Chat assistant is enabled in AI settings. Readable by any"
-              + " authenticated user so the UI can gate the chat entry point.")
-  public Response isEnabled() {
-    return Response.ok(Map.of("enabled", McpChatServiceHolder.isEnabled())).build();
   }
 
   @POST
@@ -326,13 +316,19 @@ public class McpClientResource {
   }
 
   private McpClientService getService() {
-    if (!McpChatServiceHolder.isEnabled()) {
+    AbstractNativeApplication app =
+        ApplicationContext.getInstance().getAppIfExists("McpChatApplication");
+    if (app == null) {
       throw new WebApplicationException(
           Response.status(Response.Status.SERVICE_UNAVAILABLE)
-              .entity(Map.of("message", "MCP Chat is not enabled. Enable it in AI Settings."))
+              .entity(
+                  Map.of(
+                      "message",
+                      "MCP Chat is not enabled. Install the McpChatApplication from the App Marketplace."))
               .build());
     }
-    McpClientService service = McpChatServiceHolder.get();
+    McpChatApplication chatApp = (McpChatApplication) app;
+    McpClientService service = chatApp.getMcpClientService();
     if (service == null) {
       throw new WebApplicationException(
           Response.status(Response.Status.SERVICE_UNAVAILABLE)

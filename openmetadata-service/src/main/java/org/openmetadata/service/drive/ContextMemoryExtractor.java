@@ -18,7 +18,6 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
-import org.openmetadata.service.util.AISettingsUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
 /**
@@ -142,8 +141,7 @@ public class ContextMemoryExtractor {
   private List<KnowledgePill> callLlm(String text) {
     List<KnowledgePill> result = new ArrayList<>();
     if (text != null && !text.isBlank()) {
-      String prompt = AISettingsUtil.memoryExtractionPrompt(AISettingsUtil.get(), SYSTEM_PROMPT);
-      result = llmClient.completeStructured(prompt, text, KnowledgePill.class);
+      result = llmClient.completeStructured(SYSTEM_PROMPT, text, KnowledgePill.class);
     }
     return result;
   }

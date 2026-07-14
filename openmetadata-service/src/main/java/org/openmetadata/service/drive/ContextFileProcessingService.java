@@ -28,7 +28,6 @@ import org.openmetadata.service.jdbi3.ContextFileRepository;
 import org.openmetadata.service.jdbi3.ContextMemoryRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.llm.LLMClientHolder;
-import org.openmetadata.service.util.AISettingsUtil;
 
 /**
  * Orchestrates asynchronous processing of an uploaded {@link ContextFile}: text extraction
@@ -56,9 +55,7 @@ public class ContextFileProcessingService {
         new ContextFileTextExtractor(),
         LLM_EXECUTOR,
         ContextFileProcessingService::buildDefaultExtractor,
-        () ->
-            LLMClientHolder.isEnabled()
-                && AISettingsUtil.isFileExtractionEnabled(AISettingsUtil.get()),
+        LLMClientHolder::isEnabled,
         null);
   }
 
@@ -170,7 +167,8 @@ public class ContextFileProcessingService {
     if (file != null && contentId.toString().equals(file.getHeadContentId())) {
       markAnalyzing(fileId, contentId);
       ProcessingStatus textStatus = extractText(fileId, contentId);
-      if (shouldExtractContext(textStatus)) {
+      if (textStatus == ProcessingStatus.Processed
+          && Boolean.TRUE.equals(llmEnabledSupplier.get())) {
         submitMemoryExtraction(fileId, contentId);
       }
     }
@@ -339,21 +337,10 @@ public class ContextFileProcessingService {
 
   private ProcessingStatus fileStatusAfterText(ProcessingStatus textStatus) {
     ProcessingStatus result = textStatus;
-    if (shouldExtractContext(textStatus)) {
+    if (textStatus == ProcessingStatus.Processed && Boolean.TRUE.equals(llmEnabledSupplier.get())) {
       result = ProcessingStatus.ExtractingContext;
     }
     return result;
-  }
-
-  /**
-   * Whether text extraction should be followed by LLM knowledge-pill extraction. The {@code
-   * llmEnabledSupplier} carries the full gate (LLM availability AND the AISettings file-extraction
-   * toggle in production); keeping it a single injected supplier makes the status machine unit
-   * testable without a live settings cache.
-   */
-  private boolean shouldExtractContext(ProcessingStatus textStatus) {
-    return textStatus == ProcessingStatus.Processed
-        && Boolean.TRUE.equals(llmEnabledSupplier.get());
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {

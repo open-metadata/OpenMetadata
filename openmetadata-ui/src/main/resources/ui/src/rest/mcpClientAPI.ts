@@ -233,11 +233,3 @@ export const streamChatMessage = async (
     reader.releaseLock();
   }
 };
-
-export const getMcpChatEnabled = async (): Promise<boolean> => {
-  const response = await APIClient.get<{ enabled: boolean }>(
-    '/mcp-client/enabled'
-  );
-
-  return response.data?.enabled ?? false;
-};
