@@ -20,6 +20,7 @@ import {
 } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
+import { EntityStatus } from '../../../generated/entity/data/glossaryTerm';
 import {
   mockedGlossaryTerms,
   MOCK_PERMISSIONS,
@@ -140,6 +141,21 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
       <div onClick={onClick}>ErrorPlaceHolder</div>
     ))
 );
+
+jest.mock('@openmetadata/ui-core-components', () => ({
+  ...jest.requireActual('@openmetadata/ui-core-components'),
+  EmptyPlaceholder: jest
+    .fn()
+    .mockImplementation(
+      ({ actions }: { actions?: Array<{ onPress?: () => void }> }) => (
+        <div
+          data-testid="empty-placeholder"
+          onClick={() => actions?.[0]?.onPress?.()}>
+          EmptyPlaceholder
+        </div>
+      )
+    ),
+}));
 
 jest.mock('../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <div>Loader</div>)
@@ -277,7 +293,7 @@ describe('Test GlossaryTermTab component', () => {
   });
 
   describe('Empty State', () => {
-    it('should show the ErrorPlaceHolder component when no glossary terms are present', async () => {
+    it('should show the EmptyPlaceholder component when no glossary terms are present', async () => {
       // Make sure the API returns empty data
       mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
         data: [],
@@ -289,26 +305,57 @@ describe('Test GlossaryTermTab component', () => {
       });
 
       await waitFor(() => {
-        expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
       });
     });
 
-    it('should call the onAddGlossaryTerm function when clicking add button in ErrorPlaceHolder', async () => {
+    it('should call the onAddGlossaryTerm function when clicking add button in EmptyPlaceholder', async () => {
       // Make sure the API returns empty data
       mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
         data: [],
         paging: { after: null },
       });
 
+      // The add action only renders for an approved glossary term
+      mockUseGlossaryStore.activeGlossary = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: EntityStatus.Approved,
+      };
+
       const { container } = render(<GlossaryTermTab isGlossary={false} />, {
         wrapper: MemoryRouter,
       });
 
       await waitFor(() => {
-        expect(getByText(container, 'ErrorPlaceHolder')).toBeInTheDocument();
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
       });
 
-      fireEvent.click(getByText(container, 'ErrorPlaceHolder'));
+      fireEvent.click(getByText(container, 'EmptyPlaceholder'));
+
+      expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
+    });
+
+    it('should show the add term action for a glossary regardless of term status', async () => {
+      mockGetFirstLevelGlossaryTermsPaginated.mockResolvedValue({
+        data: [],
+        paging: { after: null },
+      });
+
+      // A non-approved active entity should still allow adding terms to a glossary
+      mockUseGlossaryStore.activeGlossary = {
+        ...mockedGlossaryTerms[0],
+        entityStatus: EntityStatus.Draft,
+      };
+
+      const { container } = render(<GlossaryTermTab isGlossary />, {
+        wrapper: MemoryRouter,
+      });
+
+      await waitFor(() => {
+        expect(getByText(container, 'EmptyPlaceholder')).toBeInTheDocument();
+      });
+
+      fireEvent.click(getByText(container, 'EmptyPlaceholder'));
 
       expect(mockOnAddGlossaryTerm).toHaveBeenCalled();
     });
