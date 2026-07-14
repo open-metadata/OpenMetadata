@@ -65,14 +65,10 @@ class UnsupportedApiVersionError(Exception):
 
 
 def _error_doc(error: BaseException) -> re.Match[str] | None:
-    """Parse the status and endpoint out of the Looker documentation URL an error carries.
+    """Parse the status and endpoint from the documentation URL the error carries.
 
-    ``SDKError`` has no status code of its own; the documentation URL Looker
-    returns with the error body encodes both the status and the endpoint that
-    produced it. It reaches us two ways: an API call deserializes it onto
-    ``documentation_url``, while a failed *login* raises the raw response body as
-    the message, leaving that attribute empty. Matching ``str(error)`` - which
-    renders both - covers the two shapes with one rule.
+    Matches ``str(error)``: an API call deserializes the URL onto
+    ``documentation_url``, a failed login raises the raw body as the message.
     """
     return _ERROR_DOC_URL.search(str(error))
 
@@ -86,12 +82,8 @@ def _http_status(*codes: int) -> Matcher:
 
 
 def _login_rejected(error: BaseException) -> bool:
-    """Match Looker rejecting the credentials.
-
-    The login endpoint answers a wrong client id or secret with ``404 Not found``
-    rather than a 401, so the status alone cannot separate bad credentials from a
-    wrong host; the endpoint that produced it can.
-    """
+    """Match Looker rejecting the credentials: a 404 on ``/login``, so the endpoint -
+    not the status - is what separates it from a wrong host."""
     return any(
         (match := _error_doc(current)) is not None and match["status"] == "404" and "login" in match["path"].lower()
         for current in exception_chain(error)
@@ -101,10 +93,9 @@ def _login_rejected(error: BaseException) -> bool:
 def _contains_any(*tokens: str) -> Matcher:
     """Match when any of ``tokens`` appears in the error (or its cause chain).
 
-    The SDK's transport catches every ``IOError`` - DNS failures, refused
-    connections, TLS errors, timeouts - and re-raises it as an ``SDKError`` whose
-    message is the stringified original, so the underlying exception *type* is
-    lost and these conditions can only be matched on text.
+    The SDK's transport re-raises every ``IOError`` as an ``SDKError`` whose message
+    is the stringified original, so DNS, refused, TLS and timeout errors lose their
+    type and can only be matched on text.
     """
     lowered = tuple(token.lower() for token in tokens)
 
@@ -115,13 +106,10 @@ def _contains_any(*tokens: str) -> Matcher:
     return match
 
 
-# The statuses handled here are the ones the API spec documents for the endpoints
-# these checks call (/login, /user, /versions, /dashboards, /lookml_models): 400,
-# 404 and 429. It documents no 401 anywhere, and no 403 on any of them, so an
-# unmatched status keeps its raw errorLog rather than a made-up diagnosis.
+# The API spec documents 400, 404 and 429 for the endpoints these checks call - no
+# 401 anywhere, no 403 on any of them. An unmatched status keeps its raw errorLog.
 LOOKER_ERRORS = ErrorPack(
-    # Ordered before the generic 404: Looker rejects credentials with a 404 on
-    # /login, so the endpoint is what separates them from a wrong host.
+    # Before the generic 404: a rejected login is itself a 404, on /login.
     when(_login_rejected).diagnose(
         "Authentication failed",
         fix="Looker rejected the credentials. Check the Client ID and Client Secret.",
@@ -145,10 +133,8 @@ LOOKER_ERRORS = ErrorPack(
         fix=f"This connector uses API {SDK_API_VERSION}, which the instance does not list as supported.",
         doc=API_SDK_DOC,
     ),
-    # The transport flattens every IOError into an SDKError message, so these
-    # network conditions are matched on the text of the original exception. They
-    # precede the type-based NETWORK_ERRORS fallback, which only fires for an
-    # error raised outside the transport.
+    # Matched on text: the transport flattens these into an SDKError message. They
+    # precede the type-based NETWORK_ERRORS, which only fires outside the transport.
     when(
         _contains_any("failed to resolve", "name or service not known", "nodename nor servname", "getaddrinfo failed")
     ).diagnose(
@@ -171,17 +157,16 @@ LOOKER_ERRORS = ErrorPack(
         "Cannot reach the host",
         fix="Check Host Port and that the instance is reachable from where ingestion runs.",
     ),
-    # Looker answers a rejected sign-in with a generic HTML 404 page carrying no
-    # error document, and serves that same page for a host that is not a live
-    # instance - the two are indistinguishable here, so the fix names both.
+    # Looker serves this page, with no error document, both for a rejected sign-in
+    # and for a host that is not a live instance; the two cannot be told apart.
     when(_contains_any("looker is unavailable", "looker not found")).diagnose(
         "Authentication failed",
         fix="Looker returns this same page for wrong credentials and for a host that is not a live "
         "instance. Check the Client ID and Client Secret, then Host Port.",
         doc=API_SDK_DOC,
     ),
-    # Last: something answered, but not as Looker - the body carries no Looker error
-    # document, so a real Looker 404 (which does, and is matched above) never lands here.
+    # Last: a 404 from something that is not Looker - a real one carries an error
+    # document and is matched above.
     when(_contains_any("404", "not found")).diagnose(
         "The host is not serving the Looker API",
         fix="A server answered but did not return a Looker error. Check that Host Port points at the Looker instance.",
@@ -192,14 +177,11 @@ LOOKER_ERRORS = ErrorPack(
 class LookerChecks:
     """Test-connection checks for Looker.
 
-    ``CheckAccess`` is the gate: the SDK logs in lazily on its first call, so bad
-    credentials or an unreachable host fail there and the remaining steps are
-    skipped rather than each re-dialling the instance.
+    ``CheckAccess`` is the gate: the SDK logs in on its first call, so bad
+    credentials and an unreachable host fail there and the rest are skipped.
 
-    ``connect`` is ``BaseConnection.client`` underneath, so every step shares the
-    one client the connection owns and closes. It is a thunk rather than the
-    client itself so the build - which reads the credentials into the environment
-    - still happens inside the first check, never while the provider is assembled.
+    ``connect`` is ``BaseConnection.client`` - a thunk, so the client is built
+    inside the first check rather than while the provider is assembled.
     """
 
     errors = LOOKER_ERRORS
@@ -257,14 +239,11 @@ class LookerChecks:
 
 
 class LookerSettings(ApiSettings):
-    """Feed the SDK this service's configuration directly.
+    """Configure the SDK from this service's connection.
 
-    The SDK otherwise reads its host and credentials from the process
-    environment, which a long-lived worker only populates once: every later
-    Looker connection in that process would silently reuse the first one's host
-    and credentials. Overriding ``read_config`` keeps each connection's settings
-    to itself - the base class reads it at construction, and the SDK reads it
-    again on each login.
+    Without it the SDK reads host and credentials from the process environment,
+    which a long-lived worker populates once: later connections in that process
+    would reuse the first one's.
     """
 
     def __init__(self, connection: LookerConnectionConfig) -> None:
@@ -284,6 +263,5 @@ class LookerConnection(BaseConnection[LookerConnectionConfig, Looker40SDK]):
         return looker_sdk.init40(config_settings=LookerSettings(self.service_connection))
 
     def checks(self) -> ChecksProvider:
-        # Pass a thunk, not self.client: the checks then run against the one
-        # client this connection owns, and its build still lands inside the gate.
+        # A thunk, not self.client: the build then lands inside the gate.
         return LookerChecks(connect=lambda: self.client)

@@ -79,9 +79,8 @@ def test_get_client_initialises_the_sdk():
 
 
 def test_the_sdk_is_configured_from_this_service_not_the_environment(monkeypatch):
-    # The SDK reads its host and credentials from the environment by default, and a
-    # long-lived worker only populates those once - so a second Looker connection in
-    # the same process must not inherit the first one's host or credentials.
+    # A long-lived worker populates the SDK's env vars once, so a second connection
+    # in the same process must not inherit the first one's host or credentials.
     monkeypatch.setenv("LOOKERSDK_BASE_URL", "https://first.example.com")
     monkeypatch.setenv("LOOKERSDK_CLIENT_ID", "first-id")
     monkeypatch.setenv("LOOKERSDK_CLIENT_SECRET", "first-secret")
@@ -97,8 +96,8 @@ def test_the_sdk_is_configured_from_this_service_not_the_environment(monkeypatch
 
 
 def test_checks_run_against_the_client_the_connection_owns():
-    # The provider holds no client of its own: it reads BaseConnection.client, so
-    # every step shares the one client the connection builds, caches, and closes.
+    # The provider holds no client of its own: every step shares the one the
+    # connection builds, caches, and closes.
     with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
         conn = LookerConnection(MagicMock())
         provider = conn.checks()
@@ -110,8 +109,7 @@ def test_checks_run_against_the_client_the_connection_owns():
 
 
 def test_building_the_provider_does_not_build_the_client():
-    # The SDK must not be built while the provider is assembled: that would run
-    # before the runner's gate.
+    # Building it while the provider is assembled would run before the gate.
     with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
         conn = LookerConnection(MagicMock())
         conn.checks()
@@ -153,8 +151,8 @@ def test_check_access_reads_the_authenticated_user():
 
 
 def test_check_access_wraps_a_rejected_login_as_check_error():
-    # The SDK logs in lazily on its first call, so bad credentials surface as a
-    # classified CheckAccess failure instead of escaping while the provider is built.
+    # The SDK logs in on its first call, so bad credentials fail the gate rather
+    # than escaping while the provider is built.
     provider, client = _checks()
     client.me.side_effect = _sdk_error("Not found", documentation_url=LOGIN_404)
 
@@ -232,8 +230,8 @@ def test_list_lookml_models_wraps_a_failure_as_check_error():
 
 
 def test_rejected_credentials_are_diagnosed_as_an_auth_failure():
-    # Looker answers a wrong client id or secret with a 404 on /login, so the
-    # endpoint - not the status - is what separates it from a wrong host.
+    # A rejected login is a 404 on /login: the endpoint, not the status, tells it
+    # apart from a wrong host.
     diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not found", documentation_url=LOGIN_404))
 
     assert diagnosis is not None
@@ -241,9 +239,8 @@ def test_rejected_credentials_are_diagnosed_as_an_auth_failure():
 
 
 def test_rejected_credentials_are_diagnosed_from_the_raw_login_body():
-    # The real shape: a failed login raises the undeserialized response body as the
-    # message, leaving documentation_url empty (only API calls populate it). The
-    # doc URL is still in the text, which is what the status rules read.
+    # A failed login raises the raw body as the message and leaves
+    # documentation_url empty; the URL is still in the text the rules read.
     diagnosis = LOOKER_ERRORS.classify(_sdk_error('{"message": "Not found", "documentation_url": "' + LOGIN_404 + '"}'))
 
     assert diagnosis is not None
@@ -265,16 +262,15 @@ def test_a_429_is_diagnosed_as_rate_limiting():
 
 
 def test_an_undocumented_status_keeps_its_raw_error():
-    # The API spec documents no 401 anywhere, and no 403 on any endpoint these
-    # checks call, so neither gets an invented diagnosis - the raw errorLog stands.
+    # The API spec has no 401 anywhere and no 403 on the endpoints these checks
+    # call, so neither gets an invented diagnosis.
     assert LOOKER_ERRORS.classify(_sdk_error("nope", documentation_url=DASHBOARDS_401)) is None
     assert LOOKER_ERRORS.classify(_sdk_error("nope", documentation_url=DASHBOARDS_403)) is None
 
 
 def test_lookers_generic_404_page_is_diagnosed_as_an_auth_failure():
-    # What a live Looker actually returns for a rejected sign-in: a generic HTML 404
-    # page with no error document. It serves the same page for a host that is not a
-    # live instance, so the two cannot be told apart here.
+    # What a live Looker returns for a rejected sign-in - and for a host that is not
+    # a live instance, so the two cannot be told apart.
     diagnosis = LOOKER_ERRORS.classify(
         _sdk_error(
             "<html><head><title>Looker Not Found (404)</title></head><body><h1>Looker is unavailable.</h1></body></html>"
@@ -286,8 +282,8 @@ def test_lookers_generic_404_page_is_diagnosed_as_an_auth_failure():
 
 
 def test_a_host_that_is_not_looker_is_diagnosed():
-    # A non-Looker server answers the login POST with its own 404 body, which
-    # carries no Looker error document - the shape a typo'd hostPort produces.
+    # A non-Looker server answers with its own 404 body, carrying no Looker error
+    # document.
     diagnosis = LOOKER_ERRORS.classify(_sdk_error('{"code":404,"message":"HTTP 404 Not Found"}'))
 
     assert diagnosis is not None
@@ -295,8 +291,8 @@ def test_a_host_that_is_not_looker_is_diagnosed():
 
 
 def test_a_looker_404_outranks_the_not_a_looker_host_fallback():
-    # Ordering guard: a genuine Looker 404 carries a documentation URL, so it must
-    # keep its sharper diagnosis rather than falling through to the text fallback.
+    # Ordering guard: a genuine Looker 404 carries a documentation URL and must keep
+    # the sharper diagnosis.
     diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not found", documentation_url=DASHBOARDS_404))
 
     assert diagnosis is not None
