@@ -69,19 +69,31 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
 
   @Override
   public void promoteEntityIndex(EntityReindexContext context, boolean reindexSuccess) {
-    super.promoteEntityIndex(context, reindexSuccess);
     // Distributed full recreates promote entity indexes through this per-entity path instead of
     // finalizeReindex — without this hook the staged chunk generation would never reach its
     // completion gate on distributed runs. markEntityTypeReindexed is idempotent, so runs that
-    // invoke both callbacks for a type are harmless.
-    markChunkTypeOutcome(context, reindexSuccess);
+    // invoke both callbacks for a type are harmless. The mark lives in a finally so a throwing
+    // promotion still reports the type (as failed) — otherwise the staged chunk run would wait
+    // forever instead of reaching a safe terminal state.
+    boolean promoted = false;
+    try {
+      super.promoteEntityIndex(context, reindexSuccess);
+      promoted = true;
+    } finally {
+      markChunkTypeOutcome(context, reindexSuccess && promoted);
+    }
   }
 
   @Override
   public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
-    super.finalizeReindex(context, reindexSuccess);
-
-    markChunkTypeOutcome(context, reindexSuccess);
+    // Same finally-shape as promoteEntityIndex: a throwing finalize must still report the type.
+    boolean finalized = false;
+    try {
+      super.finalizeReindex(context, reindexSuccess);
+      finalized = true;
+    } finally {
+      markChunkTypeOutcome(context, reindexSuccess && finalized);
+    }
 
     if (reindexSuccess) {
       SearchRepository searchRepository = Entity.getSearchRepository();

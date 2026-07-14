@@ -523,6 +523,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private static final String STAGED_POISON_DOC_ID = "__staged_write_failure__";
+  private static final int POISON_SIGNAL_ATTEMPTS = 3;
 
   /**
    * Records a failed write against the staged generation: sets the local poison flag and
@@ -539,28 +540,62 @@ public class OpenSearchVectorService implements VectorIndexService {
         target,
         e.getMessage(),
         e);
-    try {
-      executeGenericRequest(
-          "PUT", "/" + target + "/_doc/" + STAGED_POISON_DOC_ID, "{\"poisoned\":true}");
-    } catch (Exception markerFailure) {
-      LOG.warn(
-          "Could not write staged poison marker to {}: {}", target, markerFailure.getMessage());
+    boolean recorded = false;
+    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS && !recorded; attempt++) {
+      try {
+        // refresh=true makes the marker search-visible immediately — promotion may check within
+        // the same second, before a periodic refresh would surface it.
+        executeGenericRequest(
+            "PUT",
+            "/" + target + "/_doc/" + STAGED_POISON_DOC_ID + "?refresh=true",
+            "{\"poisoned\":true}");
+        recorded = true;
+      } catch (Exception markerFailure) {
+        LOG.warn(
+            "Staged poison marker write to {} failed (attempt {}/{}): {}",
+            target,
+            attempt,
+            POISON_SIGNAL_ATTEMPTS,
+            markerFailure.getMessage());
+      }
+    }
+    if (!recorded) {
+      LOG.error(
+          "Staged poison marker could not be durably recorded in {} — if this node is not the "
+              + "recreate coordinator, promotion may proceed with an incomplete generation",
+          target);
     }
   }
 
-  /** True when the staged generation carries a poison marker written by any node's failed write. */
+  /**
+   * True when the staged generation carries a poison marker written by any node's failed write.
+   * Uses a search-by-id rather than GET-by-id so "no marker" is an unambiguous 200 with zero hits
+   * (a GET 404 is indistinguishable from a transport error here). Read errors retry and then FAIL
+   * CLOSED: promoting a generation whose integrity cannot be verified risks the silent chunk drop
+   * this whole feature exists to prevent, while blocking costs only a rerun.
+   */
   private boolean stagedGenerationPoisoned(String generation) {
-    boolean poisoned = false;
-    try {
-      String response =
-          executeGenericRequest("GET", "/" + generation + "/_doc/" + STAGED_POISON_DOC_ID, null);
-      poisoned = MAPPER.readTree(response).path("found").asBoolean(false);
-    } catch (Exception e) {
-      // 404 = no marker; treat lookup errors as not-poisoned — the local flag still guards, and
-      // failing closed here would turn a transient read blip into a blocked promotion.
-      LOG.debug("Staged poison marker lookup failed for {}: {}", generation, e.getMessage());
+    String query =
+        "{\"size\":0,\"query\":{\"ids\":{\"values\":[\"" + STAGED_POISON_DOC_ID + "\"]}}}";
+    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
+      try {
+        String response = executeGenericRequest("POST", "/" + generation + "/_search", query);
+        long hits = MAPPER.readTree(response).path("hits").path("total").path("value").asLong(0);
+        return hits > 0;
+      } catch (Exception e) {
+        LOG.warn(
+            "Staged poison marker check failed for {} (attempt {}/{}): {}",
+            generation,
+            attempt,
+            POISON_SIGNAL_ATTEMPTS,
+            e.getMessage());
+      }
     }
-    return poisoned;
+    LOG.error(
+        "Staged poison marker check kept failing for {} — failing closed: promotion blocked, "
+            + "old chunks stay live, generation swept by the next recreate",
+        generation);
+    return true;
   }
 
   private static final long SINK_TARGET_CACHE_MS = 15_000;
