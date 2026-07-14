@@ -48,7 +48,9 @@ const LogsViewerModalContainer: FunctionComponent<
       loadingMore={loadingMore}
       logs={logs}
       mode={isLive ? 'stream' : 'static'}
-      title={`${title} · ${t('label.log-plural')}`}
+      title={
+        title ? `${title} · ${t('label.log-plural')}` : t('label.log-plural')
+      }
       totalLines={totalLines}
       onClose={onClose}
       onDownload={download}
