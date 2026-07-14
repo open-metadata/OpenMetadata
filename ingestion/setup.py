@@ -341,7 +341,7 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         "python-liquid",
     },
     # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
-    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
+    "mlflow": {"mlflow-skinny>=3.13.0,<3.15"},  # CVE-2026-2635 default creds + CVE-2026-8147 missing authz (fixed in 3.13.0)
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
