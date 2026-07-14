@@ -113,6 +113,14 @@ const DomainTypeWidget = withSuspenseFallback(
   )
 );
 
+const DomainMembersWidget = withSuspenseFallback(
+  lazy(() =>
+    import('../components/Domain/DomainMembersWidget/DomainMembersWidget').then(
+      (module) => ({ default: module.DomainMembersWidget })
+    )
+  )
+);
+
 const ResizablePanels = withSuspenseFallback(
   lazy(() => import('../components/common/ResizablePanels/ResizablePanels'))
 );
@@ -434,6 +442,8 @@ export const getDomainDetailTabs = ({
 export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
     return <DomainExpertWidget />;
+  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_MEMBERS)) {
+    return <DomainMembersWidget />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
     return <DomainTypeWidget />;
   }
