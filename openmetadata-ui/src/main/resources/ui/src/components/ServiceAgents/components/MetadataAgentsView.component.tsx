@@ -33,6 +33,7 @@ import {
   getErrorPlaceHolder,
   getLogViewerStatusFromAgentStatus,
 } from '../../../utils/IngestionUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
@@ -181,6 +182,17 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     [agents.length, platform, theme]
   );
 
+  const extraMenuItems = useMemo(
+    () =>
+      serviceUtilClassBase.getExtraIngestionMenuItems(
+        serviceCategory,
+        serviceName,
+        navigate,
+        serviceDetails
+      ),
+    [navigate, serviceCategory, serviceDetails, serviceName]
+  );
+
   const addAgentSlot = useMemo(() => {
     if (addAgentSlotProp) {
       return addAgentSlotProp;
@@ -188,6 +200,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 
     return showAddAgent ? (
       <AddIngestionButton
+        extraMenuItems={extraMenuItems}
         ingestionList={ingestionPipelineList}
         serviceCategory={serviceCategory}
         serviceDetails={serviceDetails}
@@ -197,6 +210,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   }, [
     addAgentSlotProp,
     showAddAgent,
+    extraMenuItems,
     ingestionPipelineList,
     serviceCategory,
     serviceDetails,

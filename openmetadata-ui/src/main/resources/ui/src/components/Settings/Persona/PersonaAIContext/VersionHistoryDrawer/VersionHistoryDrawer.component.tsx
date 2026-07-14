@@ -313,23 +313,18 @@ export const VersionHistoryDrawer = ({
             }
           }}>
           <Modal>
-            <Dialog data-testid="restore-version-modal" width={440}>
-              <Box direction="col" gap={5}>
-                <Box direction="col" gap={2}>
-                  <Typography
-                    className="tw:text-primary"
-                    size="text-lg"
-                    weight="semibold">
-                    {t('label.restore-version', {
-                      version: restoreTarget.version,
-                    })}
-                  </Typography>
-                  <Typography className="tw:text-secondary" size="text-sm">
-                    {t('message.persona-context-restore-confirmation', {
-                      version: restoreTarget.version,
-                    })}
-                  </Typography>
-                </Box>
+            <Dialog data-testid="restore-version-modal" width={450}>
+              <Dialog.Header
+                title={t('label.restore-version', {
+                  version: restoreTarget.version,
+                })}
+              />
+              <Dialog.Content className="tw:pb-6">
+                <Typography className="tw:text-secondary" size="text-sm">
+                  {t('message.persona-context-restore-confirmation', {
+                    version: restoreTarget.version,
+                  })}
+                </Typography>
                 <Box gap={3} justify="end">
                   <Button
                     color="secondary"
@@ -344,7 +339,7 @@ export const VersionHistoryDrawer = ({
                     {t('label.restore')}
                   </Button>
                 </Box>
-              </Box>
+              </Dialog.Content>
             </Dialog>
           </Modal>
         </ModalOverlay>

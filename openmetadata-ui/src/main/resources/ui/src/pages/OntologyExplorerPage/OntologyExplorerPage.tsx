@@ -222,7 +222,6 @@ const OntologyExplorerPage: React.FC = () => {
               {t('label.ontology-studio')}
             </h1>
           </div>
-
           <span
             aria-hidden="true"
             className="tw:h-[22px] tw:w-px tw:bg-gray-200"
