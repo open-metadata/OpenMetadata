@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
-import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -116,20 +115,54 @@ class SystemRepositoryPatchSettingTest {
   @Test
   void patchSettingUsesGenericPathForUnrelatedSettings() {
     String settingName = SettingsType.LINEAGE_SETTINGS.value();
-    Settings current =
-        new Settings().withConfigType(SettingsType.LINEAGE_SETTINGS).withConfigValue(Map.of());
-    when(systemDAO.getConfigWithKey(settingName)).thenReturn(current);
+    String originalJson = "{}";
+    when(systemDAO.getConfigJsonWithKey(settingName)).thenReturn(originalJson);
+    when(systemDAO.updateSettingsIfCurrent(eq(settingName), eq(originalJson), anyString()))
+        .thenReturn(1);
 
     Response response =
         systemRepository.patchSetting(settingName, Json.createPatchBuilder().build());
 
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
-    verify(systemDAO).getConfigWithKey(settingName);
-    verify(systemDAO).insertSettings(settingName, "{}");
+    verify(systemDAO).getConfigJsonWithKey(settingName);
+    verify(systemDAO).updateSettingsIfCurrent(eq(settingName), eq(originalJson), anyString());
+    verify(systemDAO, never()).insertSettings(anyString(), anyString());
     verify(systemDAO, never()).getGlossaryTermRelationSettingsJson();
     verify(systemDAO, never())
         .updateGlossaryTermRelationSettingsIfCurrent(anyString(), anyString());
     settingsCacheMock.verify(() -> SettingsCache.invalidateSettings(settingName));
+  }
+
+  @Test
+  void patchSettingRejectsMissingGenericSetting() {
+    String settingName = SettingsType.LINEAGE_SETTINGS.value();
+    when(systemDAO.getConfigJsonWithKey(settingName)).thenReturn(null);
+
+    assertThrows(
+        EntityNotFoundException.class,
+        () -> systemRepository.patchSetting(settingName, Json.createPatchBuilder().build()));
+
+    verify(systemDAO, never()).updateSettingsIfCurrent(anyString(), anyString(), anyString());
+    settingsCacheMock.verifyNoInteractions();
+  }
+
+  @Test
+  void patchSettingRejectsConcurrentGenericSnapshotChange() {
+    String settingName = SettingsType.LINEAGE_SETTINGS.value();
+    String originalJson = "{}";
+    when(systemDAO.getConfigJsonWithKey(settingName)).thenReturn(originalJson);
+    when(systemDAO.updateSettingsIfCurrent(eq(settingName), eq(originalJson), anyString()))
+        .thenReturn(0);
+
+    PreconditionFailedException failure =
+        assertThrows(
+            PreconditionFailedException.class,
+            () -> systemRepository.patchSetting(settingName, Json.createPatchBuilder().build()));
+
+    assertTrue(failure.getMessage().contains("Setting changed"));
+    assertEquals(
+        Response.Status.PRECONDITION_FAILED.getStatusCode(), failure.getResponse().getStatus());
+    settingsCacheMock.verifyNoInteractions();
   }
 
   private JsonPatch appendRelationTypePatch() {
