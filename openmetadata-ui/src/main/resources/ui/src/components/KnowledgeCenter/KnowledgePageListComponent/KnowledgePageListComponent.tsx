@@ -20,7 +20,7 @@ import {
   Row,
   Skeleton,
   Space,
-  Typography
+  Typography,
 } from 'antd';
 import { AxiosError } from 'axios';
 import cryptoRandomString from 'crypto-random-string-with-promisify-polyfill';
@@ -32,7 +32,7 @@ import React, {
   useEffect,
   useImperativeHandle,
   useMemo,
-  useState
+  useState,
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
@@ -43,7 +43,7 @@ import Loader from '../../../components/common/Loader/Loader';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
 import {
   CREATE_PAGE_HASH,
-  PAGE_SIZE_MEDIUM
+  PAGE_SIZE_MEDIUM,
 } from '../../../constants/constants';
 import { KNOWLEDGE_CENTER_DOC_LINK } from '../../../constants/docs.constant';
 import { getKnowledgePageFields } from '../../../constants/KnowledgeCenter.constant';
@@ -60,14 +60,14 @@ import {
   KnowledgeCenterPageProps,
   KnowledgeCenterPageRef,
   KnowledgePage,
-  PageType
+  PageType,
 } from '../../../interface/knowledge-center.interface';
 import {
   followKnowledgePage,
   getListKnowledgePages,
   postKnowledgePage,
   unFollowKnowledgePage,
-  updateKnowledgePageVote
+  updateKnowledgePageVote,
 } from '../../../rest/knowledgeCenterAPI';
 import { searchQuery as fetchSearchResults } from '../../../rest/searchAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
@@ -77,7 +77,7 @@ import KnowledgeCard from '../KnowledgeCard/KnowledgeCard';
 import KnowledgePageListRightPanel from '../KnowledgePageListRightPanel/KnowledgePageListRightPanel';
 import {
   QuickLinkFormModal,
-  QuickLinkFormModalFormData
+  QuickLinkFormModalFormData,
 } from '../QuickLinkFormModal/QuickLinkFormModal';
 import './knowledge-page-list.less';
 
@@ -511,7 +511,7 @@ const KnowledgePageListComponent = forwardRef<
         <div className="tw:relative tw:min-h-[320px] tw:py-12">
           <EmptyPlaceholder
             description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearchResultIcon className='tw:text-quaternary' />}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
             title={t('label.no-matching-results')}
             variant="blank"
           />

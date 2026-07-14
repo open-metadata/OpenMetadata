@@ -58,7 +58,9 @@ describe('DashboardFoldersCard', () => {
 
   it('renders the New Folder action with a leading icon and triggers onCreateFolder on click', () => {
     const onCreateFolder = jest.fn();
-    render(<DashboardFoldersCard folders={[]} onCreateFolder={onCreateFolder} />);
+    render(
+      <DashboardFoldersCard folders={[]} onCreateFolder={onCreateFolder} />
+    );
 
     const newFolderButton = screen.getByRole('button', {
       name: 'label.new-folder',

@@ -677,7 +677,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
               },
             ]}
             description={t('message.context-center-folder-empty-subtitle')}
-            icon={<UploadIcon className='tw:text-fg-brand-primary' />}
+            icon={<UploadIcon className="tw:text-fg-brand-primary" />}
             title={t('label.folder-name-is-empty', {
               folderName: selectedFolderName,
             })}
@@ -688,7 +688,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
         <div className="tw:relative tw:flex-1">
           <EmptyPlaceholder
             description={t('message.check-spelling-or-try-different-term')}
-            icon={<NoSearchResultIcon className='tw:text-quaternary' />}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
             title={t('label.no-matching-results')}
             variant="blank"
           />

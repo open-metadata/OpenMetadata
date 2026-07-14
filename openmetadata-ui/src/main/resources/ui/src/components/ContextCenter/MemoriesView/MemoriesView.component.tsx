@@ -20,7 +20,7 @@ import {
   Skeleton,
   Tooltip,
   TooltipTrigger,
-  Typography
+  Typography,
 } from '@openmetadata/ui-core-components';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -35,7 +35,7 @@ import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePic
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
   ContextMemory,
-  EntityReference
+  EntityReference,
 } from '../../../generated/entity/context/contextMemory';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
@@ -43,7 +43,7 @@ import { stripMarkdown } from '../../../utils/StringUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import {
   MemoriesViewProps,
-  MemoryActionsProps
+  MemoryActionsProps,
 } from './MemoriesView.interface';
 import './MemoriesView.less';
 
@@ -362,7 +362,13 @@ const MemoriesView: FC<MemoriesViewProps> = ({
               ? t('message.check-spelling-or-try-different-term')
               : t('message.no-results-for-filters-description')
           }
-          icon={isSearching ? <NoSearchResultIcon className='tw:text-quaternary' /> : <NoFilterResultsIcon className='tw:text-quaternary' />}
+          icon={
+            isSearching ? (
+              <NoSearchResultIcon className="tw:text-quaternary" />
+            ) : (
+              <NoFilterResultsIcon className="tw:text-quaternary" />
+            )
+          }
           title={
             isSearching
               ? t('label.no-matching-results')

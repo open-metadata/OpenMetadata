@@ -224,9 +224,7 @@ describe('DocumentsView', () => {
     render(<DocumentsView data={[]} isLoading={false} totalFileCount={0} />);
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(
-      screen.getByText('label.no-matching-results')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.no-matching-results')).toBeInTheDocument();
   });
 
   it('renders the folder-empty placeholder when a folder is selected and has no files', () => {
@@ -240,9 +238,7 @@ describe('DocumentsView', () => {
     );
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(
-      screen.getByText('label.folder-name-is-empty')
-    ).toBeInTheDocument();
+    expect(screen.getByText('label.folder-name-is-empty')).toBeInTheDocument();
   });
 
   it('renders skeletons when isLoading is true', () => {
