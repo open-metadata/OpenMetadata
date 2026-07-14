@@ -4638,16 +4638,23 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
-        // 'Approved' double-counts in `completedCount` AND `approvedCount` because the
-        // same status means different things across task types: terminal for
-        // Glossary/DescriptionUpdate (legacy dashboards expect it under "completed") and
-        // non-terminal for Data Access Requests (the dedicated DAR list uses
-        // `approvedCount` / `grantedCount` and the `active` status group instead).
-        // See ListFilter.getTaskStatusCondition for the matching status-group semantics.
+        // Row-aware bucketing so openCount + completedCount = total across mixed task types.
+        // 'Approved' is terminal for Glossary/DescriptionUpdate but non-terminal for
+        // DataAccessRequest (means "awaiting grant") — CASE WHEN branches on `type` so each
+        // row lands in exactly one bucket. 'Granted' and 'ManualRevoke' are DAR-only
+        // mid-lifecycle statuses that count as open for DAR rows.
+        // Keep in sync with ListFilter.buildTaskStatusGroupCondition and
+        // TaskRepository.NON_TERMINAL_TASK_STATUSES.
         "SELECT "
             + "COUNT(id) AS total, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1 ELSE 0 END), 0) AS openCount, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked') THEN 1 ELSE 0 END), 0) AS completedCount, "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1"
+            + " WHEN type = 'DataAccessRequest' AND status IN ('Approved', 'Granted', 'ManualRevoke') THEN 1"
+            + " ELSE 0 END), 0) AS openCount, "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ('Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired') THEN 1"
+            + " WHEN type <> 'DataAccessRequest' AND status = 'Approved' THEN 1"
+            + " ELSE 0 END), 0) AS completedCount, "
             + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
             + "COALESCE(SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END), 0) AS approvedCount, "
             + "COALESCE(SUM(CASE WHEN status = 'Granted' THEN 1 ELSE 0 END), 0) AS grantedCount "

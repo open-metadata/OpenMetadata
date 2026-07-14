@@ -357,6 +357,67 @@ class ListFilterTest {
   }
 
   @Test
+  void test_taskStatusGroup_openIncludesDarMidLifecycleForDarRows() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "open");
+    String condition = filter.getCondition("task_entity");
+
+    assertTrue(
+        condition.contains("task_entity.status IN ('Open', 'InProgress', 'Pending')"), condition);
+    assertTrue(
+        condition.contains(
+            "task_entity.type = 'DataAccessRequest'"
+                + " AND task_entity.status IN ('Approved', 'Granted', 'ManualRevoke')"),
+        condition);
+  }
+
+  @Test
+  void test_taskStatusGroup_closedExcludesApprovedForDarRows() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
+    String condition = filter.getCondition("task_entity");
+
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked', 'Expired')"),
+        condition);
+    assertTrue(
+        condition.contains(
+            "task_entity.type <> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        condition);
+  }
+
+  @Test
+  void test_taskStatusGroup_openAndClosedAreDisjoint() {
+    // Row-aware buckets: every (type, status) combination lands in exactly one of
+    // open/closed so All = Open + Closed for both DAR and legacy task types.
+    ListFilter openFilter = new ListFilter().addQueryParam("taskStatusGroup", "open");
+    ListFilter closedFilter = new ListFilter().addQueryParam("taskStatusGroup", "closed");
+
+    String openCond = openFilter.getCondition("task_entity");
+    String closedCond = closedFilter.getCondition("task_entity");
+
+    assertFalse(
+        openCond.contains("<> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        "Legacy Approved must not appear in the open bucket: " + openCond);
+    assertFalse(
+        closedCond.contains(
+            "type = 'DataAccessRequest'"
+                + " AND task_entity.status IN ('Approved', 'Granted', 'ManualRevoke')"),
+        "DAR mid-lifecycle must not appear in the closed bucket: " + closedCond);
+  }
+
+  @Test
+  void test_taskStatusGroup_activeIsUnchanged() {
+    // Preserves the existing 'active' definition used by DAR-scoped callers.
+    ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "active");
+    String condition = filter.getCondition("task_entity");
+
+    assertTrue(
+        condition.contains(
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'Approved', 'Granted', 'ManualRevoke')"),
+        condition);
+  }
+
+  @Test
   void test_getFolderCondition_folderIdIsNotInlined_soNoInjection() {
     String hostile = "x') OR 1=1 --";
     ListFilter filter = new ListFilter(Include.ALL).addQueryParam("folderId", hostile);
