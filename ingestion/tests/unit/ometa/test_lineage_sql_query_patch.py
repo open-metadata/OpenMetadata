@@ -161,16 +161,15 @@ class TestReturnLineageSkipsGraphGet:
     still writing the edge and returning the source FQN the sink needs."""
 
     def test_add_lineage_skips_graph_get_and_cache(self):
-        service = StubbedLineage(edge_lookup(None))
+        # No pre-existing edge: the write must land as a PUT, not a PATCH.
+        service = StubbedLineage(None)
 
         result = service.add_lineage(id_request(), check_patch=True, return_lineage=False)
 
         service.get_lineage_by_id.assert_not_called()
         service._update_cache.assert_not_called()
         assert service.client.put.called
-        assert result == {
-            "entity": {"fullyQualifiedName": FROM_FQN, "id": FROM_ID, "type": "table"}
-        }
+        assert result == {"entity": {"fullyQualifiedName": FROM_FQN, "id": FROM_ID, "type": "table"}}
 
     def test_add_lineage_default_fetches_graph(self):
         service = StubbedLineage(edge_lookup(None))
@@ -180,7 +179,8 @@ class TestReturnLineageSkipsGraphGet:
         service.get_lineage_by_id.assert_called_once()
 
     def test_add_lineage_by_name_skips_graph_get(self):
-        service = StubbedLineage(edge_lookup(None))
+        # No pre-existing edge: the write must land as a PUT, not a PATCH.
+        service = StubbedLineage(None)
 
         result = service.add_lineage_by_name(
             from_entity_fqn=FROM_FQN,

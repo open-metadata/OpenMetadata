@@ -546,13 +546,20 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
 
     @_run_dispatch.register
     def write_lineage(self, add_lineage: AddLineageRequest) -> Either[dict[str, Any]]:
-        # return_lineage=False: we only read the source FQN below, so skip the expensive
+        # return_lineage=False: we only need a status identifier below, so skip the expensive
         # per-edge full-graph GET that otherwise dominates lineage-heavy ingestions.
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True, return_lineage=False)
         if created_lineage.get("error"):
             return Either(left=StackTraceError(name="AddLineageRequestError", error=created_lineage["error"]))
 
-        return Either(right=created_lineage["entity"]["fullyQualifiedName"])
+        # Producers that build id-only references carry no FQN. Fall back to a type:id label:
+        # a None right would silently drop the edge from scanned status (ReturnStep.run) and
+        # stop write_override_lineage from patching the lineage-processed flag.
+        from_reference = add_lineage.edge.fromEntity
+        source_label = (
+            created_lineage["entity"]["fullyQualifiedName"] or f"{from_reference.type}:{model_str(from_reference.id)}"
+        )
+        return Either(right=source_label)
 
     @_run_dispatch.register
     def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[dict[str, Any]]:

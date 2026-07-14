@@ -68,9 +68,7 @@ class OMetaLineageMixin(Generic[T]):
         from a reference we already hold so we can skip the post-write lineage-graph GET.
         fullyQualifiedName degrades to None if the reference does not carry one."""
         return {
-            "fullyQualifiedName": (
-                model_str(reference.fullyQualifiedName) if reference.fullyQualifiedName else None
-            ),
+            "fullyQualifiedName": (model_str(reference.fullyQualifiedName) if reference.fullyQualifiedName else None),
             "id": model_str(reference.id),
             "type": reference.type,
         }
