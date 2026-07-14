@@ -88,7 +88,12 @@ public class RuleEvaluator {
     if (expressionValidation) {
       return false;
     }
-    if (subjectContext == null || resourceContext == null || resourceContext.getEntity() == null) {
+    // On CREATE the entity is caller-supplied and not yet persisted, so its fields (e.g. reviewers)
+    // cannot be trusted to grant authorization. Only evaluate against already persisted entities.
+    if (subjectContext == null
+        || resourceContext == null
+        || resourceContext instanceof CreateResourceContext
+        || resourceContext.getEntity() == null) {
       return false;
     }
     return subjectContext.isReviewer(resourceContext.getEntity().getReviewers());

@@ -31,6 +31,7 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.monitoring.RequestLatencyContext;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
@@ -228,7 +229,9 @@ public class DefaultAuthorizer implements Authorizer {
 
   private boolean isReviewer(
       ResourceContextInterface resourceContext, SubjectContext subjectContext) {
-    if (resourceContext.getEntity() == null) {
+    // On CREATE the entity is caller-supplied and not yet persisted, so its fields (e.g. reviewers)
+    // cannot be trusted to grant authorization. Only evaluate against already persisted entities.
+    if (resourceContext instanceof CreateResourceContext || resourceContext.getEntity() == null) {
       return false;
     }
     String updatedBy = subjectContext.user().getName();
