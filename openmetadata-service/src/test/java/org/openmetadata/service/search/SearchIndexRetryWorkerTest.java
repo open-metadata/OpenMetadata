@@ -34,15 +34,15 @@ class SearchIndexRetryWorkerTest {
   @Test
   void retryableNextStatus_escalatesThenCapsAtFailed() {
     assertEquals(STATUS_PENDING_RETRY_1, worker.retryableNextStatus(0));
-    assertEquals(STATUS_PENDING_RETRY_2, worker.retryableNextStatus(1));
     assertEquals(
         STATUS_PENDING_RETRY_2,
-        worker.retryableNextStatus(5),
-        "a transient failure keeps retrying, not dead-lettered after a few attempts");
+        worker.retryableNextStatus(1),
+        "the second failure schedules the final retry");
     assertEquals(
         STATUS_FAILED,
-        worker.retryableNextStatus(Integer.MAX_VALUE),
-        "a persistently retryable record eventually dead-letters instead of looping forever");
+        worker.retryableNextStatus(2),
+        "the third failure exhausts the three-attempt budget");
+    assertEquals(STATUS_FAILED, worker.retryableNextStatus(Integer.MAX_VALUE));
   }
 
   @Test
