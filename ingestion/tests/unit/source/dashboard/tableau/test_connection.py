@@ -266,3 +266,17 @@ def test_error_pack_ignores_unrelated_code_attribute():
 
 def test_error_pack_ignores_unknown_error():
     assert TABLEAU_ERRORS.classify(ValueError("something else")) is None
+
+
+def test_a_failing_sign_out_does_not_break_close():
+    # close() unwinds teardowns without catching, so a sign-out that fails must not
+    # replace the error being unwound (or fail an otherwise clean close).
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        conn = TableauConnection(MagicMock())
+        client = conn.client
+        client.sign_out.side_effect = ServerResponseError("401002", "summary", "detail")
+
+        conn.close()
+
+    client.sign_out.assert_called_once_with()
+    assert mock_get.call_count == 1

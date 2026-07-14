@@ -294,6 +294,15 @@ class TableauChecks:
         return Evidence(summary="data sources are readable", command=command)
 
 
+def _sign_out(client: TableauClient) -> None:
+    """Best-effort: close() unwinds teardowns without catching, so a failed sign-out
+    must not replace the error being unwound."""
+    try:
+        client.sign_out()
+    except Exception:
+        logger.warning("Tableau sign-out failed while closing the connection", exc_info=True)
+
+
 class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
     # The workbook and Metadata API steps can be slow on large servers; keep the
     # legacy 3-minute budget the imperative handler used, now applied per step.
@@ -302,7 +311,7 @@ class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
     def _get_client(self) -> TableauClient:
         client = get_connection(self.service_connection)
         # sign_out releases the server session and clears the SSL temp files.
-        self._on_close(lambda: client.sign_out())  # noqa: PLW0108
+        self._on_close(lambda: _sign_out(client))
         return client
 
     def checks(self) -> ChecksProvider:
