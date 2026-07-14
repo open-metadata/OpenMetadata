@@ -1,0 +1,130 @@
+{
+  "id": "22222222-2222-4222-8222-222222222204",
+  "name": "code_repo_assistant",
+  "displayName": "Code Repo Assistant",
+  "description": "Unauthorized development MCP server discovered in engineering workstations. It can read repositories and open pull requests without centralized review.",
+  "serverType": "Development",
+  "transportType": "Stdio",
+  "protocolVersion": "2025-03-26",
+  "developmentStage": "Unauthorized",
+  "sourceCode": "https://github.example.com/engineering/local-mcp-code-assistant",
+  "capabilities": {
+    "toolsSupported": true,
+    "resourcesSupported": true,
+    "promptsSupported": false,
+    "loggingSupported": false
+  },
+  "tools": [
+    {
+      "name": "create_pull_request",
+      "displayName": "Create Pull Request",
+      "description": "Creates pull requests against internal repositories.",
+      "toolCategory": "CodeOperation",
+      "riskLevel": "High",
+      "riskFactors": ["Code modification", "No central audit trail"],
+      "dataAccess": {
+        "readsData": true,
+        "writesData": true,
+        "deletesData": false,
+        "sensitivityLevel": "Confidential",
+        "piiAccess": false,
+        "dataTypes": ["Source code", "Repository metadata"]
+      },
+      "requiredPermissions": ["repo.read", "repo.write"],
+      "sideEffects": true,
+      "idempotent": false,
+      "reversible": true,
+      "usageCount": 92
+    }
+  ],
+  "resources": [
+    {
+      "name": "repository_tree",
+      "displayName": "Repository Tree",
+      "description": "Local checkout contents exposed to the AI assistant.",
+      "resourceType": "Directory",
+      "uri": "file://workspace",
+      "accessLevel": "ReadWrite",
+      "dataClassification": {
+        "sensitivityLevel": "Confidential",
+        "containsPII": false,
+        "dataCategories": ["Source code", "Secrets risk"],
+        "complianceRequirements": ["Secure development lifecycle review"]
+      }
+    }
+  ],
+  "governanceMetadata": {
+    "registrationStatus": "Unregistered",
+    "riskAssessment": {
+      "riskLevel": "High",
+      "riskFactors": ["Unregistered code-writing tool", "No audit logging", "Local filesystem access"],
+      "mitigations": ["Disable local binary", "Route through approved code assistant gateway"],
+      "assessedBy": "ai-governance@acme.example",
+      "assessedAt": 1775606400000
+    },
+    "dataClassification": {
+      "accessesPII": false,
+      "accessesSensitiveData": true,
+      "dataCategories": ["Source code", "Repository metadata"],
+      "dataRetentionPeriod": "Unknown"
+    },
+    "detection": {
+      "source": "ConnectorAudit",
+      "sourceDetails": "endpoint-inventory detected stdio process mcp-code-assistant",
+      "detectedAt": 1775606400000,
+      "suspectedUser": "engineering@acme.example",
+      "suspectedTeam": "Engineering",
+      "volume7d": "~320 tool calls / 7d",
+      "flags": ["PrivilegedData", "NoOwner"],
+      "severity": "High"
+    },
+    "remediationActions": [
+      {
+        "id": "22222222-2222-4222-8222-222222222304",
+        "label": "Replace local MCP code assistant with approved gateway",
+        "frameworkRef": "NIST_AI_RMF",
+        "dueDate": 1778198400000,
+        "priority": "High",
+        "status": "Open",
+        "createdAt": 1775606400000,
+        "createdBy": "ai-governance@acme.example"
+      }
+    ]
+  },
+  "dataAccessSummary": {
+    "accessPatterns": ["Read", "Write", "Execute"],
+    "sensitivityLevel": "Confidential",
+    "piiAccess": false,
+    "externalApiAccess": true,
+    "fileSystemAccess": true,
+    "networkAccess": true,
+    "databaseAccess": false
+  },
+  "usageMetrics": {
+    "totalInvocations": 92,
+    "successRate": 0.91,
+    "averageLatencyMs": 980,
+    "p95LatencyMs": 2400,
+    "lastInvokedAt": 1775606400000,
+    "uniqueUsers": 7,
+    "dailyActiveUsers": 3
+  },
+  "securityMetrics": {
+    "authenticationRequired": false,
+    "authorizationEnforced": false,
+    "auditLoggingEnabled": false,
+    "encryptionInTransit": false,
+    "sandboxed": false,
+    "secretsManagement": "None"
+  },
+  "tags": [
+    {
+      "tagFQN": "Tier.Tier2",
+      "source": "Classification",
+      "labelType": "Manual",
+      "state": "Confirmed"
+    }
+  ],
+  "updatedBy": "admin",
+  "updatedAt": 1775606400000
+}

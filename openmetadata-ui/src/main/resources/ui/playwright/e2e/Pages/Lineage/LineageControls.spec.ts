@@ -126,7 +126,9 @@ test.describe('Canvas Controls', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
   test('Verify fit view options menu', async ({ page }) => {
     await page.getByTestId('fit-screen').click();
-    await expect(page.locator('#lineage-view-options-menu')).toBeVisible();
+    await expect(
+      page.getByRole('menu', { name: 'Lineage View Options' })
+    ).toBeVisible();
 
     await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
 
@@ -185,13 +187,13 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       );
       await expect(observabilityBtn).toBeVisible();
 
-      await expect(observabilityBtn).not.toHaveClass(/Mui-selected/);
+      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
 
       await observabilityBtn.click();
       await page.keyboard.press('Escape');
 
       await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).toHaveClass(/Mui-selected/);
+      await expect(observabilityBtn).toHaveAttribute('data-selected');
     });
 
     test('Verify DQ layer toggle off removes highlights', async ({ page }) => {
@@ -205,13 +207,13 @@ test.describe('Lineage Layers', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await page.keyboard.press('Escape');
 
       await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).toHaveClass(/Mui-selected/);
+      await expect(observabilityBtn).toHaveAttribute('data-selected');
 
       await observabilityBtn.click();
       await page.keyboard.press('Escape');
 
       await page.getByTestId('lineage-layer-btn').click();
-      await expect(observabilityBtn).not.toHaveClass(/Mui-selected/);
+      await expect(observabilityBtn).not.toHaveAttribute('data-selected');
     });
   });
 

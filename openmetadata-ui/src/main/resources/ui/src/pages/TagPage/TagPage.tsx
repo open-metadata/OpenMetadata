@@ -41,7 +41,12 @@ import {
 } from '../../components/ActivityFeed/ActivityFeedTab/ActivityFeedTab.interface';
 import { withActivityFeed } from '../../components/AppRouter/withActivityFeed';
 import withSuspenseFallback from '../../components/AppRouter/withSuspenseFallback';
+import DeleteModal from '../../components/common/DeleteModal/DeleteModal';
+import EntityDetailHeader from '../../components/common/EntityDetailHeader/EntityDetailHeader.component';
+import { EntityDetailTab } from '../../components/common/EntityDetailHeader/EntityDetailHeader.interface';
 import ErrorPlaceHolder from '../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
+import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import { getGlossaryHomeCrumb } from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import Loader from '../../components/common/Loader/Loader';
 import { ManageButtonItemLabel } from '../../components/common/ManageButtonContentItem/ManageButtonContentItem.component';
 import ResizablePanels from '../../components/common/ResizablePanels/ResizablePanels';
@@ -62,7 +67,6 @@ import AssetsTabs, {
 } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../components/Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../components/Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../components/Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../components/Modals/EntityNameModal/EntityNameModal.component';
 import IconColorModal from '../../components/Modals/IconColorModal';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -88,6 +92,7 @@ import { ProviderType, Tag } from '../../generated/entity/classification/tag';
 import { EntityStatus } from '../../generated/entity/data/glossaryTerm';
 import { PageType } from '../../generated/system/ui/page';
 import { Style } from '../../generated/type/tagLabel';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useCustomPages } from '../../hooks/useCustomPages';
 import { useFqn } from '../../hooks/useFqn';
 import { FeedCounts } from '../../interface/feed.interface';
@@ -98,10 +103,8 @@ import {
 } from '../../rest/queries/tagQuery';
 import { searchQuery } from '../../rest/searchAPI';
 import { deleteTag, patchTag } from '../../rest/tagAPI';
-import {
-  getEntityDeleteMessage,
-  getEntityMissingError,
-} from '../../utils/EntityDisplayPureUtils';
+import { getEntityMissingError } from '../../utils/EntityDisplayPureUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../utils/EntityUtilClassBase';
 import {
   fetchEntityActivityCountInto,
@@ -137,6 +140,8 @@ const TagPage = () => {
   const { fqn: tagFqn } = useFqn();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
+  const isAiMode = useIsAiMode();
+  const showAiHeader = isAiMode;
   const { tab: activeTab = EntityTabs.OVERVIEW } = useRequiredParams<{
     tab?: string;
   }>();
@@ -222,6 +227,22 @@ const TagPage = () => {
         ]
       : [];
   }, [tagItem]);
+
+  const aiBreadcrumbItems = useMemo(
+    () => [
+      getGlossaryHomeCrumb(t),
+      { label: t('label.classification-plural'), href: ROUTES.TAGS },
+      {
+        label: tagItem?.classification?.name ?? '',
+        href: tagItem?.classification?.fullyQualifiedName
+          ? getClassificationDetailsPath(
+              tagItem.classification.fullyQualifiedName
+            )
+          : '',
+      },
+    ],
+    [tagItem, t]
+  );
 
   const handleAssetClick = useCallback(
     (asset?: EntityDetailsObjectInterface) => {
@@ -715,6 +736,12 @@ const TagPage = () => {
     assetTabRef,
     t,
   ]);
+
+  const aiHeaderTabs = useMemo<EntityDetailTab[]>(
+    () => tabItems.map((tab) => ({ key: tab.key, label: tab.label })),
+    [tabItems]
+  );
+
   const icon = useMemo(() => {
     if (tagItem?.style?.iconURL) {
       return (
@@ -808,76 +835,111 @@ const TagPage = () => {
     );
   }
 
+  const learningIcon = (
+    <LearningIcon className="m-t-xss" pageId={LEARNING_PAGE_IDS.TAGS} />
+  );
+
+  const addAssetsButton =
+    !isCertificationClassification && !tagItem.disabled ? (
+      <Button
+        data-testid="data-classification-add-button"
+        type="primary"
+        onClick={() => setAssetModalVisible(true)}>
+        {t('label.add-entity', {
+          entity: t('label.asset-plural'),
+        })}
+      </Button>
+    ) : null;
+
+  const manageDropdown =
+    manageButtonContent.length > 0 ? (
+      <Dropdown
+        align={{ targetOffset: [-12, 0] }}
+        className="m-l-xs"
+        menu={{
+          items: manageButtonContent,
+        }}
+        open={showActions}
+        overlayStyle={{ width: '350px' }}
+        placement="bottomRight"
+        trigger={['click']}
+        onOpenChange={setShowActions}>
+        <Tooltip
+          placement="topRight"
+          title={t('label.manage-entity', {
+            entity: t('label.tag-lowercase'),
+          })}>
+          <Button
+            className="flex-center"
+            data-testid="manage-button"
+            icon={<IconDropdown className="manage-dropdown-icon" />}
+            onClick={() => setShowActions(true)}
+          />
+        </Tooltip>
+      </Dropdown>
+    ) : null;
+
   return (
     <PageLayoutV1 pageTitle={tagItem.name}>
       <Row gutter={[0, 12]}>
         <Col span={24}>
-          <Row
-            className="data-classification"
-            data-testid="data-classification"
-            gutter={[0, 12]}>
-            <Col className="p-x-md" flex="1">
-              <EntityHeader
-                badge={badge}
-                breadcrumb={breadcrumb}
-                entityData={tagItem}
-                entityType={EntityType.TAG}
-                icon={icon}
-                serviceName={tagItem.name}
-                suffix={
-                  <LearningIcon
-                    className="m-t-xss"
-                    pageId={LEARNING_PAGE_IDS.TAGS}
+          {showAiHeader ? (
+            <div>
+              <EntityDetailHeader
+                activeKey={activeTab}
+                badge={
+                  <>
+                    {badge}
+                    {learningIcon}
+                  </>
+                }
+                breadcrumb={
+                  <HeaderBreadcrumb
+                    items={aiBreadcrumbItems}
+                    showHome={false}
                   />
                 }
-                titleColor={tagItem.style?.color ?? BLACK_COLOR}
+                data-testid="tag-detail-header"
+                leading={icon}
+                primaryAction={
+                  haveAssetEditPermission ? addAssetsButton : undefined
+                }
+                renderPanels={false}
+                secondaryActions={
+                  haveAssetEditPermission ? manageDropdown : null
+                }
+                tabs={aiHeaderTabs}
+                title={getEntityName(tagItem)}
+                onTabChange={activeTabHandler}
               />
-            </Col>
-            {haveAssetEditPermission && (
-              <Col className="p-x-md">
-                <div className="d-flex self-end">
-                  {!isCertificationClassification && !tagItem.disabled && (
-                    <Button
-                      data-testid="data-classification-add-button"
-                      type="primary"
-                      onClick={() => setAssetModalVisible(true)}>
-                      {t('label.add-entity', {
-                        entity: t('label.asset-plural'),
-                      })}
-                    </Button>
-                  )}
-                  {manageButtonContent.length > 0 && (
-                    <Dropdown
-                      align={{ targetOffset: [-12, 0] }}
-                      className="m-l-xs"
-                      menu={{
-                        items: manageButtonContent,
-                      }}
-                      open={showActions}
-                      overlayStyle={{ width: '350px' }}
-                      placement="bottomRight"
-                      trigger={['click']}
-                      onOpenChange={setShowActions}>
-                      <Tooltip
-                        placement="topRight"
-                        title={t('label.manage-entity', {
-                          entity: t('label.tag-lowercase'),
-                        })}>
-                        <Button
-                          className="flex-center"
-                          data-testid="manage-button"
-                          icon={
-                            <IconDropdown className="manage-dropdown-icon" />
-                          }
-                          onClick={() => setShowActions(true)}
-                        />
-                      </Tooltip>
-                    </Dropdown>
-                  )}
-                </div>
+            </div>
+          ) : (
+            <Row
+              className="data-classification"
+              data-testid="data-classification"
+              gutter={[0, 12]}>
+              <Col className="p-x-md" flex="1">
+                <EntityHeader
+                  badge={badge}
+                  breadcrumb={breadcrumb}
+                  entityData={tagItem}
+                  entityType={EntityType.TAG}
+                  icon={icon}
+                  serviceName={tagItem.name}
+                  suffix={learningIcon}
+                  titleColor={tagItem.style?.color ?? BLACK_COLOR}
+                />
               </Col>
-            )}
-          </Row>
+              {haveAssetEditPermission && (
+                <Col className="p-x-md">
+                  <div className="d-flex self-end">
+                    {addAssetsButton}
+                    {manageDropdown}
+                  </div>
+                </Col>
+              )}
+            </Row>
+          )}
         </Col>
 
         <GenericProvider<Tag>
@@ -901,19 +963,19 @@ const TagPage = () => {
               activeKey={activeTab}
               className="tabs-new tag-page-tabs"
               items={tabItems}
+              renderTabBar={showAiHeader ? () => <></> : undefined}
               onChange={activeTabHandler}
             />
           </Col>
         </GenericProvider>
       </Row>
 
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(tagItem.name, '')}
-        entityName={tagItem.name}
-        entityType="Tag"
-        visible={isDelete}
+      <DeleteModal
+        entityTitle={tagItem.name}
+        message={t('message.delete-entity-message', { entity: tagItem.name })}
+        open={isDelete}
         onCancel={() => setIsDelete(false)}
-        onConfirm={handleDelete}
+        onDelete={handleDelete}
       />
 
       <EntityNameModal

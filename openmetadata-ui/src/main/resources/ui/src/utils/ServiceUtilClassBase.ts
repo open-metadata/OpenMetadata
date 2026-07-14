@@ -18,10 +18,10 @@ import { ServiceTypes } from 'Models';
 import type { ComponentType } from 'react';
 import GlossaryIcon from '../assets/svg/book.svg';
 import ChartIcon from '../assets/svg/chart.svg';
-import KnowledgePageIcon from '../assets/svg/ic-articles.svg';
+import KnowledgeCenterIcon from '../assets/svg/context-center.svg';
 import DataProductIcon from '../assets/svg/ic-data-product.svg';
 import DatabaseIcon from '../assets/svg/ic-database.svg';
-import LinkIcon from '../assets/svg/ic-link.svg';
+import QuickLinkIcon from '../assets/svg/ic-quick-link.svg';
 import DatabaseSchemaIcon from '../assets/svg/ic-schema.svg';
 import MetricIcon from '../assets/svg/metric.svg';
 import TagIcon from '../assets/svg/tag-grey.svg';
@@ -57,6 +57,7 @@ import { APIServiceType } from '../generated/entity/services/apiService';
 import { MetadataServiceType } from '../generated/entity/services/metadataService';
 import { Type as SecurityServiceType } from '../generated/entity/services/securityService';
 import { ServiceType } from '../generated/entity/services/serviceType';
+import { EntityReference } from '../generated/entity/type';
 import { PageType } from '../interface/knowledge-center.interface';
 import { KnowledgePageSearchSource } from '../interface/search.interface';
 import {
@@ -82,6 +83,17 @@ import {
 } from './ServicePureUtils';
 import { getStorageConfig } from './StorageServiceUtils';
 import { customServiceComparator } from './StringUtils';
+
+type ServiceLogoStyle = {
+  iconURL?: string;
+};
+
+type ServiceLogoSource = {
+  serviceType?: string;
+  entityType?: string;
+  style?: ServiceLogoStyle;
+  service?: Partial<EntityReference> & { style?: ServiceLogoStyle };
+};
 
 class ServiceUtilClassBase {
   unSupportedServices: string[] = [
@@ -365,10 +377,7 @@ class ServiceUtilClassBase {
     return getServiceIcon(type) ?? this.getDefaultLogoForServiceType(type);
   }
 
-  public getServiceTypeLogo(searchSource: {
-    serviceType?: string;
-    entityType?: string;
-  }): string {
+  public getServiceTypeLogo(searchSource?: ServiceLogoSource): string {
     const type = get(searchSource, 'serviceType', '');
     const entityType = get(searchSource, 'entityType', '');
 
@@ -377,7 +386,17 @@ class ServiceUtilClassBase {
         (searchSource as KnowledgePageSearchSource)?.pageType ===
         PageType.QUICK_LINK;
 
-      return isQuickLink ? LinkIcon : KnowledgePageIcon;
+      return isQuickLink ? QuickLinkIcon : KnowledgeCenterIcon;
+    }
+
+    const ownIcon = searchSource?.style?.iconURL;
+    if (ownIcon) {
+      return ownIcon;
+    }
+
+    const serviceIcon = searchSource?.service?.style?.iconURL;
+    if (serviceIcon) {
+      return serviceIcon;
     }
 
     // Handle entities that don't have serviceType by using entity-specific icons

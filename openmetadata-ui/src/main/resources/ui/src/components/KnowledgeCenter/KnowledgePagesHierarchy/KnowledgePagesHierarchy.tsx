@@ -22,7 +22,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { File06, Trash01 } from '@untitledui/icons';
+import { Trash01 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
 import { isEmpty, isUndefined, uniq } from 'lodash';
@@ -41,6 +41,7 @@ import type { Selection } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
 import { ReactComponent as CollapseAllIcon } from '../../../assets/svg/collapse-new.svg';
+import { ReactComponent as FileIcon } from '../../../assets/svg/common/file.svg';
 import { ReactComponent as ExpandAllIcon } from '../../../assets/svg/expand-new.svg';
 import { ReactComponent as QuickLinkIcon } from '../../../assets/svg/quick-link.svg';
 import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
@@ -55,6 +56,7 @@ import { useLimitStore } from '../../../context/LimitsProvider/useLimitsStore';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { SIZE } from '../../../enums/common.enum';
 import { useCurrentUserPreferences } from '../../../hooks/currentUserStore/useCurrentUserStore';
+import { useArticleDraftStore } from '../../../hooks/useArticleDraftStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import {
   KnowledgePage,
@@ -145,6 +147,7 @@ const KnowledgePagesHierarchy = forwardRef<
     const {
       preferences: { recentlyViewedQuickLinks: recentlyViewed },
     } = useCurrentUserPreferences();
+    const { removeDraft } = useArticleDraftStore();
 
     const [paginationState, setPaginationState] = useReducer(
       hierarchyPaginationReducer,
@@ -592,11 +595,11 @@ const KnowledgePagesHierarchy = forwardRef<
                 width={14}
               />
             ) : (
-              <File06
+              <FileIcon
                 className="tw:shrink-0 tw:text-quaternary"
                 data-testid="page-icon"
-                height={13}
-                width={13}
+                height={14}
+                width={14}
               />
             )}
             <Typography
@@ -755,7 +758,11 @@ const KnowledgePagesHierarchy = forwardRef<
             justify="between">
             <Box align="center" gap={3}>
               <div className="tw:p-3 tw:rounded-lg tw:bg-utility-gray-blue-50 tw:leading-0">
-                <File06 className="tw:text-fg-tertiary" size={20} />
+                <FileIcon
+                  className="tw:text-quaternary"
+                  height={20}
+                  width={20}
+                />
               </div>
               <div>
                 <Typography size="text-md" weight="medium">
@@ -878,6 +885,7 @@ const KnowledgePagesHierarchy = forwardRef<
                 } else {
                   await deleteKnowledgePage(deletePage.id);
                 }
+                removeDraft(deletePage.id);
                 await handleAfterDeletePage(deletePage);
                 setDeletePage(undefined);
               } catch (error) {

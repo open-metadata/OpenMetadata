@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { act, screen, waitFor } from '@testing-library/react';
-import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { GenericTab } from '../../components/Customization/GenericTab/GenericTab';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
@@ -21,85 +20,6 @@ import { getTableDetailsByFQN } from '../../rest/tableAPI';
 import { renderWithQueryClient } from '../../test/unit/test-utils';
 import { DEFAULT_ENTITY_PERMISSION } from '../../utils/PermissionsUtils';
 import TableDetailsPageV1 from './TableDetailsPageV1';
-
-/**
- * Mock MUI components that have Jest compatibility issues
- */
-jest.mock('@mui/material', () => ({
-  Box: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Card: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Stack: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Grid: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Typography: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <span data-testid={props['data-testid']}>{children}</span>,
-  Tabs: ({
-    children,
-    ...props
-  }: {
-    children: React.ReactNode;
-    'data-testid'?: string;
-  }) => <div data-testid={props['data-testid']}>{children}</div>,
-  Tab: ({ label, ...props }: { label: string; 'data-testid'?: string }) => (
-    <button data-testid={props['data-testid']}>{label}</button>
-  ),
-  Divider: () => <hr />,
-  Skeleton: () => <div data-testid="skeleton">Loading...</div>,
-  styled: (component: unknown) => () => component,
-  useTheme: () => ({
-    palette: {
-      grey: {
-        50: '#fafafa',
-        100: '#f5f5f5',
-        200: '#eeeeee',
-        700: '#616161',
-        900: '#212121',
-      },
-      common: {
-        white: '#ffffff',
-        black: '#000000',
-      },
-      allShades: {
-        white: '#ffffff',
-        gray: {
-          300: '#d1d1d1',
-        },
-      },
-    },
-    typography: {
-      pxToRem: (size: number) => `${size}px`,
-      fontWeightMedium: 500,
-    },
-  }),
-}));
 
 const mockEntityPermissionByFqn = jest
   .fn()
@@ -304,9 +224,13 @@ jest.mock('../../context/TourProvider/TourProvider', () => ({
   })),
 }));
 
-jest.mock('../../components/common/Loader/Loader', () => {
-  return jest.fn().mockImplementation(() => <>testLoader</>);
-});
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <>testLoader</>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.useFakeTimers();
 

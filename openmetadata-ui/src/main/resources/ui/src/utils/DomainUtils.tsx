@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
@@ -137,14 +135,6 @@ export const domainTypeTooltipDataRender = () => (
       </Fragment>
     ))}
   </Space>
-);
-
-export const iconTooltipDataRender = () => (
-  <Tooltip placement="top" title={t('message.icon-aspect-ratio')}>
-    <TooltipTrigger>
-      <InfoCircle data-testid="helper-icon" size={14} />
-    </TooltipTrigger>
-  </Tooltip>
 );
 
 export const renderDomainLink = (
