@@ -49,10 +49,6 @@ export interface ApplicationPipeline {
  * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
- *
- * Configuration for the MCP Chat Application. The LLM provider and credentials are
- * configured at the platform level via `llmConfiguration`; this app only governs chat
- * behavior.
  */
 export interface CollateAIAppConfig {
     /**
@@ -257,10 +253,6 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
-    /**
-     * The system prompt that guides the assistant behavior.
-     */
-    systemPrompt?: string;
     [property: string]: any;
 }
 
