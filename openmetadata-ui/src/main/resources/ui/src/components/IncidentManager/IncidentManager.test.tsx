@@ -230,13 +230,10 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
   return function MockDatePickerMenu({
-    allowClear,
     defaultDateRange,
     handleDateRangeChange,
-    onClear,
     placeholder,
   }: {
-    allowClear?: boolean;
     defaultDateRange?: { key?: string; title?: string };
     handleDateRangeChange?: (value: {
       startTs: number;
@@ -244,7 +241,6 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
       key: string;
       title: string;
     }) => void;
-    onClear?: () => void;
     placeholder?: string;
   }) {
     const [isOpen, setIsOpen] = React.useState(false);
@@ -255,9 +251,7 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
     return (
       <div>
         <button
-          className={
-            allowClear ? 'tw:h-8 tw:max-w-64 tw:overflow-hidden' : undefined
-          }
+          className="tw:h-8 tw:max-w-72 tw:overflow-hidden"
           data-testid="date-picker-menu"
           type="button"
           onClick={() => setIsOpen((open) => !open)}>
@@ -265,16 +259,6 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
             {selectedLabel}
           </span>
         </button>
-        {allowClear && defaultDateRange?.key && (
-          <button
-            aria-label="label.clear"
-            className="tw:inline-flex tw:size-4 tw:cursor-pointer tw:items-center tw:justify-center"
-            data-testid="clear-date-picker"
-            type="button"
-            onClick={onClear}>
-            clear
-          </button>
-        )}
         {isOpen && (
           <div>
             <button
@@ -804,15 +788,24 @@ describe('IncidentManagerPage', () => {
     });
 
     const dateRangeTrigger = await screen.findByTestId('date-picker-menu');
+    const datePickerContainer = await screen.findByTestId(
+      'date-picker-container'
+    );
     const clearButton = await screen.findByTestId('clear-date-picker');
 
     expect(dateRangeTrigger).toHaveClass('tw:h-8');
-    expect(dateRangeTrigger).toHaveClass('tw:max-w-64');
+    expect(dateRangeTrigger).toHaveClass('tw:max-w-72');
     expect(dateRangeTrigger).toHaveTextContent('label.last-7-days');
-    expect(clearButton).toHaveClass('tw:items-center');
-    expect(clearButton).toHaveClass('tw:justify-center');
-    expect(clearButton).toHaveClass('tw:cursor-pointer');
-    expect(clearButton.tagName).toBe('BUTTON');
+    expect(datePickerContainer).toHaveClass('tw:max-w-80');
+    expect(datePickerContainer).toHaveClass('tw:relative');
+    expect(datePickerContainer).toHaveClass(
+      'tw:[&_[data-testid=date-picker-menu]_.ant-space-item:first-child]:pr-6'
+    );
+    expect(clearButton).toHaveClass('tw:absolute');
+    expect(clearButton).toHaveClass('tw:right-8');
+    expect(clearButton).toHaveClass('tw:shrink-0');
+    expect(clearButton.querySelector('.anticon-close-circle')).toBeTruthy();
+    expect(clearButton.tagName).toBe('SPAN');
     expect(dateRangeTrigger).not.toContainElement(clearButton);
   });
 
@@ -830,7 +823,7 @@ describe('IncidentManagerPage', () => {
     });
 
     await act(async () => {
-      fireEvent.click(await screen.findByTestId('clear-date-picker'));
+      fireEvent.mouseDown(await screen.findByTestId('clear-date-picker'));
     });
 
     expect(navigate).toHaveBeenCalledWith(

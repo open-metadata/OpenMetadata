@@ -10,8 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { CloseCircleFilled } from '@ant-design/icons';
 import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
+import classNames from 'classnames';
 import { isString } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
@@ -162,17 +164,39 @@ const IncidentManager = ({
                   </Dropdown.Menu>
                 </Dropdown.Popover>
               </Dropdown.Root>
-              <DatePickerMenu
-                allowClear
-                showSelectedCustomRange
-                defaultDateRange={dateRangeKey}
-                handleDateRangeChange={handleDateRangeChange}
-                placeholder={t('label.select-entity', {
-                  entity: t('label.date'),
-                })}
-                size="small"
-                onClear={handleDateRangeClear}
-              />
+              <div
+                className={classNames(
+                  'tw:relative tw:inline-flex tw:h-8 tw:max-w-80 tw:items-center',
+                  'tw:[&_[data-testid=date-picker-menu]_.ant-space-item:first-child]:pr-6'
+                )}
+                data-testid="date-picker-container">
+                <DatePickerMenu
+                  showSelectedCustomRange
+                  defaultDateRange={dateRangeKey}
+                  handleDateRangeChange={handleDateRangeChange}
+                  placeholder={t('label.select-entity', {
+                    entity: t('label.date'),
+                  })}
+                  size="small"
+                />
+                {dateRangeKey?.key && (
+                  <span
+                    aria-hidden
+                    className={classNames(
+                      'tw:absolute tw:right-8 tw:top-1/2 tw:z-10 tw:flex tw:size-4',
+                      'tw:shrink-0 tw:-translate-y-1/2 tw:cursor-pointer tw:items-center',
+                      'tw:justify-center tw:text-disabled tw:hover:text-secondary'
+                    )}
+                    data-testid="clear-date-picker"
+                    onMouseDown={(event) => {
+                      event.preventDefault();
+                      event.stopPropagation();
+                      handleDateRangeClear();
+                    }}>
+                    <CloseCircleFilled />
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>

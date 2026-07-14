@@ -110,34 +110,15 @@ describe('DatePickerMenu', () => {
     );
   });
 
-  it('should clear the selected range and restore the disabled placeholder', () => {
-    const onClear = jest.fn();
+  it('should center the small trigger content within its fixed height', () => {
+    render(<DatePickerMenu size="small" />);
 
-    render(
-      <DatePickerMenu
-        allowClear
-        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
-        handleDateRangeChange={mockHandleDateRangeChange}
-        placeholder="Select date"
-        onClear={onClear}
-      />
+    expect(screen.getByTestId('date-picker-menu')).toHaveClass(
+      'tw:inline-flex',
+      'tw:h-8',
+      'tw:max-w-72',
+      'tw:items-center',
+      'tw:justify-center'
     );
-
-    const clearButton = screen.getByTestId('clear-date-picker');
-    const datePickerTrigger = screen.getByTestId('date-picker-menu');
-
-    expect(datePickerTrigger).toHaveClass('tw:h-8');
-    expect(datePickerTrigger).toHaveClass('tw:max-w-64');
-    expect(clearButton).toHaveClass('tw:items-center');
-    expect(clearButton).toHaveClass('tw:justify-center');
-    expect(clearButton).toHaveClass('tw:cursor-pointer');
-    expect(clearButton.tagName).toBe('BUTTON');
-    expect(datePickerTrigger).not.toContainElement(clearButton);
-
-    fireEvent.mouseDown(clearButton);
-    fireEvent.click(clearButton);
-
-    expect(onClear).toHaveBeenCalledTimes(1);
-    expect(screen.getByText('Select date')).toHaveClass('tw:text-disabled');
   });
 });

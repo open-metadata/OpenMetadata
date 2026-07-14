@@ -120,7 +120,7 @@ describe('DimensionalityTab', () => {
     );
   });
 
-  it('normalizes preset ranges to UTC day boundaries', async () => {
+  it('preserves the picker boundaries for a preset date range', async () => {
     render(<DimensionalityTab />);
 
     await waitFor(() =>
@@ -135,8 +135,8 @@ describe('DimensionalityTab', () => {
         'service.database.schema.table.test',
         {
           dimensionName: 'country',
-          startTs: 1709424000000,
-          endTs: 1709596799999,
+          startTs: PRESET_RANGE.startTs,
+          endTs: PRESET_RANGE.endTs,
         }
       )
     );

@@ -12,7 +12,6 @@
  */
 
 import { CloseCircleOutlined } from '@ant-design/icons';
-import { XClose } from '@untitledui/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { isUndefined, pick } from 'lodash';
@@ -40,27 +39,23 @@ import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
 interface DatePickerMenuProps {
-  allowClear?: boolean;
   defaultDateRange?: Partial<DateRangeObject>;
   showSelectedCustomRange?: boolean;
   handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
-  onClear?: () => void;
   placeholder?: string;
   size?: SizeType;
 }
 
 const DatePickerMenu = ({
-  allowClear = false,
   defaultDateRange,
   showSelectedCustomRange,
   handleDateRangeChange,
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
-  onClear,
   placeholder,
   size,
 }: DatePickerMenuProps) => {
@@ -139,15 +134,6 @@ const DatePickerMenu = ({
     setSelectedTimeRange(defaultTimeRangeTitle);
     setSelectedTimeRangeKey(defaultTimeRangeKey);
   }, [defaultTimeRangeKey, defaultTimeRangeTitle]);
-
-  const handleClear = () => {
-    setSelectedTimeRange(
-      placeholder ?? t('label.select-entity', { entity: t('label.date') })
-    );
-    setSelectedTimeRangeKey('');
-    setIsMenuOpen(false);
-    onClear?.();
-  };
 
   const handleCustomDateChange = (
     values: [start: DateTime | null, end: DateTime | null] | null,
@@ -242,51 +228,37 @@ const DatePickerMenu = ({
   const items: MenuProps['items'] = getMenuItems();
 
   return (
-    <div className={allowClear ? 'tw:flex tw:h-8 tw:max-w-64' : undefined}>
-      <Dropdown
-        destroyPopupOnHide
-        getPopupContainer={getPopupContainer}
-        menu={{
-          items,
-          triggerSubMenuAction: 'click',
-          onClick: handleOptionClick,
-          selectedKeys: [selectedTimeRangeKey],
-        }}
-        open={isMenuOpen}
-        trigger={['click']}
-        onOpenChange={(value) => setIsMenuOpen(value)}>
-        <Button
-          className={
-            allowClear
-              ? `tw:h-8 tw:max-w-64 tw:min-w-0 tw:overflow-hidden ${
-                  selectedTimeRangeKey ? 'tw:rounded-r-none' : ''
-                }`
-              : undefined
-          }
-          data-testid="date-picker-menu"
-          size={size}>
-          <Space align="center" size={8}>
-            <span
-              className={`tw:min-w-0 tw:truncate ${
-                selectedTimeRangeKey ? '' : 'tw:text-disabled'
-              }`}>
-              {selectedTimeRange}
-            </span>
-            <DropdownIcon className="align-middle" height={14} width={14} />
-          </Space>
-        </Button>
-      </Dropdown>
-      {allowClear && selectedTimeRangeKey && (
-        <Button
-          aria-label={t('label.clear')}
-          className="tw:-ml-px tw:flex tw:h-8 tw:w-8 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-l-none tw:px-0"
-          data-testid="clear-date-picker"
-          icon={<XClose className="tw:size-4" />}
-          size={size}
-          onClick={handleClear}
-        />
-      )}
-    </div>
+    <Dropdown
+      destroyPopupOnHide
+      getPopupContainer={getPopupContainer}
+      menu={{
+        items,
+        triggerSubMenuAction: 'click',
+        onClick: handleOptionClick,
+        selectedKeys: [selectedTimeRangeKey],
+      }}
+      open={isMenuOpen}
+      trigger={['click']}
+      onOpenChange={(value) => setIsMenuOpen(value)}>
+      <Button
+        className={
+          size === 'small'
+            ? 'tw:inline-flex tw:h-8 tw:max-w-72 tw:min-w-0 tw:items-center tw:justify-center tw:overflow-hidden'
+            : undefined
+        }
+        data-testid="date-picker-menu"
+        size={size}>
+        <Space align="center" size={8}>
+          <span
+            className={`tw:min-w-0 tw:truncate ${
+              selectedTimeRangeKey ? '' : 'tw:text-disabled'
+            }`}>
+            {selectedTimeRange}
+          </span>
+          <DropdownIcon className="align-middle" height={14} width={14} />
+        </Space>
+      </Button>
+    </Dropdown>
   );
 };
 
