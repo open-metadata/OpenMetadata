@@ -74,6 +74,7 @@ import {
   deselectColumns,
   dragAndDropColumn,
   dragAndDropTerm,
+  ensureColumnsVisible,
   fillGlossaryTermDetails,
   filterStatus,
   goToAssetsTab,
@@ -1653,6 +1654,10 @@ test.describe('Glossary tests', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary1.data.displayName);
       await openColumnDropdown(page);
+      await ensureColumnsVisible(page, [
+        { key: 'owners', label: 'Owners' },
+        { key: 'status', label: 'Status' },
+      ]);
       const dragColumnKey = 'status';
       const dropColumnKey = 'owners';
       await dragAndDropColumn(page, dragColumnKey, dropColumnKey);

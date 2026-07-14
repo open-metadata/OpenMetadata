@@ -13,18 +13,16 @@
 import { Box, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { Eye, EyeOff } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, useCallback, useMemo } from 'react';
+import { FC, type MouseEvent, useCallback, useMemo } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
 import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
 
 /**
  * react-aria (`Dropdown.Item`) flavour of the draggable column menu item, used
- * inside `TableV2`'s react-aria `Dropdown.Menu`. react-dnd connectors are wired
- * to real DOM nodes we render inside the menu item: `drag` on the grip handle
- * (so the item's press handling doesn't swallow the native drag) and `drop` +
- * `dragPreview` on the whole row. For the AntD `Table` use the sibling
- * `DraggableMenuItem` component instead.
+ * inside `TableV2`'s react-aria `Dropdown.Menu`. The row owns drag/drop while
+ * the nested button owns column visibility toggling. For the AntD `Table` use
+ * the sibling `DraggableMenuItem` component instead.
  */
 const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
   currentItem,
@@ -67,6 +65,14 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
     () => selectedOptions.includes(value),
     [selectedOptions, value]
   );
+  const handleSelect = useCallback(
+    (event: MouseEvent<HTMLButtonElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      onSelect(value, !isItemSelected);
+    },
+    [isItemSelected, onSelect, value]
+  );
 
   return (
     <Dropdown.Item
@@ -74,19 +80,18 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
         'tw:opacity-80': isDragging,
       })}
       id={value}
-      textValue={label}
-      onPress={() => onSelect(value, !isItemSelected)}>
+      textValue={label}>
       <Box
         align="center"
         className="tw:w-full"
+        data-testid={`column-menu-item-${value}`}
         gap={2}
         ref={(node) => {
-          drop(dragPreview(node));
+          drag(drop(dragPreview(node)));
         }}>
         <span
           className="tw:inline-flex tw:cursor-grab tw:items-center tw:active:cursor-grabbing"
-          data-testid="draggable-menu-item-drag-handle"
-          ref={drag}>
+          data-testid="draggable-menu-item-drag-handle">
           <ColumnDragIcon
             className="text-grey-muted"
             data-testid="draggable-menu-item-drag-icon"
@@ -95,13 +100,21 @@ const DraggableMenuItemV2: FC<DraggableMenuItemProps> = ({
           />
         </span>
 
-        <Typography>{label}</Typography>
+        <button
+          className="tw:flex tw:flex-1 tw:items-center tw:gap-2 tw:border-0 tw:bg-transparent tw:p-0 tw:text-left"
+          type="button"
+          onClick={handleSelect}>
+          <Typography>{label}</Typography>
 
-        {isItemSelected ? (
-          <Eye aria-label="eye" className="tw:ml-auto tw:size-4" />
-        ) : (
-          <EyeOff aria-label="eye-invisible" className="tw:ml-auto tw:size-4" />
-        )}
+          {isItemSelected ? (
+            <Eye aria-label="eye" className="tw:ml-auto tw:size-4" />
+          ) : (
+            <EyeOff
+              aria-label="eye-invisible"
+              className="tw:ml-auto tw:size-4"
+            />
+          )}
+        </button>
       </Box>
     </Dropdown.Item>
   );

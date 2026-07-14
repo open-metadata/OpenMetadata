@@ -1484,6 +1484,23 @@ export async function deselectColumns(
   await clickOutside(page);
 }
 
+export async function ensureColumnsVisible(
+  page: Page,
+  columns: { key: string; label: string }[]
+): Promise<void> {
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+
+  for (const column of columns) {
+    const columnHeader = glossaryTermsTable.locator('th', {
+      hasText: column.label,
+    });
+    if (!(await columnHeader.isVisible().catch(() => false))) {
+      await page.getByTestId(`column-menu-item-${column.key}`).click();
+      await expect(columnHeader).toBeVisible();
+    }
+  }
+}
+
 export async function verifyColumnsVisibility(
   page: Page,
   checkboxLabels: string[],
@@ -1675,22 +1692,23 @@ export const dragAndDropColumn = async (
   dragColumnKey: string,
   dropColumnKey: string
 ) => {
-  await page.getByTestId(`column-menu-item-${dragColumnKey}`).waitFor({
+  const dragColumn = page.getByTestId(`column-menu-item-${dragColumnKey}`);
+  const dropColumn = page.getByTestId(`column-menu-item-${dropColumnKey}`);
+
+  await dragColumn.waitFor({
     state: 'visible',
   });
 
-  await page
-    .getByTestId(`column-menu-item-${dragColumnKey}`)
-    .dragTo(page.getByTestId(`column-menu-item-${dropColumnKey}`), {
-      sourcePosition: {
-        x: 16,
-        y: 16,
-      },
-      targetPosition: {
-        x: 16,
-        y: 16,
-      },
-    });
+  await dragColumn.dragTo(dropColumn, {
+    sourcePosition: {
+      x: 16,
+      y: 16,
+    },
+    targetPosition: {
+      x: 16,
+      y: 16,
+    },
+  });
 };
 
 export const getEscapedTermFqn = (term: GlossaryTermData) => {
