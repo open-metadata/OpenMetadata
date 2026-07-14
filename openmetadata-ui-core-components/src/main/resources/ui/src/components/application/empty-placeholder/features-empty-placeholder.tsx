@@ -19,6 +19,7 @@ import type {
   EmptyPlaceholderShellProps,
 } from './empty-placeholder-shell';
 import {
+  EMPTY_PLACEHOLDER_ICON_BOX,
   EmptyPlaceholderShell,
   renderEmptyPlaceholderActions,
   renderEmptyPlaceholderIcon,
@@ -35,11 +36,7 @@ const FeatureItem = ({
     className="tw:max-w-[220px] tw:text-center"
     direction="col"
     gap={5}>
-    <div
-      className={cx(
-        'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-empty-placeholder-icon tw:*:data-icon:size-7',
-        iconClassName
-      )}>
+    <div className={cx(EMPTY_PLACEHOLDER_ICON_BOX, iconClassName)}>
       {renderEmptyPlaceholderIcon(icon, 'tw:size-7')}
     </div>
     <Box align="center" direction="col" gap={1}>

@@ -15,16 +15,19 @@ import { isValidElement } from 'react';
 import { Box } from '@/components/base/box/box';
 import type { GapValues } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
-import type { CommonProps as ButtonCommonProps } from '@/components/base/buttons/button';
+import type { ButtonProps } from '@/components/base/buttons/button';
 import { cx } from '@/utils/cx';
 import { isReactComponent } from '@/utils/is-react-component';
 
 export type EmptyPlaceholderIcon = FC<{ className?: string }> | ReactNode;
 
-export interface EmptyPlaceholderAction extends ButtonCommonProps {
+/** Shared icon-container styling for both variants */
+export const EMPTY_PLACEHOLDER_ICON_BOX =
+  'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-empty-placeholder-icon tw:*:data-icon:size-7';
+
+export interface EmptyPlaceholderAction extends Omit<ButtonProps, 'children'> {
   key: string;
   label: ReactNode;
-  onPress?: () => void;
 }
 
 export interface EmptyPlaceholderFeature {

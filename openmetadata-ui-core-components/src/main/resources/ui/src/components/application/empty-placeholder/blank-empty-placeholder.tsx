@@ -18,6 +18,7 @@ import type {
   EmptyPlaceholderShellProps,
 } from './empty-placeholder-shell';
 import {
+  EMPTY_PLACEHOLDER_ICON_BOX,
   EmptyPlaceholderShell,
   renderEmptyPlaceholderIcon,
 } from './empty-placeholder-shell';
@@ -40,7 +41,7 @@ export const BlankEmptyPlaceholder = ({
 }: BlankEmptyPlaceholderProps) => (
   <EmptyPlaceholderShell width={width ?? DEFAULT_BLANK_WIDTH} {...rest}>
     {icon && (
-      <div className="tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-empty-placeholder-icon tw:*:data-icon:size-7">
+      <div className={EMPTY_PLACEHOLDER_ICON_BOX}>
         {renderEmptyPlaceholderIcon(icon, 'tw:size-7')}
       </div>
     )}

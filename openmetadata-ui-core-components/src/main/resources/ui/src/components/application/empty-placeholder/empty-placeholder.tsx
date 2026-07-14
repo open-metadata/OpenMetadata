@@ -19,6 +19,13 @@ import type {
 } from './empty-placeholder-shell';
 import { FeaturesEmptyPlaceholder } from './features-empty-placeholder';
 
+export type {
+  EmptyPlaceholderAction,
+  EmptyPlaceholderFeature,
+  EmptyPlaceholderIcon,
+  EmptyPlaceholderShellProps,
+} from './empty-placeholder-shell';
+
 export type EmptyPlaceholderVariant = 'blank' | 'features';
 
 export interface EmptyPlaceholderProps
