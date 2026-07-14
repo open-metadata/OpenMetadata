@@ -29,7 +29,13 @@ import org.slf4j.LoggerFactory;
 public final class ExternalTokenRefresher implements AutoCloseable {
 
   private static final Logger LOG = LoggerFactory.getLogger(ExternalTokenRefresher.class);
-  private static final Duration EXPIRY_BUFFER = Duration.ofMinutes(2);
+  // Renew this far ahead of expiry so a flaky login endpoint has room for several 60s retries
+  // before the token actually dies (login TTL is ~1h, so 10m early is safe).
+  private static final Duration EXPIRY_BUFFER = Duration.ofMinutes(10);
+  // Bounds BOTH the connect and the read phase of each login. Without a read timeout a slow or
+  // half-open gateway would block http.send() forever on the single-thread scheduler, and the
+  // token would never renew for the rest of the run.
+  private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
   private static final long FALLBACK_REFRESH_SECONDS = Duration.ofMinutes(30).toSeconds();
 
   private final ScheduledExecutorService scheduler =
@@ -39,7 +45,7 @@ public final class ExternalTokenRefresher implements AutoCloseable {
             t.setDaemon(true);
             return t;
           });
-  private final HttpClient http = HttpClient.newBuilder().connectTimeout(EXPIRY_BUFFER).build();
+  private final HttpClient http = HttpClient.newBuilder().connectTimeout(REQUEST_TIMEOUT).build();
   private final ObjectMapper mapper = new ObjectMapper();
   private final String loginUrl;
   private final String email;
@@ -99,6 +105,7 @@ public final class ExternalTokenRefresher implements AutoCloseable {
           http.send(
               HttpRequest.newBuilder(URI.create(loginUrl))
                   .header("Content-Type", "application/json")
+                  .timeout(REQUEST_TIMEOUT)
                   .POST(HttpRequest.BodyPublishers.ofString(body))
                   .build(),
               HttpResponse.BodyHandlers.ofString());
