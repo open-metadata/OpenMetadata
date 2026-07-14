@@ -199,6 +199,31 @@ public class WorkflowInstanceStateRepository
     }
   }
 
+  /**
+   * Marks all states of a workflow instance as SUPERSEDED when a newer run replaces it. The
+   * exception field is left untouched — supersede is not a failure, so the reason lives on the
+   * WorkflowInstance's variables map, not in an exception field.
+   */
+  public void markInstanceStatesAsSuperseded(UUID workflowInstanceId, String reason) {
+    try {
+      List<WorkflowInstanceState> instanceStates = listAllStatesForInstance(workflowInstanceId);
+
+      for (WorkflowInstanceState state : instanceStates) {
+        WorkflowInstanceState updatedState =
+            state.withStatus(WorkflowInstance.WorkflowStatus.SUPERSEDED);
+
+        getTimeSeriesDao().update(JsonUtils.pojoToJson(updatedState), state.getId());
+      }
+
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to mark states as superseded for instance {} (reason={}): {}",
+          workflowInstanceId,
+          reason,
+          e.getMessage());
+    }
+  }
+
   public List<WorkflowInstanceState> listAllStatesForInstance(UUID workflowInstanceId) {
     List<WorkflowInstanceState> states = new ArrayList<>();
     List<String> jsons =

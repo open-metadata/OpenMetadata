@@ -24,9 +24,9 @@ import {
   SelectMode,
   useQuickFiltersWithComponent,
 } from '../../common/atoms/filters/useQuickFiltersWithComponent';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import TestDefinitionForm from '../TestDefinitionForm/TestDefinitionForm.component';
 import TestDefinitionTable from './TestDefinitionTable.component';
 import { useTestDefinitionListPage } from './useTestDefinitionListPage';
@@ -50,6 +50,7 @@ const TestDefinitionList = () => {
     isFormVisible,
     selectedDefinition,
     isDeleteModalVisible,
+    isDeleting,
     definitionToDelete,
     openCreateForm,
     handleEnableToggle,
@@ -154,18 +155,22 @@ const TestDefinitionList = () => {
 
       {isFormVisible && (
         <TestDefinitionForm
+          open
           initialValues={selectedDefinition}
           onCancel={handleFormCancel}
           onSuccess={handleFormSuccess}
         />
       )}
 
-      <EntityDeleteModal
-        entityName={getEntityName(definitionToDelete)}
-        entityType={t('label.test-definition')}
-        visible={isDeleteModalVisible}
+      <DeleteModal
+        entityTitle={getEntityName(definitionToDelete)}
+        isDeleting={isDeleting}
+        message={t('message.permanently-delete-common-message', {
+          entity: t('label.test-definition').toLowerCase(),
+        })}
+        open={isDeleteModalVisible}
         onCancel={handleDeleteCancel}
-        onConfirm={handleDeleteConfirm}
+        onDelete={handleDeleteConfirm}
       />
     </>
   );

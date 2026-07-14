@@ -13,6 +13,7 @@
 import {
   Avatar,
   Badge,
+  Box,
   Button,
   Dialog,
   DialogTrigger,
@@ -544,8 +545,10 @@ const MetricListPage = () => {
       width: '320px',
       key: 'name',
       render: (_: string, record: Metric) => {
+        const hasMeta = Boolean(record.metricType || record.granularity);
+
         return (
-          <div className="metric-list-identity">
+          <Box align="center" gap={3}>
             <div className="metric-list-icon">
               <BarChartSquare02 />
             </div>
@@ -559,24 +562,26 @@ const MetricListPage = () => {
                 )}>
                 {getEntityName(record)}
               </Link>
-              <div className="metric-list-meta">
-                {record.metricType && (
-                  <Badge
-                    className={`metric-list-type-pill metric-list-type-${record.metricType.toLowerCase()}`}
-                    color="brand"
-                    size="sm"
-                    type="color">
-                    {record.metricType}
-                  </Badge>
-                )}
-                {record.granularity && (
-                  <span className="metric-list-granularity">
-                    {record.granularity}
-                  </span>
-                )}
-              </div>
+              {hasMeta && (
+                <div className="metric-list-meta">
+                  {record.metricType && (
+                    <Badge
+                      className={`metric-list-type-pill metric-list-type-${record.metricType.toLowerCase()}`}
+                      color="brand"
+                      size="sm"
+                      type="color">
+                      {record.metricType}
+                    </Badge>
+                  )}
+                  {record.granularity && (
+                    <span className="metric-list-granularity">
+                      {record.granularity}
+                    </span>
+                  )}
+                </div>
+              )}
             </div>
-          </div>
+          </Box>
         );
       },
     };
@@ -780,22 +785,6 @@ const MetricListPage = () => {
                   </span>
                   <span className="metric-actions-description">
                     {t('message.metrics-import-description')}
-                  </span>
-                </span>
-              </button>
-              <span className="metric-actions-separator" />
-              <button
-                className="metric-actions-menu-item metric-actions-menu-item-danger"
-                type="button">
-                <span className="metric-actions-icon">
-                  <Trash01 size={18} />
-                </span>
-                <span>
-                  <span className="metric-actions-title">
-                    {t('label.delete')}
-                  </span>
-                  <span className="metric-actions-description">
-                    {t('message.metrics-delete-collection-description')}
                   </span>
                 </span>
               </button>
