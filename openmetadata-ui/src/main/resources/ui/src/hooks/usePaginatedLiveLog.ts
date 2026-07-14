@@ -145,6 +145,7 @@ export const usePaginatedLiveLog = ({
   useEffect(() => {
     requestIdRef.current += 1;
     busyRef.current = false;
+    pendingFinalRef.current = false;
     setCommitted('');
     setTail('');
     setTailCursor(undefined);
