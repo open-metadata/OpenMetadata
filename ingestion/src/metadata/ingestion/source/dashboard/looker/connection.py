@@ -15,11 +15,11 @@ Source connection handler
 
 from __future__ import annotations
 
-import os
 import re
 from typing import TYPE_CHECKING
 
 import looker_sdk
+from looker_sdk.rtl.api_settings import ApiSettings, SettingsConfig
 from looker_sdk.sdk.api40.methods import Looker40SDK
 
 from metadata.core.connections.test_connection import (
@@ -271,17 +271,32 @@ class LookerChecks:
         )
 
 
+class LookerSettings(ApiSettings):
+    """Feed the SDK this service's configuration directly.
+
+    The SDK otherwise reads its host and credentials from the process
+    environment, which a long-lived worker only populates once: every later
+    Looker connection in that process would silently reuse the first one's host
+    and credentials. Overriding ``read_config`` keeps each connection's settings
+    to itself - the base class reads it at construction, and the SDK reads it
+    again on each login.
+    """
+
+    def __init__(self, connection: LookerConnectionConfig) -> None:
+        self._config: SettingsConfig = {
+            "base_url": str(connection.hostPort),
+            "client_id": connection.clientId,
+            "client_secret": connection.clientSecret.get_secret_value(),
+        }
+        super().__init__()
+
+    def read_config(self) -> SettingsConfig:
+        return self._config
+
+
 class LookerConnection(BaseConnection[LookerConnectionConfig, Looker40SDK]):
     def _get_client(self) -> Looker40SDK:
-        connection = self.service_connection
-        if not os.environ.get("LOOKERSDK_CLIENT_ID"):
-            os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
-        if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
-            os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.clientSecret.get_secret_value()
-        if not os.environ.get("LOOKERSDK_BASE_URL"):
-            os.environ["LOOKERSDK_BASE_URL"] = str(connection.hostPort)
-
-        return looker_sdk.init40()
+        return looker_sdk.init40(config_settings=LookerSettings(self.service_connection))
 
     def checks(self) -> ChecksProvider:
         # Pass a thunk, not self.client: the checks then run against the one

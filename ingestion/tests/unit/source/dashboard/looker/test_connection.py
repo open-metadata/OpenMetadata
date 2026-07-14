@@ -23,6 +23,7 @@ from metadata.ingestion.source.dashboard.looker.connection import (
     LOOKER_ERRORS,
     LookerChecks,
     LookerConnection,
+    LookerSettings,
     UnsupportedApiVersionError,
 )
 
@@ -58,17 +59,40 @@ def test_looker_connection_is_base_connection():
     assert issubclass(LookerConnection, BaseConnection)
 
 
-def test_get_client_initialises_the_sdk():
+def _config(host: str = "https://looker.example.com", client_id: str = "id", secret: str = "secret") -> MagicMock:
     config = MagicMock()
-    config.clientId = "client-id"
-    config.clientSecret.get_secret_value.return_value = "secret"
-    config.hostPort = "https://looker.example.com"
+    config.hostPort = host
+    config.clientId = client_id
+    config.clientSecret.get_secret_value.return_value = secret
+
+    return config
+
+
+def test_get_client_initialises_the_sdk():
     with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
-        conn = LookerConnection(config)
+        conn = LookerConnection(_config())
         client = conn.client
 
     assert client is mock_sdk.init40.return_value
     mock_sdk.init40.assert_called_once()
+
+
+def test_the_sdk_is_configured_from_this_service_not_the_environment(monkeypatch):
+    # The SDK reads its host and credentials from the environment by default, and a
+    # long-lived worker only populates those once - so a second Looker connection in
+    # the same process must not inherit the first one's host or credentials.
+    monkeypatch.setenv("LOOKERSDK_BASE_URL", "https://first.example.com")
+    monkeypatch.setenv("LOOKERSDK_CLIENT_ID", "first-id")
+    monkeypatch.setenv("LOOKERSDK_CLIENT_SECRET", "first-secret")
+
+    settings = LookerSettings(_config(host="https://second.example.com", client_id="second-id", secret="second-secret"))
+
+    assert settings.base_url == "https://second.example.com"
+    assert settings.read_config() == {
+        "base_url": "https://second.example.com",
+        "client_id": "second-id",
+        "client_secret": "second-secret",
+    }
 
 
 def test_checks_run_against_the_client_the_connection_owns():
