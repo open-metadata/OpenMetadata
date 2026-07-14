@@ -67,7 +67,6 @@ const VERSION_BADGE_CLASS = [
   'tw:transition tw:hover:bg-primary_hover',
 ].join(' ');
 
-
 export const PersonaAIContext = ({
   canEdit,
   persona,

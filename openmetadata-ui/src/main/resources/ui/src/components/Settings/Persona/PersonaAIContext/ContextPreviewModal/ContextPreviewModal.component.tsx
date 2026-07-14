@@ -64,7 +64,7 @@ const HEADING_BASE_CLASS =
   'tw:block tw:cursor-pointer tw:rounded-md tw:text-left tw:transition tw:hover:bg-secondary_hover';
 
 const getHeadingStateClass = (isActive: boolean, isNested: boolean) => {
-  let stateClass = 'tw:font-medium tw:text-secondary';
+  let stateClass = 'tw:font-medium tw:text-primary';
   if (isActive) {
     stateClass = 'tw:bg-brand-primary tw:font-semibold tw:text-brand-secondary';
   } else if (isNested) {
@@ -76,7 +76,7 @@ const getHeadingStateClass = (isActive: boolean, isNested: boolean) => {
 
 const getHeadingClassName = (isActive: boolean, isNested: boolean) => {
   const sizeClass = isNested
-    ? 'tw:ml-5.5 tw:truncate tw:px-2 tw:py-0.75 tw:font-mono tw:text-[12px]'
+    ? 'tw:ml-5.5 tw:w-[calc(100%-1.375rem)] tw:truncate tw:px-2 tw:py-0.75 tw:font-mono tw:text-[12px]'
     : 'tw:w-full tw:truncate tw:px-2.5 tw:py-1.75 tw:text-[13px]';
 
   return [
@@ -109,6 +109,7 @@ export const ContextPreviewModal = ({
   useEffect(() => {
     onDocumentLoadedRef.current = onDocumentLoaded;
   }, [onDocumentLoaded]);
+  
 
   const fetchPreview = useCallback(
     async (refresh = false) => {
@@ -272,7 +273,7 @@ export const ContextPreviewModal = ({
     return (
       <Box className="tw:grid! tw:min-h-0 tw:flex-1 tw:grid-cols-[240px_1fr] tw:overflow-hidden">
         <Box
-          className="tw:gap-0.5 tw:overflow-auto tw:border-r tw:border-secondary tw:bg-secondary_subtle tw:px-3 tw:py-4"
+          className="tw:min-w-0 tw:gap-0.5 tw:overflow-auto tw:border-r tw:border-secondary tw:bg-secondary_subtle tw:px-3 tw:py-4"
           direction="col">
           <Box className="tw:px-2.5 tw:pb-2">
             <Typography
@@ -283,6 +284,7 @@ export const ContextPreviewModal = ({
           </Box>
           {headings.map((heading, index) => (
             <Typography
+              ellipsis
               as="button"
               className={getHeadingClassName(
                 activeHeading === index,
