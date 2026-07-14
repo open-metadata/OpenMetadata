@@ -21,24 +21,20 @@ import {
   Dropdown,
   FileIcon,
   Skeleton,
-  Tooltip,
-  TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  Check,
-  ChevronRight,
-  Copy06,
-  Download01,
-  Pin02,
-  Trash01,
-} from '@untitledui/icons';
+import { Check, ChevronRight } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, UIEvent, useMemo, useState } from 'react';
 import { SubmenuTrigger } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as FolderIcon } from '../../../assets/svg/ic-folder-new.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
+import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
@@ -168,12 +164,13 @@ const FileActions: FC<FileActionsProps> = ({
 
   return (
     <Dropdown.Root>
-      <Tooltip
-        title={t('label.manage-entity', { entity: t('label.document') })}>
-        <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1" />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="manage-button"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.document') })}
+      />
       <Dropdown.Popover className="tw:w-46">
         <Dropdown.Menu
           onAction={(key) => {
@@ -185,13 +182,21 @@ const FileActions: FC<FileActionsProps> = ({
             <SubmenuTrigger>
               <Dropdown.Item
                 data-testid="move-btn"
-                icon={Pin02}
                 isDisabled={isMoving || folders.length === 0}>
                 {() => (
                   <Box align="center" justify="between">
-                    <Typography ellipsis className="tw:grow tw:text-secondary">
-                      {t('label.move-to-folder')}
-                    </Typography>
+                    <Box align="center" gap={2}>
+                      <MoveFolderIcon
+                        className="tw:text-secondary"
+                        height={20}
+                        width={20}
+                      />
+                      <Typography
+                        ellipsis
+                        className="tw:grow tw:text-secondary">
+                        {t('label.move-to-folder')}
+                      </Typography>
+                    </Box>
                     <ChevronRight
                       aria-hidden="true"
                       className="tw:size-4 tw:shrink-0 tw:text-fg-quaternary"
@@ -216,9 +221,11 @@ const FileActions: FC<FileActionsProps> = ({
           {canDelete && (
             <Dropdown.Item data-testid="delete-btn" id="delete">
               <Box align="center" gap={2}>
-                <Trash01
+                <TrashIcon
                   aria-hidden="true"
-                  className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
+                  className="tw:shrink-0 tw:text-error-primary"
+                  height={20}
+                  width={20}
                 />
                 <Typography
                   ellipsis
@@ -317,7 +324,7 @@ const ListHeader: FC<ListHeaderProps> = ({
           className="tw:py-1.5"
           color="tertiary"
           data-testid="bulk-download-btn"
-          iconLeading={<Download01 size={18} />}
+          iconLeading={<DownloadIcon height={18} width={18} />}
           size="sm"
           onClick={onBulkDownload}>
           {t('label.download')}
@@ -349,7 +356,7 @@ const ListHeader: FC<ListHeaderProps> = ({
             className="tw:py-1.5"
             color="tertiary-destructive"
             data-testid="bulk-delete-btn"
-            iconLeading={<Trash01 size={16} />}
+            iconLeading={<TrashIcon height={16} width={16} />}
             size="sm"
             onClick={onBulkDelete}>
             {t('label.delete')}
@@ -528,12 +535,12 @@ const FileRow: FC<FileRowProps> = ({
           className="tw:ml-1.5"
           color="tertiary"
           data-testid="download-btn"
-          icon={<Download01 size={19} />}
+          icon={<DownloadIcon height={20} width={20} />}
           tooltip={t('label.download')}
           onClick={() => onDownload?.(file)}
         />
-        <CopyLinkButton className="tw:w-7.5 tw:h-7.5" url={rowUrl}>
-          <Copy06 aria-hidden="true" size={19} strokeWidth={1.8} />
+        <CopyLinkButton url={rowUrl}>
+          <CopyIcon aria-hidden="true" height={20} width={20} />
         </CopyLinkButton>
         <FileActions
           canDelete={canDelete}

@@ -29,7 +29,10 @@ import {
   patchMemory,
   searchAndGetMemoryRow,
 } from '../../utils/ContextCenterUtil';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  copyAndGetClipboardText,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { test as base } from '../fixtures/pages';
 
@@ -911,6 +914,7 @@ test.describe(
         // persist, carrying usageCount along with it.
         await patchMemory(apiContext, entityMemoryId, [
           { op: 'add', path: '/usageCount', value: 999999 },
+          { op: 'add', path: '/lastUsedAt', value: Date.now() },
           { op: 'add', path: '/pinned', value: true },
         ]);
         await afterAction();
@@ -937,6 +941,13 @@ test.describe(
           'data-testid',
           `memory-row-${entityMemoryId}`
         );
+
+        // lastUsedAt is rendered next to the usage count as
+        // "Cited N times · Last {relative-time}" — assert the "Last" label
+        // is present rather than a specific relative-time string, since the
+        // exact rendered value depends on wall-clock time between the patch
+        // above and this assertion.
+        await expect(rows.first()).toContainText(/Last/);
       });
     });
 
@@ -1010,11 +1021,8 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
 
-        await row.getByTestId('copy-link-btn').click();
-
-        const clipboard = await page.evaluate(() =>
-          navigator.clipboard.readText()
-        );
+        const copyBtn = row.getByTestId('copy-link-btn');
+        const clipboard = await copyAndGetClipboardText(page, copyBtn);
         expect(clipboard).toContain(`memory=${sharedMemoryName}`);
       });
     });
@@ -1815,7 +1823,7 @@ test.describe(
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
 
-        await row.getByRole('button', { name: 'Open menu' }).first().click();
+        await row.getByTestId('manage-button').click();
         await page.getByTestId('delete-btn').click();
 
         const deleteResPromise = page.waitForResponse(

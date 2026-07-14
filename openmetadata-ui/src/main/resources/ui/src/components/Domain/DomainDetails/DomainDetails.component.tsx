@@ -75,6 +75,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
+import { hardDeleteEntity } from '../../../utils/DeleteWidget/DeleteWidgetUtils';
 import domainClassBase from '../../../utils/Domain/DomainClassBase';
 import {
   getQueryFilterForDataProducts,
@@ -93,7 +94,6 @@ import {
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import Fqn from '../../../utils/Fqn';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -109,10 +109,11 @@ import {
   getDecodedFqn,
   getEncodedFqn,
 } from '../../../utils/StringUtils';
+import { showErrorToast } from '../../../utils/ToastUtils';
 import { withActivityFeed } from '../../AppRouter/withActivityFeed';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
-import DeleteEntityModal from '../../common/DeleteWidget/DeleteEntityModal';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -205,6 +206,7 @@ const DomainDetails = ({
 
   const [showActions, setShowActions] = useState(false);
   const [isDelete, setIsDelete] = useState<boolean>(false);
+  const [isDeleting, setIsDeleting] = useState<boolean>(false);
   const [isNameEditing, setIsNameEditing] = useState<boolean>(false);
   const [isStyleEditing, setIsStyleEditing] = useState(false);
   const [previewAsset, setPreviewAsset] =
@@ -252,7 +254,7 @@ const DomainDetails = ({
         setAssetCount(totalCount);
       } catch (error) {
         setAssetCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
@@ -276,7 +278,7 @@ const DomainDetails = ({
         setDataProductsCount(res.hits.total.value ?? 0);
       } catch (error) {
         setDataProductsCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.data-product-lowercase'),
@@ -305,7 +307,7 @@ const DomainDetails = ({
         setSubDomainsCount(totalCount);
       } catch (error) {
         setSubDomainsCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.sub-domain-lowercase'),
@@ -333,6 +335,20 @@ const DomainDetails = ({
     fetchSubDomainsCount();
     refreshDomains?.();
   };
+
+  const handleDomainDelete = useCallback(async () => {
+    setIsDeleting(true);
+    const isSuccess = await hardDeleteEntity(
+      getEntityName(domain),
+      domain.id,
+      EntityType.DOMAIN
+    );
+    if (isSuccess) {
+      onDelete(domain.id);
+    }
+    setIsDelete(false);
+    setIsDeleting(false);
+  }, [domain, onDelete]);
 
   const handleFeedCount = useCallback((data: FeedCounts) => {
     setFeedCount(data);
@@ -488,7 +504,7 @@ const DomainDetails = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -649,7 +665,7 @@ const DomainDetails = ({
         await addDomains(data as CreateDomain);
         fetchSubDomainsCount();
       } catch (error) {
-        showNotistackError(
+        showErrorToast(
           getIsErrorMatch(error as AxiosError, ERROR_MESSAGE.alreadyExist)
             ? t('server.entity-already-exist', {
                 entity: t('label.sub-domain'),
@@ -689,7 +705,7 @@ const DomainDetails = ({
       );
       setDomainPermission(response);
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -1103,16 +1119,17 @@ const DomainDetails = ({
       />
 
       {domain && (
-        <DeleteEntityModal
-          afterDeleteAction={() => onDelete(domain.id)}
-          allowSoftDelete={false}
-          entityId={domain.id}
-          entityName={getEntityName(domain)}
-          entityType={EntityType.DOMAIN}
-          visible={isDelete}
+        <DeleteModal
+          entityTitle={getEntityName(domain)}
+          isDeleting={isDeleting}
+          message={t('message.permanently-delete-common-message', {
+            entity: getEntityName(domain)?.toLowerCase?.() ?? '',
+          })}
+          open={isDelete}
           onCancel={() => {
             setIsDelete(false);
           }}
+          onDelete={handleDomainDelete}
         />
       )}
       <EntityNameModal<Domain>
