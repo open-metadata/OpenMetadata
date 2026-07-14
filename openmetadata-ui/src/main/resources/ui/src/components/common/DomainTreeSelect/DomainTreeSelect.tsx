@@ -16,6 +16,7 @@ import {
   TreeSelectDataResponse,
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
+import axios from 'axios';
 import { FC, useCallback, useMemo } from 'react';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
@@ -74,23 +75,31 @@ const DomainTreeSelect: FC<DomainTreeSelectProps> = ({
   const fetchData = useCallback(
     async ({
       searchTerm,
+      signal,
     }: {
       searchTerm?: string;
+      signal?: AbortSignal;
     }): Promise<TreeSelectDataResponse<EntityReference>> => {
       try {
         if (searchTerm) {
-          const domains = await searchDomains(searchTerm, 1);
+          const domains = await searchDomains(searchTerm, 1, undefined, signal);
 
           return { nodes: domains.map(convertDomainToTreeNode) };
         }
 
-        const response = await listDomainHierarchy({
-          limit: 1000,
-          fields: 'children,owners',
-        });
+        const response = await listDomainHierarchy(
+          {
+            limit: 1000,
+            fields: 'children,owners',
+          },
+          signal
+        );
 
         return { nodes: response.data.map(convertDomainToTreeNode) };
       } catch (err) {
+        if (axios.isCancel(err)) {
+          throw err;
+        }
         // eslint-disable-next-line no-console
         console.error('Error fetching domains:', err);
 

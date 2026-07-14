@@ -16,7 +16,7 @@ import {
   TreeSelectDataResponse,
   TreeSelectNode,
 } from '@openmetadata/ui-core-components';
-import { AxiosError } from 'axios';
+import axios, { AxiosError } from 'axios';
 import { FC, ReactNode, useCallback, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { PAGE_SIZE_LARGE } from '../../../constants/constants';
@@ -69,16 +69,19 @@ const GlossaryTermTreeSelect: FC<GlossaryTermTreeSelectProps> = ({
     async ({
       searchTerm,
       parentId,
+      signal,
     }: {
       searchTerm?: string;
       parentId?: string;
+      signal?: AbortSignal;
     }): Promise<TreeSelectDataResponse<TagLabel>> => {
       try {
         // If searching, search across all glossary terms
         if (searchTerm) {
           const response = await searchGlossaryTerms(
             escapeESReservedCharacters(searchTerm),
-            1 // page number
+            1, // page number
+            signal
           );
 
           // With getHierarchy=true, response is an array of glossaries with nested terms
@@ -121,7 +124,7 @@ const GlossaryTermTreeSelect: FC<GlossaryTermTreeSelectProps> = ({
         // Term expansion should not trigger API calls since children are already loaded
         if (parentId) {
           const glossaryName = parentId;
-          const results = await queryGlossaryTerms(glossaryName);
+          const results = await queryGlossaryTerms(glossaryName, signal);
 
           if (results.length > 0) {
             const glossaryRoot = results[0];
@@ -141,10 +144,13 @@ const GlossaryTermTreeSelect: FC<GlossaryTermTreeSelectProps> = ({
         }
 
         // Otherwise, fetch top-level glossaries only
-        const { data: glossaries } = await getGlossariesList({
-          fields: 'name,displayName,fullyQualifiedName,mutuallyExclusive',
-          limit: PAGE_SIZE_LARGE,
-        });
+        const { data: glossaries } = await getGlossariesList(
+          {
+            fields: 'name,displayName,fullyQualifiedName,mutuallyExclusive',
+            limit: PAGE_SIZE_LARGE,
+          },
+          signal
+        );
 
         const treeNodes: TreeSelectNode<TagLabel>[] = glossaries.map(
           (glossary: Glossary) => {
@@ -169,6 +175,9 @@ const GlossaryTermTreeSelect: FC<GlossaryTermTreeSelectProps> = ({
 
         return { nodes: treeNodes };
       } catch (error) {
+        if (axios.isCancel(error)) {
+          throw error;
+        }
         showErrorToast(error as AxiosError);
 
         return { nodes: [] };
