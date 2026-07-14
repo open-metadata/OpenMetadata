@@ -557,9 +557,11 @@ export const checkAddRuleOrGroupWithOperator = async (
   });
 
   if (operator === 'OR') {
+    // Conjunction toggle is a react-aria ToggleButtonGroup (selectionMode
+    // "single"), which exposes role="radio" items — not buttons.
     await page
       .getByTestId('advanced-search-modal')
-      .getByRole('button', { name: 'Or' })
+      .getByRole('radio', { name: 'Or' })
       .click();
   }
 

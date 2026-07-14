@@ -448,9 +448,11 @@ test.describe.serial('Persona AI Context', () => {
     }
 
     await adminPage.getByTestId('add-context-condition').click();
+    // Conjunction toggle is a react-aria ToggleButtonGroup (selectionMode
+    // "single"), which exposes role="radio" items — not buttons.
     const orOperator = adminPage
       .locator('.persona-ai-context-rule-drawer')
-      .getByRole('button', { name: 'Or', exact: true });
+      .getByRole('radio', { name: 'Or', exact: true });
     await expect(orOperator).toBeVisible();
     await orOperator.click();
     await expect(adminPage.getByTestId('delete-condition-button')).toHaveCount(
