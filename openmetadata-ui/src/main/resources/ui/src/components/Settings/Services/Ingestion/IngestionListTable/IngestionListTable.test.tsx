@@ -74,11 +74,11 @@ jest.mock('./PipelineActions/PipelineActions', () =>
   ))
 );
 
-jest.mock('../../../../Modals/EntityDeleteModal/EntityDeleteModal', () =>
+jest.mock('../../../../common/DeleteModal/DeleteModal', () =>
   jest
     .fn()
-    .mockImplementation(({ onConfirm }) => (
-      <button onClick={onConfirm}>EntityDeleteModal</button>
+    .mockImplementation(({ onDelete }) => (
+      <button onClick={onDelete}>DeleteModal</button>
     ))
 );
 
@@ -285,7 +285,7 @@ describe('Ingestion', () => {
       userEvent.click(deleteSelection);
     });
 
-    const confirmButton = screen.getByText('EntityDeleteModal');
+    const confirmButton = screen.getByText('DeleteModal');
 
     fireEvent.click(confirmButton);
 

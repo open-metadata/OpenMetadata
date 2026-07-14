@@ -129,16 +129,6 @@ POWERBI_ERRORS = ErrorPack(
 ).including(NETWORK_ERRORS)
 
 
-def get_connection(connection: PowerBIConnectionConfig) -> PowerBiClient:
-    """
-    Create connection
-    """
-    file_client = None
-    if connection.pbitFilesSource:
-        file_client = PowerBiFileClient(connection)
-    return PowerBiClient(api_client=PowerBiApiClient(connection), file_client=file_client)
-
-
 class PowerBIChecks:
     """Test-connection checks for PowerBI.
 
@@ -193,7 +183,16 @@ class PowerBIChecks:
 
 class PowerBIConnection(BaseConnection[PowerBIConnectionConfig, PowerBiClient]):
     def _get_client(self) -> PowerBiClient:
-        return get_connection(self.service_connection)
+        """
+        Create connection
+        """
+        file_client = None
+        if self.service_connection.pbitFilesSource:
+            file_client = PowerBiFileClient(self.service_connection)
+        return PowerBiClient(
+            api_client=PowerBiApiClient(self.service_connection),
+            file_client=file_client,
+        )
 
     def checks(self) -> ChecksProvider:
         return PowerBIChecks(connection=self.service_connection)

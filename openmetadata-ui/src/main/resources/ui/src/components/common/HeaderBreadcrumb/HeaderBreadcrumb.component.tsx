@@ -30,9 +30,10 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
   showHome = true,
   type,
   divider,
-  size,
+  size = 'xs',
   maxItems,
   className,
+  noMargin = false,
 }) => {
   const navigate = useNavigate();
   const { t } = useTranslation();
@@ -71,7 +72,15 @@ const HeaderBreadcrumb: FC<HeaderBreadcrumbProps> = ({
 
   return (
     <Breadcrumbs
-      className={classNames('tw:mb-3', className)}
+      className={classNames(
+        // Default icon size 16px per Figma (the core couples icon size to the
+        // `size` prop — 14px at xs — which we keep for the 12px text). The tail
+        // (current) crumb is semibold. Both override the core via descendant
+        // selectors (higher specificity wins — no !important needed).
+        'tw:[&_svg]:size-4 tw:[&_[aria-current]]:font-semibold',
+        noMargin ? undefined : 'tw:mb-3',
+        className
+      )}
       data-testid="breadcrumb"
       divider={divider}
       items={allItems}
