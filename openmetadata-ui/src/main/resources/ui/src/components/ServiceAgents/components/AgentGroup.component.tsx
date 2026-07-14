@@ -22,6 +22,7 @@ interface AgentGroupProps {
   addAgentSlot?: ReactNode;
   agentPermissions?: Record<string, AgentActionPermissions>;
   agents: Agent[];
+  allowedActions?: string[];
   canCreateAgent: boolean;
   dataTestId?: string;
   descKey: string;
@@ -38,6 +39,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
   addAgentSlot,
   agentPermissions,
   agents,
+  allowedActions,
   canCreateAgent,
   dataTestId = 'agent-group',
   descKey,
@@ -102,6 +104,7 @@ const AgentGroup: FC<AgentGroupProps> = ({
           {agents.map((agent) => (
             <AgentCard
               agent={agent}
+              allowedActions={allowedActions}
               key={agent.id}
               permissions={agentPermissions?.[agent.fqn]}
               onAction={onAction}

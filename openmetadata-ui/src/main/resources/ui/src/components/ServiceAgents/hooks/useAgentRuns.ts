@@ -23,25 +23,33 @@ const RUN_HISTORY_LIMIT = 10;
 /**
  * Fetches the recent run history for a pipeline (by FQN) and maps it to the
  * AgentRun view-model. Only fetches while `enabled` (e.g. the drawer is open).
+ * Pass `fetchRuns` to source the runs from somewhere other than the
+ * ingestion-pipeline run history (e.g. app-backed agents).
  */
 export const useAgentRuns = (
   fqn: string,
-  enabled: boolean
+  enabled: boolean,
+  fetchRuns?: () => Promise<AgentRun[]>
 ): { runs: AgentRun[]; isLoading: boolean } => {
   const [runs, setRuns] = useState<AgentRun[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
-    if (!enabled || !fqn) {
+    if (!enabled || (!fqn && !fetchRuns)) {
       return;
     }
 
     let isActive = true;
     setIsLoading(true);
-    getRunHistoryForPipeline(fqn, { limit: RUN_HISTORY_LIMIT })
-      .then((res) => {
+    const runsPromise = fetchRuns
+      ? fetchRuns()
+      : getRunHistoryForPipeline(fqn, { limit: RUN_HISTORY_LIMIT }).then(
+          (res) => res.data.map(mapPipelineStatusToRun)
+        );
+    runsPromise
+      .then((mappedRuns) => {
         if (isActive) {
-          setRuns(res.data.map(mapPipelineStatusToRun));
+          setRuns(mappedRuns);
         }
       })
       .catch((err) => showErrorToast(err as AxiosError))
@@ -54,7 +62,7 @@ export const useAgentRuns = (
     return () => {
       isActive = false;
     };
-  }, [fqn, enabled]);
+  }, [fqn, enabled, fetchRuns]);
 
   return { runs, isLoading };
 };
