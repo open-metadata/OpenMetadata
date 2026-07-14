@@ -2079,3 +2079,55 @@ export const clickTreeNode = async (page: Page, nodeId: string) => {
   const node = getTreeNode(page, nodeId);
   await node.click();
 };
+
+/**
+ * Set a glossary term's entityStatus and make sure it sticks.
+ *
+ * Creating a glossary term triggers an async approval workflow that can revert
+ * a freshly-patched status (e.g. auto-approving a reviewer-less term). That
+ * workflow runs once off the create event and is not re-triggered by
+ * entityStatus-only updates, so re-apply the status whenever it drifts and
+ * require it to hold across a few consecutive reads before treating it as
+ * settled. Keeps the helper self-contained (no governance/workflow coupling).
+ */
+export const setGlossaryTermStatus = async (
+  apiContext: APIRequestContext,
+  term: GlossaryTerm,
+  status: string
+) => {
+  const { id } = term.responseData;
+
+  const readStatus = async () => {
+    const response = await apiContext.get(`/api/v1/glossaryTerms/${id}`);
+
+    return (await response.json()).entityStatus;
+  };
+
+  const applyStatus = async () => {
+    const response = await apiContext.patch(`/api/v1/glossaryTerms/${id}`, {
+      data: [{ op: 'replace', path: '/entityStatus', value: status }],
+      headers: { 'Content-Type': 'application/json-patch+json' },
+    });
+    expect(response.status()).toBe(200);
+  };
+
+  const REQUIRED_STABLE_READS = 3;
+  let stableReads = 0;
+
+  await applyStatus();
+  await expect
+    .poll(
+      async () => {
+        if ((await readStatus()) === status) {
+          stableReads += 1;
+        } else {
+          stableReads = 0;
+          await applyStatus();
+        }
+
+        return stableReads;
+      },
+      { timeout: 60000, intervals: [2000] }
+    )
+    .toBeGreaterThanOrEqual(REQUIRED_STABLE_READS);
+};

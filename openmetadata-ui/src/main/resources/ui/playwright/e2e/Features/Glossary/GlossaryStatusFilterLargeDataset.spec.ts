@@ -10,11 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import test, { APIRequestContext, expect, Page } from '@playwright/test';
+import test, { expect, Page } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { setGlossaryTermStatus } from '../../../utils/glossary';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -55,26 +56,6 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
   const glossary = new Glossary();
   const createdTerms: { term: GlossaryTerm; status: string }[] = [];
 
-  // Helper to set term status via PATCH API
-  const setTermStatus = async (
-    apiContext: APIRequestContext,
-    term: GlossaryTerm,
-    status: string
-  ) => {
-    await apiContext.patch(`/api/v1/glossaryTerms/${term.responseData.id}`, {
-      data: [
-        {
-          op: 'replace',
-          path: '/entityStatus',
-          value: status,
-        },
-      ],
-      headers: {
-        'Content-Type': 'application/json-patch+json',
-      },
-    });
-  };
-
   // Reusable helper to apply status filter
   const applyStatusFilter = async (page: Page, statuses: string[]) => {
     const statusDropdown = page.getByTestId('glossary-status-dropdown');
@@ -113,15 +94,19 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
       .catch(() => {});
   };
 
+  // Data rows only — excludes the "No Glossary Term found" placeholder row,
+  // whose missing status cell would otherwise hang textContent() until the
+  // test timeout when a filter legitimately returns nothing.
+  const DATA_ROW_SELECTOR =
+    'tbody.ant-table-tbody > tr:not([aria-hidden="true"]):not(.ant-table-placeholder)';
+
   // Reusable helper to verify row statuses
   const verifyRowStatuses = async (
     page: Page,
     allowedStatuses: string[],
     maxRows?: number
   ) => {
-    const rows = page.locator(
-      'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-    );
+    const rows = page.locator(DATA_ROW_SELECTOR);
     const rowCount = await rows.count();
     const checkCount = maxRows ? Math.min(rowCount, maxRows) : rowCount;
 
@@ -176,14 +161,16 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
 
   // Reusable helper to get row count
   const getRowCount = async (page: Page) => {
-    const rows = page.locator(
-      'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
-    );
+    const rows = page.locator(DATA_ROW_SELECTOR);
 
     return rows.count();
   };
 
   test.beforeAll(async ({ browser }) => {
+    // Creates 10 terms and re-applies non-Approved statuses until they hold
+    // against the async approval workflow, so allow generous setup time.
+    test.setTimeout(180000);
+
     const { apiContext, afterAction } = await createNewPage(browser);
 
     await glossary.create(apiContext);
@@ -198,7 +185,7 @@ test.describe('Glossary Status Filter - Large Dataset', () => {
         );
         await term.create(apiContext);
         if (status !== 'Approved') {
-          await setTermStatus(apiContext, term, status);
+          await setGlossaryTermStatus(apiContext, term, status);
         }
         createdTerms.push({ term, status });
       }

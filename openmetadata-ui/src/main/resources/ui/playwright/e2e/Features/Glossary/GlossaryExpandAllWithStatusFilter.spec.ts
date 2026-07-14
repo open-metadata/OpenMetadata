@@ -15,6 +15,7 @@ import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { createNewPage } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
+import { setGlossaryTermStatus } from '../../../utils/glossary';
 
 test.use({
   storageState: 'playwright/.auth/admin.json',
@@ -92,6 +93,10 @@ test.describe(
     test.beforeAll(
       'Setup glossary with mixed-status terms',
       async ({ browser }) => {
+        // Re-applies Draft statuses until they hold against the async approval
+        // workflow, so allow generous setup time.
+        test.setTimeout(120000);
+
         const { apiContext, afterAction } = await createNewPage(browser);
 
         await glossary.create(apiContext);
@@ -131,39 +136,18 @@ test.describe(
           approvedParent.responseData.fullyQualifiedName;
         await mixedStatusChild.create(apiContext);
 
-        const mixedStatusChildPatch = await apiContext.patch(
-          `/api/v1/glossaryTerms/${mixedStatusChild.responseData.id}`,
-          {
-            data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
-            headers: { 'Content-Type': 'application/json-patch+json' },
-          }
-        );
-        expect(mixedStatusChildPatch.status()).toBe(200);
+        await setGlossaryTermStatus(apiContext, mixedStatusChild, 'Draft');
 
         draftParent = new GlossaryTerm(glossary, undefined, 'DraftParent');
         await draftParent.create(apiContext);
 
-        const draftParentPatch = await apiContext.patch(
-          `/api/v1/glossaryTerms/${draftParent.responseData.id}`,
-          {
-            data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
-            headers: { 'Content-Type': 'application/json-patch+json' },
-          }
-        );
-        expect(draftParentPatch.status()).toBe(200);
+        await setGlossaryTermStatus(apiContext, draftParent, 'Draft');
 
         draftChild = new GlossaryTerm(glossary, undefined, 'DraftChild');
         draftChild.data.parent = draftParent.responseData.fullyQualifiedName;
         await draftChild.create(apiContext);
 
-        const draftChildPatch = await apiContext.patch(
-          `/api/v1/glossaryTerms/${draftChild.responseData.id}`,
-          {
-            data: [{ op: 'replace', path: '/entityStatus', value: 'Draft' }],
-            headers: { 'Content-Type': 'application/json-patch+json' },
-          }
-        );
-        expect(draftChildPatch.status()).toBe(200);
+        await setGlossaryTermStatus(apiContext, draftChild, 'Draft');
 
         await afterAction();
       }
