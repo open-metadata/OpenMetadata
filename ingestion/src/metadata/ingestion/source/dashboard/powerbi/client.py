@@ -94,7 +94,7 @@ class PowerBiApiClient:
 
     def __init__(self, config: PowerBIConnection):
         self.config = config
-        self.pagination_entity_per_page = min(100, self.config.pagination_entity_per_page)
+        self.pagination_entity_per_page = min(5000, self.config.pagination_entity_per_page)
         self.msal_client = msal.ConfidentialClientApplication(
             client_id=self.config.clientId,
             client_credential=self.config.clientSecret.get_secret_value(),
