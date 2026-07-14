@@ -343,7 +343,7 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md" gutter={[0, 16]}>
+      <Row className="m-b-md tw:isolate" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
             <div className="persona-details-title-container">
