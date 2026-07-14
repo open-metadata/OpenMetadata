@@ -13,18 +13,18 @@
 
 import {
   Button,
+  EmptyPlaceholder,
   Input,
   SlideoutMenu,
   TextArea,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
@@ -36,7 +36,6 @@ import PaginationComponent from '../../../components/PaginationComponent/Paginat
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
 import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
 import { useIsAiMode } from '../../../hooks/useAppMode';
@@ -77,6 +76,30 @@ const WorkflowsPage = () => {
   const allowCreateWorkflow = useMemo(
     () => workflowClassBase.getCapabilities().allowCreateWorkflow,
     []
+  );
+
+  const emptyStateFeatures = useMemo(
+    () => [
+      {
+        key: 'trigger',
+        icon: <ZapFast className="tw:text-fg-brand-primary" />,
+        title: t('label.pick-a-trigger'),
+        description: t('message.pick-a-trigger-description'),
+      },
+      {
+        key: 'action',
+        icon: <CursorClick01 className="tw:text-fg-warning-primary" />,
+        title: t('label.define-the-action'),
+        description: t('message.define-the-action-description'),
+      },
+      {
+        key: 'sit-back',
+        icon: <Settings01 className="tw:text-fg-success-primary" />,
+        title: t('label.sit-back'),
+        description: t('message.sit-back-description'),
+      },
+    ],
+    [t]
   );
 
   const validateWorkflowName = useCallback(
@@ -253,14 +276,31 @@ const WorkflowsPage = () => {
     return <Loader />;
   }
 
-  if (!loading && workflows.length === 0) {
-    return (
-      <ErrorPlaceHolder
-        className="m-y-md"
-        type={ERROR_PLACEHOLDER_TYPE.NO_DATA}
+  const isWorkflowsEmpty = workflows.length === 0;
+
+  const emptyPlaceholder = (
+    <div className="tw:relative tw:flex tw:flex-1 tw:min-h-150 tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary">
+      <EmptyPlaceholder
+        actions={
+          allowCreateWorkflow
+            ? [
+                {
+                  key: 'new-workflow',
+                  label: t('label.new-workflow'),
+                  color: 'primary' as const,
+                  iconLeading: Plus,
+                  onPress: handleNewWorkflowClick,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.workflow-empty-description')}
+        features={emptyStateFeatures}
+        title={t('message.put-your-data-operations-on-autopilot')}
+        variant="features"
       />
-    );
-  }
+    </div>
+  );
 
   return (
     <PageLayoutV1
@@ -303,32 +343,36 @@ const WorkflowsPage = () => {
           </div>
         )}
 
-        <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:justify-between">
-          <div className="tw:mb-4">
-            <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
-              {workflows.map((workflow) => (
-                <WorkflowCard
-                  data={workflow}
-                  key={workflow.key}
-                  onClick={onWorkflowClick}
+        {true ? (
+          emptyPlaceholder
+        ) : (
+          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:justify-between">
+            <div className="tw:mb-4">
+              <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
+                {workflows.map((workflow) => (
+                  <WorkflowCard
+                    data={workflow}
+                    key={workflow.key}
+                    onClick={onWorkflowClick}
+                  />
+                ))}
+              </div>
+            </div>
+            {paging.total > PAGE_SIZE_MEDIUM && (
+              <div
+                className="tw:flex tw:justify-center tw:py-4"
+                data-testid="workflows-pagination">
+                <PaginationComponent
+                  current={currentPage}
+                  hideOnSinglePage={false}
+                  pageSize={PAGE_SIZE_MEDIUM}
+                  total={paging.total}
+                  onChange={handlePageChange}
                 />
-              ))}
-            </div>
+              </div>
+            )}
           </div>
-          {paging.total > PAGE_SIZE_MEDIUM && (
-            <div
-              className="tw:flex tw:justify-center tw:py-4"
-              data-testid="workflows-pagination">
-              <PaginationComponent
-                current={currentPage}
-                hideOnSinglePage={false}
-                pageSize={PAGE_SIZE_MEDIUM}
-                total={paging.total}
-                onChange={handlePageChange}
-              />
-            </div>
-          )}
-        </div>
+        )}
       </div>
 
       <SlideoutMenu
