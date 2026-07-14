@@ -37,9 +37,10 @@ import org.openmetadata.service.Entity;
  * {@code testCase→testDefinition} relationship — the demo's empty data-quality page.
  *
  * <p>When a test case's {@code testDefinition} relationship row is missing (a deleted definition or
- * data drift), the reindex must keep the test case indexable and its stats balanced. It must not
- * silently drop records that were read but never indexed or accounted for, which previously emptied
- * the data-quality page while the run reported success.
+ * data drift), the reindex must keep the test case indexable, report the stale reference as a
+ * warning, and keep its stats balanced. It must not silently drop records that were read but never
+ * indexed or accounted for, which previously emptied the data-quality page while the run reported
+ * success.
  *
  * <p>Asserts the invariant that catches the regression: every read record is accounted for by
  * success, failure, or warning counters, and the test case remains in the index without failing the
@@ -68,7 +69,7 @@ class TestCaseStaleDefinitionReindexIT {
   }
 
   @Test
-  void brokenTestDefinitionRelationshipIsIndexedAndAccountedFor(final TestNamespace ns) {
+  void brokenTestDefinitionRelationshipIsIndexedReportedAndAccountedFor(final TestNamespace ns) {
     assumeTrue(
         !OssTestServer.isExternalMode(),
         "Deleting a single entity_relationship row (without removing the test definition) needs the "
@@ -95,6 +96,9 @@ class TestCaseStaleDefinitionReindexIT {
       assertThat(sumOrZero(stats.getJobStats().getFailedRecords()))
           .as("a missing testCase->testDefinition relationship must not fail the reindex")
           .isZero();
+      assertThat(sumOrZero(stats.getJobStats().getWarningRecords()))
+          .as("a missing testCase->testDefinition relationship must surface as a warning")
+          .isPositive();
 
       assertNoRecordsDropped(stats.getJobStats(), "jobStats");
       assertNoRecordsDropped(stats.getReaderStats(), "readerStats");
