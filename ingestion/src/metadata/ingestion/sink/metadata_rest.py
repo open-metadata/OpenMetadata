@@ -560,7 +560,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         source_label = (
             created_lineage["entity"]["fullyQualifiedName"] or f"{from_reference.type}:{model_str(from_reference.id)}"
         )
-        return Either(right=source_label)
+        return Either(right=source_label)  # pyright: ignore[reportCallIssue]
 
     @_run_dispatch.register
     def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[str]:
