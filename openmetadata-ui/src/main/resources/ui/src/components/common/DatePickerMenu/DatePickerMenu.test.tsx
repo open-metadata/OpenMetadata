@@ -121,4 +121,48 @@ describe('DatePickerMenu', () => {
       'tw:justify-center'
     );
   });
+
+  it('should not render the clear control by default', () => {
+    render(
+      <DatePickerMenu
+        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        size="small"
+      />
+    );
+
+    expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
+  });
+
+  it('should clear the selected range when enabled', () => {
+    const onClear = jest.fn();
+
+    render(
+      <DatePickerMenu
+        allowClear
+        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        placeholder="Select date"
+        size="small"
+        onClear={onClear}
+      />
+    );
+
+    const datePickerContainer = screen.getByTestId('date-picker-container');
+    const datePickerTrigger = screen.getByTestId('date-picker-menu');
+    const clearButton = screen.getByTestId('clear-date-picker');
+
+    expect(datePickerContainer).toHaveClass('tw:max-w-80', 'tw:relative');
+    expect(datePickerContainer).toHaveClass(
+      'tw:[&_[data-testid=date-picker-menu]_.ant-space-item:first-child]:pr-6'
+    );
+    expect(clearButton).toHaveAccessibleName('label.clear');
+    expect(clearButton).toHaveClass('tw:absolute', 'tw:right-8');
+    expect(clearButton.tagName).toBe('BUTTON');
+    expect(datePickerTrigger).not.toContainElement(clearButton);
+
+    fireEvent.click(clearButton);
+
+    expect(onClear).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Select date')).toHaveClass('tw:text-disabled');
+    expect(screen.queryByTestId('clear-date-picker')).not.toBeInTheDocument();
+  });
 });

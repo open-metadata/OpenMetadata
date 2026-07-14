@@ -230,10 +230,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
 jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
   return function MockDatePickerMenu({
+    allowClear,
     defaultDateRange,
     handleDateRangeChange,
+    onClear,
     placeholder,
   }: {
+    allowClear?: boolean;
     defaultDateRange?: { key?: string; title?: string };
     handleDateRangeChange?: (value: {
       startTs: number;
@@ -241,6 +244,7 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
       key: string;
       title: string;
     }) => void;
+    onClear?: () => void;
     placeholder?: string;
   }) {
     const [isOpen, setIsOpen] = React.useState(false);
@@ -249,7 +253,9 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
       : placeholder;
 
     return (
-      <div>
+      <div
+        className="tw:relative tw:inline-flex tw:h-8 tw:max-w-80 tw:items-center"
+        data-testid="date-picker-container">
         <button
           className="tw:h-8 tw:max-w-72 tw:overflow-hidden"
           data-testid="date-picker-menu"
@@ -259,6 +265,16 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
             {selectedLabel}
           </span>
         </button>
+        {allowClear && defaultDateRange?.key && (
+          <button
+            aria-label="label.clear"
+            className="tw:absolute tw:right-8 tw:size-4"
+            data-testid="clear-date-picker"
+            type="button"
+            onClick={onClear}>
+            clear
+          </button>
+        )}
         {isOpen && (
           <div>
             <button
@@ -798,14 +814,10 @@ describe('IncidentManagerPage', () => {
     expect(dateRangeTrigger).toHaveTextContent('label.last-7-days');
     expect(datePickerContainer).toHaveClass('tw:max-w-80');
     expect(datePickerContainer).toHaveClass('tw:relative');
-    expect(datePickerContainer).toHaveClass(
-      'tw:[&_[data-testid=date-picker-menu]_.ant-space-item:first-child]:pr-6'
-    );
     expect(clearButton).toHaveClass('tw:absolute');
     expect(clearButton).toHaveClass('tw:right-8');
-    expect(clearButton).toHaveClass('tw:shrink-0');
-    expect(clearButton.querySelector('.anticon-close-circle')).toBeTruthy();
-    expect(clearButton.tagName).toBe('SPAN');
+    expect(clearButton).toHaveAccessibleName('label.clear');
+    expect(clearButton.tagName).toBe('BUTTON');
     expect(dateRangeTrigger).not.toContainElement(clearButton);
   });
 
@@ -823,7 +835,7 @@ describe('IncidentManagerPage', () => {
     });
 
     await act(async () => {
-      fireEvent.mouseDown(await screen.findByTestId('clear-date-picker'));
+      fireEvent.click(await screen.findByTestId('clear-date-picker'));
     });
 
     expect(navigate).toHaveBeenCalledWith(

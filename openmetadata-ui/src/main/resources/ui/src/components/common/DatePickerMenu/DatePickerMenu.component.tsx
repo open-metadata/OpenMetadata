@@ -11,9 +11,10 @@
  *  limitations under the License.
  */
 
-import { CloseCircleOutlined } from '@ant-design/icons';
+import { CloseCircleFilled, CloseCircleOutlined } from '@ant-design/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
+import classNames from 'classnames';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
@@ -39,23 +40,27 @@ import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
 interface DatePickerMenuProps {
+  allowClear?: boolean;
   defaultDateRange?: Partial<DateRangeObject>;
   showSelectedCustomRange?: boolean;
   handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
+  onClear?: () => void;
   placeholder?: string;
   size?: SizeType;
 }
 
 const DatePickerMenu = ({
+  allowClear = false,
   defaultDateRange,
   showSelectedCustomRange,
   handleDateRangeChange,
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  onClear,
   placeholder,
   size,
 }: DatePickerMenuProps) => {
@@ -190,6 +195,15 @@ const DatePickerMenu = ({
     handleSelectedTimeRange?.(menuOptions[key].title);
   };
 
+  const handleClear = () => {
+    setSelectedTimeRange(
+      placeholder ?? t('label.select-entity', { entity: t('label.date') })
+    );
+    setSelectedTimeRangeKey('');
+    setIsMenuOpen(false);
+    onClear?.();
+  };
+
   const getMenuItems = () => {
     const items: MenuProps['items'] = Object.entries(menuOptions).map(
       ([key, value]) => ({
@@ -227,7 +241,7 @@ const DatePickerMenu = ({
 
   const items: MenuProps['items'] = getMenuItems();
 
-  return (
+  const datePickerMenu = (
     <Dropdown
       destroyPopupOnHide
       getPopupContainer={getPopupContainer}
@@ -259,6 +273,41 @@ const DatePickerMenu = ({
         </Space>
       </Button>
     </Dropdown>
+  );
+
+  if (!allowClear) {
+    return datePickerMenu;
+  }
+
+  return (
+    <div
+      className={classNames(
+        'tw:relative tw:inline-flex tw:h-8 tw:max-w-80 tw:items-center',
+        selectedTimeRangeKey &&
+          'tw:[&_[data-testid=date-picker-menu]_.ant-space-item:first-child]:pr-6'
+      )}
+      data-testid="date-picker-container">
+      {datePickerMenu}
+      {selectedTimeRangeKey && (
+        <Button
+          aria-label={t('label.clear')}
+          className={classNames(
+            'tw:absolute tw:right-8 tw:top-1/2 tw:z-10 tw:inline-flex tw:size-4',
+            'tw:min-w-0 tw:-translate-y-1/2 tw:items-center tw:justify-center',
+            'tw:border-0 tw:bg-transparent tw:p-0 tw:text-disabled tw:shadow-none',
+            'tw:hover:bg-transparent tw:hover:text-secondary'
+          )}
+          data-testid="clear-date-picker"
+          icon={<CloseCircleFilled />}
+          size="small"
+          type="text"
+          onClick={(event) => {
+            event.stopPropagation();
+            handleClear();
+          }}
+        />
+      )}
+    </div>
   );
 };
 
