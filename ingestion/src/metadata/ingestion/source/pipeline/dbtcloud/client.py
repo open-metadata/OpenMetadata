@@ -177,8 +177,8 @@ class DBTCloudClient:
 
     def _get_jobs_total_count(
         self,
-        project_id: str = None,  # noqa: RUF013
-        environment_id: str = None,  # noqa: RUF013
+        project_id: Optional[str] = None,  # noqa: UP045
+        environment_id: Optional[str] = None,  # noqa: UP045
     ) -> int:
         """Read the paginated ``total_count`` for a single job filter. Returns
         0 on any failure so a single bad filter never aborts the whole count."""
