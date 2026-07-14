@@ -154,6 +154,45 @@ describe('useEntityLogs', () => {
     expect(result.current.title).toBe('My App');
   });
 
+  it('ignores a stale app-log response after runId changes', async () => {
+    let resolveFirstApp: (value: { name: string }) => void = () => undefined;
+    (getApplicationByName as jest.Mock)
+      .mockImplementationOnce(
+        () =>
+          new Promise<{ name: string }>((resolve) => {
+            resolveFirstApp = resolve;
+          })
+      )
+      .mockResolvedValue({ name: 'My App' });
+    (getExternalApplicationRuns as jest.Mock).mockResolvedValue({ data: [] });
+    (getLatestApplicationRuns as jest.Mock).mockImplementation(
+      (_fqn: string, runId?: string) =>
+        Promise.resolve({ application_task: `${runId}-logs` })
+    );
+
+    const { result, rerender } = renderHook(
+      ({ runId }) =>
+        useEntityLogs({
+          logEntityType: GlobalSettingOptions.APPLICATIONS,
+          fqn: 'my-app',
+          runId,
+        }),
+      { initialProps: { runId: 'A' } }
+    );
+
+    // Switch to run B while run A's getApplicationByName is still pending.
+    rerender({ runId: 'B' });
+
+    await waitFor(() => expect(result.current.logs).toBe('B-logs'));
+
+    // Now let run A resolve — its chain must be invalidated, not applied.
+    await act(async () => {
+      resolveFirstApp({ name: 'My App' });
+    });
+
+    expect(result.current.logs).toBe('B-logs');
+  });
+
   it('downloads ingestion logs and resets the progress store', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',

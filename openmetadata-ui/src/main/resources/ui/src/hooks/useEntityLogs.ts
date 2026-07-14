@@ -13,7 +13,7 @@
 
 import { AxiosError } from 'axios';
 import { noop } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { getLogTaskFieldForType } from '../components/ServiceAgents/utils/agentsDataMapper';
 import { GlobalSettingOptions } from '../constants/GlobalSettings.constants';
 import { TabSpecificField } from '../enums/entity.enum';
@@ -80,6 +80,10 @@ export const useEntityLogs = ({
   const [appLoading, setAppLoading] = useState<boolean>(false);
   const [appRunState, setAppRunState] = useState<PipelineState>();
 
+  // Bumped whenever the app identity (fqn/runId) changes so a late-resolving
+  // fetch from a previous run can't overwrite the current run's logs.
+  const appRequestRef = useRef(0);
+
   const isApplicationType = useMemo(
     () => logEntityType === GlobalSettingOptions.APPLICATIONS,
     [logEntityType]
@@ -134,6 +138,7 @@ export const useEntityLogs = ({
 
   // --- Application logs: one-shot snapshot (replace) ---
   const fetchAppLogs = useCallback(async () => {
+    const reqId = appRequestRef.current;
     try {
       const currentTime = Date.now();
       const oneDayAgo = getEpochMillisForPastDays(1);
@@ -142,10 +147,15 @@ export const useEntityLogs = ({
         endTs: currentTime,
       });
       const latest = await getLatestApplicationRuns(fqn, runId);
+      if (reqId !== appRequestRef.current) {
+        return;
+      }
       setAppLogs(latest.data_insight_task || latest.application_task || '');
       setAppRunState(latest.pipelineStatus?.pipelineState);
     } catch (error) {
-      showErrorToast(error as AxiosError);
+      if (reqId === appRequestRef.current) {
+        showErrorToast(error as AxiosError);
+      }
     }
   }, [fqn, runId]);
 
@@ -155,6 +165,7 @@ export const useEntityLogs = ({
     if (!fqn) {
       return;
     }
+    const reqId = (appRequestRef.current += 1);
     if (isApplicationType) {
       setAppLoading(true);
       setAppLogs('');
@@ -163,12 +174,23 @@ export const useEntityLogs = ({
         include: Include.All,
       })
         .then((data) => {
+          if (reqId !== appRequestRef.current) {
+            return undefined;
+          }
           setAppData(data);
 
           return fetchAppLogs();
         })
-        .catch((error) => showErrorToast(error as AxiosError))
-        .finally(() => setAppLoading(false));
+        .catch((error) => {
+          if (reqId === appRequestRef.current) {
+            showErrorToast(error as AxiosError);
+          }
+        })
+        .finally(() => {
+          if (reqId === appRequestRef.current) {
+            setAppLoading(false);
+          }
+        });
     } else {
       setDetailsLoading(true);
       getIngestionPipelineByFqn(fqn, {
