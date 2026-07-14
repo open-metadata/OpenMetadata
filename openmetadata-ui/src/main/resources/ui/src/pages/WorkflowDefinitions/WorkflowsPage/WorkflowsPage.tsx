@@ -22,7 +22,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { CursorClick01, Plus, Settings01, ZapFast } from '@untitledui/icons';
 import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as WorkflowIcon } from '../../../assets/svg/workflow.svg';
@@ -30,13 +30,15 @@ import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/Header
 import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
 import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
+import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
+import { PagingHandlerParams } from '../../../components/common/NextPrevious/NextPrevious.interface';
 import { LearningIcon } from '../../../components/Learning/LearningIcon/LearningIcon.component';
 import PageHeader from '../../../components/PageHeader/PageHeader.component';
 import PageLayoutV1 from '../../../components/PageLayoutV1/PageLayoutV1';
-import PaginationComponent from '../../../components/PaginationComponent/PaginationComponent';
 import WorkflowCard from '../../../components/WorkflowDefinitions/WorkflowCard/WorkflowCard.component';
-import { PAGE_SIZE_MEDIUM } from '../../../constants/constants';
+import { INITIAL_PAGING_VALUE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
+import { CursorType } from '../../../enums/pagination.enum';
 import { WorkflowDefinition } from '../../../generated/governance/workflows/workflowDefinition';
 import { Paging } from '../../../generated/type/paging';
 import { useIsAiMode } from '../../../hooks/useAppMode';
@@ -66,8 +68,7 @@ const WorkflowsPage = () => {
     before: undefined,
     total: 0,
   });
-  const [currentPage, setCurrentPage] = useState(1);
-  const pageCursorsRef = useRef<{ [key: number]: string }>({});
+  const [currentPage, setCurrentPage] = useState(INITIAL_PAGING_VALUE);
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [workflowName, setWorkflowName] = useState('');
   const [description, setDescription] = useState('');
@@ -150,18 +151,17 @@ const WorkflowsPage = () => {
   }, [resetForm]);
 
   const getWorkflows = useCallback(
-    async (page?: number, cursor?: string) => {
+    async (
+      page: number = INITIAL_PAGING_VALUE,
+      cursor?: Partial<Record<CursorType, string>>
+    ) => {
       try {
         setLoading(true);
 
         const params: WorkflowDefinitionsParams = {
           limit: PAGE_SIZE_MEDIUM,
+          ...cursor,
         };
-        const pageCursor = cursor || pageCursorsRef.current[page || 1];
-
-        if (pageCursor) {
-          params.after = pageCursor;
-        }
 
         const res = await getWorkflowDefinitions(params);
 
@@ -174,29 +174,23 @@ const WorkflowsPage = () => {
 
         setWorkflows(result);
         setPaging(res.paging || { total: 0 });
-
-        if (res.paging && res.paging.after) {
-          const nextPage = page ? page + 1 : 2;
-          pageCursorsRef.current[nextPage] = res.paging.after;
-        }
-
-        if (page) {
-          setCurrentPage(page);
-        }
+        setCurrentPage(page);
       } catch (error) {
         showErrorToast(error as AxiosError);
       } finally {
         setLoading(false);
       }
     },
-    [PAGE_SIZE_MEDIUM]
+    []
   );
 
   const handlePageChange = useCallback(
-    (page: number) => {
-      getWorkflows(page);
+    ({ currentPage: page, cursorType }: PagingHandlerParams) => {
+      if (cursorType) {
+        getWorkflows(page, { [cursorType]: paging[cursorType] });
+      }
     },
-    [getWorkflows]
+    [getWorkflows, paging]
   );
 
   useEffect(() => {
@@ -310,7 +304,7 @@ const WorkflowsPage = () => {
       mainContainerClassName="workflow-page-layout"
       pageContainerStyle={{ paddingLeft: 0, paddingRight: 0 }}
       pageTitle={t('label.workflow-plural')}>
-      <div className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden tw:mx-6 tw:my-4">
+      <div className="tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:mx-6 tw:my-4">
         {isAiMode ? (
           <HeaderShell
             actions={createWorkflowButton}
@@ -349,7 +343,7 @@ const WorkflowsPage = () => {
         {isWorkflowsEmpty ? (
           emptyPlaceholder
         ) : (
-          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:justify-between">
+          <div className="tw:px-6 tw:pt-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:justify-between">
             <div className="tw:mb-4 tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
               <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
                 {workflows.map((workflow) => (
@@ -363,14 +357,14 @@ const WorkflowsPage = () => {
             </div>
             {paging.total > PAGE_SIZE_MEDIUM && (
               <div
-                className="tw:flex tw:justify-center tw:py-4"
+                className="tw:flex tw:justify-center tw:px-6 tw:py-3 tw:border-t tw:border-border-secondary tw:bg-primary"
                 data-testid="workflows-pagination">
-                <PaginationComponent
-                  current={currentPage}
-                  hideOnSinglePage={false}
+                <NextPrevious
+                  currentPage={currentPage}
+                  isLoading={loading}
                   pageSize={PAGE_SIZE_MEDIUM}
-                  total={paging.total}
-                  onChange={handlePageChange}
+                  paging={paging}
+                  pagingHandler={handlePageChange}
                 />
               </div>
             )}
