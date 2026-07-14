@@ -357,16 +357,20 @@ class ListFilterTest {
   }
 
   @Test
-  void test_taskStatusGroup_openIncludesDarMidLifecycleForDarRows() {
+  void test_taskStatusGroup_openIncludesGrantedManualRevokeUniversallyAndDarApproved() {
     ListFilter filter = new ListFilter().addQueryParam("taskStatusGroup", "open");
     String condition = filter.getCondition("task_entity");
 
-    assertTrue(
-        condition.contains("task_entity.status IN ('Open', 'InProgress', 'Pending')"), condition);
+    // Shared open statuses (Granted/ManualRevoke included so any hypothetical future task type
+    // reaching those statuses still lands in a bucket rather than silently breaking the invariant).
     assertTrue(
         condition.contains(
-            "task_entity.type = 'DataAccessRequest'"
-                + " AND task_entity.status IN ('Approved', 'Granted', 'ManualRevoke')"),
+            "task_entity.status IN ('Open', 'InProgress', 'Pending', 'Granted', 'ManualRevoke')"),
+        condition);
+    // DAR-only bump: Approved only counts as open for DataAccessRequest rows.
+    assertTrue(
+        condition.contains(
+            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
         condition);
   }
 
@@ -395,14 +399,15 @@ class ListFilterTest {
     String openCond = openFilter.getCondition("task_entity");
     String closedCond = closedFilter.getCondition("task_entity");
 
+    // Non-DAR Approved lives in closed, never in open.
     assertFalse(
         openCond.contains("<> 'DataAccessRequest' AND task_entity.status = 'Approved'"),
         "Non-DAR Approved must not appear in the open bucket: " + openCond);
+    // DAR Approved lives in open, never in closed.
     assertFalse(
         closedCond.contains(
-            "type = 'DataAccessRequest'"
-                + " AND task_entity.status IN ('Approved', 'Granted', 'ManualRevoke')"),
-        "DAR mid-lifecycle must not appear in the closed bucket: " + closedCond);
+            "task_entity.type = 'DataAccessRequest' AND task_entity.status = 'Approved'"),
+        "DAR Approved must not appear in the closed bucket: " + closedCond);
   }
 
   @Test
