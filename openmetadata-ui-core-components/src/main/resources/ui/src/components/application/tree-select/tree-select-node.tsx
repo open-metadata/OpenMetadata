@@ -10,10 +10,10 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { RefreshCw01 } from '@untitledui/icons';
 import { CheckboxBase } from '@/components/base/checkbox/checkbox';
 import { RadioButtonBase } from '@/components/base/radio-buttons/radio-buttons';
 import { cx } from '@/utils/cx';
+import { RefreshCw01 } from '@untitledui/icons';
 import { Tree } from '../tree/tree';
 import type { TreeSelectNode } from './tree-select.types';
 
@@ -44,7 +44,7 @@ export const TreeSelectTreeItemContent = <T,>({
   const isRowDisabled = disabled || node.disabled || !isSelectable;
 
   return (
-    <Tree.ItemContent showGuideLines hasChildItems={hasChildItems}>
+    <Tree.ItemContent hasChildItems={hasChildItems}>
       {() => (
         <div
           className={cx(
