@@ -833,17 +833,23 @@ function buildEsRule(fieldName, value, operator, config, valueSrc) {
     );
 
     // For range operators (between / not_between) the value is a two-element
-    // array [from, to]. Pass the full array so buildExtensionQuery can build
-    // a proper gte/lte range query. This is scoped to numeric types where ES
-    // range queries work correctly. Non-numeric types (e.g. dateTime-cp)
-    // store values as formatted strings where ES range comparison is unreliable.
+    // array [from, to]. Pass the full array so buildExtensionQuery can build a
+    // proper gte/lte range query. Numeric types (integer/number/timestamp) query
+    // longValue/doubleValue. Date types (date-cp/dateTime-cp/time-cp) are stored
+    // as formatted strings in stringValue; a keyword range is a lexicographic
+    // comparison, which is chronologically correct for the default big-endian,
+    // zero-padded formats (e.g. yyyy-MM-dd HH:mm:ss). Other types collapse to
+    // value[0] since only a single bound is meaningful.
     const isBetweenOp = op === 'between';
-    const isNumericOmType =
+    const isRangeableOmType =
       omPropertyType === 'integer' ||
       omPropertyType === 'number' ||
-      omPropertyType === 'timestamp';
+      omPropertyType === 'timestamp' ||
+      omPropertyType === 'date-cp' ||
+      omPropertyType === 'dateTime-cp' ||
+      omPropertyType === 'time-cp';
     const extensionValue = hasValue
-      ? isBetweenOp && isNumericOmType
+      ? isBetweenOp && isRangeableOmType
         ? value
         : value[0]
       : null;

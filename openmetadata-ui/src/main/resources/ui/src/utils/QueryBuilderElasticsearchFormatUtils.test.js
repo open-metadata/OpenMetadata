@@ -16,7 +16,7 @@ import { elasticSearchFormat } from './QueryBuilderElasticsearchFormatUtils';
 
 // Minimal Immutable-compatible tree stub.
 // elasticSearchFormat only calls .get() on the tree and its properties map.
-const makeTree = (operator, value) => ({
+const makeTree = (operator, value, field = 'extension.table.myNumber') => ({
   get(key) {
     if (key === 'type') {
       return 'rule';
@@ -25,7 +25,7 @@ const makeTree = (operator, value) => ({
       return {
         get(k) {
           if (k === 'field') {
-            return 'extension.table.myNumber';
+            return field;
           }
           if (k === 'operator') {
             return operator;
@@ -59,6 +59,12 @@ const configWithNumberType = {
             myNumber: {
               __omPropertyType: 'number',
             },
+            myDateTime: {
+              __omPropertyType: 'dateTime-cp',
+            },
+            myDate: {
+              __omPropertyType: 'date-cp',
+            },
           },
         },
       },
@@ -87,5 +93,56 @@ describe('elasticSearchFormat – extension number field range operators (Issue 
     expect(result).toContain('"must_not"');
     expect(result).toContain('"gte":10');
     expect(result).toContain('"lte":50');
+  });
+});
+
+describe('elasticSearchFormat – extension dateTime field range operators (Issue #28829)', () => {
+  it('dateTime between: should include both gte (from) and lte (to) bounds', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(
+        makeTree(
+          'between',
+          ['2024-01-01 00:00:00', '2024-12-31 23:59:59'],
+          'extension.table.myDateTime'
+        ),
+        configWithNumberType
+      )
+    );
+
+    expect(result).toContain('"gte":"2024-01-01 00:00:00"');
+    expect(result).toContain('"lte":"2024-12-31 23:59:59"');
+  });
+
+  it('dateTime not_between: should wrap both gte/lte bounds in a must_not clause', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(
+        makeTree(
+          'not_between',
+          ['2024-01-01 00:00:00', '2024-12-31 23:59:59'],
+          'extension.table.myDateTime'
+        ),
+        configWithNumberType
+      )
+    );
+
+    expect(result).toContain('"must_not"');
+    expect(result).toContain('"gte":"2024-01-01 00:00:00"');
+    expect(result).toContain('"lte":"2024-12-31 23:59:59"');
+  });
+
+  it('date between: should include both gte (from) and lte (to) bounds', () => {
+    const result = JSON.stringify(
+      elasticSearchFormat(
+        makeTree(
+          'between',
+          ['2024-01-01', '2024-12-31'],
+          'extension.table.myDate'
+        ),
+        configWithNumberType
+      )
+    );
+
+    expect(result).toContain('"gte":"2024-01-01"');
+    expect(result).toContain('"lte":"2024-12-31"');
   });
 });
