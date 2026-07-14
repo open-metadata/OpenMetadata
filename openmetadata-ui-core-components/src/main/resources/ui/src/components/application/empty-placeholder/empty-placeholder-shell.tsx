@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { FC, HTMLAttributes, ReactNode } from 'react';
-import { forwardRef, isValidElement } from 'react';
+import { isValidElement } from 'react';
 import { Box } from '@/components/base/box/box';
 import type { GapValues } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
@@ -90,10 +90,7 @@ export const renderEmptyPlaceholderActions = (
   return node;
 };
 
-export const EmptyPlaceholderShell = forwardRef<
-  HTMLDivElement,
-  EmptyPlaceholderShellProps
->((props, ref) => {
+export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
   const {
     actions,
     footer,
@@ -112,7 +109,6 @@ export const EmptyPlaceholderShell = forwardRef<
       data-testid="empty-placeholder"
       direction="col"
       justify="center"
-      ref={ref}
       style={style}
       {...otherProps}>
       <Box align="center" direction="col" gap={gap} style={{ width }}>
@@ -121,6 +117,4 @@ export const EmptyPlaceholderShell = forwardRef<
       </Box>
     </Box>
   );
-});
-
-EmptyPlaceholderShell.displayName = 'EmptyPlaceholderShell';
+};
