@@ -1,4 +1,4 @@
-import type { HTMLAttributes, PropsWithChildren } from 'react';
+import type { HTMLAttributes, PropsWithChildren, ReactNode } from 'react';
 import { Fragment, useContext, useState } from 'react';
 import type { CalendarDate } from '@internationalized/date';
 import { ChevronLeft, ChevronRight } from '@untitledui/icons';
@@ -93,7 +93,7 @@ interface RangeCalendarProps extends AriaRangeCalendarProps<DateValue> {
   /** The date presets to display. */
   presets?: Record<
     string,
-    { label: string; value: { start: DateValue; end: DateValue } }
+    { label: ReactNode; value: { start: DateValue; end: DateValue } }
   >;
 }
 
@@ -144,8 +144,8 @@ export const RangeCalendar = ({ presets, ...props }: RangeCalendarProps) => {
 
           {!isDesktop && presets && (
             <div className="tw:mt-1 tw:flex tw:justify-between tw:gap-3 tw:px-2 tw:md:hidden">
-              {Object.values(presets).map((preset) => (
-                <MobilePresetButton key={preset.label} value={preset.value}>
+              {Object.entries(presets).map(([key, preset]) => (
+                <MobilePresetButton key={key} value={preset.value}>
                   {preset.label}
                 </MobilePresetButton>
               ))}

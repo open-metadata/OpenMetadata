@@ -10,9 +10,14 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button, Dropdown, Tooltip } from '@openmetadata/ui-core-components';
+import {
+  Button,
+  DateRangePicker,
+  Dropdown,
+  Tooltip,
+} from '@openmetadata/ui-core-components';
 import { ChevronDown } from '@untitledui/icons';
-import { isEmpty, isEqual, pick } from 'lodash';
+import { isEmpty, isEqual, isUndefined, pick } from 'lodash';
 import { DateRangeObject } from 'Models';
 import QueryString from 'qs';
 import { useMemo, useState } from 'react';
@@ -22,6 +27,7 @@ import { ReactComponent as SettingIcon } from '../../../../../assets/svg/ic-sett
 import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
+  PROFILER_FILTER_RANGE,
 } from '../../../../../constants/profiler.constant';
 import { usePermissionProvider } from '../../../../../context/PermissionProvider/PermissionProvider';
 import { useTourProvider } from '../../../../../context/TourProvider/TourProvider';
@@ -31,12 +37,17 @@ import { Operation } from '../../../../../generated/entity/policies/policy';
 import LimitWrapper from '../../../../../hoc/LimitWrapper';
 import useCustomLocation from '../../../../../hooks/useCustomLocation/useCustomLocation';
 import { useFqn } from '../../../../../hooks/useFqn';
+import {
+  getCoreDateRangeValue,
+  getDateRangeObjectFromCorePicker,
+  getDateRangePickerPresets,
+} from '../../../../../utils/DatePickerMenuUtils';
+import { translateWithNestedKeys } from '../../../../../utils/i18next/LocalUtil';
 import { getPrioritizedEditPermission } from '../../../../../utils/PermissionsUtils';
 import {
   getAddCustomMetricPath,
   getEntityDetailsPath,
 } from '../../../../../utils/RouterUtils';
-import MuiDatePickerMenu from '../../../../common/MuiDatePickerMenu/MuiDatePickerMenu';
 import { TestLevel } from '../../../../DataQuality/AddDataQualityTest/components/TestCaseFormV1.interface';
 import { ProfilerTabPath } from '../../ProfilerDashboard/profilerDashboard.interface';
 import ColumnPickerMenu from '../../TableProfiler/ColumnPickerMenu';
@@ -96,6 +107,31 @@ const TabFilters = () => {
   const { t } = useTranslation();
   const navigate = useNavigate();
   const { fqn: datasetFQN } = useFqn();
+  const menuOptions = useMemo(() => {
+    return Object.fromEntries(
+      Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
+        key,
+        {
+          ...value,
+          title: translateWithNestedKeys(value.title, value.titleData),
+        },
+      ])
+    );
+  }, [t]);
+  const selectedDateRangeLabel =
+    dateRangeObject.key === 'customRange' && dateRangeObject.title
+      ? dateRangeObject.title
+      : dateRangeObject.key
+      ? menuOptions[dateRangeObject.key]?.title ?? dateRangeObject.title
+      : dateRangeObject.title;
+  const dateRangePickerValue = useMemo(
+    () => getCoreDateRangeValue(dateRangeObject),
+    [dateRangeObject]
+  );
+  const dateRangePickerPresets = useMemo(
+    () => getDateRangePickerPresets(menuOptions),
+    [menuOptions]
+  );
   const editDataProfile =
     permissions &&
     getPrioritizedEditPermission(permissions, Operation.EditDataProfile);
@@ -165,6 +201,26 @@ const TabFilters = () => {
     }
   };
 
+  const handleDateRangeApply = (
+    value:
+      | Parameters<typeof getDateRangeObjectFromCorePicker>[0]['value']
+      | null,
+    presetKey?: string
+  ) => {
+    if (isUndefined(value) || value === null) {
+      return;
+    }
+
+    const { range } = getDateRangeObjectFromCorePicker({
+      menuOptions,
+      presetKey,
+      showSelectedCustomRange: true,
+      value,
+    });
+
+    handleDateRangeChange(range);
+  };
+
   const updateActiveColumnFqn = (key: string) => {
     const param = location.search;
     const searchData = QueryString.parse(
@@ -210,11 +266,16 @@ const TabFilters = () => {
           <span className="tw:text-sm tw:font-medium tw:text-primary">
             {`${t('label.date')}:`}
           </span>
-          <MuiDatePickerMenu
-            showSelectedCustomRange
-            defaultDateRange={dateRangeObject}
-            handleDateRangeChange={handleDateRangeChange}
-            size="small"
+          <DateRangePicker
+            applyOnPresetSelect
+            buttonProps={{
+              'data-testid': 'date-range-picker',
+              size: 'sm',
+            }}
+            presets={dateRangePickerPresets}
+            triggerLabel={selectedDateRangeLabel}
+            value={dateRangePickerValue}
+            onApply={handleDateRangeApply}
           />
         </div>
       )}

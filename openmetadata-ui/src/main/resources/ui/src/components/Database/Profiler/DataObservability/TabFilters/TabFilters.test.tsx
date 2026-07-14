@@ -67,6 +67,44 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   const Tooltip = ({ children }: PropsWithChildren) => <>{children}</>;
+  const DateRangePicker = ({
+    buttonProps,
+    onApply,
+    triggerLabel,
+    value,
+  }: {
+    buttonProps?: { size?: string };
+    onApply?: (
+      value: {
+        start: { day: number; month: number; year: number };
+        end: { day: number; month: number; year: number };
+      },
+      presetKey?: string
+    ) => void;
+    triggerLabel?: string;
+    value?: {
+      start: { day: number; month: number; year: number };
+      end: { day: number; month: number; year: number };
+    };
+  }) => (
+    <div data-size={buttonProps?.size} data-testid="date-range-picker">
+      <span>{triggerLabel}</span>
+      <span>{`Start: ${value?.start.year}-${value?.start.month}-${value?.start.day}`}</span>
+      <span>{`End: ${value?.end.year}-${value?.end.month}-${value?.end.day}`}</span>
+      <button
+        onClick={() =>
+          onApply?.(
+            {
+              start: { day: 22, month: 3, year: 2024 },
+              end: { day: 28, month: 3, year: 2024 },
+            },
+            'last7days'
+          )
+        }>
+        Change Date
+      </button>
+    </div>
+  );
 
   const Dropdown = {
     Root: DropdownRoot,
@@ -77,6 +115,7 @@ jest.mock('@openmetadata/ui-core-components', () => {
 
   return {
     Button,
+    DateRangePicker,
     Dropdown,
     Tooltip,
   };
@@ -165,6 +204,24 @@ jest.mock('../../../../../constants/profiler.constant', () => ({
     },
     days: 7,
   },
+  PROFILER_FILTER_RANGE: {
+    last7days: {
+      key: 'last7days',
+      title: 'label.last-number-of-days',
+      titleData: {
+        numberOfDays: 7,
+      },
+      days: 7,
+    },
+    last14days: {
+      key: 'last14days',
+      title: 'label.last-number-of-days',
+      titleData: {
+        numberOfDays: 14,
+      },
+      days: 14,
+    },
+  },
 }));
 
 jest.mock('../../TableProfiler/ProfilerClassBase', () => ({
@@ -186,41 +243,6 @@ jest.mock('../../../../../utils/RouterUtils', () => ({
   getAddCustomMetricPath: jest.fn(() => '/custom-metric-path'),
   getEntityDetailsPath: jest.fn(() => '/entity-details-path'),
 }));
-
-jest.mock('../../../../common/MuiDatePickerMenu/MuiDatePickerMenu', () => {
-  return function MockMuiDatePickerMenu({
-    defaultDateRange,
-    handleDateRangeChange,
-    size,
-  }: {
-    defaultDateRange: { startTs: number; endTs: number; key: string };
-    handleDateRangeChange: (value: {
-      startTs: number;
-      endTs: number;
-      key: string;
-      title: string;
-    }) => void;
-    size: string;
-  }) {
-    return (
-      <div data-size={size} data-testid="mui-date-picker-menu">
-        <span>{`Start: ${defaultDateRange.startTs}`}</span>
-        <span>{`End: ${defaultDateRange.endTs}`}</span>
-        <button
-          onClick={() =>
-            handleDateRangeChange({
-              startTs: 1711065600000,
-              endTs: 1711670399000,
-              key: 'last7days',
-              title: 'Last 7 days',
-            })
-          }>
-          Change Date
-        </button>
-      </div>
-    );
-  };
-});
 
 jest.mock('../../TableProfiler/ColumnPickerMenu', () => {
   return function MockColumnPickerMenu({
@@ -292,17 +314,18 @@ describe('TabFilters', () => {
     it('should render the component', () => {
       renderComponent();
 
-      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
     });
 
     it('should render date picker with correct props', () => {
       renderComponent();
 
-      const datePicker = screen.getByTestId('mui-date-picker-menu');
+      const datePicker = screen.getByTestId('date-range-picker');
 
-      expect(datePicker).toHaveAttribute('data-size', 'small');
-      expect(datePicker).toHaveTextContent('Start: 1711065600000');
-      expect(datePicker).toHaveTextContent('End: 1711670399000');
+      expect(datePicker).toHaveAttribute('data-size', 'sm');
+      expect(datePicker).toHaveTextContent('label.last-number-of-days');
+      expect(datePicker).toHaveTextContent('Start: 2024-3-22');
+      expect(datePicker).toHaveTextContent('End: 2024-3-28');
     });
 
     it('should render add button when user has edit permissions', () => {
@@ -371,7 +394,7 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
     });
 
     it('should render date picker when column is selected', () => {
@@ -383,7 +406,7 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
     });
 
     it('should not render date picker on column-profile tab without active column', () => {
@@ -395,9 +418,7 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      expect(
-        screen.queryByTestId('mui-date-picker-menu')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('date-range-picker')).not.toBeInTheDocument();
     });
 
     it('should not render date picker on data-quality tab without active column', () => {
@@ -409,9 +430,7 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      expect(
-        screen.queryByTestId('mui-date-picker-menu')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('date-range-picker')).not.toBeInTheDocument();
     });
 
     it('should not render date picker on overview tab without active column', () => {
@@ -423,9 +442,7 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      expect(
-        screen.queryByTestId('mui-date-picker-menu')
-      ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('date-range-picker')).not.toBeInTheDocument();
     });
 
     it('should render date picker on overview tab when column is selected', () => {
@@ -437,7 +454,7 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      expect(screen.getByTestId('mui-date-picker-menu')).toBeInTheDocument();
+      expect(screen.getByTestId('date-range-picker')).toBeInTheDocument();
     });
 
     it('should display date label when date picker is shown', () => {
@@ -524,9 +541,9 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      const datePicker = screen.getByTestId('mui-date-picker-menu');
+      const datePicker = screen.getByTestId('date-range-picker');
 
-      expect(datePicker).toHaveTextContent('Start: 1234567890000');
+      expect(datePicker).toHaveTextContent('Start: 2009-2-13');
     });
 
     it('should parse endTs from URL', () => {
@@ -537,9 +554,9 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      const datePicker = screen.getByTestId('mui-date-picker-menu');
+      const datePicker = screen.getByTestId('date-range-picker');
 
-      expect(datePicker).toHaveTextContent('End: 9876543210000');
+      expect(datePicker).toHaveTextContent('End: 2282-12-22');
     });
 
     it('should use default values when URL parameters are missing', () => {
@@ -550,10 +567,10 @@ describe('TabFilters', () => {
 
       renderComponent();
 
-      const datePicker = screen.getByTestId('mui-date-picker-menu');
+      const datePicker = screen.getByTestId('date-range-picker');
 
-      expect(datePicker).toHaveTextContent('Start: 1711065600000');
-      expect(datePicker).toHaveTextContent('End: 1711670399000');
+      expect(datePicker).toHaveTextContent('Start: 2024-3-22');
+      expect(datePicker).toHaveTextContent('End: 2024-3-28');
     });
   });
 
