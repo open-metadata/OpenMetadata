@@ -30,7 +30,6 @@ import {
   STATUS_LABEL,
 } from '../../../../constants/constants';
 import { GlobalSettingOptions } from '../../../../constants/GlobalSettings.constants';
-import { useLogsViewerModal } from '../../../../context/LogsViewerModalProvider/LogsViewerModalProvider';
 import { useWebSocketConnector } from '../../../../context/WebSocketProvider/WebSocketProvider';
 import { ServiceCategory } from '../../../../enums/service.enum';
 import { AppType } from '../../../../generated/entity/applications/app';
@@ -41,6 +40,7 @@ import {
 import { Paging } from '../../../../generated/type/paging';
 import { usePaging } from '../../../../hooks/paging/usePaging';
 import { useFqn } from '../../../../hooks/useFqn';
+import { useLogsModal } from '../../../../hooks/useLogsModal';
 import { getApplicationRuns } from '../../../../rest/applicationAPI';
 import {
   getAppRunFailureLogs,
@@ -83,7 +83,7 @@ const AppRunsHistory = forwardRef(
   ) => {
     const { socket } = useWebSocketConnector();
     const { t } = useTranslation();
-    const { openLogs } = useLogsViewerModal();
+    const { openLogs, logsModal } = useLogsModal();
     const { fqn } = useFqn();
     const [isLoading, setIsLoading] = useState(true);
     const [appRunsHistoryData, setAppRunsHistoryData] = useState<
@@ -512,6 +512,7 @@ const AppRunsHistory = forwardRef(
           title={t('label.log-plural')}
           onClose={() => setLogsModalRecord(null)}
         />
+        {logsModal}
         <Modal
           centered
           destroyOnClose

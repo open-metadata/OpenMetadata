@@ -70,6 +70,32 @@ describe('usePaginatedLiveLog', () => {
     expect(result.current.hasMore).toBe(false);
   });
 
+  it('treats after === total as the tail (Airflow contract)', async () => {
+    // Airflow returns `after` present and equal to `total` on the last page
+    // instead of omitting it. That page must still be recognised as the tail.
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page('page0', '1', '2'))
+      .mockResolvedValue(page('tail', '2', '2'));
+    const { result } = renderHook(() =>
+      usePaginatedLiveLog({
+        fetchPage,
+        resetKey: 'k',
+        enabled: true,
+        isLive: false,
+      })
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('page0'));
+
+    expect(result.current.hasMore).toBe(true);
+
+    result.current.loadMore();
+    await waitFor(() => expect(result.current.logs).toBe('page0tail'));
+
+    expect(result.current.hasMore).toBe(false);
+  });
+
   it('polls the tail and REPLACES it (no duplication)', async () => {
     const fetchPage = jest
       .fn()
@@ -108,5 +134,35 @@ describe('usePaginatedLiveLog', () => {
 
     await waitFor(() => expect(result.current.logs).toBe('tail-v1'));
     await waitFor(() => expect(result.current.logs).toBe('tail-finalnewtail'));
+  });
+
+  it('fetches the tail once more when isLive flips false (captures final lines)', async () => {
+    // A high interval keeps the periodic poll from firing, isolating the
+    // single tail fetch triggered by the live→terminal transition.
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page('tail-v1'))
+      .mockResolvedValue(page('tail-v2'));
+    const { result, rerender } = renderHook(
+      ({ isLive }) =>
+        usePaginatedLiveLog({
+          fetchPage,
+          resetKey: 'k',
+          enabled: true,
+          isLive,
+          intervalMs: 100000,
+        }),
+      { initialProps: { isLive: true } }
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('tail-v1'));
+
+    expect(fetchPage).toHaveBeenCalledTimes(1);
+
+    rerender({ isLive: false });
+
+    await waitFor(() => expect(result.current.logs).toBe('tail-v2'));
+
+    expect(fetchPage).toHaveBeenCalledTimes(2);
   });
 });

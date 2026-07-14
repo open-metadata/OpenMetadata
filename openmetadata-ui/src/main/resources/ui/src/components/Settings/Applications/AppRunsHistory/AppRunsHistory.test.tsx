@@ -111,12 +111,9 @@ jest.mock('../../../common/LogViewerModal/LogViewerModal.component', () => ({
     open ? <div>LogViewerModalOpen</div> : null,
 }));
 
-jest.mock(
-  '../../../../context/LogsViewerModalProvider/LogsViewerModalProvider',
-  () => ({
-    useLogsViewerModal: () => ({ openLogs: mockOpenLogs }),
-  })
-);
+jest.mock('../../../../hooks/useLogsModal', () => ({
+  useLogsModal: () => ({ openLogs: mockOpenLogs, logsModal: null }),
+}));
 
 jest.mock('../../../../utils/ToastUtils', () => ({
   showErrorToast: jest

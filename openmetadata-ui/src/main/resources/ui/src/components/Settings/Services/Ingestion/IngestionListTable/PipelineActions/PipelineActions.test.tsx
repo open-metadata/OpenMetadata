@@ -20,12 +20,9 @@ import PipelineActions from './PipelineActions';
 
 const mockOpenLogs = jest.fn();
 
-jest.mock(
-  '../../../../../../context/LogsViewerModalProvider/LogsViewerModalProvider',
-  () => ({
-    useLogsViewerModal: () => ({ openLogs: mockOpenLogs }),
-  })
-);
+jest.mock('../../../../../../hooks/useLogsModal', () => ({
+  useLogsModal: () => ({ openLogs: mockOpenLogs, logsModal: null }),
+}));
 
 jest.mock('./PipelineActionsDropdown', () =>
   jest.fn().mockImplementation(() => <div>PipelineActionsDropdown</div>)

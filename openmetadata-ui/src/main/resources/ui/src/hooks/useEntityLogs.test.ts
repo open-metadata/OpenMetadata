@@ -23,7 +23,7 @@ import {
   getIngestionPipelineLogById,
 } from '../rest/ingestionPipelineAPI';
 import { downloadIngestionLog } from '../utils/IngestionLogs/LogsUtils';
-import { useIngestionPipelineLogs } from './useIngestionPipelineLogs';
+import { useEntityLogs } from './useEntityLogs';
 
 const mockReset = jest.fn();
 const mockUpdateProgress = jest.fn();
@@ -65,7 +65,7 @@ jest.mock('../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-describe('useIngestionPipelineLogs', () => {
+describe('useEntityLogs', () => {
   beforeAll(() => {
     global.URL.createObjectURL = jest.fn().mockReturnValue('blob:url');
   });
@@ -85,7 +85,7 @@ describe('useIngestionPipelineLogs', () => {
     });
 
     const { result } = renderHook(() =>
-      useIngestionPipelineLogs({
+      useEntityLogs({
         logEntityType: 'databaseServices',
         fqn: 'svc.pipeline',
       })
@@ -114,7 +114,7 @@ describe('useIngestionPipelineLogs', () => {
       });
 
     const { result } = renderHook(() =>
-      useIngestionPipelineLogs({
+      useEntityLogs({
         logEntityType: 'databaseServices',
         fqn: 'svc.pipeline',
       })
@@ -142,7 +142,7 @@ describe('useIngestionPipelineLogs', () => {
     });
 
     const { result } = renderHook(() =>
-      useIngestionPipelineLogs({
+      useEntityLogs({
         logEntityType: GlobalSettingOptions.APPLICATIONS,
         fqn: 'my-app',
       })
@@ -165,7 +165,7 @@ describe('useIngestionPipelineLogs', () => {
     });
 
     const { result } = renderHook(() =>
-      useIngestionPipelineLogs({
+      useEntityLogs({
         logEntityType: 'databaseServices',
         fqn: 'svc.pipeline',
       })
@@ -183,7 +183,7 @@ describe('useIngestionPipelineLogs', () => {
   });
 });
 
-describe('useIngestionPipelineLogs — live (polling) state', () => {
+describe('useEntityLogs — live (polling) state', () => {
   it('is live while the ingestion run is running', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
@@ -196,7 +196,7 @@ describe('useIngestionPipelineLogs — live (polling) state', () => {
     });
 
     const { result } = renderHook(() =>
-      useIngestionPipelineLogs({
+      useEntityLogs({
         logEntityType: 'databaseServices',
         fqn: 'svc.pipeline',
       })
@@ -217,7 +217,7 @@ describe('useIngestionPipelineLogs — live (polling) state', () => {
     });
 
     const { result } = renderHook(() =>
-      useIngestionPipelineLogs({
+      useEntityLogs({
         logEntityType: 'databaseServices',
         fqn: 'svc.pipeline',
       })
@@ -238,7 +238,7 @@ describe('useIngestionPipelineLogs — live (polling) state', () => {
     });
 
     const { result } = renderHook(() =>
-      useIngestionPipelineLogs({
+      useEntityLogs({
         logEntityType: GlobalSettingOptions.APPLICATIONS,
         fqn: 'my-app',
       })

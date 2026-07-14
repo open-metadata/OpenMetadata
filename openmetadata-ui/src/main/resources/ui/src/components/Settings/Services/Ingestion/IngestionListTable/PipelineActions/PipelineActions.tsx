@@ -16,10 +16,10 @@ import { useTranslation } from 'react-i18next';
 import { ReactComponent as LogsIcon } from '../../../../../../assets/svg/logs.svg';
 import { ReactComponent as PauseIcon } from '../../../../../../assets/svg/pause.svg';
 import { ReactComponent as ResumeIcon } from '../../../../../../assets/svg/resume.svg';
-import { useLogsViewerModal } from '../../../../../../context/LogsViewerModalProvider/LogsViewerModalProvider';
 import { EntityType } from '../../../../../../enums/entity.enum';
 import { Operation } from '../../../../../../generated/entity/policies/accessControl/rule';
 import { PipelineType } from '../../../../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { useLogsModal } from '../../../../../../hooks/useLogsModal';
 import { getLoadingStatus } from '../../../../../../utils/EntityDisplayPureUtils';
 import './pipeline-actions.less';
 import { PipelineActionsProps } from './PipelineActions.interface';
@@ -40,7 +40,7 @@ function PipelineActions({
   moreActionButtonProps,
 }: Readonly<PipelineActionsProps>) {
   const { t } = useTranslation();
-  const { openLogs } = useLogsViewerModal();
+  const { openLogs, logsModal } = useLogsModal();
   const [currPauseId, setCurrPauseId] = useState({ id: '', state: '' });
 
   const { pipelineId, pipelineName } = useMemo(
@@ -174,6 +174,7 @@ function PipelineActions({
           )}
         </Row>
       </Col>
+      {logsModal}
     </Row>
   );
 }

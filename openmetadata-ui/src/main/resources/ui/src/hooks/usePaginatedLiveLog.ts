@@ -44,6 +44,13 @@ export interface UsePaginatedLiveLogResult {
   loadMore: () => void;
 }
 
+// Backends disagree on how they signal the final page: K8s/S3 omit `after`,
+// while Airflow returns `after === total`. Treat either as the tail so live
+// tailing + pagination end-detection work across all deployments.
+const isTailPage = (page: LogPage): boolean =>
+  !page.after ||
+  (page.total !== undefined && Number(page.after) >= Number(page.total));
+
 /**
  * Paginated log reader with tail polling. Models the log as an immutable
  * `committed` prefix (complete pages, each returned an `after` cursor) plus a
@@ -94,15 +101,15 @@ export const usePaginatedLiveLog = ({
         if (requestId !== requestIdRef.current) {
           return;
         }
-        if (page.after) {
-          setCommitted((prev) => prev + page.content);
-          setNextCursor(page.after);
-          setReachedTail(false);
-        } else {
+        if (isTailPage(page)) {
           setTail(page.content);
           setTailCursor(cursor);
           setNextCursor(undefined);
           setReachedTail(true);
+        } else {
+          setCommitted((prev) => prev + page.content);
+          setNextCursor(page.after);
+          setReachedTail(false);
         }
       } catch (error) {
         if (requestId === requestIdRef.current) {
@@ -160,16 +167,16 @@ export const usePaginatedLiveLog = ({
         if (requestId !== requestIdRef.current) {
           return;
         }
-        if (page.after) {
-          carried += page.content;
-          cursor = page.after;
-        } else {
+        if (isTailPage(page)) {
           if (carried) {
             setCommitted((prev) => prev + carried);
           }
           setTail(page.content);
           setTailCursor(cursor);
           done = true;
+        } else {
+          carried += page.content;
+          cursor = page.after;
         }
       }
     } catch (error) {
@@ -187,6 +194,18 @@ export const usePaginatedLiveLog = ({
     enabled: enabled && isLive && reachedTail,
     intervalMs,
   });
+
+  // Tail polling stops the moment `isLive` flips false, so lines written between
+  // the last poll and the run's terminal transition would be lost. Fetch the
+  // tail once more on that true→false edge to capture the final chunk.
+  const prevIsLiveRef = useRef(isLive);
+  useEffect(() => {
+    const wasLive = prevIsLiveRef.current;
+    prevIsLiveRef.current = isLive;
+    if (wasLive && !isLive && enabled && reachedTail) {
+      pollTail();
+    }
+  }, [isLive, enabled, reachedTail, pollTail]);
 
   const logs = committed + tail;
   const totalLines = useMemo(

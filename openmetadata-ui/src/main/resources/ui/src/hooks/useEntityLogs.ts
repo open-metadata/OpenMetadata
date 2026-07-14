@@ -46,13 +46,13 @@ import { useDownloadProgressStore } from './useDownloadProgressStore';
 import { usePaginatedLiveLog } from './usePaginatedLiveLog';
 import { usePollingEffect } from './usePollingEffect';
 
-export interface UseIngestionPipelineLogsParams {
+export interface UseEntityLogsParams {
   logEntityType: string;
   fqn: string;
   runId?: string;
 }
 
-export interface UseIngestionPipelineLogsResult {
+export interface UseEntityLogsResult {
   logs: string;
   loading: boolean;
   loadingMore: boolean;
@@ -67,11 +67,11 @@ export interface UseIngestionPipelineLogsResult {
   download: () => void;
 }
 
-export const useIngestionPipelineLogs = ({
+export const useEntityLogs = ({
   logEntityType,
   fqn,
   runId,
-}: UseIngestionPipelineLogsParams): UseIngestionPipelineLogsResult => {
+}: UseEntityLogsParams): UseEntityLogsResult => {
   const { progress, reset, updateProgress } = useDownloadProgressStore();
   const [ingestionDetails, setIngestionDetails] = useState<IngestionPipeline>();
   const [detailsLoading, setDetailsLoading] = useState<boolean>(false);
@@ -142,7 +142,7 @@ export const useIngestionPipelineLogs = ({
         endTs: currentTime,
       });
       const latest = await getLatestApplicationRuns(fqn, runId);
-      setAppLogs(latest.data_insight_task || latest.application_task);
+      setAppLogs(latest.data_insight_task || latest.application_task || '');
       setAppRunState(latest.pipelineStatus?.pipelineState);
     } catch (error) {
       showErrorToast(error as AxiosError);
@@ -178,7 +178,7 @@ export const useIngestionPipelineLogs = ({
         .catch((error) => showErrorToast(error as AxiosError))
         .finally(() => setDetailsLoading(false));
     }
-  }, [fqn, runId, isApplicationType]);
+  }, [fqn, runId, isApplicationType, fetchAppLogs]);
 
   const download = useCallback(async () => {
     try {

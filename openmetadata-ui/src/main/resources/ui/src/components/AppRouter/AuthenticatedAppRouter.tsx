@@ -18,7 +18,6 @@ import {
   PLACEHOLDER_ROUTE_ENTITY_TYPE,
   ROUTES,
 } from '../../constants/constants';
-import { LogsViewerModalProvider } from '../../context/LogsViewerModalProvider/LogsViewerModalProvider';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ResourceEntity } from '../../context/PermissionProvider/PermissionProvider.interface';
 import { Operation } from '../../generated/entity/policies/policy';
@@ -364,506 +363,496 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
   );
 
   return (
-    <LogsViewerModalProvider>
-      <Routes>
-        <Route
-          element={<ForbiddenPage pageTitle={t('label.no-access')} />}
-          path={ROUTES.FORBIDDEN}
-        />
-        <Route element={<MyDataPage />} path={ROUTES.MY_DATA} />
-        <Route element={<TourPageComponent />} path={ROUTES.TOUR} />
-        <Route
-          element={<ExplorePageV1 pageTitle={t('label.explore')} />}
-          path={ROUTES.EXPLORE}
-        />
-        <Route element={<PlatformLineage />} path={ROUTES.PLATFORM_LINEAGE} />
-        <Route
-          element={<PlatformLineage />}
-          path={ROUTES.PLATFORM_LINEAGE_WITH_FQN}
-        />
-        <Route
-          element={<ExplorePageV1 pageTitle={t('label.explore')} />}
-          path={ROUTES.EXPLORE_WITH_TAB}
-        />
-        <Route
-          element={<OntologyExplorerPage />}
-          path={ROUTES.ONTOLOGY_EXPLORER}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute>
-              <WorkflowsListPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.WORKFLOWS}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute>
-              <WorkflowBuilderPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.WORKFLOWS_WITH_FQN_TAB}
-        />
-        <Route
-          element={
-            <EditConnectionFormPage
-              pageTitle={t('label.edit-entity', {
-                entity: t('label.connection'),
-              })}
-            />
-          }
-          path={ROUTES.EDIT_SERVICE_CONNECTION}
-        />
-        <Route
-          element={
-            <AddServicePage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.service'),
-              })}
-            />
-          }
-          path={ROUTES.ADD_SERVICE}
-        />
-        <Route element={<QueryPage />} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
-        <Route
-          element={
-            <AddQueryPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.query'),
-              })}
-            />
-          }
-          path={ROUTES.ADD_QUERY}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={checkPermission(
-                Operation.Create,
-                ResourceEntity.INGESTION_PIPELINE,
-                permissions
-              )}>
-              <AddIngestionPage
-                pageTitle={t('label.add-entity', {
-                  entity: t('label.ingestion'),
-                })}
-              />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.ADD_INGESTION}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={checkPermission(
-                Operation.EditAll,
-                ResourceEntity.INGESTION_PIPELINE,
-                permissions
-              )}>
-              <EditIngestionPage
-                pageTitle={t('label.edit-entity', {
-                  entity: t('label.ingestion'),
-                })}
-              />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.EDIT_INGESTION}
-        />
-        <Route element={<ServiceVersionPage />} path={ROUTES.SERVICE_VERSION} />
-        <Route element={<ServicePage />} path={ROUTES.SERVICE_WITH_SUB_TAB} />
-        <Route element={<ServicePage />} path={ROUTES.SERVICE_WITH_TAB} />
-        <Route element={<ServicePage />} path={ROUTES.SERVICE} />
-        <Route
-          element={
-            <AdminProtectedRoute>
-              <MarketPlacePage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.MARKETPLACE}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute>
-              <MarketPlaceAppDetails />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.MARKETPLACE_APP_DETAILS}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute>
-              <AppInstallPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.MARKETPLACE_APP_INSTALL}
-        />
-        <Route
-          element={<DataMarketplacePage />}
-          path={ROUTES.DATA_MARKETPLACE}
-        />
-        <Route element={<SwaggerPage />} path={ROUTES.SWAGGER} />
-        <Route element={<DomainVersionPage />} path={ROUTES.DOMAIN_VERSION} />
-        <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_SUB_TAB} />
-        <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_TAB} />
-        <Route element={<UserPage />} path={ROUTES.USER_PROFILE} />
-
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={checkPermission(
-                Operation.EditDataProfile,
-                ResourceEntity.TABLE,
-                permissions
-              )}>
-              <AddCustomMetricPage
-                pageTitle={t('label.add-entity', {
-                  entity: t('label.custom-metric'),
-                })}
-              />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.ADD_CUSTOM_METRIC}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={checkPermission(
-                Operation.Create,
-                ResourceEntity.USER,
-                permissions
-              )}>
-              <CreateUserPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.CREATE_USER}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute hasPermission={createBotPermission}>
-              <CreateUserPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.CREATE_USER_WITH_BOT}
-        />
-        <Route element={<BotDetailsPage />} path={ROUTES.BOTS_PROFILE} />
-        <Route
-          element={<AddCustomProperty />}
-          path={ROUTES.ADD_CUSTOM_PROPERTY}
-        />
-        <Route
-          element={
-            <RequestDescriptionPage
-              pageTitle={t('message.request-description')}
-            />
-          }
-          path={ROUTES.REQUEST_DESCRIPTION}
-        />
-        <Route
-          element={
-            <UpdateDescriptionPage pageTitle={t('label.update-description')} />
-          }
-          path={ROUTES.UPDATE_DESCRIPTION}
-        />
-        <Route
-          element={
-            <RequestTagsPage pageTitle={t('label.request-tag-plural')} />
-          }
-          path={ROUTES.REQUEST_TAGS}
-        />
-        <Route
-          element={
-            <UpdateTagsPage
-              pageTitle={t('label.update-entity', {
-                entity: t('label.tag'),
-              })}
-            />
-          }
-          path={ROUTES.UPDATE_TAGS}
-        />
-        <Route
-          element={<TestSuiteDetailsPage />}
-          path={ROUTES.TEST_SUITES_WITH_FQN}
-        />
-        <Route
-          element={
-            <TestSuiteIngestionPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.test-suite'),
-              })}
-            />
-          }
-          path={ROUTES.TEST_SUITES_ADD_INGESTION}
-        />
-        <Route
-          element={
-            <TestSuiteIngestionPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.test-suite'),
-              })}
-            />
-          }
-          path={ROUTES.TEST_SUITES_EDIT_INGESTION}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.TEST_SUITE,
-                permissions
-              )}>
-              <DataQualityPage
-                pageTitle={t('label.add-entity', {
-                  entity: t('label.data-quality'),
-                })}
-              />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.DATA_QUALITY_WITH_SUB_TAB}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.TEST_SUITE,
-                permissions
-              )}>
-              <DataQualityPage
-                pageTitle={t('label.add-entity', {
-                  entity: t('label.data-quality'),
-                })}
-              />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.DATA_QUALITY_WITH_TAB}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.TEST_SUITE,
-                permissions
-              )}>
-              <DataQualityPage
-                pageTitle={t('label.add-entity', {
-                  entity: t('label.data-quality'),
-                })}
-              />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.DATA_QUALITY}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.TEST_CASE,
-                permissions
-              )}>
-              <IncidentManagerPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.INCIDENT_MANAGER}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.TEST_DEFINITION,
-                permissions
-              )}>
-              <TestLibraryPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.TEST_LIBRARY}
-        />
-
-        {[
-          ROUTES.TEST_CASE_DETAILS,
-          ROUTES.TEST_CASE_DETAILS_WITH_TAB,
-          ROUTES.TEST_CASE_DIMENSIONS,
-          ROUTES.TEST_CASE_DIMENSIONS_WITH_TAB,
-        ].map((route) => (
-          <Route
-            element={
-              <AdminProtectedRoute
-                hasPermission={userPermissions.hasViewPermissions(
-                  ResourceEntity.TEST_CASE,
-                  permissions
-                )}>
-                <IncidentManagerDetailPage />
-              </AdminProtectedRoute>
-            }
-            key={route}
-            path={route}
+    <Routes>
+      <Route
+        element={<ForbiddenPage pageTitle={t('label.no-access')} />}
+        path={ROUTES.FORBIDDEN}
+      />
+      <Route element={<MyDataPage />} path={ROUTES.MY_DATA} />
+      <Route element={<TourPageComponent />} path={ROUTES.TOUR} />
+      <Route
+        element={<ExplorePageV1 pageTitle={t('label.explore')} />}
+        path={ROUTES.EXPLORE}
+      />
+      <Route element={<PlatformLineage />} path={ROUTES.PLATFORM_LINEAGE} />
+      <Route
+        element={<PlatformLineage />}
+        path={ROUTES.PLATFORM_LINEAGE_WITH_FQN}
+      />
+      <Route
+        element={<ExplorePageV1 pageTitle={t('label.explore')} />}
+        path={ROUTES.EXPLORE_WITH_TAB}
+      />
+      <Route
+        element={<OntologyExplorerPage />}
+        path={ROUTES.ONTOLOGY_EXPLORER}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowsListPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <WorkflowBuilderPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.WORKFLOWS_WITH_FQN_TAB}
+      />
+      <Route
+        element={
+          <EditConnectionFormPage
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.connection'),
+            })}
           />
-        ))}
-
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.TEST_CASE,
-                permissions
-              )}>
-              <TestCaseVersionPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.TEST_CASE_VERSION}
-        />
-
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.TEST_CASE,
-                permissions
-              )}>
-              <TestCaseVersionPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.TEST_CASE_DETAILS_WITH_TAB_VERSION}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.EVENT_SUBSCRIPTION,
-                permissions
-              )}>
-              <ObservabilityAlertsPage />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.OBSERVABILITY_ALERTS}
-        />
-        <Route
-          element={
-            <AdminProtectedRoute
-              hasPermission={userPermissions.hasViewPermissions(
-                ResourceEntity.EVENT_SUBSCRIPTION,
-                permissions
-              )}>
-              <AlertDetailsPage isNotificationAlert={false} />
-            </AdminProtectedRoute>
-          }
-          path={ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB}
-        />
-        <Route
-          element={
-            <AddObservabilityPage
+        }
+        path={ROUTES.EDIT_SERVICE_CONNECTION}
+      />
+      <Route
+        element={
+          <AddServicePage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.service'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_SERVICE}
+      />
+      <Route element={<QueryPage />} path={ROUTES.QUERY_FULL_SCREEN_VIEW} />
+      <Route
+        element={
+          <AddQueryPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.query'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_QUERY}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.Create,
+              ResourceEntity.INGESTION_PIPELINE,
+              permissions
+            )}>
+            <AddIngestionPage
               pageTitle={t('label.add-entity', {
-                entity: t('label.observability'),
+                entity: t('label.ingestion'),
               })}
             />
-          }
-          path={ROUTES.ADD_OBSERVABILITY_ALERTS}
-        />
-        <Route
-          element={
-            <AddObservabilityPage
-              pageTitle={t('label.add-entity', {
-                entity: t('label.observability'),
-              })}
-            />
-          }
-          path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
-        />
-        <Route
-          element={<DataInsightPage pageTitle={t('label.data-insight')} />}
-          path={ROUTES.DATA_INSIGHT_WITH_TAB}
-        />
-        <Route
-          element={<DataInsightPage pageTitle={t('label.data-insight')} />}
-          path={ROUTES.DATA_INSIGHT}
-        />
-        <Route
-          element={
-            <AddKPIPage
-              pageTitle={t('label.add-new-entity', {
-                entity: t('label.kpi-uppercase'),
-              })}
-            />
-          }
-          path={ROUTES.ADD_KPI}
-        />
-        <Route
-          element={
-            <EditKPIPage
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.ADD_INGESTION}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.EditAll,
+              ResourceEntity.INGESTION_PIPELINE,
+              permissions
+            )}>
+            <EditIngestionPage
               pageTitle={t('label.edit-entity', {
-                entity: t('label.kpi-uppercase'),
+                entity: t('label.ingestion'),
               })}
             />
-          }
-          path={ROUTES.EDIT_KPI}
-        />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.EDIT_INGESTION}
+      />
+      <Route element={<ServiceVersionPage />} path={ROUTES.SERVICE_VERSION} />
+      <Route element={<ServicePage />} path={ROUTES.SERVICE_WITH_SUB_TAB} />
+      <Route element={<ServicePage />} path={ROUTES.SERVICE_WITH_TAB} />
+      <Route element={<ServicePage />} path={ROUTES.SERVICE} />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <MarketPlacePage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.MARKETPLACE}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <MarketPlaceAppDetails />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.MARKETPLACE_APP_DETAILS}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <AppInstallPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.MARKETPLACE_APP_INSTALL}
+      />
+      <Route element={<DataMarketplacePage />} path={ROUTES.DATA_MARKETPLACE} />
+      <Route element={<SwaggerPage />} path={ROUTES.SWAGGER} />
+      <Route element={<DomainVersionPage />} path={ROUTES.DOMAIN_VERSION} />
+      <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_SUB_TAB} />
+      <Route element={<UserPage />} path={ROUTES.USER_PROFILE_WITH_TAB} />
+      <Route element={<UserPage />} path={ROUTES.USER_PROFILE} />
 
-        {/* Plugin routes */}
-        {pluginRoutes?.map((route) => {
-          return <Route key={route.path ?? route.id} {...route} />;
-        })}
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.EditDataProfile,
+              ResourceEntity.TABLE,
+              permissions
+            )}>
+            <AddCustomMetricPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.custom-metric'),
+              })}
+            />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.ADD_CUSTOM_METRIC}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={checkPermission(
+              Operation.Create,
+              ResourceEntity.USER,
+              permissions
+            )}>
+            <CreateUserPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.CREATE_USER}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute hasPermission={createBotPermission}>
+            <CreateUserPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.CREATE_USER_WITH_BOT}
+      />
+      <Route element={<BotDetailsPage />} path={ROUTES.BOTS_PROFILE} />
+      <Route
+        element={<AddCustomProperty />}
+        path={ROUTES.ADD_CUSTOM_PROPERTY}
+      />
+      <Route
+        element={
+          <RequestDescriptionPage
+            pageTitle={t('message.request-description')}
+          />
+        }
+        path={ROUTES.REQUEST_DESCRIPTION}
+      />
+      <Route
+        element={
+          <UpdateDescriptionPage pageTitle={t('label.update-description')} />
+        }
+        path={ROUTES.UPDATE_DESCRIPTION}
+      />
+      <Route
+        element={<RequestTagsPage pageTitle={t('label.request-tag-plural')} />}
+        path={ROUTES.REQUEST_TAGS}
+      />
+      <Route
+        element={
+          <UpdateTagsPage
+            pageTitle={t('label.update-entity', {
+              entity: t('label.tag'),
+            })}
+          />
+        }
+        path={ROUTES.UPDATE_TAGS}
+      />
+      <Route
+        element={<TestSuiteDetailsPage />}
+        path={ROUTES.TEST_SUITES_WITH_FQN}
+      />
+      <Route
+        element={
+          <TestSuiteIngestionPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.test-suite'),
+            })}
+          />
+        }
+        path={ROUTES.TEST_SUITES_ADD_INGESTION}
+      />
+      <Route
+        element={
+          <TestSuiteIngestionPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.test-suite'),
+            })}
+          />
+        }
+        path={ROUTES.TEST_SUITES_EDIT_INGESTION}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_SUITE,
+              permissions
+            )}>
+            <DataQualityPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.data-quality'),
+              })}
+            />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.DATA_QUALITY_WITH_SUB_TAB}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_SUITE,
+              permissions
+            )}>
+            <DataQualityPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.data-quality'),
+              })}
+            />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.DATA_QUALITY_WITH_TAB}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_SUITE,
+              permissions
+            )}>
+            <DataQualityPage
+              pageTitle={t('label.add-entity', {
+                entity: t('label.data-quality'),
+              })}
+            />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.DATA_QUALITY}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_CASE,
+              permissions
+            )}>
+            <IncidentManagerPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.INCIDENT_MANAGER}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_DEFINITION,
+              permissions
+            )}>
+            <TestLibraryPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TEST_LIBRARY}
+      />
 
-        <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
+      {[
+        ROUTES.TEST_CASE_DETAILS,
+        ROUTES.TEST_CASE_DETAILS_WITH_TAB,
+        ROUTES.TEST_CASE_DIMENSIONS,
+        ROUTES.TEST_CASE_DIMENSIONS_WITH_TAB,
+      ].map((route) => (
         <Route
           element={
-            <AdminProtectedRoute>
-              <CustomizablePage />
+            <AdminProtectedRoute
+              hasPermission={userPermissions.hasViewPermissions(
+                ResourceEntity.TEST_CASE,
+                permissions
+              )}>
+              <IncidentManagerDetailPage />
             </AdminProtectedRoute>
           }
-          path={ROUTES.CUSTOMIZE_PAGE}
+          key={route}
+          path={route}
         />
-        <Route element={<ClassificationRouter />} path="/tags/*" />
-        <Route element={<TagPage />} path={ROUTES.TAG_ITEM} />
-        <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_TAB} />
-        <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_SUB_TAB} />
-        <Route element={<GlossaryRouter />} path="/glossary/*" />
-        <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
-        <Route element={<SettingsRouter />} path="/settings/*" />
-        <Route element={<DomainRouter />} path="/domain/*" />
-        <Route
-          element={<DataProductListPage pageTitle={t('label.data-product')} />}
-          path={ROUTES.DATA_PRODUCT}
-        />
-        <Route element={<MetricListPage />} path={ROUTES.METRICS} />
-        <Route
-          element={
-            <AddMetricPage
-              pageTitle={t('label.add-new-entity', {
-                entity: t('label.metric'),
-              })}
-            />
-          }
-          path={ROUTES.ADD_METRIC}
-        />
-        <Route
-          element={<ColumnBulkOperationsPage />}
-          path={ROUTES.COLUMN_BULK_OPERATIONS}
-        />
-        <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT} />
-        <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT_WITH_ID} />
+      ))}
 
-        <Route
-          element={<EntityRouter />}
-          path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}
-        />
-        <Route
-          element={<Navigate to={ROUTES.MY_DATA} />}
-          path={ROUTES.SIGNIN}
-        />
-        <Route
-          element={<Navigate to={ROUTES.MY_DATA} />}
-          path={ROUTES.REGISTER}
-        />
-        <Route
-          element={<Navigate to={ROUTES.MY_DATA} />}
-          path={ROUTES.FORGOT_PASSWORD}
-        />
-        <Route
-          element={<ContextCenterRouter />}
-          path={`${ROUTES.CONTEXT_CENTER}/*`}
-        />
-        <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
-      </Routes>
-    </LogsViewerModalProvider>
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_CASE,
+              permissions
+            )}>
+            <TestCaseVersionPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TEST_CASE_VERSION}
+      />
+
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.TEST_CASE,
+              permissions
+            )}>
+            <TestCaseVersionPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.TEST_CASE_DETAILS_WITH_TAB_VERSION}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.EVENT_SUBSCRIPTION,
+              permissions
+            )}>
+            <ObservabilityAlertsPage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.OBSERVABILITY_ALERTS}
+      />
+      <Route
+        element={
+          <AdminProtectedRoute
+            hasPermission={userPermissions.hasViewPermissions(
+              ResourceEntity.EVENT_SUBSCRIPTION,
+              permissions
+            )}>
+            <AlertDetailsPage isNotificationAlert={false} />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.OBSERVABILITY_ALERT_DETAILS_WITH_TAB}
+      />
+      <Route
+        element={
+          <AddObservabilityPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.observability'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_OBSERVABILITY_ALERTS}
+      />
+      <Route
+        element={
+          <AddObservabilityPage
+            pageTitle={t('label.add-entity', {
+              entity: t('label.observability'),
+            })}
+          />
+        }
+        path={ROUTES.EDIT_OBSERVABILITY_ALERTS}
+      />
+      <Route
+        element={<DataInsightPage pageTitle={t('label.data-insight')} />}
+        path={ROUTES.DATA_INSIGHT_WITH_TAB}
+      />
+      <Route
+        element={<DataInsightPage pageTitle={t('label.data-insight')} />}
+        path={ROUTES.DATA_INSIGHT}
+      />
+      <Route
+        element={
+          <AddKPIPage
+            pageTitle={t('label.add-new-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_KPI}
+      />
+      <Route
+        element={
+          <EditKPIPage
+            pageTitle={t('label.edit-entity', {
+              entity: t('label.kpi-uppercase'),
+            })}
+          />
+        }
+        path={ROUTES.EDIT_KPI}
+      />
+
+      {/* Plugin routes */}
+      {pluginRoutes?.map((route) => {
+        return <Route key={route.path ?? route.id} {...route} />;
+      })}
+
+      <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.HOME} />
+      <Route
+        element={
+          <AdminProtectedRoute>
+            <CustomizablePage />
+          </AdminProtectedRoute>
+        }
+        path={ROUTES.CUSTOMIZE_PAGE}
+      />
+      <Route element={<ClassificationRouter />} path="/tags/*" />
+      <Route element={<TagPage />} path={ROUTES.TAG_ITEM} />
+      <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_TAB} />
+      <Route element={<TagPage />} path={ROUTES.TAG_ITEM_WITH_SUB_TAB} />
+      <Route element={<GlossaryRouter />} path="/glossary/*" />
+      <Route element={<GlossaryTermRouter />} path="/glossary-term/*" />
+      <Route element={<SettingsRouter />} path="/settings/*" />
+      <Route element={<DomainRouter />} path="/domain/*" />
+      <Route
+        element={<DataProductListPage pageTitle={t('label.data-product')} />}
+        path={ROUTES.DATA_PRODUCT}
+      />
+      <Route element={<MetricListPage />} path={ROUTES.METRICS} />
+      <Route
+        element={
+          <AddMetricPage
+            pageTitle={t('label.add-new-entity', {
+              entity: t('label.metric'),
+            })}
+          />
+        }
+        path={ROUTES.ADD_METRIC}
+      />
+      <Route
+        element={<ColumnBulkOperationsPage />}
+        path={ROUTES.COLUMN_BULK_OPERATIONS}
+      />
+      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT} />
+      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT_WITH_ID} />
+
+      <Route
+        element={<EntityRouter />}
+        path={`/${PLACEHOLDER_ROUTE_ENTITY_TYPE}/*`}
+      />
+      <Route element={<Navigate to={ROUTES.MY_DATA} />} path={ROUTES.SIGNIN} />
+      <Route
+        element={<Navigate to={ROUTES.MY_DATA} />}
+        path={ROUTES.REGISTER}
+      />
+      <Route
+        element={<Navigate to={ROUTES.MY_DATA} />}
+        path={ROUTES.FORGOT_PASSWORD}
+      />
+      <Route
+        element={<ContextCenterRouter />}
+        path={`${ROUTES.CONTEXT_CENTER}/*`}
+      />
+      <Route element={<Navigate to={ROUTES.NOT_FOUND} />} path="*" />
+    </Routes>
   );
 };
 
