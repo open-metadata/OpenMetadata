@@ -20,6 +20,7 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
+import java.util.function.BiFunction;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
@@ -2132,6 +2133,84 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertEquals(3, visibleTasks.getData().size(), "Visible list should de-duplicate the union");
     assertEquals(3, visibleCount.getTotal(), "All-view count should match the visible task union");
     assertEquals(3, visibleCount.getOpen(), "All-view open count should match visible open tasks");
+  }
+
+  @Test
+  void testScopedTaskEndpointsHonorTimeRange(TestNamespace ns) {
+    SharedEntities shared = SharedEntities.get();
+    Domain domain = createDomain(ns, "time-range-domain");
+    Table ownedTable =
+        createTableWithDomainAndOwners(ns, domain.getEntityReference(), List.of(shared.USER1_REF));
+
+    Task assignedTask =
+        SdkClients.adminClient()
+            .tasks()
+            .create(
+                createTaskRequestAboutTable(ns, "time-range-assigned", ownedTable)
+                    .withAssignees(List.of(shared.USER1.getFullyQualifiedName())));
+    Task createdTask =
+        SdkClients.user1Client()
+            .tasks()
+            .create(createTaskRequestAboutTable(ns, "time-range-created", ownedTable));
+
+    // assignedTask is visible to user1 both via /visible and /owned (about a
+    // user1-owned table); createdTask exercises /created (createdBy user1).
+    assertTimeRangeFilters(
+        (startTs, endTs) ->
+            SdkClients.user1Client()
+                .tasks()
+                .listVisible(null, null, null, "assignees,about", 1000, startTs, endTs),
+        assignedTask.getId(),
+        assignedTask.getCreatedAt());
+    assertTimeRangeFilters(
+        (startTs, endTs) ->
+            SdkClients.user1Client()
+                .tasks()
+                .listOwned(null, null, null, "about", 1000, startTs, endTs),
+        assignedTask.getId(),
+        assignedTask.getCreatedAt());
+    assertTimeRangeFilters(
+        (startTs, endTs) ->
+            SdkClients.user1Client()
+                .tasks()
+                .listCreated(null, null, null, "about", 1000, startTs, endTs),
+        createdTask.getId(),
+        createdTask.getCreatedAt());
+
+    assertThrows(
+        InvalidRequestException.class,
+        () ->
+            SdkClients.user1Client()
+                .tasks()
+                .listVisible(null, null, null, null, null, 2000L, 1000L),
+        "Inverted startTs > endTs should return 400");
+  }
+
+  private void assertTimeRangeFilters(
+      BiFunction<Long, Long, ListResponse<Task>> lister, UUID taskId, long createdAt) {
+    ListResponse<Task> inRange = lister.apply(createdAt - 1000, createdAt + 1000);
+    assertTrue(
+        inRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should appear when its createdAt is inside the window");
+    assertEquals(
+        inRange.getData().size(),
+        inRange.getTotal(),
+        "paging.total must reflect the time-filtered rows, not an unfiltered count");
+
+    ListResponse<Task> boundary = lister.apply(createdAt, createdAt);
+    assertTrue(
+        boundary.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should appear when the window bounds equal its createdAt (bounds are inclusive)");
+
+    ListResponse<Task> pastRange = lister.apply(createdAt - 5000, createdAt - 1000);
+    assertFalse(
+        pastRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should be excluded when the window ends before its createdAt (endTs upper bound)");
+
+    ListResponse<Task> futureRange = lister.apply(createdAt + 1000, createdAt + 5000);
+    assertFalse(
+        futureRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should be excluded when the window starts after its createdAt (startTs lower bound)");
   }
 
   // ==================== Entity Change Application Tests ====================
