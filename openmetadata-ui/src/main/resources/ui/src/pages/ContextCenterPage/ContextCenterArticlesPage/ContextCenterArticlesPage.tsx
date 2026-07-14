@@ -103,6 +103,7 @@ const ContextCenterArticlesPage = () => {
   const [editingQuickLink, setEditingQuickLink] = useState<KnowledgePage>();
   const [articleSearchQuery, setArticleSearchQuery] = useState('');
   const [isArticlesListEmpty, setIsArticlesListEmpty] = useState(false);
+  const [permissionFetchFailed, setPermissionFetchFailed] = useState(false);
 
   const handleFetchKnowledgePageHierarchy = useCallback(
     (forceRefresh?: boolean) =>
@@ -143,6 +144,7 @@ const ContextCenterArticlesPage = () => {
       setPermissions(response);
     } catch (error) {
       showErrorToast(error as AxiosError);
+      setPermissionFetchFailed(true);
     } finally {
       setIsPermissionsLoading(false);
     }
@@ -366,7 +368,11 @@ const ContextCenterArticlesPage = () => {
   ]);
 
   const showArticlesEmptyState =
-    isArticlesListEmpty && !fqn && !version && !articleSearchQuery;
+    isArticlesListEmpty &&
+    !fqn &&
+    !version &&
+    !articleSearchQuery &&
+    !permissionFetchFailed;
 
   return (
     <div
@@ -382,15 +388,19 @@ const ContextCenterArticlesPage = () => {
         <DocumentTitle title={page.title || t('label.article-plural')} />
         {showArticlesEmptyState && (
           <EmptyPlaceholder
-            actions={[
-              {
-                color: 'primary',
-                iconLeading: Plus,
-                key: 'new-article',
-                label: t('label.new-article'),
-                onClick: addArticleKnowledgePage,
-              },
-            ]}
+            actions={
+              permissions?.Create
+                ? [
+                    {
+                      color: 'primary',
+                      iconLeading: Plus,
+                      key: 'new-article',
+                      label: t('label.new-article'),
+                      onClick: addArticleKnowledgePage,
+                    },
+                  ]
+                : []
+            }
             description={t('message.context-center-articles-empty-subtitle')}
             features={[
               {

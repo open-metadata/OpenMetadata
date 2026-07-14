@@ -54,6 +54,7 @@ const ContextCenterArchivePage: FC = () => {
   const [permissions, setPermissions] = useState<OperationPermission>(
     DEFAULT_ENTITY_PERMISSION
   );
+  const [hasEverHadItems, setHasEverHadItems] = useState(false);
   const fetchGenerationRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
 
@@ -115,6 +116,9 @@ const ContextCenterArchivePage: FC = () => {
         setItems((prev) =>
           after ? [...prev, ...documentItems] : documentItems
         );
+        if (documentItems.length > 0) {
+          setHasEverHadItems(true);
+        }
         handlePagingChange(response.paging);
       } catch (err) {
         showErrorToast(err as AxiosError);
@@ -208,7 +212,7 @@ const ContextCenterArchivePage: FC = () => {
         subtitle={t('label.view-archived-document-plural')}
         title={t('label.archive-plural')}
       />
-      {!isLoading && items.length > 0 && (
+      {!isLoading && (hasEverHadItems || items.length > 0) && (
         <div className="tw:pb-5">
           <Tabs
             className="tw:w-max"

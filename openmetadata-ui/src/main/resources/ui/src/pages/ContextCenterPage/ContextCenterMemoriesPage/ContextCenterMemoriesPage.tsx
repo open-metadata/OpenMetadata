@@ -522,15 +522,19 @@ const ContextCenterMemoriesPage: FC = () => {
       {showMemoriesEmptyState ? (
         <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
           <EmptyPlaceholder
-            actions={[
-              {
-                color: 'primary',
-                iconLeading: Plus,
-                key: 'new-memory',
-                label: t('label.new-memory'),
-                onClick: () => setIsCreateModalOpen(true),
-              },
-            ]}
+            actions={
+              hasCreatePermission
+                ? [
+                    {
+                      color: 'primary',
+                      iconLeading: Plus,
+                      key: 'new-memory',
+                      label: t('label.new-memory'),
+                      onClick: () => setIsCreateModalOpen(true),
+                    },
+                  ]
+                : []
+            }
             description={t('message.context-center-memories-empty-subtitle')}
             features={[
               {

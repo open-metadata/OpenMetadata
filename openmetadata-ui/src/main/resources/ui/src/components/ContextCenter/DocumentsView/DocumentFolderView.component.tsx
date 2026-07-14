@@ -71,12 +71,16 @@ const DocumentFolderView = (
   const [folderFilesState, setFolderFilesState] = useState<
     Map<string, FolderFilesState>
   >(new Map());
+  const [fetchingFolderIds, setFetchingFolderIds] = useState<Set<string>>(
+    new Set()
+  );
 
   const fetchFolderFilesIfNeeded = useCallback(
     async (folderId: string) => {
       if (folderFilesState.has(folderId)) {
         return;
       }
+      setFetchingFolderIds((prev) => new Set(prev).add(folderId));
       try {
         const response = await listContextFiles({
           folderId,
@@ -92,6 +96,13 @@ const DocumentFolderView = (
         );
       } catch (err) {
         showErrorToast(err as AxiosError);
+      } finally {
+        setFetchingFolderIds((prev) => {
+          const next = new Set(prev);
+          next.delete(folderId);
+
+          return next;
+        });
       }
     },
     [folderFilesState]
@@ -349,8 +360,13 @@ const DocumentFolderView = (
                   isFolderFilesExpanded && !hasMore
                     ? t('label.show-less')
                     : t('label.view-more');
+                const isFolderLoading =
+                  isExpanded && fetchingFolderIds.has(folder.id);
                 const isFolderEmpty =
-                  isExpanded && !hasMore && allFetchedFiles.length === 0;
+                  isExpanded &&
+                  !hasMore &&
+                  !isFolderLoading &&
+                  allFetchedFiles.length === 0;
 
                 return (
                   <Tree.Item
@@ -412,6 +428,28 @@ const DocumentFolderView = (
                         </div>
                       </div>
                     </Tree.ItemContent>
+
+                    {isFolderLoading && (
+                      <Tree.Item
+                        id={`${folder.id}-loading`}
+                        key={`${folder.id}-loading`}
+                        textValue={t('label.loading')}>
+                        <Tree.ItemContent
+                          className="tw:ml-7! tw:cursor-default tw:hover:bg-transparent"
+                          showExpandIcon={false}>
+                          <div className="tw:flex tw:flex-col tw:gap-2 tw:flex-1 tw:py-1">
+                            {Array.from({ length: 2 }).map((_, i) => (
+                              <Skeleton
+                                height="20px"
+                                key={i}
+                                variant="rounded"
+                                width="100%"
+                              />
+                            ))}
+                          </div>
+                        </Tree.ItemContent>
+                      </Tree.Item>
+                    )}
 
                     {isFolderEmpty && (
                       <Tree.Item

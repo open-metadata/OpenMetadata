@@ -403,22 +403,26 @@ const ContextCenterDashboardPage: FC = () => {
         {isDashboardEmpty ? (
           <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
             <EmptyPlaceholder
-              actions={[
-                {
-                  color: 'primary',
-                  iconLeading: Plus,
-                  key: 'new-article',
-                  label: t('label.new-article'),
-                  onClick: handleCreateArticle,
-                },
-                {
-                  color: 'secondary',
-                  iconLeading: UploadIcon,
-                  key: 'upload-file',
-                  label: t('label.upload-file'),
-                  onClick: () => setIsUploadModalOpen(true),
-                },
-              ]}
+              actions={
+                hasCreatePermission
+                  ? [
+                      {
+                        color: 'primary',
+                        iconLeading: Plus,
+                        key: 'new-article',
+                        label: t('label.new-article'),
+                        onClick: handleCreateArticle,
+                      },
+                      {
+                        color: 'secondary',
+                        iconLeading: UploadIcon,
+                        key: 'upload-file',
+                        label: t('label.upload-file'),
+                        onClick: () => setIsUploadModalOpen(true),
+                      },
+                    ]
+                  : []
+              }
               description={t('message.context-center-dashboard-empty-subtitle')}
               features={[
                 {
