@@ -89,11 +89,6 @@
             <artifactId>msal4j</artifactId>
             <version>1.17.2</version>
             <exclusions>
-                <!-- msal4j 1.17.2 → oauth2-oidc-sdk 11.18 → nimbus-jose-jwt 9.40
-                     (vulnerable to GHSA-xwmg-2g98-w7v9 DoS). openmetadata-service already
-                     pins nimbus-jose-jwt 10.0.2, but that dep-management does not reach
-                     openmetadata-java-client because it's a sibling module, not a child.
-                     Exclude here and restate the patched line. -->
                 <exclusion>
                     <groupId>com.nimbusds</groupId>
                     <artifactId>nimbus-jose-jwt</artifactId>
