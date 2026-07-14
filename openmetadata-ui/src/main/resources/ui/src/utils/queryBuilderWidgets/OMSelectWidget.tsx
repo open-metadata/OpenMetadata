@@ -80,6 +80,11 @@ const OMSelectWidget: FC<SelectWidgetProps> = ({
   if (useAsyncSearch && asyncFetch) {
     return (
       <Select.ComboBox
+        // While the async fetch is in flight the typed text transiently
+        // filters the previous results to zero matches; without this flag
+        // React Aria closes the popup at that moment and it stays closed
+        // when the real results arrive.
+        allowsEmptyCollection
         isDisabled={readonly}
         items={items}
         placeholder={placeholder}

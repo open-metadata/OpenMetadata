@@ -37,7 +37,6 @@ import {
   ComboBoxStateContext,
 } from 'react-aria-components';
 import type { ListData } from 'react-stately';
-import { useListData } from 'react-stately';
 import { SelectItem } from './select-item';
 
 interface ComboBoxValueProps
@@ -277,6 +276,7 @@ export const MultiSelectBase = ({
   onItemInserted,
   shortcut,
   placeholder = 'Search',
+  onInputChange: onInputChangeProp,
   // Omit these props to avoid conflicts with the `Select` component
   name: _name,
   className: _className,
@@ -295,10 +295,15 @@ export const MultiSelectBase = ({
     [contains, selectedKeys]
   );
 
-  const accessibleList = useListData({
-    initialItems: items,
-    filter,
-  });
+  // Derive the visible options from the live `items` prop instead of
+  // useListData({ initialItems }) — that hook snapshots the items on mount,
+  // so async consumers that fetch options on input change never see their
+  // results reflected in the popup.
+  const [filterText, setFilterText] = useState('');
+  const filteredItems = useMemo(
+    () => (items ?? []).filter((item) => filter(item, filterText)),
+    [items, filter, filterText]
+  );
 
   const onRemove = useCallback(
     (keys: Set<Key>) => {
@@ -319,7 +324,7 @@ export const MultiSelectBase = ({
       return;
     }
 
-    const item = accessibleList.getItem(id);
+    const item = (items ?? []).find((currentItem) => currentItem.id === id);
 
     if (!item) {
       return;
@@ -330,14 +335,18 @@ export const MultiSelectBase = ({
       onItemInserted?.(id);
     }
 
-    accessibleList.setFilterText('');
+    setFilterText('');
   };
 
   const onInputChange = useCallback(
     (value: string) => {
-      accessibleList.setFilterText(value);
+      setFilterText(value);
+      // Chain the consumer's handler — the internal one is applied after
+      // {...props} on AriaComboBox and would otherwise silently drop it
+      // (async search widgets rely on it to fetch matching options).
+      onInputChangeProp?.(value);
     },
-    [accessibleList]
+    [onInputChangeProp]
   );
 
   const placeholderRef = useRef<HTMLDivElement>(null);
@@ -367,8 +376,8 @@ export const MultiSelectBase = ({
     <ComboboxContext.Provider value={contextValues}>
       <AriaComboBox
         allowsEmptyCollection
-        inputValue={accessibleList.filterText}
-        items={accessibleList.items}
+        inputValue={filterText}
+        items={filteredItems}
         menuTrigger="focus"
         // This keeps the combobox popover open and the input value unchanged when an item is selected.
         selectedKey={null}

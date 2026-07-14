@@ -13,6 +13,7 @@
 import { Select, SelectItemType } from '@openmetadata/ui-core-components';
 import type { FieldProps } from '@react-awesome-query-builder/ui';
 import type { FC } from 'react';
+import { useMemo, useRef, useState } from 'react';
 
 const OMFieldSelect: FC<FieldProps> = ({
   items,
@@ -21,13 +22,47 @@ const OMFieldSelect: FC<FieldProps> = ({
   readonly,
   placeholder,
 }) => {
-  const selectItems: SelectItemType[] = items.map((item) => ({
-    id: item.key,
-    label: item.label,
-  }));
+  // RAQB recreates `items` on every render. Keep the mapped array's identity
+  // stable across content-equal renders: react-aria rebuilds the ComboBox
+  // collection when the items identity changes, which resets an uncontrolled
+  // input back to the selected item's label and closes the open popup.
+  const itemsKey = items
+    .map((item) => `${item.path ?? item.key} ${item.label}`)
+    .join('');
+  const selectItems: SelectItemType[] = useMemo(
+    () =>
+      items.map((item) => ({
+        // For nested fields (e.g. custom properties) `key` is only the leaf
+        // segment — setField needs the full dotted path or the selection is
+        // silently ignored and the cascade never advances to the next level.
+        id: item.path ?? item.key,
+        label: item.label,
+      })),
+
+    [itemsKey]
+  );
+
+  // Control inputValue explicitly: RAQB re-renders (triggered by parent forms
+  // and query actions) race the open popup, and react-aria's uncontrolled
+  // input resets to the selected label on every collection rebuild — wiping
+  // the user's in-progress filter text. A controlled value can't be clobbered.
+  const selectedLabel = useMemo(
+    () => selectItems.find((item) => item.id === selectedKey)?.label ?? '',
+    [selectItems, selectedKey]
+  );
+  const [inputValue, setInputValue] = useState(selectedLabel);
+  const lastSelectedKeyRef = useRef(selectedKey);
+  if (lastSelectedKeyRef.current !== selectedKey) {
+    lastSelectedKeyRef.current = selectedKey;
+    setInputValue(selectedLabel);
+  }
 
   return (
     <Select.ComboBox
+      // Keep the popup open on transiently-empty filter results — React Aria
+      // otherwise closes it and the interaction dead-ends.
+      allowsEmptyCollection
+      inputValue={inputValue}
       isDisabled={readonly}
       items={selectItems}
       placeholder={placeholder ?? 'Select field'}
@@ -35,6 +70,7 @@ const OMFieldSelect: FC<FieldProps> = ({
       shortcut={false}
       showSearchIcon={false}
       size="sm"
+      onInputChange={setInputValue}
       onSelectionChange={(key) => {
         if (key) {
           setField(String(key));

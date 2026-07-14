@@ -182,8 +182,16 @@ export const selectOption = async (
   await expect(comboboxInput.or(triggerButton).first()).toBeVisible();
 
   if (isSearchable) {
+    if ((await triggerButton.count()) === 0) {
+      // MultiSelect: no chevron overlays the input, so clicking is safe —
+      // and required, since its popup opens from a mousedown handler.
+      await comboboxInput.click();
+    }
     // Single fill (no clear first) — one input event, one async fetch.
     await comboboxInput.fill(optionTitle);
+    // React Aria may close the focus-opened popup while processing the atomic
+    // fill; ArrowDown deterministically (re)opens it with the filter applied.
+    await comboboxInput.press('ArrowDown');
   } else if ((await comboboxInput.count()) > 0) {
     // Select.ComboBox: fill('') focuses the input (menuTrigger="focus" opens
     // the popup) and clears the current-label filter so all options show.
@@ -191,6 +199,7 @@ export const selectOption = async (
     // operator column) the absolutely positioned chevron button covers the
     // input's center and intercepts the click, hanging actionability retries.
     await comboboxInput.fill('');
+    await comboboxInput.press('ArrowDown');
   } else {
     // Plain Select (no combobox input): click the trigger button to open.
     await triggerButton.click();
