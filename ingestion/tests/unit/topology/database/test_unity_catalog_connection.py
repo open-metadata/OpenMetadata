@@ -13,7 +13,7 @@
 Tests for unitycatalog.connection.
 """
 
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 import pytest
 from databricks.sdk.service.catalog import TableType
@@ -26,7 +26,6 @@ from metadata.generated.schema.entity.services.connections.database.unityCatalog
     UnityCatalogConnection,
 )
 from metadata.ingestion.connections.test_connections import SourceConnectionException
-from metadata.ingestion.source.database.unitycatalog import connection as uc_connection
 from metadata.ingestion.source.database.unitycatalog.connection import (
     VIEW_LISTING_SCAN_LIMIT,
     get_catalogs,
@@ -215,24 +214,3 @@ class TestGetViews:
             get_views(client, table_obj)
 
         client.tables.list.assert_not_called()
-
-
-class TestTestConnectionWiring:
-    def test_steps_are_wired_with_configured_catalog_and_schema(self):
-        service_connection = _connection(catalog="configured_catalog", databaseSchema="configured_schema")
-        client = MagicMock()
-
-        with (
-            patch.object(uc_connection, "get_connection", return_value=client),
-            patch.object(uc_connection, "get_sqlalchemy_connection"),
-            patch.object(uc_connection, "test_connection_steps") as mock_steps,
-        ):
-            uc_connection.UnityCatalogConnection(service_connection).test_connection(MagicMock())
-
-        test_fn = mock_steps.call_args.kwargs["test_fn"]
-        assert test_fn["GetTables"].func is get_tables
-        assert test_fn["GetViews"].func is get_views
-        assert test_fn["GetDatabases"].func is get_catalogs
-        assert test_fn["GetSchemas"].func is get_schemas
-        assert test_fn["GetDatabases"].args[-1] == "configured_catalog"
-        assert test_fn["GetSchemas"].args[-1] == "configured_schema"

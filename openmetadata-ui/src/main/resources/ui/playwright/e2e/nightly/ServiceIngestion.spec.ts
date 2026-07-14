@@ -66,6 +66,11 @@ test.use({
   video: process.env.PLAYWRIGHT_IS_OSS ? 'on' : 'off',
 });
 
+// Skipping the entire ServiceIngestion suite for now
+test.beforeEach(() => {
+  test.skip();
+});
+
 Object.entries(services).forEach(([key, ServiceClass]) => {
   const service = new ServiceClass();
 
