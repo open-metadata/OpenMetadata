@@ -22,6 +22,7 @@ import jakarta.ws.rs.core.SecurityContext;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
@@ -38,7 +39,6 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
-import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.CSVExportResponse;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -149,6 +149,22 @@ public class AuditLogResource {
   private static final int EXPORT_MAX_LIMIT = 100000;
   private static final int EXPORT_DEFAULT_LIMIT = 10000;
 
+  // Each audit export materializes up to EXPORT_MAX_LIMIT entries as one JSON string and sends it
+  // inline over the websocket. Running many at once (e.g. parallel Playwright export shards) piles
+  // multi-hundred-MB byte[] onto the heap and OOMs the server, so cap how many serialize at once.
+  // ponytail: bounds concurrency, not per-export size; the fuller fix is to stream/spool the
+  // payload
+  // and hand back a download reference instead of inlining it over the websocket.
+  private static final int MAX_CONCURRENT_AUDIT_EXPORTS = 2;
+  private static final ExecutorService AUDIT_EXPORT_EXECUTOR =
+      Executors.newFixedThreadPool(
+          MAX_CONCURRENT_AUDIT_EXPORTS,
+          runnable -> {
+            Thread thread = new Thread(runnable, "audit-export");
+            thread.setDaemon(true);
+            return thread;
+          });
+
   @GET
   @Path("/export")
   @Operation(
@@ -239,9 +255,7 @@ public class AuditLogResource {
 
     // Generate job ID and start async export
     String jobId = UUID.randomUUID().toString();
-    ExecutorService executorService = AsyncService.getInstance().getExecutorService();
-
-    executorService.submit(
+    AUDIT_EXPORT_EXECUTOR.submit(
         () -> {
           try {
             // Use batched export to avoid long-running queries that could cause
