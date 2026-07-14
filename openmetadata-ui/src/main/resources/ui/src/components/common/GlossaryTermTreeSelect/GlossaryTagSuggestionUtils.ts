@@ -62,7 +62,8 @@ export const convertGlossaryTermsToTreeOptionsWithNames = (
     const isGlossaryTerm = level !== 0;
 
     return {
-      id: option.name || option.fullyQualifiedName || option.id, // Use name first, fallback to FQN, then ID
+      // FQN first so ids match the tag.tagFQN-keyed selection seeded in GlossaryTermTreeSelect
+      id: option.fullyQualifiedName || option.name || option.id,
       value: option.fullyQualifiedName || option.name || option.id,
       title: getEntityName(option),
       children: hasChildren
