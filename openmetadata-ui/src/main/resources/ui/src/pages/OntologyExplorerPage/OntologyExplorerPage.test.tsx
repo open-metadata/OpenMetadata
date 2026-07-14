@@ -10,142 +10,38 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
 import { fireEvent, render, screen } from '@testing-library/react';
-import React from 'react';
+import { ReactNode } from 'react';
 import OntologyExplorerPage from './OntologyExplorerPage';
 
-const mockOntologyExplorer = jest.fn();
+interface ExplorerMockProps {
+  isEditMode?: boolean;
+  showHealth?: boolean;
+  surface?: string;
+}
 
-jest.mock('@openmetadata/ui-core-components', () => {
-  const Tabs = Object.assign(
-    jest
-      .fn()
-      .mockImplementation(
-        ({
-          selectedKey,
-          onSelectionChange,
-        }: {
-          selectedKey: string;
-          onSelectionChange: (key: string) => void;
-        }) => (
-          <div data-selected={selectedKey} data-testid="mode-tabs">
-            {['view', 'edit', 'query'].map((m) => (
-              <button
-                data-testid={`mode-tab-${m}`}
-                key={m}
-                onClick={() => onSelectionChange(m)}>
-                {m}
-              </button>
-            ))}
-          </div>
-        )
-      ),
-    {
-      List: jest
-        .fn()
-        .mockImplementation(({ children }: { children: React.ReactNode }) => (
-          <div>{children}</div>
-        )),
-      Item: jest.fn().mockImplementation(() => null),
-      Panel: jest.fn().mockImplementation(() => null),
-    }
-  );
+interface PageLayoutMockProps {
+  children?: ReactNode;
+}
 
-  return {
-    Badge: jest
-      .fn()
-      .mockImplementation(({ children, 'data-testid': testId }) => (
-        <span data-testid={testId}>{children}</span>
-      )),
-    Box: jest
-      .fn()
-      .mockImplementation(
-        ({
-          children,
-          className,
-          'data-testid': testId,
-        }: {
-          children?: React.ReactNode;
-          className?: string;
-          'data-testid'?: string;
-        }) => (
-          <div className={className} data-testid={testId}>
-            {children}
-          </div>
-        )
-      ),
-    Card: jest
-      .fn()
-      .mockImplementation(({ children }: { children: React.ReactNode }) => (
-        <div>{children}</div>
-      )),
-    Dot: jest.fn().mockImplementation(() => <span data-testid="stats-dot" />),
-    Skeleton: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="skeleton" />),
-    Tabs,
-    Typography: jest
-      .fn()
-      .mockImplementation(
-        ({
-          children,
-          'data-testid': testId,
-        }: {
-          children: React.ReactNode;
-          'data-testid'?: string;
-        }) => <span data-testid={testId}>{children}</span>
-      ),
-  };
-});
+const mockOntologyExplorer = jest.fn<void, [ExplorerMockProps]>();
+
+jest.mock('../../hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn(() => ({
+    currentUser: { displayName: 'Admin User', name: 'admin' },
+  })),
+}));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () => ({
   __esModule: true,
-  default: jest.fn(({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  )),
-}));
-
-jest.mock(
-  '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component',
-  () => ({
-    __esModule: true,
-    default: jest.fn(() => <div data-testid="breadcrumb" />),
-  })
-);
-
-jest.mock('../../components/common/HeaderShell/HeaderShell.component', () => ({
-  __esModule: true,
-  default: jest.fn(
-    ({
-      actions,
-      badge,
-      breadcrumb,
-      meta,
-      title,
-    }: {
-      actions?: React.ReactNode;
-      badge?: React.ReactNode;
-      breadcrumb?: React.ReactNode;
-      meta?: React.ReactNode;
-      title?: React.ReactNode;
-    }) => (
-      <div data-testid="header-shell">
-        {breadcrumb}
-        {title}
-        {badge}
-        {meta}
-        {actions}
-      </div>
-    )
+  default: ({ children }: PageLayoutMockProps) => (
+    <div data-testid="page-layout-v1">{children}</div>
   ),
 }));
 
-jest.mock('../../hooks/useAppMode', () => ({
-  useIsAiMode: jest.fn(() => false),
-}));
-
 jest.mock('../../components/OntologyExplorer', () => ({
-  OntologyExplorer: jest.fn((props) => {
+  OntologyExplorer: jest.fn((props: ExplorerMockProps) => {
     mockOntologyExplorer(props);
 
     return <div data-testid="ontology-explorer" />;
@@ -153,10 +49,18 @@ jest.mock('../../components/OntologyExplorer', () => ({
 }));
 
 jest.mock(
-  '../../components/SparqlQueryConsole/SparqlQueryConsole.component',
+  '../../components/OntologyExplorer/OntologyStudioQueryConsole',
   () => ({
     __esModule: true,
     default: jest.fn(() => <div data-testid="sparql-query-console" />),
+  })
+);
+
+jest.mock(
+  '../../components/OntologyExplorer/OntologyVisualQueryBuilder',
+  () => ({
+    __esModule: true,
+    default: jest.fn(() => <div data-testid="visual-query-builder" />),
   })
 );
 
@@ -165,17 +69,34 @@ describe('OntologyExplorerPage', () => {
     jest.clearAllMocks();
   });
 
-  it('renders heading, beta badge, mode switch and the graph in the default view mode', () => {
+  it('renders the dedicated Studio shell and graph by default', () => {
     render(<OntologyExplorerPage />);
 
-    expect(screen.getByTestId('heading')).toBeInTheDocument();
-    expect(screen.getByTestId('beta-badge')).toHaveTextContent('LABEL.BETA');
-    expect(screen.getByTestId('breadcrumb')).toBeInTheDocument();
-    expect(screen.getByTestId('mode-tabs')).toBeInTheDocument();
+    expect(screen.getByTestId('heading')).toHaveTextContent(
+      'label.ontology-studio'
+    );
+    expect(screen.getByTestId('page-layout-v1')).toBeInTheDocument();
+    expect(screen.getByTestId('ontology-studio-shell').className).not.toContain(
+      'tw:fixed'
+    );
+    expect(screen.getByTestId('mode-tab-view')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(screen.getByTestId('submode-tab-graph')).toHaveAttribute(
+      'aria-pressed',
+      'true'
+    );
+    expect(
+      screen.getByTestId('ontology-glossary-menu-trigger')
+    ).toBeInTheDocument();
     expect(screen.getByTestId('ontology-explorer')).toBeInTheDocument();
     expect(
       screen.queryByTestId('sparql-query-console')
     ).not.toBeInTheDocument();
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ showHealth: true, surface: 'graph' })
+    );
   });
 
   it('renders the SPARQL query console when Query mode is selected', () => {
@@ -197,8 +118,41 @@ describe('OntologyExplorerPage', () => {
       screen.queryByTestId('sparql-query-console')
     ).not.toBeInTheDocument();
     expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
-      expect.objectContaining({ isEditMode: true })
+      expect.objectContaining({ isEditMode: true, surface: 'graph' })
     );
+  });
+
+  it('switches View to the glossary-grouped tree surface', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('submode-tab-tree'));
+
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isEditMode: false, surface: 'tree' })
+    );
+  });
+
+  it('switches Edit to the structured term surface', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-edit'));
+    fireEvent.click(screen.getByTestId('submode-tab-term'));
+
+    expect(mockOntologyExplorer).toHaveBeenLastCalledWith(
+      expect.objectContaining({ isEditMode: true, surface: 'term' })
+    );
+  });
+
+  it('switches Query to the visual builder surface', () => {
+    render(<OntologyExplorerPage />);
+
+    fireEvent.click(screen.getByTestId('mode-tab-query'));
+    fireEvent.click(screen.getByTestId('submode-tab-builder'));
+
+    expect(screen.getByTestId('visual-query-builder')).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('sparql-query-console')
+    ).not.toBeInTheDocument();
   });
 
   it('returns to the graph when View mode is reselected', () => {

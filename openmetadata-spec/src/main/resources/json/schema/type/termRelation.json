@@ -6,6 +6,12 @@
   "type": "object",
   "javaType": "org.openmetadata.schema.type.TermRelation",
   "definitions": {
+    "relationType": {
+      "description": "Type of the semantic relation between glossary terms.",
+      "type": "string",
+      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
+      "default": "relatedTo"
+    },
     "provenance": {
       "javaType": "org.openmetadata.schema.type.RelationProvenance",
       "description": "How this relation edge originated.",
@@ -21,9 +27,7 @@
     },
     "relationType": {
       "description": "Type of the relation (e.g., 'broader', 'narrower', 'synonym', 'relatedTo'). Defaults to 'relatedTo' for backward compatibility.",
-      "type": "string",
-      "pattern": "^[a-zA-Z][a-zA-Z0-9]*$",
-      "default": "relatedTo"
+      "$ref": "#/definitions/relationType"
     },
     "term": {
       "description": "Reference to the related glossary term.",

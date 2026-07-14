@@ -1,6 +1,9 @@
 package org.openmetadata.service.rdf.translator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.apicatalog.jsonld.JsonLd;
+import com.apicatalog.jsonld.JsonLdError;
 import com.apicatalog.jsonld.document.JsonDocument;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -9,12 +12,18 @@ import jakarta.json.JsonObject;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.StringReader;
-import java.nio.charset.StandardCharsets;
+import java.net.URL;
+import java.util.ArrayList;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Optional;
+import java.util.function.Function;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
+import org.apache.jena.rdf.model.Resource;
 import org.apache.jena.vocabulary.RDF;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.rdf.RdfUtils;
@@ -23,221 +32,162 @@ import org.openmetadata.service.rdf.RdfUtils;
 public class JsonLdTranslator {
 
   private static final String CONTEXT_BASE_PATH = "/rdf/contexts/";
+  private static final List<String> CONTEXT_NAMES =
+      List.of(
+          "dataAsset-complete",
+          "service",
+          "team",
+          "thread",
+          "entityRelationship",
+          "governance",
+          "quality",
+          "operations",
+          "lineage",
+          "ai",
+          "automation");
   private final ObjectMapper objectMapper;
   private final Map<String, Object> contextCache;
   private final String baseUri;
+  private final RdfPropertyMapper propertyMapper;
+  private final Function<EntityInterface, String> entityTypeResolver;
 
   public JsonLdTranslator(ObjectMapper objectMapper, String baseUri) {
-    this.objectMapper = objectMapper;
+    this(objectMapper, baseUri, entity -> entity.getEntityReference().getType());
+  }
+
+  JsonLdTranslator(
+      ObjectMapper objectMapper,
+      String baseUri,
+      Function<EntityInterface, String> entityTypeResolver) {
+    this.objectMapper = Objects.requireNonNull(objectMapper, "objectMapper");
     this.contextCache = new HashMap<>();
-    this.baseUri = baseUri;
+    this.baseUri = Objects.requireNonNull(baseUri, "baseUri");
+    this.entityTypeResolver = Objects.requireNonNull(entityTypeResolver, "entityTypeResolver");
     loadContexts();
+    this.propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
   }
 
   private void loadContexts() {
-    try {
-      Object baseContext = loadBaseContext();
-      contextCache.put("base", baseContext);
-    } catch (Exception e) {
-      LOG.error("Failed to load base context", e);
-    }
-
-    String[] contexts = {
-      "dataAsset-complete",
-      "service",
-      "team",
-      "thread",
-      "entityRelationship",
-      "governance",
-      "quality",
-      "operations",
-      "lineage",
-      "ai",
-      "automation"
-    };
-    for (String contextName : contexts) {
-      try {
-        Object context = loadContext(contextName + ".jsonld");
-        contextCache.put(contextName, context);
-      } catch (Exception e) {
-        LOG.error("Failed to load context: {}", contextName, e);
-      }
-    }
+    contextCache.put("base", contextValue("base.jsonld"));
+    CONTEXT_NAMES.forEach(
+        contextName -> contextCache.put(contextName, contextValue(contextName + ".jsonld")));
   }
 
-  private Object loadBaseContext() throws IOException {
-    String path = CONTEXT_BASE_PATH + "base.jsonld";
-    try (InputStream is = getClass().getResourceAsStream(path)) {
-      if (is == null) {
-        throw new IOException("Base context file not found: " + path);
-      }
-      String contextContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-      JsonNode contextJson = objectMapper.readTree(contextContent);
-      return objectMapper.convertValue(contextJson.get("@context"), Object.class);
+  private Object contextValue(String filename) {
+    JsonNode context = readContext(filename);
+    if (!context.isArray()) {
+      return objectMapper.convertValue(context, Object.class);
     }
+    List<Object> resolved = new ArrayList<>();
+    context.forEach(item -> resolved.add(resolveContextItem(item)));
+    return resolved;
   }
 
-  private Object loadContext(String filename) throws IOException {
+  private Object resolveContextItem(JsonNode item) {
+    return item.isTextual() && "./base.jsonld".equals(item.asText())
+        ? contextCache.get("base")
+        : objectMapper.convertValue(item, Object.class);
+  }
+
+  private JsonNode readContext(String filename) {
     String path = CONTEXT_BASE_PATH + filename;
-    try (InputStream is = getClass().getResourceAsStream(path)) {
-      if (is == null) {
-        throw new IOException("Context file not found: " + path);
-      }
-
-      String contextContent = new String(is.readAllBytes(), StandardCharsets.UTF_8);
-      JsonNode contextJson = objectMapper.readTree(contextContent);
-      Object contextValue = objectMapper.convertValue(contextJson.get("@context"), Object.class);
-
-      if (contextValue instanceof java.util.List) {
-        java.util.List<Object> contextArray = (java.util.List<Object>) contextValue;
-        java.util.List<Object> resolvedContext = new java.util.ArrayList<>();
-
-        for (Object item : contextArray) {
-          if ("./base.jsonld".equals(item) && contextCache.containsKey("base")) {
-            Object baseContext = contextCache.get("base");
-            if (baseContext instanceof Map) {
-              resolvedContext.add(baseContext);
-            }
-          } else {
-            resolvedContext.add(item);
-          }
-        }
-        return resolvedContext;
-      }
-
-      return contextValue;
+    URL resource =
+        Optional.ofNullable(getClass().getResource(path))
+            .orElseThrow(
+                () -> new IllegalStateException("Required JSON-LD context is missing: " + path));
+    try (InputStream input = resource.openStream()) {
+      return Optional.ofNullable(objectMapper.readTree(input))
+          .map(document -> document.get("@context"))
+          .orElseThrow(
+              () -> new IllegalStateException("JSON-LD context has no @context value: " + path));
+    } catch (IOException exception) {
+      throw new IllegalStateException("Unable to read JSON-LD context: " + path, exception);
     }
   }
 
   public ObjectNode toJsonLd(EntityInterface entity) {
-    try {
-      JsonNode entityJson = objectMapper.valueToTree(entity);
-      Map<String, Object> entityMap = objectMapper.convertValue(entityJson, Map.class);
-      addJsonLdPropertiesToReferences(entityMap);
-      assignColumnIds(entityMap);
-
-      String entityType = entity.getEntityReference().getType();
-      String id = baseUri + "entity/" + entityType + "/" + entity.getId();
-      entityMap.put("@id", id);
-      entityMap.put("@type", getEntityRdfType(entityType));
-
-      Object context = selectContext(entityType);
-      String entityJsonString = objectMapper.writeValueAsString(entityMap);
-      JsonDocument document = JsonDocument.of(new StringReader(entityJsonString));
-      String contextJsonString = objectMapper.writeValueAsString(context);
-      JsonDocument contextDoc = JsonDocument.of(new StringReader(contextJsonString));
-
-      JsonObject compacted = JsonLd.compact(document, contextDoc).get();
-
-      String compactedString = compacted.toString();
-      JsonNode compactedNode = objectMapper.readTree(compactedString);
-
-      if (compactedNode.isObject()) {
-        ObjectNode result = (ObjectNode) compactedNode;
-        Map<String, Object> compactedMap = objectMapper.convertValue(result, Map.class);
-        addJsonLdPropertiesToReferences(compactedMap);
-        return objectMapper.valueToTree(compactedMap);
-      }
-
-      return (ObjectNode) compactedNode;
-
-    } catch (Exception e) {
-      LOG.error("Failed to create JSON-LD for entity", e);
-      // Fallback to simple approach
-      return createSimpleJsonLd(entity);
-    }
-  }
-
-  private void addJsonLdPropertiesToReferences(Map<String, Object> map) {
-    for (Map.Entry<String, Object> entry : map.entrySet()) {
-      Object value = entry.getValue();
-
-      if (value instanceof Map) {
-        Map<String, Object> nestedMap = (Map<String, Object>) value;
-
-        if (nestedMap.containsKey("id") && nestedMap.containsKey("type")) {
-          String refType = (String) nestedMap.get("type");
-          Object refId = nestedMap.get("id");
-          nestedMap.put("@id", baseUri + "entity/" + refType + "/" + refId);
-          nestedMap.put("@type", getEntityRdfType(refType));
-        }
-
-        addJsonLdPropertiesToReferences(nestedMap);
-
-      } else if (value instanceof java.util.List) {
-        // Handle lists
-        java.util.List<Object> list = (java.util.List<Object>) value;
-        for (Object item : list) {
-          if (item instanceof Map) {
-            addJsonLdPropertiesToReferences((Map<String, Object>) item);
-          }
-        }
-      }
-    }
-  }
-
-  /**
-   * Assign FQN-derived URIs to every Column nested in a Table (or another column) so each Column
-   * is a first-class named resource. The same URI is minted by column-level lineage so SPARQL can
-   * traverse from a lineage edge to the column it references.
-   */
-  private void assignColumnIds(Map<String, Object> entityMap) {
-    Object columnsValue = entityMap.get("columns");
-    if (columnsValue instanceof java.util.List) {
-      for (Object column : (java.util.List<?>) columnsValue) {
-        if (column instanceof Map) {
-          assignColumnId((Map<String, Object>) column);
-        }
-      }
-    }
-  }
-
-  private void assignColumnId(Map<String, Object> column) {
-    Object fqn = column.get("fullyQualifiedName");
-    if (fqn instanceof String && !((String) fqn).isEmpty()) {
-      String columnUri = RdfUtils.columnUri(baseUri, (String) fqn);
-      if (columnUri != null) {
-        column.put("@id", columnUri);
-        column.put("@type", "om:Column");
-      }
-    }
-    Object children = column.get("children");
-    if (children instanceof java.util.List) {
-      for (Object child : (java.util.List<?>) children) {
-        if (child instanceof Map) {
-          assignColumnId((Map<String, Object>) child);
-        }
-      }
-    }
-  }
-
-  private ObjectNode createSimpleJsonLd(EntityInterface entity) {
-    ObjectNode result = objectMapper.createObjectNode();
-
-    String entityType = entity.getEntityReference().getType();
+    String entityType = resolveEntityType(entity);
+    ObjectNode entityJson = createEntityDocument(entity, entityType);
     Object context = selectContext(entityType);
-    result.set("@context", objectMapper.valueToTree(context));
-
-    String id = baseUri + "entity/" + entityType + "/" + entity.getId();
-    result.put("@id", id);
-    result.put("@type", getEntityRdfType(entityType));
-
-    JsonNode entityJson = objectMapper.valueToTree(entity);
-    if (entityJson.isObject()) {
-      ObjectNode entityObject = (ObjectNode) entityJson;
-      entityObject
-          .fields()
-          .forEachRemaining(
-              entry -> {
-                if (!entry.getKey().equals("@context")
-                    && !entry.getKey().equals("@id")
-                    && !entry.getKey().equals("@type")) {
-                  result.set(entry.getKey(), entry.getValue());
-                }
-              });
+    try {
+      return compact(entityJson, context);
+    } catch (JsonLdError | IOException exception) {
+      LOG.error("Failed to create JSON-LD for entity", exception);
+      entityJson.set("@context", objectMapper.valueToTree(context));
+      return entityJson;
     }
+  }
 
-    return result;
+  private ObjectNode createEntityDocument(EntityInterface entity, String entityType) {
+    ObjectNode entityJson = objectMapper.valueToTree(entity);
+    addJsonLdPropertiesToReferences(entityJson);
+    assignColumnIds(entityJson);
+    entityJson.put("@id", baseUri + "entity/" + entityType + "/" + entity.getId());
+    entityJson.put("@type", RdfUtils.getRdfType(entityType));
+    return entityJson;
+  }
+
+  private ObjectNode compact(ObjectNode entityJson, Object context)
+      throws JsonLdError, IOException {
+    JsonDocument document =
+        JsonDocument.of(new StringReader(objectMapper.writeValueAsString(entityJson)));
+    JsonDocument contextDocument =
+        JsonDocument.of(new StringReader(objectMapper.writeValueAsString(context)));
+    JsonObject compacted = JsonLd.compact(document, contextDocument).get();
+    JsonNode compactedNode = objectMapper.readTree(compacted.toString());
+    if (compactedNode instanceof ObjectNode result) {
+      addJsonLdPropertiesToReferences(result);
+      return result;
+    }
+    throw new IllegalStateException("JSON-LD compaction did not produce an object");
+  }
+
+  private void addJsonLdPropertiesToReferences(JsonNode node) {
+    if (node instanceof ObjectNode object) {
+      RdfJsonNode.field(object, "id")
+          .filter(JsonNode::isValueNode)
+          .map(JsonNode::asText)
+          .flatMap(
+              identifier ->
+                  RdfJsonNode.field(object, "type")
+                      .filter(JsonNode::isTextual)
+                      .map(JsonNode::asText)
+                      .map(type -> new EntityIdentifier(type, identifier)))
+          .ifPresent(
+              reference -> {
+                object.put(
+                    "@id", baseUri + "entity/" + reference.type() + "/" + reference.identifier());
+                object.put("@type", RdfUtils.getRdfType(reference.type()));
+              });
+      object.forEach(this::addJsonLdPropertiesToReferences);
+    } else if (node.isArray()) {
+      node.forEach(this::addJsonLdPropertiesToReferences);
+    }
+  }
+
+  private record EntityIdentifier(String type, String identifier) {}
+
+  private void assignColumnIds(JsonNode entity) {
+    RdfJsonNode.array(entity, "columns")
+        .ifPresent(columns -> columns.forEach(this::assignColumnId));
+  }
+
+  private void assignColumnId(JsonNode columnNode) {
+    if (columnNode instanceof ObjectNode column) {
+      RdfJsonNode.field(column, "fullyQualifiedName")
+          .filter(JsonNode::isTextual)
+          .map(JsonNode::asText)
+          .filter(fqn -> !fqn.isBlank())
+          .map(fqn -> RdfUtils.columnUri(baseUri, fqn))
+          .filter(uri -> !nullOrEmpty(uri))
+          .ifPresent(
+              uri -> {
+                column.put("@id", uri);
+                column.put("@type", "om:Column");
+              });
+      RdfJsonNode.array(column, "children")
+          .ifPresent(children -> children.forEach(this::assignColumnId));
+    }
   }
 
   public Model toRdf(EntityInterface entity) {
@@ -255,12 +205,12 @@ public class JsonLdTranslator {
     model.setNsPrefix("csvw", "http://www.w3.org/ns/csvw#");
     model.setNsPrefix("xsd", "http://www.w3.org/2001/XMLSchema#");
 
-    String entityType = entity.getEntityReference().getType();
+    String entityType = resolveEntityType(entity);
     String entityUri = baseUri + "entity/" + entityType + "/" + entity.getId();
 
-    org.apache.jena.rdf.model.Resource entityResource = model.createResource(entityUri);
+    Resource entityResource = model.createResource(entityUri);
 
-    String rdfType = getEntityRdfType(entityType);
+    String rdfType = RdfUtils.getRdfType(entityType);
     if (rdfType.contains(":")) {
       String[] parts = rdfType.split(":", 2);
       String prefix = parts[0];
@@ -291,7 +241,6 @@ public class JsonLdTranslator {
       entityResource.addProperty(RDF.type, model.createResource(provNamespace + provLocalName));
     }
 
-    RdfPropertyMapper propertyMapper = new RdfPropertyMapper(baseUri, objectMapper, contextCache);
     propertyMapper.mapEntityToRdf(entity, entityResource, model);
 
     LOG.debug(
@@ -381,7 +330,13 @@ public class JsonLdTranslator {
     };
   }
 
-  private String getEntityRdfType(String entityType) {
-    return RdfUtils.getRdfType(entityType);
+  private String resolveEntityType(EntityInterface entity) {
+    EntityInterface requiredEntity = Objects.requireNonNull(entity, "entity");
+    String entityType = entityTypeResolver.apply(requiredEntity);
+    if (nullOrEmpty(entityType)) {
+      throw new IllegalArgumentException(
+          "Entity type is not registered for " + requiredEntity.getClass().getSimpleName());
+    }
+    return entityType;
   }
 }

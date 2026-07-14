@@ -8,6 +8,7 @@ import static org.openmetadata.schema.settings.SettingsType.GLOSSARY_TERM_RELATI
 import static org.openmetadata.schema.settings.SettingsType.LINEAGE_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.MCP_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 
 import io.swagger.v3.oas.annotations.ExternalDocumentation;
 import io.swagger.v3.oas.annotations.Hidden;
@@ -42,9 +43,11 @@ import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.ExecutorService;
@@ -56,6 +59,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.MCPConfiguration;
+import org.openmetadata.schema.api.rdf.SavedSparqlQuery;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.auth.EmailRequest;
@@ -66,6 +70,7 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.configuration.RelationCardinality;
 import org.openmetadata.schema.configuration.SecurityConfiguration;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.SecurityValidationResponse;
@@ -614,6 +619,13 @@ public class SystemResource {
       normalizeGlossaryTermRelationSettings(relationSettings);
       settingName.setConfigValue(relationSettings);
       validateGlossaryTermRelationSettingsUpdate(settingName);
+    }
+
+    if (SPARQL_QUERY_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
+      SparqlQuerySettings querySettings =
+          JsonUtils.convertValue(settingName.getConfigValue(), SparqlQuerySettings.class);
+      validateSparqlQuerySettings(querySettings);
+      settingName.setConfigValue(querySettings);
     }
 
     if (AI_SETTINGS.value().equalsIgnoreCase(settingName.getConfigType().toString())) {
@@ -1478,6 +1490,39 @@ public class SystemResource {
       }
       message.setLength(message.length() - 2);
       throw new SystemSettingsException(message.toString());
+    }
+  }
+
+  private void validateSparqlQuerySettings(SparqlQuerySettings settings) {
+    if (settings == null || settings.getQueryTemplates() == null) {
+      throw new SystemSettingsException("SPARQL query templates are required");
+    }
+    if (settings.getQueryTemplates().size() > 50) {
+      throw new SystemSettingsException("At most 50 SPARQL query templates are allowed");
+    }
+
+    Set<UUID> queryIds = new HashSet<>();
+    for (SavedSparqlQuery query : settings.getQueryTemplates()) {
+      if (query == null || query.getId() == null || !queryIds.add(query.getId())) {
+        throw new SystemSettingsException("SPARQL query template IDs must be present and unique");
+      }
+      String name = query.getName() == null ? "" : query.getName().trim();
+      if (name.isEmpty() || name.length() > 256) {
+        throw new SystemSettingsException(
+            "SPARQL query template names must contain 1 to 256 characters");
+      }
+      String queryBody = query.getQuery() == null ? "" : query.getQuery().trim();
+      if (queryBody.isEmpty() || queryBody.length() > 100000) {
+        throw new SystemSettingsException(
+            "SPARQL query template bodies must contain 1 to 100000 characters");
+      }
+      if (query.getFormat() == null
+          || query.getInference() == null
+          || query.getSavedAt() == null
+          || query.getSavedAt() < 0) {
+        throw new SystemSettingsException("SPARQL query template metadata is incomplete");
+      }
+      query.setName(name);
     }
   }
 

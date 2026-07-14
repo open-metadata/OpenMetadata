@@ -13,17 +13,32 @@
 
 import {
   Badge,
+  Button,
   Card,
   Divider,
+  Input,
+  Select,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import React, { useCallback, useMemo } from 'react';
+import { Operation } from 'fast-json-patch';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import {
+  ConceptMapping,
+  ConceptMappingType,
+  GlossaryTerm,
+} from '../../generated/entity/data/glossaryTerm';
+import {
+  getGlossaryTermsById,
+  patchGlossaryTerm,
+} from '../../rest/glossaryAPI';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
+import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { COLOR_META_BY_HEX, RELATION_META } from './OntologyExplorer.constants';
 import { OntologyEdge, OntologyNode } from './OntologyExplorer.interface';
+import { isValidUUID } from './utils/graphBuilders';
 import { getEffectiveRelationColor } from './utils/graphStyles';
 
 export interface OntologyNodeRelationsContentProps {
@@ -31,6 +46,7 @@ export interface OntologyNodeRelationsContentProps {
   readonly edges: OntologyEdge[];
   readonly nodes: OntologyNode[];
   readonly relationTypes: GlossaryTermRelationType[];
+  readonly isEditMode?: boolean;
 }
 
 type RelationRow = OntologyEdge & {
@@ -39,8 +55,41 @@ type RelationRow = OntologyEdge & {
 
 export const OntologyNodeRelationsContent: React.FC<
   OntologyNodeRelationsContentProps
-> = ({ node, edges, nodes, relationTypes }) => {
+> = ({ node, edges, nodes, relationTypes, isEditMode = false }) => {
   const { t } = useTranslation();
+  const [termDetails, setTermDetails] = useState<GlossaryTerm | null>(null);
+  const [mappingType, setMappingType] = useState<ConceptMappingType>(
+    ConceptMappingType.ExactMatch
+  );
+  const [mappingIri, setMappingIri] = useState('');
+  const [isAddingMapping, setIsAddingMapping] = useState(false);
+  const [isSavingMapping, setIsSavingMapping] = useState(false);
+  const termId = node.termId ?? node.id;
+
+  useEffect(() => {
+    let active = true;
+    if (!isValidUUID(termId)) {
+      setTermDetails(null);
+
+      return undefined;
+    }
+
+    getGlossaryTermsById(termId, { fields: ['conceptMappings'] })
+      .then((term) => {
+        if (active) {
+          setTermDetails(term);
+        }
+      })
+      .catch(() => {
+        if (active) {
+          setTermDetails(null);
+        }
+      });
+
+    return () => {
+      active = false;
+    };
+  }, [termId]);
 
   const nodeRelations = useMemo(() => {
     const incoming = edges
@@ -93,6 +142,100 @@ export const OntologyNodeRelationsContent: React.FC<
 
   const totalRelations =
     nodeRelations.incoming.length + nodeRelations.outgoing.length;
+
+  const parentCount = useMemo(() => {
+    const parentIds = new Set<string>();
+    const hierarchicalRelationNames = new Set(
+      relationTypes
+        .filter((relationType) => relationType.category === 'hierarchical')
+        .map((relationType) =>
+          relationType.name.toLowerCase().replace(/[^a-z0-9]/g, '')
+        )
+    );
+    edges.forEach((edge) => {
+      const relationType = edge.relationType
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '');
+      if (
+        edge.to === node.id &&
+        (relationType === 'parentof' || relationType === 'narrower')
+      ) {
+        parentIds.add(edge.from);
+      } else if (
+        edge.from === node.id &&
+        (relationType === 'broader' ||
+          relationType === 'isa' ||
+          relationType === 'subclassof' ||
+          hierarchicalRelationNames.has(relationType))
+      ) {
+        parentIds.add(edge.to);
+      }
+    });
+
+    return parentIds.size;
+  }, [edges, node.id, relationTypes]);
+
+  const mappingLabelKeys: Record<ConceptMappingType, string> = {
+    [ConceptMappingType.ExactMatch]: 'label.exact-match',
+    [ConceptMappingType.CloseMatch]: 'label.close-match',
+    [ConceptMappingType.BroadMatch]: 'label.broad-match',
+    [ConceptMappingType.NarrowMatch]: 'label.narrow-match',
+    [ConceptMappingType.RelatedMatch]: 'label.related-match',
+    [ConceptMappingType.SameAs]: 'label.same-as',
+  };
+  const mappingBadgeColors: Record<
+    ConceptMappingType,
+    'blue' | 'indigo' | 'orange' | 'purple' | 'success'
+  > = {
+    [ConceptMappingType.ExactMatch]: 'success',
+    [ConceptMappingType.CloseMatch]: 'blue',
+    [ConceptMappingType.BroadMatch]: 'orange',
+    [ConceptMappingType.NarrowMatch]: 'purple',
+    [ConceptMappingType.RelatedMatch]: 'indigo',
+    [ConceptMappingType.SameAs]: 'success',
+  };
+  const conceptMappings = termDetails?.conceptMappings ?? [];
+
+  const handleAddMapping = useCallback(async () => {
+    const conceptIri = mappingIri.trim();
+    try {
+      new URL(conceptIri);
+    } catch {
+      showErrorToast(t('message.invalid-concept-iri'));
+
+      return;
+    }
+    if (
+      conceptMappings.some(
+        (mapping) =>
+          mapping.conceptIri === conceptIri &&
+          mapping.mappingType === mappingType
+      )
+    ) {
+      showErrorToast(t('message.concept-mapping-already-exists'));
+
+      return;
+    }
+
+    const mapping: ConceptMapping = { conceptIri, mappingType };
+    const operation: Operation = conceptMappings.length
+      ? { op: 'add', path: '/conceptMappings/-', value: mapping }
+      : { op: 'add', path: '/conceptMappings', value: [mapping] };
+    setIsSavingMapping(true);
+    try {
+      const updatedTerm = await patchGlossaryTerm(termId, [operation]);
+      setTermDetails(updatedTerm);
+      setMappingIri('');
+      setIsAddingMapping(false);
+      showSuccessToast(
+        t('server.create-entity-success', { entity: t('label.mapping') })
+      );
+    } catch (error) {
+      showErrorToast(String(error));
+    } finally {
+      setIsSavingMapping(false);
+    }
+  }, [conceptMappings, mappingIri, mappingType, t, termId]);
 
   const relatedDisplayName = useCallback(
     (rel: RelationRow) => {
@@ -193,34 +336,138 @@ export const OntologyNodeRelationsContent: React.FC<
     );
   };
 
-  if (totalRelations === 0) {
-    return (
-      <Typography
-        as="div"
-        className="tw:py-8 tw:text-center"
-        size="text-sm"
-        weight="regular">
-        {t('message.no-relations-found')}
-      </Typography>
-    );
-  }
-
   return (
-    <>
-      {renderSection(
-        t('label.outgoing-relation-plural'),
-        nodeRelations.outgoing.length,
-        nodeRelations.outgoing,
-        'outgoing-relation-label',
-        'outgoing-relation-count'
+    <div className="tw:flex tw:flex-col tw:gap-4">
+      {parentCount > 1 ? (
+        <Card
+          className="tw:flex tw:items-center tw:justify-between tw:rounded-xl tw:border tw:border-utility-purple-200 tw:bg-utility-purple-50 tw:p-3 tw:ring-0 tw:shadow-sm"
+          data-testid="ontology-polyhierarchy">
+          <div>
+            <Typography as="p" size="text-sm" weight="semibold">
+              {t('label.polyhierarchy')}
+            </Typography>
+            <Typography as="p" className="tw:text-tertiary" size="text-xs">
+              {t('message.polyhierarchy-parent-count', { count: parentCount })}
+            </Typography>
+          </div>
+          <Badge color="purple" size="sm" type="color">
+            {parentCount}
+          </Badge>
+        </Card>
+      ) : null}
+
+      {totalRelations === 0 ? (
+        <Typography
+          as="div"
+          className="tw:py-8 tw:text-center"
+          size="text-sm"
+          weight="regular">
+          {t('message.no-relations-found')}
+        </Typography>
+      ) : (
+        <>
+          {renderSection(
+            t('label.outgoing-relation-plural'),
+            nodeRelations.outgoing.length,
+            nodeRelations.outgoing,
+            'outgoing-relation-label',
+            'outgoing-relation-count'
+          )}
+          {renderSection(
+            t('label.incoming-relation-plural'),
+            nodeRelations.incoming.length,
+            nodeRelations.incoming,
+            'incoming-relation-label',
+            'incoming-relation-count'
+          )}
+        </>
       )}
-      {renderSection(
-        t('label.incoming-relation-plural'),
-        nodeRelations.incoming.length,
-        nodeRelations.incoming,
-        'incoming-relation-label',
-        'incoming-relation-count'
-      )}
-    </>
+
+      <div
+        className="tw:flex tw:flex-col tw:gap-2"
+        data-testid="ontology-mappings">
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <Typography as="h3" size="text-sm" weight="semibold">
+            {t('label.mapping-plural')}
+          </Typography>
+          <Badge color="gray" size="sm" type="color">
+            {conceptMappings.length}
+          </Badge>
+        </div>
+        {conceptMappings.map((mapping) => (
+          <Card
+            className="tw:flex tw:items-center tw:gap-2 tw:rounded-lg tw:border tw:border-utility-gray-blue-100 tw:p-3 tw:ring-0 tw:shadow-sm"
+            key={`${mapping.mappingType}-${mapping.conceptIri}`}>
+            <Badge
+              color={mappingBadgeColors[mapping.mappingType]}
+              size="sm"
+              type="color">
+              {t(mappingLabelKeys[mapping.mappingType])}
+            </Badge>
+            <Typography
+              as="span"
+              className="tw:min-w-0 tw:truncate tw:font-mono tw:text-secondary"
+              size="text-xs">
+              {mapping.conceptIri}
+            </Typography>
+          </Card>
+        ))}
+        {isEditMode && isValidUUID(termId) ? (
+          isAddingMapping ? (
+            <Card className="tw:flex tw:flex-col tw:gap-3 tw:rounded-xl tw:border tw:border-dashed tw:border-utility-gray-blue-200 tw:p-3 tw:ring-0 tw:shadow-sm">
+              <Select
+                aria-label={t('label.mapping-type')}
+                items={Object.values(ConceptMappingType).map((type) => ({
+                  id: type,
+                  label: t(mappingLabelKeys[type]),
+                }))}
+                size="sm"
+                value={mappingType}
+                onChange={(key) =>
+                  setMappingType(String(key) as ConceptMappingType)
+                }>
+                {(item) => (
+                  <Select.Item id={item.id} key={item.id} label={item.label} />
+                )}
+              </Select>
+              <Input
+                data-testid="concept-mapping-iri"
+                placeholder={t('label.concept-iri')}
+                value={mappingIri}
+                onChange={setMappingIri}
+              />
+              <div className="tw:flex tw:justify-end tw:gap-2">
+                <Button
+                  color="tertiary"
+                  size="sm"
+                  onClick={() => {
+                    setMappingIri('');
+                    setIsAddingMapping(false);
+                  }}>
+                  {t('label.cancel')}
+                </Button>
+                <Button
+                  color="primary"
+                  data-testid="save-concept-mapping"
+                  isDisabled={isSavingMapping || !mappingIri.trim()}
+                  size="sm"
+                  onClick={handleAddMapping}>
+                  {t('label.add-mapping')}
+                </Button>
+              </div>
+            </Card>
+          ) : (
+            <Button
+              className="tw:w-full!"
+              color="secondary"
+              data-testid="add-concept-mapping"
+              size="sm"
+              onClick={() => setIsAddingMapping(true)}>
+              {t('label.add-mapping')}
+            </Button>
+          )
+        ) : null}
+      </div>
+    </div>
   );
 };

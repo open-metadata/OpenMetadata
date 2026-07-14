@@ -19,7 +19,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class CreateDomainTool implements McpTool {
+public class CreateDomainTool implements McpTool<Map<String, Object>> {
   private static final String DEFAULT_DOMAIN_TYPE = "Aggregate";
 
   @Override

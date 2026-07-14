@@ -3,12 +3,13 @@ package org.openmetadata.service.rdf.inference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.URL;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
-import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
 
 /**
@@ -16,12 +17,10 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
  * from the classpath under {@code rdf/inference-rules/}; further entries can be {@link
  * #upsert(InferenceRule) upserted} programmatically.
  *
- * <p>This is intentionally a Phase-1 storage shape — there is no DB-backed persistence yet.
- * Admin REST writes call {@link #upsert(InferenceRule)} after passing validation. A follow-up
- * phase will swap this in-memory registry for a JDBI-backed repository without changing the
- * exposed API.
+ * <p>This is intentionally a Phase-1 storage shape — there is no DB-backed persistence yet. The
+ * registry validates every write so callers cannot bypass its invariants. A follow-up phase will
+ * swap this in-memory registry for a JDBI-backed repository without changing the exposed API.
  */
-@Slf4j
 public final class InferenceRuleRegistry {
 
   private static final String[] STARTER_PACK = {
@@ -50,28 +49,37 @@ public final class InferenceRuleRegistry {
    * Load the starter pack from the classpath. Idempotent.
    */
   public synchronized void loadStarterPackIfNeeded() {
-    if (starterLoaded) return;
-    int loaded = 0;
-    for (String path : STARTER_PACK) {
-      try (InputStream is = InferenceRuleRegistry.class.getResourceAsStream(path)) {
-        if (is == null) {
-          LOG.warn("Inference rule starter pack resource missing: {}", path);
-          continue;
-        }
-        InferenceRule rule = mapper.readValue(is, InferenceRule.class);
-        List<String> errors = InferenceRuleValidator.validate(rule);
-        if (!errors.isEmpty()) {
-          LOG.error("Starter pack rule '{}' failed validation: {}", path, errors);
-          continue;
-        }
-        rules.put(rule.getName(), rule);
-        loaded++;
-      } catch (IOException e) {
-        LOG.error("Failed to load starter pack rule {}", path, e);
-      }
+    if (!starterLoaded) {
+      List<InferenceRule> starterRules =
+          Arrays.stream(STARTER_PACK).map(this::readStarterRule).toList();
+      starterRules.forEach(rule -> rules.put(rule.getName(), rule));
+      starterLoaded = true;
     }
-    starterLoaded = true;
-    LOG.info("Loaded {} inference rules from starter pack", loaded);
+  }
+
+  private InferenceRule readStarterRule(String resourcePath) {
+    URL resource =
+        Optional.ofNullable(InferenceRuleRegistry.class.getResource(resourcePath))
+            .orElseThrow(
+                () ->
+                    new IllegalStateException(
+                        "Required inference rule resource is missing: " + resourcePath));
+    try (InputStream input = resource.openStream()) {
+      InferenceRule rule = mapper.readValue(input, InferenceRule.class);
+      requireValid(rule, resourcePath);
+      return rule;
+    } catch (IOException exception) {
+      throw new IllegalStateException(
+          "Unable to read inference rule resource: " + resourcePath, exception);
+    }
+  }
+
+  private static void requireValid(InferenceRule rule, String context) {
+    List<String> errors = InferenceRuleValidator.validate(rule);
+    if (!errors.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Invalid inference rule '%s': %s".formatted(context, String.join("; ", errors)));
+    }
   }
 
   /** @return all rules in priority order, then by name. */
@@ -91,12 +99,10 @@ public final class InferenceRuleRegistry {
     return Optional.ofNullable(rules.get(name));
   }
 
-  /**
-   * Insert or replace a rule. The caller is responsible for validation (see {@link
-   * InferenceRuleValidator}); this method does no validation itself.
-   */
+  /** Insert or replace a valid rule. */
   public synchronized void upsert(InferenceRule rule) {
     loadStarterPackIfNeeded();
+    requireValid(rule, rule == null ? "unknown" : rule.getName());
     rules.put(rule.getName(), rule);
   }
 

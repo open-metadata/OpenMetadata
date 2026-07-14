@@ -83,10 +83,6 @@ export const useOntologyGraphEdit = ({
   nodePositionsRef.current = nodePositions;
   const toLocalPointRef = useRef(toLocalPoint);
   toLocalPointRef.current = toLocalPoint;
-  const cursorRef = useRef<Point | null>(null);
-  cursorRef.current = cursor;
-  const candidateRef = useRef<string | null>(null);
-  candidateRef.current = candidateTargetId;
 
   const cancel = useCallback(() => {
     setArmedFromId(null);
@@ -97,12 +93,45 @@ export const useOntologyGraphEdit = ({
   const startArm = useCallback(
     (fromId: string, at: Point) => {
       if (isEditMode) {
+        setPendingRelation(null);
         setArmedFromId(fromId);
         setCursor(at);
         setCandidateTargetId(null);
       }
     },
     [isEditMode]
+  );
+
+  const selectTarget = useCallback(
+    (toId: string) => {
+      if (armedFromId === null || toId === armedFromId) {
+        return;
+      }
+      const from = nodePositionsRef.current[armedFromId];
+      const to = nodePositionsRef.current[toId];
+      if (!from || !to) {
+        return;
+      }
+      setPendingRelation({
+        fromId: armedFromId,
+        toId,
+        at: {
+          x: (from.x + to.x) / 2,
+          y: (from.y + to.y) / 2,
+        },
+      });
+      cancel();
+    },
+    [armedFromId, cancel]
+  );
+
+  const setCandidateTarget = useCallback(
+    (toId: string | null) => {
+      setCandidateTargetId(
+        armedFromId !== null && toId !== armedFromId ? toId : null
+      );
+    },
+    [armedFromId]
   );
 
   useEffect(() => {
@@ -120,31 +149,28 @@ export const useOntologyGraphEdit = ({
       }
     };
 
-    const handleUp = () => {
-      const target = candidateRef.current;
-      const at = cursorRef.current;
-      if (target && at) {
-        setPendingRelation({ fromId: armedFromId, toId: target, at });
-      }
-      cancel();
-    };
-
     const handleKey = (event: KeyboardEvent) => {
       if (event.key === 'Escape') {
         cancel();
+        setPendingRelation(null);
       }
     };
 
     window.addEventListener('pointermove', handleMove);
-    window.addEventListener('pointerup', handleUp);
     window.addEventListener('keydown', handleKey);
 
     return () => {
       window.removeEventListener('pointermove', handleMove);
-      window.removeEventListener('pointerup', handleUp);
       window.removeEventListener('keydown', handleKey);
     };
   }, [armedFromId, cancel]);
+
+  useEffect(() => {
+    if (!isEditMode) {
+      cancel();
+      setPendingRelation(null);
+    }
+  }, [cancel, isEditMode]);
 
   const confirmRelationType = useCallback(
     async (relationType: string) => {
@@ -167,6 +193,8 @@ export const useOntologyGraphEdit = ({
     candidateTargetId,
     pendingRelation,
     startArm,
+    selectTarget,
+    setCandidateTarget,
     cancel,
     confirmRelationType,
     dismissPending,

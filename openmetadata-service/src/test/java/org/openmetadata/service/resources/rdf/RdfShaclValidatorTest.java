@@ -11,6 +11,7 @@ import org.apache.jena.vocabulary.RDF;
 import org.apache.jena.vocabulary.RDFS;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.rdf.RdfShaclValidator;
 
 class RdfShaclValidatorTest {
 

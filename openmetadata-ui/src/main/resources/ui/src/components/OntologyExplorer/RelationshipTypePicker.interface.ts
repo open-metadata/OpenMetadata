@@ -14,6 +14,8 @@
 export interface RelationshipTypePickerProps {
   /** Called with the selected relation type name (e.g. 'broader'). */
   onSelect: (relationType: string) => void;
+  sourceLabel: string;
+  targetLabel: string;
   onCancel?: () => void;
   className?: string;
 }

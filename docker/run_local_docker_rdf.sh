@@ -43,6 +43,7 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ $startFuseki == "true" ]]; then
+  export COMPOSE_PROFILES="${COMPOSE_PROFILES:-rdf}"
   export RDF_ENABLED=true
   export RDF_AUTO_REINDEX=true
   export RDF_STORAGE_TYPE="${RDF_STORAGE_TYPE:-FUSEKI}"
@@ -63,6 +64,7 @@ if [[ $startFuseki == "true" ]]; then
   export OM_EXTRA_COMPOSE_FILES="docker/development/docker-compose-fuseki.yml"
   export OM_ADDITIONAL_UP_SERVICES="fuseki"
 else
+  unset COMPOSE_PROFILES
   export RDF_ENABLED=false
   export RDF_AUTO_REINDEX=false
   unset RDF_STORAGE_TYPE

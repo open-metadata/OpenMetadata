@@ -37,6 +37,10 @@ import {
 } from '../OntologyExplorer.interface';
 import { getEntityIconUrl } from '../utils/entityIconUrls';
 import {
+  OBSERVED_LINEAGE_EDGE_KIND,
+  SEMANTIC_PROJECTION_EDGE_KIND,
+} from '../utils/graphBuilders';
+import {
   BADGE_MIN_NODE_WIDTH,
   estimateNodeWidth,
   MODEL_NODE_MAX_WIDTH,
@@ -61,6 +65,22 @@ interface CardinalityInfo {
   cardinality?: RelationCardinality;
   sourceMax?: number | null;
   targetMax?: number | null;
+}
+
+const STUDIO_DEFAULT_ACCENT = '#84CAFF';
+const STUDIO_COMPLIANCE_ACCENT = '#DC6803';
+const STUDIO_ISOLATED_ACCENT = '#F79009';
+
+export function getStudioNodeAccentColor(node: OntologyNode): string {
+  if (node.type === 'glossaryTermIsolated') {
+    return STUDIO_ISOLATED_ACCENT;
+  }
+
+  const hierarchyRoot = node.fullyQualifiedName?.split('.')[1]?.toLowerCase();
+
+  return hierarchyRoot?.startsWith('compliance')
+    ? STUDIO_COMPLIANCE_ACCENT
+    : STUDIO_DEFAULT_ACCENT;
 }
 
 function getCardinalityEndLabels(
@@ -157,6 +177,9 @@ export function mergeEdges(
         if (other.from !== edge.to || other.to !== edge.from) {
           continue;
         }
+        if (other.edgeKind !== edge.edgeKind) {
+          continue;
+        }
         const isSymmetricMatch =
           isSymmetric && other.relationType === edge.relationType;
         if (
@@ -176,6 +199,8 @@ export function mergeEdges(
           to: edge.to,
           relationType: edge.relationType,
           isBidirectional: false,
+          ...(edge.edgeKind ? { edgeKind: edge.edgeKind } : {}),
+          ...(edge.provenance ? { provenance: edge.provenance } : {}),
         });
 
         continue;
@@ -190,6 +215,8 @@ export function mergeEdges(
           ? {}
           : { inverseRelationType: match.relationType }),
         isBidirectional: true,
+        ...(edge.edgeKind ? { edgeKind: edge.edgeKind } : {}),
+        ...(edge.provenance ? { provenance: edge.provenance } : {}),
       });
     }
   }
@@ -212,6 +239,7 @@ export function useGraphDataBuilder({
   hierarchyCombos = [],
   graphSearchHighlight = null,
   relationTypes,
+  studioMode = false,
 }: BuildGraphDataProps) {
   const computeNodeColor = useCallback(
     (node: OntologyNode): string =>
@@ -423,6 +451,9 @@ export function useGraphDataBuilder({
         }
         const fromIsAsset = allAssetIds.has(e.from);
         const toIsAsset = allAssetIds.has(e.to);
+        if (fromIsAsset && toIsAsset) {
+          return true;
+        }
         if (fromIsAsset || toIsAsset) {
           const termId = fromIsAsset ? e.to : e.from;
 
@@ -502,12 +533,17 @@ export function useGraphDataBuilder({
       const shouldTruncateLabel =
         isInModelMode || (explorationMode === 'data' && !isDataAsset);
       const estimatedWidth = estimateNodeWidth(rawLabel);
-      const nodeWidth = shouldTruncateLabel
+      const nodeWidth = studioMode
+        ? MODEL_NODE_MAX_WIDTH
+        : shouldTruncateLabel
         ? Math.min(MODEL_NODE_MAX_WIDTH, estimatedWidth)
         : estimatedWidth;
       const label = shouldTruncateLabel
         ? truncateNodeLabelByWidth(rawLabel, nodeWidth)
         : rawLabel;
+      const studioAccentColor = studioMode
+        ? getStudioNodeAccentColor(node)
+        : undefined;
       const pos =
         explorationMode === 'hierarchy'
           ? nodePositions?.[node.id]
@@ -632,6 +668,7 @@ export function useGraphDataBuilder({
 
       return {
         id: node.id,
+        ...(studioMode ? { type: 'studio-term' } : {}),
         data: {
           ontologyNode: node,
           label,
@@ -642,16 +679,28 @@ export function useGraphDataBuilder({
           size: [nodeWidth, height],
           nodeWidth,
           glossaryId: node.glossaryId ?? '',
+          studioMode,
+          studioAccentColor,
         },
-        style: buildDefaultRectNodeStyle(
-          getCanvasColor,
-          label,
-          [nodeWidth, height],
-          pos
-        ),
-        ...(node.glossaryId && {
-          combo: `glossary-group-${node.glossaryId}`,
-        }),
+        style: {
+          ...buildDefaultRectNodeStyle(
+            getCanvasColor,
+            label,
+            [nodeWidth, height],
+            pos
+          ),
+          ...(studioMode && {
+            label: false,
+            stroke:
+              node.type === 'glossaryTermIsolated' ? '#FEDF89' : '#E9EAEB',
+            studioLabelText: label,
+            studioAccentColor: studioAccentColor ?? STUDIO_DEFAULT_ACCENT,
+          }),
+        },
+        ...(!studioMode &&
+          node.glossaryId && {
+            combo: `glossary-group-${node.glossaryId}`,
+          }),
       };
     });
 
@@ -729,7 +778,9 @@ export function useGraphDataBuilder({
           toType !== 'metric';
 
         return group.map((singleEdge, i) => {
-          const edgeId = `edge-${singleEdge.from}-${singleEdge.to}-${singleEdge.relationType}`;
+          const edgeId = `edge-${singleEdge.from}-${singleEdge.to}-${
+            singleEdge.relationType
+          }-${singleEdge.edgeKind ?? 'ontology'}`;
           const isPrimary = i === 0;
           const edgeKeyStr = `${singleEdge.from}::${singleEdge.to}::${singleEdge.relationType}`;
           const isDimmedBySearch =
@@ -738,16 +789,24 @@ export function useGraphDataBuilder({
             ? isDimmedBySearch
             : isDimmedBySelection;
           const isClickedEdge = edgeId === clickedEdgeId;
+          const isSemanticProjection =
+            singleEdge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND;
+          const isObservedLineage =
+            singleEdge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND;
 
           const rawEdgeColor =
-            explorationMode === 'data' && !isTermTermInDataMode
+            explorationMode === 'data' &&
+            !isTermTermInDataMode &&
+            !isSemanticProjection
               ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
               : customRelationColorMap[singleEdge.relationType] ??
                 RELATION_COLORS[singleEdge.relationType] ??
                 EDGE_STROKE_COLOR;
           const edgeColor = getCanvasColor(
             rawEdgeColor,
-            explorationMode === 'data' && !isTermTermInDataMode
+            explorationMode === 'data' &&
+              !isTermTermInDataMode &&
+              !isSemanticProjection
               ? DATA_MODE_ASSET_EDGE_STROKE_COLOR
               : EDGE_STROKE_COLOR
           );
@@ -757,7 +816,9 @@ export function useGraphDataBuilder({
             (explorationMode === 'model' ||
               explorationMode === 'hierarchy' ||
               isClickedEdge ||
-              isTermTermInDataMode);
+              isTermTermInDataMode ||
+              isSemanticProjection ||
+              isObservedLineage);
 
           const labelText = showLabel
             ? singleEdge.inverseRelationType
@@ -766,6 +827,8 @@ export function useGraphDataBuilder({
                 )} / ${formatRelationLabel(singleEdge.inverseRelationType)}`
               : formatRelationLabel(singleEdge.relationType)
             : undefined;
+          const displayLabel =
+            studioMode && labelText ? labelText.toLocaleLowerCase() : labelText;
 
           // Offset badges perpendicular to the edge direction so they never
           // stack along the edge (which breaks for vertical edges).
@@ -794,16 +857,17 @@ export function useGraphDataBuilder({
           }
 
           const cardinalityLabels =
-            showLabel && isPrimary
+            showLabel && isPrimary && !isSemanticProjection
               ? getCardinalityEndLabels(singleEdge.relationType, cardinalityMap)
               : null;
 
-          const labelStyle = labelText
+          const labelStyle = displayLabel
             ? {
                 ...getEdgeRelationLabelStyle(
-                  labelText,
+                  displayLabel,
                   singleEdge.relationType,
-                  customRelationColorMap[singleEdge.relationType]
+                  customRelationColorMap[singleEdge.relationType],
+                  studioMode
                 ),
                 labelPosition: 'center',
                 labelAutoRotate: false,
@@ -825,6 +889,8 @@ export function useGraphDataBuilder({
             target: singleEdge.to,
             data: {
               relationType: singleEdge.relationType,
+              edgeKind: singleEdge.edgeKind,
+              provenance: singleEdge.provenance,
               edgeColor,
               isHighlighted,
               isClickedEdge,
@@ -835,7 +901,8 @@ export function useGraphDataBuilder({
               ? {
                   stroke: edgeColor,
                   lineWidth: isHighlighted || isClickedEdge ? 2.5 : 1.5,
-                  endArrow: explorationMode !== 'data',
+                  endArrow: explorationMode !== 'data' || isSemanticProjection,
+                  ...(isSemanticProjection ? { lineDash: [6, 4] } : {}),
                   ...commonStyle,
                 }
               : {
@@ -879,7 +946,7 @@ export function useGraphDataBuilder({
           ),
         });
       });
-    } else if (explorationMode !== 'data') {
+    } else if (explorationMode !== 'data' && !studioMode) {
       const byGlossary = new Map<string, OntologyNode[]>();
       nodesForGraph.forEach((node) => {
         if (node.glossaryId) {
@@ -958,6 +1025,7 @@ export function useGraphDataBuilder({
     glossaries,
     cardinalityMap,
     customRelationColorMap,
+    studioMode,
   ]);
 
   const assetToTermMap = useMemo(() => {

@@ -21,7 +21,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class CreateTagTool implements McpTool {
+public class CreateTagTool implements McpTool<Map<String, Object>> {
 
   @Override
   public Map<String, Object> execute(

@@ -26,7 +26,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class CreateMetricTool implements McpTool {
+public class CreateMetricTool implements McpTool<Map<String, Object>> {
 
   @Override
   public Map<String, Object> execute(

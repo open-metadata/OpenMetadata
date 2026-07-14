@@ -28,7 +28,7 @@ import org.openmetadata.service.util.RestUtil;
  * derivation when enabled.
  */
 @Slf4j
-public class CreateContextMemoryTool implements McpTool {
+public class CreateContextMemoryTool implements McpTool<Map<String, Object>> {
   private static final String MEMORY_TYPE_VALUES = "Preference, UseCase, Note, Runbook, Faq";
   private static final String MEMORY_SCOPE_VALUES = "UserGlobal, EntityScoped";
 

@@ -20,7 +20,13 @@ import {
 import { SearchMd } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useRef, useState } from 'react';
+import React, {
+  useCallback,
+  useEffect,
+  useMemo,
+  useRef,
+  useState,
+} from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../enums/entity.enum';
@@ -30,12 +36,8 @@ import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
-import FilterToolbar from './FilterToolbar';
 import GraphSettingsPanel from './GraphSettingsPanel';
-import {
-  DEFAULT_FILTERS,
-  useOntologyExplorer,
-} from './hooks/useOntologyExplorer';
+import { useOntologyExplorer } from './hooks/useOntologyExplorer';
 import OntologyControlButtons from './OntologyControlButtons';
 import { OntologyEntityPanel } from './OntologyEntityPanel';
 import { withoutOntologyAutocompleteAll } from './OntologyExplorer.constants';
@@ -44,7 +46,14 @@ import {
   OntologyExplorerProps,
 } from './OntologyExplorer.interface';
 import OntologyGraph from './OntologyGraphG6';
+import OntologyHealthPanel from './OntologyHealthPanel';
 import { OntologyNodeRelationsContent } from './OntologyNodeRelationsContent';
+import {
+  buildOntologyTreeGroups,
+  getOntologyHealthSummary,
+} from './OntologyStudio.utils';
+import OntologyTermEditor from './OntologyTermEditor';
+import OntologyTreeView from './OntologyTreeView';
 import {
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
@@ -52,11 +61,13 @@ import {
   METRIC_NODE_TYPE,
 } from './utils/graphBuilders';
 
-const ONTOLOGY_GRAPH_BACKDROP_CLASS =
+const DEFAULT_GRAPH_BACKDROP_CLASS =
   'tw:absolute tw:inset-0 tw:z-0 tw:bg-primary tw:[background-image:radial-gradient(circle,rgba(148,163,184,0.22)_1px,transparent_1px)] tw:[background-size:14px_14px]';
+const STUDIO_GRAPH_BACKDROP_CLASS =
+  'tw:absolute tw:inset-0 tw:z-0 tw:bg-white tw:[background-image:radial-gradient(circle,#E4E4E7_1px,transparent_1px)] tw:[background-size:22px_22px]';
 
 const ONTOLOGY_TOOLBAR_CARD_CLASS =
-  'tw:z-1 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
+  'tw:z-6 tw:border tw:border-utility-gray-blue-100 tw:ring-0 tw:shadow-md';
 
 interface GraphEmptyStateProps {
   readonly message: string;
@@ -82,8 +93,15 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   className,
   height = 'calc(100vh - 200px)',
   isEditMode = false,
+  surface = 'graph',
+  showHealth = false,
+  globalGlossaryIds,
   onStatsChange,
   onLoadingChange,
+  onGlossariesChange,
+  onGraphDataChange,
+  onRelationTypesChange,
+  onRequestEdit,
 }) => {
   const { t } = useTranslation();
   const contextData = useGenericContext<GlossaryTerm>();
@@ -106,15 +124,14 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     expandedTermIds,
     rdfEnabled,
     graphDataToShow,
+    combinedGraphData,
     filteredGraphData,
     hierarchyGraphData,
     hierarchyBakedPositions,
+    graphSearchHighlight,
     glossaryColorMap,
     isHierarchyView,
     exportableGlossaryId,
-    hasMoreTerms,
-    loadedTermCount,
-    totalTermCount,
     setFilters,
     setSelectedNode,
     handleZoomIn,
@@ -124,13 +141,11 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     handleExportSvg,
     handleExportTurtle,
     handleExportRdfXml,
+    handleExportJsonLd,
     handleModeChange,
-    handleViewModeChange,
     handleRefresh,
-    handleLoadMore,
     handleScrollNearEdge,
     handleSettingsChange,
-    handleFiltersChange,
     handleGraphNodeClick,
     handleGraphNodeDoubleClick,
     handleGraphPaneClick,
@@ -153,6 +168,21 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
   const searchInputRef = useRef(searchInput);
   searchInputRef.current = searchInput;
 
+  const healthSummary = useMemo(
+    () => getOntologyHealthSummary(combinedGraphData, filters),
+    [combinedGraphData, filters]
+  );
+  const treeGroups = useMemo(
+    () =>
+      buildOntologyTreeGroups(
+        combinedGraphData,
+        filters,
+        glossaries,
+        relationTypes
+      ),
+    [combinedGraphData, filters, glossaries, relationTypes]
+  );
+
   useEffect(() => {
     const timer = setTimeout(() => {
       setFilters((prev) => ({ ...prev, searchQuery: searchInput }));
@@ -166,6 +196,39 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       setSearchInput(filters.searchQuery);
     }
   }, [filters.searchQuery]);
+
+  useEffect(() => {
+    if (scope !== 'global' || !globalGlossaryIds) {
+      return;
+    }
+
+    setFilters((previousFilters) => {
+      if (
+        previousFilters.glossaryIds.length === globalGlossaryIds.length &&
+        previousFilters.glossaryIds.every(
+          (glossaryId, index) => glossaryId === globalGlossaryIds[index]
+        )
+      ) {
+        return previousFilters;
+      }
+
+      return { ...previousFilters, glossaryIds: globalGlossaryIds };
+    });
+  }, [globalGlossaryIds, scope, setFilters]);
+
+  useEffect(() => {
+    onGlossariesChange?.(glossaries);
+  }, [glossaries, onGlossariesChange]);
+
+  useEffect(() => {
+    if (combinedGraphData) {
+      onGraphDataChange?.(combinedGraphData);
+    }
+  }, [combinedGraphData, onGraphDataChange]);
+
+  useEffect(() => {
+    onRelationTypesChange?.(relationTypes);
+  }, [onRelationTypesChange, relationTypes]);
 
   const handleCreateRelation = useCallback(
     async (fromId: string, toId: string, relationType: string) => {
@@ -315,6 +378,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
             }
             glossaries={glossaries}
             glossaryColorMap={glossaryColorMap}
+            graphSearchHighlight={graphSearchHighlight}
             hierarchyCombos={
               isHierarchyView && hierarchyGraphData
                 ? hierarchyGraphData.combos.map((c) => ({
@@ -335,6 +399,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
                 : selectedNode?.id
             }
             settings={settings}
+            studioMode={scope === 'global'}
             onCreateRelation={handleCreateRelation}
             onNodeClick={handleGraphNodeClick}
             onNodeDoubleClick={handleGraphNodeDoubleClick}
@@ -388,156 +453,217 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       )}
       data-testid="ontology-explorer"
       style={{ height }}>
-      {scope === 'global' && (
-        <Card
-          className="tw:rounded-b-none tw:border tw:border-utility-gray-blue-100 tw:px-3 tw:py-2.5 tw:ring-0 tw:shadow-none"
-          data-testid="ontology-explorer-header">
-          <FilterToolbar
-            filters={filters}
-            glossaries={glossaries}
-            hasMoreTerms={hasMoreTerms && explorationMode !== 'data'}
-            isLoading={loading || isLoadingMore}
-            isLoadingMore={isLoadingMore}
-            loadedTermCount={loadedTermCount}
-            relationTypes={relationTypes}
-            totalTermCount={totalTermCount}
-            viewModeDisabled={explorationMode === 'data'}
-            onClearAll={() =>
-              setFilters((prev) => ({
-                ...DEFAULT_FILTERS,
-                viewMode: prev.viewMode,
-              }))
-            }
-            onFiltersChange={handleFiltersChange}
-            onLoadMore={handleLoadMore}
-            onViewModeChange={handleViewModeChange}
-          />
-        </Card>
-      )}
-
       <div className="tw:flex tw:min-h-0 tw:flex-1 tw:overflow-hidden">
         <div
           className={classNames(
             'tw:relative tw:flex tw:min-h-0 tw:min-w-0 tw:flex-1 tw:flex-col tw:overflow-hidden',
-            'tw:border tw:border-utility-gray-blue-100',
             scope === 'global'
-              ? 'tw:rounded-b-lg tw:rounded-t-none tw:border-t-0'
-              : 'tw:rounded-lg'
+              ? 'tw:border-0'
+              : 'tw:rounded-lg tw:border tw:border-utility-gray-blue-100'
           )}>
-          <Card
-            className={classNames(
-              'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
-              ONTOLOGY_TOOLBAR_CARD_CLASS
-            )}>
-            <Tabs
-              className="tw:w-fit!"
-              selectedKey={explorationMode}
-              onSelectionChange={(key) => {
-                if (key === 'model' || key === 'data') {
-                  handleModeChange(key as ExplorationMode);
-                }
-              }}>
-              <Tabs.List size="sm" type="button-border">
-                <Tabs.Item id="model" label={t('label.model')} />
-                <Tabs.Item
-                  className={(state) =>
-                    state.isDisabled ? 'tw:cursor-not-allowed!' : ''
-                  }
-                  id="data"
-                  isDisabled={loading || isLoadingMore}
-                  label={t('label.data')}
-                />
-              </Tabs.List>
-              <Tabs.Panel className="tw:hidden" id="model" />
-              <Tabs.Panel className="tw:hidden" id="data" />
-            </Tabs>
-            <Input
-              data-testid="ontology-graph-search"
-              icon={SearchMd}
-              inputClassName="tw:pl-10"
-              placeholder={t('label.search-in-graph')}
-              value={searchInput}
-              onChange={setSearchInput}
-            />
-            <ExportGraphPanel
-              onExportPng={handleExportPng}
-              onExportRdfXml={
-                rdfEnabled && exportableGlossaryId
-                  ? handleExportRdfXml
-                  : undefined
-              }
-              onExportSvg={handleExportSvg}
-              onExportTurtle={
-                rdfEnabled && exportableGlossaryId
-                  ? handleExportTurtle
-                  : undefined
-              }
-            />
-            <GraphSettingsPanel
-              settings={settings}
-              onSettingsChange={handleSettingsChange}
-            />
-          </Card>
-
-          <Card
-            className={classNames(
-              'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
-              ONTOLOGY_TOOLBAR_CARD_CLASS
-            )}>
-            <OntologyControlButtons
-              isLoading={loading}
-              onFitToScreen={handleFitToScreen}
-              onRefresh={handleRefresh}
-              onZoomIn={handleZoomIn}
-              onZoomOut={handleZoomOut}
-            />
-          </Card>
-
-          <div
-            className={classNames(
-              ONTOLOGY_GRAPH_BACKDROP_CLASS,
-              'tw:overflow-hidden'
-            )}>
-            {renderGraphContent()}
-          </div>
-
-          <OntologyEntityPanel
-            afterEntityUpdate={
-              selectedNode
-                ? (updatedData) =>
-                    handleNodeDataUpdate(selectedNode.id, updatedData)
-                : undefined
-            }
-            entityDetails={
-              activeNode
-                ? buildOntologySlideoutEntityDetails(activeNode)
-                : { details: {} as never }
-            }
-            isOpen={Boolean(selectedNode)}
-            key={selectedNode?.id}
-            ontologyRelationsSlot={
-              selectedNode && !isDataAssetLikeNode(selectedNode) ? (
-                <OntologyNodeRelationsContent
-                  edges={(filteredGraphData?.edges ?? []).filter(
-                    (e) => e.relationType !== ASSET_RELATION_TYPE
+          {surface === 'graph' ? (
+            <>
+              {explorationMode === 'data' ? (
+                <Card
+                  className={classNames(
+                    'tw:absolute tw:right-4 tw:top-4 tw:flex tw:items-center tw:gap-4 tw:px-3 tw:py-2',
+                    ONTOLOGY_TOOLBAR_CARD_CLASS
                   )}
-                  node={selectedNode}
-                  nodes={filteredGraphData?.nodes ?? []}
-                  relationTypes={relationTypes}
+                  data-testid="ontology-data-edge-legend">
+                  <span className="tw:flex tw:items-center tw:gap-2">
+                    <span className="tw:w-7 tw:border-t-2 tw:border-dashed tw:border-brand-solid" />
+                    <Typography size="text-xs" weight="medium">
+                      {t('label.semantic-edge-inferred')}
+                    </Typography>
+                  </span>
+                  <span className="tw:flex tw:items-center tw:gap-2">
+                    <span className="tw:w-7 tw:border-t-2 tw:border-tertiary" />
+                    <Typography size="text-xs" weight="medium">
+                      {t('label.observed-lineage')}
+                    </Typography>
+                  </span>
+                </Card>
+              ) : null}
+              {scope === 'global' ? (
+                <label
+                  className={classNames(
+                    'tw:absolute tw:left-3.5 tw:top-3.5 tw:z-6 tw:flex tw:w-[216px] tw:items-center',
+                    'tw:gap-[7px] tw:rounded-[9px] tw:border tw:border-gray-200 tw:bg-white tw:px-2.5',
+                    'tw:py-[7px] tw:shadow-[0_2px_8px_-2px_rgba(10,13,18,0.12)]'
+                  )}>
+                  <SearchMd
+                    aria-hidden="true"
+                    className="tw:size-3.5 tw:shrink-0 tw:text-gray-500"
+                  />
+                  <input
+                    className={classNames(
+                      'tw:min-w-0 tw:flex-1 tw:border-0 tw:bg-transparent tw:p-0 tw:font-body',
+                      'tw:text-xs tw:leading-[normal] tw:font-normal tw:text-gray-900 tw:outline-none',
+                      'tw:placeholder:text-gray-400'
+                    )}
+                    data-testid="ontology-graph-search"
+                    placeholder={`${t('label.find-concept')}\u2026`}
+                    value={searchInput}
+                    onChange={(event) => setSearchInput(event.target.value)}
+                  />
+                </label>
+              ) : (
+                <>
+                  <Card
+                    className={classNames(
+                      'tw:absolute tw:bottom-4 tw:left-1/2 tw:flex tw:-translate-x-1/2 tw:items-center tw:gap-2 tw:px-3 tw:py-1.5',
+                      ONTOLOGY_TOOLBAR_CARD_CLASS
+                    )}>
+                    <Tabs
+                      className="tw:w-fit!"
+                      selectedKey={explorationMode}
+                      onSelectionChange={(key) => {
+                        if (key === 'model' || key === 'data') {
+                          handleModeChange(key as ExplorationMode);
+                        }
+                      }}>
+                      <Tabs.List size="sm" type="button-border">
+                        <Tabs.Item id="model" label={t('label.model')} />
+                        <Tabs.Item
+                          className={(state) =>
+                            state.isDisabled ? 'tw:cursor-not-allowed!' : ''
+                          }
+                          id="data"
+                          isDisabled={loading || isLoadingMore}
+                          label={t('label.data')}
+                        />
+                      </Tabs.List>
+                      <Tabs.Panel className="tw:hidden" id="model" />
+                      <Tabs.Panel className="tw:hidden" id="data" />
+                    </Tabs>
+                    <Input
+                      data-testid="ontology-graph-search"
+                      icon={SearchMd}
+                      inputClassName="tw:pl-10"
+                      placeholder={t('label.search-in-graph')}
+                      value={searchInput}
+                      onChange={setSearchInput}
+                    />
+                    <ExportGraphPanel
+                      onExportJsonLd={
+                        rdfEnabled && exportableGlossaryId
+                          ? handleExportJsonLd
+                          : undefined
+                      }
+                      onExportPng={handleExportPng}
+                      onExportRdfXml={
+                        rdfEnabled && exportableGlossaryId
+                          ? handleExportRdfXml
+                          : undefined
+                      }
+                      onExportSvg={handleExportSvg}
+                      onExportTurtle={
+                        rdfEnabled && exportableGlossaryId
+                          ? handleExportTurtle
+                          : undefined
+                      }
+                    />
+                    <GraphSettingsPanel
+                      settings={settings}
+                      onSettingsChange={handleSettingsChange}
+                    />
+                  </Card>
+                </>
+              )}
+
+              <Card
+                className={classNames(
+                  'tw:absolute tw:bottom-4 tw:right-4 tw:flex tw:items-center tw:gap-1 tw:p-1',
+                  ONTOLOGY_TOOLBAR_CARD_CLASS
+                )}
+                data-testid="ontology-graph-controls">
+                <OntologyControlButtons
+                  isLoading={loading}
+                  onFitToScreen={handleFitToScreen}
+                  onRefresh={handleRefresh}
+                  onZoomIn={handleZoomIn}
+                  onZoomOut={handleZoomOut}
                 />
-              ) : undefined
-            }
-            panelPath={
-              selectedNode && isDataAssetLikeNode(selectedNode)
-                ? 'glossary-term-assets-tab'
-                : 'ontology-explorer'
-            }
-            sideDrawerOverviewOnly={
-              selectedNode ? isDataAssetLikeNode(selectedNode) : false
-            }
-            onClose={() => setSelectedNode(null)}
-          />
+              </Card>
+
+              <div
+                className={classNames(
+                  scope === 'global'
+                    ? STUDIO_GRAPH_BACKDROP_CLASS
+                    : DEFAULT_GRAPH_BACKDROP_CLASS,
+                  'tw:overflow-hidden'
+                )}>
+                {renderGraphContent()}
+              </div>
+            </>
+          ) : surface === 'tree' ? (
+            <OntologyTreeView
+              groups={treeGroups}
+              selectedNodeId={selectedNode?.id}
+              onSelect={setSelectedNode}
+            />
+          ) : (
+            <OntologyTermEditor
+              edges={(filteredGraphData?.edges ?? []).filter(
+                (edge) => edge.relationType !== ASSET_RELATION_TYPE
+              )}
+              nodes={filteredGraphData?.nodes ?? []}
+              relationTypes={relationTypes}
+              selectedNode={selectedNode}
+              onCreateRelation={handleCreateRelation}
+              onSelectNode={setSelectedNode}
+            />
+          )}
+
+          {surface !== 'term' ? (
+            <OntologyEntityPanel
+              afterEntityUpdate={
+                selectedNode
+                  ? (updatedData) =>
+                      handleNodeDataUpdate(selectedNode.id, updatedData)
+                  : undefined
+              }
+              entityDetails={
+                activeNode
+                  ? buildOntologySlideoutEntityDetails(activeNode)
+                  : { details: {} as never }
+              }
+              isOpen={Boolean(selectedNode)}
+              key={selectedNode?.id}
+              ontologyRelationsSlot={
+                selectedNode && !isDataAssetLikeNode(selectedNode) ? (
+                  <OntologyNodeRelationsContent
+                    edges={(filteredGraphData?.edges ?? []).filter(
+                      (e) => e.relationType !== ASSET_RELATION_TYPE
+                    )}
+                    isEditMode={isEditMode}
+                    node={selectedNode}
+                    nodes={filteredGraphData?.nodes ?? []}
+                    relationTypes={relationTypes}
+                  />
+                ) : undefined
+              }
+              panelPath={
+                selectedNode && isDataAssetLikeNode(selectedNode)
+                  ? 'glossary-term-assets-tab'
+                  : 'ontology-explorer'
+              }
+              sideDrawerOverviewOnly={
+                selectedNode ? isDataAssetLikeNode(selectedNode) : false
+              }
+              onClose={() => setSelectedNode(null)}
+            />
+          ) : null}
         </div>
+        {showHealth ? (
+          <OntologyHealthPanel
+            health={healthSummary}
+            onConnect={(node) => {
+              setSelectedNode(node);
+              onRequestEdit?.();
+            }}
+          />
+        ) : null}
       </div>
     </div>
   );

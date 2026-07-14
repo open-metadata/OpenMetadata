@@ -72,7 +72,7 @@ public class DefaultToolContext {
     Map<String, Object> params = request.arguments();
     Object result;
     try {
-      McpTool tool;
+      McpTool<?> tool;
       switch (toolName) {
         case "search_metadata":
           tool = new SearchMetadataTool();
@@ -315,6 +315,7 @@ public class DefaultToolContext {
                   meta.name().contains("Authorization")
                       || meta.name().contains("Forbidden")
                       || meta.name().contains("Unauthorized")
+                      || meta.name().contains("FederationDisallowed")
                       || meta.message().contains("forbidden")
                       || meta.message().contains("unauthorized")
                       || meta.message().contains("access denied")

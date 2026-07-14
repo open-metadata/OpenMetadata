@@ -1,19 +1,29 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.mcp.tools;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertNotNull;
-import static org.junit.jupiter.api.Assertions.assertNull;
-import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
-import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
 import java.util.Map;
-import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -21,74 +31,67 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 class OntologyDescribeToolTest {
 
   private static final Authorizer AUTHORIZER = mock(Authorizer.class);
-  private static final CatalogSecurityContext SEC = mock(CatalogSecurityContext.class);
+  private static final CatalogSecurityContext SECURITY_CONTEXT = mock(CatalogSecurityContext.class);
 
   @Test
-  @DisplayName(
-      "No 'resource' returns the full ontology from classpath without touching the triplestore")
-  void fullOntologyServedFromClasspath() throws IOException {
-    Map<String, Object> result = new OntologyDescribeTool().execute(AUTHORIZER, SEC, Map.of());
-    assertNull(result.get("error"));
-    assertEquals("full-ontology", result.get("scope"));
-    String body = (String) result.get("body");
-    assertNotNull(body);
-    assertTrue(
-        body.contains("om:") || body.contains("ontology"),
-        "Full ontology body must look like RDF, got: "
-            + body.substring(0, Math.min(200, body.length())));
+  void servesFullOntologyWithoutARepository() throws IOException {
+    OntologyDescribeTool.Result result =
+        new OntologyDescribeTool(() -> null).execute(AUTHORIZER, SECURITY_CONTEXT, Map.of());
+
+    assertEquals("full-ontology", result.scope());
+    assertEquals("turtle", result.format());
+    assertFalse(result.body().isBlank());
   }
 
   @Test
-  @DisplayName("Non-URI 'resource' is rejected")
-  void nonUriResourceRejected() throws IOException {
-    Map<String, Object> result =
-        new OntologyDescribeTool().execute(AUTHORIZER, SEC, Map.of("resource", "Column"));
-    assertEquals(
-        "'resource' must be a valid absolute http(s) IRI (no whitespace, control characters,"
-            + " angle brackets, or quotes)",
-        result.get("error"));
+  void rejectsInvalidResourceIri() {
+    IllegalArgumentException exception =
+        assertThrows(
+            IllegalArgumentException.class,
+            () ->
+                new OntologyDescribeTool(() -> null)
+                    .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("resource", "Column")));
+
+    assertEquals("'resource' must be a valid absolute http(s) IRI", exception.getMessage());
   }
 
   @Test
-  @DisplayName("RDF disabled while DESCRIBE-ing a single class returns service-unavailable error")
-  void describeRequiresRdf() throws IOException {
-    try (MockedStatic<RdfRepository> mocked = mockStatic(RdfRepository.class)) {
-      mocked.when(RdfRepository::getInstanceOrNull).thenReturn(null);
-      Map<String, Object> result =
-          new OntologyDescribeTool()
-              .execute(
-                  AUTHORIZER, SEC, Map.of("resource", "https://open-metadata.org/ontology/Column"));
-      assertNotNull(result.get("error"));
-    }
+  void describeRequiresAnEnabledRepository() {
+    assertThrows(
+        IllegalStateException.class,
+        () ->
+            new OntologyDescribeTool(() -> null)
+                .execute(
+                    AUTHORIZER,
+                    SECURITY_CONTEXT,
+                    Map.of("resource", "https://open-metadata.org/ontology/Column")));
   }
 
   @Test
-  @DisplayName("Successful DESCRIBE call returns turtle by default")
-  void successfulDescribe() throws IOException {
-    try (MockedStatic<RdfRepository> mocked = mockStatic(RdfRepository.class)) {
-      RdfRepository repo = mock(RdfRepository.class);
-      when(repo.isEnabled()).thenReturn(true);
-      when(repo.executeSparqlQueryDirect(
-              anyString(), org.mockito.ArgumentMatchers.eq("text/turtle")))
-          .thenReturn("@prefix om: <https://open-metadata.org/ontology/> .");
-      mocked.when(RdfRepository::getInstanceOrNull).thenReturn(repo);
+  void returnsTypedDescription() throws IOException {
+    RdfRepository repository = mock(RdfRepository.class);
+    when(repository.isEnabled()).thenReturn(true);
+    when(repository.executeSparqlQueryDirect(anyString(), eq("text/turtle")))
+        .thenReturn("@prefix om: <https://open-metadata.org/ontology/> .");
 
-      Map<String, Object> result =
-          new OntologyDescribeTool()
-              .execute(
-                  AUTHORIZER, SEC, Map.of("resource", "https://open-metadata.org/ontology/Column"));
-      assertEquals("describe", result.get("scope"));
-      assertEquals("turtle", result.get("format"));
-      assertEquals("text/turtle", result.get("mediaType"));
-      assertNotNull(result.get("body"));
-    }
+    OntologyDescribeTool.Result result =
+        new OntologyDescribeTool(() -> repository)
+            .execute(
+                AUTHORIZER,
+                SECURITY_CONTEXT,
+                Map.of("resource", "https://open-metadata.org/ontology/Column"));
+
+    assertEquals("describe", result.scope());
+    assertEquals("turtle", result.format());
+    assertEquals("text/turtle", result.mediaType());
   }
 
   @Test
-  @DisplayName("Format normalizes 'json-ld' to 'jsonld'")
-  void formatNormalization() throws IOException {
-    Map<String, Object> result =
-        new OntologyDescribeTool().execute(AUTHORIZER, SEC, Map.of("format", "json-ld"));
-    assertEquals("jsonld", result.get("format"));
+  void normalizesJsonLdFormat() throws IOException {
+    OntologyDescribeTool.Result result =
+        new OntologyDescribeTool(() -> null)
+            .execute(AUTHORIZER, SECURITY_CONTEXT, Map.of("format", "json-ld"));
+
+    assertEquals("jsonld", result.format());
   }
 }

@@ -1,6 +1,7 @@
 package org.openmetadata.service.rdf.translator;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import java.util.function.Function;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
@@ -30,35 +31,56 @@ public final class RdfUsageMapper {
   private RdfUsageMapper() {}
 
   public static void emitUsageSummary(JsonNode usage, Resource entityResource, Model model) {
-    if (usage == null || usage.isNull() || !usage.isObject()) {
-      return;
-    }
-    emitStats(usage.get("dailyStats"), "Daily", entityResource, model);
-    emitStats(usage.get("weeklyStats"), "Weekly", entityResource, model);
-    emitStats(usage.get("monthlyStats"), "Monthly", entityResource, model);
-
-    JsonNode date = usage.get("date");
-    if (date != null && date.isTextual()) {
-      Property usageDate = model.createProperty(OM_NS, "usageDate");
-      entityResource.addProperty(
-          usageDate, model.createTypedLiteral(date.asText(), XSDDatatype.XSDdate));
-    }
+    RdfJsonNode.object(usage)
+        .ifPresent(value -> emitUsageSummaryFields(value, new UsageContext(entityResource, model)));
   }
 
-  private static void emitStats(
-      JsonNode stats, String window, Resource entityResource, Model model) {
-    if (stats == null || stats.isNull() || !stats.isObject()) {
-      return;
-    }
-    JsonNode count = stats.get("count");
-    if (count != null && count.isNumber()) {
-      Property countProp = model.createProperty(OM_NS, "usage" + window + "Count");
-      entityResource.addProperty(countProp, model.createTypedLiteral(count.asLong()));
-    }
-    JsonNode pct = stats.get("percentileRank");
-    if (pct != null && pct.isNumber()) {
-      Property pctProp = model.createProperty(OM_NS, "usage" + window + "Percentile");
-      entityResource.addProperty(pctProp, model.createTypedLiteral(pct.asDouble()));
-    }
+  private static void emitUsageSummaryFields(JsonNode usage, UsageContext context) {
+    emitStats(usage.get("dailyStats"), "Daily", context);
+    emitStats(usage.get("weeklyStats"), "Weekly", context);
+    emitStats(usage.get("monthlyStats"), "Monthly", context);
+    RdfJsonNode.field(usage, "date")
+        .filter(JsonNode::isTextual)
+        .ifPresent(
+            date ->
+                context
+                    .entity()
+                    .addProperty(
+                        context.model().createProperty(OM_NS, "usageDate"),
+                        context.model().createTypedLiteral(date.asText(), XSDDatatype.XSDdate)));
   }
+
+  private static void emitStats(JsonNode stats, String window, UsageContext context) {
+    RdfJsonNode.object(stats)
+        .ifPresent(
+            value -> {
+              addNumericProperty(
+                  value, "count", "usage" + window + "Count", JsonNode::asLong, context);
+              addNumericProperty(
+                  value,
+                  "percentileRank",
+                  "usage" + window + "Percentile",
+                  JsonNode::asDouble,
+                  context);
+            });
+  }
+
+  private static void addNumericProperty(
+      JsonNode source,
+      String fieldName,
+      String propertyName,
+      Function<JsonNode, Number> valueMapper,
+      UsageContext context) {
+    Property property = context.model().createProperty(OM_NS, propertyName);
+    RdfJsonNode.field(source, fieldName)
+        .filter(JsonNode::isNumber)
+        .ifPresent(
+            value ->
+                context
+                    .entity()
+                    .addProperty(
+                        property, context.model().createTypedLiteral(valueMapper.apply(value))));
+  }
+
+  private record UsageContext(Resource entity, Model model) {}
 }

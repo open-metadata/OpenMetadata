@@ -17,9 +17,5 @@
  * component, which both this page and Ontology Studio's Query mode render.
  * Re-exported here for backward compatibility.
  */
-export {
-  DEFAULT_SPARQL_PREFIXES,
-  SAMPLE_SPARQL_QUERIES,
-  SPARQL_PLAYGROUND_STORAGE_KEY,
-} from '../../components/SparqlQueryConsole/SparqlQueryConsole.interface';
-export type { SavedSparqlQuery } from '../../components/SparqlQueryConsole/SparqlQueryConsole.interface';
+export { DEFAULT_SPARQL_PREFIXES } from '../../components/SparqlQueryConsole/SparqlQueryConsole.interface';
+export type { SavedSparqlQuery } from '../../rest/rdfAPI';

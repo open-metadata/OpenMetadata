@@ -22,7 +22,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class CreateTestCaseTool implements McpTool {
+public class CreateTestCaseTool implements McpTool<Map<String, Object>> {
   private final TestCaseMapper testCaseMapper = new TestCaseMapper();
 
   @Override

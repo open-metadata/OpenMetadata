@@ -64,6 +64,7 @@ import {
   OntologyNode,
 } from '../OntologyExplorer.interface';
 import {
+  ASSET_BINDING_EDGE_KIND,
   ASSET_NODE_TYPE,
   ASSET_RELATION_TYPE,
   buildGraphFromAllTerms,
@@ -564,6 +565,7 @@ export function useOntologyExplorer({
             to: termNode.id,
             label: t('label.tagged-with'),
             relationType: ASSET_RELATION_TYPE,
+            edgeKind: ASSET_BINDING_EDGE_KIND,
           });
         });
 
@@ -1233,6 +1235,21 @@ export function useOntologyExplorer({
     }
   }, [exportableGlossaryId, exportableGlossaryName, handleOntologyExportError]);
 
+  const handleExportJsonLd = useCallback(async () => {
+    if (!exportableGlossaryId || !exportableGlossaryName) {
+      return;
+    }
+    try {
+      await downloadGlossaryOntology(
+        exportableGlossaryId,
+        exportableGlossaryName,
+        'jsonld'
+      );
+    } catch (error) {
+      await handleOntologyExportError(error);
+    }
+  }, [exportableGlossaryId, exportableGlossaryName, handleOntologyExportError]);
+
   const handleModeChange = useCallback(
     (mode: ExplorationMode) => {
       if (mode === 'data') {
@@ -1545,6 +1562,7 @@ export function useOntologyExplorer({
     handleExportSvg,
     handleExportTurtle,
     handleExportRdfXml,
+    handleExportJsonLd,
     handleModeChange,
     handleViewModeChange,
     handleRefresh,

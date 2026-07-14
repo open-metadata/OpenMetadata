@@ -1,6 +1,6 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to coding agents working in this repository.
 
 ## About OpenMetadata
 
@@ -294,33 +294,25 @@ the bot's exact suggestion is "Please run `mvn spotless:apply` in the root of
 your repository and commit the changes to this PR." Scope the run with
 `-pl <module>` for speed if only one module changed. When asked to "fix
 checkstyle" / "fix Java formatting" / "apply spotless", invoke the
-`java-checkstyle` skill (see `.claude/skills/java-checkstyle/`) rather than
+`java-checkstyle` skill (see `.agents/skills/java-checkstyle/`) rather than
 hand-editing formatting.
 
 #### Method Size and Complexity (Kafka-Grade Standards)
 - **Methods must be small and focused — aim for 15 lines or fewer** (excluding blank lines and braces). A method longer than that is almost always hiding multiple responsibilities; break it into smaller methods with descriptive names. "Meaningful" means each method does one nameable thing — if you can't fit the body comfortably on a screen, it's too big.
-- **One return statement per method, placed at the end.** No early-return guard clauses, no scattered returns in the middle. Initialize a `result` variable, structure the work as `if/else`, or extract a helper — the control flow then stays linear and easy to reason about. (Returns inside `lambda` bodies, `switch` expressions, and anonymous classes are scoped to those constructs and don't count against the outer method.)
+- **Prefer one successful return, placed at the end.** Do not scatter multiple success and fallback returns through a long method. Extract validation and named helpers until the main flow reads linearly. Throwing a specific validation exception at the boundary is preferable to manufacturing an `error` result or deeply nesting the valid path. Do not introduce a mutable `result` variable solely to satisfy a return-count rule when a direct expression is clearer. (Returns inside lambdas, switch expressions, and anonymous classes are scoped to those constructs and do not count against the outer method.)
   ```java
-  // BAD: four scattered early returns
-  Map<UUID, X> compute(List<EntityInterface> entities) {
-    if (entities == null) return Collections.emptyMap();
-    if (entities.isEmpty()) return Collections.emptyMap();
-    if (!supportsX(entities.get(0))) return null;
-    Map<UUID, X> prefetched = doWork(entities);
-    if (prefetched.isEmpty()) return null;
-    return prefetched;
+  // BAD: mixed validation, fallback, and success returns
+  QueryResult execute(String query) {
+    if (query == null) return QueryResult.error("query is required");
+    if (query.isBlank()) return QueryResult.error("query is required");
+    if (!isSupported(query)) return QueryResult.error("unsupported query");
+    return run(query);
   }
 
-  // GOOD: single trailing return; guards become extracted helpers + a result variable
-  Map<UUID, X> compute(List<EntityInterface> entities) {
-    Map<UUID, X> result = null;
-    if (entities != null && !entities.isEmpty() && supportsX(entities.get(0))) {
-      Map<UUID, X> prefetched = doWork(entities);
-      if (!prefetched.isEmpty()) {
-        result = prefetched;
-      }
-    }
-    return result;
+  // GOOD: validation is explicit and the successful path is linear
+  QueryResult execute(String query) {
+    String validatedQuery = requireSupportedQuery(query);
+    return run(validatedQuery);
   }
   ```
 - **Maximum 3 levels of nesting.** Don't flatten by sprinkling early returns — extract a named helper or combine conditions into a single boolean:
@@ -369,6 +361,20 @@ hand-editing formatting.
 - Return `Collections.unmodifiableList()` / `List.copyOf()` from public methods, never expose internal mutable collections
 - Utility classes must be `final` with a private constructor
 - Prefer `record` for immutable data carriers where appropriate
+
+#### Typed Models and Protocol Boundaries
+- **Do not use `Map<String, Object>` as a domain model or a method return type.** Use a record, an existing generated schema class, or a focused class with named fields. A map is appropriate only when keys are genuinely dynamic, such as arbitrary SPARQL bindings, JSON-LD contexts, JDBC bind values, or a framework protocol boundary.
+- Convert dynamic input exactly once at the boundary. For example, an MCP `Map<String, Object>` becomes a validated parameter object before business logic runs; untyped JSON becomes a typed Jackson record before rows are processed.
+- Public REST request and response shapes belong in `openmetadata-spec` JSON Schema so Java, TypeScript, and Python clients share one contract. Use local records for internal or transport-specific payloads that are not public API schemas.
+- Never return an `error` map from a typed method. Throw the repository's specific validation, authorization, not-found, or availability exception and let the transport exception mapper create the wire error.
+- Group values that travel together into a record or parameter object instead of passing more than five parameters or parallel lists.
+
+#### Layer Boundaries and Dependency Design
+- **JAX-RS resources are transport adapters only:** authorize, translate HTTP inputs, invoke one application service, and build transport metadata such as status, content type, and headers.
+- **Application services own orchestration and business validation.** Repositories own persistence and triplestore/database access. Serializers and mappers own representation conversion. Do not put business workflows in a resource or turn a repository into a catch-all service.
+- Constructor-inject repositories, stores, clocks, and external clients. Do not look up static singletons inside business methods; a thin composition boundary may supply the production singleton.
+- Keep query builders, parsers, normalizers, and validators pure where possible. Package-private pure methods are preferred test seams over static mocking.
+- Share one service implementation across REST, MCP, jobs, and other transports. Do not copy parsing, validation, inference, or serialization logic into each adapter.
 
 #### Error Handling
 - **No empty catch blocks** — at minimum, log the exception
@@ -447,6 +453,9 @@ hand-editing formatting.
     process(entities.getFirst());
   }
   ```
+- `nullOrEmpty(String)` does not treat whitespace as empty. For required text, centralize `nullOrEmpty(value) || value.isBlank()` in a named boundary validator rather than repeating it throughout business code.
+- Use the `nullOrEmpty(JsonNode)` overload for null, missing, JSON-null, and empty container nodes. Add an explicit shape predicate (`isObject`, `isArray`, `isNumber`) when the consumer requires one.
+- Required classpath schemas, ontologies, and configuration resources must fail fast with the resource path and original cause. Do not silently substitute an empty model or partial configuration. Optional resources must be explicitly documented as optional.
 
 #### Common Bug Patterns to Avoid
 - `equals()` without `hashCode()` (or vice versa)
@@ -464,6 +473,8 @@ hand-editing formatting.
 - **Never use `Thread.sleep()` in tests** — use condition-based waiting or `Awaitility`
 - Bug fixes must include a test that fails without the fix
 - 90% line coverage target on changed classes
+- Unit-test pure validation, parsing, normalization, query-building, and serialization directly. Mock only the repository or external-system boundary, and inject it through the constructor.
+- Assert typed fields and observable state, not map keys, static singleton wiring, or internal call choreography.
 
 #### Structure
 - Do not use Fully Qualified Names in code (e.g., `org.openmetadata.schema.type.Status`) — import the class instead
@@ -484,7 +495,7 @@ PR otherwise. The order matters — run `organize-imports-cli`, then
 prettier leaves a dirty diff (organize-imports uses 4-space indentation,
 prettier uses 2 + trailing commas). When asked to "fix UI checkstyle" / "run
 prettier" / "fix UI lint", invoke the `ui-checkstyle` skill (see
-`.claude/skills/ui-checkstyle/`) rather than hand-editing formatting.
+`.agents/skills/ui-checkstyle/`) rather than hand-editing formatting.
 
 - **NEVER use `any` type** in TypeScript code - always use proper types
 - Use `unknown` when the type is truly unknown and add type guards

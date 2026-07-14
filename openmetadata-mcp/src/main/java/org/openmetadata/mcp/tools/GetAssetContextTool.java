@@ -23,7 +23,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
  * such as SQL generation, instead of stitching several metadata calls together.
  */
 @Slf4j
-public class GetAssetContextTool implements McpTool {
+public class GetAssetContextTool implements McpTool<Map<String, Object>> {
   private static final String FORMAT_JSON = "json";
 
   @Override

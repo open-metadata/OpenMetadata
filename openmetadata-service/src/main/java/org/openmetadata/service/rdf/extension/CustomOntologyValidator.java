@@ -1,5 +1,8 @@
 package org.openmetadata.service.rdf.extension;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -87,18 +90,21 @@ public final class CustomOntologyValidator {
     List<String> errors = new ArrayList<>();
     if (extension == null) {
       errors.add("extension must not be null");
-      return errors;
+    } else {
+      validateExtension(extension, errors);
     }
+    return errors;
+  }
+
+  private static void validateExtension(CustomOntology extension, List<String> errors) {
     if (isBlank(extension.getName())) {
       errors.add("'name' must not be blank");
     } else if (!extension.getName().matches("^[a-z][a-z0-9-]{1,62}[a-z0-9]$")) {
       errors.add(
           "'name' must be 3-64 chars, lowercase letters / digits / hyphen, start with a letter");
     }
-    List<CustomOntologyClass> classes =
-        extension.getClasses() == null ? List.of() : extension.getClasses();
-    List<CustomOntologyProperty> properties =
-        extension.getProperties() == null ? List.of() : extension.getProperties();
+    List<CustomOntologyClass> classes = listOrEmpty(extension.getClasses());
+    List<CustomOntologyProperty> properties = listOrEmpty(extension.getProperties());
     if (classes.isEmpty() && properties.isEmpty()) {
       errors.add("extension must declare at least one class or property");
     }
@@ -118,14 +124,12 @@ public final class CustomOntologyValidator {
     }
 
     detectClassHierarchyCycles(classes, errors);
-
-    return errors;
   }
 
   /** @return true if validation passed; false otherwise (errors are logged at WARN). */
   public static boolean isValid(CustomOntology extension) {
     List<String> errors = validate(extension);
-    if (!errors.isEmpty()) {
+    if (!nullOrEmpty(errors)) {
       LOG.warn(
           "Custom ontology '{}' failed validation: {}",
           extension == null ? "<null>" : extension.getName(),
@@ -137,7 +141,7 @@ public final class CustomOntologyValidator {
   private static Set<String> collectClassUris(List<CustomOntologyClass> classes) {
     Set<String> classUris = new HashSet<>();
     for (CustomOntologyClass cls : classes) {
-      if (cls != null && cls.getUri() != null && !cls.getUri().isBlank()) {
+      if (cls != null && !isBlank(cls.getUri())) {
         classUris.add(cls.getUri());
       }
     }
@@ -151,36 +155,44 @@ public final class CustomOntologyValidator {
       List<String> errors) {
     if (cls == null) {
       errors.add("null class entry");
-      return;
-    }
-    if (cls.getUri() == null || cls.getUri().isBlank()) {
+    } else if (isBlank(cls.getUri())) {
       errors.add("class missing 'uri'");
-      return;
+    } else {
+      validateClassDefinition(cls, declaredClassUris, seenUris, errors);
     }
-    if (!isExtensionUri(cls.getUri())) {
+  }
+
+  private static void validateClassDefinition(
+      CustomOntologyClass ontologyClass,
+      Set<String> declaredClassUris,
+      Set<String> seenUris,
+      List<String> errors) {
+    String uri = ontologyClass.getUri();
+    if (!isExtensionUri(uri)) {
       errors.add(
           "class URI '"
-              + cls.getUri()
+              + uri
               + "' must be in the om-extension namespace ("
               + EXTENSION_NS
               + "); the canonical om: namespace is read-only");
     }
-    if (!seenUris.add(cls.getUri())) {
-      errors.add("duplicate class URI in this extension: " + cls.getUri());
+    if (!seenUris.add(uri)) {
+      errors.add("duplicate class URI in this extension: " + uri);
     }
-    if (cls.getSubClassOf() == null || cls.getSubClassOf().isEmpty()) {
-      errors.add("class '" + cls.getUri() + "' must declare at least one subClassOf parent");
+    List<String> parentUris = listOrEmpty(ontologyClass.getSubClassOf());
+    if (parentUris.isEmpty()) {
+      errors.add("class '" + uri + "' must declare at least one subClassOf parent");
     } else {
-      for (String parent : cls.getSubClassOf()) {
-        if (!isKnownClassReference(parent, declaredClassUris)) {
-          errors.add(
-              "class '"
-                  + cls.getUri()
-                  + "' references unknown parent class '"
-                  + parent
-                  + "'; expected canonical om: class or another class in this extension");
-        }
-      }
+      parentUris.stream()
+          .filter(parent -> !isKnownClassReference(parent, declaredClassUris))
+          .map(
+              parent ->
+                  "class '"
+                      + uri
+                      + "' references unknown parent class '"
+                      + parent
+                      + "'; expected canonical om: class or another class in this extension")
+          .forEach(errors::add);
     }
   }
 
@@ -191,48 +203,64 @@ public final class CustomOntologyValidator {
       List<String> errors) {
     if (prop == null) {
       errors.add("null property entry");
-      return;
-    }
-    if (prop.getUri() == null || prop.getUri().isBlank()) {
+    } else if (isBlank(prop.getUri())) {
       errors.add("property missing 'uri'");
-      return;
+    } else {
+      validatePropertyDefinition(prop, seenUris, declaredClassUris, errors);
     }
-    if (!isExtensionUri(prop.getUri())) {
-      errors.add("property URI '" + prop.getUri() + "' must be in the om-extension namespace");
+  }
+
+  private static void validatePropertyDefinition(
+      CustomOntologyProperty property,
+      Set<String> seenUris,
+      Set<String> declaredClassUris,
+      List<String> errors) {
+    String uri = property.getUri();
+    if (!isExtensionUri(uri)) {
+      errors.add("property URI '" + uri + "' must be in the om-extension namespace");
     }
-    if (!seenUris.add(prop.getUri())) {
-      errors.add("duplicate property URI in this extension: " + prop.getUri());
+    if (!seenUris.add(uri)) {
+      errors.add("duplicate property URI in this extension: " + uri);
     }
-    if (prop.getDomain() == null || prop.getDomain().isBlank()) {
-      errors.add("property '" + prop.getUri() + "' missing 'domain'");
-    } else if (!isKnownClassReference(prop.getDomain(), declaredClassUris)) {
+    validatePropertyDomain(property, declaredClassUris, errors);
+    validatePropertyRange(property, declaredClassUris, errors);
+  }
+
+  private static void validatePropertyDomain(
+      CustomOntologyProperty property, Set<String> declaredClassUris, List<String> errors) {
+    if (isBlank(property.getDomain())) {
+      errors.add("property '" + property.getUri() + "' missing 'domain'");
+    } else if (!isKnownClassReference(property.getDomain(), declaredClassUris)) {
       errors.add(
           "property '"
-              + prop.getUri()
+              + property.getUri()
               + "' has domain '"
-              + prop.getDomain()
+              + property.getDomain()
               + "' which is not a known canonical class or a class in this extension");
     }
-    if (prop.getRange() == null || prop.getRange().isBlank()) {
-      errors.add("property '" + prop.getUri() + "' missing 'range'");
-    } else if (prop.getType() == CustomOntologyProperty.Type.OBJECT_PROPERTY) {
-      if (!isKnownClassReference(prop.getRange(), declaredClassUris)) {
-        errors.add(
-            "ObjectProperty '"
-                + prop.getUri()
-                + "' has range '"
-                + prop.getRange()
-                + "' which is not a known canonical class or a class in this extension");
-      }
-    } else if (prop.getType() == CustomOntologyProperty.Type.DATATYPE_PROPERTY) {
-      if (!prop.getRange().startsWith("http://www.w3.org/2001/XMLSchema#")) {
-        errors.add(
-            "DatatypeProperty '"
-                + prop.getUri()
-                + "' range must be an xsd: datatype URI (got '"
-                + prop.getRange()
-                + "')");
-      }
+  }
+
+  private static void validatePropertyRange(
+      CustomOntologyProperty property, Set<String> declaredClassUris, List<String> errors) {
+    String range = property.getRange();
+    if (isBlank(range)) {
+      errors.add("property '" + property.getUri() + "' missing 'range'");
+    } else if (property.getType() == CustomOntologyProperty.Type.OBJECT_PROPERTY
+        && !isKnownClassReference(range, declaredClassUris)) {
+      errors.add(
+          "ObjectProperty '"
+              + property.getUri()
+              + "' has range '"
+              + range
+              + "' which is not a known canonical class or a class in this extension");
+    } else if (property.getType() == CustomOntologyProperty.Type.DATATYPE_PROPERTY
+        && !range.startsWith("http://www.w3.org/2001/XMLSchema#")) {
+      errors.add(
+          "DatatypeProperty '"
+              + property.getUri()
+              + "' range must be an xsd: datatype URI (got '"
+              + range
+              + "')");
     }
   }
 
@@ -245,7 +273,7 @@ public final class CustomOntologyValidator {
     Map<String, List<String>> graph = new HashMap<>();
     for (CustomOntologyClass cls : classes) {
       if (cls != null && cls.getUri() != null) {
-        graph.put(cls.getUri(), cls.getSubClassOf() == null ? List.of() : cls.getSubClassOf());
+        graph.put(cls.getUri(), listOrEmpty(cls.getSubClassOf()));
       }
     }
     Set<String> visited = new HashSet<>();
@@ -277,7 +305,7 @@ public final class CustomOntologyValidator {
   }
 
   private static boolean isExtensionUri(String uri) {
-    return uri != null && uri.startsWith(EXTENSION_NS);
+    return !nullOrEmpty(uri) && uri.startsWith(EXTENSION_NS);
   }
 
   /**
@@ -299,6 +327,6 @@ public final class CustomOntologyValidator {
   }
 
   private static boolean isBlank(String s) {
-    return s == null || s.isBlank();
+    return nullOrEmpty(s) || s.isBlank();
   }
 }

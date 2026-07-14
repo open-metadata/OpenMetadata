@@ -19,15 +19,26 @@ import {
   waitFor,
 } from '@testing-library/react';
 import React from 'react';
-import { runSparqlQuery } from '../../rest/rdfAPI';
-import SparqlPlayground from './SparqlPlayground.component';
+import { Type } from '../../generated/api/rdf/sparqlResponse';
 import {
-  SAMPLE_SPARQL_QUERIES,
-  SPARQL_PLAYGROUND_STORAGE_KEY,
-} from './SparqlPlayground.interface';
+  getSavedSparqlQueries,
+  getSparqlQueryTemplates,
+  replaceSavedSparqlQueries,
+  runSparqlQuery,
+  SavedSparqlQuery,
+} from '../../rest/rdfAPI';
+import SparqlPlayground from './SparqlPlayground.component';
 
 jest.mock('../../rest/rdfAPI', () => ({
+  getSavedSparqlQueries: jest.fn(),
+  getSparqlQueryTemplates: jest.fn(),
+  replaceSavedSparqlQueries: jest.fn(),
+  replaceSparqlQueryTemplates: jest.fn(),
   runSparqlQuery: jest.fn(),
+}));
+
+jest.mock('../../hooks/authHooks', () => ({
+  useAuth: jest.fn().mockReturnValue({ isAdminUser: false }),
 }));
 
 jest.mock('../../utils/ToastUtils', () => ({
@@ -68,11 +79,38 @@ jest.mock('../../components/Database/SchemaEditor/SchemaEditor', () => {
 });
 
 const mockRun = runSparqlQuery as jest.MockedFunction<typeof runSparqlQuery>;
+const mockGetSavedQueries = getSavedSparqlQueries as jest.MockedFunction<
+  typeof getSavedSparqlQueries
+>;
+const mockGetQueryTemplates = getSparqlQueryTemplates as jest.MockedFunction<
+  typeof getSparqlQueryTemplates
+>;
+const mockReplaceSavedQueries =
+  replaceSavedSparqlQueries as jest.MockedFunction<
+    typeof replaceSavedSparqlQueries
+  >;
+
+const QUERY_TEMPLATE: SavedSparqlQuery = {
+  id: '692cb99a-96fd-4f47-8f28-3d7e471ff001',
+  name: 'Installation glossary query',
+  query: 'SELECT ?term WHERE { ?term a <urn:GlossaryTerm> }',
+  format: 'json',
+  inference: 'none',
+  savedAt: 0,
+};
 
 describe('SparqlPlayground', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
     window.localStorage.clear();
     mockRun.mockReset();
+    mockGetSavedQueries.mockReturnValue(
+      new Promise<SavedSparqlQuery[]>(() => undefined)
+    );
+    mockGetQueryTemplates.mockReturnValue(
+      new Promise<SavedSparqlQuery[]>(() => undefined)
+    );
+    mockReplaceSavedQueries.mockImplementation(async (queries) => queries);
   });
 
   it('renders the heading and the editor', () => {
@@ -83,6 +121,19 @@ describe('SparqlPlayground', () => {
     );
     expect(screen.getByTestId('schema-editor')).toBeInTheDocument();
     expect(screen.getByTestId('sparql-run')).toBeInTheDocument();
+  });
+
+  it('removes the legacy shared saved-query cache', () => {
+    window.localStorage.setItem(
+      'om.sparql-playground.savedQueries',
+      '[{"name":"Shared query"}]'
+    );
+
+    render(<SparqlPlayground />);
+
+    expect(
+      window.localStorage.getItem('om.sparql-playground.savedQueries')
+    ).toBeNull();
   });
 
   it('shows an error and skips the API call when the editor body is empty', async () => {
@@ -108,9 +159,9 @@ describe('SparqlPlayground', () => {
         results: {
           bindings: [
             {
-              s: { type: 'uri', value: 'urn:s' },
-              p: { type: 'uri', value: 'urn:p' },
-              o: { type: 'literal', value: 'hello' },
+              s: { type: Type.URI, value: 'urn:s' },
+              p: { type: Type.URI, value: 'urn:p' },
+              o: { type: Type.Literal, value: 'hello' },
             },
           ],
         },
@@ -159,29 +210,38 @@ describe('SparqlPlayground', () => {
     });
   });
 
-  it('persists a saved query to localStorage and lets you reload it', async () => {
+  it('persists a private saved query through the current-user API', async () => {
     render(<SparqlPlayground />);
     fireEvent.click(screen.getByTestId('sparql-save-query'));
 
     const input = await screen.findByTestId('sparql-save-name-input');
+
+    expect(input).toHaveAttribute('placeholder', 'message.sparql-save-prompt');
+
     fireEvent.change(input, { target: { value: 'My query' } });
     fireEvent.click(screen.getByText('label.save'));
 
     await waitFor(() => {
-      const stored = window.localStorage.getItem(SPARQL_PLAYGROUND_STORAGE_KEY);
-
-      expect(stored).not.toBeNull();
-      expect(stored).toContain('My query');
+      expect(mockReplaceSavedQueries).toHaveBeenCalledWith([
+        expect.objectContaining({ name: 'My query' }),
+      ]);
     });
+
+    expect(screen.getByTestId('sparql-saved-list')).toHaveTextContent(
+      'My query'
+    );
   });
 
-  it('loads a sample query into the editor', () => {
+  it('loads an administrator-managed installation query', async () => {
+    mockGetSavedQueries.mockResolvedValue([]);
+    mockGetQueryTemplates.mockResolvedValue([QUERY_TEMPLATE]);
     render(<SparqlPlayground />);
-    const sample = SAMPLE_SPARQL_QUERIES[0];
-    fireEvent.click(screen.getByTestId(`sparql-sample-${sample.nameKey}`));
+    fireEvent.click(
+      await screen.findByTestId(`sparql-template-${QUERY_TEMPLATE.id}`)
+    );
     const editor = screen.getByTestId('schema-editor') as HTMLTextAreaElement;
 
-    expect(editor.value).toContain(sample.query.split('\n')[0]);
+    expect(editor.value).toBe(QUERY_TEMPLATE.query);
   });
 
   it('inject prefixes adds the canonical PREFIX block when missing', () => {

@@ -570,13 +570,13 @@ run_local_docker_main() {
 
     echo 'Validate sample data DAG...'
     sleep 5
-    make install
 
     echo "Running DAG validation (this may take a few minutes)..."
     sample_data_validation_failed=false
     validation_timeout_seconds="${VALIDATION_TIMEOUT_SECONDS:-300}"
 
-    run_with_timeout "$validation_timeout_seconds" python docker/validate_compose.py || {
+    run_with_timeout "$validation_timeout_seconds" \
+      docker exec -i openmetadata_ingestion python - < docker/validate_compose.py || {
       local exit_code=$?
       sample_data_validation_failed=true
       if [ $exit_code -eq 124 ]; then

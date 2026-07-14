@@ -29,7 +29,7 @@ import org.openmetadata.service.security.auth.CatalogSecurityContext;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 @Slf4j
-public class SearchMetadataTool implements McpTool {
+public class SearchMetadataTool implements McpTool<Map<String, Object>> {
 
   private static final int DEFAULT_MAX_AGGREGATION_BUCKETS = 10;
   private static final int MAX_ALLOWED_AGGREGATION_BUCKETS = 50;

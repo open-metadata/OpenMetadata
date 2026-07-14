@@ -1,7 +1,10 @@
 package org.openmetadata.service.rdf.inference;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryException;
@@ -18,7 +21,7 @@ import org.openmetadata.schema.api.configuration.rdf.InferenceRule;
  * <p>The validator is intentionally strict — admins write these rules and they run server-side
  * against the whole graph, so a malformed or hostile rule has wide blast radius.
  *
- * <p>Checks performed (in order; first failing check returns):
+ * <p>Checks performed:
  *
  * <ol>
  *   <li>The rule has a non-blank name and rule body.
@@ -43,8 +46,16 @@ public final class InferenceRuleValidator {
     List<String> errors = new ArrayList<>();
     if (rule == null) {
       errors.add("rule must not be null");
-      return errors;
+    } else {
+      validateMetadata(rule, errors);
+      if (errors.isEmpty()) {
+        parse(rule.getRuleBody(), errors).ifPresent(query -> validateConstructQuery(query, errors));
+      }
     }
+    return errors;
+  }
+
+  private static void validateMetadata(InferenceRule rule, List<String> errors) {
     if (isBlank(rule.getName())) {
       errors.add("'name' must not be blank");
     } else if (!rule.getName().matches("^[a-z][a-z0-9-]{1,62}[a-z0-9]$")) {
@@ -57,48 +68,55 @@ public final class InferenceRuleValidator {
     InferenceRule.RuleType ruleType =
         rule.getRuleType() == null ? InferenceRule.RuleType.CONSTRUCT : rule.getRuleType();
     if (ruleType == InferenceRule.RuleType.RDFS) {
-      // RDFS is a placeholder — the engine doesn't ship a parser for that body shape yet.
       errors.add(
           "ruleType=RDFS is reserved for future use; current engine only ships CONSTRUCT support");
-      return errors;
     }
     if (rule.getPriority() != null && (rule.getPriority() < 0 || rule.getPriority() > 10_000)) {
       errors.add("'priority' must be between 0 and 10000");
     }
-    if (!errors.isEmpty()) {
-      return errors;
-    }
+  }
 
-    Query parsed;
+  private static Optional<Query> parse(String ruleBody, List<String> errors) {
+    Optional<Query> query = Optional.empty();
     try {
-      parsed = QueryFactory.create(rule.getRuleBody());
-    } catch (QueryException e) {
-      errors.add("ruleBody failed to parse as SPARQL: " + e.getMessage());
-      return errors;
+      query = Optional.of(QueryFactory.create(ruleBody));
+    } catch (QueryException exception) {
+      errors.add("ruleBody failed to parse as SPARQL: " + exception.getMessage());
     }
-    if (!parsed.isConstructType()) {
+    return query;
+  }
+
+  private static void validateConstructQuery(Query query, List<String> errors) {
+    if (!query.isConstructType()) {
       errors.add(
           "ruleBody must be a SPARQL CONSTRUCT query for ruleType=CONSTRUCT (got "
-              + parsed.queryType()
+              + query.queryType()
               + "); inference rules emit new triples and only CONSTRUCT does that");
-      return errors;
+    } else {
+      validateConstructStructure(query, errors);
     }
-    if (parsed.getQueryPattern() == null || isEmptyPattern(parsed.getQueryPattern().toString())) {
+  }
+
+  private static void validateConstructStructure(Query query, List<String> errors) {
+    if (query.getQueryPattern() == null || isEmptyPattern(query.getQueryPattern().toString())) {
       errors.add("ruleBody must have a non-empty WHERE pattern");
     }
-    if (parsed.getConstructTemplate() == null
-        || parsed.getConstructTemplate().getTriples().isEmpty()) {
+    if (query.getConstructTemplate() == null
+        || query.getConstructTemplate().getTriples().isEmpty()) {
       errors.add("ruleBody CONSTRUCT template must contain at least one triple pattern");
     }
-    ServiceFinder serviceFinder = new ServiceFinder();
-    if (parsed.getQueryPattern() != null) {
-      ElementWalker.walk(parsed.getQueryPattern(), serviceFinder);
-    }
-    if (serviceFinder.found) {
+    if (containsServiceClause(query)) {
       errors.add(
           "ruleBody must not contain SERVICE clauses; inference is local-only and federated rules are rejected");
     }
-    return errors;
+  }
+
+  private static boolean containsServiceClause(Query query) {
+    ServiceFinder serviceFinder = new ServiceFinder();
+    if (query.getQueryPattern() != null) {
+      ElementWalker.walk(query.getQueryPattern(), serviceFinder);
+    }
+    return serviceFinder.found;
   }
 
   /**
@@ -106,7 +124,7 @@ public final class InferenceRuleValidator {
    */
   public static boolean isValid(InferenceRule rule) {
     List<String> errors = validate(rule);
-    if (!errors.isEmpty()) {
+    if (!nullOrEmpty(errors)) {
       LOG.warn(
           "Inference rule '{}' failed validation: {}",
           rule == null ? "<null>" : rule.getName(),
@@ -116,7 +134,7 @@ public final class InferenceRuleValidator {
   }
 
   private static boolean isBlank(String s) {
-    return s == null || s.isBlank();
+    return nullOrEmpty(s) || s.isBlank();
   }
 
   private static boolean isEmptyPattern(String pattern) {

@@ -1,9 +1,13 @@
 package org.openmetadata.service.rdf.translator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import java.util.Map;
+import java.util.Optional;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
@@ -61,19 +65,19 @@ public final class RdfQualityMapper {
   private RdfQualityMapper() {}
 
   static void emitTableProfile(JsonNode profile, Resource tableResource, Model model) {
-    if (profile == null || profile.isNull() || !profile.isObject()) {
-      return;
-    }
-    String timestamp = readTimestamp(profile);
-    emitMeasurements(profile, TABLE_METRICS, timestamp, tableResource, model);
+    emitProfile(profile, TABLE_METRICS, tableResource, model);
   }
 
   static void emitColumnProfile(JsonNode profile, Resource columnResource, Model model) {
-    if (profile == null || profile.isNull() || !profile.isObject()) {
-      return;
-    }
-    String timestamp = readTimestamp(profile);
-    emitMeasurements(profile, COLUMN_METRICS, timestamp, columnResource, model);
+    emitProfile(profile, COLUMN_METRICS, columnResource, model);
+  }
+
+  private static void emitProfile(
+      JsonNode profile, Map<String, String> metrics, Resource subjectResource, Model model) {
+    RdfJsonNode.object(profile)
+        .ifPresent(
+            value ->
+                emitMeasurements(value, metrics, readTimestamp(value), subjectResource, model));
   }
 
   private static void emitMeasurements(
@@ -82,32 +86,35 @@ public final class RdfQualityMapper {
       String timestamp,
       Resource subjectResource,
       Model model) {
-    Property hasMeasurement = model.createProperty(DQV_NS, "hasQualityMeasurement");
-    Property isMeasurementOf = model.createProperty(DQV_NS, "isMeasurementOf");
-    Property dqvValue = model.createProperty(DQV_NS, "value");
-    Property dqvComputedOn = model.createProperty(DQV_NS, "computedOn");
-    Property generatedAtTime = model.createProperty(PROV_NS, "generatedAtTime");
-    Resource measurementClass = model.createResource(DQV_NS + "QualityMeasurement");
+    MeasurementContext context =
+        new MeasurementContext(
+            subjectResource, model, MeasurementVocabulary.from(model), timestamp);
 
     for (Map.Entry<String, String> entry : metricMap.entrySet()) {
-      String fieldName = entry.getKey();
-      String metricLocalName = entry.getValue();
-      JsonNode value = profile.get(fieldName);
-      if (value == null || value.isNull() || !value.isNumber()) {
-        continue;
-      }
-      String measurementUri = measurementUri(subjectResource.getURI(), metricLocalName, timestamp);
-      Resource measurement = model.createResource(measurementUri);
-      measurement.addProperty(RDF.type, measurementClass);
-      measurement.addProperty(isMeasurementOf, model.createResource(OM_NS + metricLocalName));
-      measurement.addProperty(dqvComputedOn, subjectResource);
-      addNumericValue(measurement, dqvValue, value, model);
-      if (timestamp != null) {
-        measurement.addProperty(
-            generatedAtTime, model.createTypedLiteral(timestamp, XSDDatatype.XSDdateTime));
-      }
-      subjectResource.addProperty(hasMeasurement, measurement);
+      RdfJsonNode.field(profile, entry.getKey())
+          .filter(JsonNode::isNumber)
+          .ifPresent(value -> emitMeasurement(entry.getValue(), value, context));
     }
+  }
+
+  private static void emitMeasurement(
+      String metricLocalName, JsonNode value, MeasurementContext context) {
+    Model model = context.model();
+    MeasurementVocabulary vocabulary = context.vocabulary();
+    String measurementUri =
+        measurementUri(context.subject().getURI(), metricLocalName, context.timestamp());
+    Resource measurement = model.createResource(measurementUri);
+    measurement.addProperty(RDF.type, vocabulary.measurementClass());
+    measurement.addProperty(
+        vocabulary.isMeasurementOf(), model.createResource(OM_NS + metricLocalName));
+    measurement.addProperty(vocabulary.computedOn(), context.subject());
+    addNumericValue(measurement, vocabulary.value(), value, model);
+    if (!nullOrEmpty(context.timestamp())) {
+      measurement.addProperty(
+          vocabulary.generatedAtTime(),
+          model.createTypedLiteral(context.timestamp(), XSDDatatype.XSDdateTime));
+    }
+    context.subject().addProperty(vocabulary.hasMeasurement(), measurement);
   }
 
   private static void addNumericValue(
@@ -128,23 +135,46 @@ public final class RdfQualityMapper {
    * timestamp are idempotent.
    */
   static String measurementUri(String subjectUri, String metricLocalName, String timestamp) {
-    String slot = timestamp == null || timestamp.isEmpty() ? "latest" : timestamp;
+    String slot = nullOrEmpty(timestamp) ? "latest" : timestamp;
     String encodedSlot = URLEncoder.encode(slot, StandardCharsets.UTF_8);
     return subjectUri + "/measurement/" + metricLocalName + "/" + encodedSlot;
   }
 
   private static String readTimestamp(JsonNode profile) {
-    JsonNode ts = profile.get("timestamp");
-    if (ts == null || ts.isNull()) {
-      return null;
+    return RdfJsonNode.field(profile, "timestamp")
+        .flatMap(RdfQualityMapper::timestampValue)
+        .orElse(null);
+  }
+
+  private static Optional<String> timestampValue(JsonNode timestamp) {
+    Optional<String> value = Optional.empty();
+    if (timestamp.isTextual()) {
+      value = Optional.of(timestamp.asText());
+    } else if (timestamp.isNumber()) {
+      value = Optional.of(Instant.ofEpochMilli(timestamp.asLong()).toString());
     }
-    if (ts.isTextual()) {
-      return ts.asText();
+    return value;
+  }
+
+  private record MeasurementContext(
+      Resource subject, Model model, MeasurementVocabulary vocabulary, String timestamp) {}
+
+  private record MeasurementVocabulary(
+      Property hasMeasurement,
+      Property isMeasurementOf,
+      Property value,
+      Property computedOn,
+      Property generatedAtTime,
+      Resource measurementClass) {
+
+    private static MeasurementVocabulary from(Model model) {
+      return new MeasurementVocabulary(
+          model.createProperty(DQV_NS, "hasQualityMeasurement"),
+          model.createProperty(DQV_NS, "isMeasurementOf"),
+          model.createProperty(DQV_NS, "value"),
+          model.createProperty(DQV_NS, "computedOn"),
+          model.createProperty(PROV_NS, "generatedAtTime"),
+          model.createResource(DQV_NS + "QualityMeasurement"));
     }
-    if (ts.isNumber()) {
-      // OpenMetadata profiles record the timestamp as epoch millis; convert to ISO-8601.
-      return java.time.Instant.ofEpochMilli(ts.asLong()).toString();
-    }
-    return null;
   }
 }

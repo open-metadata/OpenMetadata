@@ -11,9 +11,8 @@ import org.openmetadata.schema.api.configuration.rdf.CustomOntology;
  * In-memory registry of user-authored ontology extensions. Each extension is keyed by its
  * {@code name}. Reads are lock-free; writes are synchronized.
  *
- * <p>Persistence is intentionally deferred — admin writes that pass {@link
- * CustomOntologyValidator#validate(CustomOntology)} are upserted into this registry, and the
- * registry is rebuilt on server restart from any DB-backed store added in a future phase.
+ * <p>Persistence is intentionally deferred. The registry validates every write and will be
+ * rebuilt on server restart from any DB-backed store added in a future phase.
  */
 @Slf4j
 public final class CustomOntologyRegistry {
@@ -40,11 +39,13 @@ public final class CustomOntologyRegistry {
     return Optional.ofNullable(extensions.get(name));
   }
 
-  /**
-   * Insert or replace an extension. The caller is responsible for validation; this method does
-   * none. Returns the previous extension at that name (if any).
-   */
+  /** Insert or replace a valid extension and return the previous value, if present. */
   public synchronized Optional<CustomOntology> upsert(CustomOntology extension) {
+    List<String> errors = CustomOntologyValidator.validate(extension);
+    if (!errors.isEmpty()) {
+      throw new IllegalArgumentException(
+          "Invalid ontology extension: " + String.join("; ", errors));
+    }
     return Optional.ofNullable(extensions.put(extension.getName(), extension));
   }
 

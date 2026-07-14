@@ -4,13 +4,13 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import jakarta.ws.rs.core.Response;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.riot.Lang;
 import org.apache.jena.riot.RDFDataMgr;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.service.rdf.OntologyDocument;
 
 class OntologyDocumentTest {
 
@@ -21,9 +21,8 @@ class OntologyDocumentTest {
   @DisplayName(
       "Ontology endpoint serves Turtle by default with the bumped version and core classes")
   void testServeTurtle() {
-    Response response = OntologyDocument.serve("turtle");
-    assertEquals(200, response.getStatus());
-    String body = response.getEntity().toString();
+    OntologyDocument.SerializedOntology ontology = OntologyDocument.serialize("turtle");
+    String body = ontology.body();
     assertNotNull(body);
 
     Model parsed = ModelFactory.createDefaultModel();
@@ -53,18 +52,16 @@ class OntologyDocumentTest {
   @Test
   @DisplayName("Ontology endpoint can render the same document as JSON-LD")
   void testServeJsonLd() {
-    Response response = OntologyDocument.serve("jsonld");
-    assertEquals(200, response.getStatus());
-    assertEquals("application/ld+json", response.getMediaType().toString());
-    String body = response.getEntity().toString();
+    OntologyDocument.SerializedOntology ontology = OntologyDocument.serialize("jsonld");
+    assertEquals("application/ld+json", ontology.mediaType());
+    String body = ontology.body();
     assertTrue(body.contains("@context") || body.contains("@graph"));
   }
 
   @Test
   @DisplayName("Unknown format defaults to Turtle")
   void testUnknownFormatFallsBackToTurtle() {
-    Response response = OntologyDocument.serve("nonsense");
-    assertEquals(200, response.getStatus());
-    assertEquals("text/turtle", response.getMediaType().toString());
+    OntologyDocument.SerializedOntology ontology = OntologyDocument.serialize("nonsense");
+    assertEquals("text/turtle", ontology.mediaType());
   }
 }

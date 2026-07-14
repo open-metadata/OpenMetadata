@@ -208,7 +208,7 @@ const OntologyExplorerPage = withPageSuspenseFallback(
   )
 );
 
-const SparqlPlaygroundPage = withSuspenseFallback(
+const SparqlPlaygroundPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/SparqlPlayground/SparqlPlayground.component')
   )

@@ -14,18 +14,25 @@
 package org.openmetadata.service.resources.rdf;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import jakarta.ws.rs.BadRequestException;
+import jakarta.ws.rs.NotAuthorizedException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
-import java.lang.reflect.Field;
+import java.io.IOException;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
+import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.rdf.RdfRepository;
 import org.openmetadata.service.security.Authorizer;
 
@@ -43,39 +50,31 @@ class RdfResourceTest {
     rdfResource = new RdfResource(authorizer);
   }
 
-  private void setRdfRepository(RdfRepository repository) throws Exception {
-    Field field = RdfResource.class.getDeclaredField("rdfRepository");
-    field.setAccessible(true);
-    field.set(rdfResource, repository);
-  }
-
   @Test
   void exploreEntityGraphRejectsInvalidEntityType() {
-    Response response =
-        rdfResource.exploreEntityGraph(
-            securityContext, UUID.randomUUID(), "table } UNION { ?s ?p ?o", 2, null, null);
-
-    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-    assertTrue(String.valueOf(response.getEntity()).contains("Invalid entity type"));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            rdfResource.exploreEntityGraph(
+                securityContext, UUID.randomUUID(), "table } UNION { ?s ?p ?o", 2, null, null));
   }
 
   @Test
   void getFullLineageRejectsInvalidEntityType() {
-    Response response =
-        rdfResource.getFullLineage(
-            securityContext, UUID.randomUUID(), "table } UNION { ?s ?p ?o", "both");
-
-    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
-    assertTrue(String.valueOf(response.getEntity()).contains("Invalid entity type"));
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            rdfResource.getFullLineage(
+                securityContext, UUID.randomUUID(), "table } UNION { ?s ?p ?o", "both"));
   }
 
   @Test
   void exportEntityGraphRejectsUnsupportedFormat() {
-    Response response =
-        rdfResource.exportEntityGraph(
-            securityContext, UUID.randomUUID(), "table", 2, null, null, "rdfxml");
-
-    assertEquals(Response.Status.BAD_REQUEST.getStatusCode(), response.getStatus());
+    assertThrows(
+        BadRequestException.class,
+        () ->
+            rdfResource.exportEntityGraph(
+                securityContext, UUID.randomUUID(), "table", 2, null, null, "rdfxml"));
   }
 
   @Test
@@ -87,23 +86,29 @@ class RdfResourceTest {
   }
 
   @Test
-  void clampGraphDepthClampsToConfiguredBounds() {
-    assertEquals(1, RdfResource.clampGraphDepth(0));
-    assertEquals(1, RdfResource.clampGraphDepth(1));
-    assertEquals(3, RdfResource.clampGraphDepth(3));
-    assertEquals(5, RdfResource.clampGraphDepth(5));
-    assertEquals(5, RdfResource.clampGraphDepth(99));
+  void savedSparqlQueriesRequireAnAuthenticatedUser() {
+    assertThrows(
+        NotAuthorizedException.class, () -> rdfResource.listSavedSparqlQueries(securityContext));
   }
 
   @Test
-  void getGlossaryTermGraphPassesGlossaryTermIdFilter() throws Exception {
+  void settingsRowMapperReadsSparqlQuerySettings() {
+    Settings settings =
+        CollectionDAO.SettingsRowMapper.getSettings(
+            SettingsType.SPARQL_QUERY_SETTINGS, "{\"queryTemplates\":[]}");
+
+    assertTrue(settings.getConfigValue() instanceof SparqlQuerySettings);
+  }
+
+  @Test
+  void getGlossaryTermGraphPassesGlossaryTermIdFilter() throws IOException {
     RdfRepository repository = Mockito.mock(RdfRepository.class);
     UUID glossaryId = UUID.randomUUID();
     UUID glossaryTermId = UUID.randomUUID();
     when(repository.isEnabled()).thenReturn(true);
     when(repository.getGlossaryTermGraph(glossaryId, glossaryTermId, null, 500, 0, true))
         .thenReturn("{\"nodes\":[],\"edges\":[]}");
-    setRdfRepository(repository);
+    rdfResource = new RdfResource(authorizer, () -> repository);
 
     Response response =
         rdfResource.getGlossaryTermGraph(

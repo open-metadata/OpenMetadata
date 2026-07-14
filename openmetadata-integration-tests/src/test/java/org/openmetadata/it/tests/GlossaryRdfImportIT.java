@@ -38,11 +38,13 @@ import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
+import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.entity.data.Glossary;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.type.EntityStatus;
+import org.openmetadata.schema.type.RelationProvenance;
 
 /**
  * End-to-end test for the native OWL/RDF ontology import endpoint
@@ -120,6 +122,103 @@ public class GlossaryRdfImportIT {
         physician.getRelatedTerms().stream()
             .anyMatch(relation -> "prescribes".equals(relation.getRelationType())),
         "object property -> typed relatedTerm");
+  }
+
+  @Test
+  void importsEveryBroaderEdgeInPolyhierarchy(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String diamondOntology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix hcp:  <http://example.com/ontology/diamond#> .
+        @prefix ext:  <http://external.example.com/ontology#> .
+
+        hcp:AlphaParent a skos:Concept ; skos:prefLabel "Alpha Parent" .
+        hcp:ZuluParent a skos:Concept ; skos:prefLabel "Zulu Parent" .
+        hcp:Child a skos:Concept ;
+            skos:prefLabel "Child" ;
+            skos:broader hcp:ZuluParent, hcp:AlphaParent, ext:ExternalParent .
+        """;
+
+    JsonNode result = importRdfBody(glossary.getName(), diamondOntology);
+    GlossaryTerm child = getTerm(glossary.getName() + ".AlphaParent.Child");
+
+    assertEquals("AlphaParent", child.getParent().getName());
+    assertTrue(
+        child.getRelatedTerms().stream()
+            .anyMatch(
+                relation ->
+                    "broader".equals(relation.getRelationType())
+                        && "ZuluParent".equals(relation.getTerm().getName())
+                        && RelationProvenance.IMPORTED.equals(relation.getProvenance())),
+        "the additional internal broader edge must be retained: " + child.getRelatedTerms());
+    assertTrue(
+        child.getConceptMappings().stream()
+            .anyMatch(
+                mapping ->
+                    ConceptMapping.ConceptMappingType.BROAD_MATCH.equals(mapping.getMappingType())
+                        && "http://external.example.com/ontology#ExternalParent"
+                            .equals(mapping.getConceptIri().toString())),
+        "the external broader edge must be retained as a broad mapping");
+    assertTrue(result.get("relationsAdded").asInt() >= 1, result.toString());
+    assertTrue(result.get("conceptMappingsAdded").asInt() >= 1, result.toString());
+  }
+
+  @Test
+  void patchesConceptMappingsAsVersionedTermChanges(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    GlossaryTerm term =
+        SdkClients.adminClient()
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("MappedConcept")
+                    .withDescription("Concept mapping PATCH probe.")
+                    .withGlossary(glossary.getFullyQualifiedName()));
+    String patch =
+        """
+        [{"op":"add","path":"/conceptMappings","value":[{
+          "conceptIri":"http://example.com/external/MappedConcept",
+          "mappingType":"EXACT_MATCH",
+          "source":"External standard"
+        }]}]
+        """;
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(
+                URI.create(
+                    String.format(
+                        "%s/v1/glossaryTerms/%s", SdkClients.getServerUrl(), term.getId())))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json-patch+json")
+            .timeout(Duration.ofSeconds(30))
+            .method("PATCH", HttpRequest.BodyPublishers.ofString(patch))
+            .build();
+
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), response.body());
+    GlossaryTerm updated = OBJECT_MAPPER.readValue(response.body(), GlossaryTerm.class);
+    assertTrue(updated.getVersion() > term.getVersion(), "mapping PATCH must create a new version");
+    assertTrue(
+        updated.getConceptMappings().stream()
+            .anyMatch(
+                mapping ->
+                    ConceptMapping.ConceptMappingType.EXACT_MATCH.equals(mapping.getMappingType())
+                        && "http://example.com/external/MappedConcept"
+                            .equals(mapping.getConceptIri().toString())),
+        response.body());
+    assertTrue(
+        response.body().contains("conceptMappings"),
+        "the change description must name the mapped field: " + response.body());
+
+    HttpResponse<String> versions =
+        get(
+            String.format(
+                "%s/v1/glossaryTerms/%s/versions", SdkClients.getServerUrl(), term.getId()));
+    assertEquals(200, versions.statusCode(), versions.body());
+    assertTrue(
+        OBJECT_MAPPER.readTree(versions.body()).path("versions").size() >= 2,
+        "mapping PATCH must be visible in version history: " + versions.body());
   }
 
   @Test
@@ -559,6 +658,41 @@ public class GlossaryRdfImportIT {
         turtle.contains("http://example.com/ontology/hcp#HealthcareProvider"),
         "export preserves the canonical ontology IRI as the subject: " + turtle);
     assertTrue(turtle.contains("broader"), "subClassOf hierarchy is exported as skos:broader");
+    assertTrue(
+        turtle.contains("closeMatch") && turtle.contains("http://snomed.info/id/158965000"),
+        "typed external concept mappings survive ontology export: " + turtle);
+  }
+
+  @Test
+  @EnabledIf("isRdfEnabled")
+  void roundTripsEveryPolyhierarchyEdgeThroughRdfExport(TestNamespace ns) throws Exception {
+    Glossary glossary = GlossaryTestFactory.createSimple(ns);
+    String diamondOntology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix hcp:  <http://example.com/ontology/roundtrip#> .
+
+        hcp:AlphaParent a skos:Concept .
+        hcp:ZuluParent a skos:Concept .
+        hcp:Child a skos:Concept ;
+            skos:broader hcp:ZuluParent, hcp:AlphaParent .
+        """;
+    importRdfBody(glossary.getName(), diamondOntology);
+
+    String nTriples = exportGlossary(glossary.getId().toString(), "ntriples");
+    String broader = "<http://www.w3.org/2004/02/skos/core#broader>";
+    String child = "<http://example.com/ontology/roundtrip#Child> " + broader + " ";
+
+    assertTrue(
+        nTriples.contains(child + "<http://example.com/ontology/roundtrip#AlphaParent> ."),
+        nTriples);
+    assertTrue(
+        nTriples.contains(child + "<http://example.com/ontology/roundtrip#ZuluParent> ."),
+        nTriples);
+    assertEquals(
+        2,
+        nTriples.lines().filter(line -> line.startsWith(child)).count(),
+        "both broader edges must survive import and export");
   }
 
   static boolean isRdfEnabled() {
@@ -679,9 +813,14 @@ public class GlossaryRdfImportIT {
   }
 
   private String exportGlossaryAsTurtle(String glossaryId) throws Exception {
+    return exportGlossary(glossaryId, "turtle");
+  }
+
+  private String exportGlossary(String glossaryId, String format) throws Exception {
     String url =
         String.format(
-            "%s/v1/rdf/glossary/%s/export?format=turtle", SdkClients.getServerUrl(), glossaryId);
+            "%s/v1/rdf/glossary/%s/export?format=%s",
+            SdkClients.getServerUrl(), glossaryId, format);
     HttpResponse<String> response = get(url);
     assertEquals(200, response.statusCode(), "export failed: " + response.body());
     return response.body();

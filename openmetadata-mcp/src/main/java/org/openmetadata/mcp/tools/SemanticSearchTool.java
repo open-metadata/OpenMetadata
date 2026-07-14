@@ -20,7 +20,7 @@ import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
 @Slf4j
-public class SemanticSearchTool implements McpTool {
+public class SemanticSearchTool implements McpTool<Map<String, Object>> {
 
   private static final int DEFAULT_SIZE = 10;
   private static final int MAX_SIZE = 50;

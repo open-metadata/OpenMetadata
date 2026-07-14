@@ -17,6 +17,8 @@ export interface PortOverlayProps {
   /** The G6 graph container; the overlay positions itself over it and reads node positions from its dataset. */
   containerRef: RefObject<HTMLDivElement>;
   isEditMode: boolean;
+  isolatedNodeIds: ReadonlySet<string>;
+  nodeLabels: Record<string, string>;
   /** Persist a new typed relation between two glossary terms (ids are term UUIDs = graph node ids). */
   onCreateRelation: (
     fromId: string,

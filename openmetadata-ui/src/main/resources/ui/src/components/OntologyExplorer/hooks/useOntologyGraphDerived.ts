@@ -35,11 +35,11 @@ import {
   ASSET_RELATION_TYPE,
   GLOSSARY_COLORS,
   METRIC_NODE_TYPE,
+  OBSERVED_LINEAGE_EDGE_KIND,
+  projectOntologyRelationsToAssets,
+  SEMANTIC_PROJECTION_EDGE_KIND,
 } from '../utils/graphBuilders';
-import {
-  computeGraphSearchHighlight,
-  ontologyEdgeKey,
-} from '../utils/graphSearchHighlight';
+import { computeGraphSearchHighlight } from '../utils/graphSearchHighlight';
 import { buildHierarchyGraphs } from '../utils/hierarchyGraphBuilder';
 import { computeGlossaryGroupPositions } from '../utils/layoutCalculations';
 
@@ -121,7 +121,10 @@ export function useOntologyGraphDerived({
       });
 
       if (!assetGraphData) {
-        return { nodes: nodesWithAssetCounts, edges: graphData.edges };
+        return projectOntologyRelationsToAssets({
+          nodes: nodesWithAssetCounts,
+          edges: graphData.edges,
+        });
       }
 
       const mergedNodeIds = new Set(nodesWithAssetCounts.map((n) => n.id));
@@ -134,7 +137,7 @@ export function useOntologyGraphDerived({
       });
 
       const edgeKey = (e: OntologyEdge) =>
-        `${e.from}-${e.to}-${e.relationType}`;
+        `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
       const mergedEdgeKeys = new Set(graphData.edges.map(edgeKey));
       const mergedEdges = [...graphData.edges];
       assetGraphData.edges.forEach((e) => {
@@ -145,7 +148,10 @@ export function useOntologyGraphDerived({
         }
       });
 
-      return { nodes: mergedNodes, edges: mergedEdges };
+      return projectOntologyRelationsToAssets({
+        nodes: mergedNodes,
+        edges: mergedEdges,
+      });
     }
 
     return graphData;
@@ -187,7 +193,7 @@ export function useOntologyGraphDerived({
       );
 
       const edgeKey = (e: OntologyEdge) =>
-        `${e.from}-${e.to}-${e.relationType}`;
+        `${e.from}-${e.to}-${e.relationType}-${e.edgeKind ?? ''}`;
       const glossaryNeighborIds = new Set<string>(glossaryTermIds);
       const glossaryEdgeKeys = new Set<string>();
 
@@ -200,6 +206,16 @@ export function useOntologyGraphDerived({
         glossaryNeighborIds.add(edge.from);
         glossaryNeighborIds.add(edge.to);
         glossaryEdgeKeys.add(edgeKey(edge));
+      });
+      filteredEdges.forEach((edge) => {
+        if (
+          (edge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND ||
+            edge.edgeKind === OBSERVED_LINEAGE_EDGE_KIND) &&
+          glossaryNeighborIds.has(edge.from) &&
+          glossaryNeighborIds.has(edge.to)
+        ) {
+          glossaryEdgeKeys.add(edgeKey(edge));
+        }
       });
 
       filteredNodes = filteredNodes.filter((n) => {
@@ -236,7 +252,9 @@ export function useOntologyGraphDerived({
             toType === ASSET_NODE_TYPE ||
             toType === METRIC_NODE_TYPE)
         ) {
-          return true;
+          return e.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND
+            ? relationTypeFilterIds.includes(e.relationType)
+            : true;
         }
 
         return relationTypeFilterIds.includes(e.relationType);
@@ -397,29 +415,19 @@ export function useOntologyGraphDerived({
       data = filteredGraphData;
     }
 
-    if (!data || !graphSearchHighlight) {
-      return data;
-    }
+    return data;
+  }, [isHierarchyView, hierarchyGraphData, filteredGraphData]);
 
-    const visibleNodeIds = new Set(graphSearchHighlight.highlightedNodeIds);
-    const visibleEdgeKeys = new Set(graphSearchHighlight.highlightedEdgeKeys);
-
-    return {
-      nodes: data.nodes.filter((n) => visibleNodeIds.has(n.id)),
-      edges: data.edges.filter((e) => visibleEdgeKeys.has(ontologyEdgeKey(e))),
-    };
-  }, [
-    isHierarchyView,
-    hierarchyGraphData,
-    filteredGraphData,
-    graphSearchHighlight,
-  ]);
-
+  const selectedGlossaryIds = withoutOntologyAutocompleteAll(
+    filters.glossaryIds
+  );
   const exportableGlossaryId =
     scope === 'glossary'
       ? glossaryId
       : scope === 'term'
       ? termGlossaryId
+      : selectedGlossaryIds.length === 1
+      ? selectedGlossaryIds[0]
       : undefined;
 
   const exportableGlossaryName = exportableGlossaryId

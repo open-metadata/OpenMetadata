@@ -1,5 +1,6 @@
 package org.openmetadata.it.tests;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.junit.jupiter.api.Assumptions.assumeTrue;
@@ -54,6 +55,7 @@ public class RdfResourceIT {
   private static final String TABLE_RDF_TYPE = "dcat:Dataset";
   private static final String BASE_URI = "https://open-metadata.org/";
   private static final String OM_NS = BASE_URI + "ontology/";
+  private static final String SPARQL_JSON = "application/sparql-results+json";
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(30)).build();
 
@@ -344,6 +346,33 @@ public class RdfResourceIT {
     assertTrue(
         body.contains("om:Column") && body.contains("om:TableConstraint"),
         "Ontology document should declare core om:Column and om:TableConstraint classes");
+  }
+
+  @Test
+  void testSparqlEndpointAcceptsSparqlJsonMediaType() throws Exception {
+    String url = SdkClients.getServerUrl() + "/v1/rdf/sparql";
+    String requestBody =
+        """
+        {
+          "query": "SELECT * WHERE { ?s ?p ?o } LIMIT 1",
+          "format": "json",
+          "inference": "none"
+        }
+        """;
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(url))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Accept", SPARQL_JSON)
+            .header("Content-Type", "application/json")
+            .POST(HttpRequest.BodyPublishers.ofString(requestBody))
+            .build();
+
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+
+    assertEquals(200, response.statusCode());
+    assertTrue(response.headers().firstValue("Content-Type").orElse("").startsWith(SPARQL_JSON));
+    assertTrue(response.body().contains("\"head\""));
   }
 
   @Test

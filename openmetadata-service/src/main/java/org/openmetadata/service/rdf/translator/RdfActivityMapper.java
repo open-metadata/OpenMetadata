@@ -1,6 +1,11 @@
 package org.openmetadata.service.rdf.translator;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
+
 import com.fasterxml.jackson.databind.JsonNode;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
+import java.time.Instant;
 import org.apache.jena.datatypes.xsd.XSDDatatype;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.Property;
@@ -29,40 +34,36 @@ public final class RdfActivityMapper {
       Resource pipelineResource,
       String baseUri,
       Model model) {
-    if (pipelineStatus == null || pipelineStatus.isNull() || !pipelineStatus.isObject()) {
-      return;
-    }
-    if (!pipelineStatus.has("timestamp") || pipelineStatus.get("timestamp").isNull()) {
-      // PROV activity is meaningless without a startedAtTime equivalent.
-      return;
-    }
-    long startMillis = pipelineStatus.get("timestamp").asLong();
-    String activityUri = activityUri(pipelineResource, pipelineFqn, startMillis);
+    RdfJsonNode.object(pipelineStatus)
+        .flatMap(
+            status ->
+                RdfJsonNode.field(status, "timestamp")
+                    .filter(JsonNode::isNumber)
+                    .map(timestamp -> new PipelineRun(status, timestamp.asLong())))
+        .ifPresent(run -> emitPipelineActivity(run, pipelineFqn, pipelineResource, baseUri, model));
+  }
+
+  private static void emitPipelineActivity(
+      PipelineRun run, String pipelineFqn, Resource pipelineResource, String baseUri, Model model) {
+    String activityUri = activityUri(pipelineResource, pipelineFqn, run.startedAt());
     Resource activity = model.createResource(activityUri);
     activity.addProperty(RDF.type, model.createResource(PROV_NS + "Activity"));
     activity.addProperty(RDF.type, model.createResource(OM_NS + "PipelineExecution"));
 
-    String startedAt = java.time.Instant.ofEpochMilli(startMillis).toString();
+    String startedAt = Instant.ofEpochMilli(run.startedAt()).toString();
     activity.addProperty(
         model.createProperty(PROV_NS, "startedAtTime"),
         model.createTypedLiteral(startedAt, XSDDatatype.XSDdateTime));
-    if (pipelineStatus.has("endTime") && pipelineStatus.get("endTime").isNumber()) {
-      String endedAt =
-          java.time.Instant.ofEpochMilli(pipelineStatus.get("endTime").asLong()).toString();
-      activity.addProperty(
-          model.createProperty(PROV_NS, "endedAtTime"),
-          model.createTypedLiteral(endedAt, XSDDatatype.XSDdateTime));
-    }
-
-    if (pipelineStatus.has("executionStatus") && !pipelineStatus.get("executionStatus").isNull()) {
-      activity.addProperty(
-          model.createProperty(OM_NS, "executionStatus"),
-          pipelineStatus.get("executionStatus").asText());
-    }
-    if (pipelineStatus.has("executionId") && !pipelineStatus.get("executionId").isNull()) {
-      activity.addProperty(
-          model.createProperty(OM_NS, "executionId"), pipelineStatus.get("executionId").asText());
-    }
+    RdfJsonNode.field(run.status(), "endTime")
+        .filter(JsonNode::isNumber)
+        .map(endTime -> Instant.ofEpochMilli(endTime.asLong()).toString())
+        .ifPresent(
+            endedAt ->
+                activity.addProperty(
+                    model.createProperty(PROV_NS, "endedAtTime"),
+                    model.createTypedLiteral(endedAt, XSDDatatype.XSDdateTime)));
+    addLiteral(activity, run.status(), "executionStatus", OM_NS, model);
+    addLiteral(activity, run.status(), "executionId", OM_NS, model);
 
     // PROV-O: prov:wasInformedBy is an Activity → Activity relation. The pipeline run "was
     // informed by" its pipeline definition (the template Activity). Previously this used
@@ -70,63 +71,78 @@ public final class RdfActivityMapper {
     activity.addProperty(model.createProperty(PROV_NS, "wasInformedBy"), pipelineResource);
     pipelineResource.addProperty(model.createProperty(OM_NS, "hasExecution"), activity);
 
-    addAgent(activity, pipelineStatus.get("executedBy"), baseUri, model);
-    addUsedDatasets(activity, pipelineStatus.get("inputs"), "datasetFQN", "used", baseUri, model);
-    addUsedDatasets(
-        activity, pipelineStatus.get("outputs"), "datasetFQN", "generated", baseUri, model);
+    ActivityContext context = new ActivityContext(activity, baseUri, model);
+    addAgent(context, run.status().get("executedBy"));
+    addUsedDatasets(context, run.status().get("inputs"), "datasetFQN", "used");
+    addUsedDatasets(context, run.status().get("outputs"), "datasetFQN", "generated");
   }
 
-  private static void addAgent(
-      Resource activity, JsonNode executedBy, String baseUri, Model model) {
-    if (executedBy == null || executedBy.isNull() || !executedBy.has("id")) {
-      return;
-    }
-    String type =
-        executedBy.has("type") && !executedBy.get("type").isNull()
-            ? executedBy.get("type").asText()
-            : "user";
-    // Always mint agent IRIs under the deployment's entity namespace, never the ontology
-    // namespace. JsonLdTranslator/RdfRepository wire the `om:` prefix to the *ontology* URI
-    // (https://open-metadata.org/ontology/...), so reading that prefix here would place agent
-    // resources alongside class definitions and mix ontology + instance data.
-    Resource agent =
-        model.createResource(baseUri + "entity/" + type + "/" + executedBy.get("id").asText());
-    activity.addProperty(model.createProperty(PROV_NS, "wasAssociatedWith"), agent);
+  private static void addLiteral(
+      Resource subject, JsonNode source, String fieldName, String namespace, Model model) {
+    RdfJsonNode.field(source, fieldName)
+        .ifPresent(
+            value ->
+                subject.addProperty(model.createProperty(namespace, fieldName), value.asText()));
+  }
+
+  private static void addAgent(ActivityContext context, JsonNode executedBy) {
+    RdfJsonNode.object(executedBy)
+        .flatMap(
+            agent ->
+                RdfJsonNode.field(agent, "id")
+                    .map(
+                        identifier ->
+                            new Agent(
+                                identifier.asText(),
+                                RdfJsonNode.field(agent, "type")
+                                    .map(JsonNode::asText)
+                                    .orElse("user"))))
+        .map(
+            agent ->
+                context
+                    .model()
+                    .createResource(
+                        context.baseUri() + "entity/" + agent.type() + "/" + agent.id()))
+        .ifPresent(
+            agent ->
+                context
+                    .activity()
+                    .addProperty(
+                        context.model().createProperty(PROV_NS, "wasAssociatedWith"), agent));
   }
 
   private static void addUsedDatasets(
-      Resource activity,
-      JsonNode datasets,
-      String fqnField,
-      String predicate,
-      String baseUri,
-      Model model) {
-    if (datasets == null || !datasets.isArray()) {
-      return;
-    }
-    Property prop = model.createProperty(PROV_NS, predicate);
-    for (JsonNode item : datasets) {
-      if (!item.isObject() || !item.has(fqnField) || item.get(fqnField).isNull()) {
-        continue;
-      }
-      String fqn = item.get(fqnField).asText();
-      // Datasets in Pipeline runs are referenced by FQN (no UUID at this layer); mint a stable
-      // table URI from the FQN. The triplestore may already contain the table at a UUID-based
-      // URI; both will participate in queries via the om:fullyQualifiedName literal.
-      String datasetUri =
-          baseUri
-              + "entity/datasetByFqn/"
-              + java.net.URLEncoder.encode(fqn, java.nio.charset.StandardCharsets.UTF_8);
-      Resource dataset = model.createResource(datasetUri);
-      dataset.addProperty(model.createProperty(OM_NS, "fullyQualifiedName"), fqn);
-      activity.addProperty(prop, dataset);
-    }
+      ActivityContext context, JsonNode datasets, String fqnField, String predicate) {
+    Property property = context.model().createProperty(PROV_NS, predicate);
+    RdfJsonNode.array(datasets)
+        .ifPresent(
+            values ->
+                values.forEach(
+                    item ->
+                        RdfJsonNode.object(item)
+                            .flatMap(value -> RdfJsonNode.field(value, fqnField))
+                            .map(JsonNode::asText)
+                            .ifPresent(fqn -> addDataset(context, property, fqn))));
+  }
+
+  private static void addDataset(ActivityContext context, Property predicate, String fqn) {
+    String datasetUri =
+        context.baseUri() + "entity/datasetByFqn/" + URLEncoder.encode(fqn, StandardCharsets.UTF_8);
+    Resource dataset = context.model().createResource(datasetUri);
+    dataset.addProperty(context.model().createProperty(OM_NS, "fullyQualifiedName"), fqn);
+    context.activity().addProperty(predicate, dataset);
   }
 
   private static String activityUri(
       Resource pipelineResource, String pipelineFqn, long startMillis) {
-    String suffix = pipelineFqn != null ? pipelineFqn : pipelineResource.getURI();
+    String suffix = nullOrEmpty(pipelineFqn) ? pipelineResource.getURI() : pipelineFqn;
     int hash = (suffix + ":" + startMillis).hashCode();
     return pipelineResource.getURI() + "/run/" + Integer.toHexString(hash);
   }
+
+  private record PipelineRun(JsonNode status, long startedAt) {}
+
+  private record Agent(String id, String type) {}
+
+  private record ActivityContext(Resource activity, String baseUri, Model model) {}
 }

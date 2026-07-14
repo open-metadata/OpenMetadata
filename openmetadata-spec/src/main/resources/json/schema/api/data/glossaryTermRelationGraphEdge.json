@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/glossaryTermRelationGraphEdge.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlossaryTermRelationGraphEdge",
+  "description": "A directed, typed relation between two glossary terms.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.GlossaryTermRelationGraphEdge",
+  "properties": {
+    "from": {
+      "description": "Identifier of the source glossary term.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "to": {
+      "description": "Identifier of the target glossary term.",
+      "$ref": "../../type/basic.json#/definitions/uuid"
+    },
+    "relationType": {
+      "description": "Configured type of the glossary relation.",
+      "type": "string"
+    }
+  },
+  "required": ["from", "to", "relationType"],
+  "additionalProperties": false
+}

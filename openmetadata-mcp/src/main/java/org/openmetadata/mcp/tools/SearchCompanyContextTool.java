@@ -30,7 +30,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
  * question, answer, summary, sourceFile) in a single call.
  */
 @Slf4j
-public class SearchCompanyContextTool implements McpTool {
+public class SearchCompanyContextTool implements McpTool<Map<String, Object>> {
   private static final int DEFAULT_SIZE = 10;
   private static final int MAX_SIZE = 50;
   private static final int DEFAULT_K = 100;

@@ -35,7 +35,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.ResourceContext;
 
 @Slf4j
-public class RootCauseAnalysisTool implements McpTool {
+public class RootCauseAnalysisTool implements McpTool<Map<String, Object>> {
 
   private static final int DEFAULT_DEPTH = 3;
   private static final int MAX_DEPTH = 10;

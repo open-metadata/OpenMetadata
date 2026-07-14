@@ -13,6 +13,7 @@
 
 import { Glossary } from '../../generated/entity/data/glossary';
 import { EntityReference } from '../../generated/entity/type';
+import { Provenance } from '../../generated/type/termRelation';
 import { GlossaryTermRelationType } from '../../rest/settingConfigAPI';
 import {
   LayoutType,
@@ -20,6 +21,7 @@ import {
 } from './OntologyExplorer.constants';
 
 export type OntologyScope = 'global' | 'glossary' | 'term';
+export type OntologyStudioSurface = 'graph' | 'tree' | 'term';
 
 export interface OntologyExplorerProps {
   scope: OntologyScope;
@@ -28,8 +30,15 @@ export interface OntologyExplorerProps {
   className?: string;
   height?: string | number;
   isEditMode?: boolean;
+  surface?: OntologyStudioSurface;
+  showHealth?: boolean;
+  globalGlossaryIds?: string[];
   onStatsChange?: (stats: string[]) => void;
   onLoadingChange?: (loading: boolean) => void;
+  onGlossariesChange?: (glossaries: Glossary[]) => void;
+  onGraphDataChange?: (graphData: OntologyGraphData) => void;
+  onRelationTypesChange?: (relationTypes: GlossaryTermRelationType[]) => void;
+  onRequestEdit?: () => void;
 }
 
 export interface OntologyNode {
@@ -59,7 +68,15 @@ export interface OntologyEdge {
   label: string;
   relationType: string;
   inverseRelationType?: string;
+  edgeKind?: OntologyEdgeKind;
+  provenance?: Provenance;
 }
+
+export type OntologyEdgeKind =
+  | 'ontology'
+  | 'assetBinding'
+  | 'semanticProjection'
+  | 'observedLineage';
 
 export interface OntologyGraphData {
   nodes: OntologyNode[];
@@ -120,6 +137,7 @@ export interface OntologyGraphProps {
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
   relationTypes?: GlossaryTermRelationType[];
+  studioMode?: boolean;
   isEditMode?: boolean;
   onCreateRelation?: (
     fromId: string,
@@ -174,6 +192,8 @@ export interface MergedEdge {
   relationType: string;
   inverseRelationType?: string;
   isBidirectional: boolean;
+  edgeKind?: OntologyEdgeKind;
+  provenance?: Provenance;
 }
 
 export interface LayoutConfig {
@@ -232,4 +252,5 @@ export interface BuildGraphDataProps {
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
   relationTypes?: GlossaryTermRelationType[];
+  studioMode?: boolean;
 }

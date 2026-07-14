@@ -1,116 +1,85 @@
+/*
+ *  Copyright 2026 Collate
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
 package org.openmetadata.mcp.tools;
 
+import com.fasterxml.jackson.annotation.JsonInclude;
 import java.io.IOException;
-import java.util.HashMap;
-import java.util.LinkedHashMap;
 import java.util.Map;
-import lombok.extern.slf4j.Slf4j;
-import org.openmetadata.service.limits.Limits;
+import java.util.Objects;
+import java.util.function.Supplier;
+import org.openmetadata.service.rdf.OntologyDocument;
 import org.openmetadata.service.rdf.RdfIriValidator;
 import org.openmetadata.service.rdf.RdfRepository;
-import org.openmetadata.service.resources.rdf.OntologyDocument;
+import org.openmetadata.service.rdf.RdfSerializationFormat;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
 
-/**
- * Returns either the entire OpenMetadata ontology or a focused DESCRIBE for a single class /
- * property URI.
- *
- * <p>The full ontology is served from the bundled classpath resource (no triplestore round
- * trip). A focused DESCRIBE goes through the triplestore so it picks up any side-ontology
- * extensions registered there.
- */
-@Slf4j
-public class OntologyDescribeTool implements McpTool {
+/** Returns the canonical ontology or a focused description of one ontology resource. */
+public class OntologyDescribeTool extends RdfMcpTool<OntologyDescribeTool.Result> {
+
+  public OntologyDescribeTool() {
+    super();
+  }
+
+  OntologyDescribeTool(Supplier<RdfRepository> repositorySupplier) {
+    super(repositorySupplier);
+  }
+
+  @JsonInclude(JsonInclude.Include.NON_NULL)
+  public record Result(
+      String scope, String resource, String format, String mediaType, String body) {
+    public Result {
+      body = Objects.requireNonNullElse(body, "");
+    }
+  }
 
   @Override
-  public Map<String, Object> execute(
+  public Result execute(
       Authorizer authorizer, CatalogSecurityContext securityContext, Map<String, Object> params)
       throws IOException {
-    String resource = string(params, "resource");
-    String format = normalizeFormat(string(params, "format"));
+    McpToolParameters parameters = McpToolParameters.from(params);
+    String resource = parameters.optionalString("resource");
+    RdfSerializationFormat format =
+        RdfSerializationFormat.parse(parameters.optionalString("format"));
 
-    if (resource == null || resource.isBlank()) {
-      OntologyDocument.SerializedOntology serialized = OntologyDocument.serializeAsString(format);
-      Map<String, Object> result = new LinkedHashMap<>();
-      result.put("scope", "full-ontology");
-      result.put("format", format);
-      result.put("mediaType", serialized.mediaType());
-      result.put("body", serialized.body());
-      return result;
-    }
+    return McpToolParameters.isBlank(resource)
+        ? fullOntology(format)
+        : describe(validateResource(resource), format);
+  }
 
-    String validatedResource = RdfIriValidator.validateEntityIri(resource);
-    if (validatedResource == null) {
-      return error(
-          "'resource' must be a valid absolute http(s) IRI (no whitespace, control characters,"
-              + " angle brackets, or quotes)");
-    }
+  private Result fullOntology(RdfSerializationFormat format) {
+    OntologyDocument.SerializedOntology ontology =
+        OntologyDocument.serialize(format.externalName());
+    return new Result(
+        "full-ontology", null, ontology.format(), ontology.mediaType(), ontology.body());
+  }
 
-    RdfRepository repository = RdfRepository.getInstanceOrNull();
-    if (repository == null || !repository.isEnabled()) {
-      return error("RDF repository is not enabled; cannot DESCRIBE individual ontology resources");
-    }
-
-    String describe = "DESCRIBE <" + validatedResource + ">";
-    String mime = formatMime(format);
-    String body;
+  private Result describe(String resource, RdfSerializationFormat format) {
     try {
-      body = repository.executeSparqlQueryDirect(describe, mime);
-    } catch (Exception e) {
-      LOG.error("Ontology DESCRIBE failed for {}", validatedResource, e);
-      return error("DESCRIBE failed: " + e.getMessage());
+      String body =
+          repository().executeSparqlQueryDirect("DESCRIBE <" + resource + ">", format.mediaType());
+      return new Result("describe", resource, format.externalName(), format.mediaType(), body);
+    } catch (RuntimeException exception) {
+      throw new IllegalStateException("Ontology DESCRIBE failed for " + resource, exception);
     }
-
-    Map<String, Object> result = new LinkedHashMap<>();
-    result.put("scope", "describe");
-    result.put("resource", validatedResource);
-    result.put("format", format);
-    result.put("mediaType", mime);
-    result.put("body", body == null ? "" : body);
-    return result;
   }
 
-  @Override
-  public Map<String, Object> execute(
-      Authorizer authorizer,
-      Limits limits,
-      CatalogSecurityContext securityContext,
-      Map<String, Object> params) {
-    throw new UnsupportedOperationException("OntologyDescribeTool does not enforce write limits.");
-  }
-
-  private static String normalizeFormat(String format) {
-    if (format == null) return "turtle";
-    return switch (format.toLowerCase()) {
-      case "jsonld", "json-ld", "ld+json" -> "jsonld";
-      case "rdfxml", "rdf+xml", "rdf/xml" -> "rdfxml";
-      case "ntriples", "n-triples" -> "ntriples";
-      default -> "turtle";
-    };
-  }
-
-  /**
-   * Maps a normalised format name to the SPARQL-accept MIME type the triplestore expects. Every
-   * format returned by {@link #normalizeFormat} must round-trip through here.
-   */
-  private static String formatMime(String format) {
-    return switch (format) {
-      case "jsonld" -> "application/ld+json";
-      case "rdfxml" -> "application/rdf+xml";
-      case "ntriples" -> "application/n-triples";
-      default -> "text/turtle";
-    };
-  }
-
-  private static String string(Map<String, Object> params, String key) {
-    Object v = params.get(key);
-    return v instanceof String s ? s : null;
-  }
-
-  private static Map<String, Object> error(String message) {
-    Map<String, Object> result = new HashMap<>();
-    result.put("error", message);
-    return result;
+  private static String validateResource(String requestedResource) {
+    String resource = RdfIriValidator.validateEntityIri(requestedResource);
+    if (resource == null) {
+      throw new IllegalArgumentException("'resource' must be a valid absolute http(s) IRI");
+    }
+    return resource;
   }
 }

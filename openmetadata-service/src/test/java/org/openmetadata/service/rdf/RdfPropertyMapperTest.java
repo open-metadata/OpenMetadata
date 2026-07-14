@@ -1,6 +1,10 @@
 package org.openmetadata.service.rdf;
 
-import static org.junit.jupiter.api.Assertions.*;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -905,8 +909,8 @@ class RdfPropertyMapperTest {
     }
 
     @Test
-    @DisplayName("mapEntityToRdf should swallow mapping failures and leave the model unchanged")
-    void testMapEntityToRdfSwallowsMappingFailures() {
+    @DisplayName("mapEntityToRdf should surface mapping failures")
+    void testMapEntityToRdfSurfacesMappingFailures() {
       propertyMapper =
           new RdfPropertyMapper(
               BASE_URI,
@@ -923,7 +927,12 @@ class RdfPropertyMapperTest {
       entity.setName("broken");
       entity.setFullyQualifiedName("service.db.schema.broken");
 
-      assertDoesNotThrow(() -> propertyMapper.mapEntityToRdf(entity, entityResource, model));
+      IllegalStateException exception =
+          assertThrows(
+              IllegalStateException.class,
+              () -> propertyMapper.mapEntityToRdf(entity, entityResource, model));
+
+      assertEquals("boom", exception.getMessage());
       assertEquals(0, model.size());
     }
 

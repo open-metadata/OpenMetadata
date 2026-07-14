@@ -44,28 +44,39 @@ const RELATION_TYPES = [
 ];
 
 describe('RelationshipTypePicker', () => {
+  const renderPicker = (props?: {
+    onCancel?: () => void;
+    onSelect?: (relationType: string) => void;
+  }) =>
+    render(
+      <RelationshipTypePicker
+        sourceLabel="Remittance"
+        targetLabel="Settlement"
+        onCancel={props?.onCancel}
+        onSelect={props?.onSelect ?? jest.fn()}
+      />
+    );
+
   beforeEach(() => {
     mockGetSettings.mockReset();
     mockGetSettings.mockResolvedValue({ relationTypes: RELATION_TYPES });
   });
 
   it('loads and groups relation types into system and custom', async () => {
-    render(<RelationshipTypePicker onSelect={jest.fn()} />);
+    renderPicker();
 
     await waitFor(() =>
       expect(screen.getByTestId('relation-type-broader')).toBeInTheDocument()
     );
 
     expect(screen.getByTestId('relation-type-governedBy')).toBeInTheDocument();
-    expect(
-      screen.getByTestId('group-label.system-defined')
-    ).toBeInTheDocument();
-    expect(screen.getByTestId('group-label.custom')).toBeInTheDocument();
+    expect(screen.getByTestId('group-system-defined')).toBeInTheDocument();
+    expect(screen.getByTestId('group-custom')).toBeInTheDocument();
   });
 
   it('calls onSelect with the relation type name when a type is clicked', async () => {
     const onSelect = jest.fn();
-    render(<RelationshipTypePicker onSelect={onSelect} />);
+    renderPicker({ onSelect });
 
     await waitFor(() =>
       expect(screen.getByTestId('relation-type-broader')).toBeInTheDocument()
@@ -76,7 +87,7 @@ describe('RelationshipTypePicker', () => {
   });
 
   it('filters the list by the search box', async () => {
-    render(<RelationshipTypePicker onSelect={jest.fn()} />);
+    renderPicker();
 
     await waitFor(() =>
       expect(screen.getByTestId('relation-type-broader')).toBeInTheDocument()
@@ -93,7 +104,7 @@ describe('RelationshipTypePicker', () => {
 
   it('invokes onCancel when the cancel button is clicked', async () => {
     const onCancel = jest.fn();
-    render(<RelationshipTypePicker onCancel={onCancel} onSelect={jest.fn()} />);
+    renderPicker({ onCancel });
 
     await waitFor(() =>
       expect(screen.getByTestId('relation-type-cancel')).toBeInTheDocument()

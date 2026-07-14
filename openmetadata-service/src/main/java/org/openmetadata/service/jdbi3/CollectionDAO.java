@@ -90,6 +90,7 @@ import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.SearchIndexMappings;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -10809,6 +10810,7 @@ public interface CollectionDAO {
                 json, GlossaryTermRelationSettings.class);
             case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
+            case SPARQL_QUERY_SETTINGS -> JsonUtils.readValue(json, SparqlQuerySettings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

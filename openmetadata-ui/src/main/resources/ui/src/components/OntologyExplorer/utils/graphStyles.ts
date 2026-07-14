@@ -10,14 +10,22 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Group, Image as GImage, Rect as GRect, Text as GText } from '@antv/g';
+import {
+  Circle as GCircle,
+  Group,
+  Image as GImage,
+  Rect as GRect,
+  Text as GText,
+} from '@antv/g';
 import {
   Circle,
   ExtensionCategory,
   Line,
   LineStyleProps,
+  Rect as RectNode,
   RectCombo,
   RectComboStyleProps,
+  RectStyleProps,
   register,
 } from '@antv/g6';
 import {
@@ -208,6 +216,58 @@ export function getCanvasColor(cssVar: string, fallbackHex: string): string {
 
   return fallbackHex;
 }
+
+class StudioTermNode extends RectNode {
+  override render(
+    attributes: Required<RectStyleProps>,
+    container: Group
+  ): void {
+    super.render({ ...attributes, label: false }, container);
+    const attrs = attributes as Record<string, unknown>;
+    const keyShape = this.getShape('key');
+    const bounds = keyShape?.getLocalBounds();
+    if (!bounds) {
+      return;
+    }
+
+    const centerY = (bounds.min[1] + bounds.max[1]) / 2;
+    const dotCenterX = bounds.min[0] + 15.5;
+    const labelX = bounds.min[0] + 26;
+    const accentColor =
+      typeof attrs.studioAccentColor === 'string'
+        ? getCanvasColor(attrs.studioAccentColor, '#84CAFF')
+        : '#84CAFF';
+
+    this.upsert(
+      'studio-dot',
+      GCircle,
+      {
+        cx: dotCenterX,
+        cy: centerY,
+        r: 3.5,
+        fill: accentColor,
+      },
+      container
+    );
+    this.upsert(
+      'studio-label',
+      GText,
+      {
+        x: labelX,
+        y: centerY,
+        text: String(attrs.studioLabelText ?? ''),
+        fill: getCanvasColor(NODE_LABEL_FILL, NODE_LABEL_FILL_FALLBACK),
+        fontFamily: 'Inter',
+        fontSize: NODE_LABEL_FONT_SIZE,
+        fontWeight: NODE_LABEL_FONT_WEIGHT,
+        textAlign: 'left',
+        textBaseline: 'middle',
+      },
+      container
+    );
+  }
+}
+register(ExtensionCategory.NODE, 'studio-term', StudioTermNode);
 
 const GLOSSARY_HEADER_MIX_ACCENT = 0.11;
 
@@ -439,6 +499,22 @@ const EDGE_LABEL_OFFSET_Y = 0;
 const EDGE_LABEL_BADGE_PADDING: [number, number, number, number] = [4, 8, 4, 8];
 const EDGE_LABEL_BADGE_RADIUS = 6;
 const EDGE_LABEL_BADGE_FONT_WEIGHT = 700;
+const STUDIO_EDGE_LABEL_PADDING: [number, number, number, number] = [
+  2, 7, 2, 7,
+];
+const STUDIO_EDGE_BORDER_BY_COLOR: Record<string, string> = {
+  '#079455': '#ABEFC6',
+  '#0e9384': '#99E5D9',
+  '#1570ef': '#D1E9FF',
+  '#3538cd': '#C7D7FE',
+  '#5925dc': '#D9D6FE',
+  '#6172f3': '#C7D7FE',
+  '#717680': '#E9EAEB',
+  '#7a5af8': '#E3DEFC',
+  '#c11574': '#FCCEEE',
+  '#dc6803': '#FEDF89',
+  '#e31b54': '#FECDD6',
+};
 
 export function getEffectiveRelationColor(
   relationType: string,
@@ -457,7 +533,8 @@ export function getEffectiveRelationColor(
 export function getEdgeRelationLabelStyle(
   labelText: string,
   relationType?: string,
-  effectiveColor?: string
+  effectiveColor?: string,
+  studioMode = false
 ): Record<string, unknown> {
   const builtInMeta =
     relationType != null
@@ -467,21 +544,33 @@ export function getEdgeRelationLabelStyle(
     ? COLOR_META_BY_HEX[effectiveColor.toLowerCase()] ?? builtInMeta
     : builtInMeta;
 
-  const edgeLabelPadding = EDGE_LABEL_BADGE_PADDING;
+  const edgeLabelPadding = studioMode
+    ? STUDIO_EDGE_LABEL_PADDING
+    : EDGE_LABEL_BADGE_PADDING;
+  const relationColor = effectiveColor ?? meta?.color;
+  const studioBorderColor = relationColor
+    ? STUDIO_EDGE_BORDER_BY_COLOR[relationColor.toLowerCase()]
+    : undefined;
 
   return {
     labelText,
     labelPosition: 'center',
     labelBackground: true,
     labelBackgroundOpacity: 1,
-    labelBackgroundFill: meta
+    labelBackgroundFill: studioMode
+      ? '#FFFFFF'
+      : meta
       ? getCanvasColor(meta.background, '#fafafa')
       : getCanvasColor(EDGE_LABEL_BG_FILL, '#EFF1F8'),
-    labelBackgroundStroke: meta
+    labelBackgroundStroke: studioMode
+      ? studioBorderColor ?? '#E9EAEB'
+      : meta
       ? 'none'
       : getCanvasColor(EDGE_LABEL_BG_STROKE, '#FFF'),
-    labelBackgroundLineWidth: meta ? 0 : 1,
-    labelBackgroundRadius: meta
+    labelBackgroundLineWidth: studioMode ? 1 : meta ? 0 : 1,
+    labelBackgroundRadius: studioMode
+      ? 9999
+      : meta
       ? EDGE_LABEL_BADGE_RADIUS
       : EDGE_LABEL_BG_RADIUS,
     labelPadding: edgeLabelPadding,
@@ -495,7 +584,9 @@ export function getEdgeRelationLabelStyle(
       ? getCanvasColor(meta.color, '#717680')
       : getCanvasColor(EDGE_LABEL_FILL, '#8C93AE'),
     labelFontSize: EDGE_LABEL_FONT_SIZE,
-    labelFontWeight: meta
+    labelFontWeight: studioMode
+      ? EDGE_LABEL_FONT_WEIGHT
+      : meta
       ? EDGE_LABEL_BADGE_FONT_WEIGHT
       : EDGE_LABEL_FONT_WEIGHT,
     labelFontFamily: EDGE_LABEL_FONT_FAMILY,

@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.resources.glossary;
 
+import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.GLOSSARY;
 import static org.openmetadata.service.Entity.GLOSSARY_TERM;
@@ -58,6 +59,7 @@ import org.openmetadata.schema.api.AddGlossaryToAssetsRequest;
 import org.openmetadata.schema.api.ValidateGlossaryTagsRequest;
 import org.openmetadata.schema.api.VoteRequest;
 import org.openmetadata.schema.api.data.CreateGlossaryTerm;
+import org.openmetadata.schema.api.data.GlossaryTermRelationGraph;
 import org.openmetadata.schema.api.data.LoadGlossary;
 import org.openmetadata.schema.api.data.MoveGlossaryTermRequest;
 import org.openmetadata.schema.api.data.RestoreEntity;
@@ -1237,8 +1239,9 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-    GlossaryTerm term = repository.addTermRelation(id, termRelation);
-    return Response.ok(addHref(uriInfo, term)).build();
+    return repository
+        .addTermRelation(uriInfo, securityContext.getUserPrincipal().getName(), id, termRelation)
+        .toResponse();
   }
 
   @DELETE
@@ -1279,8 +1282,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-    GlossaryTerm term = repository.removeTermRelation(id, toTermId, relationType);
-    return Response.ok(addHref(uriInfo, term)).build();
+    return repository
+        .removeTermRelation(
+            uriInfo, securityContext.getUserPrincipal().getName(), id, toTermId, relationType)
+        .toResponse();
   }
 
   @PUT
@@ -1318,8 +1323,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         securityContext,
         operationContext,
         getResourceContextById(id, ResourceContextInterface.Operation.PUT));
-    GlossaryTerm term = repository.updateTermRelation(id, toTermId, termRelation);
-    return Response.ok(addHref(uriInfo, term)).build();
+    return repository
+        .updateTermRelation(
+            uriInfo, securityContext.getUserPrincipal().getName(), id, toTermId, termRelation)
+        .toResponse();
   }
 
   @GET
@@ -1333,10 +1340,13 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         @ApiResponse(
             responseCode = "200",
             description = "Graph of related terms",
-            content = @Content(mediaType = "application/json")),
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = GlossaryTermRelationGraph.class))),
         @ApiResponse(responseCode = "404", description = "Glossary term not found")
       })
-  public Response getTermRelationGraph(
+  public GlossaryTermRelationGraph getTermRelationGraph(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Parameter(description = "Id of the glossary term", schema = @Schema(type = "UUID"))
@@ -1355,10 +1365,10 @@ public class GlossaryTermResource extends EntityResource<GlossaryTerm, GlossaryT
         new OperationContext(entityType, MetadataOperation.VIEW_ALL);
     authorizer.authorize(securityContext, operationContext, getResourceContextById(id));
     List<String> types = null;
-    if (relationTypes != null && !relationTypes.isEmpty()) {
+    if (!nullOrEmpty(relationTypes)) {
       types = List.of(relationTypes.split(","));
     }
-    return Response.ok(repository.getTermRelationGraph(id, depth, types)).build();
+    return repository.getTermRelationGraph(id, depth, types);
   }
 
   @GET

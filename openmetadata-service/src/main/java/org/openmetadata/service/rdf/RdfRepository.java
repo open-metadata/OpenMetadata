@@ -5,8 +5,11 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -22,12 +25,20 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
+import org.apache.jena.query.Query;
+import org.apache.jena.query.QueryExecution;
+import org.apache.jena.query.QueryExecutionFactory;
+import org.apache.jena.query.QueryFactory;
+import org.apache.jena.query.ResultSet;
+import org.apache.jena.query.ResultSetFormatter;
+import org.apache.jena.rdf.model.InfModel;
 import org.apache.jena.rdf.model.Model;
 import org.apache.jena.rdf.model.ModelFactory;
 import org.apache.jena.rdf.model.Property;
 import org.apache.jena.rdf.model.Resource;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
+import org.openmetadata.schema.api.data.ConceptMapping;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.RelationCardinality;
@@ -45,6 +56,8 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.GlossaryTermRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.rdf.reasoning.InferenceEngine;
+import org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel;
 import org.openmetadata.service.rdf.storage.RdfStorageFactory;
 import org.openmetadata.service.rdf.storage.RdfStorageInterface;
 import org.openmetadata.service.rdf.translator.JsonLdTranslator;
@@ -80,6 +93,9 @@ public class RdfRepository {
   private static final long TRUNCATED_GRAPH_CACHE_TTL_SECONDS = 5L;
   static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 50;
   static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 25;
+  static final int DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES = 100_000;
+  private static final int INFERENCE_MODEL_CACHE_MAX_SIZE = 2;
+  private static final long INFERENCE_MODEL_CACHE_TTL_SECONDS = 60L;
 
   // Fallback predicate URIs for clearAllGlossaryTermRelations when
   // GlossaryTermRelationSettings can't be loaded (e.g. DB blip during startup).
@@ -136,6 +152,11 @@ public class RdfRepository {
           .maximumSize(GRAPH_CACHE_MAX_SIZE)
           .expireAfterWrite(Duration.ofSeconds(TRUNCATED_GRAPH_CACHE_TTL_SECONDS))
           .build();
+  private final Cache<InferenceCacheKey, InfModel> inferenceModelCache =
+      Caffeine.newBuilder()
+          .maximumSize(INFERENCE_MODEL_CACHE_MAX_SIZE)
+          .expireAfterWrite(Duration.ofSeconds(INFERENCE_MODEL_CACHE_TTL_SECONDS))
+          .build();
   private static RdfRepository INSTANCE;
 
   /**
@@ -180,6 +201,11 @@ public class RdfRepository {
   static int resolveBulkRelationshipSourceBatchSize(RdfConfiguration config) {
     return positiveInt(
         config.getBulkRelationshipSourceBatchSize(), DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE);
+  }
+
+  static int resolveMaxInMemoryInferenceTriples(RdfConfiguration config) {
+    return positiveInt(
+        config.getMaxInMemoryInferenceTriples(), DEFAULT_MAX_IN_MEMORY_INFERENCE_TRIPLES);
   }
 
   private static int positiveInt(Integer value, int defaultValue) {
@@ -1146,94 +1172,131 @@ public class RdfRepository {
 
   public String executeSparqlQueryWithInference(
       String query, String format, String inferenceLevel) {
+    return executeSparqlQueryWithInferenceResult(query, format, inferenceLevel).results();
+  }
+
+  public InferenceQueryResult executeSparqlQueryWithInferenceResult(
+      String query, String format, String inferenceLevel) {
     if (!isEnabled()) {
       throw new IllegalStateException("RDF not enabled");
     }
 
     try {
-      // Convert inference level string to enum
-      org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel level =
-          switch (inferenceLevel.toLowerCase()) {
-            case "rdfs" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
-                .RDFS;
-            case "owl" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
-                .OWL_LITE;
-            case "custom" -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel
-                .CUSTOM;
-            default -> org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.NONE;
-          };
-
-      if (level == org.openmetadata.service.rdf.reasoning.InferenceEngine.ReasoningLevel.NONE) {
-        return executeSparqlQueryDirect(query, format);
+      ReasoningLevel level = reasoningLevel(inferenceLevel);
+      if (level == ReasoningLevel.NONE) {
+        return new InferenceQueryResult(executeSparqlQueryDirect(query, format), null);
       }
 
-      // For inference queries, we need to work with the full model
-      // This is a simplified implementation - in production, you'd want to cache the inference
-      // model
-      LOG.info("Executing SPARQL query with {} inference", inferenceLevel);
-
-      // Get all data from the store (simplified - in production, use named graphs)
-      String allDataQuery = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
-      String allData = storageService.executeSparqlQuery(allDataQuery, "text/turtle");
-
-      // Create models
-      org.apache.jena.rdf.model.Model baseModel =
-          org.apache.jena.rdf.model.ModelFactory.createDefaultModel();
-      baseModel.read(new java.io.StringReader(allData), null, "TURTLE");
-
-      // Load ontology model
-      org.apache.jena.rdf.model.Model ontologyModel =
-          org.apache.jena.rdf.model.ModelFactory.createDefaultModel();
-      String ontologyQuery =
-          "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <https://open-metadata.org/graph/ontology> { ?s ?p ?o } }";
-      String ontologyData = storageService.executeSparqlQuery(ontologyQuery, "text/turtle");
-      if (ontologyData != null && !ontologyData.isEmpty()) {
-        ontologyModel.read(new java.io.StringReader(ontologyData), null, "TURTLE");
+      long tripleCount = storageService.getTripleCount();
+      int maxInMemoryTriples = resolveMaxInMemoryInferenceTriples(config);
+      if (tripleCount > maxInMemoryTriples) {
+        String warning =
+            String.format(
+                "Inference was skipped because the RDF store contains %,d triples, exceeding the in-memory limit of %,d",
+                tripleCount, maxInMemoryTriples);
+        LOG.warn("{}; executing the SPARQL query directly", warning);
+        return new InferenceQueryResult(executeSparqlQueryDirect(query, format), warning);
       }
 
-      // Create inference engine and inference model
-      org.openmetadata.service.rdf.reasoning.InferenceEngine engine =
-          new org.openmetadata.service.rdf.reasoning.InferenceEngine(level);
-      org.apache.jena.rdf.model.InfModel infModel =
-          engine.createInferenceModel(baseModel, ontologyModel);
-
-      // Execute query on inference model
-      org.apache.jena.query.Query jenaQuery = org.apache.jena.query.QueryFactory.create(query);
-      org.apache.jena.query.QueryExecution qe =
-          org.apache.jena.query.QueryExecutionFactory.create(jenaQuery, infModel);
-
-      // Format results based on query type
-      java.io.ByteArrayOutputStream out = new java.io.ByteArrayOutputStream();
-      if (jenaQuery.isSelectType()) {
-        org.apache.jena.query.ResultSet results = qe.execSelect();
-        if (format.contains("json")) {
-          org.apache.jena.query.ResultSetFormatter.outputAsJSON(out, results);
-        } else if (format.contains("xml")) {
-          org.apache.jena.query.ResultSetFormatter.outputAsXML(out, results);
-        } else if (format.contains("csv")) {
-          org.apache.jena.query.ResultSetFormatter.outputAsCSV(out, results);
-        } else if (format.contains("tsv")) {
-          org.apache.jena.query.ResultSetFormatter.outputAsTSV(out, results);
+      LOG.info(
+          "Executing SPARQL query with {} inference over {} triples", inferenceLevel, tripleCount);
+      boolean cacheEnabled = Boolean.TRUE.equals(config.getCacheInferredTriples());
+      InfModel infModel = inferenceModel(level, tripleCount, cacheEnabled);
+      try {
+        String results;
+        if (cacheEnabled) {
+          synchronized (infModel) {
+            results = executeInferenceQuery(query, format, infModel);
+          }
+        } else {
+          results = executeInferenceQuery(query, format, infModel);
         }
-      } else if (jenaQuery.isConstructType()) {
-        org.apache.jena.rdf.model.Model constructModel = qe.execConstruct();
-        constructModel.write(out, getJenaFormat(format));
-      } else if (jenaQuery.isAskType()) {
-        boolean result = qe.execAsk();
-        out.write(("{\"head\":{},\"boolean\":" + result + "}").getBytes());
-      } else if (jenaQuery.isDescribeType()) {
-        org.apache.jena.rdf.model.Model describeModel = qe.execDescribe();
-        describeModel.write(out, getJenaFormat(format));
+        return new InferenceQueryResult(results, null);
+      } finally {
+        if (!cacheEnabled) {
+          infModel.close();
+        }
       }
-
-      qe.close();
-      return out.toString();
-
     } catch (Exception e) {
       LOG.error("Error executing SPARQL query with inference", e);
       throw new RuntimeException("Failed to execute query with inference", e);
     }
   }
+
+  private ReasoningLevel reasoningLevel(String inferenceLevel) {
+    if (inferenceLevel == null) {
+      return ReasoningLevel.NONE;
+    }
+    return switch (inferenceLevel.toLowerCase(Locale.ROOT)) {
+      case "rdfs" -> ReasoningLevel.RDFS;
+      case "owl" -> ReasoningLevel.OWL_LITE;
+      case "custom" -> ReasoningLevel.CUSTOM;
+      default -> ReasoningLevel.NONE;
+    };
+  }
+
+  private InfModel inferenceModel(ReasoningLevel level, long tripleCount, boolean cacheEnabled) {
+    if (!cacheEnabled) {
+      return buildInferenceModel(level);
+    }
+    return inferenceModelCache.get(
+        new InferenceCacheKey(level, tripleCount), ignored -> buildInferenceModel(level));
+  }
+
+  private InfModel buildInferenceModel(ReasoningLevel level) {
+    String allDataQuery = "CONSTRUCT { ?s ?p ?o } WHERE { ?s ?p ?o }";
+    String allData = storageService.executeSparqlQuery(allDataQuery, "text/turtle");
+    Model baseModel = ModelFactory.createDefaultModel();
+    if (!nullOrEmpty(allData)) {
+      baseModel.read(new StringReader(allData), null, "TURTLE");
+    }
+
+    Model ontologyModel = ModelFactory.createDefaultModel();
+    String ontologyQuery =
+        "CONSTRUCT { ?s ?p ?o } WHERE { GRAPH <https://open-metadata.org/graph/ontology> { ?s ?p ?o } }";
+    String ontologyData = storageService.executeSparqlQuery(ontologyQuery, "text/turtle");
+    if (!nullOrEmpty(ontologyData)) {
+      ontologyModel.read(new StringReader(ontologyData), null, "TURTLE");
+    }
+    return new InferenceEngine(level).createInferenceModel(baseModel, ontologyModel);
+  }
+
+  private String executeInferenceQuery(String query, String format, InfModel infModel) {
+    Query jenaQuery = QueryFactory.create(query);
+    try (QueryExecution queryExecution = QueryExecutionFactory.create(jenaQuery, infModel);
+        ByteArrayOutputStream output = new ByteArrayOutputStream()) {
+      if (jenaQuery.isSelectType()) {
+        writeSelectResults(queryExecution.execSelect(), format, output);
+      } else if (jenaQuery.isConstructType()) {
+        queryExecution.execConstruct().write(output, getJenaFormat(format));
+      } else if (jenaQuery.isAskType()) {
+        output.write(
+            ("{\"head\":{},\"boolean\":" + queryExecution.execAsk() + "}")
+                .getBytes(StandardCharsets.UTF_8));
+      } else if (jenaQuery.isDescribeType()) {
+        queryExecution.execDescribe().write(output, getJenaFormat(format));
+      }
+      return output.toString(StandardCharsets.UTF_8);
+    } catch (IOException e) {
+      throw new IllegalStateException("Failed to serialize inference query results", e);
+    }
+  }
+
+  private void writeSelectResults(ResultSet results, String format, ByteArrayOutputStream output) {
+    if (format.contains("json")) {
+      ResultSetFormatter.outputAsJSON(output, results);
+    } else if (format.contains("xml")) {
+      ResultSetFormatter.outputAsXML(output, results);
+    } else if (format.contains("csv")) {
+      ResultSetFormatter.outputAsCSV(output, results);
+    } else if (format.contains("tsv")) {
+      ResultSetFormatter.outputAsTSV(output, results);
+    }
+  }
+
+  public record InferenceQueryResult(String results, String warning) {}
+
+  private record InferenceCacheKey(ReasoningLevel level, long tripleCount) {}
 
   private String getJenaFormat(String mimeType) {
     if (mimeType.contains("turtle")) return "TURTLE";
@@ -1388,17 +1451,7 @@ public class RdfRepository {
   }
 
   private String requireKnownEntityType(String entityType) {
-    if (entityType == null || entityType.isBlank()) {
-      throw new IllegalArgumentException("Entity type is required");
-    }
-
-    String trimmedEntityType = entityType.trim();
-    if (!trimmedEntityType.matches("[A-Za-z][A-Za-z0-9]*")
-        || !Entity.hasEntityRepository(trimmedEntityType)) {
-      throw new IllegalArgumentException("Invalid entity type");
-    }
-
-    return trimmedEntityType;
+    return RdfEntityTypeValidator.requireKnown(entityType);
   }
 
   /**
@@ -3880,7 +3933,8 @@ public class RdfRepository {
 
       var terms =
           glossaryTermRepository.listAll(
-              glossaryTermRepository.getFields("relatedTerms,parent,children,synonyms"),
+              glossaryTermRepository.getFields(
+                  "conceptMappings,relatedTerms,parent,children,synonyms"),
               listFilter);
 
       Map<UUID, Resource> termResources = new HashMap<>();
@@ -3947,6 +4001,16 @@ public class RdfRepository {
               }
             }
           }
+
+          if (term.getConceptMappings() != null) {
+            for (ConceptMapping conceptMapping : term.getConceptMappings()) {
+              if (conceptMapping.getConceptIri() != null) {
+                termResource.addProperty(
+                    getConceptMappingProperty(conceptMapping.getMappingType(), model),
+                    model.createResource(conceptMapping.getConceptIri().toString()));
+              }
+            }
+          }
         }
         addRelationCardinalityShapes(model);
         addRelationTypeAxioms(model);
@@ -4005,6 +4069,27 @@ public class RdfRepository {
         }
         yield model.createProperty("https://open-metadata.org/ontology/", relationType);
       }
+    };
+  }
+
+  private Property getConceptMappingProperty(
+      ConceptMapping.ConceptMappingType mappingType, Model model) {
+    if (mappingType == null) {
+      return model.createProperty("http://www.w3.org/2004/02/skos/core#", "relatedMatch");
+    }
+
+    return switch (mappingType) {
+      case EXACT_MATCH -> model.createProperty(
+          "http://www.w3.org/2004/02/skos/core#", "exactMatch");
+      case CLOSE_MATCH -> model.createProperty(
+          "http://www.w3.org/2004/02/skos/core#", "closeMatch");
+      case BROAD_MATCH -> model.createProperty(
+          "http://www.w3.org/2004/02/skos/core#", "broadMatch");
+      case NARROW_MATCH -> model.createProperty(
+          "http://www.w3.org/2004/02/skos/core#", "narrowMatch");
+      case RELATED_MATCH -> model.createProperty(
+          "http://www.w3.org/2004/02/skos/core#", "relatedMatch");
+      case SAME_AS -> model.createProperty("http://www.w3.org/2002/07/owl#", "sameAs");
     };
   }
 
@@ -4333,6 +4418,8 @@ public class RdfRepository {
   }
 
   public void close() {
+    new HashSet<>(inferenceModelCache.asMap().values()).forEach(InfModel::close);
+    inferenceModelCache.invalidateAll();
     if (storageService != null) {
       storageService.close();
     }

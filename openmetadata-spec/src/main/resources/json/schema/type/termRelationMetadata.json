@@ -1,0 +1,24 @@
+{
+  "$id": "https://open-metadata.org/schema/type/termRelationMetadata.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "TermRelationMetadata",
+  "description": "Metadata persisted with a glossary term relationship edge.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.TermRelationMetadata",
+  "properties": {
+    "relationType": {
+      "description": "Type of the semantic relation between the glossary terms.",
+      "$ref": "termRelation.json#/definitions/relationType"
+    },
+    "provenance": {
+      "description": "How this relation edge originated.",
+      "$ref": "termRelation.json#/definitions/provenance"
+    },
+    "status": {
+      "description": "Approval status of this relation edge.",
+      "$ref": "status.json"
+    }
+  },
+  "required": ["relationType", "provenance", "status"],
+  "additionalProperties": false
+}

@@ -108,6 +108,40 @@ class GlossaryRdfImporterTest {
   }
 
   @Test
+  void preservesPolyhierarchyWithDeterministicStructuralParent() {
+    String diamondOntology =
+        """
+        @prefix skos: <http://www.w3.org/2004/02/skos/core#> .
+        @prefix rdfs: <http://www.w3.org/2000/01/rdf-schema#> .
+        @prefix hcp:  <http://example.com/ontology/hcp#> .
+        @prefix ext:  <http://external.example.com/ontology#> .
+
+        hcp:AlphaParent a skos:Concept .
+        hcp:ZuluParent a skos:Concept .
+        hcp:Child a skos:Concept ;
+            skos:broader hcp:ZuluParent, hcp:AlphaParent, ext:ExternalParent ;
+            rdfs:subClassOf hcp:ZuluParent .
+        """;
+
+    TermIntent child = find(parse(diamondOntology), HCP + "Child");
+
+    assertEquals(
+        HCP + "AlphaParent",
+        child.parentIri,
+        "the lexicographically smallest internal IRI is the structural parent");
+    assertEquals(1, child.relations.size(), "the additional internal parent is retained once");
+    assertEquals("broader", child.relations.get(0)[0]);
+    assertEquals(HCP + "ZuluParent", child.relations.get(0)[1]);
+    assertEquals(1, child.conceptMappings.size(), "the external parent is retained as a mapping");
+    assertEquals(
+        ConceptMapping.ConceptMappingType.BROAD_MATCH,
+        child.conceptMappings.get(0).getMappingType());
+    assertEquals(
+        "http://external.example.com/ontology#ExternalParent",
+        child.conceptMappings.get(0).getConceptIri().toString());
+  }
+
+  @Test
   void capturesObjectPropertyDomainRangeAndCharacteristics() {
     Model model = ModelFactory.createDefaultModel();
     model.read(new StringReader(ONTOLOGY), null, "TURTLE");

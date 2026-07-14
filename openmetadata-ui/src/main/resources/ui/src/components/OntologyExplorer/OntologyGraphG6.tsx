@@ -15,6 +15,7 @@ import {
   useCallback,
   useEffect,
   useImperativeHandle,
+  useMemo,
   useRef,
   useState,
 } from 'react';
@@ -107,12 +108,38 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       onScrollNearEdge,
       nodePositions,
       relationTypes,
+      studioMode,
       isEditMode,
       onCreateRelation,
     },
     ref
   ) => {
     const containerRef = useRef<HTMLDivElement>(null);
+    const nodeLabels = useMemo(
+      () =>
+        Object.fromEntries(
+          inputNodes.map((node) => [node.id, node.originalLabel ?? node.label])
+        ),
+      [inputNodes]
+    );
+    const isolatedNodeIds = useMemo(
+      () =>
+        new Set(
+          inputNodes
+            .filter((node) => node.type === 'glossaryTermIsolated')
+            .map((node) => node.id)
+        ),
+      [inputNodes]
+    );
+    const hierarchicalRelationTypes = useMemo(
+      () =>
+        new Set(
+          (relationTypes ?? [])
+            .filter((relationType) => relationType.category === 'hierarchical')
+            .map((relationType) => relationType.name)
+        ),
+      [relationTypes]
+    );
 
     const [clickedEdgeId, setClickedEdgeId] = useState<string | null>(null);
 
@@ -144,6 +171,7 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       layoutType,
       nodePositions,
       relationTypes,
+      studioMode,
     });
 
     const {
@@ -172,6 +200,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       computeNodeColor,
       assetToTermMap,
+      hierarchicalRelationTypes,
+      studioMode,
       onPositionsReady: (positions) => {
         writeNodePositions(containerRef.current, positions);
         if (containerRef.current && graphRef.current) {
@@ -280,6 +310,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         <PortOverlay
           containerRef={containerRef}
           isEditMode={Boolean(isEditMode)}
+          isolatedNodeIds={isolatedNodeIds}
+          nodeLabels={nodeLabels}
           onCreateRelation={onCreateRelation ?? (() => Promise.resolve())}
         />
       </div>

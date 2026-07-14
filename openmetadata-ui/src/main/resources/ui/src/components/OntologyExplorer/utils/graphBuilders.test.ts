@@ -13,10 +13,15 @@
 import type { TFunction } from 'i18next';
 import { Glossary } from '../../../generated/entity/data/glossary';
 import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
+import { Provenance } from '../../../generated/type/termRelation';
 import { GraphData } from '../../../rest/rdfAPI.interface';
 import {
+  ASSET_BINDING_EDGE_KIND,
+  ASSET_RELATION_TYPE,
   buildGraphFromAllTerms,
   convertRdfGraphToOntologyGraph,
+  projectOntologyRelationsToAssets,
+  SEMANTIC_PROJECTION_EDGE_KIND,
 } from './graphBuilders';
 
 const tStub = ((key: string) => key) as unknown as TFunction;
@@ -394,5 +399,89 @@ describe('buildGraphFromAllTerms', () => {
 
     expect(result.nodes).toHaveLength(1);
     expect(result.edges).toHaveLength(0);
+  });
+});
+
+describe('projectOntologyRelationsToAssets', () => {
+  it('creates inferred asset-to-asset edges from typed concept relations', () => {
+    const result = projectOntologyRelationsToAssets({
+      nodes: [
+        { id: 'concept-a', label: 'Concept A', type: 'glossaryTerm' },
+        { id: 'concept-b', label: 'Concept B', type: 'glossaryTerm' },
+        { id: 'asset-a', label: 'Asset A', type: 'dataAsset' },
+        { id: 'asset-b', label: 'Asset B', type: 'dataAsset' },
+      ],
+      edges: [
+        {
+          from: 'concept-a',
+          to: 'concept-b',
+          label: 'Requires',
+          relationType: 'requires',
+        },
+        {
+          from: 'asset-a',
+          to: 'concept-a',
+          label: 'Tagged with',
+          relationType: ASSET_RELATION_TYPE,
+          edgeKind: ASSET_BINDING_EDGE_KIND,
+        },
+        {
+          from: 'asset-b',
+          to: 'concept-b',
+          label: 'Tagged with',
+          relationType: ASSET_RELATION_TYPE,
+          edgeKind: ASSET_BINDING_EDGE_KIND,
+        },
+      ],
+    });
+
+    expect(result.edges).toContainEqual({
+      from: 'asset-a',
+      to: 'asset-b',
+      label: 'Requires',
+      relationType: 'requires',
+      edgeKind: SEMANTIC_PROJECTION_EDGE_KIND,
+      provenance: Provenance.Inferred,
+    });
+  });
+
+  it('does not project structural parent edges and honors the safety cap', () => {
+    const result = projectOntologyRelationsToAssets(
+      {
+        nodes: [
+          { id: 'concept-a', label: 'Concept A', type: 'glossaryTerm' },
+          { id: 'concept-b', label: 'Concept B', type: 'glossaryTerm' },
+          { id: 'asset-a', label: 'Asset A', type: 'dataAsset' },
+          { id: 'asset-b', label: 'Asset B', type: 'dataAsset' },
+        ],
+        edges: [
+          {
+            from: 'concept-a',
+            to: 'concept-b',
+            label: 'Parent of',
+            relationType: 'parentOf',
+          },
+          {
+            from: 'asset-a',
+            to: 'concept-a',
+            label: 'Tagged with',
+            relationType: ASSET_RELATION_TYPE,
+          },
+          {
+            from: 'asset-b',
+            to: 'concept-b',
+            label: 'Tagged with',
+            relationType: ASSET_RELATION_TYPE,
+          },
+        ],
+      },
+      0
+    );
+
+    expect(
+      result.edges.filter(
+        (edge) => edge.edgeKind === SEMANTIC_PROJECTION_EDGE_KIND
+      )
+    ).toHaveLength(0);
   });
 });

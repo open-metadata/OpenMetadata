@@ -27,7 +27,7 @@ import org.openmetadata.service.security.policyevaluator.ResourceContext;
  * the dedicated per-chunk embeddings (issue #4789).
  */
 @Slf4j
-public class GetKnowledgeContentTool implements McpTool {
+public class GetKnowledgeContentTool implements McpTool<Map<String, Object>> {
   private static final int DEFAULT_PASSAGES = 3;
   private static final int MAX_PASSAGES = 10;
   private static final String FORMAT_JSON = "json";

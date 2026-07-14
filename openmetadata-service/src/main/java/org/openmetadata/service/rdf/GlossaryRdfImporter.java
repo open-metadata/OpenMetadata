@@ -53,6 +53,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.OntologyNamespace;
+import org.openmetadata.schema.type.RelationProvenance;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -78,7 +79,8 @@ import org.openmetadata.service.util.RestUtil.PutResponse;
  * <ul>
  *   <li>{@code skos:ConceptScheme} &rarr; Glossary
  *   <li>{@code skos:Concept} / {@code owl:Class} &rarr; GlossaryTerm (subject IRI &rarr; {@code iri})
- *   <li>{@code skos:broader} / {@code rdfs:subClassOf} &rarr; parent
+ *   <li>{@code skos:broader} / {@code rdfs:subClassOf} &rarr; deterministic parent plus typed
+ *       {@code broader} relations for additional parents
  *   <li>{@code skos:altLabel} &rarr; synonyms; {@code skos:definition} / {@code rdfs:comment} &rarr;
  *       description
  *   <li>{@code skos:*Match} / {@code owl:sameAs} to external IRIs &rarr; conceptMappings
@@ -179,7 +181,7 @@ public class GlossaryRdfImporter {
 
   private void rejectExternalEntities(String rdf, String lang) {
     if (RDF_XML_LANG.equals(lang)
-        && rdf != null
+        && !nullOrEmpty(rdf)
         && rdf.toUpperCase(Locale.ROOT).contains(DOCTYPE_TOKEN)) {
       throw new BadRequestException(
           "RDF/XML payloads with a DOCTYPE declaration are rejected to prevent XXE/SSRF");
@@ -187,7 +189,7 @@ public class GlossaryRdfImporter {
   }
 
   private String jenaLang(String format) {
-    String normalized = format == null ? "turtle" : format.toLowerCase(Locale.ROOT);
+    String normalized = nullOrEmpty(format) ? "turtle" : format.toLowerCase(Locale.ROOT);
     return switch (normalized) {
       case "rdfxml", "xml", "rdf", "application/rdf+xml" -> RDF_XML_LANG;
       case "ntriples", "nt", "application/n-triples" -> "N-TRIPLES";
@@ -201,7 +203,7 @@ public class GlossaryRdfImporter {
   private Map<String, EntityReference> createGlossaries(
       Model model, String targetGlossaryName, boolean dryRun) {
     Map<String, EntityReference> glossaryByScheme = new HashMap<>();
-    List<Map<String, String>> namespaces = collectNamespaces(model);
+    List<OntologyNamespace> namespaces = collectNamespaces(model);
     if (nullOrEmpty(targetGlossaryName)) {
       collectSchemeGlossaries(model, namespaces, glossaryByScheme, dryRun);
     } else {
@@ -212,7 +214,7 @@ public class GlossaryRdfImporter {
 
   private void collectSchemeGlossaries(
       Model model,
-      List<Map<String, String>> namespaces,
+      List<OntologyNamespace> namespaces,
       Map<String, EntityReference> glossaryByScheme,
       boolean dryRun) {
     Resource conceptScheme = model.getResource(SKOS + "ConceptScheme");
@@ -228,7 +230,7 @@ public class GlossaryRdfImporter {
   private void addSchemeGlossary(
       Model model,
       Resource scheme,
-      List<Map<String, String>> namespaces,
+      List<OntologyNamespace> namespaces,
       Map<String, EntityReference> glossaryByScheme,
       boolean dryRun) {
     String name = sanitizeName(localName(scheme.getURI()));
@@ -239,7 +241,7 @@ public class GlossaryRdfImporter {
   }
 
   private EntityReference resolveTargetGlossary(
-      String targetGlossaryName, List<Map<String, String>> namespaces, boolean dryRun) {
+      String targetGlossaryName, List<OntologyNamespace> namespaces, boolean dryRun) {
     EntityReference ref;
     try {
       ref = Entity.getEntityReferenceByName(GLOSSARY, targetGlossaryName, Include.NON_DELETED);
@@ -251,19 +253,21 @@ public class GlossaryRdfImporter {
     return ref;
   }
 
-  private List<Map<String, String>> collectNamespaces(Model model) {
-    List<Map<String, String>> namespaces = new ArrayList<>();
-    for (var entry : model.getNsPrefixMap().entrySet()) {
-      namespaces.add(Map.of("prefix", entry.getKey(), "namespace", entry.getValue()));
-    }
-    return namespaces;
+  private List<OntologyNamespace> collectNamespaces(Model model) {
+    return model.getNsPrefixMap().entrySet().stream()
+        .map(
+            entry ->
+                new OntologyNamespace()
+                    .withPrefix(entry.getKey())
+                    .withNamespace(toUri(entry.getValue())))
+        .toList();
   }
 
   private EntityReference ensureGlossary(
       String name,
       String displayName,
       String description,
-      List<Map<String, String>> namespaces,
+      List<OntologyNamespace> namespaces,
       boolean dryRun) {
     EntityReference ref;
     if (dryRun) {
@@ -286,7 +290,7 @@ public class GlossaryRdfImporter {
   }
 
   private EntityReference persistGlossary(
-      String name, String displayName, String description, List<Map<String, String>> namespaces) {
+      String name, String displayName, String description, List<OntologyNamespace> namespaces) {
     GlossaryRepository repository = (GlossaryRepository) Entity.getEntityRepository(GLOSSARY);
     Glossary glossary =
         new Glossary()
@@ -294,7 +298,7 @@ public class GlossaryRdfImporter {
             .withName(name)
             .withDisplayName(nullOrEmpty(displayName) ? name : displayName)
             .withDescription(nullOrEmpty(description) ? name : description)
-            .withNamespaces(toNamespaces(namespaces))
+            .withNamespaces(namespaces)
             .withUpdatedBy(user)
             .withUpdatedAt(System.currentTimeMillis());
     glossary.setFullyQualifiedName(name);
@@ -303,17 +307,6 @@ public class GlossaryRdfImporter {
       result.setGlossariesCreated(result.getGlossariesCreated() + 1);
     }
     return response.getEntity().getEntityReference();
-  }
-
-  private List<OntologyNamespace> toNamespaces(List<Map<String, String>> namespaces) {
-    List<OntologyNamespace> result = new ArrayList<>();
-    for (Map<String, String> ns : namespaces) {
-      result.add(
-          new OntologyNamespace()
-              .withPrefix(ns.get("prefix"))
-              .withNamespace(toUri(ns.get("namespace"))));
-    }
-    return result;
   }
 
   List<TermIntent> buildTermIntents(Model model) {
@@ -367,10 +360,11 @@ public class GlossaryRdfImporter {
     String predicate = statement.getPredicate().getURI();
     String targetIri = object.asResource().getURI();
     boolean internal = internalIris.contains(targetIri);
+    ConceptMapping.ConceptMappingType mappingType = mappingTypeFor(predicate);
     if (isHierarchical(predicate)) {
       assignParent(intent, targetIri, internal);
-    } else if (mappingTypeFor(predicate) != null && !internal) {
-      intent.conceptMappings.add(toConceptMapping(predicate, targetIri));
+    } else if (mappingType != null && !internal) {
+      addConceptMapping(intent, targetIri, mappingType);
     } else if (internal) {
       addRelation(intent, predicate, targetIri);
     }
@@ -381,8 +375,22 @@ public class GlossaryRdfImporter {
   }
 
   private void assignParent(TermIntent intent, String targetIri, boolean internal) {
-    if (internal && nullOrEmpty(intent.parentIri)) {
+    if (!internal) {
+      addConceptMapping(intent, targetIri, ConceptMapping.ConceptMappingType.BROAD_MATCH);
+      return;
+    }
+    if (targetIri.equals(intent.parentIri)) {
+      return;
+    }
+    if (intent.parentIri == null || targetIri.compareTo(intent.parentIri) < 0) {
+      String previousParent = intent.parentIri;
       intent.parentIri = targetIri;
+      removeRelation(intent, "broader", targetIri);
+      if (previousParent != null) {
+        addTypedRelation(intent, "broader", previousParent);
+      }
+    } else {
+      addTypedRelation(intent, "broader", targetIri);
     }
   }
 
@@ -391,7 +399,40 @@ public class GlossaryRdfImporter {
       return;
     }
     String relationType = relationTypeFor(predicate);
-    intent.relations.add(new String[] {relationType, targetIri});
+    addTypedRelation(intent, relationType, targetIri);
+  }
+
+  private void addTypedRelation(TermIntent intent, String relationType, String targetIri) {
+    if ("broader".equals(relationType) && targetIri.equals(intent.parentIri)) {
+      return;
+    }
+    boolean exists =
+        intent.relations.stream()
+            .anyMatch(
+                relation -> relationType.equals(relation[0]) && targetIri.equals(relation[1]));
+    if (!exists) {
+      intent.relations.add(new String[] {relationType, targetIri});
+    }
+  }
+
+  private void removeRelation(TermIntent intent, String relationType, String targetIri) {
+    intent.relations.removeIf(
+        relation -> relationType.equals(relation[0]) && targetIri.equals(relation[1]));
+  }
+
+  private void addConceptMapping(
+      TermIntent intent, String targetIri, ConceptMapping.ConceptMappingType mappingType) {
+    boolean exists =
+        intent.conceptMappings.stream()
+            .anyMatch(
+                mapping ->
+                    mappingType.equals(mapping.getMappingType())
+                        && mapping.getConceptIri() != null
+                        && targetIri.equals(mapping.getConceptIri().toString()));
+    if (!exists) {
+      intent.conceptMappings.add(
+          new ConceptMapping().withConceptIri(toUri(targetIri)).withMappingType(mappingType));
+    }
   }
 
   private String relationTypeFor(String predicate) {
@@ -402,12 +443,6 @@ public class GlossaryRdfImporter {
       case SKOS + "narrowMatch" -> "narrower";
       default -> sanitizeRelationName(localName(predicate));
     };
-  }
-
-  private ConceptMapping toConceptMapping(String predicate, String targetIri) {
-    return new ConceptMapping()
-        .withConceptIri(toUri(targetIri))
-        .withMappingType(mappingTypeFor(predicate));
   }
 
   private ConceptMapping.ConceptMappingType mappingTypeFor(String predicate) {
@@ -838,8 +873,9 @@ public class GlossaryRdfImporter {
       TermRelation termRelation =
           new TermRelation()
               .withRelationType(relation[0])
+              .withProvenance(RelationProvenance.IMPORTED)
               .withTerm(new EntityReference().withId(toRef.getId()).withType(GLOSSARY_TERM));
-      repository.addTermRelation(fromRef.getId(), termRelation);
+      repository.addTermRelation(uriInfo, user, fromRef.getId(), termRelation);
       result.setRelationsAdded(result.getRelationsAdded() + 1);
     } catch (Exception ex) {
       result.addMessage(String.format("Relation %s skipped: %s", relation[0], ex.getMessage()));

@@ -19,7 +19,7 @@ import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.util.RestUtil;
 
 @Slf4j
-public class GlossaryTool implements McpTool {
+public class GlossaryTool implements McpTool<Map<String, Object>> {
   private static GlossaryMapper glossaryMapper = new GlossaryMapper();
 
   @Override

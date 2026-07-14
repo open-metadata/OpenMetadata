@@ -63,30 +63,28 @@ describe('useOntologyGraphEdit', () => {
     expect(result.current.cursor).toEqual({ x: 100, y: 0 });
   });
 
-  it('creates a pending relation on drop over a valid target', () => {
+  it('creates a pending relation when a valid target is selected', () => {
     const { result } = setup();
 
     act(() => result.current.startArm('a', { x: 0, y: 0 }));
-    act(() => move(100, 0));
-    act(() => window.dispatchEvent(new MouseEvent('pointerup')));
+    act(() => result.current.selectTarget('b'));
 
     expect(result.current.pendingRelation).toEqual({
       fromId: 'a',
       toId: 'b',
-      at: { x: 100, y: 0 },
+      at: { x: 50, y: 0 },
     });
     expect(result.current.armedFromId).toBeNull();
   });
 
-  it('does not create a pending relation when dropped away from a node', () => {
+  it('does not create a pending relation when the source is selected', () => {
     const { result } = setup();
 
     act(() => result.current.startArm('a', { x: 0, y: 0 }));
-    act(() => move(250, 250));
-    act(() => window.dispatchEvent(new MouseEvent('pointerup')));
+    act(() => result.current.selectTarget('a'));
 
     expect(result.current.pendingRelation).toBeNull();
-    expect(result.current.armedFromId).toBeNull();
+    expect(result.current.armedFromId).toBe('a');
   });
 
   it('cancels the gesture on Escape', () => {
@@ -106,8 +104,7 @@ describe('useOntologyGraphEdit', () => {
     const { result } = setup(onCreateRelation);
 
     act(() => result.current.startArm('a', { x: 0, y: 0 }));
-    act(() => move(100, 0));
-    act(() => window.dispatchEvent(new MouseEvent('pointerup')));
+    act(() => result.current.selectTarget('b'));
 
     await act(async () => {
       await result.current.confirmRelationType('broader');

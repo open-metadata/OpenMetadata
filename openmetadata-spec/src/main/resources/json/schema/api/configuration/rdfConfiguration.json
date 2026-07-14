@@ -102,9 +102,15 @@
       "default": "CUSTOM"
     },
     "cacheInferredTriples": {
-      "description": "Cache inferred triples for better query performance (requires more storage)",
+      "description": "Cache bounded in-memory inference models for better query performance. Cached models expire after 60 seconds.",
       "type": "boolean",
       "default": false
+    },
+    "maxInMemoryInferenceTriples": {
+      "description": "Maximum RDF store size for in-process inference. Queries requesting inference fall back to direct SPARQL execution when the store exceeds this limit.",
+      "type": "integer",
+      "default": 100000,
+      "minimum": 1
     },
     "federation": {
       "description": "Controls federated SPARQL access (SERVICE clauses) to external endpoints. Federation is disabled by default; SERVICE clauses are rejected unless the target URI is in the allowlist.",

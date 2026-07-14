@@ -1,0 +1,26 @@
+{
+  "$id": "https://open-metadata.org/schema/api/data/glossaryTermRelationGraph.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "GlossaryTermRelationGraph",
+  "description": "A bounded graph of glossary terms and their typed relations.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.api.data.GlossaryTermRelationGraph",
+  "properties": {
+    "nodes": {
+      "description": "Glossary terms included in the graph.",
+      "type": "array",
+      "items": {
+        "$ref": "glossaryTermRelationGraphNode.json"
+      }
+    },
+    "edges": {
+      "description": "Directed relations included in the graph.",
+      "type": "array",
+      "items": {
+        "$ref": "glossaryTermRelationGraphEdge.json"
+      }
+    }
+  },
+  "required": ["nodes", "edges"],
+  "additionalProperties": false
+}

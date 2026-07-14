@@ -29,6 +29,7 @@ import static org.openmetadata.schema.settings.SettingsType.OPEN_METADATA_BASE_U
 import static org.openmetadata.schema.settings.SettingsType.SCIM_CONFIGURATION;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_INDEX_MAPPINGS;
 import static org.openmetadata.schema.settings.SettingsType.SEARCH_SETTINGS;
+import static org.openmetadata.schema.settings.SettingsType.SPARQL_QUERY_SETTINGS;
 import static org.openmetadata.schema.settings.SettingsType.WORKFLOW_SETTINGS;
 
 import com.cronutils.utils.StringUtils;
@@ -65,6 +66,7 @@ import org.openmetadata.schema.configuration.GlossaryTermRelationType;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.RelationCategory;
+import org.openmetadata.schema.configuration.SparqlQuerySettings;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
@@ -527,6 +529,27 @@ public class SettingsCache {
               .withConfigValue(
                   new GlossaryTermRelationSettings().withRelationTypes(defaultRelationTypes));
       Entity.getSystemRepository().createNewSetting(setting);
+    }
+
+    Settings sparqlQuerySettings =
+        Entity.getSystemRepository().getConfigWithKey(SPARQL_QUERY_SETTINGS.toString());
+    if (sparqlQuerySettings == null) {
+      try {
+        List<String> jsonDataFiles =
+            EntityUtil.getJsonDataResources(".*json/data/settings/sparqlQuerySettings.json$");
+        if (!jsonDataFiles.isEmpty()) {
+          String json =
+              CommonUtil.getResourceAsStream(
+                  EntityRepository.class.getClassLoader(), jsonDataFiles.get(0));
+          Settings setting =
+              new Settings()
+                  .withConfigType(SPARQL_QUERY_SETTINGS)
+                  .withConfigValue(JsonUtils.readValue(json, SparqlQuerySettings.class));
+          Entity.getSystemRepository().createNewSetting(setting);
+        }
+      } catch (IOException e) {
+        LOG.error("Failed to read default SPARQL query settings", e);
+      }
     }
 
     // Initialize admin-editable, per-language/per-entity search index mappings (hardened at seed)
