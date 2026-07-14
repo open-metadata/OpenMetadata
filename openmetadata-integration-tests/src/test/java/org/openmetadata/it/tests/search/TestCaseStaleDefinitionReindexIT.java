@@ -35,16 +35,15 @@ import org.openmetadata.service.Entity;
  * {@code testCase→testDefinition} relationship — the demo's empty data-quality page.
  *
  * <p>When a test case's {@code testDefinition} relationship row is missing (a deleted definition or
- * data drift), building both the {@code testCase} doc and its {@code testCaseResult} docs fails
- * (the testCaseResult build resolves the parent test case with the {@code testDefinition} field,
- * which throws "does not have expected relationship"). The reindex must <b>report</b> those as
- * failures and keep the job stats <b>balanced</b> — it must NOT silently drop the records (read but
- * never indexed, never failed), which is what previously emptied the data-quality page while the
- * run reported success.
+ * data drift), the reindex must <b>report</b> the affected records and keep the job stats
+ * <b>balanced</b> — it must NOT silently drop records that were read but never accounted for, which
+ * is what previously emptied the data-quality page while the run reported success. Since #29836,
+ * stale references are intentionally classified as warnings; older implementations may classify
+ * them as failures.
  *
  * <p>Asserts the invariant that catches the regression: every read record is accounted for by
- * success, failure, or warning counters, and the broken records surface as failures rather than
- * vanishing.
+ * success, failure, or warning counters, and the broken records surface as failures or warnings
+ * rather than vanishing.
  *
  * <p>Embedded-only: the relationship-row surgery needs the in-JVM DAO; the REST API would reject or
  * cascade it.
@@ -90,9 +89,10 @@ class TestCaseStaleDefinitionReindexIT {
       final Stats stats = statsOf(run);
       assertThat(stats).as("run must carry stats").isNotNull();
 
-      // The broken test case and its result fail to build — they must be REPORTED, not masked.
-      assertThat(sumOrZero(stats.getJobStats().getFailedRecords()))
-          .as("a broken testCase->testDefinition relationship must surface as a reported failure")
+      assertThat(
+              sumOrZero(stats.getJobStats().getFailedRecords())
+                  + sumOrZero(stats.getJobStats().getWarningRecords()))
+          .as("a broken testCase->testDefinition relationship must surface as a failure or warning")
           .isPositive();
 
       assertNoRecordsDropped(stats.getJobStats(), "jobStats");
