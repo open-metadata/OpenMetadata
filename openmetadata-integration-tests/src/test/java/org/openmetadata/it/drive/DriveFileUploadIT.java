@@ -214,9 +214,6 @@ class DriveFileUploadIT {
 
   private void assertStoredInMinIO(String assetId, byte[] expectedBytes) {
     try (S3Client s3Client = buildMinioClient()) {
-      // atMost must stay above the global Awaitility pollInterval that
-      // K8sOMJobOperatorIT raises to 5s; otherwise Awaitility rejects with
-      // "Timeout must be greater than the poll delay".
       await()
           .pollDelay(Duration.ZERO)
           .pollInterval(Duration.ofMillis(200))
