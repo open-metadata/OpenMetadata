@@ -1481,39 +1481,58 @@ public class TeamRepository extends EntityRepository<Team> {
    * Validate hierarchy to avoid circular references A -> B -> A.
    */
   private void validateHierarchy(Team team) {
-    if (listOrEmpty(team.getParents()).isEmpty()) {
-      return;
+    // Both directions of the PARENT_OF edge are validated - parent -> team from team.getParents()
+    // and team -> child from team.getChildren() - so a cycle cannot be introduced from either side
+    // through create, PUT, PATCH, bulk create, or CSV import (all run through prepare()).
+    validateParentChildOverlap(team);
+    for (EntityReference parent : listOrEmpty(team.getParents())) {
+      validateNoCircularReference(parent.getId(), parent.getName(), team.getId(), team.getName());
     }
+    for (EntityReference child : listOrEmpty(team.getChildren())) {
+      validateNoCircularReference(team.getId(), team.getName(), child.getId(), child.getName());
+    }
+  }
 
-    // Check if any parent causes a circular dependency
-    for (EntityReference parent : team.getParents()) {
-      // 1. Self-reference check
-      if (parent.getId().equals(team.getId())) {
+  /**
+   * Reject the same team being declared as both a parent and a child in a single request. Neither
+   * per-edge walk can see this 2-cycle because both read the pre-update database state. Team names
+   * are globally unique, so a name overlap is sufficient to detect it.
+   */
+  private void validateParentChildOverlap(Team team) {
+    Set<String> parentNames = new HashSet<>();
+    for (EntityReference parent : listOrEmpty(team.getParents())) {
+      parentNames.add(parent.getName());
+    }
+    for (EntityReference child : listOrEmpty(team.getChildren())) {
+      if (parentNames.contains(child.getName())) {
         throw new IllegalArgumentException(
-            String.format("Invalid hierarchy: Team '%s' cannot be its own parent", team.getName()));
+            String.format(
+                "Circular reference detected: Team '%s' cannot be both a parent and a child of '%s'.",
+                child.getName(), team.getName()));
       }
-
-      // 2. Initial circular reference check (check if the proposed parent is already a child)
-      // Team --PARENT_OF--> Child. We want to find Children.
-      // Relationship: from:Team, to:Child.
-      // findTo(fromId=Team) gets the Children.
-      List<EntityReference> children = findTo(team.getId(), TEAM, Relationship.PARENT_OF, TEAM);
-      for (EntityReference child : listOrEmpty(children)) {
-        if (child.getId().equals(parent.getId())) {
-          throw new IllegalArgumentException(
-              String.format(
-                  "Circular reference detected: Team '%s' is already a child of '%s'.",
-                  parent.getName(), team.getName()));
-        }
-      }
-
-      // 3. Deep circular reference check by traversing up the parent chain of the NEW parent
-      Set<UUID> visited = new HashSet<>();
-      visited.add(team.getId());
-      visited.add(parent.getId());
-
-      checkCircularReference(parent.getId(), visited, team.getName());
     }
+  }
+
+  /**
+   * Validate that adding the {@code parent --PARENT_OF--> child} edge does not create a cycle. A
+   * cycle exists when the two teams are the same, or when the child is already an ancestor of the
+   * parent (found by walking up the parent chain from the parent).
+   */
+  private void validateNoCircularReference(
+      UUID parentId, String parentName, UUID childId, String childName) {
+    if (isSameTeam(parentId, parentName, childId, childName)) {
+      throw new IllegalArgumentException(
+          String.format("Invalid hierarchy: Team '%s' cannot be its own parent", childName));
+    }
+    Set<UUID> visited = new HashSet<>();
+    visited.add(parentId);
+    visited.add(childId);
+    checkCircularReference(parentId, visited, childName);
+  }
+
+  private boolean isSameTeam(UUID parentId, String parentName, UUID childId, String childName) {
+    return (parentId != null && parentId.equals(childId))
+        || (parentName != null && parentName.equals(childName));
   }
 
   private void checkCircularReference(
