@@ -49,8 +49,7 @@ jest.mock('./StringUtils', () => ({
   getDecodedFqn: jest.fn().mockImplementation((fqn) => decodeURIComponent(fqn)),
 }));
 
-jest.mock('./CommonUtils', () => ({
-  ...jest.requireActual('./CommonUtils'),
+jest.mock('./EntityDisplayUtils', () => ({
   getEntityPlaceHolder: jest.fn().mockReturnValue('entityPlaceHolder'),
 }));
 
