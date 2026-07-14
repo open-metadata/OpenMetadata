@@ -65,17 +65,16 @@ class UnsupportedApiVersionError(Exception):
 
 
 def _error_doc(error: BaseException) -> re.Match[str] | None:
-    """Parse the status and path out of a Looker SDKError's documentation URL.
+    """Parse the status and endpoint out of the Looker documentation URL an error carries.
 
-    ``SDKError`` carries no status code of its own: the response body is
-    deserialized into ``message``/``documentation_url``, and it is the latter that
-    encodes both the status and the endpoint that produced it. When Looker answers
-    with a non-JSON body (a proxy's HTML 404), deserialization fails and the raw
-    body becomes the message with no documentation URL - such errors fall through
-    to the text rules below.
+    ``SDKError`` has no status code of its own; the documentation URL Looker
+    returns with the error body encodes both the status and the endpoint that
+    produced it. It reaches us two ways: an API call deserializes it onto
+    ``documentation_url``, while a failed *login* raises the raw response body as
+    the message, leaving that attribute empty. Matching ``str(error)`` - which
+    renders both - covers the two shapes with one rule.
     """
-    doc_url = getattr(error, "documentation_url", None)
-    return _ERROR_DOC_URL.search(doc_url) if isinstance(doc_url, str) else None
+    return _ERROR_DOC_URL.search(str(error))
 
 
 def _http_status(*codes: int) -> Matcher:
@@ -144,9 +143,9 @@ LOOKER_ERRORS = ErrorPack(
     ),
     when(_http_status(404)).diagnose(
         "Resource not found",
-        fix="Looker could not find the requested resource (404). Check that Host Port is the URL of "
-        "the Looker API host, e.g. https://<instance>.cloud.looker.com (port 19999 for a hosted "
-        "instance that serves the API on its own port), with no trailing path.",
+        fix="Looker could not find the requested resource (404). Check that Host Port is the root URL "
+        "of the Looker API, e.g. https://<instance>.cloud.looker.com (port 19999 on a self-hosted "
+        "instance).",
     ),
     when(Matchers.exception(UnsupportedApiVersionError)).diagnose(
         f"API {SDK_API_VERSION} is not supported by this instance",
@@ -184,6 +183,14 @@ LOOKER_ERRORS = ErrorPack(
         "Cannot reach the host",
         fix="Check Host Port, the network route, and that the Looker instance is online and "
         "reachable from where ingestion runs.",
+    ),
+    # Last: something answered, but not as Looker - the body carries no Looker error
+    # document, so a real Looker 404 (which does, and is matched above) never lands here.
+    when(_contains_any("404", "not found")).diagnose(
+        "The host is not serving the Looker API",
+        fix="A server answered but did not return a Looker error, so Host Port does not reach the "
+        "Looker API. Check it points at the Looker instance, e.g. https://<instance>.cloud.looker.com "
+        "(port 19999 on a self-hosted instance).",
     ),
 ).including(NETWORK_ERRORS)
 

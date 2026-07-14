@@ -215,6 +215,16 @@ def test_rejected_credentials_are_diagnosed_as_an_auth_failure():
     assert diagnosis.title == "Authentication failed"
 
 
+def test_rejected_credentials_are_diagnosed_from_the_raw_login_body():
+    # The real shape: a failed login raises the undeserialized response body as the
+    # message, leaving documentation_url empty (only API calls populate it). The
+    # doc URL is still in the text, which is what the status rules read.
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error('{"message": "Not found", "documentation_url": "' + LOGIN_404 + '"}'))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Authentication failed"
+
+
 def test_a_404_away_from_login_is_diagnosed_as_a_missing_resource():
     diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not found", documentation_url=DASHBOARDS_404))
 
@@ -234,6 +244,24 @@ def test_a_403_is_diagnosed_as_missing_permissions():
 
     assert diagnosis is not None
     assert diagnosis.title == "Insufficient permissions"
+
+
+def test_a_host_that_is_not_looker_is_diagnosed():
+    # A non-Looker server answers the login POST with its own 404 body, which
+    # carries no Looker error document - the shape a typo'd hostPort produces.
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error('{"code":404,"message":"HTTP 404 Not Found"}'))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "The host is not serving the Looker API"
+
+
+def test_a_looker_404_outranks_the_not_a_looker_host_fallback():
+    # Ordering guard: a genuine Looker 404 carries a documentation URL, so it must
+    # keep its sharper diagnosis rather than falling through to the text fallback.
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not found", documentation_url=DASHBOARDS_404))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Resource not found"
 
 
 def test_missing_credentials_are_diagnosed():
