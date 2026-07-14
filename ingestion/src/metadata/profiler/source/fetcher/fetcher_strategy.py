@@ -304,7 +304,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
     def fetch(self) -> Iterator[Either[ProfilerSourceAndEntity]]:
         """Fetch database entity"""
         for database in self._get_database_entities():
-            db_fqn = database.fullyQualifiedName.root  # type: ignore
+            db_fqn = getattr(database.fullyQualifiedName, "root", None) or str(database.name.root)
             self._seed_table_total(database, db_fqn)
             observed = 0
             try:
@@ -329,7 +329,7 @@ class DatabaseFetcherStrategy(FetcherStrategy):
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
-                        name=database.fullyQualifiedName.root,  # type: ignore
+                        name=db_fqn,
                         error=f"Error listing source and entities for database due to [{exc}]",
                         stackTrace=traceback.format_exc(),
                     ),

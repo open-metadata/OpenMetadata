@@ -146,6 +146,12 @@ TEMP_DB = Database(
     service=SERVICE_REF,
 )
 
+NO_FQN_DB = Database(
+    id=uuid.uuid4(),
+    name="no_fqn",
+    service=SERVICE_REF,
+)
+
 FINANCE_SCHEMA_REF = EntityReference(
     id=uuid.uuid4(),
     name="finance",
@@ -739,6 +745,26 @@ class TestFetch:
         assert "connection failed for prod" in results[0].left.error
         assert results[1].right is not None
         assert results[1].right.entity == ORDERS_TABLE
+
+    @patch("metadata.profiler.source.fetcher.fetcher_strategy.profiler_source_factory")
+    def test_fetch_does_not_abort_loop_when_database_lacks_fqn(self, mock_factory):
+        """A database missing fullyQualifiedName must not raise out of fetch()
+        and abort the remaining databases. It degrades to a single error record
+        while the sibling database is still fully processed."""
+        mock_factory.create.return_value = MagicMock(spec=ProfilerSourceInterface)
+        fetcher = _make_fetcher({"includeViews": True})
+        fetcher.metadata.list_all_entities.side_effect = [
+            iter([NO_FQN_DB, PROD_DB]),
+            iter([ORDERS_TABLE]),
+        ]
+
+        results = list(fetcher.fetch())
+
+        errors = [r.left for r in results if r.left]
+        entities = [r.right.entity for r in results if r.right]
+        assert len(errors) == 1
+        assert errors[0].name == "no_fqn"
+        assert entities == [ORDERS_TABLE]
 
 
 def _db_strategy_with_progress(tables, server_total, capture=None):

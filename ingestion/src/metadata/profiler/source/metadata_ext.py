@@ -27,7 +27,6 @@ from typing import Iterable, Type, cast  # noqa: UP035
 from sqlalchemy.inspection import inspect
 
 from metadata.generated.schema.entity.data.database import Database
-from metadata.generated.schema.entity.data.table import Table
 from metadata.generated.schema.entity.services.ingestionPipelines.status import (
     StackTraceError,
 )
@@ -111,9 +110,7 @@ class OpenMetadataSourceExt(OpenMetadataSource):
 
     def _iter(self, *_, **__) -> Iterable[Either[ProfilerSourceAndEntity]]:
         global_profiler_config = self.metadata.get_profiler_config_settings()
-        self.progress_tracking.manual.mark_reconcilable(Table.__name__)
         for database_name in self.get_database_names():
-            observed = 0
             try:
                 database_entity = fqn.search_database_from_es(
                     database_name=database_name,
@@ -145,15 +142,12 @@ class OpenMetadataSourceExt(OpenMetadataSource):
                             self.metadata,
                             global_profiler_config,
                         )
-                        observed += 1
-                        self.progress_tracking.manual.track_asset(Table.__name__)
                         yield Either(
                             right=ProfilerSourceAndEntity(
                                 profiler_source=profiler_source,
                                 entity=table_entity,
                             )
                         )
-                self.progress_tracking.manual.reconcile_scope_total(Table.__name__, database_name, observed)
             except Exception as exc:
                 yield Either(
                     left=StackTraceError(
