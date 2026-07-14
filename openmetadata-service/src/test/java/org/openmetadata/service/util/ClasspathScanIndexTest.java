@@ -14,8 +14,11 @@
 package org.openmetadata.service.util;
 
 import static org.junit.jupiter.api.Assertions.assertSame;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import io.github.classgraph.ClassGraph;
+import io.github.classgraph.ScanResult;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.Function;
@@ -27,16 +30,25 @@ import org.openmetadata.service.security.policyevaluator.RuleEvaluator;
 
 class ClasspathScanIndexTest {
   @Test
-  void reusesScanResultsForSupportedAnnotationQueries() {
-    ClasspathScanIndex index = ClasspathScanIndex.getInstance();
+  void closesScanAfterEagerlyCachingSupportedAnnotationQueries() {
+    ScanResult scanResult =
+        new ClassGraph()
+            .enableAnnotationInfo()
+            .enableMethodInfo()
+            .acceptPackages("org.openmetadata", "io.collate")
+            .scan();
+
+    ClasspathScanIndex index = new ClasspathScanIndex(scanResult);
 
     List<Class<?>> repositories = index.getClassesWithAnnotation(Repository.class);
     List<Class<?>> collections = index.getClassesWithAnnotation(Collection.class);
     List<Class<?>> conditionFunctions = index.getClassesWithMethodAnnotation(Function.class);
 
+    assertTrue(scanResult.isClosed());
     assertSame(repositories, index.getClassesWithAnnotation(Repository.class));
     assertSame(collections, index.getClassesWithAnnotation(Collection.class));
     assertSame(conditionFunctions, index.getClassesWithMethodAnnotation(Function.class));
+    assertThrows(UnsupportedOperationException.class, repositories::clear);
     assertTrue(repositories.contains(SystemRepository.class));
     assertTrue(collections.contains(TableResource.class));
     assertTrue(conditionFunctions.contains(RuleEvaluator.class));

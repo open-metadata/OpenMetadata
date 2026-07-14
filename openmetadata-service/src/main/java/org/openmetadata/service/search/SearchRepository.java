@@ -559,7 +559,8 @@ public class SearchRepository {
   }
 
   private void createOrUpdateIndexTemplates(int createdIndexCount, boolean force) {
-    Map<String, IndexTemplateDefinition> templates = buildIndexTemplateDefinitions();
+    IndexTemplateBuildResult buildResult = buildIndexTemplateDefinitions();
+    Map<String, IndexTemplateDefinition> templates = buildResult.templates();
     String fingerprint =
         SeedDataGate.fingerprint(
             templates.entrySet().stream()
@@ -570,6 +571,7 @@ public class SearchRepository {
                         (left, right) -> left,
                         TreeMap::new)));
     if (!force
+        && buildResult.failures() == 0
         && !SeedDataGate.getInstance()
             .shouldUpdateSearchTemplates(fingerprint, createdIndexCount)) {
       LOG.info("Index templates are unchanged; skipping {} template updates", templates.size());
@@ -579,7 +581,8 @@ public class SearchRepository {
 
     LOG.info("Creating/updating index templates for all entities...");
     int success = 0;
-    int failed = entityIndexMap.size() - templates.size();
+    int failed = buildResult.failures();
+    int skipped = entityIndexMap.size() - templates.size() - failed;
     for (Map.Entry<String, IndexTemplateDefinition> entry : templates.entrySet()) {
       try {
         IndexTemplateDefinition template = entry.getValue();
@@ -598,14 +601,16 @@ public class SearchRepository {
       SeedDataGate.getInstance().recordSearchTemplateFailure();
     }
     LOG.info(
-        "Index templates creation completed. Success: {}, Failed: {}, Total: {}",
+        "Index templates creation completed. Success: {}, Failed: {}, Skipped: {}, Total: {}",
         success,
         failed,
+        skipped,
         entityIndexMap.size());
   }
 
-  private Map<String, IndexTemplateDefinition> buildIndexTemplateDefinitions() {
+  private IndexTemplateBuildResult buildIndexTemplateDefinitions() {
     Map<String, IndexTemplateDefinition> templates = new LinkedHashMap<>();
+    int failures = 0;
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
       try {
         IndexMapping indexMapping = entry.getValue();
@@ -618,12 +623,16 @@ public class SearchRepository {
         templates.put(
             "om_" + indexName, new IndexTemplateDefinition(indexName + "*", mappingContent));
       } catch (Exception exception) {
+        failures++;
         LOG.warn(
             "Failed to read index template for {}: {}", entry.getKey(), exception.getMessage());
       }
     }
-    return templates;
+    return new IndexTemplateBuildResult(templates, failures);
   }
+
+  private record IndexTemplateBuildResult(
+      Map<String, IndexTemplateDefinition> templates, int failures) {}
 
   private record IndexTemplateDefinition(String indexPattern, String mappingContent) {}
 

@@ -87,12 +87,27 @@ public final class SeedDataGate {
             VersionUtils.getOpenMetadataServerVersion(VERSION_RESOURCE).getVersion(), "unknown");
     seedDataFingerprint = calculateSeedDataFingerprint();
     loadStoredChecksums();
+    if (!shouldSeed()) {
+      LOG.info(
+          "Bundled seed fingerprint is unchanged; skipping seed reconciliation. "
+              + "Out-of-band seed-row changes are not detected by this gate. Set "
+              + "STARTUP_FORCE_SEED_DATA=true for one restart or "
+              + "STARTUP_SEED_DATA_GATE_ENABLED=false to reconcile them.");
+    }
   }
 
   public synchronized void forceSeedData() {
     forceSeedData = true;
   }
 
+  /**
+   * Returns whether bundled seed resources need reconciliation.
+   *
+   * <p>The fingerprint intentionally avoids querying every seed table on warm startup. It therefore
+   * does not detect rows deleted or modified outside OpenMetadata; operators can force a
+   * reconciliation startup with {@code STARTUP_FORCE_SEED_DATA=true} or disable the gate with
+   * {@code STARTUP_SEED_DATA_GATE_ENABLED=false}.
+   */
   public boolean shouldSeed() {
     return !configuration.isSeedDataGateEnabled()
         || forceSeedData

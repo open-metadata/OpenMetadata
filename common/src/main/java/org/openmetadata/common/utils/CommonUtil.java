@@ -64,7 +64,7 @@ public final class CommonUtil {
     return getClasspathResourceIndex().stream()
         .filter(resource -> pattern.matcher(resource.matchingPath()).matches())
         .map(ClasspathResource::resourceName)
-        .toList();
+        .collect(Collectors.toCollection(ArrayList::new));
   }
 
   private static List<ClasspathResource> getClasspathResourceIndex() throws IOException {
