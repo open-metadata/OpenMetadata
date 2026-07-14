@@ -2043,7 +2043,7 @@ export const expandToGlossaryTermChildren = async (
     const searchResponse = page.waitForResponse(
       /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
     );
-    await glossaryField.fill(glossaryDisplayName);
+    await glossaryField.locator('input').fill(glossaryDisplayName);
     await searchResponse;
     await waitForAllLoadersToDisappear(page);
     await expandTreeNodeByName(page, glossaryDisplayName);
