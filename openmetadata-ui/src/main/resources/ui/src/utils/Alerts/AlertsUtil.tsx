@@ -97,7 +97,6 @@ import {
 import { Status as DestinationStatus } from '../../generated/events/testDestinationStatus';
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
-import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
 import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
