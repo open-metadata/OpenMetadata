@@ -53,6 +53,10 @@ public class SearchClusterMetricsTest {
         1,
         SearchClusterMetrics.boundConcurrentRequestsToMemory(40, payload, 0L),
         "no off-heap headroom degrades to serial rather than OOMKilling");
+    assertEquals(
+        40,
+        SearchClusterMetrics.boundConcurrentRequestsToMemory(40, 1L, 8L * 1024 * 1024 * 1024),
+        "a tiny payload must not overflow the int cap into a negative concurrency");
   }
 
   @Test

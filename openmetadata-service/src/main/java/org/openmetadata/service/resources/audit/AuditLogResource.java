@@ -21,8 +21,10 @@ import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
 import jakarta.ws.rs.core.StreamingOutput;
+import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
+import java.nio.file.Files;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -284,6 +286,7 @@ public class AuditLogResource {
                 jobId, securityContext, null);
           } catch (Exception e) {
             LOG.error("Encountered exception while exporting audit logs.", e);
+            deleteSpoolQuietly(jobId);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
                 jobId, securityContext, e.getMessage() == null ? e.toString() : e.getMessage());
           }
@@ -312,7 +315,7 @@ public class AuditLogResource {
         new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
     authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
     Response response;
-    if (CsvExportSpool.exists(jobId)) {
+    if (isServerGeneratedJobId(jobId) && CsvExportSpool.exists(jobId)) {
       StreamingOutput stream =
           output -> {
             try (InputStream in = CsvExportSpool.openForRead(jobId)) {
@@ -331,6 +334,27 @@ public class AuditLogResource {
               .build();
     }
     return response;
+  }
+
+  // Job ids are always server-generated UUIDs; reject anything else before it reaches the spool
+  // path (spoolDir().resolve(prefix + jobId + suffix)) to prevent path traversal.
+  private static boolean isServerGeneratedJobId(String jobId) {
+    boolean valid;
+    try {
+      UUID.fromString(jobId);
+      valid = true;
+    } catch (IllegalArgumentException e) {
+      valid = false;
+    }
+    return valid;
+  }
+
+  private static void deleteSpoolQuietly(String jobId) {
+    try {
+      Files.deleteIfExists(CsvExportSpool.fileForJob(jobId));
+    } catch (IOException e) {
+      LOG.warn("Failed to delete partial audit export spool for {}: {}", jobId, e.getMessage());
+    }
   }
 
   /**

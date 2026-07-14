@@ -12,6 +12,7 @@ import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -182,6 +183,76 @@ class EmbeddingClientTest {
     }
 
     assertNotNull(client.embed("text"));
+    assertTrue(client.isAvailable());
+  }
+
+  @Test
+  void testHalfOpenAllowsOnlyOneConcurrentProbe() throws InterruptedException {
+    AtomicInteger providerCalls = new AtomicInteger(0);
+    CountDownLatch probeInFlight = new CountDownLatch(1);
+    CountDownLatch releaseProbe = new CountDownLatch(1);
+    EmbeddingClient client =
+        new EmbeddingClient(8) {
+          @Override
+          protected float[] doEmbed(String text) {
+            int n = providerCalls.incrementAndGet();
+            if (n == 1) {
+              throw new RuntimeException("boom");
+            }
+            probeInFlight.countDown();
+            try {
+              releaseProbe.await();
+            } catch (InterruptedException e) {
+              Thread.currentThread().interrupt();
+            }
+            return new float[] {1.0f};
+          }
+
+          @Override
+          protected boolean isPermanentFailure(RuntimeException failure) {
+            return true;
+          }
+
+          @Override
+          protected long openCooldownMillis(boolean permanent) {
+            return 0L;
+          }
+
+          @Override
+          public int getDimension() {
+            return 1;
+          }
+
+          @Override
+          public String getModelId() {
+            return "probe-test";
+          }
+        };
+
+    assertThrows(RuntimeException.class, () -> client.embed("open"));
+
+    ExecutorService pool = Executors.newSingleThreadExecutor();
+    try {
+      CompletableFuture<float[]> probe =
+          CompletableFuture.supplyAsync(() -> client.embed("probe"), pool);
+      assertTrue(
+          probeInFlight.await(2, TimeUnit.SECONDS), "the single probe should reach provider");
+
+      assertThrows(
+          EmbeddingUnavailableException.class,
+          () -> client.embed("concurrent"),
+          "a second caller must fail fast while the half-open probe is in flight");
+
+      releaseProbe.countDown();
+      assertNotNull(probe.join());
+    } finally {
+      pool.shutdown();
+    }
+
+    assertEquals(
+        2,
+        providerCalls.get(),
+        "exactly one recovery probe may reach the provider while half-open");
     assertTrue(client.isAvailable());
   }
 

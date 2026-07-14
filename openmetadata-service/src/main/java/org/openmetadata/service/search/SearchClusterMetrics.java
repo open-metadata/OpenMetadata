@@ -440,8 +440,8 @@ public class SearchClusterMetrics {
   static int boundConcurrentRequestsToMemory(
       int concurrentRequests, long maxPayloadSizeBytes, long offHeapBudgetBytes) {
     long safeBytes = (long) (offHeapBudgetBytes * INFLIGHT_MEMORY_SAFETY_FACTOR);
-    int maxByMemory = (int) Math.max(1, safeBytes / Math.max(1, maxPayloadSizeBytes));
-    int bounded = Math.min(concurrentRequests, maxByMemory);
+    long maxByMemory = Math.max(1, safeBytes / Math.max(1, maxPayloadSizeBytes));
+    int bounded = (int) Math.min(concurrentRequests, maxByMemory);
     if (bounded < concurrentRequests) {
       LOG.info(
           "Capping concurrent bulk requests {} -> {} to fit off-heap budget {} MB (payload {} MB); "

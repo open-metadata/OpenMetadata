@@ -242,11 +242,6 @@ public class OpenSearchVectorService implements VectorIndexService {
             (chunksStale && !fingerprintChanged && !entityDocStale)
                 ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
                 : VectorDocBuilder.fromEntity(entity, embeddingClient);
-        if (chunksEmptyFromOutage(chunkDocs)) {
-          LOG.debug(
-              "Embedding provider unavailable mid-update; preserving chunks for {}", parentId);
-          return;
-        }
         if (chunksStale) {
           replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
         }
@@ -586,11 +581,9 @@ public class OpenSearchVectorService implements VectorIndexService {
           (docVersionStale && !fingerprintChanged)
               ? rebuildChunksReusingEmbeddings(entity, chunkIndexName, parentId, header)
               : VectorDocBuilder.fromEntity(entity, embeddingClient);
-      if (chunksEmptyFromOutage(chunkDocs)) {
-        LOG.debug("Embedding provider unavailable; preserving chunks for {}", parentId);
-        return;
-      }
       replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+    } catch (EmbeddingUnavailableException unavailable) {
+      LOG.debug("Skipping chunk embeddings for {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
       LOG.error("Failed to update chunk embeddings for {}: {}", entity.getId(), e.getMessage(), e);
     }
@@ -739,16 +732,6 @@ public class OpenSearchVectorService implements VectorIndexService {
       LOG.debug("No chunk header for {} in {}: {}", parentId, indexName, e.getMessage());
     }
     return header;
-  }
-
-  /**
-   * Whether {@code chunkDocs} came back empty because the embedding provider is unavailable (circuit
-   * open) rather than because the entity legitimately has no body. When true, existing chunk docs
-   * must be preserved: replacing with an empty set would delete valid vectors during a transient
-   * provider outage.
-   */
-  private boolean chunksEmptyFromOutage(List<Map<String, Object>> chunkDocs) {
-    return chunkDocs.isEmpty() && !embeddingClient.isAvailable();
   }
 
   /**

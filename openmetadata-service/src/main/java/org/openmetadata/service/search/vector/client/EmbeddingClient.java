@@ -80,16 +80,22 @@ public abstract class EmbeddingClient {
 
   private float[] embedWithLimit(Supplier<float[]> embedder) {
     guardCircuit();
-    acquirePermit();
+    boolean permitAcquired = false;
     try {
+      acquirePermit();
+      permitAcquired = true;
       float[] embedding = embedder.get();
       recordSuccess();
       return embedding;
     } catch (RuntimeException failure) {
+      // Record even a permit-acquisition failure so a promoted HALF_OPEN probe always resolves
+      // (success -> closed, failure -> reopened) and never wedges the circuit half-open forever.
       recordFailure(failure);
       throw failure;
     } finally {
-      concurrencyLimiter.release();
+      if (permitAcquired) {
+        concurrencyLimiter.release();
+      }
     }
   }
 
@@ -102,13 +108,14 @@ public abstract class EmbeddingClient {
   }
 
   /**
-   * Whether embeddings can currently be attempted. Returns {@code false} only while the circuit is
-   * open and its cooldown has not elapsed, letting callers skip embedding work (chunking, indexing)
-   * during a provider outage without incurring a failed provider call.
+   * Whether embeddings can currently be attempted. Returns {@code false} while the circuit is
+   * cooling down (open) or a single recovery probe is in flight (half-open), letting callers skip
+   * embedding work (chunking, indexing) during a provider outage without a failed provider call.
    */
   public boolean isAvailable() {
     synchronized (circuitLock) {
-      return circuitState == CircuitState.CLOSED || cooldownElapsed();
+      return circuitState == CircuitState.CLOSED
+          || (circuitState == CircuitState.OPEN && cooldownElapsed());
     }
   }
 
@@ -135,13 +142,14 @@ public abstract class EmbeddingClient {
   }
 
   private void rejectOrProbe() {
-    if (!cooldownElapsed()) {
+    // Reject while a probe is already in flight (HALF_OPEN) or the open cooldown has not elapsed.
+    // Gating HALF_OPEN on the state (not a deadline) keeps exactly one probe in flight even if it
+    // runs longer than the cooldown; the probe always resolves via recordSuccess/recordFailure.
+    if (circuitState == CircuitState.HALF_OPEN || !cooldownElapsed()) {
       throw new EmbeddingUnavailableException(
           String.format(
               "Embedding provider %s is unavailable (circuit open): %s", getModelId(), openCause));
     }
-    openDeadlineNanos =
-        System.nanoTime() + TimeUnit.MILLISECONDS.toNanos(openCooldownMillis(false));
     circuitState = CircuitState.HALF_OPEN;
     LOG.info("Embedding provider {} circuit half-open; probing recovery", getModelId());
   }
