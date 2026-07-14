@@ -1,4 +1,4 @@
-"""System settings SDK facade (glossary term relation types, etc.)."""
+"""SDK facade for glossary term relation settings."""
 
 from __future__ import annotations
 
@@ -18,11 +18,11 @@ _RETRYABLE_REGISTRATION_STATUS_CODES = (409, 412)
 
 
 class Settings:
-    """Facade for OpenMetadata system settings.
+    """Facade limited to glossary term relation settings.
 
-    Focused on glossary term relation types. Type registration preserves the
-    server's missing, null, or array representation and reconciles a fresh
-    snapshot after potential concurrent updates.
+    Type registration preserves the server's missing, null, or array
+    representation and reconciles a fresh snapshot after potential concurrent
+    updates. It never reads or writes other system setting types.
     """
 
     _default_client: Optional[OMetaClient] = None  # noqa: UP045
@@ -42,22 +42,19 @@ class Settings:
             raise RuntimeError("OpenMetadata client does not expose a REST interface")
         return rest_client
 
-    # ------------------------------------------------------------------
-    # Generic settings access
-    # ------------------------------------------------------------------
     @classmethod
-    def get(cls, name: str) -> dict[str, Any]:
-        """Get a setting by name (e.g. ``glossaryTermRelationSettings``)."""
-        return cls._get_rest_client().get(f"{_SETTINGS_ENDPOINT}/{name}")
+    def glossary_relation_settings(cls) -> dict[str, Any]:
+        """Return only the glossary term relation configuration."""
+        setting = cls._get_rest_client().get(f"{_SETTINGS_ENDPOINT}/{GLOSSARY_TERM_RELATION_SETTINGS}") or {}
+        return cls._relation_config(setting)
 
-    @classmethod
-    def update(cls, settings: dict[str, Any]) -> dict[str, Any]:
-        """Replace a setting wholesale via ``PUT`` (overwrites the whole config value)."""
-        return cls._get_rest_client().put(_SETTINGS_ENDPOINT, data=json.dumps(settings))
+    @staticmethod
+    def _relation_config(setting: dict[str, Any]) -> dict[str, Any]:
+        config = setting.get("configValue") or setting.get("config_value") or {}
+        if not isinstance(config, dict):
+            raise TypeError("glossary relation settings must be a JSON object")
+        return config
 
-    # ------------------------------------------------------------------
-    # Glossary term relation types
-    # ------------------------------------------------------------------
     @classmethod
     def glossary_relation_types(cls) -> list[dict[str, Any]]:
         """Return the configured glossary term relation types."""
@@ -68,10 +65,7 @@ class Settings:
     def _glossary_relation_types_snapshot(
         cls,
     ) -> tuple[list[dict[str, Any]], object, dict[str, Any]]:
-        setting = cls.get(GLOSSARY_TERM_RELATION_SETTINGS) or {}
-        config = setting.get("configValue") or setting.get("config_value") or {}
-        if not isinstance(config, dict):
-            raise TypeError("glossary relation settings must be a JSON object")
+        config = cls.glossary_relation_settings()
         raw_relation_types = config.get("relationTypes", _MISSING_RELATION_TYPES)
         if raw_relation_types is _MISSING_RELATION_TYPES or raw_relation_types is None:
             return [], raw_relation_types, config
@@ -96,7 +90,8 @@ class Settings:
         409 or 412 precondition failures may retry from a fresh snapshot. A
         concurrently registered matching name becomes an idempotent no-op.
 
-        Returns the updated settings, or ``None`` if the name already existed.
+        Returns only the updated glossary relation configuration, or ``None``
+        if the name already existed.
         """
         name = relation_type.get("name")
         if not name:
@@ -116,10 +111,11 @@ class Settings:
                 relation_type,
             )
             try:
-                return rest_client.patch(
+                updated_setting = rest_client.patch(
                     f"{_SETTINGS_ENDPOINT}/{GLOSSARY_TERM_RELATION_SETTINGS}",
                     data=json.dumps(patch),
                 )
+                return cls._relation_config(updated_setting) if updated_setting is not None else None
             except APIError as exc:
                 status_code = cls._registration_error_status(exc)
                 if status_code not in _RECONCILABLE_REGISTRATION_STATUS_CODES:

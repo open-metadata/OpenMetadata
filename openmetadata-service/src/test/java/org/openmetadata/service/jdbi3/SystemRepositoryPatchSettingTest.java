@@ -7,18 +7,21 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import jakarta.json.Json;
 import jakarta.json.JsonPatch;
 import jakarta.ws.rs.core.Response;
+import java.util.Map;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -64,16 +67,19 @@ class SystemRepositoryPatchSettingTest {
 
   @Test
   void patchSettingUsesSnapshotCompareAndSet() {
-    when(systemDAO.getConfigJsonWithKey(SETTING_NAME)).thenReturn(ORIGINAL_JSON);
-    when(systemDAO.updateSettingsIfCurrent(eq(SETTING_NAME), eq(ORIGINAL_JSON), anyString()))
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(ORIGINAL_JSON);
+    when(systemDAO.updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), anyString()))
         .thenReturn(1);
 
     Response response = systemRepository.patchSetting(SETTING_NAME, appendRelationTypePatch());
 
     assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    Settings responseSettings = (Settings) response.getEntity();
+    assertEquals(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS, responseSettings.getConfigType());
+    assertTrue(responseSettings.getConfigValue() instanceof GlossaryTermRelationSettings);
     ArgumentCaptor<String> updatedJson = ArgumentCaptor.forClass(String.class);
     verify(systemDAO)
-        .updateSettingsIfCurrent(eq(SETTING_NAME), eq(ORIGINAL_JSON), updatedJson.capture());
+        .updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), updatedJson.capture());
     GlossaryTermRelationSettings updated =
         JsonUtils.readValue(updatedJson.getValue(), GlossaryTermRelationSettings.class);
     assertEquals(1, updated.getRelationTypes().size());
@@ -83,8 +89,8 @@ class SystemRepositoryPatchSettingTest {
 
   @Test
   void patchSettingRejectsConcurrentSnapshotChange() {
-    when(systemDAO.getConfigJsonWithKey(SETTING_NAME)).thenReturn(ORIGINAL_JSON);
-    when(systemDAO.updateSettingsIfCurrent(eq(SETTING_NAME), eq(ORIGINAL_JSON), anyString()))
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(ORIGINAL_JSON);
+    when(systemDAO.updateGlossaryTermRelationSettingsIfCurrent(eq(ORIGINAL_JSON), anyString()))
         .thenReturn(0);
 
     PreconditionFailedException failure =
@@ -92,7 +98,7 @@ class SystemRepositoryPatchSettingTest {
             PreconditionFailedException.class,
             () -> systemRepository.patchSetting(SETTING_NAME, appendRelationTypePatch()));
 
-    assertTrue(failure.getMessage().contains("Setting changed"));
+    assertTrue(failure.getMessage().contains("Glossary term relation settings changed"));
     assertEquals(
         Response.Status.PRECONDITION_FAILED.getStatusCode(), failure.getResponse().getStatus());
     settingsCacheMock.verifyNoInteractions();
@@ -100,11 +106,30 @@ class SystemRepositoryPatchSettingTest {
 
   @Test
   void patchSettingRejectsMissingSetting() {
-    when(systemDAO.getConfigJsonWithKey(SETTING_NAME)).thenReturn(null);
+    when(systemDAO.getGlossaryTermRelationSettingsJson()).thenReturn(null);
 
     assertThrows(
         EntityNotFoundException.class,
         () -> systemRepository.patchSetting(SETTING_NAME, appendRelationTypePatch()));
+  }
+
+  @Test
+  void patchSettingUsesGenericPathForUnrelatedSettings() {
+    String settingName = SettingsType.LINEAGE_SETTINGS.value();
+    Settings current =
+        new Settings().withConfigType(SettingsType.LINEAGE_SETTINGS).withConfigValue(Map.of());
+    when(systemDAO.getConfigWithKey(settingName)).thenReturn(current);
+
+    Response response =
+        systemRepository.patchSetting(settingName, Json.createPatchBuilder().build());
+
+    assertEquals(Response.Status.OK.getStatusCode(), response.getStatus());
+    verify(systemDAO).getConfigWithKey(settingName);
+    verify(systemDAO).insertSettings(settingName, "{}");
+    verify(systemDAO, never()).getGlossaryTermRelationSettingsJson();
+    verify(systemDAO, never())
+        .updateGlossaryTermRelationSettingsIfCurrent(anyString(), anyString());
+    settingsCacheMock.verify(() -> SettingsCache.invalidateSettings(settingName));
   }
 
   private JsonPatch appendRelationTypePatch() {

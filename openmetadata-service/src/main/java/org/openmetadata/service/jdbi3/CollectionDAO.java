@@ -10793,8 +10793,10 @@ public interface CollectionDAO {
     @RegisterRowMapper(SettingsRowMapper.class)
     Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
 
-    @SqlQuery("SELECT json FROM openmetadata_settings WHERE configType = :configType")
-    String getConfigJsonWithKey(@Bind("configType") String configType) throws StatementException;
+    @SqlQuery(
+        "SELECT json FROM openmetadata_settings "
+            + "WHERE configType = 'glossaryTermRelationSettings'")
+    String getGlossaryTermRelationSettingsJson() throws StatementException;
 
     @ConnectionAwareSqlUpdate(
         value =
@@ -10811,19 +10813,18 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE openmetadata_settings SET json = :updatedJson "
-                + "WHERE configType = :configType "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
                 + "AND SHA2(CAST(json AS CHAR), 256) = "
                 + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
             "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
-                + "WHERE configType = :configType AND json = (:expectedJson :: jsonb)",
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND json = (:expectedJson :: jsonb)",
         connectionType = POSTGRES)
-    int updateSettingsIfCurrent(
-        @Bind("configType") String configType,
-        @Bind("expectedJson") String expectedJson,
-        @Bind("updatedJson") String updatedJson);
+    int updateGlossaryTermRelationSettingsIfCurrent(
+        @Bind("expectedJson") String expectedJson, @Bind("updatedJson") String updatedJson);
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);

@@ -117,6 +117,21 @@ def test_relation_type_usage(rest_client: FakeRestClient):
     assert usage == {"prescribes": 3}
 
 
+def test_glossary_relation_settings_returns_only_relation_config(
+    rest_client: FakeRestClient,
+):
+    relation_config = {"relationTypes": [{"name": "prescribes"}]}
+    rest_client.get_response = {
+        "configType": "glossaryTermRelationSettings",
+        "configValue": relation_config,
+    }
+
+    result = Settings.glossary_relation_settings()
+
+    assert rest_client.get_calls == [RELATION_SETTINGS_PATH]
+    assert result == relation_config
+
+
 def test_define_relation_type_appends_when_absent(rest_client: FakeRestClient):
     rest_client.get_response = {"configValue": {"relationTypes": []}}
 
@@ -208,7 +223,7 @@ def test_define_relation_type_retries_absent_initialization_after_test_failure(
 
     result = Settings.define_glossary_relation_type({"name": "prescribes"})
 
-    assert result == rest_client.patch_response
+    assert result == {"relationTypes": []}
     assert len(rest_client.get_calls) == 2
     assert len(rest_client.patch_calls) == 2
     assert patch_payload(rest_client, 0)[0] == {"op": "test", "path": "", "value": {}}
@@ -235,7 +250,7 @@ def test_define_relation_type_retries_only_after_snapshot_changes(rest_client: F
 
     result = Settings.define_glossary_relation_type({"name": "prescribes"})
 
-    assert result == rest_client.patch_response
+    assert result == {"relationTypes": []}
     assert len(rest_client.get_calls) == 2
     assert len(rest_client.patch_calls) == 2
     assert patch_payload(rest_client, 1)[0] == {

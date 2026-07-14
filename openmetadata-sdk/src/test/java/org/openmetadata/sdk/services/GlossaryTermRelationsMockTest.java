@@ -126,6 +126,33 @@ class GlossaryTermRelationsMockTest {
   }
 
   @Test
+  void getGlossaryRelationSettingsReturnsOnlyRelationConfiguration() {
+    GlossaryTermRelationSettings relationConfiguration =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(List.of(new GlossaryTermRelationType().withName("prescribes")));
+    Settings response =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(relationConfiguration);
+    when(httpClient.execute(
+            eq(HttpMethod.GET),
+            eq("/v1/system/settings/glossaryTermRelationSettings"),
+            isNull(),
+            eq(Settings.class)))
+        .thenReturn(response);
+
+    GlossaryTermRelationSettings result = settings.getGlossaryRelationSettings();
+
+    assertEquals("prescribes", result.getRelationTypes().get(0).getName());
+    verify(httpClient)
+        .execute(
+            eq(HttpMethod.GET),
+            eq("/v1/system/settings/glossaryTermRelationSettings"),
+            isNull(),
+            eq(Settings.class));
+  }
+
+  @Test
   void defineGlossaryRelationTypeAppendsWhenAbsent() {
     Settings current =
         new Settings()
@@ -164,10 +191,10 @@ class GlossaryTermRelationsMockTest {
     when(httpClient.execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class)))
         .thenReturn(current);
 
-    Settings result =
+    GlossaryTermRelationSettings result =
         settings.defineGlossaryRelationType(new GlossaryTermRelationType().withName("prescribes"));
 
-    assertSame(current, result);
+    assertEquals("prescribes", result.getRelationTypes().get(0).getName());
     verify(httpClient, never())
         .execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class));
   }
@@ -253,10 +280,10 @@ class GlossaryTermRelationsMockTest {
             new ApiException("The JSON Patch operation 'test' failed for path ''", statusCode))
         .thenReturn(latest);
 
-    Settings result =
+    GlossaryTermRelationSettings result =
         settings.defineGlossaryRelationType(new GlossaryTermRelationType().withName("prescribes"));
 
-    assertSame(latest, result);
+    assertEquals("treats", result.getRelationTypes().get(0).getName());
     ArgumentCaptor<Object> patches = ArgumentCaptor.forClass(Object.class);
     verify(httpClient, times(2))
         .execute(eq(HttpMethod.PATCH), anyString(), patches.capture(), eq(Settings.class));
@@ -287,10 +314,10 @@ class GlossaryTermRelationsMockTest {
     when(httpClient.execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class)))
         .thenThrow(new ApiException("unprocessable settings patch", 422));
 
-    Settings result =
+    GlossaryTermRelationSettings result =
         settings.defineGlossaryRelationType(new GlossaryTermRelationType().withName("prescribes"));
 
-    assertSame(present, result);
+    assertEquals("prescribes", result.getRelationTypes().get(0).getName());
     verify(httpClient, times(2))
         .execute(eq(HttpMethod.GET), anyString(), isNull(), eq(Settings.class));
     verify(httpClient).execute(eq(HttpMethod.PATCH), anyString(), any(), eq(Settings.class));
@@ -315,10 +342,10 @@ class GlossaryTermRelationsMockTest {
         .thenThrow(new ApiException("precondition failed", 412))
         .thenReturn(latest);
 
-    Settings result =
+    GlossaryTermRelationSettings result =
         settings.defineGlossaryRelationType(new GlossaryTermRelationType().withName("prescribes"));
 
-    assertSame(latest, result);
+    assertEquals("treats", result.getRelationTypes().get(0).getName());
     ArgumentCaptor<Object> patches = ArgumentCaptor.forClass(Object.class);
     verify(httpClient, times(2))
         .execute(eq(HttpMethod.PATCH), anyString(), patches.capture(), eq(Settings.class));

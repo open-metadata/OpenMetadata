@@ -16,11 +16,11 @@ import org.openmetadata.sdk.network.HttpClient;
 import org.openmetadata.sdk.network.HttpMethod;
 
 /**
- * Client for OpenMetadata system settings ({@code /v1/system/settings}).
+ * Client limited to glossary term relation settings.
  *
- * <p>Focused on glossary term relation types. Type registration preserves the server's missing,
- * null, or array representation and reconciles a fresh snapshot after a rejected concurrent
- * update.
+ * <p>Type registration preserves the server's missing, null, or array representation and
+ * reconciles a fresh snapshot after a rejected concurrent update. This service never reads or
+ * writes another system setting type.
  */
 public class SystemSettingsService {
   private static final int MAX_REGISTRATION_ATTEMPTS = 3;
@@ -36,22 +36,13 @@ public class SystemSettingsService {
     this.objectMapper = new ObjectMapper();
   }
 
-  /** Get a setting by name (e.g. {@code glossaryTermRelationSettings}). */
-  public Settings get(String name) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.GET, SETTINGS_BASE + "/" + name, null, Settings.class);
-  }
-
-  /** Replace a setting wholesale via {@code PUT} (the whole config value is overwritten). */
-  public Settings update(Settings settings) throws OpenMetadataException {
-    return httpClient.execute(HttpMethod.PUT, SETTINGS_BASE, settings, Settings.class);
-  }
-
-  public Settings getGlossaryRelationSettings() throws OpenMetadataException {
-    return get(glossaryRelationSettingsKey());
+  /** Return only the glossary term relation configuration. */
+  public GlossaryTermRelationSettings getGlossaryRelationSettings() throws OpenMetadataException {
+    return toRelationConfig(getGlossaryRelationSettingsEnvelope());
   }
 
   public List<GlossaryTermRelationType> glossaryRelationTypes() throws OpenMetadataException {
-    List<GlossaryTermRelationType> types = glossaryRelationConfig().getRelationTypes();
+    List<GlossaryTermRelationType> types = getGlossaryRelationSettings().getRelationTypes();
     return types != null ? types : List.of();
   }
 
@@ -63,16 +54,17 @@ public class SystemSettingsService {
    * idempotent no-op.
    *
    * @param relationType the relation type to register
-   * @return the updated settings, or the current settings unchanged if the name already existed
+   * @return only the updated glossary relation configuration, or the current configuration if the
+   *     name already existed
    */
-  public Settings defineGlossaryRelationType(GlossaryTermRelationType relationType)
-      throws OpenMetadataException {
+  public GlossaryTermRelationSettings defineGlossaryRelationType(
+      GlossaryTermRelationType relationType) throws OpenMetadataException {
     int attempts = 0;
-    Settings current = getGlossaryRelationSettings();
+    Settings current = getGlossaryRelationSettingsEnvelope();
     RelationTypesSnapshot snapshot = relationTypesSnapshot(current);
     while (true) {
       if (relationTypeExists(snapshot.relationTypes(), relationType.getName())) {
-        return current;
+        return toRelationConfig(current);
       }
       try {
         return appendRelationType(relationType, snapshot);
@@ -81,10 +73,10 @@ public class SystemSettingsService {
         if (!shouldReconcileRegistrationFailure(statusCode)) {
           throw exception;
         }
-        Settings latest = getGlossaryRelationSettings();
+        Settings latest = getGlossaryRelationSettingsEnvelope();
         RelationTypesSnapshot latestSnapshot = relationTypesSnapshot(latest);
         if (relationTypeExists(latestSnapshot.relationTypes(), relationType.getName())) {
-          return latest;
+          return toRelationConfig(latest);
         }
         if (!isRetryableRegistrationFailure(exception, statusCode)
             || hasSamePatchState(snapshot, latestSnapshot)) {
@@ -100,7 +92,7 @@ public class SystemSettingsService {
     }
   }
 
-  private Settings appendRelationType(
+  private GlossaryTermRelationSettings appendRelationType(
       GlossaryTermRelationType relationType, RelationTypesSnapshot snapshot)
       throws OpenMetadataException {
     ArrayNode patch = objectMapper.createArrayNode();
@@ -120,11 +112,13 @@ public class SystemSettingsService {
       addOperation(patch, "test", RELATION_TYPES_PATH, snapshot.patchValue());
       addOperation(patch, "add", RELATION_TYPES_APPEND_PATH, relationTypeValue);
     }
-    return httpClient.execute(
-        HttpMethod.PATCH,
-        SETTINGS_BASE + "/" + glossaryRelationSettingsKey(),
-        patch,
-        Settings.class);
+    Settings updated =
+        httpClient.execute(
+            HttpMethod.PATCH,
+            SETTINGS_BASE + "/" + glossaryRelationSettingsKey(),
+            patch,
+            Settings.class);
+    return toRelationConfig(updated);
   }
 
   private void addOperation(ArrayNode patch, String op, String path, JsonNode value) {
@@ -189,8 +183,9 @@ public class SystemSettingsService {
     return types.stream().anyMatch(type -> Objects.equals(type.getName(), name));
   }
 
-  private GlossaryTermRelationSettings glossaryRelationConfig() throws OpenMetadataException {
-    return toRelationConfig(getGlossaryRelationSettings());
+  private Settings getGlossaryRelationSettingsEnvelope() throws OpenMetadataException {
+    return httpClient.execute(
+        HttpMethod.GET, SETTINGS_BASE + "/" + glossaryRelationSettingsKey(), null, Settings.class);
   }
 
   private GlossaryTermRelationSettings toRelationConfig(Settings settings) {
