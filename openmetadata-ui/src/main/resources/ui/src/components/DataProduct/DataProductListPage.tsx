@@ -15,6 +15,7 @@ import {
   Avatar,
   Box,
   Card,
+  PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Globe01 } from '@untitledui/icons';
@@ -50,7 +51,6 @@ import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
@@ -291,15 +291,6 @@ const DataProductListPage = ({
     []
   );
 
-  const { paginationControls } = usePaginationControls({
-    currentPage: dataProductListing.currentPage,
-    totalPages: dataProductListing.totalPages,
-    totalEntities: dataProductListing.totalEntities,
-    pageSize: dataProductListing.pageSize,
-    onPageChange: dataProductListing.handlePageChange,
-    loading: dataProductListing.loading,
-  });
-
   const selectedDataProductEntities = useMemo(
     () =>
       dataProductListing.entities.filter((entity) =>
@@ -366,7 +357,11 @@ const DataProductListPage = ({
             onSelect={dataProductListing.handleSelect}
             onSelectAll={dataProductListing.handleSelectAll}
           />
-          {paginationControls}
+          <PaginationCardDefault
+            page={dataProductListing.currentPage}
+            total={dataProductListing.totalPages}
+            onPageChange={dataProductListing.handlePageChange}
+          />
         </>
       );
     }
@@ -379,7 +374,11 @@ const DataProductListPage = ({
           renderCard={renderDataProductCard}
           onEntityClick={dataProductListing.actionHandlers.onEntityClick}
         />
-        {paginationControls}
+        <PaginationCardDefault
+          page={dataProductListing.currentPage}
+          total={dataProductListing.totalPages}
+          onPageChange={dataProductListing.handlePageChange}
+        />
       </>
     );
   }, [
@@ -387,11 +386,13 @@ const DataProductListPage = ({
     dataProductListing.entities,
     dataProductListing.selectedEntities,
     dataProductListing.actionHandlers,
+    dataProductListing.currentPage,
+    dataProductListing.totalPages,
+    dataProductListing.handlePageChange,
     isSearchOrFilterActive,
     view,
     renderDataProductCell,
     renderDataProductCard,
-    paginationControls,
     openDrawer,
     t,
     permissions.dataProduct?.Create,
