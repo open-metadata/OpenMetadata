@@ -773,10 +773,10 @@ export const addAssetToGlossaryTerm = async (
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -807,7 +807,7 @@ export const addAssetToGlossaryTerm = async (
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
-
+    await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
         `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
@@ -840,15 +840,11 @@ const testFilterWithSpecificOption = async (
 
   await filterResponse;
 
-  await expect(
-    page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-  ).toBeVisible();
+  await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
   const clearFilterResponse = page.waitForResponse('/api/v1/search/query?*');
 
-  await page
-    .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-    .click();
+  await filterWrapper.getByTestId('clear-filters').click();
 
   await clearFilterResponse;
 };
@@ -861,9 +857,10 @@ const testFilterWithFirstOption = async (
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
-  await page.getByTestId('drop-down-menu').waitFor();
+  const dropdownMenu = page.getByTestId('drop-down-menu');
+  await dropdownMenu.waitFor();
 
-  const options = page.locator('[data-testid="drop-down-menu"]');
+  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
@@ -881,17 +878,13 @@ const testFilterWithFirstOption = async (
 
       await filterResponse;
 
-      await expect(
-        page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-      ).toBeVisible();
+      await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
       const clearFilterResponse = page.waitForResponse(
         '/api/v1/search/query?*'
       );
 
-      await page
-        .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-        .click();
+      await filterWrapper.getByTestId('clear-filters').click();
 
       await clearFilterResponse;
     }
@@ -911,10 +904,10 @@ export const verifyAssetModalFilters = async (
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -941,7 +934,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'entityType',
-    'table',
+    'table-checkbox',
     'table'
   );
 
@@ -949,7 +942,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'mysql',
+    'mysql-checkbox',
     'mysql'
   );
 

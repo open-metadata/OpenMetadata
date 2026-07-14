@@ -44,6 +44,7 @@ class DefaultAuthorizerTest {
   @AfterEach
   void clearImpersonationState() {
     ImpersonationContext.clear();
+    ActivePersonaContext.clear();
     CatalogSecurityContext.clearThreadLocalImpersonatedUser();
   }
 
@@ -609,7 +610,7 @@ class DefaultAuthorizerTest {
   }
 
   @Test
-  void getSubjectContextUsesCatalogAndThreadLocalImpersonationHints() {
+  void getSubjectContextUsesCatalogAndThreadLocalRequestHints() {
     SubjectContext subjectContext = subjectContext("alice", false, false, null);
     SubjectContext threadLocalContext = subjectContext("bob", false, false, null);
     CatalogSecurityContext catalogSecurityContext =
@@ -619,16 +620,18 @@ class DefaultAuthorizerTest {
             CatalogSecurityContext.OPENID_AUTH,
             Set.of(),
             false,
-            "bot-user");
+            "bot-user",
+            "persona-a");
     SecurityContext wrappedSecurityContext = securityContext("bob");
     ImpersonationContext.setImpersonatedBy("job-bot");
+    ActivePersonaContext.setActivePersona("persona-b");
 
     try (MockedStatic<SubjectContext> mockedSubjectContext = mockStatic(SubjectContext.class)) {
       mockedSubjectContext
-          .when(() -> SubjectContext.getSubjectContext("alice", "bot-user"))
+          .when(() -> SubjectContext.getSubjectContext("alice", "bot-user", "persona-a"))
           .thenReturn(subjectContext);
       mockedSubjectContext
-          .when(() -> SubjectContext.getSubjectContext("bob", "job-bot"))
+          .when(() -> SubjectContext.getSubjectContext("bob", "job-bot", "persona-b"))
           .thenReturn(threadLocalContext);
 
       assertSame(subjectContext, DefaultAuthorizer.getSubjectContext(catalogSecurityContext));
