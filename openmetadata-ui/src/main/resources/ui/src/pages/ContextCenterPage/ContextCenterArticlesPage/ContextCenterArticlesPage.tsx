@@ -376,12 +376,14 @@ const ContextCenterArticlesPage = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:h-full tw:p-5 tw:pt-0 ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-articles-page">
-      {renderHeader()}
+      <div className="context-center-header-section tw:px-5">
+        {renderHeader()}
+      </div>
 
       <Box
-        className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl"
+        className="context-center-content-section tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl tw:px-5 tw:pb-5"
         dir={i18n.dir()}
         direction="col"
         id="knowledge-center-layout-container">

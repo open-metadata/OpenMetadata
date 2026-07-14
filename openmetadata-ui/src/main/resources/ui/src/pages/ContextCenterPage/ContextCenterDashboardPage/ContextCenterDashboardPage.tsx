@@ -345,58 +345,59 @@ const ContextCenterDashboardPage: FC = () => {
 
   return (
     <div
-      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:p-5 tw:pt-0 tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
+      className={`tw:flex tw:flex-col tw:w-full tw:bg-secondary tw:h-full ${contextCenterClassBase.getContainerClassName()}`}
       data-testid="context-center-dashboard-page">
-      <ContextCenterHeader
-        actionsSlot={
-          <Box align="center" className="tw:shrink-0" gap={3}>
-            <Button
-              color="secondary"
-              iconLeading={UploadIcon}
-              size="sm"
-              onClick={() => setIsUploadModalOpen(true)}>
-              {t('label.upload-file')}
-            </Button>
-            <LimitWrapper resource="knowledgeCenter">
-              <Dropdown.Root>
-                <Button
-                  color="primary"
-                  data-testid="create-knowledge-page-btn"
-                  iconTrailing={ChevronDown}>
-                  {t('label.create')}
-                </Button>
-                <Dropdown.Popover className="tw:w-30">
-                  <Dropdown.Menu aria-label="create knowledge page">
-                    <Dropdown.Item
-                      data-testid="create-article-btn"
-                      key={PageType.ARTICLE}
-                      onAction={handleCreateArticle}>
-                      {t('label.article')}
-                    </Dropdown.Item>
-                    <Dropdown.Item
-                      data-testid="create-quick-link-btn"
-                      key={PageType.QUICK_LINK}
-                      onAction={() => setShowAddLinkModal(true)}>
-                      {t('label.quick-link')}
-                    </Dropdown.Item>
-                  </Dropdown.Menu>
-                </Dropdown.Popover>
-              </Dropdown.Root>
-            </LimitWrapper>
-          </Box>
-        }
-        breadcrumbs={[
-          {
-            label: t('label.dashboard'),
-          },
-        ]}
-        hasPermission={hasCreatePermission}
-        subtitle={t('message.context-center-dashboard-subtitle')}
-        title={t('label.dashboard')}
-      />
-
+      <div className="context-center-header-section tw:px-5">
+        <ContextCenterHeader
+          actionsSlot={
+            <Box align="center" className="tw:shrink-0" gap={3}>
+              <Button
+                color="secondary"
+                iconLeading={UploadIcon}
+                size="sm"
+                onClick={() => setIsUploadModalOpen(true)}>
+                {t('label.upload-file')}
+              </Button>
+              <LimitWrapper resource="knowledgeCenter">
+                <Dropdown.Root>
+                  <Button
+                    color="primary"
+                    data-testid="create-knowledge-page-btn"
+                    iconTrailing={ChevronDown}>
+                    {t('label.create')}
+                  </Button>
+                  <Dropdown.Popover className="tw:w-30">
+                    <Dropdown.Menu aria-label="create knowledge page">
+                      <Dropdown.Item
+                        data-testid="create-article-btn"
+                        key={PageType.ARTICLE}
+                        onAction={handleCreateArticle}>
+                        {t('label.article')}
+                      </Dropdown.Item>
+                      <Dropdown.Item
+                        data-testid="create-quick-link-btn"
+                        key={PageType.QUICK_LINK}
+                        onAction={() => setShowAddLinkModal(true)}>
+                        {t('label.quick-link')}
+                      </Dropdown.Item>
+                    </Dropdown.Menu>
+                  </Dropdown.Popover>
+                </Dropdown.Root>
+              </LimitWrapper>
+            </Box>
+          }
+          breadcrumbs={[
+            {
+              label: t('label.dashboard'),
+            },
+          ]}
+          hasPermission={hasCreatePermission}
+          subtitle={t('message.context-center-dashboard-subtitle')}
+          title={t('label.dashboard')}
+        />
+      </div>
       <Box
-        className="tw:h-full tw:min-h-0"
+        className="context-center-content-section tw:h-full tw:min-h-0 tw:px-5 tw:pb-5"
         data-testid="dashboard-detail-card"
         direction="col"
         gap={5}>
