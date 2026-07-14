@@ -246,6 +246,19 @@ def test_a_403_is_diagnosed_as_missing_permissions():
     assert diagnosis.title == "Insufficient permissions"
 
 
+def test_an_unavailable_instance_is_diagnosed():
+    # Looker serves an HTML "Looker is unavailable" 404 when the hostname does not
+    # reach a running instance - a Looker answer, but with no error document.
+    diagnosis = LOOKER_ERRORS.classify(
+        _sdk_error(
+            "<html><head><title>Looker Not Found (404)</title></head><body><h1>Looker is unavailable.</h1></body></html>"
+        )
+    )
+
+    assert diagnosis is not None
+    assert diagnosis.title == "The Looker instance is unavailable"
+
+
 def test_a_host_that_is_not_looker_is_diagnosed():
     # A non-Looker server answers the login POST with its own 404 body, which
     # carries no Looker error document - the shape a typo'd hostPort produces.
