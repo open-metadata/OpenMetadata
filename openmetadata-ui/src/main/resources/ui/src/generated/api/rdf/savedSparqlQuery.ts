@@ -10,7 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-
 /**
  * A SPARQL query saved by a user or curated as an installation query template.
  */
