@@ -13,12 +13,16 @@ import jakarta.validation.constraints.Min;
 import jakarta.ws.rs.DefaultValue;
 import jakarta.ws.rs.GET;
 import jakarta.ws.rs.Path;
+import jakarta.ws.rs.PathParam;
 import jakarta.ws.rs.Produces;
 import jakarta.ws.rs.QueryParam;
 import jakarta.ws.rs.core.Context;
 import jakarta.ws.rs.core.MediaType;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.SecurityContext;
+import jakarta.ws.rs.core.StreamingOutput;
+import java.io.InputStream;
+import java.io.OutputStream;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
@@ -29,11 +33,11 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.TagLabel;
-import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.audit.AuditLogEntry;
 import org.openmetadata.service.audit.AuditLogRepository;
+import org.openmetadata.service.csv.CsvExportSpool;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
@@ -149,12 +153,10 @@ public class AuditLogResource {
   private static final int EXPORT_MAX_LIMIT = 100000;
   private static final int EXPORT_DEFAULT_LIMIT = 10000;
 
-  // Each audit export materializes up to EXPORT_MAX_LIMIT entries as one JSON string and sends it
-  // inline over the websocket. Running many at once (e.g. parallel Playwright export shards) piles
-  // multi-hundred-MB byte[] onto the heap and OOMs the server, so cap how many serialize at once.
-  // ponytail: bounds concurrency, not per-export size; the fuller fix is to stream/spool the
-  // payload
-  // and hand back a download reference instead of inlining it over the websocket.
+  // Audit exports stream to a spool file and hand back a download reference over the websocket (see
+  // streamExportAsJson + downloadAuditExportResult), so a single export never materializes its
+  // whole
+  // payload. This dedicated pool additionally caps how many run at once to bound DB load.
   private static final int MAX_CONCURRENT_AUDIT_EXPORTS = 2;
   private static final ExecutorService AUDIT_EXPORT_EXECUTOR =
       Executors.newFixedThreadPool(
@@ -257,12 +259,14 @@ public class AuditLogResource {
     String jobId = UUID.randomUUID().toString();
     AUDIT_EXPORT_EXECUTOR.submit(
         () -> {
-          try {
-            // Use batched export to avoid long-running queries that could cause
-            // resource contention with concurrent writes to the audit_log table.
-            // Progress updates are sent via websocket for long-running exports.
-            List<AuditLogEntry> results =
-                repository.exportInBatches(
+          try (OutputStream spool = CsvExportSpool.openForWrite(jobId)) {
+            // Stream results straight to the spool file (one batch in memory at a time) and hand
+            // the
+            // client a download reference over the websocket instead of the inline payload, so
+            // neither the heap nor the websocket send buffer holds a multi-hundred-MB export.
+            int exported =
+                repository.streamExportAsJson(
+                    spool,
                     userName,
                     actorType,
                     serviceName,
@@ -275,10 +279,9 @@ public class AuditLogResource {
                     (fetched, total, message) ->
                         WebsocketNotificationHandler.sendCsvExportProgressNotification(
                             jobId, securityContext, fetched, total, message));
-
-            String json = JsonUtils.pojoToJson(results);
+            LOG.info("Audit export {} spooled {} records", jobId, exported);
             WebsocketNotificationHandler.sendCsvExportCompleteNotification(
-                jobId, securityContext, json);
+                jobId, securityContext, null);
           } catch (Exception e) {
             LOG.error("Encountered exception while exporting audit logs.", e);
             WebsocketNotificationHandler.sendCsvExportFailedNotification(
@@ -288,6 +291,46 @@ public class AuditLogResource {
 
     CSVExportResponse response = new CSVExportResponse(jobId, "Export initiated successfully.");
     return Response.accepted().entity(response).type(MediaType.APPLICATION_JSON).build();
+  }
+
+  @GET
+  @Path("/export/{jobId}/result")
+  @Operation(
+      operationId = "downloadAuditExportResult",
+      summary = "Download a completed audit log export",
+      description =
+          "Streams the spooled result of a completed audit-log export job. Clients call this after "
+              + "receiving the COMPLETED event on the csvExportChannel websocket.",
+      responses = {
+        @ApiResponse(responseCode = "200", description = "Export result stream"),
+        @ApiResponse(responseCode = "404", description = "Export result not found or expired")
+      })
+  @Produces(MediaType.APPLICATION_JSON)
+  public Response downloadAuditExportResult(
+      @Context SecurityContext securityContext, @PathParam("jobId") String jobId) {
+    OperationContext operationContext =
+        new OperationContext(Entity.AUDIT_LOG, MetadataOperation.AUDIT_LOGS);
+    authorizer.authorize(securityContext, operationContext, AuditLogResourceContext.INSTANCE);
+    Response response;
+    if (CsvExportSpool.exists(jobId)) {
+      StreamingOutput stream =
+          output -> {
+            try (InputStream in = CsvExportSpool.openForRead(jobId)) {
+              in.transferTo(output);
+            }
+          };
+      response =
+          Response.ok(stream, MediaType.APPLICATION_JSON)
+              .header(
+                  "Content-Disposition", "attachment; filename=\"audit-export-" + jobId + ".json\"")
+              .build();
+    } else {
+      response =
+          Response.status(Response.Status.NOT_FOUND)
+              .entity("Export result not found or expired for job " + jobId)
+              .build();
+    }
+    return response;
   }
 
   /**
