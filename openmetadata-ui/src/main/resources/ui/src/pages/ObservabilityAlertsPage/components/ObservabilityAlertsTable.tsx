@@ -11,15 +11,19 @@
  *  limitations under the License.
  */
 
-import { Table, TableCard } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  Table,
+  TableCard,
+} from '@openmetadata/ui-core-components';
+import { Bell01, MarkerPin01, Plus, ZapFast } from '@untitledui/icons';
 import { Button } from 'antd';
+import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import NextPrevious from '../../../components/common/NextPrevious/NextPrevious';
 import RichTextEditorPreviewerNew from '../../../components/common/RichTextEditor/RichTextEditorPreviewNew';
-import { ALERTS_DOCS } from '../../../constants/docs.constants';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EventSubscription } from '../../../generated/events/eventSubscription';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ALERT_TABLE_COLUMN_IDS } from '../ObservabilityAlertsPage.constants';
@@ -32,6 +36,7 @@ import ObservabilityAlertActions from './ObservabilityAlertActions';
 
 function ObservabilityAlertsTable({
   alertPermissions,
+  alertResourcePermission,
   alerts,
   columnList,
   currentPage,
@@ -49,6 +54,34 @@ function ObservabilityAlertsTable({
   showPagination,
 }: Readonly<ObservabilityAlertsTableProps>) {
   const { t } = useTranslation();
+
+  const hasCreatePermission = Boolean(
+    alertResourcePermission?.Create || alertResourcePermission?.All
+  );
+
+  const emptyStateFeatures = useMemo(
+    () => [
+      {
+        key: 'trigger',
+        icon: <ZapFast className="tw:text-fg-brand-primary" />,
+        title: t('label.pick-a-trigger'),
+        description: t('message.alert-pick-a-trigger-description'),
+      },
+      {
+        key: 'destination',
+        icon: <MarkerPin01 className="tw:text-fg-warning-primary" />,
+        title: t('label.choose-the-destination'),
+        description: t('message.alert-choose-destination-description'),
+      },
+      {
+        key: 'stay-ahead',
+        icon: <Bell01 className="tw:text-fg-success-primary" />,
+        title: t('label.stay-ahead'),
+        description: t('message.alert-stay-ahead-description'),
+      },
+    ],
+    [t]
+  );
 
   const renderRow = (record: EventSubscription) => {
     const alertPermission = alertPermissions?.find(
@@ -130,17 +163,31 @@ function ObservabilityAlertsTable({
               loading ? (
                 <></>
               ) : (
-                <ErrorPlaceHolder
-                  permission
-                  className="p-y-md border-none"
-                  doc={ALERTS_DOCS}
-                  heading={t('label.alert')}
-                  permissionValue={t('label.create-entity', {
-                    entity: t('label.alert'),
-                  })}
-                  type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                  onClick={onAddAlert}
-                />
+                <Box className="tw:relative tw:min-h-96 tw:w-full">
+                  <EmptyPlaceholder
+                    actions={
+                      hasCreatePermission
+                        ? [
+                            {
+                              key: 'new-alert',
+                              label: t('label.new-entity', {
+                                entity: t('label.alert'),
+                              }),
+                              color: 'primary' as const,
+                              iconLeading: Plus,
+                              onPress: onAddAlert,
+                            },
+                          ]
+                        : undefined
+                    }
+                    description={t(
+                      'message.observability-alert-empty-description'
+                    )}
+                    features={emptyStateFeatures}
+                    title={t('message.observability-alert-empty-heading')}
+                    variant="features"
+                  />
+                </Box>
               )
             }>
             {(record) => renderRow(record as EventSubscription)}

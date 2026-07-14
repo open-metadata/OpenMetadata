@@ -75,6 +75,7 @@ const ObservabilityAlertsPage = () => {
         <Col span={24}>
           <ObservabilityAlertsTable
             alertPermissions={alertPermissions}
+            alertResourcePermission={alertResourcePermission}
             alerts={alerts}
             columnList={columnList}
             currentPage={currentPage}

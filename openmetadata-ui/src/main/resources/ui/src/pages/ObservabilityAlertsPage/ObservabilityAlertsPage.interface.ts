@@ -66,6 +66,7 @@ export interface ObservabilityAlertActionsProps {
 
 export interface ObservabilityAlertsTableProps {
   alertPermissions?: AlertPermission[];
+  alertResourcePermission?: OperationPermission;
   alerts: EventSubscription[];
   columnList: AlertTableColumn[];
   currentPage: number;
