@@ -24,3 +24,52 @@ export const expectBreadcrumbCrumbsUnique = async (page: Page) => {
   expect(crumbLabels.length).toBeGreaterThan(0);
   expect(new Set(crumbLabels).size).toBe(crumbLabels.length);
 };
+
+// The DataAssetsHeader breadcrumb auto-collapses: when the trail is too wide for
+// its row, the middle crumbs move into a `…` overflow menu (the first + current
+// crumbs always stay inline). These helpers read/navigate ancestors whether a
+// crumb is rendered inline or hidden behind that menu, so callers stay valid at
+// any viewport width.
+export const openBreadcrumbOverflowMenu = async (page: Page) => {
+  await page
+    .getByTestId('breadcrumb')
+    .getByRole('button', { name: 'Show hidden breadcrumbs' })
+    .click();
+
+  return page.getByRole('menu', { name: 'Hidden breadcrumbs' });
+};
+
+export const expectBreadcrumbToContainAncestor = async (
+  page: Page,
+  name: string
+) => {
+  const breadcrumb = page.getByTestId('breadcrumb');
+  await expect(breadcrumb).toBeVisible();
+
+  const inlineCrumb = breadcrumb.getByText(name);
+
+  if ((await inlineCrumb.count()) > 0) {
+    await expect(inlineCrumb.first()).toBeVisible();
+  } else {
+    const menu = await openBreadcrumbOverflowMenu(page);
+    await expect(menu).toContainText(name);
+    await page.keyboard.press('Escape');
+    await expect(menu).toBeHidden();
+  }
+};
+
+export const clickBreadcrumbAncestor = async (page: Page, name: string) => {
+  const breadcrumb = page.getByTestId('breadcrumb');
+  await expect(breadcrumb).toBeVisible();
+
+  const inlineLink = breadcrumb.getByRole('link', { name });
+
+  if ((await inlineLink.count()) > 0) {
+    await inlineLink.click();
+  } else {
+    await openBreadcrumbOverflowMenu(page);
+    // The overflow menu is a single-selection react-aria menu, so its entries
+    // expose the `menuitemradio` role (not `menuitem`).
+    await page.getByRole('menuitemradio', { name }).click();
+  }
+};

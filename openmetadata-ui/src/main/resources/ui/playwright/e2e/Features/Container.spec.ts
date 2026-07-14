@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { expect, type Page } from '@playwright/test';
+import { expect } from '@playwright/test';
 import { DataType } from '../../../src/generated/entity/data/table';
 import { CONTAINER_CHILDREN } from '../../constant/contianer';
 import { ContainerClass } from '../../support/entity/ContainerClass';
@@ -27,6 +27,11 @@ import {
   validateCopiedLinkFormat,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import {
+  clickBreadcrumbAncestor,
+  expectBreadcrumbToContainAncestor,
+  openBreadcrumbOverflowMenu,
+} from '../../utils/headerBreadcrumbUtils';
 import { test } from '../fixtures/pages';
 // Grant clipboard permissions for copy link tests
 test.use({
@@ -54,50 +59,6 @@ const S3_SERVICE_CONFIG = {
 };
 
 test.slow(true);
-
-// The DataAssetsHeader breadcrumb auto-collapses: when the trail is too wide for
-// its row, the middle crumbs move into a `…` overflow menu (first + current crumbs
-// always stay inline). These helpers read/navigate ancestors whether a crumb is
-// rendered inline or hidden behind that menu, so the assertions stay valid at any
-// viewport width.
-const openBreadcrumbOverflowMenu = async (page: Page) => {
-  await page
-    .getByTestId('breadcrumb')
-    .getByRole('button', { name: 'Show hidden breadcrumbs' })
-    .click();
-
-  return page.getByRole('menu', { name: 'Hidden breadcrumbs' });
-};
-
-const expectBreadcrumbToContainAncestor = async (page: Page, name: string) => {
-  const breadcrumb = page.getByTestId('breadcrumb');
-  await expect(breadcrumb).toBeVisible();
-
-  const inlineCrumb = breadcrumb.getByText(name);
-
-  if ((await inlineCrumb.count()) > 0) {
-    await expect(inlineCrumb.first()).toBeVisible();
-  } else {
-    const menu = await openBreadcrumbOverflowMenu(page);
-    await expect(menu).toContainText(name);
-    await page.keyboard.press('Escape');
-    await expect(menu).toBeHidden();
-  }
-};
-
-const clickBreadcrumbAncestor = async (page: Page, name: string) => {
-  const breadcrumb = page.getByTestId('breadcrumb');
-  await expect(breadcrumb).toBeVisible();
-
-  const inlineLink = breadcrumb.getByRole('link', { name });
-
-  if ((await inlineLink.count()) > 0) {
-    await inlineLink.click();
-  } else {
-    await openBreadcrumbOverflowMenu(page);
-    await page.getByRole('menuitem', { name }).click();
-  }
-};
 
 test.describe('Container entity specific tests ', () => {
   test.beforeAll('Setup pre-requests', async ({ browser }) => {

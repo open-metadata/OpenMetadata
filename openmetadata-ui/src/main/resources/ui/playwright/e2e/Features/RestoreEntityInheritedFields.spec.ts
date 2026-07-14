@@ -36,6 +36,7 @@ import {
   softDeleteEntity,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { test } from '../fixtures/pages';
 
 // Service management pages render KnowledgePanel.DataProducts only inside the
@@ -352,31 +353,32 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(page);
 
-      // Table and StoredProcedure have 3 breadcrumbs; clicking index 1 lands
-      // on the Database entity page which already exposes KnowledgePanel.DataProducts.
-      // All other entities have 1 breadcrumb (service) or their intermediate
-      // breadcrumb resolves to the service management page.
       const isDbEntity = ['Table', 'Store Procedure'].includes(
         entity.getType()
       );
-      const is3Breadcrumb = [
-        'Table',
-        'ApiEndpoint',
-        'Store Procedure',
-      ].includes(entity.getType());
 
-      // The core Breadcrumbs renders the current entity as a non-link
-      // aria-current span, so the navigable crumb count is (total - 1).
-      await expect(
-        page.getByTestId('breadcrumb').getByRole('link')
-      ).toHaveCount(is3Breadcrumb ? 3 : 1);
+      // Navigate to the parent entity page (which already exposes
+      // KnowledgePanel.DataProducts) and assign a domain there. For
+      // Table/StoredProcedure that parent is the database, for ApiEndpoint the
+      // API collection; every other entity uses the service crumb (the first
+      // crumb, which always stays inline). The DataAssetsHeader breadcrumb
+      // auto-collapses on narrow viewports, so intermediate crumbs are reached
+      // via the overflow-aware helper rather than by inline-link position.
+      let parentCrumbName: string | undefined;
+      if (
+        entity instanceof TableClass ||
+        entity instanceof StoredProcedureClass
+      ) {
+        parentCrumbName = entity.database.name;
+      } else if (entity instanceof ApiEndpointClass) {
+        parentCrumbName = entity.apiCollection.name;
+      }
 
-      // Navigate to the parent and assign domain.
-      await page
-        .getByTestId('breadcrumb')
-        .getByRole('link')
-        .nth(is3Breadcrumb ? 1 : 0)
-        .click();
+      if (parentCrumbName) {
+        await clickBreadcrumbAncestor(page, parentCrumbName);
+      } else {
+        await page.getByTestId('breadcrumb').getByRole('link').first().click();
+      }
 
       await assignSingleSelectDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
