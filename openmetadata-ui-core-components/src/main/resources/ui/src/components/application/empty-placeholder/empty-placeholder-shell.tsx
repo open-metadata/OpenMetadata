@@ -10,8 +10,8 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import type { FC, HTMLAttributes, ReactNode } from 'react';
-import { isValidElement } from 'react';
+import type { FC, HTMLAttributes, ReactElement, ReactNode } from 'react';
+import { cloneElement, isValidElement } from 'react';
 import { Box } from '@/components/base/box/box';
 import type { GapValues } from '@/components/base/box/box';
 import { Button } from '@/components/base/buttons/button';
@@ -65,7 +65,14 @@ export const renderEmptyPlaceholderIcon = (
     const Icon = icon as FC<{ className?: string }>;
     node = <Icon data-icon className={className} />;
   } else if (isValidElement(icon)) {
-    node = icon;
+    const element = icon as ReactElement<{
+      className?: string;
+      'data-icon'?: boolean;
+    }>;
+    node = cloneElement(element, {
+      'data-icon': true,
+      className: cx(element.props.className, className),
+    });
   }
 
   return node;

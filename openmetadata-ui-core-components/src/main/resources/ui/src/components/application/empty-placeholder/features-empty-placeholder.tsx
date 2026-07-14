@@ -33,7 +33,7 @@ const FeatureItem = ({
 }: Omit<EmptyPlaceholderFeature, 'key'>) => (
   <Box
     align="center"
-    className="tw:max-w-[220px] tw:text-center"
+    className="tw:max-w-55 tw:text-center"
     direction="col"
     gap={5}>
     <div className={cx(EMPTY_PLACEHOLDER_ICON_BOX, iconClassName)}>
@@ -99,7 +99,7 @@ export const FeaturesEmptyPlaceholder = ({
       {hasFeatures && (
         <Box
           align="start"
-          className={cx(hasHeader && 'tw:mt-[30px]')}
+          className={cx(hasHeader && 'tw:mt-7.5')}
           gap={10}
           justify="center"
           wrap="wrap">
@@ -109,7 +109,7 @@ export const FeaturesEmptyPlaceholder = ({
         </Box>
       )}
       {footerNode && (
-        <div className={cx((hasHeader || hasFeatures) && 'tw:mt-[22px]')}>
+        <div className={cx((hasHeader || hasFeatures) && 'tw:mt-5.5')}>
           {footerNode}
         </div>
       )}
