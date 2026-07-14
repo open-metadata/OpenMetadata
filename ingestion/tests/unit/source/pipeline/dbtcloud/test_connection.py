@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from requests.exceptions import ConnectionError as RequestsConnectionError
-from requests.exceptions import MissingSchema, ReadTimeout, SSLError
+from requests.exceptions import ReadTimeout, SSLError
 
 from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.check import CheckError
@@ -120,16 +120,27 @@ def test_a_failed_check_still_reports_what_it_ran(checks, client):
     assert failure.value.cause is client.test_get_runs.side_effect
 
 
+# The body dbt Cloud answers a wrong account id with - a 403, not a 404 (observed
+# against a live account).
+NOT_SCOPED_BODY = (
+    '{"status": {"code": 403, "is_success": false, '
+    '"user_message": "Access denied: Token is not scoped to account.", "developer_message": null}}'
+)
+
+
 @pytest.mark.parametrize(
     ("error", "title"),
     [
         (DBTCloudApiError(401, "/accounts/1/jobs/", "unauthorized"), "Authentication failed"),
+        (
+            DBTCloudApiError(403, "/accounts/99999/jobs/", NOT_SCOPED_BODY),
+            "Token is not scoped to this account",
+        ),
         (DBTCloudApiError(403, "/accounts/1/jobs/", "forbidden"), "Insufficient permissions"),
         (DBTCloudApiError(404, "/accounts/9/jobs/", "not found"), "Account not found"),
         (DBTCloudApiError(429, "/accounts/1/jobs/", "too many requests"), "Rate limited"),
         (SSLError("certificate verify failed"), "TLS verification failed"),
         (ReadTimeout("timed out"), "Connection timed out"),
-        (MissingSchema("Invalid URL 'cloud.getdbt.com'"), "Invalid host"),
         (RequestsConnectionError("name resolution failed"), "Cannot reach the host"),
     ],
 )

@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
-from requests.exceptions import MissingSchema, SSLError, Timeout
+from requests.exceptions import SSLError, Timeout
 
 from metadata.core.connections.test_connection import (
     Diagnosis,
@@ -81,9 +81,20 @@ DBTCLOUD_ERRORS = ErrorPack(
         "token or personal access token for this account.",
         doc=ACCOUNT_ID_DOC,
     ),
+    # dbt Cloud answers a wrong account id with this 403, not a 404: an account the
+    # token cannot see is indistinguishable from one that does not exist. Lead the
+    # fix with the account id, which is the likelier mistake of the two.
+    when(Matchers.contains("not scoped to account")).diagnose(
+        "Token is not scoped to this account",
+        fix="dbt Cloud refused the account (403). Check the Account Id - it is the number in the "
+        "dbt Cloud URL, https://<host>/deploy/<accountId>/... - and that the Token was issued by "
+        "that same account. If both are right, grant the token's permission set read access to "
+        "the jobs and runs of the projects to ingest.",
+        doc=ACCOUNT_ID_DOC,
+    ),
     when(_http_status(403)).diagnose(
         "Insufficient permissions",
-        fix="The token is valid but not authorized for this account (403). Grant its permission "
+        fix="The token is valid but not authorized for this resource (403). Grant its permission "
         "set at least read access to the jobs and runs of the projects to ingest.",
         doc=ACCOUNT_ID_DOC,
     ),
@@ -107,10 +118,6 @@ DBTCLOUD_ERRORS = ErrorPack(
         "Connection timed out",
         fix="dbt Cloud did not answer in time; check that a firewall, security group, or network "
         "ACL allows egress to the Host from where ingestion runs.",
-    ),
-    when(Matchers.exception(MissingSchema)).diagnose(
-        "Invalid host",
-        fix="Host must be an absolute URL including the scheme, e.g. https://cloud.getdbt.com.",
     ),
     when(Matchers.exception(RequestsConnectionError)).diagnose(
         "Cannot reach the host",
