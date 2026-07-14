@@ -416,16 +416,18 @@ class HiveUnitTest(TestCase):
             ("nested_map", "map<string,decimal(10,2)>", None),
             ("nested_union", "uniontype<int,decimal(10,2)>", None),
         ]
-        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
-            lambda connection, table_name, schema_name: table_columns
-        )
-
-        col_list = hive_dialect.get_columns(
-            self=hive_dialect,
-            connection=mock_hive_config["source"],
-            table_name="nested_types_table",
-            schema="test_schema",
-        )
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="nested_types_table",
+                schema="test_schema",
+            )
 
         self.assertEqual(
             [col["name"] for col in col_list],
