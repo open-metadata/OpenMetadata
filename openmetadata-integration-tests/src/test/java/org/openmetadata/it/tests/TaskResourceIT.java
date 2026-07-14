@@ -2115,11 +2115,25 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
     assertTrue(
         inRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
         "Task should appear when its createdAt is inside the window");
+    assertEquals(
+        inRange.getData().size(),
+        inRange.getTotal(),
+        "paging.total must reflect the time-filtered rows, not an unfiltered count");
+
+    ListResponse<Task> boundary = lister.apply(createdAt, createdAt);
+    assertTrue(
+        boundary.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should appear when the window bounds equal its createdAt (bounds are inclusive)");
 
     ListResponse<Task> pastRange = lister.apply(createdAt - 5000, createdAt - 1000);
     assertFalse(
         pastRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
-        "Task should be excluded when the window ends before its createdAt");
+        "Task should be excluded when the window ends before its createdAt (endTs upper bound)");
+
+    ListResponse<Task> futureRange = lister.apply(createdAt + 1000, createdAt + 5000);
+    assertFalse(
+        futureRange.getData().stream().anyMatch(t -> t.getId().equals(taskId)),
+        "Task should be excluded when the window starts after its createdAt (startTs lower bound)");
   }
 
   // ==================== Entity Change Application Tests ====================
