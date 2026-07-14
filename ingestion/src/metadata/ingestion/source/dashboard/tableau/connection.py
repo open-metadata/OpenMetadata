@@ -59,6 +59,7 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
 
 if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
@@ -238,70 +239,65 @@ def build_server_config(connection: TableauConnectionConfig) -> Dict[str, Dict[s
 class TableauChecks:
     """Test-connection checks for Tableau.
 
-    ``ServerInfo`` is the gate: building the client signs in, so bad credentials,
-    a wrong site, or an unreachable server fail there and the remaining steps are
-    skipped rather than each re-dialling the host.
+    The server client is borrowed from the connection that owns it. Signing in is
+    what building it does, and the borrow defers that to the first read - inside
+    ``ServerInfo``, the gate - so bad credentials or an unreachable host fail there
+    and the remaining steps are skipped rather than each re-dialling.
 
-    The client is built lazily inside the first check, never at construction: its
-    constructor signs in over the network, and doing that while the provider is
-    assembled would run before the runner's gate and surface as a raw workflow
-    error instead of a classified ``ServerInfo`` failure.
+    Reusing the owner's client is what keeps a Personal Access Token working: a PAT
+    allows a single active session, so signing in a second time here would silently
+    invalidate the session the ingestion is about to use.
     """
 
     errors = TABLEAU_ERRORS
 
-    def __init__(self, connection: TableauConnectionConfig) -> None:
-        self._connection = connection
-        self._tableau_client: TableauClient | None = None
-
-    def _client(self) -> TableauClient:
-        """Build (once) and return the signed-in client. Only ever called from
-        inside a check, since signing in touches the network."""
-        if self._tableau_client is None:
-            self._tableau_client = get_connection(self._connection)
-        return self._tableau_client
+    def __init__(self, server: Borrowed[TableauClient]) -> None:
+        self._server = server
 
     @check(DashboardStep.ServerInfo)
     def server_info(self) -> Evidence:
+        # The lambda is load-bearing: reading the borrow signs in, and that must
+        # happen inside the helper's try so a bad credential is classified as a
+        # failed ServerInfo step instead of escaping while the argument is built.
         return verify_access(
-            lambda: self._client().server_info(),
+            lambda: self._server.client.server_info(),  # noqa: PLW0108
             command="sign in and read server info",
         )
 
     @check(DashboardStep.ValidateApiVersion)
     def validate_api_version(self) -> Evidence:
         command = "read the server REST API version"
-        version = call_endpoint(lambda: self._client().server_api_version(), command=command)
+        version = call_endpoint(lambda: self._server.client.server_api_version(), command=command)  # noqa: PLW0108
         return Evidence(summary=f"REST API version {version}", command=command)
 
     @check(DashboardStep.ValidateSiteUrl)
     def validate_site_url(self) -> Evidence:
         command = "validate the configured site name"
-        call_endpoint(lambda: self._client().test_site_url(), command=command)
+        call_endpoint(lambda: self._server.client.test_site_url(), command=command)  # noqa: PLW0108
         return Evidence(summary="site name is well formed", command=command)
 
     @check(DashboardStep.GetWorkbooks)
     def get_workbooks(self) -> Evidence:
         command = "fetch workbooks"
-        call_endpoint(lambda: self._client().test_get_workbooks(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_workbooks(), command=command)  # noqa: PLW0108
         return Evidence(summary="workbooks are readable", command=command)
 
     @check(DashboardStep.GetViews)
     def get_views(self) -> Evidence:
         command = "fetch the views of a workbook"
-        call_endpoint(lambda: self._client().test_get_workbook_views(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_workbook_views(), command=command)  # noqa: PLW0108
         return Evidence(summary="workbook views are readable", command=command)
 
     @check(DashboardStep.GetOwners)
     def get_owners(self) -> Evidence:
         command = "fetch the owner of a workbook"
-        call_endpoint(lambda: self._client().test_get_owners(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_owners(), command=command)  # noqa: PLW0108
         return Evidence(summary="workbook owners are resolvable", command=command)
 
     @check(DashboardStep.GetDataModels)
     def get_data_models(self) -> Evidence:
         command = "query the Metadata API for the data sources of a workbook"
-        call_endpoint(lambda: self._client().test_get_datamodels(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_datamodels(), command=command)  # noqa: PLW0108
         return Evidence(summary="data sources are readable", command=command)
 
 
@@ -311,7 +307,11 @@ class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
     step_timeout_seconds = THREE_MIN
 
     def _get_client(self) -> TableauClient:
-        return get_connection(self.service_connection)
+        client = get_connection(self.service_connection)
+        # Signing in holds a server session, and sign_out also clears the SSL temp
+        # files. Deferred via a lambda so building the client touches none of it.
+        self._on_close(lambda: client.sign_out())  # noqa: PLW0108
+        return client
 
     def checks(self) -> ChecksProvider:
-        return TableauChecks(connection=self.service_connection)
+        return TableauChecks(server=self.borrow())

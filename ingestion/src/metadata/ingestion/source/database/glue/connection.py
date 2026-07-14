@@ -31,8 +31,7 @@ from metadata.generated.schema.entity.services.connections.database.glueConnecti
 from metadata.ingestion.connections.connection import BaseConnection
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
 
 
@@ -142,21 +141,21 @@ def _no_tables_caveat() -> Diagnosis:
 class GlueChecks:
     """Test-connection checks for the Glue Data Catalog.
 
-    The client is built lazily inside the checks: an assume-role config calls STS
-    while the session is created, which must not happen before the gate."""
+    The client is borrowed from the connection that owns it: reading it inside a
+    check is what builds it, so the STS assume-role handshake stays behind the gate."""
 
     errors = GLUE_ERRORS
 
-    def __init__(self, connect: Callable[[], Any]) -> None:
-        self._connect = connect
+    def __init__(self, catalog: Borrowed[Any]) -> None:
+        self._catalog = catalog
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return list_databases(self._connect())
+        return list_databases(self._catalog.client)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self._connect())
+        return list_tables(self._catalog.client)
 
 
 class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
@@ -164,4 +163,4 @@ class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
         return AWSClient(self.service_connection.awsConfig).get_glue_client()
 
     def checks(self) -> ChecksProvider:
-        return GlueChecks(connect=lambda: self.client)
+        return GlueChecks(catalog=self.borrow())

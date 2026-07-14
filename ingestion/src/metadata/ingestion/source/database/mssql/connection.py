@@ -53,6 +53,7 @@ from metadata.ingestion.source.database.mssql.utils import is_query_store_enable
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.records import Evidence
 
@@ -149,39 +150,39 @@ class MssqlChecks:
         }
     )
 
-    def __init__(self, client: Engine, get_databases_statement: str) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine], get_databases_statement: str) -> None:
+        self._db = db
         self.get_databases_statement = get_databases_statement
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        return ping(self.client)
+        return ping(self._db.client)
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, self.get_databases_statement, _databases_enumerated)
+        return run_sql(self._db.client, self.get_databases_statement, _databases_enumerated)
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        return list_schemas(self._db.client)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self.client, None, self.SYSTEM_SCHEMAS)
+        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self.client, None, self.SYSTEM_SCHEMAS)
+        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        if is_query_store_enabled(self.client):
+        if is_query_store_enabled(self._db.client):
             query = MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE
             summary = "query history accessible via Query Store"
         else:
             query = MSSQL_TEST_GET_QUERIES
             summary = "query history accessible via plan-cache DMVs"
-        return run_sql(self.client, query, lambda _: summary)
+        return run_sql(self._db.client, query, lambda _: summary)
 
 
 class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
@@ -201,6 +202,6 @@ class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
 
     def checks(self) -> ChecksProvider:
         return MssqlChecks(
-            client=self.client,
+            db=self.borrow(),
             get_databases_statement=self._get_databases_statement(),
         )

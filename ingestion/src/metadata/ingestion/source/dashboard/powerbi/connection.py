@@ -44,6 +44,7 @@ from metadata.ingestion.source.dashboard.powerbi.client import (
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 
 if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
@@ -136,28 +137,20 @@ class PowerBIChecks:
     principal fails fast before any list endpoint is dialled. ``GetDashboards``
     then exercises list access.
 
-    The REST client is built lazily inside the first check, never at
-    construction: the underlying MSAL client performs authority/instance
-    discovery over the network in its constructor, so building it eagerly would
-    run before the runner's gate and surface as a raw workflow error instead of a
-    classified ``CheckAccess`` failure.
+    The client is borrowed from the connection that owns it, so the checks and the
+    ingestion share one authenticated session instead of acquiring a second token.
+    The MSAL client does authority/instance discovery over the network in its
+    constructor, and the borrow defers that to the first read - inside
+    ``CheckAccess``, the gate - so a bad service principal fails there.
     """
 
     errors = POWERBI_ERRORS
 
-    def __init__(self, connection: PowerBIConnectionConfig) -> None:
-        self._connection = connection
-        self._api_client: PowerBiApiClient | None = None
+    def __init__(self, powerbi: Borrowed[PowerBiClient]) -> None:
+        self._powerbi = powerbi
 
     def _client(self) -> PowerBiApiClient:
-        """Build (once) and return the REST client. Built directly rather than via
-        ``get_connection`` so the file client (unused by the checks) is never
-        constructed. The MSAL client it wraps does authority/instance discovery
-        over the network in its constructor, so this is only ever called from
-        inside a check - never at construction."""
-        if self._api_client is None:
-            self._api_client = PowerBiApiClient(self._connection)
-        return self._api_client
+        return self._powerbi.client.api_client
 
     @check(DashboardStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -195,4 +188,4 @@ class PowerBIConnection(BaseConnection[PowerBIConnectionConfig, PowerBiClient]):
         )
 
     def checks(self) -> ChecksProvider:
-        return PowerBIChecks(connection=self.service_connection)
+        return PowerBIChecks(powerbi=self.borrow())

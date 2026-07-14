@@ -27,6 +27,7 @@ from databricks.sdk.errors import (
 )
 from databricks.sdk.service.catalog import TableType
 from sqlalchemy import text
+from sqlalchemy.engine import Engine
 
 from metadata.core.connections.test_connection import (
     ErrorPack,
@@ -82,8 +83,7 @@ from metadata.ingestion.source.database.unitycatalog.queries import (
 if TYPE_CHECKING:
     from collections.abc import Callable
 
-    from sqlalchemy.engine import Engine
-
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
 
 suppress_user_agent_entry_deprecation_log()
@@ -246,41 +246,35 @@ def get_views(connection: WorkspaceClient, table_obj: DatabricksTable) -> None:
             break
 
 
-def get_tags(service_connection: UnityCatalogConnectionConfig, table_obj: DatabricksTable) -> None:
+def read_tag_tables(engine: Engine, table_obj: DatabricksTable) -> None:
     """
     Validate that the information_schema tag tables are readable for the resolved
     catalog and schema.
     """
-    engine = get_sqlalchemy_connection(service_connection)
-    try:
-        with engine.connect() as connection:
-            connection.execute(
-                text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
+    with engine.connect() as connection:
+        connection.execute(
+            text(UNITY_CATALOG_GET_CATALOGS_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
+        )
+        connection.execute(
+            text(UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;"))
+        )
+        connection.execute(
+            text(
+                UNITY_CATALOG_GET_ALL_TABLE_TAGS.format(
+                    database=table_obj.catalog_name, schema=table_obj.schema_name
+                ).replace(";", " limit 1;")
             )
-            connection.execute(
-                text(
-                    UNITY_CATALOG_GET_ALL_SCHEMA_TAGS.format(database=table_obj.catalog_name).replace(";", " limit 1;")
-                )
+        )
+        connection.execute(
+            text(
+                UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS.format(
+                    database=table_obj.catalog_name, schema=table_obj.schema_name
+                ).replace(";", " limit 1;")
             )
-            connection.execute(
-                text(
-                    UNITY_CATALOG_GET_ALL_TABLE_TAGS.format(
-                        database=table_obj.catalog_name, schema=table_obj.schema_name
-                    ).replace(";", " limit 1;")
-                )
-            )
-            connection.execute(
-                text(
-                    UNITY_CATALOG_GET_ALL_TABLE_COLUMNS_TAGS.format(
-                        database=table_obj.catalog_name, schema=table_obj.schema_name
-                    ).replace(";", " limit 1;")
-                )
-            )
-    finally:
-        engine.dispose()
+        )
 
 
-def test_lineage_tables(engine: Engine) -> None:
+def read_lineage_tables(engine: Engine) -> None:
     """
     Validate that the system.access lineage tables are readable.
     """
@@ -350,8 +344,14 @@ class UnityCatalogChecks:
 
     errors = UNITY_CATALOG_ERRORS
 
-    def __init__(self, client: WorkspaceClient, service_connection: UnityCatalogConnectionConfig) -> None:
-        self.client = client
+    def __init__(
+        self,
+        workspace: Borrowed[WorkspaceClient],
+        sql: Borrowed[Engine],
+        service_connection: UnityCatalogConnectionConfig,
+    ) -> None:
+        self._workspace = workspace
+        self._sql = sql
         self.service_connection = service_connection
         self.table_obj = DatabricksTable()
 
@@ -384,13 +384,13 @@ class UnityCatalogChecks:
 
     def _list_first_catalog(self) -> None:
         """Prove the workspace answers an authenticated call, without paging every catalog."""
-        next(iter(self.client.catalogs.list()), None)
+        next(iter(self._workspace.client.catalogs.list()), None)
 
     @check(DatabaseStep.GetDatabases)
     def check_databases(self) -> Evidence:
         configured = self.service_connection.catalog
         return self._probe(
-            lambda: get_catalogs(self.client, self.table_obj, configured),
+            lambda: get_catalogs(self._workspace.client, self.table_obj, configured),
             f"catalogs.get({configured!r})" if configured else "catalogs.list()",
             lambda: f"catalog '{self.table_obj.catalog_name}' resolved",
         )
@@ -399,7 +399,7 @@ class UnityCatalogChecks:
     def check_schemas(self) -> Evidence:
         configured = self.service_connection.databaseSchema
         return self._probe(
-            lambda: get_schemas(self.client, self.table_obj, configured),
+            lambda: get_schemas(self._workspace.client, self.table_obj, configured),
             f"schemas.get({configured!r})" if configured else "schemas.list()",
             lambda: f"schema '{self.table_obj.schema_name}' resolved",
         )
@@ -407,7 +407,7 @@ class UnityCatalogChecks:
     @check(DatabaseStep.GetTables)
     def check_tables(self) -> Evidence:
         return self._probe(
-            lambda: get_tables(self.client, self.table_obj),
+            lambda: get_tables(self._workspace.client, self.table_obj),
             "tables.list()",
             lambda: f"tables enumerated in '{self.table_obj.catalog_name}.{self.table_obj.schema_name}'",
         )
@@ -415,30 +415,40 @@ class UnityCatalogChecks:
     @check(DatabaseStep.GetViews)
     def check_views(self) -> Evidence:
         return self._probe(
-            lambda: get_views(self.client, self.table_obj),
+            lambda: get_views(self._workspace.client, self.table_obj),
             "tables.list(omit_columns=True)",
             lambda: f"views enumerated in '{self.table_obj.catalog_name}.{self.table_obj.schema_name}'",
         )
 
     @check(DatabaseStep.GetQueries)
     def check_queries(self) -> Evidence:
-        engine = get_sqlalchemy_connection(self.service_connection)
-        try:
-            return self._probe(
-                lambda: test_lineage_tables(engine),
-                "SELECT COUNT(*) FROM system.access.table_lineage; SELECT COUNT(*) FROM system.access.column_lineage",
-                lambda: "lineage tables accessible",
-            )
-        finally:
-            engine.dispose()
+        return self._probe(
+            lambda: read_lineage_tables(self._sql.client),
+            "SELECT COUNT(*) FROM system.access.table_lineage; SELECT COUNT(*) FROM system.access.column_lineage",
+            lambda: "lineage tables accessible",
+        )
 
     @check(DatabaseStep.GetTags)
     def check_tags(self) -> Evidence:
         return self._probe(
-            lambda: get_tags(self.service_connection, self.table_obj),
+            lambda: read_tag_tables(self._sql.client, self.table_obj),
             "SELECT * FROM information_schema.{catalog_tags,schema_tags,table_tags,column_tags} LIMIT 1",
             lambda: "tag tables accessible",
         )
+
+
+class UnityCatalogSqlConnection(BaseConnection[UnityCatalogConnectionConfig, Engine]):
+    """Owns the SQL-warehouse Engine.
+
+    Its own owner because its lifetime differs from the workspace client's: the
+    Engine needs an httpPath to a running warehouse, and only the lineage and tag
+    steps reach for it. A workspace without one never builds it.
+    """
+
+    def _get_client(self) -> Engine:
+        engine = get_sqlalchemy_connection(self.service_connection)
+        self._on_close(engine.dispose)
+        return engine
 
 
 class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, WorkspaceClient]):
@@ -447,12 +457,17 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
         # Honor the user-facing connectionTimeout as the per-step budget; a cold
         # serverless warehouse can exceed the framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
+        # A sub-owner, not a client: constructing it opens nothing. Its Engine is
+        # built on first read and disposed when this connection closes.
+        self.sql = UnityCatalogSqlConnection(service_connection)
+        self._on_close(self.sql.close)
 
     def _get_client(self) -> WorkspaceClient:
         return get_connection(self.service_connection)
 
     def checks(self) -> ChecksProvider:
         return UnityCatalogChecks(
-            client=self.client,
+            workspace=self.borrow(),
+            sql=self.sql.borrow(),
             service_connection=self.service_connection,
         )

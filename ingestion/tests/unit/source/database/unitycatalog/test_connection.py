@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from databricks.sdk.errors import PermissionDenied, ResourceDoesNotExist, Unauthenticated
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
@@ -62,8 +63,14 @@ def _named(name: str, **attributes) -> MagicMock:
     return mock
 
 
-def _checks(client: MagicMock, **config_overrides) -> UnityCatalogChecks:
-    return UnityCatalogChecks(client=client, service_connection=_config(**config_overrides))
+def _checks(client: MagicMock, sql: MagicMock | None = None, **config_overrides) -> UnityCatalogChecks:
+    """A provider over two borrowed clients: the workspace client and the
+    SQL-warehouse engine, each owned by its own connection."""
+    return UnityCatalogChecks(
+        workspace=Borrowed.of(client),
+        sql=Borrowed.of(sql if sql is not None else MagicMock()),
+        service_connection=_config(**config_overrides),
+    )
 
 
 def test_unitycatalog_connection_is_base_connection():
@@ -79,12 +86,59 @@ def test_get_client_delegates_to_the_workspace_client_builder():
 
 
 def test_checks_exposes_the_provider_without_touching_the_network():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get_connection:
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection") as mock_get_connection,
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
+    ):
         provider = UnityCatalogConnection(_config()).checks()
 
     assert isinstance(provider, UnityCatalogChecks)
-    assert provider.client is mock_get_connection.return_value
-    mock_get_connection.return_value.catalogs.list.assert_not_called()
+    # Neither client is built while the provider is assembled: both are borrowed.
+    mock_get_connection.assert_not_called()
+    mock_engine.assert_not_called()
+
+
+def test_checks_borrow_the_clients_their_connections_own():
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection") as mock_get_connection,
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
+    ):
+        connection = UnityCatalogConnection(_config())
+        provider = connection.checks()
+
+        assert provider._workspace.client is connection.client
+        assert provider._sql.client is connection.sql.client
+
+    # One workspace client, one engine - each built once, by its owner.
+    assert mock_get_connection.call_count == 1
+    assert mock_engine.call_count == 1
+
+
+def test_sql_engine_is_never_built_when_no_warehouse_step_runs():
+    # The lineage and tag steps need a SQL warehouse; a workspace configured
+    # without an httpPath must never pay for an engine it does not use.
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch(f"{CONNECTION_MODULE}.tcp_probe"),
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection") as mock_engine,
+    ):
+        provider = UnityCatalogConnection(_config()).checks()
+        provider.check_access()
+
+    mock_engine.assert_not_called()
+
+
+def test_closing_the_connection_disposes_the_sql_engine():
+    engine = MagicMock()
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", return_value=engine),
+    ):
+        connection = UnityCatalogConnection(_config())
+        _ = connection.sql.client
+        connection.close()
+
+    engine.dispose.assert_called_once_with()
 
 
 def test_connection_timeout_drives_the_per_step_budget():
@@ -234,37 +288,34 @@ class TestMetadataSteps:
 
 
 class TestWarehouseSteps:
-    def test_get_queries_builds_the_engine_inside_the_check_and_disposes_it(self):
+    def test_get_queries_reads_the_borrowed_engine(self):
         engine = MagicMock()
-        with (
-            patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", return_value=engine) as mock_engine,
-            patch(f"{CONNECTION_MODULE}.test_lineage_tables") as mock_lineage,
-        ):
-            checks = _checks(MagicMock())
-            mock_engine.assert_not_called()
+        with patch(f"{CONNECTION_MODULE}.read_lineage_tables") as mock_lineage:
+            checks = _checks(MagicMock(), sql=engine)
             evidence = checks.check_queries()
 
         mock_lineage.assert_called_once_with(engine)
-        engine.dispose.assert_called_once_with()
+        # The engine belongs to UnityCatalogSqlConnection: the check never disposes it.
+        engine.dispose.assert_not_called()
         assert evidence.summary == "lineage tables accessible"
 
-    def test_get_queries_disposes_the_engine_when_the_probe_fails(self):
+    def test_get_queries_wraps_a_probe_failure_as_check_error(self):
         engine = MagicMock()
         with (
-            patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", return_value=engine),
-            patch(f"{CONNECTION_MODULE}.test_lineage_tables", side_effect=PermissionDenied("PERMISSION_DENIED")),
+            patch(f"{CONNECTION_MODULE}.read_lineage_tables", side_effect=PermissionDenied("PERMISSION_DENIED")),
             pytest.raises(CheckError),
         ):
-            _checks(MagicMock()).check_queries()
+            _checks(MagicMock(), sql=engine).check_queries()
 
-        engine.dispose.assert_called_once_with()
+        engine.dispose.assert_not_called()
 
     def test_get_tags_probes_the_information_schema_tag_tables(self):
-        with patch(f"{CONNECTION_MODULE}.get_tags") as mock_tags:
-            checks = _checks(MagicMock())
+        engine = MagicMock()
+        with patch(f"{CONNECTION_MODULE}.read_tag_tables") as mock_tags:
+            checks = _checks(MagicMock(), sql=engine)
             evidence = checks.check_tags()
 
-        mock_tags.assert_called_once_with(checks.service_connection, checks.table_obj)
+        mock_tags.assert_called_once_with(engine, checks.table_obj)
         assert evidence.summary == "tag tables accessible"
 
 
