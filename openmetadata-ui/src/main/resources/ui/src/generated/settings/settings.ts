@@ -59,6 +59,7 @@ export enum SettingType {
     SlackEventPublishers = "slackEventPublishers",
     SlackInstaller = "slackInstaller",
     SlackState = "slackState",
+    StartupChecksums = "startupChecksums",
     TeamsAppConfiguration = "teamsAppConfiguration",
     WorkflowSettings = "workflowSettings",
 }
@@ -118,6 +119,8 @@ export enum SettingType {
  * by language and entity type. The stored mapping is the effective mapping used when an
  * index is (re)created; it already carries the field-safety guards (ignore_above,
  * ignore_malformed, mapping limits) baked in at seed time.
+ *
+ * Fingerprints of bundled resources successfully applied during server startup.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -656,6 +659,22 @@ export interface PipelineServiceClientConfiguration {
      * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
      */
     languages?: { [key: string]: any };
+    /**
+     * Timestamp when the fingerprints were last persisted.
+     */
+    appliedAt?: number;
+    /**
+     * Fingerprint of the search index templates.
+     */
+    searchTemplateFingerprint?: string;
+    /**
+     * Fingerprint of the bundled seed data and type schemas.
+     */
+    seedDataFingerprint?: string;
+    /**
+     * Server version that produced these fingerprints.
+     */
+    serverVersion?: string;
 }
 
 export interface AllowedFieldValueBoostFields {
