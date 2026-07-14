@@ -29,6 +29,14 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public interface EntityLifecycleEventHandler {
 
   /**
+   * Returns whether this handler needs the event. The dispatcher evaluates this before creating an
+   * asynchronous entity snapshot.
+   */
+  default boolean shouldProcess(String operation, ChangeDescription changeDescription) {
+    return true;
+  }
+
+  /**
    * Called after an entity is successfully created.
    */
   default void onEntityCreated(EntityInterface entity, SubjectContext subjectContext) {

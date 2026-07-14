@@ -62,6 +62,7 @@ import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.resources.Collection;
 import org.openmetadata.service.resources.EntityResource;
 import org.openmetadata.service.security.Authorizer;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.RestUtil;
 
@@ -104,6 +105,9 @@ public class RoleResource extends EntityResource<Role, RoleRepository> {
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
     List<Role> roles = repository.getEntitiesFromSeedData();
     for (Role role : roles) {
       role.setFullyQualifiedName(role.getName());

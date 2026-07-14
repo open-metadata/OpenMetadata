@@ -55,12 +55,34 @@ import org.apache.commons.io.IOUtils;
 public final class CommonUtil {
 
   private static final List<String> JAR_NAME_FILTER = List.of("openmetadata", "collate");
+  private static volatile List<ClasspathResource> classpathResourceIndex;
 
   private CommonUtil() {}
 
   /** Get resources from jar file or directories in the class path matching pattern */
   public static List<String> getResources(Pattern pattern) throws IOException {
-    ArrayList<String> resources = new ArrayList<>();
+    return getClasspathResourceIndex().stream()
+        .filter(resource -> pattern.matcher(resource.matchingPath()).matches())
+        .map(ClasspathResource::resourceName)
+        .toList();
+  }
+
+  private static List<ClasspathResource> getClasspathResourceIndex() throws IOException {
+    List<ClasspathResource> resources = classpathResourceIndex;
+    if (resources == null) {
+      synchronized (CommonUtil.class) {
+        resources = classpathResourceIndex;
+        if (resources == null) {
+          resources = buildClasspathResourceIndex();
+          classpathResourceIndex = resources;
+        }
+      }
+    }
+    return resources;
+  }
+
+  private static List<ClasspathResource> buildClasspathResourceIndex() throws IOException {
+    List<ClasspathResource> resources = new ArrayList<>();
     String classPath = System.getProperty("java.class.path", ".");
     Set<String> classPathElements =
         Arrays.stream(classPath.split(File.pathSeparator))
@@ -70,11 +92,9 @@ public final class CommonUtil {
     for (String element : classPathElements) {
       File file = new File(element);
       resources.addAll(
-          file.isDirectory()
-              ? getResourcesFromDirectory(file, pattern)
-              : getResourcesFromJarFile(file, pattern));
+          file.isDirectory() ? indexResourcesFromDirectory(file) : indexResourcesFromJarFile(file));
     }
-    return resources;
+    return List.copyOf(resources);
   }
 
   /** Check if any given object falls under OM, or Collate packages */
@@ -85,40 +105,41 @@ public final class CommonUtil {
                 Arrays.stream(obj.getClass().getPackageName().split("\\.")).toList()::contains);
   }
 
-  private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
+  private static Collection<ClasspathResource> indexResourcesFromJarFile(File file) {
     LOG.debug("Adding from file {}", file);
-    ArrayList<String> retval = new ArrayList<>();
+    List<ClasspathResource> resources = new ArrayList<>();
     try (ZipFile zf = new ZipFile(file)) {
       Enumeration<? extends ZipEntry> e = zf.entries();
       while (e.hasMoreElements()) {
         String fileName = e.nextElement().getName();
-        if (pattern.matcher(fileName).matches()) {
-          retval.add(fileName);
-          LOG.debug("Adding file from jar {}", fileName);
-        }
+        resources.add(new ClasspathResource(fileName, fileName));
       }
     } catch (Exception ignored) {
       // Ignored exception
     }
-    return retval;
+    return resources;
   }
 
   public static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
+      throws IOException {
+    return indexResourcesFromDirectory(file).stream()
+        .filter(resource -> pattern.matcher(resource.matchingPath()).matches())
+        .map(ClasspathResource::resourceName)
+        .collect(Collectors.toSet());
+  }
+
+  private static Collection<ClasspathResource> indexResourcesFromDirectory(File file)
       throws IOException {
     final Path root = Path.of(file.getPath());
     try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
       return paths
           .filter(Files::isRegularFile)
-          .filter(path -> pattern.matcher(path.toString()).matches())
-          .map(
-              path -> {
-                String relativePath = root.relativize(path).toString();
-                LOG.debug("Adding directory file {}", relativePath);
-                return relativePath;
-              })
-          .collect(Collectors.toSet());
+          .map(path -> new ClasspathResource(path.toString(), root.relativize(path).toString()))
+          .toList();
     }
   }
+
+  private record ClasspathResource(String matchingPath, String resourceName) {}
 
   /** Get date after {@code days} from the given date or before i{@code days} when it is negative */
   public static LocalDate getDateByOffset(LocalDate localDate, int days) {

@@ -27,6 +27,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIFrameworkControlRepository;
 import org.openmetadata.service.jdbi3.AIGovernanceFrameworkRepository;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 final class FrameworkSeedLoader {
@@ -45,6 +46,7 @@ final class FrameworkSeedLoader {
       try {
         seedBundle(seedFile, frameworkRepository, controlRepository);
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("Failed to load framework seed {}: {}", seedFile, e.getMessage(), e);
       }
     }

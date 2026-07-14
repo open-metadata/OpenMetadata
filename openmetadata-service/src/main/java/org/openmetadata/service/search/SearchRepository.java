@@ -80,9 +80,15 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
+import java.util.TreeMap;
 import java.util.TreeSet;
 import java.util.UUID;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -161,6 +167,7 @@ import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.GoogleEmbeddingClient;
 import org.openmetadata.service.search.vector.client.OpenAIEmbeddingClient;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
@@ -481,19 +488,14 @@ public class SearchRepository {
     }
   }
 
-  public void createMissingIndexes() {
+  public int createMissingIndexes() {
     LOG.info("Checking for missing search indexes...");
-    int created = 0;
-    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
-      try {
-        if (!indexExists(entry.getValue())) {
-          createIndex(entry.getValue());
-          created++;
-          LOG.info("Created missing index for entity type: {}", entry.getKey());
-        }
-      } catch (Exception e) {
-        LOG.warn("Failed to create missing index for {}: {}", entry.getKey(), e.getMessage());
-      }
+    int parallelism = SeedDataGate.getInstance().getSearchInitParallelism();
+    int created;
+    if (parallelism == 1) {
+      created = (int) entityIndexMap.entrySet().stream().filter(this::createMissingIndex).count();
+    } else {
+      created = createMissingIndexesInParallel(parallelism);
     }
     if (created > 0) {
       LOG.info(
@@ -503,30 +505,97 @@ public class SearchRepository {
     } else {
       LOG.info("All {} indexes already exist", entityIndexMap.size());
     }
+    return created;
+  }
+
+  private int createMissingIndexesInParallel(int parallelism) {
+    List<Callable<Boolean>> tasks =
+        entityIndexMap.entrySet().stream()
+            .<Callable<Boolean>>map(entry -> () -> createMissingIndex(entry))
+            .toList();
+    try (ExecutorService executor =
+        Executors.newFixedThreadPool(
+            parallelism, Thread.ofPlatform().name("search-init-", 0).factory())) {
+      int created = 0;
+      for (Future<Boolean> result : executor.invokeAll(tasks)) {
+        try {
+          if (result.get()) {
+            created++;
+          }
+        } catch (ExecutionException exception) {
+          LOG.warn("Search index initialization task failed", exception.getCause());
+        }
+      }
+      return created;
+    } catch (InterruptedException exception) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Search index initialization was interrupted", exception);
+      return 0;
+    }
+  }
+
+  private boolean createMissingIndex(Map.Entry<String, IndexMapping> entry) {
+    try {
+      if (!indexExists(entry.getValue())) {
+        createIndex(entry.getValue());
+        if (indexExists(entry.getValue())) {
+          LOG.info("Created missing index for entity type: {}", entry.getKey());
+          return true;
+        }
+        LOG.warn("Missing index for {} was not created", entry.getKey());
+      }
+    } catch (Exception exception) {
+      LOG.warn("Failed to create missing index for {}: {}", entry.getKey(), exception.getMessage());
+    }
+    return false;
   }
 
   public void createOrUpdateIndexTemplates() {
+    createOrUpdateIndexTemplates(1, true);
+  }
+
+  public void createOrUpdateIndexTemplates(int createdIndexCount) {
+    createOrUpdateIndexTemplates(createdIndexCount, false);
+  }
+
+  private void createOrUpdateIndexTemplates(int createdIndexCount, boolean force) {
+    Map<String, IndexTemplateDefinition> templates = buildIndexTemplateDefinitions();
+    String fingerprint =
+        SeedDataGate.fingerprint(
+            templates.entrySet().stream()
+                .collect(
+                    Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> entry.getValue().mappingContent(),
+                        (left, right) -> left,
+                        TreeMap::new)));
+    if (!force
+        && !SeedDataGate.getInstance()
+            .shouldUpdateSearchTemplates(fingerprint, createdIndexCount)) {
+      LOG.info("Index templates are unchanged; skipping {} template updates", templates.size());
+      SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
+      return;
+    }
+
     LOG.info("Creating/updating index templates for all entities...");
     int success = 0;
-    int failed = 0;
-    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+    int failed = entityIndexMap.size() - templates.size();
+    for (Map.Entry<String, IndexTemplateDefinition> entry : templates.entrySet()) {
       try {
-        IndexMapping indexMapping = entry.getValue();
-        String indexName = indexMapping.getIndexName(clusterAlias);
-        String templateName = "om_" + indexName;
-        String indexPattern = indexName + "*";
-        String mappingContent = readIndexMapping(indexMapping);
-        if (mappingContent != null) {
-          searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
-          success++;
-        } else {
-          failed++;
-          LOG.warn("No mapping content found for entity type: {}", entry.getKey());
-        }
-      } catch (Exception e) {
+        IndexTemplateDefinition template = entry.getValue();
+        searchClient.createOrUpdateIndexTemplate(
+            entry.getKey(), template.indexPattern(), template.mappingContent());
+        success++;
+      } catch (Exception exception) {
         failed++;
-        LOG.warn("Failed to create index template for {}: {}", entry.getKey(), e.getMessage());
+        LOG.warn(
+            "Failed to create index template for {}: {}", entry.getKey(), exception.getMessage());
       }
+    }
+    if (failed == 0) {
+      SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
+    } else {
+      SeedDataGate.getInstance().recordSearchTemplateFailure();
     }
     LOG.info(
         "Index templates creation completed. Success: {}, Failed: {}, Total: {}",
@@ -534,6 +603,29 @@ public class SearchRepository {
         failed,
         entityIndexMap.size());
   }
+
+  private Map<String, IndexTemplateDefinition> buildIndexTemplateDefinitions() {
+    Map<String, IndexTemplateDefinition> templates = new LinkedHashMap<>();
+    for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
+      try {
+        IndexMapping indexMapping = entry.getValue();
+        String indexName = indexMapping.getIndexName(clusterAlias);
+        String mappingContent = readIndexMapping(indexMapping);
+        if (mappingContent == null) {
+          LOG.warn("No mapping content found for entity type: {}", entry.getKey());
+          continue;
+        }
+        templates.put(
+            "om_" + indexName, new IndexTemplateDefinition(indexName + "*", mappingContent));
+      } catch (Exception exception) {
+        LOG.warn(
+            "Failed to read index template for {}: {}", entry.getKey(), exception.getMessage());
+      }
+    }
+    return templates;
+  }
+
+  private record IndexTemplateDefinition(String indexPattern, String mappingContent) {}
 
   public void createOrUpdateIndexTemplate(String entityType) throws IOException {
     IndexMapping indexMapping = entityIndexMap.get(entityType);

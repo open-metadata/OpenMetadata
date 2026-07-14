@@ -31,6 +31,7 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.type.ChangeDescription;
+import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
@@ -372,6 +373,57 @@ class EntityLifecycleEventDispatcherTest {
         asyncOne.lastCreatedEntity,
         asyncTwo.lastCreatedEntity,
         "Entity is serialized once; the snapshot is shared across async handlers");
+  }
+
+  @Test
+  void decliningAsyncHandlersDoNotCreateEntitySnapshot() {
+    AtomicInteger columnsReadCount = new AtomicInteger();
+    AtomicInteger shouldProcessCount = new AtomicInteger();
+    Table entity =
+        new Table() {
+          @Override
+          public List<Column> getColumns() {
+            columnsReadCount.incrementAndGet();
+            return super.getColumns();
+          }
+        };
+    entity.setId(UUID.randomUUID());
+    entity.setName("declined_table");
+    entity.setFullyQualifiedName("service.db.schema.declined_table");
+    entity.setColumns(new ArrayList<>());
+
+    TestHandler decliningHandler =
+        new TestHandler("DecliningHandler", 100, true, Set.of()) {
+          @Override
+          public boolean shouldProcess(String operation, ChangeDescription changeDescription) {
+            shouldProcessCount.incrementAndGet();
+            return false;
+          }
+        };
+    dispatcher.registerHandler(decliningHandler);
+
+    dispatcher.onEntityUpdated(entity, mockChangeDescription, mockSubjectContext);
+
+    assertEquals(1, shouldProcessCount.get());
+    assertEquals(0, columnsReadCount.get(), "Declined handlers must not serialize the entity");
+    assertFalse(decliningHandler.updatedCalled);
+  }
+
+  @Test
+  void failingHandlerFilterDoesNotEscapeTheCommittedWritePath() {
+    TestHandler handler =
+        new TestHandler("FailingFilter", 100, false, Set.of()) {
+          @Override
+          public boolean shouldProcess(String operation, ChangeDescription changeDescription) {
+            throw new IllegalStateException("filter failed");
+          }
+        };
+    dispatcher.registerHandler(handler);
+
+    assertDoesNotThrow(
+        () -> dispatcher.onEntityUpdated(mockEntity, mockChangeDescription, mockSubjectContext));
+    assertTrue(
+        handler.updatedCalled, "A failed filter must preserve the previous dispatch behavior");
   }
 
   @Test

@@ -90,6 +90,7 @@ import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.OpenLineageSettings;
 import org.openmetadata.schema.configuration.SearchIndexMappings;
+import org.openmetadata.schema.configuration.StartupChecksums;
 import org.openmetadata.schema.configuration.WorkflowSettings;
 import org.openmetadata.schema.dataInsight.DataInsightChart;
 import org.openmetadata.schema.dataInsight.custom.DataInsightCustomChart;
@@ -2377,13 +2378,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:fromId OR fromId = :fromId AND relation = :relation "
+                + "WHERE (pipelineId = :fromId OR fromId = :fromId) AND relation = :relation "
                 + "ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' =:fromId OR fromId = :fromId AND relation = :relation "
+                + "WHERE (json->'pipeline'->>'id' = :fromId OR fromId = :fromId) AND relation = :relation "
                 + "ORDER BY toId",
         connectionType = POSTGRES)
     @RegisterRowMapper(ToRelationshipMapper.class)
@@ -2615,13 +2616,13 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) = :toId OR toId = :toId AND relation = :relation "
+                + "WHERE (pipelineId = :toId OR toId = :toId) AND relation = :relation "
                 + "ORDER BY fromId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
         value =
             "SELECT fromId, fromEntity, json FROM entity_relationship "
-                + "WHERE  json->'pipeline'->>'id' = :toId OR toId = :toId AND relation = :relation "
+                + "WHERE (json->'pipeline'->>'id' = :toId OR toId = :toId) AND relation = :relation "
                 + "ORDER BY fromId",
         connectionType = POSTGRES)
     @RegisterRowMapper(FromRelationshipMapper.class)
@@ -2650,7 +2651,7 @@ public interface CollectionDAO {
     @ConnectionAwareSqlQuery(
         value =
             "SELECT toId, toEntity, fromId, fromEntity, relation, json, jsonSchema FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
+                + "WHERE (pipelineId = :toId OR toId = :toId) AND relation = :relation "
                 + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
         connectionType = MYSQL)
     @ConnectionAwareSqlQuery(
@@ -2888,8 +2889,8 @@ public interface CollectionDAO {
     @ConnectionAwareSqlUpdate(
         value =
             "DELETE FROM entity_relationship "
-                + "WHERE (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id')) =:toId OR toId = :toId) AND relation = :relation "
-                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source ORDER BY toId",
+                + "WHERE (pipelineId = :toId OR toId = :toId) AND relation = :relation "
+                + "AND JSON_UNQUOTE(JSON_EXTRACT(json, '$.source')) = :source",
         connectionType = MYSQL)
     @ConnectionAwareSqlUpdate(
         value =
@@ -3665,47 +3666,6 @@ public interface CollectionDAO {
                 original = "toType",
                 parts = {":toType", ".%"})
             String toType);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM <tableName> te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(
-        @Define("tableName") String tableName, @Bind("entityLink") String entityLink);
-
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.startTime') AS UNSIGNED) <= UNIX_TIMESTAMP()*1000 "
-                + "  AND CAST(JSON_EXTRACT(te.json, '$.announcement.endTime') AS UNSIGNED) >= UNIX_TIMESTAMP()*1000",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlQuery(
-        value =
-            "SELECT COUNT(te.id) AS count "
-                + "FROM thread_entity te "
-                + "WHERE te.type = 'Announcement' "
-                + "  AND te.entityLink = :entityLink "
-                + "  AND (te.json->'announcement'->>'startTime')::numeric <= EXTRACT(EPOCH FROM NOW()) * 1000 "
-                + "  AND (te.json->'announcement'->>'endTime')::numeric >= EXTRACT(EPOCH FROM NOW()) * 1000",
-        connectionType = POSTGRES)
-    int countActiveAnnouncement(@Bind("entityLink") String entityLink);
 
     @ConnectionAwareSqlQuery(
         value =
@@ -9697,7 +9657,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <mysqlServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9716,7 +9676,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <postgresServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR pe.json->>'serviceType' = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9728,8 +9688,7 @@ public interface CollectionDAO {
     @RegisterRowMapper(PipelineSummaryRowMapper.class)
     List<PipelineSummaryRow> listPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
-        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Bind("serviceType") String serviceType,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
@@ -9745,7 +9704,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = 0 "
                 + "  <serviceFilter> "
-                + "  <mysqlServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR JSON_UNQUOTE(JSON_EXTRACT(pe.json, '$.serviceType')) = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9758,7 +9717,7 @@ public interface CollectionDAO {
                 + "FROM pipeline_entity pe "
                 + "WHERE pe.deleted = false "
                 + "  <serviceFilter> "
-                + "  <postgresServiceTypeFilter> "
+                + "  AND (:serviceType IS NULL OR pe.json->>'serviceType' = :serviceType) "
                 + "  <domainFilter> "
                 + "  <ownerFilter> "
                 + "  <tierFilter> "
@@ -9767,8 +9726,7 @@ public interface CollectionDAO {
         connectionType = POSTGRES)
     int countPipelineSummariesFiltered(
         @Define("serviceFilter") String serviceFilter,
-        @Define("mysqlServiceTypeFilter") String mysqlServiceTypeFilter,
-        @Define("postgresServiceTypeFilter") String postgresServiceTypeFilter,
+        @Bind("serviceType") String serviceType,
         @Define("domainFilter") String domainFilter,
         @Define("ownerFilter") String ownerFilter,
         @Define("tierFilter") String tierFilter,
@@ -10870,6 +10828,7 @@ public interface CollectionDAO {
                 json, GlossaryTermRelationSettings.class);
             case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
+            case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
       settings.setConfigValue(value);

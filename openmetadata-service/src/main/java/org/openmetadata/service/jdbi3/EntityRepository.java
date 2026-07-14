@@ -90,9 +90,9 @@ import static org.openmetadata.service.util.jdbi.JdbiUtils.getAfterOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getBeforeOffset;
 import static org.openmetadata.service.util.jdbi.JdbiUtils.getOffset;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.fasterxml.jackson.databind.util.TokenBuffer;
 import com.google.common.annotations.VisibleForTesting;
 import com.google.common.cache.Cache;
 import com.google.common.cache.CacheBuilder;
@@ -266,6 +266,7 @@ import org.openmetadata.service.search.SearchSortFilter;
 import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
+import org.openmetadata.service.seeding.SeedDataGate;
 import org.openmetadata.service.util.EntityETag;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
@@ -344,6 +345,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public record EntityHistoryWithOffset(EntityHistory entityHistory, int nextOffset) {}
 
   private record InheritanceCacheKey(String entityType, UUID entityId, String fieldsKey) {}
+
+  private record StoredEntityJson(UUID entityId, String json) {}
 
   private static final int STRING_OBJECT_OVERHEAD_BYTES = 40;
 
@@ -596,6 +599,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * Set by {@link #preloadParentsForBulk(List)} and cleared after use.
    */
   private final ThreadLocal<Map<UUID, EntityInterface>> parentCacheForPrepare = new ThreadLocal<>();
+
+  private final ThreadLocal<StoredEntityJson> storedEntityJson = new ThreadLocal<>();
 
   private static final ThreadLocal<Map<InheritanceCacheKey, EntityInterface>>
       inheritanceParentCache = ThreadLocal.withInitial(HashMap::new);
@@ -1167,6 +1172,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
   public void clearParentCache() {
     parentCacheForPrepare.remove();
     inheritanceParentCache.remove();
+    storedEntityJson.remove();
   }
 
   public static void clearInheritanceParentCache() {
@@ -1399,12 +1405,20 @@ public abstract class EntityRepository<T extends EntityInterface> {
    * <p>This method needs to be explicitly called, typically from initialize method. See {@link
    * RoleResource#initialize(OpenMetadataApplicationConfig)}
    */
+  public final void initSeedDataFromResourcesOnStartup() throws IOException {
+    if (!SeedDataGate.getInstance().shouldSeed()) {
+      return;
+    }
+    initSeedDataFromResources();
+  }
+
   public final void initSeedDataFromResources() throws IOException {
     List<T> entities = getEntitiesFromSeedData();
     for (T entity : entities) {
       try {
         initializeEntity(entity);
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn(
             "Failed to initialize {} '{}': {}",
             entityType,
@@ -1436,6 +1450,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
             json = json.replace("<separator>", Entity.SEPARATOR);
             entities.add(JsonUtils.readValue(json, clazz));
           } catch (Exception e) {
+            SeedDataGate.getInstance().recordSeedFailure();
             LOG.warn("Failed to initialize the {} from file {}", entityType, jsonDataFile, e);
           }
         });
@@ -3965,27 +3980,23 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected void writeThroughCache(T entity, boolean update) {
-    var cachedEntityDao = CacheBundle.getCachedEntityDao();
-    if (cachedEntityDao == null
-        || !isValidEntityForCache(entity)
-        || !isCacheableEntityType(entityType)) {
-      return;
-    }
-    // Populate synchronously on the write path. A previous async version raced on rapid updates:
-    // two CompletableFutures on the shared executor could complete out of order, leaving the
-    // cache pinned to the older value while the DB held the newer one. Running on the request
-    // thread guarantees the final cache write observes the final DB commit order.
-    //
-    // Use the same storage-shaped JSON the DB column stores — i.e. relationship fields (owners,
-    // tags, followers, domains, etc.) stripped. If we serialized the in-memory POJO directly,
-    // downstream reads that bypass setFieldsInternal (e.g. inheritance traversal loading the
-    // parent via find()) would see embedded owners that don't reflect the current
-    // entity_relationship state and return stale inherited data.
+    StoredEntityJson storedJson = storedEntityJson.get();
     try {
-      String json = serializeForStorage(entity);
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao == null
+          || !isValidEntityForCache(entity)
+          || !isCacheableEntityType(entityType)) {
+        return;
+      }
+      String json =
+          storedJson != null && entity.getId().equals(storedJson.entityId())
+              ? storedJson.json()
+              : serializeForStorage(entity);
       writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
     } catch (Exception e) {
       LOG.debug("Write-through cache failed: {} {}", entityType, entity.getId(), e);
+    } finally {
+      storedEntityJson.remove();
     }
   }
 
@@ -4989,17 +5000,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   protected T createNewEntity(T entity) {
-    createNewEntityFlush(entity);
-    try (var ignored = phase("createPostCreate")) {
-      postCreate(entity);
-    }
+    try {
+      createNewEntityFlush(entity);
+      try (var ignored = phase("createPostCreate")) {
+        postCreate(entity);
+      }
 
-    // Write-through cache: store entity in cache after creation
-    try (var ignored = phase("createWriteThroughCache")) {
-      writeThroughCache(entity, false);
-    }
+      // Write-through cache: store entity in cache after creation
+      try (var ignored = phase("createWriteThroughCache")) {
+        writeThroughCache(entity, false);
+      }
 
-    return entity;
+      return entity;
+    } finally {
+      storedEntityJson.remove();
+    }
   }
 
   private void createNewEntityFlush(T entity) {
@@ -5040,6 +5055,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       committed = true;
     } finally {
       scope.finish(committed);
+      if (!committed) {
+        storedEntityJson.remove();
+      }
     }
   }
 
@@ -5337,6 +5355,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
+    storedEntityJson.set(new StoredEntityJson(entity.getId(), json));
   }
 
   protected void storeMany(List<T> entities) {
@@ -8554,21 +8573,27 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * <p>The flush body destructively mutates the updater baseline ({@code original/updated/
      * previous} and the change-tracking flags) via {@code revert()}/{@code updateInternal()}. A
      * deadlock retry replays the body, so we snapshot the baseline before the first attempt and
-     * restore it at the start of every attempt — otherwise a replay would diff from a half-mutated
-     * baseline and double-bump the version. The restore runs as the per-attempt prologue inside the
-     * transaction so it re-applies on each replay.
+     * restore it before each replay — otherwise a replay would diff from a half-mutated baseline and
+     * double-bump the version. Non-entity flags are reset on the first attempt as well, while the
+     * unchanged caller POJOs avoid a redundant restore.
      */
     private void flushUpdate(boolean useOptimisticStore, boolean importMode) {
       UpdaterSnapshot snapshot = snapshotUpdaterState();
-      flushInOneTransaction(
-          () -> {
-            restoreUpdaterState(snapshot);
-            flushUpdateBody(useOptimisticStore, importMode);
-          });
-      if (entityStored) {
-        try (var ignored = phase("entityUpdateCacheWriteThrough")) {
-          invalidateCachesAfterStore();
+      boolean[] firstAttempt = {true};
+      try {
+        flushInOneTransaction(
+            () -> {
+              restoreUpdaterState(snapshot, !firstAttempt[0]);
+              firstAttempt[0] = false;
+              flushUpdateBody(useOptimisticStore, importMode);
+            });
+        if (entityStored) {
+          try (var ignored = phase("entityUpdateCacheWriteThrough")) {
+            invalidateCachesAfterStore();
+          }
         }
+      } finally {
+        storedEntityJson.remove();
       }
     }
 
@@ -8576,8 +8601,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       UpdaterSnapshot snapshot = new UpdaterSnapshot();
       snapshot.canonicalOriginal = original;
       snapshot.canonicalUpdated = updated;
-      snapshot.originalJson = JsonUtils.pojoToJson(original);
-      snapshot.updatedJson = JsonUtils.pojoToJson(updated);
+      snapshot.originalTokens = JsonUtils.toTokenBuffer(original);
+      snapshot.updatedTokens = JsonUtils.toTokenBuffer(updated);
       snapshot.previous = deepCopyEntity(previous);
       snapshot.changeDescription = deepCopyChange(changeDescription);
       snapshot.incrementalChangeDescription = deepCopyChange(incrementalChangeDescription);
@@ -8593,14 +8618,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
      * Reset the updater baseline at the start of every deadlock-retry attempt. The {@code original}
      * and {@code updated} field references are restored to the SAME caller-supplied objects (callers
      * of {@code update()}/{@code patch()} read the mutated {@code updated} back through their own
-     * reference, so identity must be preserved) and their contents are overwritten in place from the
-     * pre-first-attempt JSON. {@code previous} is updater-internal, so a fresh deep copy is fine.
+     * reference, so identity must be preserved) and, on retry, their contents are overwritten in
+     * place from the pre-first-attempt token streams. {@code previous} is updater-internal, so a
+     * fresh deep copy is fine.
      */
-    private void restoreUpdaterState(UpdaterSnapshot snapshot) {
+    private void restoreUpdaterState(UpdaterSnapshot snapshot, boolean restoreEntityContents) {
       original = snapshot.canonicalOriginal;
       updated = snapshot.canonicalUpdated;
-      overwriteInPlace(original, snapshot.originalJson);
-      overwriteInPlace(updated, snapshot.updatedJson);
+      if (restoreEntityContents) {
+        JsonUtils.overwriteFromTokenBuffer(original, snapshot.originalTokens);
+        JsonUtils.overwriteFromTokenBuffer(updated, snapshot.updatedTokens);
+      }
       previous = deepCopyEntity(snapshot.previous);
       changeDescription = deepCopyChange(snapshot.changeDescription);
       incrementalChangeDescription = deepCopyChange(snapshot.incrementalChangeDescription);
@@ -8628,14 +8656,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // No subclass guards on the base updater.
     }
 
-    private void overwriteInPlace(T target, String json) {
-      try {
-        JsonUtils.getObjectMapper().readerForUpdating(target).readValue(json);
-      } catch (JsonProcessingException e) {
-        throw new IllegalStateException("Failed to restore updater baseline on retry", e);
-      }
-    }
-
     private T deepCopyEntity(T entity) {
       return entity == null ? null : JsonUtils.deepCopy(entity, entityClass);
     }
@@ -8647,15 +8667,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     /**
      * Baseline of the destructively-mutated updater fields, captured before the first deadlock-retry
      * attempt and re-applied at the start of every attempt (see {@link #flushUpdate}). Holds the
-     * canonical caller object references plus their pre-first-attempt JSON so a replay restores both
-     * identity and contents, and deep copies of the internal state so an in-place mutation during
-     * one attempt cannot corrupt the snapshot used by the next.
+     * canonical caller object references plus their pre-first-attempt token streams so a replay
+     * restores both identity and contents, and deep copies of the internal state so an in-place
+     * mutation during one attempt cannot corrupt the snapshot used by the next.
      */
     private final class UpdaterSnapshot {
       private T canonicalOriginal;
       private T canonicalUpdated;
-      private String originalJson;
-      private String updatedJson;
+      private TokenBuffer originalTokens;
+      private TokenBuffer updatedTokens;
       private T previous;
       private ChangeDescription changeDescription;
       private ChangeDescription incrementalChangeDescription;

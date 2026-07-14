@@ -15,22 +15,22 @@ package org.openmetadata.service.resources;
 
 import com.google.common.annotations.VisibleForTesting;
 import io.dropwizard.core.setup.Environment;
-import io.github.classgraph.ClassGraph;
-import io.github.classgraph.ClassInfo;
-import io.github.classgraph.ClassInfoList;
-import io.github.classgraph.ScanResult;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.ws.rs.Path;
 import java.lang.annotation.Annotation;
+import java.lang.reflect.Constructor;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
+import java.lang.reflect.Modifier;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.Comparator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.TimeUnit;
 import lombok.Getter;
 import lombok.Setter;
 import org.jdbi.v3.core.Jdbi;
@@ -41,6 +41,8 @@ import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.limits.Limits;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.AuthenticatorHandler;
+import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.ClasspathScanIndex;
 import org.openmetadata.service.util.ReflectionUtil;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -51,7 +53,17 @@ import org.slf4j.LoggerFactory;
  * catalog - .../api/v1/collection-name provides sub collections or resources in that collection
  */
 public final class CollectionRegistry {
-  public static final List<String> PACKAGES = List.of("org.openmetadata", "io.collate");
+  private static final List<List<Class<?>>> RESOURCE_CONSTRUCTOR_SIGNATURES =
+      List.of(
+          List.of(OpenMetadataApplicationConfig.class, Limits.class),
+          List.of(Authorizer.class, Limits.class),
+          List.of(Authorizer.class),
+          List.of(Authorizer.class, Limits.class, AuthenticatorHandler.class),
+          List.of(Jdbi.class, Authorizer.class),
+          List.of(Limits.class),
+          List.<Class<?>>of());
+  private static final long SLOW_RESOURCE_REGISTRATION_THRESHOLD_NANOS =
+      TimeUnit.MILLISECONDS.toNanos(100);
   private static CollectionRegistry instance = null;
   private static volatile boolean initialized = false;
   private static final Logger LOG = LoggerFactory.getLogger(CollectionRegistry.class);
@@ -112,30 +124,27 @@ public final class CollectionRegistry {
    * those conditions and makes it available for listing them over API to author expressions in Rules.
    */
   private void loadConditionFunctions() {
-    try (ScanResult scanResult =
-        new ClassGraph().enableAllInfo().acceptPackages(PACKAGES.toArray(new String[0])).scan()) {
-      for (ClassInfo classInfo : scanResult.getClassesWithMethodAnnotation(Function.class)) {
-        List<Method> methods =
-            ReflectionUtil.getMethodsAnnotatedWith(classInfo.loadClass(), Function.class);
-        for (Method method : methods) {
-          Function annotation = method.getAnnotation(Function.class);
-          List<org.openmetadata.schema.type.Function> functionList =
-              functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
+    for (Class<?> functionClass :
+        ClasspathScanIndex.getInstance().getClassesWithMethodAnnotation(Function.class)) {
+      List<Method> methods = ReflectionUtil.getMethodsAnnotatedWith(functionClass, Function.class);
+      for (Method method : methods) {
+        Function annotation = method.getAnnotation(Function.class);
+        List<org.openmetadata.schema.type.Function> functionList =
+            functionMap.computeIfAbsent(method.getDeclaringClass(), k -> new ArrayList<>());
 
-          org.openmetadata.schema.type.Function function =
-              new org.openmetadata.schema.type.Function()
-                  .withName(annotation.name())
-                  .withInput(annotation.input())
-                  .withDescription(annotation.description())
-                  .withExamples(List.of(annotation.examples()))
-                  .withParameterInputType(annotation.paramInputType());
-          functionList.add(function);
-          functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
-          LOG.info(
-              "Initialized for {} function {}\n",
-              method.getDeclaringClass().getSimpleName(),
-              function);
-        }
+        org.openmetadata.schema.type.Function function =
+            new org.openmetadata.schema.type.Function()
+                .withName(annotation.name())
+                .withInput(annotation.input())
+                .withDescription(annotation.description())
+                .withExamples(List.of(annotation.examples()))
+                .withParameterInputType(annotation.paramInputType());
+        functionList.add(function);
+        functionList.sort(Comparator.comparing(org.openmetadata.schema.type.Function::getName));
+        LOG.info(
+            "Initialized for {} function {}\n",
+            method.getDeclaringClass().getSimpleName(),
+            function);
       }
     }
   }
@@ -157,6 +166,7 @@ public final class CollectionRegistry {
     for (Map.Entry<String, CollectionDetails> e : collectionMap.entrySet()) {
       CollectionDetails details = e.getValue();
       String resourceClass = details.resourceClass;
+      long startNanos = System.nanoTime();
       try {
         Object resource =
             createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
@@ -164,7 +174,16 @@ public final class CollectionRegistry {
         environment.jersey().register(resource);
         LOG.info("Registering {} with order {}", resourceClass, details.order);
       } catch (Exception ex) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("Failed to create resource for class {} {}", resourceClass, ex.getMessage());
+      } finally {
+        long durationNanos = System.nanoTime() - startNanos;
+        if (durationNanos > SLOW_RESOURCE_REGISTRATION_THRESHOLD_NANOS) {
+          LOG.info(
+              "Resource {} registration took {} ms",
+              resourceClass,
+              TimeUnit.NANOSECONDS.toMillis(durationNanos));
+        }
       }
     }
 
@@ -191,6 +210,7 @@ public final class CollectionRegistry {
         try {
           createResource(jdbi, resourceClass, config, authorizer, authenticatorHandler, limits);
         } catch (Exception ex) {
+          SeedDataGate.getInstance().recordSeedFailure();
           LOG.warn("Failed to create resource for class {} {}", resourceClass, ex);
         }
       }
@@ -223,20 +243,28 @@ public final class CollectionRegistry {
 
   /** Compile a list of REST collections based on Resource classes marked with {@code Collection} annotation */
   private static List<CollectionDetails> getCollections() {
-    try (ScanResult scanResult =
-        new ClassGraph()
-            .enableAnnotationInfo()
-            .acceptPackages(PACKAGES.toArray(new String[0]))
-            .scan()) {
-      ClassInfoList classList = scanResult.getClassesWithAnnotation(Collection.class);
-      List<Class<?>> collectionClasses = classList.loadClasses();
-      List<CollectionDetails> collections = new ArrayList<>();
-      for (Class<?> cl : collectionClasses) {
-        CollectionDetails cd = getCollection(cl);
-        collections.add(cd);
-      }
-      return collections;
+    List<Class<?>> collectionClasses =
+        ClasspathScanIndex.getInstance().getClassesWithAnnotation(Collection.class);
+    List<CollectionDetails> collections = new ArrayList<>();
+    for (Class<?> cl : collectionClasses) {
+      CollectionDetails cd = getCollection(cl);
+      collections.add(cd);
     }
+    return collections;
+  }
+
+  @VisibleForTesting
+  static Constructor<?> resolveConstructor(Class<?> resourceClass) throws NoSuchMethodException {
+    Constructor<?>[] constructors = resourceClass.getDeclaredConstructors();
+    for (List<Class<?>> signature : RESOURCE_CONSTRUCTOR_SIGNATURES) {
+      for (Constructor<?> constructor : constructors) {
+        if (signature.equals(Arrays.asList(constructor.getParameterTypes()))
+            && (!signature.isEmpty() || Modifier.isPublic(constructor.getModifiers()))) {
+          return constructor;
+        }
+      }
+    }
+    throw new NoSuchMethodException(resourceClass.getName() + ".<init>()");
   }
 
   /** Create a resource class based on dependencies declared in @Collection annotation */
@@ -255,42 +283,35 @@ public final class CollectionRegistry {
 
     Object resource = null;
     Class<?> clz = Class.forName(resourceClass);
+    Constructor<?> constructor = resolveConstructor(clz);
 
-    // Create the resource identified by resourceClass
     try {
-      resource =
-          clz.getDeclaredConstructor(OpenMetadataApplicationConfig.class, Limits.class)
-              .newInstance(config, limits);
-    } catch (NoSuchMethodException e) {
-      try {
-        resource =
-            clz.getDeclaredConstructor(Authorizer.class, Limits.class)
-                .newInstance(authorizer, limits);
-      } catch (NoSuchMethodException ex) {
-        try {
-          resource = clz.getDeclaredConstructor(Authorizer.class).newInstance(authorizer);
-        } catch (NoSuchMethodException exe) {
-          try {
-            resource =
-                clz.getDeclaredConstructor(
-                        Authorizer.class, Limits.class, AuthenticatorHandler.class)
-                    .newInstance(authorizer, limits, authHandler);
-          } catch (NoSuchMethodException exec) {
-            try {
-              resource =
-                  clz.getDeclaredConstructor(Jdbi.class, Authorizer.class)
-                      .newInstance(jdbi, authorizer);
-            } catch (NoSuchMethodException except) {
-              try {
-                resource = clz.getDeclaredConstructor(Limits.class).newInstance(limits);
-              } catch (NoSuchMethodException exception) {
-                resource = Class.forName(resourceClass).getConstructor().newInstance();
-              }
-            }
-          }
-        }
-      }
+      Object[] constructorArguments =
+          Arrays.stream(constructor.getParameterTypes())
+              .map(
+                  parameterType -> {
+                    if (parameterType == OpenMetadataApplicationConfig.class) {
+                      return config;
+                    }
+                    if (parameterType == Limits.class) {
+                      return limits;
+                    }
+                    if (parameterType == Authorizer.class) {
+                      return authorizer;
+                    }
+                    if (parameterType == AuthenticatorHandler.class) {
+                      return authHandler;
+                    }
+                    if (parameterType == Jdbi.class) {
+                      return jdbi;
+                    }
+                    throw new IllegalArgumentException(
+                        "Unsupported resource constructor parameter " + parameterType.getName());
+                  })
+              .toArray();
+      resource = constructor.newInstance(constructorArguments);
     } catch (Exception ex) {
+      SeedDataGate.getInstance().recordSeedFailure();
       LOG.warn("Exception encountered while creating resource for {}", clz, ex);
     }
 
@@ -302,6 +323,7 @@ public final class CollectionRegistry {
     } catch (NoSuchMethodException ignored) {
       // Method does not exist and initialize is not called
     } catch (Exception ex) {
+      SeedDataGate.getInstance().recordSeedFailure();
       LOG.warn("Encountered exception while initializing resource for {}", clz, ex);
     }
 

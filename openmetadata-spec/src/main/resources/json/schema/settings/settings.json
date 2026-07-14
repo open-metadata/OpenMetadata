@@ -43,7 +43,8 @@
         "mcpConfiguration",
         "glossaryTermRelationSettings",
         "aiSettings",
-        "searchIndexMappings"
+        "searchIndexMappings",
+        "startupChecksums"
       ]
     }
   },
@@ -125,6 +126,9 @@
         },
         {
           "$ref": "../configuration/searchIndexMappings.json"
+        },
+        {
+          "$ref": "../configuration/startupChecksums.json"
         }
       ]
     }

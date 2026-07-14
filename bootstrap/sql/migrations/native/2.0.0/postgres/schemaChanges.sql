@@ -469,3 +469,7 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
+
+CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_id
+    ON entity_relationship ((json->'pipeline'->>'id'))
+    WHERE (json->'pipeline'->>'id') IS NOT NULL;

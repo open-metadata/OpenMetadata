@@ -21,6 +21,7 @@ import org.openmetadata.schema.entity.ai.AIApplication;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIApplicationRepository;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 final class AIGovernanceDemoSeedLoader {
@@ -38,6 +39,7 @@ final class AIGovernanceDemoSeedLoader {
       try {
         seedApplication(seedFile);
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("AI Governance demo app seed {} failed: {}", seedFile, e.getMessage(), e);
       }
     }

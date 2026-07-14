@@ -30,6 +30,7 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.LineageRepository;
+import org.openmetadata.service.seeding.SeedDataGate;
 
 @Slf4j
 final class AIGovernanceLineageSeedLoader {
@@ -50,6 +51,7 @@ final class AIGovernanceLineageSeedLoader {
       try {
         seedLineage(seedFile);
       } catch (Exception e) {
+        SeedDataGate.getInstance().recordSeedFailure();
         LOG.warn("AI Governance lineage seed {} failed: {}", seedFile, e.getMessage(), e);
       }
     }

@@ -31,6 +31,7 @@ import com.fasterxml.jackson.databind.node.JsonNodeFactory;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.fasterxml.jackson.databind.type.TypeFactory;
 import com.fasterxml.jackson.databind.util.TokenBuffer;
+import com.fasterxml.jackson.datatype.jsonp.JSONPModule;
 import com.fasterxml.jackson.datatype.jsr353.JSR353Module;
 import com.fasterxml.jackson.module.blackbird.BlackbirdModule;
 import com.github.fge.jsonpatch.JsonPatchException;
@@ -46,20 +47,14 @@ import jakarta.validation.ConstraintViolationException;
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
-import java.io.File;
 import java.io.IOException;
 import java.io.StringReader;
-import java.nio.file.Files;
-import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Collection;
 import java.util.Collections;
 import java.util.Date;
-import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Iterator;
@@ -71,16 +66,15 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.TimeZone;
 import java.util.TreeMap;
+import java.util.function.Consumer;
 import java.util.regex.Pattern;
 import java.util.stream.Collectors;
-import java.util.stream.Stream;
-import java.util.zip.ZipEntry;
-import java.util.zip.ZipFile;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.annotations.ExposedField;
 import org.openmetadata.annotations.IgnoreMaskedFieldAnnotationIntrospector;
 import org.openmetadata.annotations.MaskedField;
 import org.openmetadata.annotations.OnlyExposedFieldAnnotationIntrospector;
+import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.Type;
 import org.openmetadata.schema.entity.type.Category;
@@ -93,6 +87,7 @@ public final class JsonUtils {
   public static final String ENTITY_TYPE_ANNOTATION = "@om-entity-type";
   public static final String JSON_FILE_EXTENSION = ".json";
   private static final ObjectMapper OBJECT_MAPPER;
+  private static final ObjectMapper JSONP_MAPPER;
   private static final ObjectMapper OBJECT_MAPPER_LENIENT;
   private static final ObjectMapper OBJECT_MAPPER_IGNORE_NULL;
   private static final ObjectMapper EXPOSED_OBJECT_MAPPER;
@@ -134,6 +129,8 @@ public final class JsonUtils {
     // java.util.Date fields keeps deserialization tolerant while serialization stays on the
     // microsecond format above.
     OBJECT_MAPPER.registerModule(lenientDateModule());
+
+    JSONP_MAPPER = OBJECT_MAPPER.copy().registerModule(new JSONPModule());
 
     // Lenient ObjectMapper to ignore unknown properties
     OBJECT_MAPPER_LENIENT = OBJECT_MAPPER.copy();
@@ -185,12 +182,11 @@ public final class JsonUtils {
 
   public static JsonStructure getJsonStructure(Object o) {
     try {
-      // Convert object to JSON string using Jackson
-      String jsonString = OBJECT_MAPPER.writeValueAsString(o);
-      // Parse the JSON string using Jakarta JSON API to get a JsonStructure
-      try (JsonReader reader = Json.createReader(new java.io.StringReader(jsonString))) {
-        return reader.read();
+      JsonValue value = JSONP_MAPPER.convertValue(o, JsonValue.class);
+      if (value instanceof JsonStructure structure) {
+        return structure;
       }
+      throw new IllegalArgumentException("Expected a JSON object or array");
     } catch (Exception e) {
       throw new RuntimeException("Failed to convert object to JsonStructure", e);
     }
@@ -432,11 +428,8 @@ public final class JsonUtils {
 
   public static <T> T applyPatch(T original, JsonPatch patch, Class<T> clz) {
     JsonValue value = applyPatch(original, patch);
-    // Convert Jakarta JSON JsonValue to Jackson JsonNode
     try {
-      String jsonString = value.toString();
-      JsonNode jsonNode = OBJECT_MAPPER.readTree(jsonString);
-      return OBJECT_MAPPER.convertValue(jsonNode, clz);
+      return OBJECT_MAPPER.readValue(value.toString(), clz);
     } catch (Exception e) {
       throw new RuntimeException(
           "Failed to convert JsonValue to " + clz.getSimpleName() + ": " + e.getMessage(), e);
@@ -537,6 +530,10 @@ public final class JsonUtils {
 
   /** Get all the fields types and entity types from OpenMetadata JSON schema definition files. */
   public static List<Type> getTypes() {
+    return getTypes(ignored -> {});
+  }
+
+  public static List<Type> getTypes(Consumer<String> loadFailureHandler) {
     // Get Field Types
     List<Type> types = new ArrayList<>();
     List<String> jsonSchemas;
@@ -549,6 +546,7 @@ public final class JsonUtils {
       try {
         types.addAll(JsonUtils.getFieldTypes(jsonSchema));
       } catch (Exception e) {
+        loadFailureHandler.accept(jsonSchema);
         LOG.warn("Failed to initialize the types from jsonSchema file {}", jsonSchema, e);
       }
     }
@@ -566,6 +564,7 @@ public final class JsonUtils {
           types.add(entityType);
         }
       } catch (Exception e) {
+        loadFailureHandler.accept(jsonSchema);
         LOG.warn("Failed to initialize the types from jsonSchema file {}", jsonSchema, e);
       }
     }
@@ -725,13 +724,33 @@ public final class JsonUtils {
     }
   }
 
-  public static <T> T deepCopy(T original, Class<T> clazz) {
+  public static <T> T deepCopy(Object original, Class<T> clazz) {
+    return readFromTokenBuffer(toTokenBuffer(original), clazz);
+  }
+
+  public static TokenBuffer toTokenBuffer(Object value) {
     try {
-      TokenBuffer tb = new TokenBuffer(OBJECT_MAPPER, false);
-      OBJECT_MAPPER.writeValue(tb, original);
-      return OBJECT_MAPPER.readValue(tb.asParser(), clazz);
+      TokenBuffer tokenBuffer = new TokenBuffer(OBJECT_MAPPER, false);
+      OBJECT_MAPPER.writeValue(tokenBuffer, value);
+      return tokenBuffer;
     } catch (IOException e) {
-      throw new RuntimeException("Deep copy failed", e);
+      throw new RuntimeException("Failed to create JSON token buffer", e);
+    }
+  }
+
+  public static <T> T readFromTokenBuffer(TokenBuffer tokenBuffer, Class<T> clazz) {
+    try (JsonParser parser = tokenBuffer.asParser()) {
+      return OBJECT_MAPPER.readValue(parser, clazz);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to read JSON token buffer", e);
+    }
+  }
+
+  public static void overwriteFromTokenBuffer(Object target, TokenBuffer tokenBuffer) {
+    try (JsonParser parser = tokenBuffer.asParser()) {
+      OBJECT_MAPPER.readerForUpdating(target).readValue(parser);
+    } catch (IOException e) {
+      throw new RuntimeException("Failed to restore object from JSON token buffer", e);
     }
   }
 
@@ -862,61 +881,7 @@ public final class JsonUtils {
   }
 
   public static List<String> getJsonDataResources(Pattern pattern) throws IOException {
-    ArrayList<String> resources = new ArrayList<>();
-    String classPath = System.getProperty("java.class.path", ".");
-    Set<String> classPathElements =
-        Arrays.stream(classPath.split(File.pathSeparator))
-            .filter(
-                jarName ->
-                    Stream.of("openmetadata", "collate").anyMatch(jarName.toLowerCase()::contains))
-            .collect(Collectors.toSet());
-
-    for (String element : classPathElements) {
-      File file = new File(element);
-      resources.addAll(
-          file.isDirectory()
-              ? getResourcesFromDirectory(file, pattern)
-              : getResourcesFromJarFile(file, pattern));
-    }
-    return resources;
-  }
-
-  private static Collection<String> getResourcesFromDirectory(File file, Pattern pattern)
-      throws IOException {
-    final Path root = Path.of(file.getPath());
-    try (Stream<Path> paths = Files.walk(Paths.get(file.getPath()))) {
-      return paths
-          .filter(Files::isRegularFile)
-          .filter(path -> pattern.matcher(path.toString()).matches())
-          .map(
-              path -> {
-                String relativePath = root.relativize(path).toString();
-                LOG.debug("Adding directory file {}", relativePath);
-                return relativePath;
-              })
-          .collect(Collectors.toSet());
-    }
-  }
-
-  private static Collection<String> getResourcesFromJarFile(File file, Pattern pattern) {
-    LOG.debug("Adding from file {}", file);
-    ArrayList<String> retval = new ArrayList<>();
-    try (ZipFile zf = new ZipFile(file)) {
-      Enumeration<? extends ZipEntry> e = zf.entries();
-      while (e.hasMoreElements()) {
-        // CodeQL flags this as Zip Slip (java/zipslip) but this is a false positive:
-        // we only collect entry names for pattern matching, no files are extracted to disk.
-        // The JARs are from our own classpath (filtered to openmetadata/collate JARs only).
-        String fileName = e.nextElement().getName(); // lgtm[java/zipslip]
-        if (pattern.matcher(fileName).matches()) {
-          retval.add(fileName);
-          LOG.debug("Adding file from jar {}", fileName);
-        }
-      }
-    } catch (Exception ignored) {
-      // Ignored exception
-    }
-    return retval;
+    return CommonUtil.getResources(pattern);
   }
 
   /**

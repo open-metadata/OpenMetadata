@@ -22,6 +22,7 @@ import os.org.opensearch.client.opensearch._types.OpenSearchException;
 import os.org.opensearch.client.opensearch.cluster.ClusterStatsResponse;
 import os.org.opensearch.client.opensearch.cluster.GetClusterSettingsResponse;
 import os.org.opensearch.client.opensearch.cluster.HealthResponse;
+import os.org.opensearch.client.opensearch.generic.Body;
 import os.org.opensearch.client.opensearch.generic.OpenSearchGenericClient;
 import os.org.opensearch.client.opensearch.generic.Requests;
 import os.org.opensearch.client.opensearch.indices.DataStream;
@@ -129,8 +130,7 @@ public class OpenSearchGenericManager implements GenericClient {
   public void createOrUpdateIndexTemplate(
       String templateName, String indexPattern, String mappingContent) throws IOException {
     if (!isClientAvailable) {
-      LOG.error("OpenSearch client is not available. Cannot create index template.");
-      return;
+      throw new IOException("OpenSearch client is not available. Cannot create index template.");
     }
     try {
       String transformedContent = OsUtils.enrichIndexMappingForOpenSearch(mappingContent);
@@ -149,12 +149,21 @@ public class OpenSearchGenericManager implements GenericClient {
                   .json(bodyStr)
                   .build())) {
         int statusCode = response.getStatus();
-        if (statusCode == 200) {
+        String responseBody = response.getBody().map(Body::bodyAsString).orElse("");
+        boolean acknowledged = mapper.readTree(responseBody).path("acknowledged").asBoolean(false);
+        if (statusCode == 200 && acknowledged) {
           LOG.debug("Successfully created/updated index template: {}", templateName);
         } else {
           LOG.error(
-              "Failed to create/update index template: {}. Status: {}", templateName, statusCode);
-          throw new IOException("Failed to create/update index template: HTTP " + statusCode);
+              "Failed to create/update index template: {}. Status: {}, acknowledged: {}",
+              templateName,
+              statusCode,
+              acknowledged);
+          throw new IOException(
+              "Failed to create/update index template: HTTP "
+                  + statusCode
+                  + ", acknowledged="
+                  + acknowledged);
         }
       }
     } catch (OpenSearchException e) {

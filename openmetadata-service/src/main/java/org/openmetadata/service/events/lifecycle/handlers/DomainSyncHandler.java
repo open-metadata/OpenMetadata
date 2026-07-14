@@ -38,9 +38,17 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 public class DomainSyncHandler implements EntityLifecycleEventHandler {
 
   private static final String DOMAINS_FIELD = "domains";
+  private static final String UPDATE_OPERATION = "onEntityUpdated";
 
   private static final Set<String> SKIP_ENTITY_TYPES =
       Set.of(Entity.TASK, Entity.THREAD, Entity.DOMAIN);
+
+  @Override
+  public boolean shouldProcess(String operation, ChangeDescription changeDescription) {
+    return UPDATE_OPERATION.equals(operation)
+        && changeDescription != null
+        && (findDomainsChange(changeDescription) != null || hasDomainsRemoved(changeDescription));
+  }
 
   @Override
   public void onEntityUpdated(

@@ -113,18 +113,21 @@ public class ElasticSearchGenericManager implements GenericClient {
   public void createOrUpdateIndexTemplate(
       String templateName, String indexPattern, String mappingContent) throws IOException {
     if (!isClientAvailable) {
-      LOG.error("ElasticSearch client is not available. Cannot create index template.");
-      return;
+      throw new IOException("ElasticSearch client is not available. Cannot create index template.");
     }
     try {
-      client
-          .indices()
-          .putIndexTemplate(
-              p ->
-                  p.name(templateName)
-                      .indexPatterns(List.of(indexPattern))
-                      .priority(100L)
-                      .template(t -> t.withJson(new StringReader(mappingContent))));
+      var response =
+          client
+              .indices()
+              .putIndexTemplate(
+                  p ->
+                      p.name(templateName)
+                          .indexPatterns(List.of(indexPattern))
+                          .priority(100L)
+                          .template(t -> t.withJson(new StringReader(mappingContent))));
+      if (!response.acknowledged()) {
+        throw new IOException("Index template update was not acknowledged: " + templateName);
+      }
       LOG.debug("Successfully created/updated index template: {}", templateName);
     } catch (ElasticsearchException e) {
       LOG.error("Failed to create/update index template: {}", templateName, e);

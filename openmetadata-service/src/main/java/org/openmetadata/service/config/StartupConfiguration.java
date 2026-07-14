@@ -1,5 +1,5 @@
 /*
- *  Copyright 2022 Collate
+ *  Copyright 2026 Collate
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -11,28 +11,21 @@
  *  limitations under the License.
  */
 
-package org.openmetadata.service.monitoring;
+package org.openmetadata.service.config;
 
-import java.util.Map;
+import com.fasterxml.jackson.annotation.JsonProperty;
+import jakarta.validation.constraints.Min;
 import lombok.Getter;
 import lombok.Setter;
-import org.openmetadata.schema.monitoring.EventMonitorProvider;
 
 @Getter
 @Setter
-public class EventMonitorConfiguration {
+public class StartupConfiguration {
+  @JsonProperty private boolean seedDataGateEnabled = true;
+  @JsonProperty private boolean forceSeedData;
+  @JsonProperty private boolean searchTemplateGateEnabled = true;
 
-  private EventMonitorProvider eventMonitor;
-
-  private int batchSize;
-
-  private Map<String, String> parameters;
-
-  private String[] pathPattern;
-
-  private double[] latency;
-
-  private int servicesHealthCheckInterval = 300;
-
-  private boolean requestLatencyPercentileHistogram = false;
+  @Min(1)
+  @JsonProperty
+  private int searchInitParallelism = 8;
 }
