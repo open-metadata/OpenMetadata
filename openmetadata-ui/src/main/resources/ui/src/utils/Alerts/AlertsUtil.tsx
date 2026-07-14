@@ -72,6 +72,7 @@ import { PAGE_SIZE_LARGE } from '../../constants/constants';
 import { UUID_REGEX } from '../../constants/regex.constants';
 import { OPEN_METADATA } from '../../constants/Services.constant';
 import { AlertRecentEventFilters } from '../../enums/Alerts.enum';
+import { EntityType } from '../../enums/entity.enum';
 import { SearchIndex } from '../../enums/search.enum';
 import { StatusType } from '../../generated/entity/data/pipeline';
 import { PipelineState } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
@@ -96,6 +97,7 @@ import { Status as DestinationStatus } from '../../generated/events/testDestinat
 import { TestCaseStatus } from '../../generated/tests/testCase';
 import { EventType } from '../../generated/type/changeEvent';
 import { ModifiedDestination } from '../../pages/AddObservabilityPage/AddObservabilityPage.interface';
+import { searchContracts } from '../../rest/contractAPI';
 import { searchQuery } from '../../rest/searchAPI';
 import { ExtraInfoLabel } from '../DataAssetsHeader.utils';
 import { getEntityName, getEntityNameLabel } from '../EntityUtils';
@@ -296,6 +298,29 @@ const getTableSuggestions = async (searchText: string) => {
     searchIndex: SearchIndex.TABLE,
     showDisplayNameAsLabel: false,
   });
+};
+
+const getDataContractSuggestions = async (searchText = '') => {
+  try {
+    const contracts = await searchContracts(searchText, PAGE_SIZE_LARGE);
+
+    return contracts
+      .map((contract) => contract.fullyQualifiedName ?? '')
+      .filter(Boolean)
+      .map((fullyQualifiedName) => ({
+        label: fullyQualifiedName,
+        value: fullyQualifiedName,
+      }));
+  } catch (error) {
+    showErrorToast(
+      error as AxiosError,
+      t('server.entity-fetch-error', {
+        entity: t('label.data-contract'),
+      })
+    );
+
+    return [];
+  }
 };
 
 const getTestSuiteSuggestions = async (searchText: string) => {
@@ -1078,6 +1103,10 @@ export const getFieldByArgumentType = (
   let field: JSX.Element;
 
   const getEntityByFQN = async (searchText: string) => {
+    if (selectedTrigger === EntityType.DATA_CONTRACT) {
+      return getDataContractSuggestions(searchText);
+    }
+
     return searchEntity({
       searchText,
       searchIndex: getFqnSearchIndexes(selectedTrigger, containerEntities),

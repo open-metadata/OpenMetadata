@@ -42,11 +42,15 @@ import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.SemanticsRule;
+import org.openmetadata.schema.utils.ResultList;
+import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.exceptions.OpenMetadataException;
 import org.openmetadata.sdk.fluent.DataContracts;
 import org.openmetadata.sdk.fluent.DataContracts.FluentDataContract;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
+import org.openmetadata.sdk.network.HttpMethod;
+import org.openmetadata.sdk.network.RequestOptions;
 import org.openmetadata.service.resources.data.DataContractResource;
 
 /**
@@ -653,6 +657,52 @@ public class DataContractResourceIT extends BaseEntityIT<DataContract, CreateDat
         foundRejectedContract,
         "Expected to find the rejected contract with matching entity and status");
   }
+
+  @Test
+  void testSearchDataContracts(TestNamespace ns) {
+    String searchToken = ns.prefix("contract_search");
+    DataContract contractByName =
+        createEntity(
+            new CreateDataContract()
+                .withName(searchToken + "_name")
+                .withEntity(createTestTable(ns).getEntityReference()));
+    DataContract contractByDisplayName =
+        createEntity(
+            new CreateDataContract()
+                .withName(ns.prefix("different_name"))
+                .withDisplayName(searchToken + " Display")
+                .withEntity(createTestTable(ns).getEntityReference()));
+
+    ResultList<DataContract> matches = searchDataContracts(searchToken);
+
+    assertTrue(matches.getData().stream().anyMatch(c -> c.getId().equals(contractByName.getId())));
+    assertTrue(
+        matches.getData().stream().anyMatch(c -> c.getId().equals(contractByDisplayName.getId())));
+    assertEquals(
+        matches.getData().size(), searchDataContracts(searchToken.toUpperCase()).getData().size());
+    assertTrue(searchDataContracts(ns.prefix("no_match")).getData().isEmpty());
+  }
+
+  private ResultList<DataContract> searchDataContracts(String query) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("q", query)
+            .queryParam("limit", "50")
+            .queryParam("offset", "0")
+            .build();
+
+    return client
+        .getHttpClient()
+        .execute(
+            HttpMethod.GET,
+            "/v1/dataContracts/search",
+            null,
+            DataContractResultList.class,
+            options);
+  }
+
+  private static class DataContractResultList extends ResultList<DataContract> {}
 
   @Test
   void testDataContractWithEntityStatus(TestNamespace ns) {

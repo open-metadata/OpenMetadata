@@ -33,8 +33,20 @@ jest.mock('../../rest/apiEndpointsAPI', () => ({
   getApiEndPoints: jest.fn().mockResolvedValue({ paging: { total: 0 } }),
 }));
 
+jest.mock('../../utils/EntityDisplayUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayUtils'),
+  getEntityMissingError: jest.fn(),
+  getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
+}));
+jest.mock('../../utils/EntityNameUtils', () => ({
+  getEntityName: jest.fn().mockReturnValue('test-api-collection'),
+}));
 jest.mock('../../utils/CommonUtils', () => ({
   getFeedCounts: jest.fn(),
+}));
+jest.mock('../../utils/FeedUtils', () => ({
+  fetchEntityActivityCountInto: jest.fn(),
+  fetchEntityTaskCountsInto: jest.fn(),
   getEntityMissingError: jest.fn(),
   showErrorToast: jest.fn(),
   showSuccessToast: jest.fn(),

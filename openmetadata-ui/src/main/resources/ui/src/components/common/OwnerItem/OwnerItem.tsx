@@ -17,7 +17,7 @@ import { Link } from 'react-router-dom';
 import { ReactComponent as InheritIcon } from '../../../assets/svg/ic-inherit.svg';
 import { OwnerType } from '../../../enums/user.enum';
 import { EntityReference } from '../../../generated/entity/data/table';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getOwnerPath } from '../../../utils/ownerUtils';
 import { OwnerAvatar } from '../OwnerAvtar/OwnerAvatar';
 import { AvatarSize } from '../OwnerLabel/OwnerLabel.interface';

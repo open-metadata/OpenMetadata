@@ -179,6 +179,71 @@ class TestQueryLineage(unittest.TestCase):
             self.assertEqual(queries[0].databaseName, "db1")
             self.assertEqual(queries[0].serviceName, "test_service")
 
+    def _mock_engine_with_rows(self, rows):
+        mock_engine = Mock()
+        mock_connection = Mock()
+        mock_connection.execute.return_value = rows
+        mock_engine.connect.return_value.__enter__ = Mock(return_value=mock_connection)
+        mock_engine.connect.return_value.__exit__ = Mock(return_value=None)
+        return mock_engine
+
+    def test_result_limit_truncation_logged_when_reached(self):
+        """A debug truncation notice is logged when the query log fills resultLimit"""
+        self.lineage_source.source_config.resultLimit = 2
+        rows = [
+            {
+                "query_text": "SELECT * FROM t1",
+                "database_name": "db1",
+                "schema_name": "s1",
+            },
+            {
+                "query_text": "SELECT * FROM t2",
+                "database_name": "db1",
+                "schema_name": "s1",
+            },
+        ]
+        mock_engine = self._mock_engine_with_rows(rows)
+
+        with (
+            patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
+            patch(
+                "metadata.ingestion.source.database.lineage_source.logger"
+            ) as mock_logger,
+        ):
+            list(self.lineage_source.yield_table_query())
+
+        assert any(
+            "resultLimit" in str(call.args[0])
+            for call in mock_logger.debug.call_args_list
+        )
+
+    def test_result_limit_non_int_does_not_raise(self):
+        """A non-int resultLimit (e.g. absent/mocked) skips the check without TypeError"""
+        self.lineage_source.source_config.resultLimit = Mock()
+        rows = [
+            {
+                "query_text": "SELECT * FROM t1",
+                "database_name": "db1",
+                "schema_name": "s1",
+            },
+        ]
+        mock_engine = self._mock_engine_with_rows(rows)
+
+        with (
+            patch.object(self.lineage_source, "get_engine", return_value=[mock_engine]),
+            patch(
+                "metadata.ingestion.source.database.lineage_source.logger"
+            ) as mock_logger,
+        ):
+            queries = list(self.lineage_source.yield_table_query())
+
+        # Processing completes and no truncation notice is emitted
+        self.assertEqual(len(queries), 1)
+        assert not any(
+            "resultLimit" in str(call.args[0])
+            for call in mock_logger.debug.call_args_list
+        )
+
     def test_yield_table_queries_from_logs(self):
         """Test yielding table queries from CSV log files"""
         with tempfile.NamedTemporaryFile(mode="w", suffix=".csv", delete=False) as f:

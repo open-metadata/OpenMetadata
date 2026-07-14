@@ -158,6 +158,13 @@ class UsageSource(QueryParserSource, ABC):
                                     f"Unexpected exception processing row [{row}]: {exc}"
                                 )
                     logger.info(f"Processed {row_count} query log entries for usage")
+                    result_limit = getattr(self.source_config, "resultLimit", None)
+                    if isinstance(result_limit, int) and row_count >= result_limit:
+                        logger.debug(
+                            f"Reached the configured resultLimit of {result_limit} query log entries; "
+                            f"if more queries exist they were truncated and usage may be incomplete. "
+                            f"Consider increasing resultLimit."
+                        )
                     yield TableQueries(queries=queries)
             except Exception as exc:
                 if query:

@@ -11,9 +11,11 @@
 """
 KafkaConnect source to extract metadata from OM UI
 """
+
+import re
 import traceback
 from datetime import datetime
-from typing import Iterable, List, Optional
+from typing import Iterable, List, Optional, Pattern
 
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
@@ -57,7 +59,10 @@ from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.models.pipeline_status import OMetaPipelineStatus
 from metadata.ingestion.ometa.ometa_api import OpenMetadata, T
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.pipeline.kafkaconnect.client import parse_cdc_topic_name
+from metadata.ingestion.source.pipeline.kafkaconnect.client import (
+    apply_topic_routing_transforms,
+    parse_cdc_topic_name,
+)
 from metadata.ingestion.source.pipeline.kafkaconnect.constants import (
     CDC_ENVELOPE_FIELDS,
     CONNECTOR_CLASS_TO_SERVICE_TYPE,
@@ -223,8 +228,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     # Match hostname (case-insensitive)
                     if service_host == connector_host:
                         logger.info(
-                            f"Matched database service: {service.name} "
-                            f"(type={service_type}, hostname={connector_host})"
+                            f"Matched database service: {service.name} (type={service_type}, hostname={connector_host})"
                         )
                         return model_str(service.name)
 
@@ -285,8 +289,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     )  # Set intersection
                     if matched_brokers:
                         logger.info(
-                            f"Matched messaging service: {service.name} "
-                            f"(matched broker hostnames: {matched_brokers})"
+                            f"Matched messaging service: {service.name} (matched broker hostnames: {matched_brokers})"
                         )
                         return model_str(service.name)
 
@@ -338,8 +341,7 @@ class KafkaconnectSource(PipelineServiceSource):
                         hostname = pipeline_details.config.get(key)
                         if hostname:
                             logger.debug(
-                                f"Found hostname '{hostname}' for service type '{service_type}' "
-                                f"from config key '{key}'"
+                                f"Found hostname '{hostname}' for service type '{service_type}' from config key '{key}'"
                             )
                             # Match database service
                             db_service_name = self.find_database_service_by_hostname(
@@ -423,19 +425,11 @@ class KafkaconnectSource(PipelineServiceSource):
             and database_server_name
             and pipeline_details.conn_type == ConnectorType.SOURCE.value
         ):
-            topics_to_process = self._parse_cdc_topics_from_config(
+            topics_to_process = self._resolve_source_topics(
                 pipeline_details=pipeline_details,
                 database_server_name=database_server_name,
+                effective_messaging_service=effective_messaging_service,
             )
-
-            if not topics_to_process and effective_messaging_service:
-                logger.info(
-                    f"Falling back to searching topics by prefix in messaging service '{effective_messaging_service}'"
-                )
-                topics_to_process = self._search_topics_by_prefix(
-                    database_server_name=database_server_name,
-                    messaging_service_name=effective_messaging_service,
-                )
 
         if not topics_to_process and is_storage_sink and pipeline_details.config:
             topics_regex = pipeline_details.config.get("topics.regex")
@@ -467,8 +461,7 @@ class KafkaconnectSource(PipelineServiceSource):
                     topic_name=str(topic.name),
                 )
                 logger.debug(
-                    f"Built topic FQN: {topic_fqn} "
-                    f"(service={effective_messaging_service}, topic_name={topic.name})"
+                    f"Built topic FQN: {topic_fqn} (service={effective_messaging_service}, topic_name={topic.name})"
                 )
                 topic_entity = self.metadata.get_by_name(entity=Topic, fqn=topic_fqn)
                 if topic_entity:
@@ -1035,7 +1028,9 @@ class KafkaconnectSource(PipelineServiceSource):
         return None
 
     def _search_topics_by_prefix(
-        self, database_server_name: str, messaging_service_name: Optional[str] = None
+        self,
+        database_server_name: str,
+        messaging_service_name: Optional[str] = None,
     ) -> List[KafkaConnectTopics]:
         """
         Search for topics in the messaging service that match the database.server.name prefix.
@@ -1103,8 +1098,7 @@ class KafkaconnectSource(PipelineServiceSource):
 
             if topics_found:
                 logger.info(
-                    f"Found {len(topics_found)} topics matching prefix '{database_server_name}' "
-                    f"in messaging service"
+                    f"Found {len(topics_found)} topics matching prefix '{database_server_name}' in messaging service"
                 )
             else:
                 logger.warning(
@@ -1119,7 +1113,9 @@ class KafkaconnectSource(PipelineServiceSource):
         return topics_found
 
     def _search_topics_by_regex(
-        self, topics_regex: str, messaging_service_name: Optional[str] = None
+        self,
+        topics_regex: str,
+        messaging_service_name: Optional[str] = None,
     ) -> List[KafkaConnectTopics]:
         """
         Search for topics matching a regex pattern.
@@ -1269,6 +1265,7 @@ class KafkaconnectSource(PipelineServiceSource):
         For CDC sources: Match by parsing topic names (format: {server}.{schema}.{table})
         For sinks: Match by name equality (topic.name == dataset.table)
         """
+        matched_topic = None
 
         # For JDBC/Generic Sink connectors: match by name equality
         if pipeline_details.conn_type == ConnectorType.SINK.value:
@@ -1302,7 +1299,6 @@ class KafkaconnectSource(PipelineServiceSource):
 
                 # Try case-insensitive match
                 for topic_name, topic_entity in topic_entities_map.items():
-
                     # 4. Use the pattern to resolve the table name
                     # This logic remains the same regardless of which key provided the pattern
                     sanitized_topic = topic_name.replace(".", "_")
@@ -1324,30 +1320,68 @@ class KafkaconnectSource(PipelineServiceSource):
             pipeline_details.conn_type == ConnectorType.SOURCE.value
             and database_server_name
         ):
-            for topic_name, topic_entity in topic_entities_map.items():
-                topic_info = parse_cdc_topic_name(str(topic_name), database_server_name)
-
-                # Match by table name (and optionally schema)
-                if topic_info.get("table") == dataset_details.table:
-                    # If schema is specified in dataset, verify it matches
-                    if dataset_details.schema:
-                        if topic_info.get("database") == dataset_details.schema:
-                            logger.info(
-                                f"Matched CDC dataset (schema={dataset_details.schema}, table={dataset_details.table}) to topic '{topic_name}'"
-                            )
-                            return topic_entity
-                    else:
-                        # No schema specified, just match by table name
-                        logger.info(
-                            f"Matched CDC dataset table '{dataset_details.table}' to topic '{topic_name}'"
-                        )
-                        return topic_entity
-
-            logger.warning(
-                f"No matching CDC topic found for dataset table '{dataset_details.table}'"
+            expected_topic = self._expected_source_topic_name(
+                dataset_details, database_server_name, pipeline_details
             )
+            for topic_name, topic_entity in topic_entities_map.items():
+                if self._source_topic_matches(
+                    str(topic_name),
+                    expected_topic,
+                    dataset_details,
+                    database_server_name,
+                ):
+                    logger.info(
+                        f"Matched CDC dataset table '{dataset_details.table}' to topic '{topic_name}'"
+                    )
+                    matched_topic = topic_entity
+                    break
+            else:
+                logger.warning(
+                    f"No matching CDC topic found for dataset table '{dataset_details.table}'"
+                )
 
-        return None
+        return matched_topic
+
+    def _expected_source_topic_name(
+        self,
+        dataset_details: KafkaConnectDatasetDetails,
+        database_server_name: str,
+        pipeline_details: KafkaConnectPipelineDetails,
+    ) -> Optional[str]:
+        """
+        Build the post-transform topic name a CDC source table is expected to
+        produce, so a RegexRouter-renamed topic can be matched by going forward
+        (table -> topic) instead of reverse-parsing the topic name.
+        """
+        expected = None
+        if dataset_details.table:
+            table_part = dataset_details.table
+            if dataset_details.schema:
+                table_part = f"{dataset_details.schema}.{dataset_details.table}"
+            constructed = f"{database_server_name}.{table_part}"
+            expected = apply_topic_routing_transforms(
+                constructed, getattr(pipeline_details, "config", None) or {}
+            )
+        return expected
+
+    def _source_topic_matches(
+        self,
+        topic_name: str,
+        expected_topic: Optional[str],
+        dataset_details: KafkaConnectDatasetDetails,
+        database_server_name: str,
+    ) -> bool:
+        """Match a CDC topic to a dataset by forward transform, falling back to reverse name parsing."""
+        matches = expected_topic is not None and topic_name == expected_topic
+        if not matches:
+            topic_info = parse_cdc_topic_name(topic_name, database_server_name)
+            table_matches = topic_info.get("table") == dataset_details.table
+            schema_matches = (
+                not dataset_details.schema
+                or topic_info.get("database") == dataset_details.schema
+            )
+            matches = table_matches and schema_matches
+        return matches
 
     def _parse_cdc_topics_from_config(
         self, pipeline_details: KafkaConnectPipelineDetails, database_server_name: str
@@ -1399,6 +1433,12 @@ class KafkaconnectSource(PipelineServiceSource):
                 # table_entry is already "schema.table" format
                 topic_name = f"{database_server_name}.{table_entry}"
 
+                # Apply topic-routing SMTs (e.g. RegexRouter) so the name matches
+                # the real post-transform topic in OpenMetadata.
+                topic_name = apply_topic_routing_transforms(
+                    topic_name, pipeline_details.config
+                )
+
                 topics_found.append(KafkaConnectTopics(name=topic_name))
                 logger.debug(f"Parsed CDC topic from config: {topic_name}")
 
@@ -1411,6 +1451,304 @@ class KafkaconnectSource(PipelineServiceSource):
             logger.warning(f"Unable to parse CDC topics from connector config: {exc}")
 
         return topics_found
+
+    def _resolve_source_topics(
+        self,
+        pipeline_details: KafkaConnectPipelineDetails,
+        database_server_name: str,
+        effective_messaging_service: Optional[str],
+    ) -> List[KafkaConnectTopics]:
+        """
+        Resolve topics for a source connector, trying in order: Debezium outbox
+        EventRouter pattern matching, CDC topic names from config, then a prefix
+        search in the messaging service.
+        """
+        topics_to_process = []
+        if self._has_outbox_event_router(pipeline_details.config):
+            logger.info(
+                "Detected Debezium outbox EventRouter - resolving topics by routing pattern"
+            )
+            topics_to_process = self._resolve_outbox_topics(
+                connector_config=pipeline_details.config or {},
+                messaging_service_name=effective_messaging_service,
+            )
+
+        if not topics_to_process:
+            topics_to_process = self._parse_cdc_topics_from_config(
+                pipeline_details=pipeline_details,
+                database_server_name=database_server_name,
+            )
+
+        if not topics_to_process and effective_messaging_service:
+            logger.info(
+                f"Falling back to searching topics by prefix in messaging service '{effective_messaging_service}'"
+            )
+            topics_to_process = self._search_topics_by_prefix(
+                database_server_name=database_server_name,
+                messaging_service_name=effective_messaging_service,
+            )
+
+        return topics_to_process
+
+    def _has_outbox_event_router(self, connector_config: Optional[dict]) -> bool:
+        """Return True if the connector uses a Debezium outbox EventRouter SMT."""
+        has_event_router = False
+        if connector_config:
+            transforms = connector_config.get("transforms", "")
+            for transform in [
+                name.strip() for name in transforms.split(",") if name.strip()
+            ]:
+                transform_type = connector_config.get(
+                    f"transforms.{transform}.type", ""
+                )
+                if "EventRouter" in transform_type:
+                    has_event_router = True
+                    break
+        return has_event_router
+
+    def _build_outbox_topic_pattern(self, connector_config: dict) -> Optional[Pattern]:
+        """
+        Build a regex matching topics produced by a Debezium outbox EventRouter.
+
+        The routed topic comes from ``route.topic.replacement``, whose ``${...}``
+        tokens (e.g. ``${routedByValue}``) are row-level values unknown at
+        ingestion time, so they become wildcards. Any RegexRouter in the chain is
+        applied to the template so the two transforms compose.
+        """
+        pattern = None
+        transform = self._event_router_transform(connector_config)
+        template = (
+            connector_config.get(
+                f"transforms.{transform}.route.topic.replacement",
+                "outbox.event.${routedByValue}",
+            )
+            if transform
+            else None
+        )
+        if template:
+            routed_value_token = "routedByValuePlaceholderToken"
+            templated = re.sub(r"\$\{[^}]*\}", routed_value_token, template)
+            templated = apply_topic_routing_transforms(templated, connector_config)
+            static_text = re.sub(
+                r"[^A-Za-z0-9]", "", templated.replace(routed_value_token, "")
+            )
+            if not static_text:
+                logger.warning(
+                    f"Outbox route.topic.replacement '{template}' has no static text; refusing to build a "
+                    "near-catch-all pattern that would link the outbox table to unrelated topics."
+                )
+            else:
+                escaped = re.escape(templated).replace(routed_value_token, ".*")
+                try:
+                    pattern = re.compile(f"^{escaped}$")
+                except re.error as exc:
+                    logger.warning(
+                        f"Unable to build outbox topic pattern from '{template}': {exc}"
+                    )
+
+        return pattern
+
+    def _event_router_transform(self, connector_config: dict) -> Optional[str]:
+        """Return the name of the connector's Debezium outbox EventRouter transform, if any."""
+        transform_name = None
+        transforms = [
+            name.strip()
+            for name in connector_config.get("transforms", "").split(",")
+            if name.strip()
+        ]
+        for transform in transforms:
+            if "EventRouter" in connector_config.get(
+                f"transforms.{transform}.type", ""
+            ):
+                transform_name = transform
+                break
+        return transform_name
+
+    def _resolve_outbox_topics(
+        self,
+        connector_config: dict,
+        messaging_service_name: Optional[str],
+    ) -> List[KafkaConnectTopics]:
+        """
+        Resolve Debezium outbox topics by matching the EventRouter routing pattern
+        against topics already ingested in the messaging service.
+        """
+        topics_found = []
+        pattern = self._build_outbox_topic_pattern(connector_config)
+
+        if not pattern:
+            logger.debug(
+                "No outbox EventRouter pattern could be derived from connector config"
+            )
+        elif not messaging_service_name:
+            logger.warning(
+                "Cannot resolve outbox topics without a messaging service. "
+                "Ensure the messaging service is configured and topics are ingested."
+            )
+        else:
+            for topic in self._get_service_topics(messaging_service_name):
+                topic_name = model_str(topic.name)
+                if pattern.match(topic_name):
+                    topics_found.append(
+                        KafkaConnectTopics(
+                            name=topic_name, fqn=model_str(topic.fullyQualifiedName)
+                        )
+                    )
+                    logger.debug(f"Matched outbox topic: {topic_name}")
+            logger.info(
+                f"Resolved {len(topics_found)} outbox topic(s) via EventRouter pattern '{pattern.pattern}'"
+            )
+
+        return topics_found
+
+    def _get_service_topics(self, messaging_service_name: str) -> List[Topic]:
+        """Return all topics for a messaging service, caching per service name."""
+        if messaging_service_name not in self._topics_cache:
+            self._topics_cache[messaging_service_name] = list(
+                self.metadata.list_all_entities(
+                    entity=Topic,
+                    params={"service": messaging_service_name},
+                )
+            )
+            logger.debug(
+                f"Cached {len(self._topics_cache[messaging_service_name])} topics "
+                f"for messaging service: {messaging_service_name}"
+            )
+        return self._topics_cache[messaging_service_name]
+
+    def _is_outbox_fanout(
+        self, pipeline_details, dataset_entity, topic_entities_map, single_dataset: bool
+    ) -> bool:
+        """
+        Return True when an outbox EventRouter connector should fan the source
+        table out to every resolved topic.
+
+        Routed topics carry no table attribution. A single-table connector is
+        unambiguously the outbox; with several captured tables we only fan out the
+        one identifiable as the outbox table by its EventRouter columns, so
+        unrelated tables don't get speculative lineage.
+        """
+        return (
+            self._has_outbox_event_router(pipeline_details.config)
+            and dataset_entity is not None
+            and bool(topic_entities_map)
+            and (
+                single_dataset
+                or self._dataset_is_outbox_table(
+                    dataset_entity, pipeline_details.config
+                )
+            )
+        )
+
+    def _outbox_event_columns(self, connector_config: dict, transform: str) -> set:
+        """Return the source columns the EventRouter reads: routing field, id, key and payload."""
+        prefix = f"transforms.{transform}"
+        return {
+            connector_config.get(f"{prefix}.route.by.field", "aggregatetype"),
+            connector_config.get(f"{prefix}.table.field.event.id", "id"),
+            connector_config.get(f"{prefix}.table.field.event.key", "aggregateid"),
+            connector_config.get(f"{prefix}.table.field.event.payload", "payload"),
+        }
+
+    def _dataset_is_outbox_table(self, dataset_entity, connector_config: dict) -> bool:
+        """
+        Return True if the dataset is the outbox table.
+
+        Identified by carrying the full set of columns the EventRouter reads
+        (routing field, id, key, payload). A normal captured table would not have
+        aggregatetype, aggregateid and payload together, so this avoids fanning a
+        non-outbox table out to the routed topics on a single column-name match.
+        """
+        transform = self._event_router_transform(connector_config)
+        is_outbox = False
+        if transform:
+            required = {
+                name.lower()
+                for name in self._outbox_event_columns(connector_config, transform)
+            }
+            columns = {
+                model_str(column.name).lower()
+                for column in (getattr(dataset_entity, "columns", None) or [])
+            }
+            is_outbox = required.issubset(columns)
+        return is_outbox
+
+    def _iter_outbox_lineage(
+        self,
+        dataset_entity,
+        topic_entities_map: dict,
+        pipeline_entity,
+        pipeline_details: KafkaConnectPipelineDetails,
+        dataset_details: KafkaConnectDatasetDetails,
+    ) -> Iterable[Either[AddLineageRequest]]:
+        """Yield table -> topic lineage for every topic an outbox connector routes to."""
+        for topic_name, topic_entity in topic_entities_map.items():
+            if topic_entity is not None:
+                column_lineage = self._safe_build_column_lineage(
+                    dataset_entity, topic_entity, pipeline_details, dataset_details
+                )
+                self.lineage_results.append(
+                    {
+                        "connector": pipeline_details.name,
+                        "table_fqn": model_str(dataset_entity.fullyQualifiedName),
+                        "topic_fqn": model_str(topic_entity.fullyQualifiedName),
+                        "status": "SUCCESS",
+                        "reason": "Table → Topic (outbox EventRouter)",
+                    }
+                )
+                logger.info(
+                    f"Created outbox lineage: {model_str(dataset_entity.fullyQualifiedName)} → {topic_name}"
+                )
+                yield Either(  # pyright: ignore[reportCallIssue]
+                    right=self._build_lineage_request(
+                        dataset_entity, topic_entity, pipeline_entity, column_lineage
+                    )
+                )
+
+    def _safe_build_column_lineage(
+        self, from_entity, topic_entity, pipeline_details, dataset_details
+    ):
+        """Build column-level lineage without failing entity-level lineage."""
+        column_lineage = None
+        try:
+            column_lineage = self.build_column_lineage(
+                from_entity=from_entity,
+                to_entity=topic_entity,
+                topic_entity=topic_entity,
+                pipeline_details=pipeline_details,
+                dataset_details=dataset_details,
+            )
+        except Exception as exc:
+            logger.warning(
+                f"Failed to build column-level lineage for {pipeline_details.name}: {exc}"
+            )
+            logger.debug(traceback.format_exc())
+        return column_lineage
+
+    def _build_lineage_request(
+        self, from_entity, to_entity, pipeline_entity, column_lineage
+    ) -> AddLineageRequest:
+        """Construct an AddLineageRequest edge between two data assets."""
+        lineage_details = LineageDetails(  # pyright: ignore[reportCallIssue]
+            pipeline=EntityReference(
+                id=pipeline_entity.id.root, type="pipeline"
+            ),  # pyright: ignore[reportCallIssue]
+            source=LineageSource.PipelineLineage,
+            columnsLineage=column_lineage,
+        )
+        return AddLineageRequest(
+            edge=EntitiesEdge(
+                fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
+                    id=from_entity.id,
+                    type=ENTITY_REFERENCE_TYPE_MAP[type(from_entity).__name__],
+                ),
+                toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
+                    id=to_entity.id,
+                    type=ENTITY_REFERENCE_TYPE_MAP[type(to_entity).__name__],
+                ),
+                lineageDetails=lineage_details,
+            )
+        )
 
     def yield_pipeline_lineage_details(
         self, pipeline_details: KafkaConnectPipelineDetails
@@ -1623,6 +1961,23 @@ class KafkaconnectSource(PipelineServiceSource):
                     logger.info(
                         f"✓ Created {topics_processed} lineage edges for storage sink: "
                         f"{topics_processed} topics → 1 container"
+                    )
+                    continue
+
+                # Outbox EventRouter: one source table fans out to many routed
+                # topics, so link the table to every pattern-resolved topic.
+                if self._is_outbox_fanout(
+                    pipeline_details,
+                    current_dataset_entity,
+                    topic_entities_map,
+                    len(datasets_to_process) == 1,
+                ):
+                    yield from self._iter_outbox_lineage(
+                        dataset_entity=current_dataset_entity,
+                        topic_entities_map=topic_entities_map,
+                        pipeline_entity=pipeline_entity,
+                        pipeline_details=pipeline_details,
+                        dataset_details=dataset_details,
                     )
                     continue
 

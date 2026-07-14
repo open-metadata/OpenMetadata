@@ -42,6 +42,7 @@ class TagAnalysis(BaseModel):
     explanation: Optional[str]
     recognizer_results: List[RecognizerResult] = []
     target: Optional[recognizer.Target] = None
+    column_name_matched: bool = False
 
     @final
     class Config:
@@ -234,6 +235,7 @@ class TagAnalyzer:
             else None,
             recognizer_results=winning_results,
             target=target if winning_results else None,
+            column_name_matched=bool(column_results),
         )
 
     def __repr__(self) -> str:

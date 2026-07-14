@@ -79,7 +79,7 @@ jest.mock('./Alerts/AlertsUtil', () => ({
   ),
 }));
 
-jest.mock('./EntityUtils', () => ({
+jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn((entity) => entity?.displayName || entity?.name || ''),
 }));
 
