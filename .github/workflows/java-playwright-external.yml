@@ -165,7 +165,9 @@ jobs:
           fi
           # OM basic-auth login expects a base64-encoded password (BasicAuthServletHandler).
           PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
-          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+          # The login endpoint sits behind a gateway that intermittently 504s; retry transient
+          # failures so a single blip doesn't fail the whole job before any test runs.
+          TOKEN=$(curl -fsS --retry 5 --retry-delay 5 --retry-connrefused --connect-timeout 30 -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
             | jq -r '.accessToken')
@@ -324,7 +326,9 @@ jobs:
             exit 1
           fi
           PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
-          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+          # The login endpoint sits behind a gateway that intermittently 504s; retry transient
+          # failures so a single blip doesn't fail the whole job before any test runs.
+          TOKEN=$(curl -fsS --retry 5 --retry-delay 5 --retry-connrefused --connect-timeout 30 -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
             | jq -r '.accessToken')
@@ -457,7 +461,9 @@ jobs:
             exit 1
           fi
           PW_B64=$(printf '%s' "$OM_EXTERNAL_PASSWORD" | base64 | tr -d '\n')
-          TOKEN=$(curl -fsS -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
+          # The login endpoint sits behind a gateway that intermittently 504s; retry transient
+          # failures so a single blip doesn't fail the whole job before any test runs.
+          TOKEN=$(curl -fsS --retry 5 --retry-delay 5 --retry-connrefused --connect-timeout 30 -X POST "${OM_EXTERNAL_URL%/}/api/v1/users/login" \
             -H 'Content-Type: application/json' \
             -d "{\"email\":\"${OM_EXTERNAL_USERNAME}\",\"password\":\"${PW_B64}\"}" \
             | jq -r '.accessToken')
