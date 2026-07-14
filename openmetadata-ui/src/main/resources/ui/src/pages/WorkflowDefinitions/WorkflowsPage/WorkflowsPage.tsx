@@ -15,6 +15,7 @@ import {
   Button,
   EmptyPlaceholder,
   Input,
+  Box,
   SlideoutMenu,
   TextArea,
   Typography,
@@ -279,7 +280,7 @@ const WorkflowsPage = () => {
   const isWorkflowsEmpty = workflows.length === 0;
 
   const emptyPlaceholder = (
-    <div className="tw:relative tw:flex tw:flex-1 tw:min-h-150 tw:overflow-hidden tw:rounded-xl tw:border tw:border-border-secondary">
+    <Box className="tw:relative tw:flex-1 tw:min-h-150 tw:rounded-xl tw:border tw:border-border-secondary">
       <EmptyPlaceholder
         actions={
           allowCreateWorkflow
@@ -299,7 +300,7 @@ const WorkflowsPage = () => {
         title={t('message.put-your-data-operations-on-autopilot')}
         variant="features"
       />
-    </div>
+    </Box>
   );
 
   return (
