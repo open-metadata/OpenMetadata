@@ -236,4 +236,47 @@ describe('usePaginatedLiveLog', () => {
 
     expect(fetchPage).toHaveBeenCalledTimes(3);
   });
+
+  it('captures the final tail when the last forward page reaches the tail at termination', async () => {
+    let resolveForward: (value: LogPage) => void = () => undefined;
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page('p0', '1', '2'))
+      .mockImplementationOnce(
+        () =>
+          new Promise<LogPage>((resolve) => {
+            resolveForward = resolve;
+          })
+      )
+      .mockResolvedValue(page('tail-v2'));
+    const { result, rerender } = renderHook(
+      ({ isLive }) =>
+        usePaginatedLiveLog({
+          fetchPage,
+          resetKey: 'k',
+          enabled: true,
+          isLive,
+          intervalMs: 100000,
+        }),
+      { initialProps: { isLive: true } }
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('p0'));
+
+    expect(result.current.hasMore).toBe(true);
+
+    // Load the last page (still in flight), then the run goes terminal before
+    // that forward fetch — which reaches the tail — resolves.
+    act(() => {
+      result.current.loadMore();
+    });
+    rerender({ isLive: false });
+
+    await act(async () => {
+      resolveForward(page('tail-v1'));
+    });
+
+    // A final read must fetch the post-termination tail, not stop at tail-v1.
+    await waitFor(() => expect(result.current.logs).toBe('p0tail-v2'));
+  });
 });

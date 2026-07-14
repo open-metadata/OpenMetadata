@@ -84,9 +84,14 @@ export const usePaginatedLiveLog = ({
   const requestIdRef = useRef(0);
   const busyRef = useRef(false);
 
-  // A final tail read requested (on the live→terminal edge) while a request was
-  // in flight; flushed once the lock frees so trailing lines are never lost.
-  const pendingFinalRef = useRef(false);
+  // A final tail read is "owed" once the run goes terminal, until it actually
+  // runs. It's fulfilled the moment we are at the tail and idle — whether that
+  // happens at the edge, when a page reaches the tail, or when an in-flight
+  // request frees the lock — so trailing lines are never lost regardless of
+  // ordering. `reachedTailRef`/`pollTailRef` mirror state so `attemptFinalRead`
+  // can gate on the latest values from any of those trigger points.
+  const finalReadOwedRef = useRef(false);
+  const reachedTailRef = useRef(false);
   const pollTailRef = useRef<() => Promise<void>>();
 
   // Mirrors `nextCursor` but updated synchronously, so a bottom-scroll firing in
@@ -94,9 +99,13 @@ export const usePaginatedLiveLog = ({
   // can't re-request the page just fetched. `loadMore` reads from here.
   const nextCursorRef = useRef<string | undefined>(undefined);
 
-  const flushFinalTail = useCallback(() => {
-    if (pendingFinalRef.current && !busyRef.current) {
-      pendingFinalRef.current = false;
+  const attemptFinalRead = useCallback(() => {
+    if (
+      finalReadOwedRef.current &&
+      reachedTailRef.current &&
+      !busyRef.current
+    ) {
+      finalReadOwedRef.current = false;
       pollTailRef.current?.();
     }
   }, []);
@@ -142,17 +151,17 @@ export const usePaginatedLiveLog = ({
           } else {
             setLoadingMore(false);
           }
-          flushFinalTail();
+          attemptFinalRead();
         }
       }
     },
-    [flushFinalTail]
+    [attemptFinalRead]
   );
 
   useEffect(() => {
     requestIdRef.current += 1;
     busyRef.current = false;
-    pendingFinalRef.current = false;
+    finalReadOwedRef.current = false;
     nextCursorRef.current = undefined;
     setCommitted('');
     setTail('');
@@ -209,13 +218,18 @@ export const usePaginatedLiveLog = ({
     } finally {
       if (requestId === requestIdRef.current) {
         busyRef.current = false;
-        flushFinalTail();
+        attemptFinalRead();
       }
     }
-  }, [reachedTail, tailCursor, flushFinalTail]);
+  }, [reachedTail, tailCursor, attemptFinalRead]);
 
+  // Keep the mirror refs current and re-attempt an owed final read once state
+  // settles — covers `reachedTail` flipping true only after the run terminated
+  // (the last forward page reached the tail at the live→terminal transition).
   useEffect(() => {
+    reachedTailRef.current = reachedTail;
     pollTailRef.current = pollTail;
+    attemptFinalRead();
   });
 
   usePollingEffect(pollTail, {
@@ -224,18 +238,18 @@ export const usePaginatedLiveLog = ({
   });
 
   // Tail polling stops the moment `isLive` flips false, so lines written between
-  // the last poll and the run's terminal transition would be lost. Request one
-  // final tail read on that true→false edge; if a request is in flight it is
-  // deferred (via `flushFinalTail`) until the lock frees, so it never no-ops.
+  // the last poll and the run's terminal transition would be lost. Mark a final
+  // read owed on that true→false edge; `attemptFinalRead` fulfils it as soon as
+  // we're at the tail and idle (here, or from a later trigger point).
   const prevIsLiveRef = useRef(isLive);
   useEffect(() => {
     const wasLive = prevIsLiveRef.current;
     prevIsLiveRef.current = isLive;
-    if (wasLive && !isLive && enabled && reachedTail) {
-      pendingFinalRef.current = true;
-      flushFinalTail();
+    if (wasLive && !isLive && enabled) {
+      finalReadOwedRef.current = true;
+      attemptFinalRead();
     }
-  }, [isLive, enabled, reachedTail, flushFinalTail]);
+  }, [isLive, enabled, attemptFinalRead]);
 
   const logs = committed + tail;
   const totalLines = useMemo(
