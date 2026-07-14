@@ -27,7 +27,8 @@ export interface RDFConfiguration {
      */
     bulkRelationshipSourceBatchSize?: number;
     /**
-     * Cache inferred triples for better query performance (requires more storage)
+     * Cache bounded in-memory inference models for better query performance. Cached models
+     * expire after 60 seconds.
      */
     cacheInferredTriples?: boolean;
     /**
@@ -59,6 +60,11 @@ export interface RDFConfiguration {
      * inference engine to derive additional triples based on the reasoning level.
      */
     inferenceEnabled?: boolean;
+    /**
+     * Maximum RDF store size for in-process inference. Queries requesting inference fall back
+     * to direct SPARQL execution when the store exceeds this limit.
+     */
+    maxInMemoryInferenceTriples?: number;
     /**
      * Password for RDF storage authentication
      */
