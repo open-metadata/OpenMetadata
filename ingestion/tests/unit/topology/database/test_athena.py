@@ -63,6 +63,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.athena.metadata import AthenaSource
 from metadata.ingestion.source.database.athena.models import AthenaStatus
 from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
+from metadata.ingestion.source.database.athena.utils import get_columns
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 
 EXPECTED_DATABASE_NAMES = ["mydatabase"]
@@ -856,48 +857,7 @@ class TestAthenaColumnDeduplication:
         dialect._raw_connection = MagicMock(return_value=SimpleNamespace(schema_name="sample_schema"))
         return dialect
 
-    def test_deduplicate_columns_preserves_partition_column(self):
-        from metadata.ingestion.source.database.athena.utils import (
-            _deduplicate_columns,
-        )
-
-        columns = [
-            {
-                "name": "time_period",
-                "dialect_options": {"awsathena_partition": True},
-            },
-            {
-                "name": "event_id",
-                "dialect_options": {"awsathena_partition": None},
-            },
-            {
-                "name": "time_period",
-                "dialect_options": {"awsathena_partition": None},
-            },
-        ]
-
-        result = _deduplicate_columns(columns)
-
-        assert [col["name"] for col in result] == ["time_period", "event_id"]
-        assert result[0]["dialect_options"]["awsathena_partition"] is True
-
-    def test_deduplicate_columns_keeps_case_distinct_physical_columns(self):
-        from metadata.ingestion.source.database.athena.utils import (
-            _deduplicate_columns,
-        )
-
-        columns = [
-            {"name": "Time_Period"},
-            {"name": "time_period"},
-        ]
-
-        result = _deduplicate_columns(columns)
-
-        assert result == [{"name": "Time_Period"}, {"name": "time_period"}]
-
     def test_standard_get_columns_preserves_partition_for_exact_duplicate(self):
-        from metadata.ingestion.source.database.athena.utils import get_columns
-
         metadata = SimpleNamespace(
             partition_keys=[self._column("time_period")],
             columns=[
@@ -912,9 +872,26 @@ class TestAthenaColumnDeduplication:
         assert [col["name"] for col in result] == ["time_period", "event_id"]
         assert result[0]["dialect_options"]["awsathena_partition"] is True
 
-    def test_standard_get_columns_keeps_case_distinct_regular_column(self):
-        from metadata.ingestion.source.database.athena.utils import get_columns
+    def test_standard_get_columns_logs_dropped_duplicate(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("time_period", "date")],
+            columns=[
+                self._column("time_period", "string"),
+            ],
+            parameters={},
+        )
 
+        with patch("metadata.ingestion.source.database.athena.utils.logger.warning") as warning:
+            get_columns(self._dialect(metadata), MagicMock(), "sample_table")
+
+        warning.assert_called_once_with(
+            "Table '%s': dropping duplicate Athena column '%s' (type %s); keeping the first definition",
+            "sample_table",
+            "time_period",
+            "string",
+        )
+
+    def test_standard_get_columns_keeps_case_distinct_regular_column(self):
         metadata = SimpleNamespace(
             partition_keys=[self._column("dt")],
             columns=[
@@ -930,8 +907,6 @@ class TestAthenaColumnDeduplication:
         assert result[1]["dialect_options"]["awsathena_partition"] is None
 
     def test_iceberg_get_columns_preserves_partition_for_exact_duplicate(self):
-        from metadata.ingestion.source.database.athena.utils import get_columns
-
         metadata = SimpleNamespace(
             partition_keys=[self._column("time_period")],
             columns=[],
@@ -961,8 +936,6 @@ class TestAthenaColumnDeduplication:
         assert result[0]["dialect_options"]["awsathena_partition"] is True
 
     def test_iceberg_get_columns_keeps_case_distinct_physical_column(self):
-        from metadata.ingestion.source.database.athena.utils import get_columns
-
         metadata = SimpleNamespace(
             partition_keys=[self._column("ts_day")],
             columns=[],

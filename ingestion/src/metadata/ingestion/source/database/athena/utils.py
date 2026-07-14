@@ -111,7 +111,7 @@ def _get_projection_details(columns: List[Dict], projection_parameters: Dict) ->
     return columns
 
 
-def _deduplicate_columns(columns: List[Dict]) -> List[Dict]:  # noqa: UP006
+def _deduplicate_columns(columns: List[Dict], table_name: str) -> List[Dict]:  # noqa: UP006
     """Return columns once by exact name, preserving the first occurrence."""
     deduplicated_columns = []
     seen_column_names = set()
@@ -120,6 +120,13 @@ def _deduplicate_columns(columns: List[Dict]) -> List[Dict]:  # noqa: UP006
         dedupe_key = column.get("name")
 
         if dedupe_key in seen_column_names:
+            logger.warning(
+                "Table '%s': dropping duplicate Athena column '%s' (type %s); "
+                "keeping the first definition",
+                table_name,
+                dedupe_key,
+                column.get("system_data_type"),
+            )
             continue
 
         seen_column_names.add(dedupe_key)
@@ -157,8 +164,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
             for key_, value_ in metadata.parameters.items()
             if key_.startswith("projection") and key_.endswith("type")
         }
-        columns = _get_projection_details(columns, projection_parameters)
-        return _deduplicate_columns(columns)
+        return _get_projection_details(columns, projection_parameters)
 
     # Check if this is an Iceberg table
     if metadata.parameters.get("table_type") == "ICEBERG":
@@ -209,7 +215,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
                     )
 
             columns += current_columns
-            return _deduplicate_columns(columns)  # noqa: TRY300
+            return _deduplicate_columns(columns, table_name)
 
         except Exception as e:
             # If we can't get Glue metadata, fall back to the original method
@@ -238,7 +244,7 @@ def get_columns(self, connection, table_name, schema=None, **kw):
         for c in metadata.columns
     ]
 
-    return _deduplicate_columns(columns)
+    return _deduplicate_columns(columns, table_name)
 
 
 @reflection.cache
