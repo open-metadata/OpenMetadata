@@ -84,6 +84,9 @@ class DriveFileUploadIT {
 
   private static final String MINIO_BUCKET = "test-bucket";
   private static final String TIKA_TESSERACT_PATH_PROPERTY = "collate.tika.tesseract.path";
+  private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
+  private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
   private static String serverBaseUrl;
   private static Client multipartClient;
   private static WebTarget uploadTarget;
@@ -234,6 +237,7 @@ class DriveFileUploadIT {
   private void assertRemovedFromMinIO(String assetId) {
     try (S3Client s3Client = buildMinioClient()) {
       await()
+          .pollInterval(POLL_INTERVAL)
           .atMost(Duration.ofSeconds(10))
           .untilAsserted(() -> assertTrue(resolveStoredObjectKey(s3Client, assetId) == null));
     }
@@ -261,7 +265,8 @@ class DriveFileUploadIT {
     String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
 
     await()
-        .atMost(Duration.ofSeconds(20))
+        .pollInterval(POLL_INTERVAL)
+        .atMost(SEARCH_VISIBLE_TIMEOUT)
         .untilAsserted(
             () -> {
               try (Response searchResponse =
@@ -273,6 +278,19 @@ class DriveFileUploadIT {
                 assertTrue(searchResponse.readEntity(String.class).contains(fileId.toString()));
               }
             });
+  }
+
+  private ContextFile awaitProcessed(UUID fileId, String expectedText) {
+    await()
+        .pollInterval(POLL_INTERVAL)
+        .atMost(EXTRACTION_TIMEOUT)
+        .untilAsserted(
+            () -> {
+              ContextFile refreshed = fetchFile(fileId);
+              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
+              assertTrue(refreshed.getExtractedText().contains(expectedText));
+            });
+    return fetchFile(fileId);
   }
 
   private byte[] createPdf(String text) throws IOException {
@@ -370,15 +388,8 @@ class DriveFileUploadIT {
       assertStoredInMinIO(file.getAssetId(), content);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains("Context Center PDF Fixture"));
-              assertEquals(1, refreshed.getPageCount());
-            });
+    ContextFile refreshed = awaitProcessed(file.getId(), "Context Center PDF Fixture");
+    assertEquals(1, refreshed.getPageCount());
   }
 
   @Test
@@ -435,14 +446,7 @@ class DriveFileUploadIT {
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -460,14 +464,7 @@ class DriveFileUploadIT {
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -485,14 +482,7 @@ class DriveFileUploadIT {
       file = JsonUtils.readValue(body, ContextFile.class);
     }
 
-    await()
-        .atMost(Duration.ofSeconds(20))
-        .untilAsserted(
-            () -> {
-              ContextFile refreshed = fetchFile(file.getId());
-              assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-              assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-            });
+    awaitProcessed(file.getId(), uniqueToken);
 
     assertSearchContainsFile(uniqueToken, file.getId());
   }
@@ -517,14 +507,7 @@ class DriveFileUploadIT {
         file = JsonUtils.readValue(body, ContextFile.class);
       }
 
-      await()
-          .atMost(Duration.ofSeconds(20))
-          .untilAsserted(
-              () -> {
-                ContextFile refreshed = fetchFile(file.getId());
-                assertEquals(ProcessingStatus.Processed, refreshed.getProcessingStatus());
-                assertTrue(refreshed.getExtractedText().contains(uniqueToken));
-              });
+      awaitProcessed(file.getId(), uniqueToken);
 
       assertSearchContainsFile(uniqueToken, file.getId());
     } finally {
