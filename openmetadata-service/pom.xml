@@ -26,8 +26,9 @@
     <socket.io-client.version>2.1.1</socket.io-client.version>
     <json-smart.version>2.5.2</json-smart.version>
     <jetty.version>12.1.7</jetty.version>
-    <logback-core.version>1.5.25</logback-core.version>
-    <logback-classic.version>1.5.25</logback-classic.version>
+    <!-- 1.5.36 fixes SNYK-JAVA-CHQOSLOGBACK-17675439 (Expression Injection). -->
+    <logback-core.version>1.5.36</logback-core.version>
+    <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
     <kubernetes-client.version>24.0.0</kubernetes-client.version>
     <tika.version>3.2.3</tika.version>
@@ -1011,10 +1012,12 @@
       <artifactId>jersey-media-sse</artifactId>
       <version>${jersey-bom.version}</version>
     </dependency>
+    <!-- 1.1.8 fixes SNYK-JAVA-ORGECLIPSEPARSSON-17817925 (Allocation of Resources
+         Without Limits or Throttling). -->
     <dependency>
       <groupId>org.eclipse.parsson</groupId>
       <artifactId>parsson</artifactId>
-      <version>1.1.5</version>
+      <version>1.1.8</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
