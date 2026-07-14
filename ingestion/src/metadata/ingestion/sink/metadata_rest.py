@@ -545,14 +545,15 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=tag)
 
     @_run_dispatch.register
-    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[dict[str, Any]]:
+    def write_lineage(self, add_lineage: AddLineageRequest) -> Either[str]:
         # return_lineage=False: we only need a status identifier below, so skip the expensive
         # per-edge full-graph GET that otherwise dominates lineage-heavy ingestions.
         created_lineage = self.metadata.add_lineage(add_lineage, check_patch=True, return_lineage=False)
         if created_lineage.get("error"):
             return Either(left=StackTraceError(name="AddLineageRequestError", error=created_lineage["error"]))
 
-        # Producers that build id-only references carry no FQN. Fall back to a type:id label:
+        # Producers that build id-only references carry no FQN. Fall back to a "{type}:{uuid}"
+        # label (e.g. "table:d311bdf2-..."):
         # a None right would silently drop the edge from scanned status (ReturnStep.run) and
         # stop write_override_lineage from patching the lineage-processed flag.
         from_reference = add_lineage.edge.fromEntity
@@ -562,7 +563,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return Either(right=source_label)
 
     @_run_dispatch.register
-    def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[dict[str, Any]]:
+    def write_fqn_lineage(self, add_lineage: OMetaFQNLineageRequest) -> Either[str]:
         created_lineage = self.metadata.add_lineage_by_name(
             from_entity_fqn=add_lineage.from_entity_fqn,
             from_entity_type=add_lineage.from_entity_type,
@@ -602,7 +603,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         )
 
     @_run_dispatch.register
-    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[dict[str, Any]]:
+    def write_override_lineage(self, add_lineage: OMetaLineageRequest) -> Either[str]:
         """
         Writes the override lineage for the given lineage request.
 
@@ -610,7 +611,8 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
             add_lineage (OMetaLineageRequest): The lineage request containing the override lineage information.
 
         Returns:
-            Either[Dict[str, Any]]: The result of the dispatch operation.
+            Either[str]: The dispatched write_lineage / write_fqn_lineage result, carrying the
+            source status identifier (FQN or "{type}:{uuid}" fallback) on success.
         """
         if add_lineage.override_lineage is True and (
             add_lineage.lineage_request.lineage_details
