@@ -23,15 +23,15 @@ import ContextCenterHeader from '../../../components/ContextCenter/ContextCenter
 import { ARCHIVE_PAGE_SIZE } from '../../../constants/ContextCenter.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import {
-    OperationPermission,
-    ResourceEntity
+  OperationPermission,
+  ResourceEntity,
 } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { usePaging } from '../../../hooks/paging/usePaging';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import {
-    deleteDriveFile,
-    listArchivedContextFiles,
-    restoreDriveFile
+  deleteDriveFile,
+  listArchivedContextFiles,
+  restoreDriveFile,
 } from '../../../rest/assetAPI';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getEntityName } from '../../../utils/EntityNameUtils';
