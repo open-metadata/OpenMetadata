@@ -13,7 +13,9 @@ Client to interact with DBT Cloud REST APIs
 """
 
 import traceback
-from typing import Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+
+import requests
 
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
@@ -37,6 +39,19 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 API_VERSION = "api/v2"
+
+# Enough of the error body to identify the failure, without dumping a full HTML
+# error page from a proxy into the step's error log.
+ERROR_DETAIL_LIMIT = 200
+
+
+class DBTCloudApiError(Exception):
+    """A dbt Cloud API call answered with a non-success HTTP status."""
+
+    def __init__(self, status_code: int, path: str, detail: str) -> None:
+        super().__init__(f"dbt Cloud API returned HTTP {status_code} for {path}: {detail}")
+        self.status_code = status_code
+        self.path = path
 
 
 class DBTCloudClient:
@@ -125,18 +140,55 @@ class DBTCloudClient:
                 f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
 
+    def _test_get(self, path: str, params: Optional[dict] = None) -> Any:  # noqa: UP045
+        """
+        Authenticated GET that raises DBTCloudApiError on a non-success status.
+
+        Test-connection checks need the HTTP status to tell a rejected token (401)
+        from an account the token cannot reach (404). The shared REST client cannot
+        report it: a dbt Cloud error body nests its `code` under `status`, so the
+        client's error branch neither raises nor returns and the caller is left
+        with a bare None. Ingestion keeps using that client.
+        """
+        url = f"{clean_uri(str(self.config.host))}/{API_VERSION}{path}"
+        try:
+            response = requests.get(
+                url,
+                headers={AUTHORIZATION_HEADER: f"Bearer {self.config.token.get_secret_value()}"},
+                params=params,
+                timeout=self.client.config.timeout,
+            )
+        except requests.RequestException:
+            logger.debug(traceback.format_exc())
+            raise
+        if not response.ok:
+            raise DBTCloudApiError(
+                response.status_code,
+                path,
+                response.text[:ERROR_DETAIL_LIMIT],
+            )
+        return response.json()
+
+    def test_check_access(self) -> None:
+        """
+        Smallest authenticated call that proves the host, token and account id: the
+        first page of one job. It exercises the same account-scoped path ingestion
+        reads, so a token that passes here cannot fail the later steps for auth.
+        """
+        self._test_get(f"/accounts/{self.config.accountId}/jobs/", params={"limit": 1, "offset": 0})
+
     def test_get_jobs(self) -> List[DBTJob]:  # noqa: UP006
         """
         test fetch jobs for an account in dbt cloud
         """
-        job_list = self.client.get(f"/accounts/{self.config.accountId}/jobs/")
+        job_list = self._test_get(f"/accounts/{self.config.accountId}/jobs/")
         return DBTJobList.model_validate(job_list).Jobs
 
     def test_get_runs(self) -> List[DBTRun]:  # noqa: UP006
         """
         test fetch runs for a job in dbt cloud
         """
-        result = self.client.get(f"/accounts/{self.config.accountId}/runs/")
+        result = self._test_get(f"/accounts/{self.config.accountId}/runs/")
         run_list = DBTRunList.model_validate(result).Runs
         return run_list  # noqa: RET504
 
