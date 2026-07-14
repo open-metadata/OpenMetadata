@@ -26,7 +26,6 @@ import { TagSource } from '../../../generated/type/tagLabel';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import { EntityTags } from '../../../Models';
 import { showErrorToast } from '../../../utils/ToastUtils';
-import ExtractedMemoriesCard from '../../ContextCenter/ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import AttachmentWidget from '../AttachmentWidget/AttachmentWidget';
 import RelatedDataAssets from '../RelatedDataAssets/RelatedDataAssets';
 
@@ -122,12 +121,6 @@ const KnowledgePageDetailRightPanel: FC<KnowledgePageDetailRightPanelProps> = ({
         />
 
         <AttachmentWidget entityFqn={knowledgePage?.fullyQualifiedName} />
-
-        {knowledgePage?.id && (
-          <div>
-            <ExtractedMemoriesCard collapsible sourceId={knowledgePage.id} />
-          </div>
-        )}
       </Card.Content>
     </Card>
   );

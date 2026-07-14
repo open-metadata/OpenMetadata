@@ -4,10 +4,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.ArgumentMatchers.same;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.times;
@@ -28,9 +30,11 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Captor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.openmetadata.schema.attachments.Asset;
+import org.openmetadata.schema.entity.context.ContextMemory;
 import org.openmetadata.schema.entity.data.ContextFile;
 import org.openmetadata.schema.entity.data.ContextFileContent;
 import org.openmetadata.schema.entity.data.ContextFileType;
@@ -50,7 +54,6 @@ class ContextFileProcessingServiceTest {
   @Mock private AssetService assetService;
   @Mock private ContextFileTextExtractor textExtractor;
   @Mock private ContextMemoryExtractor memoryExtractor;
-  @Mock private FileContextProcessingEngine fileEngine;
 
   @Captor private ArgumentCaptor<ContextFile> updatedFileCaptor;
   @Captor private ArgumentCaptor<ContextFileContent> updatedContentCaptor;
@@ -132,18 +135,29 @@ class ContextFileProcessingServiceTest {
                 new ByteArrayInputStream("Quarterly results".getBytes())));
     when(textExtractor.extract(any(InputStream.class), same(file)))
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    content.setExtractedText("Quarterly results canonical");
+    List<ContextMemory> derivedMemories = List.of(new ContextMemory().withId(UUID.randomUUID()));
+    ContextMemoryExtractor.DeriveResult derived =
+        new ContextMemoryExtractor.DeriveResult(derivedMemories, 2, 1);
+    when(memoryExtractor.derive(same(file), eq("Quarterly results canonical"))).thenReturn(derived);
+    when(memoryExtractor.persist(same(file), same(derivedMemories))).thenReturn(1);
 
     service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
-    // The shared engine owns derive/reconcile/stat-stamping (covered by its own tests); the
-    // service is responsible for driving the status machine around it.
-    verify(fileEngine).runExtraction(fileId);
     verify(repository, times(3))
         .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
     assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
+    assertEquals(2, fileUpdates.get(2).getExtractionStats().getChunksTotal());
+    assertEquals(1, fileUpdates.get(2).getExtractionStats().getChunksProcessed());
+    assertEquals(1, fileUpdates.get(2).getExtractionStats().getPillsCreated());
+
+    InOrder inOrder = inOrder(memoryExtractor, repository);
+    inOrder.verify(memoryExtractor).derive(same(file), eq("Quarterly results canonical"));
+    inOrder.verify(repository).deleteExtractedMemories(same(file), eq(true));
+    inOrder.verify(memoryExtractor).persist(same(file), same(derivedMemories));
   }
 
   @Test
@@ -191,9 +205,8 @@ class ContextFileProcessingServiceTest {
         .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
     file.setExtractedText("indexed text");
     content.setExtractedText("Quarterly results canonical");
-    org.mockito.Mockito.doThrow(new RuntimeException("provider exploded"))
-        .when(fileEngine)
-        .runExtraction(fileId);
+    when(memoryExtractor.derive(same(file), eq("Quarterly results canonical")))
+        .thenThrow(new RuntimeException("provider exploded"));
 
     service(Runnable::run, () -> assetService, true).process(fileId, contentId);
 
@@ -210,6 +223,9 @@ class ContextFileProcessingServiceTest {
     assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
     assertEquals("provider exploded", failedContent.getProcessingError());
     assertEquals("Quarterly results canonical", failedContent.getExtractedText());
+
+    verify(repository, never()).deleteExtractedMemories(any(), anyBoolean());
+    verify(memoryExtractor, never()).persist(any(), any());
   }
 
   @Test
@@ -350,7 +366,6 @@ class ContextFileProcessingServiceTest {
         textExtractor,
         llmExecutor,
         () -> memoryExtractor,
-        () -> llmEnabled,
-        () -> fileEngine);
+        () -> llmEnabled);
   }
 }

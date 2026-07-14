@@ -22,7 +22,6 @@ const BASE_URL = '/contextCenter/memories';
 
 export type ContextMemoryListParams = ListParams & {
   sourceFileId?: string;
-  sourceEntityId?: string;
   q?: string;
   assets?: string;
   author?: string;

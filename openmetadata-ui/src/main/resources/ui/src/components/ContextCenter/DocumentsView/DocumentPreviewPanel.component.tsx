@@ -27,7 +27,6 @@ import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
 import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
-import ExtractedMemoriesCard from '../ExtractedMemoriesCard/ExtractedMemoriesCard.component';
 import {
   DocumentPreviewPanelProps,
   MetaRowProps,
@@ -156,11 +155,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             </Box>
           )}
         </Card>
-
-        <ExtractedMemoriesCard
-          sourceId={file.id}
-          titleClassName="tw:uppercase"
-        />
       </Box>
     </Box>
   );

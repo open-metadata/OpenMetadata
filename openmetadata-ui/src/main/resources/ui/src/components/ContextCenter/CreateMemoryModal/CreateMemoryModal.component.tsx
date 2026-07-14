@@ -75,7 +75,6 @@ import {
   MEMORY_TYPE_OPTIONS,
   VISIBILITY_OPTIONS,
 } from '../../../constants/ContextCenter.constants';
-import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import {
   EntityReference,
@@ -283,20 +282,6 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
       false,
     [memoryToEdit, currentUserName]
   );
-
-  const memorySource = memoryToEdit?.sourceEntity ?? memoryToEdit?.sourceFile;
-
-  const memorySourceLink = useMemo(() => {
-    if (!memorySource) {
-      return undefined;
-    }
-
-    return memorySource.type === EntityType.KNOWLEDGE_PAGE
-      ? contextCenterClassBase.getArticlePath(
-          memorySource.fullyQualifiedName ?? ''
-        )
-      : `${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memorySource.id}`;
-  }, [memorySource]);
 
   const { showEditButton, showSubmitButton } = useMemo(() => {
     const canEditMemory = (isOwner || isAdminUser) && canEdit;
@@ -654,7 +639,7 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           </Typography>
                         </div>
                       )}
-                      {memorySource && memorySourceLink && (
+                      {memoryToEdit?.sourceFile && (
                         <div className="tw:flex tw:items-center tw:gap-1">
                           <FileLock02
                             className="tw:shrink-0 tw:text-utility-gray-400"
@@ -669,8 +654,8 @@ const CreateMemoryModal: FC<CreateMemoryModalProps> = ({
                           <Link
                             className="tw:text-xs tw:font-medium tw:text-brand-secondary tw:hover:underline tw:truncate"
                             data-testid="memory-source-file-link"
-                            to={memorySourceLink}>
-                            {getEntityName(memorySource)}
+                            to={`${ROUTES.CONTEXT_CENTER_DOCUMENTS}?document=${memoryToEdit.sourceFile.id}`}>
+                            {getEntityName(memoryToEdit.sourceFile)}
                           </Link>
                         </div>
                       )}

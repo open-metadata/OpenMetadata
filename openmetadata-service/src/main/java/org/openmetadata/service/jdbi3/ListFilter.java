@@ -91,7 +91,6 @@ public class ListFilter extends Filter<ListFilter> {
     conditions.add(getServerIdCondition());
     conditions.add(getNameFilterCondition());
     conditions.add(getSourceFileCondition());
-    conditions.add(getSourceEntityCondition());
     conditions.add(getPrimaryEntityCondition());
     conditions.add(getFolderCondition());
     String condition = addCondition(conditions);
@@ -144,22 +143,6 @@ public class ListFilter extends Filter<ListFilter> {
               "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
                   + "WHERE entity_relationship.fromEntity = 'contextFile' "
                   + "AND entity_relationship.fromId = :sourceFileIdParam "
-                  + "AND entity_relationship.relation = %d))",
-              Relationship.MENTIONED_IN.ordinal());
-    }
-    return result;
-  }
-
-  /** Filters context memories down to the knowledge pills extracted from any source entity. */
-  private String getSourceEntityCondition() {
-    String sourceEntityId = queryParams.get("sourceEntityId");
-    String result = "";
-    if (!nullOrEmpty(sourceEntityId)) {
-      queryParams.put("sourceEntityIdParam", sourceEntityId);
-      result =
-          String.format(
-              "(id IN (SELECT entity_relationship.toId FROM entity_relationship "
-                  + "WHERE entity_relationship.fromId = :sourceEntityIdParam "
                   + "AND entity_relationship.relation = %d))",
               Relationship.MENTIONED_IN.ordinal());
     }
