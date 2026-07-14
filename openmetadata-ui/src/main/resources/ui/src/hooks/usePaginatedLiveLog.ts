@@ -89,6 +89,11 @@ export const usePaginatedLiveLog = ({
   const pendingFinalRef = useRef(false);
   const pollTailRef = useRef<() => Promise<void>>();
 
+  // Mirrors `nextCursor` but updated synchronously, so a bottom-scroll firing in
+  // the gap after `busyRef` releases and before React commits the new cursor
+  // can't re-request the page just fetched. `loadMore` reads from here.
+  const nextCursorRef = useRef<string | undefined>(undefined);
+
   const flushFinalTail = useCallback(() => {
     if (pendingFinalRef.current && !busyRef.current) {
       pendingFinalRef.current = false;
@@ -116,10 +121,12 @@ export const usePaginatedLiveLog = ({
         if (isTailPage(page)) {
           setTail(page.content);
           setTailCursor(cursor);
+          nextCursorRef.current = undefined;
           setNextCursor(undefined);
           setReachedTail(true);
         } else {
           setCommitted((prev) => prev + page.content);
+          nextCursorRef.current = page.after;
           setNextCursor(page.after);
           setReachedTail(false);
         }
@@ -146,6 +153,7 @@ export const usePaginatedLiveLog = ({
     requestIdRef.current += 1;
     busyRef.current = false;
     pendingFinalRef.current = false;
+    nextCursorRef.current = undefined;
     setCommitted('');
     setTail('');
     setTailCursor(undefined);
@@ -159,10 +167,11 @@ export const usePaginatedLiveLog = ({
   const hasMore = nextCursor !== undefined;
 
   const loadMore = useCallback(() => {
-    if (hasMore && !busyRef.current) {
-      fetchForward(nextCursor, false);
+    const cursor = nextCursorRef.current;
+    if (cursor !== undefined && !busyRef.current) {
+      fetchForward(cursor, false);
     }
-  }, [hasMore, nextCursor, fetchForward]);
+  }, [fetchForward]);
 
   const pollTail = useCallback(async () => {
     if (!reachedTail || busyRef.current) {

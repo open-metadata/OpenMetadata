@@ -96,6 +96,36 @@ describe('usePaginatedLiveLog', () => {
     expect(result.current.hasMore).toBe(false);
   });
 
+  it('never refetches the same cursor when loadMore fires twice in the gap', async () => {
+    const fetchPage = jest
+      .fn()
+      .mockResolvedValueOnce(page('p0', '1', '3'))
+      .mockResolvedValueOnce(page('p1', '2', '3'))
+      .mockResolvedValue(page('tail'));
+    const { result } = renderHook(() =>
+      usePaginatedLiveLog({
+        fetchPage,
+        resetKey: 'k',
+        enabled: true,
+        isLive: false,
+      })
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('p0'));
+
+    // Two bottom-scroll triggers before a re-render must not re-request 'p0'.
+    await act(async () => {
+      result.current.loadMore();
+      result.current.loadMore();
+    });
+
+    await waitFor(() => expect(result.current.logs).toBe('p0p1'));
+
+    const cursors = fetchPage.mock.calls.map((call) => call[0]);
+
+    expect(cursors).toEqual([undefined, '1']);
+  });
+
   it('polls the tail and REPLACES it (no duplication)', async () => {
     const fetchPage = jest
       .fn()
