@@ -89,6 +89,15 @@ export * from './base/video-player/play-button-icon';
 // Application components
 export * from './application/form-field/form-field.types';
 export * from './application/form-field/form-item-label';
+export * from './application/form-field/fields/icon-picker-field';
+export * from './application/form-field/field-doc-popover';
+export {
+  FieldDocProvider,
+  useActiveFieldDoc,
+  useFieldDoc,
+  useFieldDocRegistry,
+} from './application/form-field/field-doc-context';
+export type { FieldDocEntry } from './application/form-field/field-doc-context';
 export {
   Field,
   FormFields,
@@ -118,6 +127,7 @@ export * from './application/date-picker/date-picker';
 export * from './application/date-picker/date-range-picker';
 export * from './application/date-picker/range-calendar';
 export * from './application/date-picker/range-preset';
+export * from './application/empty-placeholder/empty-placeholder';
 export * from './application/modals/modal';
 export * from './application/pagination/pagination';
 export * from './application/pagination/pagination-base';

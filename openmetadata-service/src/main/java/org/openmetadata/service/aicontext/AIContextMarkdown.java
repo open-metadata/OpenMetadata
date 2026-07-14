@@ -15,7 +15,9 @@ package org.openmetadata.service.aicontext;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.time.Instant;
+import java.util.EnumSet;
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
@@ -26,6 +28,7 @@ import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
+import org.openmetadata.schema.type.personaContext.ContextSection;
 
 /**
  * Renders an {@link AIContext} as a self-describing markdown document for consumption by LLM agents,
@@ -43,34 +46,70 @@ public final class AIContextMarkdown {
 
   private static final int MAX_CONTENT_CHARS = 2000;
   private static final int MAX_SUMMARY_CHARS = 150;
+  private static final Set<ContextSection> LEGACY_RENDER_SECTIONS =
+      EnumSet.complementOf(EnumSet.of(ContextSection.TAGS));
 
   private AIContextMarkdown() {}
 
   public static String render(AIContext context) {
     StringBuilder markdown = new StringBuilder();
     appendFrontmatter(markdown, context);
-    appendDescription(markdown, context);
-    appendAssetContext(markdown, context.getAssetContext());
-    appendKnowledgeSection(markdown, "Business Definitions", context.getGlossaryTerms());
-    appendKnowledgeSection(markdown, "Metrics", context.getMetrics());
-    appendKnowledgeSection(markdown, "Knowledge Articles", context.getArticles());
-    appendLineage(markdown, context);
-    appendObservability(markdown, context.getObservability());
+    appendEntitySections(markdown, context, LEGACY_RENDER_SECTIONS, "#");
     return markdown.toString().strip() + "\n";
   }
 
-  private static void appendObservability(StringBuilder markdown, Observability observability) {
+  static void appendEntitySections(
+      StringBuilder markdown,
+      AIContext context,
+      Set<ContextSection> sections,
+      String headingPrefix) {
+    Set<ContextSection> selected =
+        sections == null ? EnumSet.noneOf(ContextSection.class) : sections;
+    if (selected.contains(ContextSection.DESCRIPTION)) {
+      appendDescription(markdown, context);
+    }
+    appendAssetContext(markdown, context.getAssetContext(), selected, headingPrefix);
+    if (selected.contains(ContextSection.TAGS)) {
+      appendTags(markdown, context.getTags(), headingPrefix);
+    }
+    if (selected.contains(ContextSection.GLOSSARY_TERMS)) {
+      appendKnowledgeSection(
+          markdown, "Business Definitions", context.getGlossaryTerms(), headingPrefix, true);
+    }
+    if (selected.contains(ContextSection.METRICS)) {
+      appendKnowledgeSection(markdown, "Metrics", context.getMetrics(), headingPrefix, true);
+    }
+    if (selected.contains(ContextSection.ARTICLES)) {
+      appendKnowledgeSection(
+          markdown, "Knowledge Articles", context.getArticles(), headingPrefix, true);
+    }
+    if (selected.contains(ContextSection.LINEAGE)) {
+      appendLineage(markdown, context, headingPrefix);
+    }
+    appendObservability(markdown, context.getObservability(), selected, headingPrefix);
+  }
+
+  private static void appendObservability(
+      StringBuilder markdown,
+      Observability observability,
+      Set<ContextSection> sections,
+      String headingPrefix) {
     if (observability != null) {
-      appendProfile(markdown, observability);
-      appendDataQuality(markdown, observability.getDataQuality());
+      if (sections.contains(ContextSection.PROFILE)) {
+        appendProfile(markdown, observability, headingPrefix);
+      }
+      if (sections.contains(ContextSection.DATA_QUALITY)) {
+        appendDataQuality(markdown, observability.getDataQuality(), headingPrefix);
+      }
     }
   }
 
-  private static void appendProfile(StringBuilder markdown, Observability observability) {
+  private static void appendProfile(
+      StringBuilder markdown, Observability observability, String headingPrefix) {
     boolean hasProfile =
         observability.getRowCount() != null || !nullOrEmpty(observability.getColumnProfiles());
     if (hasProfile) {
-      markdown.append("\n# Data Profile\n");
+      appendHeading(markdown, headingPrefix, "Data Profile");
       if (observability.getRowCount() != null) {
         markdown
             .append("\n**Row count:** ")
@@ -103,9 +142,11 @@ public final class AIContextMarkdown {
     }
   }
 
-  private static void appendDataQuality(StringBuilder markdown, DataQuality dataQuality) {
+  private static void appendDataQuality(
+      StringBuilder markdown, DataQuality dataQuality, String headingPrefix) {
     if (dataQuality != null) {
-      markdown.append("\n# Data Quality\n\n");
+      appendHeading(markdown, headingPrefix, "Data Quality");
+      markdown.append('\n');
       markdown
           .append("Tests — passed: ")
           .append(orZero(dataQuality.getPassed()))
@@ -149,7 +190,7 @@ public final class AIContextMarkdown {
           .append(typeLabel(item))
           .append(")\n");
       appendYamlInline(markdown, item.getFullyQualifiedName());
-      appendKnowledgeContent(markdown, item);
+      appendKnowledgeContent(markdown, item, true);
     }
     if (!found.candidateAssets().isEmpty()) {
       markdown.append("\n# Candidate Assets\n\n");
@@ -247,22 +288,46 @@ public final class AIContextMarkdown {
     }
   }
 
-  private static void appendAssetContext(StringBuilder markdown, AssetContext assetContext) {
+  private static void appendAssetContext(
+      StringBuilder markdown,
+      AssetContext assetContext,
+      Set<ContextSection> sections,
+      String headingPrefix) {
     if (assetContext != null && assetContext.getTable() != null) {
-      appendTableContext(markdown, assetContext.getTable());
+      appendTableContext(markdown, assetContext.getTable(), sections, headingPrefix);
     }
   }
 
-  private static void appendTableContext(StringBuilder markdown, TableContext table) {
-    appendSchemaTable(markdown, table.getColumns());
+  private static void appendTableContext(
+      StringBuilder markdown,
+      TableContext table,
+      Set<ContextSection> sections,
+      String headingPrefix) {
+    if (sections.contains(ContextSection.SCHEMA)) {
+      appendSchemaTable(markdown, table.getColumns(), headingPrefix);
+    }
+    if (sections.contains(ContextSection.CONSTRAINTS)) {
+      appendPrimaryKey(markdown, table);
+      appendForeignKeys(markdown, table.getForeignKeys(), headingPrefix);
+    }
+    if (sections.contains(ContextSection.JOINS)) {
+      appendJoins(markdown, table.getFrequentJoins(), headingPrefix);
+    }
+    if (sections.contains(ContextSection.CONSTRAINTS)) {
+      appendPartitions(markdown, table);
+    }
+  }
+
+  private static void appendPrimaryKey(StringBuilder markdown, TableContext table) {
     if (!nullOrEmpty(table.getPrimaryKey())) {
       markdown
           .append("\n**Primary key:** ")
           .append(String.join(", ", table.getPrimaryKey()))
           .append('\n');
     }
-    appendForeignKeys(markdown, table.getForeignKeys());
-    appendJoins(markdown, table.getFrequentJoins());
+  }
+
+  private static void appendPartitions(StringBuilder markdown, TableContext table) {
     if (!nullOrEmpty(table.getPartitionColumns())) {
       markdown
           .append("\n**Partitioned by:** ")
@@ -271,11 +336,13 @@ public final class AIContextMarkdown {
     }
   }
 
-  private static void appendSchemaTable(StringBuilder markdown, List<FieldContext> columns) {
+  private static void appendSchemaTable(
+      StringBuilder markdown, List<FieldContext> columns, String headingPrefix) {
     if (nullOrEmpty(columns)) {
       return;
     }
-    markdown.append("\n# Schema\n\n");
+    appendHeading(markdown, headingPrefix, "Schema");
+    markdown.append('\n');
     markdown.append("| Column | Type | Constraint | Description |\n");
     markdown.append("|--------|------|------------|-------------|\n");
     for (FieldContext column : columns) {
@@ -292,11 +359,13 @@ public final class AIContextMarkdown {
     }
   }
 
-  private static void appendForeignKeys(StringBuilder markdown, List<ForeignKey> foreignKeys) {
+  private static void appendForeignKeys(
+      StringBuilder markdown, List<ForeignKey> foreignKeys, String headingPrefix) {
     if (nullOrEmpty(foreignKeys)) {
       return;
     }
-    markdown.append("\n# Foreign Keys\n\n");
+    appendHeading(markdown, headingPrefix, "Foreign Keys");
+    markdown.append('\n');
     for (ForeignKey foreignKey : foreignKeys) {
       markdown
           .append("- `")
@@ -328,11 +397,13 @@ public final class AIContextMarkdown {
     return nullOrEmpty(relationshipType) ? "" : " (" + relationshipType + ")";
   }
 
-  private static void appendJoins(StringBuilder markdown, List<JoinHint> joins) {
+  private static void appendJoins(
+      StringBuilder markdown, List<JoinHint> joins, String headingPrefix) {
     if (nullOrEmpty(joins)) {
       return;
     }
-    markdown.append("\n# Frequent Joins\n\n");
+    appendHeading(markdown, headingPrefix, "Frequent Joins");
+    markdown.append('\n');
     for (JoinHint join : joins) {
       markdown
           .append("- `")
@@ -345,16 +416,20 @@ public final class AIContextMarkdown {
     }
   }
 
-  private static void appendKnowledgeSection(
-      StringBuilder markdown, String heading, List<KnowledgeItem> items) {
+  static void appendKnowledgeSection(
+      StringBuilder markdown,
+      String heading,
+      List<KnowledgeItem> items,
+      String headingPrefix,
+      boolean truncateContent) {
     if (nullOrEmpty(items)) {
       return;
     }
-    markdown.append("\n# ").append(heading).append("\n");
+    appendHeading(markdown, headingPrefix, heading);
     for (KnowledgeItem item : items) {
-      markdown.append("\n### ").append(labelOf(item)).append('\n');
+      markdown.append('\n').append(headingPrefix).append("## ").append(labelOf(item)).append('\n');
       appendYamlInline(markdown, item.getFullyQualifiedName());
-      appendKnowledgeContent(markdown, item);
+      appendKnowledgeContent(markdown, item, truncateContent);
     }
   }
 
@@ -362,9 +437,11 @@ public final class AIContextMarkdown {
    * Renders a knowledge item's body, appending a retrieval hint whenever the content was excerpted
    * or omitted to fit the context budget, so the agent knows the full text is a fetch away.
    */
-  private static void appendKnowledgeContent(StringBuilder markdown, KnowledgeItem item) {
+  private static void appendKnowledgeContent(
+      StringBuilder markdown, KnowledgeItem item, boolean truncateContent) {
     if (!nullOrEmpty(item.getContent())) {
-      markdown.append('\n').append(truncate(item.getContent().strip())).append('\n');
+      String content = item.getContent().strip();
+      markdown.append('\n').append(truncateContent ? truncate(content) : content).append('\n');
     }
     if (Boolean.TRUE.equals(item.getContentTruncated())) {
       markdown
@@ -386,11 +463,13 @@ public final class AIContextMarkdown {
     return !nullOrEmpty(item.getDisplayName()) ? item.getDisplayName() : item.getName();
   }
 
-  private static void appendLineage(StringBuilder markdown, AIContext context) {
+  private static void appendLineage(
+      StringBuilder markdown, AIContext context, String headingPrefix) {
     boolean hasLineage =
         !nullOrEmpty(context.getUpstream()) || !nullOrEmpty(context.getDownstream());
     if (hasLineage) {
-      markdown.append("\n# Lineage\n\n");
+      appendHeading(markdown, headingPrefix, "Lineage");
+      markdown.append('\n');
       if (!nullOrEmpty(context.getUpstream())) {
         markdown.append("**Upstream:** ").append(codeJoin(context.getUpstream())).append('\n');
       }
@@ -409,6 +488,17 @@ public final class AIContextMarkdown {
       joined.append('`').append(values.get(i)).append('`');
     }
     return joined.toString();
+  }
+
+  private static void appendTags(StringBuilder markdown, List<String> tags, String headingPrefix) {
+    if (!nullOrEmpty(tags)) {
+      appendHeading(markdown, headingPrefix, "Tags");
+      markdown.append("\n").append(codeJoin(tags)).append('\n');
+    }
+  }
+
+  private static void appendHeading(StringBuilder markdown, String headingPrefix, String heading) {
+    markdown.append('\n').append(headingPrefix).append(' ').append(heading).append('\n');
   }
 
   private static String cell(String value) {

@@ -100,10 +100,10 @@ class _RecordingConnection(_MigratedConnection):
         super().close()
 
 
-def test_test_connection_closes_on_success():
+def test_test_connection_does_not_close_on_success():
     connection = _RecordingConnection(_service_connection())
     connection.test_connection(_Metadata())
-    assert connection.closes == 1
+    assert connection.closes == 0
 
 
 class _FailingConnection(_RecordingConnection):
@@ -111,9 +111,16 @@ class _FailingConnection(_RecordingConnection):
         raise RuntimeError("boom")
 
 
-def test_test_connection_closes_even_on_error():
+def test_test_connection_does_not_close_on_error():
     connection = _FailingConnection(_service_connection())
     with pytest.raises(RuntimeError):
+        connection.test_connection(_Metadata())
+    assert connection.closes == 0
+
+
+def test_context_manager_closes():
+    connection = _RecordingConnection(_service_connection())
+    with connection:
         connection.test_connection(_Metadata())
     assert connection.closes == 1
 

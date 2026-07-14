@@ -781,7 +781,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     id="show-deleted"
                     onPress={() => onChangeShowDeleted(!showDeleted)}>
                     <Box justify="between">
-                      {t('label.deleted')}
+                      {t('label.show-deleted')}
                       <Toggle isSelected={showDeleted} />
                     </Box>
                   </Dropdown.Item>
@@ -856,10 +856,10 @@ const ExploreV1: React.FC<ExploreProps> = ({
         }}
         secondPanel={{
           flex: 0.8,
-          minWidth: 812,
+          minWidth: 800,
           children: (
-            <Box className="tw:h-full" colGap={3}>
-              <div className="h-full tw:flex tw:min-w-[400px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
+            <Box className="tw:h-full tw:min-w-0 tw:w-full" colGap={3}>
+              <div className="h-full tw:flex tw:min-w-[300px] tw:flex-1 tw:flex-col tw:overflow-hidden tw:rounded-xl explore-main-card">
                 <Card className="tw:min-h-0 tw:flex-1 tw:rounded-b-none">
                   {!loading && !isElasticSearchIssue ? (
                     <SearchedData

@@ -31,16 +31,9 @@ from metadata.ingestion.source.dashboard.metabase.client import MetabaseClient
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(connection: MetabaseConnectionConfig) -> MetabaseClient:
-    """
-    Create connection
-    """
-    return MetabaseClient(connection)
-
-
 class MetabaseConnection(BaseConnection[MetabaseConnectionConfig, MetabaseClient]):
     def _get_client(self) -> MetabaseClient:
-        return get_connection(self.service_connection)
+        return MetabaseClient(self.service_connection)
 
     def test_connection(
         self,
