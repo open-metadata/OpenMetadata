@@ -3193,7 +3193,7 @@
     "enable-classification-description": "Opción para habilitar las clasificaciones. Podrá ver las etiquetas asociadas dentro de la aplicación.",
     "enable-column-profile": "Habilitar el perfil de columna",
     "enable-debug-logging": "Habilitar el registro de depuración",
-    "enable-reading-sample-data-description": "Permite a {{brandName}} leer los datos de ejemplo. Esta configuración no guardará los datos de ejemplo, pero estos se traerán temporalmente a la infraestructura de {{brandName}} para su procesamiento. Si la lectura está deshabilitada pero el almacenamiento está habilitado, la lectura se habilitará por defecto.",
+    "enable-reading-sample-data-description": "Permite a {{brandName}} leer los datos de ejemplo. Esta configuración no guardará los datos de ejemplo, pero estos se traerán temporalmente a la infraestructura del runner para su procesamiento. Cuando se usa el Hybrid Runner, este procesamiento ocurre dentro de su propio entorno (por ejemplo, su centro de datos o cuenta en la nube) y los datos de ejemplo no salen de su infraestructura. Si la lectura está deshabilitada pero el almacenamiento está habilitado, la lectura se habilitará por defecto.",
     "enable-storing-sample-data-description": "Permite a {{brandName}} almacenar los datos de ejemplo. Esta configuración anulará la configuración de la fuente.",
     "enable-tag-description": "Al habilitar la etiqueta, podrá buscar por ella o asignarla a cualquier entidad.",
     "enables-end-to-end-metadata-management": "Permite la gestión de metadatos de extremo a extremo con descubrimiento de datos, calidad de datos, observabilidad y colaboración entre personas.",

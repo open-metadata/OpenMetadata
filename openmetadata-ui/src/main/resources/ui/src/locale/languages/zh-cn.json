@@ -3193,7 +3193,7 @@
     "enable-classification-description": "启用分类选项, 您将可以查看关联的标签",
     "enable-column-profile": "启用列分析",
     "enable-debug-logging": "启用调试日志",
-    "enable-reading-sample-data-description": "允许 {{brandName}} 读取示例数据。此设置不会保存示例数据，但示例数据将被临时引入 {{brandName}} 基础设施进行处理。如果读取被禁用但存储已启用，则读取将默认启用。",
+    "enable-reading-sample-data-description": "允许 {{brandName}} 读取示例数据。此设置不会保存示例数据，但示例数据将被临时引入运行器（runner）的基础设施进行处理。使用混合运行器（Hybrid Runner）时，此处理在您自己的环境（例如您的数据中心或云账户）中进行，示例数据不会离开您的基础设施。如果读取被禁用但存储已启用，则读取将默认启用。",
     "enable-storing-sample-data-description": "允许 {{brandName}} 存储示例数据。此设置将覆盖源配置。",
     "enable-tag-description": "启用标签后, 您将能够通过该标签进行搜索或将其分配给任何实体.",
     "enables-end-to-end-metadata-management": "端到端元数据治理, 赋能数据探索、质控、可观测性和协作",

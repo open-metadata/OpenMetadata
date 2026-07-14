@@ -3193,7 +3193,7 @@
     "enable-classification-description": "Genom att aktivera klassificeringen kan du söka efter eller tilldela tillhörande taggar till valfri entitet.",
     "enable-column-profile": "Aktivera kolumnprofil",
     "enable-debug-logging": "Aktivera felsökningsloggning",
-    "enable-reading-sample-data-description": "Tillåter {{brandName}} att läsa exempeldata. Den här inställningen sparar inte exempeldata, men exempeldata förs tillfälligt in i {{brandName}}s infrastruktur för bearbetning. Om läsning är inaktiverad men lagring är aktiverad aktiveras läsning som standard.",
+    "enable-reading-sample-data-description": "Tillåter {{brandName}} att läsa exempeldata. Den här inställningen sparar inte exempeldata, men exempeldata förs tillfälligt in i runnerns infrastruktur för bearbetning. När Hybrid Runner används sker denna bearbetning inom din egen miljö (till exempel ditt datacenter eller molnkonto) och exempeldata lämnar inte din infrastruktur. Om läsning är inaktiverad men lagring är aktiverad aktiveras läsning som standard.",
     "enable-storing-sample-data-description": "Tillåter {{brandName}} att lagra exempeldata. Den här inställningen åsidosätter källkonfigurationen.",
     "enable-tag-description": "Genom att aktivera taggen kan du söka efter eller tilldela denna tagg till valfri entitet.",
     "enables-end-to-end-metadata-management": "Upptäck alla dina datatillgångar på ett enda ställe. Få avgörande insikter med rätt data till hands. Lås nu upp din datas potential och fatta välgrundade affärsbeslut!",

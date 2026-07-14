@@ -3193,7 +3193,7 @@
     "enable-classification-description": "Sınıflandırmayı etkinleştirerek, herhangi bir varlığa ilişkili etiketleri arayabilecek veya atayabileceksiniz.",
     "enable-column-profile": "Sütun profilini etkinleştir",
     "enable-debug-logging": "Hata ayıklama günlüğünü etkinleştir",
-    "enable-reading-sample-data-description": "{{brandName}}'nın örnek verileri okumasına izin verir. Bu ayar örnek verileri kaydetmez ancak örnek veriler işleme için geçici olarak {{brandName}} altyapısına aktarılır. Okuma devre dışı bırakılmış ancak depolama etkinleştirilmişse, okuma varsayılan olarak etkinleştirilir.",
+    "enable-reading-sample-data-description": "{{brandName}}'nın örnek verileri okumasına izin verir. Bu ayar örnek verileri kaydetmez ancak örnek veriler işleme için geçici olarak çalıştırıcının (runner) altyapısına aktarılır. Hybrid Runner kullanılırken bu işlem kendi ortamınızda (örneğin veri merkeziniz veya bulut hesabınız) gerçekleşir ve örnek veriler altyapınızdan çıkmaz. Okuma devre dışı bırakılmış ancak depolama etkinleştirilmişse, okuma varsayılan olarak etkinleştirilir.",
     "enable-storing-sample-data-description": "{{brandName}}'nın örnek verileri depolamasına izin verir. Bu ayar kaynak yapılandırmasını geçersiz kılar.",
     "enable-tag-description": "Etiketi etkinleştirerek, bu etiketle arama yapabilecek veya herhangi bir varlığa atayabileceksiniz.",
     "enables-end-to-end-metadata-management": "Tüm veri varlıklarınızı tek bir yerde keşfedin. Parmaklarınızın ucundaki doğru verilerle önemli bilgiler edinin. Şimdi, veri potansiyelinizi ortaya çıkarın ve bilinçli iş kararları verin!",

@@ -3193,7 +3193,7 @@
     "enable-classification-description": "Door classificatie in te schakelen, kun je zoeken op, of geassocieerde tags toewijzen aan elke entiteit.",
     "enable-column-profile": "Schakel kolomprofiel in",
     "enable-debug-logging": "Schakel debug-logging in",
-    "enable-reading-sample-data-description": "Hiermee kan {{brandName}} de voorbeeldgegevens lezen. Deze instelling slaat de voorbeeldgegevens niet op, maar de voorbeeldgegevens worden tijdelijk naar de {{brandName}}-infrastructuur overgebracht voor verwerking. Als lezen is uitgeschakeld maar opslaan is ingeschakeld, wordt lezen standaard ingeschakeld.",
+    "enable-reading-sample-data-description": "Hiermee kan {{brandName}} de voorbeeldgegevens lezen. Deze instelling slaat de voorbeeldgegevens niet op, maar de voorbeeldgegevens worden tijdelijk naar de infrastructuur van de runner overgebracht voor verwerking. Bij gebruik van de Hybrid Runner vindt deze verwerking plaats binnen uw eigen omgeving (bijvoorbeeld uw datacenter of cloudaccount) en verlaten de voorbeeldgegevens uw infrastructuur niet. Als lezen is uitgeschakeld maar opslaan is ingeschakeld, wordt lezen standaard ingeschakeld.",
     "enable-storing-sample-data-description": "Hiermee kan {{brandName}} de voorbeeldgegevens opslaan. Deze instelling overschrijft de bronconfiguratie.",
     "enable-tag-description": "Door de tag in te schakelen, kun je zoeken op deze tag of deze toewijzen aan elke entiteit.",
     "enables-end-to-end-metadata-management": "Ontdek al je data-assets op één plek. Krijg cruciale inzichten met de juiste data binnen handbereik. Ontgrendel nu het potentieel van je data en neem geïnformeerde zakelijke beslissingen!",

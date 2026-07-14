@@ -3193,7 +3193,7 @@
     "enable-classification-description": "Durch Aktivieren der Klassifizierung können Sie nach Entitäten suchen oder diesen zugeordnete Tags zuweisen.",
     "enable-column-profile": "Spaltenprofil aktivieren",
     "enable-debug-logging": "Debug-Protokollierung aktivieren",
-    "enable-reading-sample-data-description": "Ermöglicht {{brandName}} das Lesen der Beispieldaten. Diese Einstellung speichert die Beispieldaten nicht, aber die Beispieldaten werden vorübergehend in die {{brandName}}-Infrastruktur zur Verarbeitung übertragen. Wenn das Lesen deaktiviert, aber das Speichern aktiviert ist, wird das Lesen standardmäßig aktiviert.",
+    "enable-reading-sample-data-description": "Ermöglicht {{brandName}} das Lesen der Beispieldaten. Diese Einstellung speichert die Beispieldaten nicht, aber die Beispieldaten werden vorübergehend zur Verarbeitung in die Infrastruktur des Runners übertragen. Bei Verwendung des Hybrid Runners erfolgt diese Verarbeitung innerhalb Ihrer eigenen Umgebung (z. B. Ihres Rechenzentrums oder Cloud-Kontos) und die Beispieldaten verlassen Ihre Infrastruktur nicht. Wenn das Lesen deaktiviert, aber das Speichern aktiviert ist, wird das Lesen standardmäßig aktiviert.",
     "enable-storing-sample-data-description": "Ermöglicht {{brandName}} das Speichern der Beispieldaten. Diese Einstellung überschreibt die Quellkonfiguration.",
     "enable-tag-description": "Durch Aktivieren des Tags können Sie nach diesem suchen oder es einer Entität zuweisen.",
     "enables-end-to-end-metadata-management": "Entdecken Sie alle Ihre Datenressourcen an einem einzigen Ort. Erhalten Sie entscheidende Einblicke in die richtigen Daten. Nutzen Sie jetzt Ihr Datenpotenzial und treffen Sie informierte Geschäftsentscheidungen!",

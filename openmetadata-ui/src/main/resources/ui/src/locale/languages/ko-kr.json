@@ -3193,7 +3193,7 @@
     "enable-classification-description": "분류를 활성화하면 관련 태그로 검색하거나 엔티티에 할당할 수 있게 됩니다.",
     "enable-column-profile": "열 프로필 활성화",
     "enable-debug-logging": "디버그 로깅 활성화",
-    "enable-reading-sample-data-description": "{{brandName}}가 샘플 데이터를 읽을 수 있도록 합니다. 이 설정은 샘플 데이터를 저장하지 않지만 처리를 위해 샘플 데이터가 일시적으로 {{brandName}} 인프라로 가져옵니다. 읽기가 비활성화되어 있지만 저장이 활성화된 경우 읽기가 기본적으로 활성화됩니다.",
+    "enable-reading-sample-data-description": "{{brandName}}가 샘플 데이터를 읽을 수 있도록 합니다. 이 설정은 샘플 데이터를 저장하지 않지만, 처리를 위해 샘플 데이터가 일시적으로 러너의 인프라로 가져와집니다. 하이브리드 러너(Hybrid Runner)를 사용하는 경우 이 처리는 사용자 자신의 환경(예: 데이터 센터 또는 클라우드 계정) 내에서 이루어지며 샘플 데이터가 사용자의 인프라를 벗어나지 않습니다. 읽기가 비활성화되어 있지만 저장이 활성화된 경우 읽기가 기본적으로 활성화됩니다.",
     "enable-storing-sample-data-description": "{{brandName}}가 샘플 데이터를 저장할 수 있도록 합니다. 이 설정은 소스 구성을 재정의합니다.",
     "enable-tag-description": "태그를 활성화하면 이 태그로 검색하거나 엔티티에 할당할 수 있게 됩니다.",
     "enables-end-to-end-metadata-management": "모든 데이터 자산을 한 곳에서 발견하세요. 필요한 데이터로 중요한 인사이트를 얻으세요. 이제 데이터 잠재력을 열고 정보에 기반한 비즈니스 결정을 내리세요!",

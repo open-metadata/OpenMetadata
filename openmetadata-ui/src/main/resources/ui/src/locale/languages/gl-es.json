@@ -3193,7 +3193,7 @@
     "enable-classification-description": "Ao activar a clasificación, poderás buscar por etiquetas ou asignar etiquetas asociadas a calquera entidade.",
     "enable-column-profile": "Activar perfil de columna",
     "enable-debug-logging": "Activar rexistro de depuración",
-    "enable-reading-sample-data-description": "Permite a {{brandName}} ler os datos de exemplo. Esta configuración non gardará os datos de exemplo, pero estes traeranse temporalmente á infraestrutura de {{brandName}} para o seu procesamento. Se a lectura está desactivada pero o almacenamento está activado, a lectura activarase por defecto.",
+    "enable-reading-sample-data-description": "Permite a {{brandName}} ler os datos de exemplo. Esta configuración non gardará os datos de exemplo, pero estes traeranse temporalmente á infraestrutura do runner para o seu procesamento. Ao usar o Hybrid Runner, este procesamento ocorre dentro do seu propio contorno (por exemplo, o seu centro de datos ou conta na nube) e os datos de exemplo non saen da súa infraestrutura. Se a lectura está desactivada pero o almacenamento está activado, a lectura activarase por defecto.",
     "enable-storing-sample-data-description": "Permite a {{brandName}} almacenar os datos de exemplo. Esta configuración anulará a configuración da orixe.",
     "enable-tag-description": "Ao activar a etiqueta, poderás buscar por ela ou asignala a calquera entidade.",
     "enables-end-to-end-metadata-management": "Descubre todos os teus activos de datos nun só lugar. Obtén información crucial cos datos axeitados ao teu alcance. Agora, desbloquea o potencial dos teus datos e toma decisións comerciais informadas!",

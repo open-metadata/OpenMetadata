@@ -3193,7 +3193,7 @@
     "enable-classification-description": "Option pour activer les classifications, vous pourrez voir les tags associés dans l'application",
     "enable-column-profile": "Activer le profilage de colonne",
     "enable-debug-logging": "Activé le journal de débogage",
-    "enable-reading-sample-data-description": "Permet à {{brandName}} de lire les données d'exemple. Ce paramètre ne sauvegardera pas les données d'exemple, mais celles-ci seront temporairement importées dans l'infrastructure {{brandName}} pour traitement. Si la lecture est désactivée mais le stockage est activé, la lecture sera activée par défaut.",
+    "enable-reading-sample-data-description": "Permet à {{brandName}} de lire les données d'exemple. Ce paramètre ne sauvegardera pas les données d'exemple, mais celles-ci seront temporairement importées dans l'infrastructure du runner pour traitement. Lors de l'utilisation du Hybrid Runner, ce traitement s'effectue au sein de votre propre environnement (par exemple votre centre de données ou compte cloud) et les données d'exemple ne quittent pas votre infrastructure. Si la lecture est désactivée mais le stockage est activé, la lecture sera activée par défaut.",
     "enable-storing-sample-data-description": "Permet à {{brandName}} de stocker les données d'exemple. Ce paramètre remplacera la configuration de la source.",
     "enable-tag-description": "En activant le tag, vous pourrez rechercher par celui-ci ou l'assigner à une entité.",
     "enables-end-to-end-metadata-management": "Activer la gestion des métadonnées de bout en bout avec la découverte des données, la dualité des données, l'observabilité, et la collaboration",
