@@ -40,7 +40,7 @@ export const BlankEmptyPlaceholder = ({
 }: BlankEmptyPlaceholderProps) => (
   <EmptyPlaceholderShell width={width ?? DEFAULT_BLANK_WIDTH} {...rest}>
     {icon && (
-      <div className="tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-[0_2px_10px_0_rgba(223,227,245,0.60)] tw:*:data-icon:size-7">
+      <div className="tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-empty-placeholder-icon tw:*:data-icon:size-7">
         {renderEmptyPlaceholderIcon(icon, 'tw:size-7')}
       </div>
     )}

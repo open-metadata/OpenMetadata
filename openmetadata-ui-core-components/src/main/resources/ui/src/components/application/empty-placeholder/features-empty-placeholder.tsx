@@ -37,7 +37,7 @@ const FeatureItem = ({
     gap={5}>
     <div
       className={cx(
-        'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-[0_2px_10px_0_rgba(223,227,245,0.60)] tw:*:data-icon:size-7',
+        'tw:flex tw:size-16 tw:shrink-0 tw:items-center tw:justify-center tw:rounded-2xl tw:border tw:border-secondary tw:bg-primary tw:shadow-empty-placeholder-icon tw:*:data-icon:size-7',
         iconClassName
       )}>
       {renderEmptyPlaceholderIcon(icon, 'tw:size-7')}
@@ -62,8 +62,7 @@ export interface FeaturesEmptyPlaceholderProps
   features?: EmptyPlaceholderFeature[];
 }
 
-const FEATURES_BACKGROUND =
-  'linear-gradient(180deg, rgba(230, 241, 249, 0.50) 0%, #FFF 25%, #FFF 49.52%, #FFF 75%, #E6F1F9 100%)';
+const FEATURES_BACKGROUND = 'var(--gradient-empty-placeholder-features)';
 
 export const FeaturesEmptyPlaceholder = ({
   title,
