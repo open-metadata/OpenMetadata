@@ -11,8 +11,9 @@
  *  limitations under the License.
  */
 import { JsonTree, Utils as QbUtils } from '@react-awesome-query-builder/antd';
-import { cloneDeep } from 'lodash';
+import { cloneDeep, isEqual, omit } from 'lodash';
 import { SearchOutputType } from '../components/Explore/AdvanceSearchProvider/AdvanceSearchProvider.interface';
+import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import {
   DEFAULT_PERSONA_CONTEXT_DEFINITION,
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
@@ -21,6 +22,8 @@ import {
   PERSONA_CONTEXT_SECTIONS_BY_ENTITY_TYPE,
 } from '../constants/PersonaAIContext.constants';
 import { EntityType } from '../enums/entity.enum';
+import { Persona } from '../generated/entity/teams/persona';
+import { EntityHistory } from '../generated/type/entityHistory';
 import {
   ContextRule,
   PersonaContextDefinition,
@@ -28,6 +31,7 @@ import {
 import { QueryFilterInterface } from '../pages/ExplorePage/ExplorePage.interface';
 import { getTreeConfig } from './AdvancedSearchUtils';
 import { getJsonTreeFromQueryFilter } from './QueryBuilderPureUtils';
+import { getExplorePath } from './RouterUtils';
 import searchClassBase from './SearchClassBase';
 
 export const normalizePersonaContextDefinition = (
@@ -113,6 +117,26 @@ export const getRuleFilterTree = (
   }
 };
 
+export const getRuleExplorePath = (
+  entityType: string,
+  filterJsonTree?: string,
+  queryFilter?: string
+): string => {
+  const tree = getRuleFilterTree(filterJsonTree, queryFilter);
+  const searchIndex = searchClassBase.getEntityTypeSearchIndexMapping()[
+    entityType
+  ] as ExploreSearchIndex | undefined;
+  const tab = searchIndex
+    ? searchClassBase.getTabsInfo()[searchIndex]?.path
+    : undefined;
+
+  return getExplorePath({
+    extraParameters: tree ? { queryFilter: JSON.stringify(tree) } : undefined,
+    isPersistFilters: false,
+    tab,
+  });
+};
+
 export const getRuleConditionCount = (
   filterJsonTree?: string,
   queryFilter?: string
@@ -169,5 +193,255 @@ export const getRuleConditionSummary = (
   }
 };
 
+export interface RuleConditionParts {
+  field: string;
+  operator: string;
+  value?: string;
+}
+
+const CONDITION_SUMMARY_REGEX =
+  /^(.+?)\s+(>=|<=|!=|==|=|>|<|contains|not in|in|like|starts with|ends with|is not null|is null|is not|is)\s*(.*)$/i;
+
+export const getRuleConditionParts = (
+  rule: ContextRule
+): RuleConditionParts | undefined => {
+  const summary = getRuleConditionSummary(rule);
+  if (!summary || /\s(and|or)\s|&&|\|\|/i.test(summary)) {
+    return undefined;
+  }
+  const match = summary.match(CONDITION_SUMMARY_REGEX);
+  if (!match) {
+    return undefined;
+  }
+  const [, field, operator, rawValue] = match;
+  const value = rawValue.trim().replace(/^["']|["']$/g, '');
+
+  return {
+    field: field.trim(),
+    operator: operator.trim(),
+    value: value || undefined,
+  };
+};
+
 export const isKnowledgeContextRule = (rule: ContextRule): boolean =>
   PERSONA_CONTEXT_KNOWLEDGE_TYPES.includes(rule.entityType as EntityType);
+
+export interface PersonaContextVersionChange {
+  key: string;
+  values?: Record<string, string | number>;
+}
+
+export interface PersonaContextVersionEntry {
+  version: string;
+  isCurrent: boolean;
+  updatedBy?: string;
+  updatedAt?: number;
+  changes: PersonaContextVersionChange[];
+  persona: Persona;
+}
+
+const RULE_DERIVED_FIELDS = ['matchedCount'];
+
+export const formatPersonaVersion = (version?: number): string =>
+  Number.parseFloat(String(version ?? 1)).toFixed(1);
+
+interface ComparableDefinition {
+  cacheTtlMinutes?: number;
+  characterBudget?: number;
+  enabled: boolean;
+  rules: ContextRule[];
+}
+
+const comparableDefinition = (
+  definition?: PersonaContextDefinition
+): ComparableDefinition => ({
+  cacheTtlMinutes: definition?.cacheTtlMinutes,
+  characterBudget: definition?.characterBudget,
+  enabled: definition?.enabled ?? true,
+  rules: [...(definition?.rules ?? [])]
+    .map((rule) => omit(rule, RULE_DERIVED_FIELDS) as ContextRule)
+    .sort((a, b) => (a.id ?? '').localeCompare(b.id ?? '')),
+});
+
+const diffContextRules = (
+  previous: ComparableDefinition,
+  current: ComparableDefinition
+): PersonaContextVersionChange[] => {
+  const previousById = new Map(previous.rules.map((rule) => [rule.id, rule]));
+  const currentById = new Map(current.rules.map((rule) => [rule.id, rule]));
+  const changes: PersonaContextVersionChange[] = [];
+
+  current.rules
+    .filter((rule) => !previousById.has(rule.id))
+    .forEach((rule) =>
+      changes.push({
+        key: 'message.persona-context-history-rule-added',
+        values: { name: rule.name },
+      })
+    );
+
+  previous.rules
+    .filter((rule) => !currentById.has(rule.id))
+    .forEach((rule) =>
+      changes.push({
+        key: 'message.persona-context-history-rule-deleted',
+        values: { name: rule.name },
+      })
+    );
+
+  current.rules.forEach((rule) => {
+    const previousRule = previousById.get(rule.id);
+    if (!previousRule) {
+      return;
+    }
+    const alwaysChanged =
+      (previousRule.alwaysInContext ?? false) !==
+      (rule.alwaysInContext ?? false);
+    if (alwaysChanged) {
+      changes.push({
+        key: rule.alwaysInContext
+          ? 'message.persona-context-history-rule-always'
+          : 'message.persona-context-history-rule-not-always',
+        values: { name: rule.name },
+      });
+    }
+    if (
+      !isEqual(
+        omit(previousRule, ['alwaysInContext']),
+        omit(rule, ['alwaysInContext'])
+      )
+    ) {
+      changes.push({
+        key: 'message.persona-context-history-rule-updated',
+        values: { name: rule.name },
+      });
+    }
+  });
+
+  return changes;
+};
+
+const diffContextSettings = (
+  previous?: PersonaContextDefinition,
+  current?: PersonaContextDefinition
+): PersonaContextVersionChange[] => {
+  const changes: PersonaContextVersionChange[] = [];
+  if (
+    current?.characterBudget != null &&
+    previous?.characterBudget !== current.characterBudget
+  ) {
+    changes.push({
+      key: 'message.persona-context-history-budget',
+      values: {
+        from: (previous?.characterBudget ?? 0).toLocaleString(),
+        to: current.characterBudget.toLocaleString(),
+      },
+    });
+  }
+  if (
+    current?.cacheTtlMinutes != null &&
+    previous?.cacheTtlMinutes !== current.cacheTtlMinutes
+  ) {
+    changes.push({
+      key: 'message.persona-context-history-ttl',
+      values: {
+        from: previous?.cacheTtlMinutes ?? 0,
+        to: current.cacheTtlMinutes,
+      },
+    });
+  }
+  if ((previous?.enabled ?? true) !== (current?.enabled ?? true)) {
+    changes.push({
+      key: current?.enabled
+        ? 'message.persona-context-history-enabled'
+        : 'message.persona-context-history-disabled',
+    });
+  }
+
+  return changes;
+};
+
+const parseVersionSnapshot = (snapshot: unknown): Persona | undefined => {
+  try {
+    return (
+      typeof snapshot === 'string' ? JSON.parse(snapshot) : snapshot
+    ) as Persona;
+  } catch {
+    return undefined;
+  }
+};
+
+const describeVersionChanges = (
+  snapshots: Persona[],
+  index: number
+): PersonaContextVersionChange[] => {
+  const current = snapshots[index];
+  const previous = snapshots[index + 1];
+  if (!previous) {
+    return [{ key: 'message.persona-context-history-created' }];
+  }
+
+  const currentComparable = comparableDefinition(current.contextDefinition);
+  const previousComparable = comparableDefinition(previous.contextDefinition);
+  const revertTarget = snapshots
+    .slice(index + 1)
+    .find((older) =>
+      isEqual(currentComparable, comparableDefinition(older.contextDefinition))
+    );
+  if (revertTarget && !isEqual(currentComparable, previousComparable)) {
+    return [
+      {
+        key: 'message.persona-context-history-reverted',
+        values: { version: formatPersonaVersion(revertTarget.version) },
+      },
+    ];
+  }
+
+  const changes = [
+    ...diffContextRules(previousComparable, currentComparable),
+    ...diffContextSettings(
+      previous.contextDefinition,
+      current.contextDefinition
+    ),
+  ];
+  if (changes.length > 0) {
+    return changes;
+  }
+
+  // The version bumped but the AI context is byte-equal to the previous one —
+  // it came from an unrelated persona edit (name, users, default, …). Label it
+  // as such instead of implying the AI context changed.
+  return isEqual(currentComparable, previousComparable)
+    ? [{ key: 'message.persona-context-history-metadata-only' }]
+    : [{ key: 'message.persona-context-history-updated' }];
+};
+
+export const buildPersonaContextVersionHistory = (
+  history?: EntityHistory
+): PersonaContextVersionEntry[] => {
+  const snapshots = (history?.versions ?? [])
+    .map(parseVersionSnapshot)
+    .filter((snapshot): snapshot is Persona => Boolean(snapshot))
+    .sort((a, b) => (b.version ?? 0) - (a.version ?? 0));
+
+  return snapshots.map((snapshot, index) => ({
+    version: formatPersonaVersion(snapshot.version),
+    isCurrent: index === 0,
+    updatedBy: snapshot.updatedBy,
+    updatedAt: snapshot.updatedAt,
+    changes: describeVersionChanges(snapshots, index),
+    persona: snapshot,
+  }));
+};
+
+export const stripPersonaContextDerivedState = (
+  definition?: PersonaContextDefinition
+): PersonaContextDefinition | undefined =>
+  definition
+    ? {
+        ...omit(definition, ['cacheState', 'lastError', 'lastGeneratedAt']),
+        rules: (definition.rules ?? []).map(
+          (rule) => omit(rule, RULE_DERIVED_FIELDS) as ContextRule
+        ),
+      }
+    : definition;

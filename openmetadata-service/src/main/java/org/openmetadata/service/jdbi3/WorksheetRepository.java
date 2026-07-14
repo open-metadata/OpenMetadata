@@ -455,7 +455,7 @@ public class WorksheetRepository extends EntityRepository<Worksheet> {
                   List.of(
                       Pair.of(11, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(12, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 13))
+          .withDomains(getDomains(printer, csvRecord, 13, newWorksheet.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 14));
 
       if (processRecord) {
