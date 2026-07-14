@@ -76,6 +76,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
@@ -197,7 +198,8 @@ public class CreateTask implements TaskListener {
   }
 
   private TaskEntityType getTaskType(DelegateTask delegateTask) {
-    String variableTaskType = WorkflowVariableResolver.stringVariable(delegateTask, "taskType");
+    String variableTaskType =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_TYPE);
     if (variableTaskType != null && !variableTaskType.isEmpty()) {
       return TaskEntityType.fromValue(variableTaskType);
     }
@@ -216,7 +218,7 @@ public class CreateTask implements TaskListener {
 
   private TaskCategory getTaskCategory(DelegateTask delegateTask) {
     String variableTaskCategory =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskCategory");
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_CATEGORY);
     if (variableTaskCategory != null && !variableTaskCategory.isEmpty()) {
       return TaskCategory.fromValue(variableTaskCategory);
     }
@@ -368,37 +370,52 @@ public class CreateTask implements TaskListener {
 
     TaskRepository taskRepository = (TaskRepository) Entity.getEntityRepository(Entity.TASK);
     UUID requestedTaskId = resolveRequestedTaskId(delegateTask);
-    String taskName = WorkflowVariableResolver.stringVariable(delegateTask, "taskName");
+    String taskName =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_NAME);
     String taskDisplayName =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskDisplayName");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_DISPLAY_NAME);
     String taskDescription =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskDescription");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_DESCRIPTION);
     TaskPriority requestedPriority = resolveTaskPriority(delegateTask);
     Object requestedPayload =
-        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskPayload");
-    Long requestedDueDate = WorkflowVariableResolver.longVariable(delegateTask, "taskDueDate");
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_PAYLOAD);
+    Long requestedDueDate =
+        WorkflowVariableResolver.longVariable(delegateTask, WorkflowStartVariables.TASK_DUE_DATE);
     Object requestedExternalReference =
-        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskExternalReference");
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_EXTERNAL_REFERENCE);
     Object requestedTags =
-        WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskTags");
+        WorkflowVariableResolver.workflowObjectVariable(
+            delegateTask, WorkflowStartVariables.TASK_TAGS);
     List<EntityReference> requestedReviewers =
-        WorkflowVariableResolver.entityReferencesVariable(delegateTask, "taskReviewers");
+        WorkflowVariableResolver.entityReferencesVariable(
+            delegateTask, WorkflowStartVariables.TASK_REVIEWERS);
     List<EntityReference> requestedAssignees =
-        WorkflowVariableResolver.entityReferencesVariable(delegateTask, "taskAssignees");
+        WorkflowVariableResolver.entityReferencesVariable(
+            delegateTask, WorkflowStartVariables.TASK_ASSIGNEES);
     EntityReference requestedCreatedBy =
-        WorkflowVariableResolver.entityReferenceVariable(delegateTask, "taskCreatedBy");
+        WorkflowVariableResolver.entityReferenceVariable(
+            delegateTask, WorkflowStartVariables.TASK_CREATED_BY);
     String requestedUpdatedBy =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskUpdatedBy");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_UPDATED_BY);
     String workflowDefinitionId =
-        WorkflowVariableResolver.stringVariable(delegateTask, "workflowDefinitionId");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.WORKFLOW_DEFINITION_ID);
     UUID resolvedWorkflowDefinitionId =
         resolveWorkflowDefinitionId(delegateTask, workflowDefinitionId);
     boolean workflowManagedDraftTask =
-        WorkflowVariableResolver.booleanVariable(delegateTask, "taskWorkflowManaged");
+        WorkflowVariableResolver.booleanVariable(
+            delegateTask, WorkflowStartVariables.TASK_WORKFLOW_MANAGED);
     String taskFormSchemaId =
-        WorkflowVariableResolver.stringVariable(delegateTask, "taskFormSchemaId");
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_FORM_SCHEMA_ID);
     Double taskFormSchemaVersion =
-        WorkflowVariableResolver.doubleVariable(delegateTask, "taskFormSchemaVersion");
+        WorkflowVariableResolver.doubleVariable(
+            delegateTask, WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION);
     String workflowStageId = WorkflowVariableResolver.stringExpression(stageIdExpr, delegateTask);
     String workflowStageDisplayName =
         WorkflowVariableResolver.stringExpression(stageDisplayNameExpr, delegateTask);
@@ -841,7 +858,9 @@ public class CreateTask implements TaskListener {
   }
 
   private UUID resolveRequestedTaskId(DelegateTask delegateTask) {
-    String taskId = WorkflowVariableResolver.stringVariable(delegateTask, "taskEntityId");
+    String taskId =
+        WorkflowVariableResolver.stringVariable(
+            delegateTask, WorkflowStartVariables.TASK_ENTITY_ID);
     if (taskId != null && !taskId.isBlank()) {
       return UUID.fromString(taskId);
     }
@@ -980,7 +999,8 @@ public class CreateTask implements TaskListener {
   }
 
   private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
-    String priority = WorkflowVariableResolver.stringVariable(delegateTask, "taskPriority");
+    String priority =
+        WorkflowVariableResolver.stringVariable(delegateTask, WorkflowStartVariables.TASK_PRIORITY);
     if (priority == null || priority.isBlank()) {
       return null;
     }

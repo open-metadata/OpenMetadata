@@ -449,6 +449,14 @@ public final class TaskWorkflowLifecycleResolver {
     public static final String TASK_REVIEWERS = "taskReviewers";
     public static final String TASK_ASSIGNEES = "taskAssignees";
 
+    // Trigger-supplied start variables: these need the resolved WorkflowDefinition / form-schema
+    // binding, so they aren't derivable from Task and toVariables() doesn't emit them. The names
+    // live here so every caller that triggers a workflow shares one contract instead of repeating
+    // the literals.
+    public static final String TASK_FORM_SCHEMA_ID = "taskFormSchemaId";
+    public static final String TASK_FORM_SCHEMA_VERSION = "taskFormSchemaVersion";
+    public static final String WORKFLOW_DEFINITION_ID = "workflowDefinitionId";
+
     public static WorkflowStartVariables of(Task task) {
       return new WorkflowStartVariables(task);
     }

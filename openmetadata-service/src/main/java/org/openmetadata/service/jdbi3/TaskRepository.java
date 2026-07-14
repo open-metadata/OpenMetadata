@@ -77,6 +77,7 @@ import org.openmetadata.service.tasks.TaskFormExecutionResolver;
 import org.openmetadata.service.tasks.TaskIdGenerator;
 import org.openmetadata.service.tasks.TaskWorkflowHandler;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
@@ -1369,10 +1370,12 @@ public class TaskRepository extends EntityRepository<Task> {
       variables.put(
           getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
       variables.put(
-          "taskFormSchemaId",
+          WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
           task.getTaskFormSchemaId() != null ? task.getTaskFormSchemaId().toString() : null);
-      variables.put("taskFormSchemaVersion", task.getTaskFormSchemaVersion());
-      variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
+      variables.put(
+          WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION, task.getTaskFormSchemaVersion());
+      variables.put(
+          WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
 
       WorkflowHandler.getInstance()
           .triggerByKey(

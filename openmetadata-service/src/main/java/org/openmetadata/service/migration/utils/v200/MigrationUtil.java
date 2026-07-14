@@ -74,6 +74,7 @@ import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
+import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.FullyQualifiedName;
 
@@ -1846,11 +1847,16 @@ public class MigrationUtil {
           variables.put(
               getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE),
               task.getUpdatedBy());
-          variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
+          variables.put(
+              WorkflowStartVariables.WORKFLOW_DEFINITION_ID, workflowDefinition.getId().toString());
           if (workflowBinding.get().schema() != null
               && workflowBinding.get().schema().getId() != null) {
-            variables.put("taskFormSchemaId", workflowBinding.get().schema().getId().toString());
-            variables.put("taskFormSchemaVersion", workflowBinding.get().schema().getVersion());
+            variables.put(
+                WorkflowStartVariables.TASK_FORM_SCHEMA_ID,
+                workflowBinding.get().schema().getId().toString());
+            variables.put(
+                WorkflowStartVariables.TASK_FORM_SCHEMA_VERSION,
+                workflowBinding.get().schema().getVersion());
           }
 
           workflowHandler.triggerByKey(
