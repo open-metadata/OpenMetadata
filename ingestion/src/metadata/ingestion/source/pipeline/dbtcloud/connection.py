@@ -128,32 +128,27 @@ class DBTCloudChecks:
     so a bad token or a wrong account fails there and the remaining steps are
     skipped rather than each re-dialling the API.
 
-    The client is built lazily inside the first check, never at construction:
-    building it while the provider is assembled would run before the runner's gate.
+    The client is the one ``BaseConnection`` owns, not a second one built here.
+    Constructing it opens no connection - it only builds the REST client config and
+    a session - so the gate is still the first call that reaches dbt Cloud.
     """
 
     errors = DBTCLOUD_ERRORS
 
-    def __init__(self, connection: DBTCloudConnectionConfig) -> None:
-        self._connection = connection
-        self._dbt_client: DBTCloudClient | None = None
-
-    def _client(self) -> DBTCloudClient:
-        if self._dbt_client is None:
-            self._dbt_client = DBTCloudClient(self._connection)
-        return self._dbt_client
+    def __init__(self, client: DBTCloudClient) -> None:
+        self._client = client
 
     @check(PipelineStep.CheckAccess)
     def check_access(self) -> Evidence:
         return verify_access(
-            lambda: self._client().test_check_access(),
+            self._client.test_check_access,
             command="read one job of the configured account",
         )
 
     @check(PipelineStep.GetJobs)
     def get_jobs(self) -> Evidence:
         return fetch_list(
-            lambda: self._client().test_get_jobs(),
+            self._client.test_get_jobs,
             noun="job",
             command="fetch the jobs of the account",
             empty_caveat=NO_JOBS_CAVEAT,
@@ -162,7 +157,7 @@ class DBTCloudChecks:
     @check(PipelineStep.GetRuns)
     def get_runs(self) -> Evidence:
         return fetch_list(
-            lambda: self._client().test_get_runs(),
+            self._client.test_get_runs,
             noun="run",
             command="fetch the runs of the account",
         )
@@ -173,4 +168,4 @@ class DBTCloudConnection(BaseConnection[DBTCloudConnectionConfig, DBTCloudClient
         return DBTCloudClient(self.service_connection)
 
     def checks(self) -> ChecksProvider:
-        return DBTCloudChecks(connection=self.service_connection)
+        return DBTCloudChecks(client=self.client)

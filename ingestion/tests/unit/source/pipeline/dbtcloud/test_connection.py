@@ -37,10 +37,7 @@ def client():
 
 @pytest.fixture
 def checks(client):
-    provider = DBTCloudChecks(connection=MagicMock())
-    provider._dbt_client = client
-
-    return provider
+    return DBTCloudChecks(client=client)
 
 
 def test_dbtcloud_connection_is_base_connection():
@@ -57,9 +54,8 @@ def test_get_client_builds_the_client():
 
 
 def test_checks_expose_every_step():
-    conn = DBTCloudConnection(MagicMock())
-
-    resolved = collect_checks(conn.checks())
+    with patch(f"{CONNECTION_MODULE}.DBTCloudClient"):
+        resolved = collect_checks(DBTCloudConnection(MagicMock()).checks())
 
     assert set(resolved) == {
         PipelineStep.CheckAccess,
@@ -68,13 +64,15 @@ def test_checks_expose_every_step():
     }
 
 
-def test_building_the_provider_does_not_build_the_client():
-    """The gate must be the first thing that touches dbt Cloud, so assembling the
-    provider may not build a client."""
+def test_checks_run_against_the_connection_client():
+    """The provider checks the client BaseConnection owns, rather than opening a
+    second one behind its back."""
     with patch(f"{CONNECTION_MODULE}.DBTCloudClient") as mock_builder:
-        DBTCloudConnection(MagicMock()).checks()
+        conn = DBTCloudConnection(MagicMock())
+        provider = conn.checks()
 
-    mock_builder.assert_not_called()
+    assert provider._client is conn.client
+    mock_builder.assert_called_once()
 
 
 def test_check_access_proves_the_account_is_readable(checks, client):
