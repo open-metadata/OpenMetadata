@@ -82,6 +82,7 @@ export const getAggregationOptions = async (
         fieldName: key,
         fieldValue: value,
         query: filter,
+        ...(queryText ? { queryText } : {}),
         size,
       })
     : getAggregateFieldOptions(
@@ -172,6 +173,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
   onNlqAppliedFilters,
+  showRankingDetails,
 }: {
   searchQueryParam: string;
   tabsInfo: Record<ExploreSearchIndex, TabsInfoData>;
@@ -192,6 +194,7 @@ export const fetchEntityData = async ({
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
   onNlqAppliedFilters?: (filters?: QueryFilterInterface) => void;
+  showRankingDetails?: boolean;
 }) => {
   const combinedQueryFilter = getCombinedQueryFilterObject(
     updatedQuickFilters,
@@ -255,6 +258,7 @@ export const fetchEntityData = async ({
           // Results query backs the count badge and pagination total
           // (searchResults.hits.total.value); without this ES caps it at 10000.
           trackTotalHits: true,
+          explain: showRankingDetails,
           excludeSourceFields: [
             'columns',
             'queries',
@@ -324,6 +328,7 @@ export const fetchEntityData = async ({
         pageSize: size,
         includeDeleted: showDeleted,
         trackTotalHits: true,
+        explain: showRankingDetails,
         excludeSourceFields: ['columns', 'queries', 'columnNames', 'dataModel'],
       };
 

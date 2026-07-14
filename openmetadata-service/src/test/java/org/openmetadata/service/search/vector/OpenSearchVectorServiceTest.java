@@ -1,6 +1,7 @@
 package org.openmetadata.service.search.vector;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -10,6 +11,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.IOException;
+import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
@@ -37,7 +39,8 @@ class OpenSearchVectorServiceTest {
 
     when(mockClient.generic()).thenReturn(mockGenericClient);
 
-    when(mockEmbeddingClient.embed(any(String.class))).thenReturn(new float[] {0.1f, 0.2f, 0.3f});
+    when(mockEmbeddingClient.embedQuery(any(String.class)))
+        .thenReturn(new float[] {0.1f, 0.2f, 0.3f});
 
     vectorService = new OpenSearchVectorService(mockClient, mockEmbeddingClient);
   }
@@ -451,8 +454,16 @@ class OpenSearchVectorServiceTest {
     assertTrue(body.contains("\"weights\":[0.4,0.6]"));
     assertTrue(body.contains("\"technique\":\"rrf\""));
     assertTrue(body.contains("\"rank_constant\":30"));
-    assertTrue(body.contains("\"collapse\""));
-    assertTrue(body.contains("\"parentId\""));
+    assertTrue(body.contains("\"score-ranker-processor\""));
+    assertTrue(body.contains("\"phase_results_processors\""));
+    // The hybrid-rrf pipeline must NOT carry a collapse response processor. Collate's NLQ hybrid
+    // search applies a query-level collapse{parentId} in the request body; a pipeline-level
+    // collapse
+    // on the same field makes OpenSearch reject the request with
+    // "Cannot collapse on parentId. Results already collapsed on parentId" (HTTP 500).
+    assertFalse(body.contains("\"response_processors\""));
+    assertFalse(body.contains("\"collapse\""));
+    assertFalse(body.contains("\"parentId\""));
   }
 
   @Test
@@ -539,5 +550,38 @@ class OpenSearchVectorServiceTest {
       when(mockGenericClient.execute(any()))
           .thenReturn(responses[0], java.util.Arrays.copyOfRange(responses, 1, responses.length));
     }
+  }
+
+  @Test
+  void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
+    Method m = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+    m.setAccessible(true);
+    String body = (String) m.invoke(vectorService);
+
+    // The unchanged embedding knn_vector must NOT be re-declared: PUT _mapping is atomic and some
+    // OpenSearch versions reject re-declaring an existing knn_vector, which would fail the whole
+    // additive upgrade and silently leave the new fields unmapped.
+    assertTrue(!body.contains("knn_vector"), "upgrade body must not re-declare the knn_vector");
+    assertTrue(
+        !body.contains("\"embedding\""), "embedding field excluded from the additive upgrade");
+    // The genuinely new denormalized fields and the version marker must be present.
+    assertTrue(body.contains("\"owners\""), "new nested owners field present");
+    assertTrue(body.contains("\"service\""), "new service field present");
+    assertTrue(body.contains("\"columns\""), "new columns field present");
+    assertTrue(body.contains("\"description\""), "new description field present");
+    assertTrue(body.contains("chunkDocVersion"), "_meta.chunkDocVersion bumped");
+
+    // databaseSchema must map both name and displayName (like service/database):
+    // buildDenormalizedFields
+    // copies both onto the chunk doc, so mapping only `name` would leave displayName unindexed.
+    com.fasterxml.jackson.databind.JsonNode schema =
+        new com.fasterxml.jackson.databind.ObjectMapper()
+            .readTree(body)
+            .path("properties")
+            .path("databaseSchema")
+            .path("properties");
+    assertTrue(schema.has("name"), "databaseSchema.name mapped");
+    assertTrue(
+        schema.has("displayName"), "databaseSchema.displayName mapped (matches service/database)");
   }
 }

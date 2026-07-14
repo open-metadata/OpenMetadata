@@ -840,16 +840,20 @@ public interface CollectionDAO {
     // <serviceHash>.%.%` and reject those rows. ListFilter.getFqnPrefixCondition binds
     // both `:serviceHash` (already used by the prefix LIKE in <sqlCondition>) and
     // `:serviceHashChild` (the `.%.%` companion) so the SQL just plugs them in.
+    // Deferred join: resolve the page index-only on (name, id) in the derived table, then fetch
+    // c.json by primary key for only the paged rows, so the json blob never enters the filesort.
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name, id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "<sqlCondition> AND "
                 + "ce.fqnHash NOT LIKE :serviceHashChild AND "
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId)) "
                 + "ORDER BY name DESC, id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name, id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id "
+                + "ORDER BY c.name, c.id")
     List<String> listRootBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -860,12 +864,16 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "<sqlCondition> AND "
                 + "ce.fqnHash NOT LIKE :serviceHashChild AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId)) "
                 + "ORDER BY name, id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id "
+                + "ORDER BY c.name, c.id")
     List<String> listRootAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1194,8 +1202,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'directory' AND relation = 0 "
@@ -1205,7 +1214,7 @@ public interface CollectionDAO {
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
                 + "ORDER BY name DESC,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1216,7 +1225,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'directory' AND relation = 0 "
@@ -1225,7 +1236,8 @@ public interface CollectionDAO {
                 + "<sqlCondition> AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
                 + "ORDER BY name,id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1315,8 +1327,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity IN ('directory', 'spreadsheet') AND toEntity = 'file' AND relation = 0 "
@@ -1326,7 +1339,7 @@ public interface CollectionDAO {
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
                 + "ORDER BY name DESC,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1337,7 +1350,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity IN ('directory', 'spreadsheet') AND toEntity = 'file' AND relation = 0 "
@@ -1346,7 +1361,8 @@ public interface CollectionDAO {
                 + "<sqlCondition> AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
                 + "ORDER BY name,id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1436,8 +1452,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT json FROM ("
-                + "SELECT name,id, ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'spreadsheet' AND relation = 0 "
@@ -1447,7 +1464,7 @@ public interface CollectionDAO {
                 + "(name < :beforeName OR (name = :beforeName AND id < :beforeId))  "
                 + "ORDER BY name DESC,id DESC "
                 + "LIMIT :limit"
-                + ") last_rows_subquery ORDER BY name,id")
+                + ") last_rows_subquery ON c.id = last_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listBefore(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -1458,7 +1475,9 @@ public interface CollectionDAO {
 
     @SqlQuery(
         value =
-            "SELECT ce.json FROM <table> ce "
+            "SELECT c.json FROM <table> c "
+                + "INNER JOIN ("
+                + "SELECT ce.id FROM <table> ce "
                 + "LEFT JOIN ("
                 + "  SELECT toId FROM entity_relationship "
                 + "  WHERE fromEntity = 'directory' AND toEntity = 'spreadsheet' AND relation = 0 "
@@ -1467,7 +1486,8 @@ public interface CollectionDAO {
                 + "<sqlCondition> AND "
                 + "(name > :afterName OR (name = :afterName AND id > :afterId))  "
                 + "ORDER BY name,id "
-                + "LIMIT :limit")
+                + "LIMIT :limit"
+                + ") next_rows_subquery ON c.id = next_rows_subquery.id ORDER BY c.name,c.id")
     List<String> listAfter(
         @Define("table") String table,
         @BindMap Map<String, ?> params,
@@ -4638,19 +4658,40 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
-        // 'Approved' double-counts in `completedCount` AND `approvedCount` because the
-        // same status means different things across task types: terminal for
-        // Glossary/DescriptionUpdate (legacy dashboards expect it under "completed") and
-        // non-terminal for Data Access Requests (the dedicated DAR list uses
-        // `approvedCount` / `grantedCount` and the `active` status group instead).
-        // See ListFilter.getTaskStatusCondition for the matching status-group semantics.
+        // Row-aware bucketing so openCount + completedCount = total across mixed task types.
+        // Bucket predicates and status/type literals are shared with ListFilter via
+        // TaskBucketSql — see that class for the invariant + drift-guard test.
         "SELECT "
             + "COUNT(id) AS total, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1 ELSE 0 END), 0) AS openCount, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked') THEN 1 ELSE 0 END), 0) AS completedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END), 0) AS approvedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Granted' THEN 1 ELSE 0 END), 0) AS grantedCount "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_OPEN_STATUSES
+            + ") THEN 1"
+            + " WHEN type = '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS openCount, "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_TERMINAL_STATUSES
+            + ") THEN 1"
+            + " WHEN type <> '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS completedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_IN_PROGRESS
+            + "' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1 ELSE 0 END), 0) AS approvedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_GRANTED
+            + "' THEN 1 ELSE 0 END), 0) AS grantedCount "
             + "FROM task_entity <condition>")
     TaskCountSummary getTaskCountSummary(
         @Define("condition") String condition, @BindMap Map<String, String> params);
@@ -8716,31 +8757,76 @@ public interface CollectionDAO {
     @SqlUpdate("DELETE FROM change_event WHERE entityType = :entityType")
     void deleteAll(@Bind("entityType") String entityType);
 
-    default List<String> list(EventType eventType, List<String> entityTypes, long timestamp) {
+    default List<ChangeEventRecord> listAfter(
+        EventType eventType,
+        List<String> entityTypes,
+        long timestamp,
+        long endTs,
+        long afterOffset,
+        int limit) {
+      List<ChangeEventRecord> result;
       if (nullOrEmpty(entityTypes)) {
-        return Collections.emptyList();
+        result = Collections.emptyList();
+      } else if (entityTypes.getFirst().equals("*")) {
+        result =
+            listAfterWithoutEntityFilter(eventType.value(), timestamp, endTs, afterOffset, limit);
+      } else {
+        result =
+            listAfterWithEntityFilter(
+                eventType.value(), entityTypes, timestamp, endTs, afterOffset, limit);
       }
-      if (entityTypes.get(0).equals("*")) {
-        return listWithoutEntityFilter(eventType.value(), timestamp);
-      }
-      return listWithEntityFilter(eventType.value(), entityTypes, timestamp);
+      return result;
     }
 
-    @SqlQuery(
-        "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND (entityType IN (<entityTypes>)) AND eventTime >= :timestamp "
-            + "ORDER BY eventTime ASC")
-    List<String> listWithEntityFilter(
+    // Deferred join: sort/limit on `offset` only, fetch json by PK — keeps the json blob out of
+    // MySQL's filesort (else ER_OUT_OF_SORTMEMORY on wide rows). Caller re-sorts; no outer ORDER
+    // BY.
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT c.`offset` AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT `offset` FROM change_event WHERE eventType = :eventType "
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND eventTime <= :endTs "
+                + "AND `offset` > :afterOffset ORDER BY `offset` ASC LIMIT :limit) k "
+                + "ON c.`offset` = k.`offset`",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT c.\"offset\" AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
+                + "AND entityType IN (<entityTypes>) AND eventTime >= :timestamp AND eventTime <= :endTs "
+                + "AND \"offset\" > :afterOffset ORDER BY \"offset\" ASC LIMIT :limit) k "
+                + "ON c.\"offset\" = k.\"offset\"",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listAfterWithEntityFilter(
         @Bind("eventType") String eventType,
         @BindList("entityTypes") List<String> entityTypes,
-        @Bind("timestamp") long timestamp);
+        @Bind("timestamp") long timestamp,
+        @Bind("endTs") long endTs,
+        @Bind("afterOffset") long afterOffset,
+        @Bind("limit") int limit);
 
-    @SqlQuery(
-        "SELECT json FROM change_event WHERE "
-            + "eventType = :eventType AND eventTime >= :timestamp "
-            + "ORDER BY eventTime ASC")
-    List<String> listWithoutEntityFilter(
-        @Bind("eventType") String eventType, @Bind("timestamp") long timestamp);
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT c.`offset` AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT `offset` FROM change_event WHERE eventType = :eventType "
+                + "AND eventTime >= :timestamp AND eventTime <= :endTs AND `offset` > :afterOffset "
+                + "ORDER BY `offset` ASC LIMIT :limit) k ON c.`offset` = k.`offset`",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT c.\"offset\" AS offset, c.json AS json FROM change_event c INNER JOIN ("
+                + "SELECT \"offset\" FROM change_event WHERE eventType = :eventType "
+                + "AND eventTime >= :timestamp AND eventTime <= :endTs AND \"offset\" > :afterOffset "
+                + "ORDER BY \"offset\" ASC LIMIT :limit) k ON c.\"offset\" = k.\"offset\"",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(ChangeEventRecordMapper.class)
+    List<ChangeEventRecord> listAfterWithoutEntityFilter(
+        @Bind("eventType") String eventType,
+        @Bind("timestamp") long timestamp,
+        @Bind("endTs") long endTs,
+        @Bind("afterOffset") long afterOffset,
+        @Bind("limit") int limit);
 
     @SqlQuery(
         "SELECT json FROM change_event ce  WHERE ce.offset > :offset ORDER BY ce.offset ASC LIMIT :limit")
@@ -9159,9 +9245,7 @@ public interface CollectionDAO {
       boolean includeEmptyTestSuite =
           Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
       if (!includeEmptyTestSuite) {
-        groupBy =
-            String.format(
-                "group by %s.json, %s.name, %s.id", getTableName(), getTableName(), getTableName());
+        groupBy = String.format("GROUP BY %s.name, %s.id", getTableName(), getTableName());
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
@@ -9185,9 +9269,7 @@ public interface CollectionDAO {
       boolean includeEmptyTestSuite =
           Boolean.parseBoolean(filter.getQueryParam("includeEmptyTestSuites"));
       if (!includeEmptyTestSuite) {
-        groupBy =
-            String.format(
-                "group by %s.json, %s.name, %s.id", getTableName(), getTableName(), getTableName());
+        groupBy = String.format("GROUP BY %s.name, %s.id", getTableName(), getTableName());
         String condition =
             String.format(
                 "INNER JOIN entity_relationship er ON %s.id=er.fromId AND er.relation=%s AND er.toEntity='%s'",
@@ -12139,6 +12221,84 @@ public interface CollectionDAO {
     default String getNameHashColumn() {
       return "fqnHash";
     }
+
+    /**
+     * Atomically claims a Queued report for this node, flipping it to Running only if it is still
+     * Queued. Returns 1 for the single winning caller and 0 for losers, so concurrent recovery
+     * re-drives across pods generate the pack exactly once.
+     */
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_SET(json, '$.status', 'Running', '$.runningOn', :runningOn, '$.startedAt', :startedAt) "
+                + "WHERE id = :id AND status = 'Queued'",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = json || jsonb_build_object('status', 'Running', 'runningOn', CAST(:runningOn AS text), 'startedAt', CAST(:startedAt AS bigint)) "
+                + "WHERE id = :id AND status = 'Queued'",
+        connectionType = POSTGRES)
+    int claimQueued(
+        @Bind("id") String id,
+        @Bind("runningOn") String runningOn,
+        @Bind("startedAt") long startedAt);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_SET(json, '$.status', 'Completed', '$.completedAt', :completedAt, '$.artifacts', CAST(:artifacts AS JSON), '$.manifest', CAST(:manifest AS JSON), '$.updatedAt', :completedAt, '$.updatedBy', :updatedBy) "
+                + "WHERE id = :id AND status = 'Running' AND json ->> '$.runningOn' = :runningOn",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = json || jsonb_build_object('status', 'Completed', 'completedAt', CAST(:completedAt AS bigint), 'artifacts', CAST(:artifacts AS jsonb), 'manifest', CAST(:manifest AS jsonb), 'updatedAt', CAST(:completedAt AS bigint), 'updatedBy', CAST(:updatedBy AS text)) "
+                + "WHERE id = :id AND status = 'Running' AND json->>'runningOn' = :runningOn",
+        connectionType = POSTGRES)
+    int completeRunning(
+        @Bind("id") String id,
+        @Bind("runningOn") String runningOn,
+        @Bind("completedAt") long completedAt,
+        @Bind("artifacts") String artifacts,
+        @Bind("manifest") String manifest,
+        @Bind("updatedBy") String updatedBy);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_SET(json, '$.status', 'Failed', '$.completedAt', :completedAt, '$.failureReason', :failureReason, '$.updatedAt', :completedAt, '$.updatedBy', :updatedBy) "
+                + "WHERE id = :id AND status = 'Running' AND json ->> '$.runningOn' = :runningOn",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = json || jsonb_build_object('status', 'Failed', 'completedAt', CAST(:completedAt AS bigint), 'failureReason', CAST(:failureReason AS text), 'updatedAt', CAST(:completedAt AS bigint), 'updatedBy', CAST(:updatedBy AS text)) "
+                + "WHERE id = :id AND status = 'Running' AND json->>'runningOn' = :runningOn",
+        connectionType = POSTGRES)
+    int failRunning(
+        @Bind("id") String id,
+        @Bind("runningOn") String runningOn,
+        @Bind("completedAt") long completedAt,
+        @Bind("failureReason") String failureReason,
+        @Bind("updatedBy") String updatedBy);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = JSON_REMOVE(JSON_SET(json, '$.status', 'Queued', '$.updatedAt', :updatedAt, '$.updatedBy', :updatedBy), '$.runningOn', '$.startedAt') "
+                + "WHERE id = :id AND status = 'Running' AND (JSON_EXTRACT(json, '$.startedAt') IS NULL OR CAST(json ->> '$.startedAt' AS UNSIGNED) < :staleBefore)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE audit_report_entity SET json = (json || jsonb_build_object('status', 'Queued', 'updatedAt', CAST(:updatedAt AS bigint), 'updatedBy', CAST(:updatedBy AS text))) - 'runningOn' - 'startedAt' "
+                + "WHERE id = :id AND status = 'Running' AND ((json->>'startedAt') IS NULL OR CAST(json->>'startedAt' AS bigint) < :staleBefore)",
+        connectionType = POSTGRES)
+    int requeueStaleRunning(
+        @Bind("id") String id,
+        @Bind("staleBefore") long staleBefore,
+        @Bind("updatedAt") long updatedAt,
+        @Bind("updatedBy") String updatedBy);
+
+    /** Indexed lookup of an in-flight (Queued/Running) report by its request signature. */
+    @SqlQuery(
+        "SELECT json FROM audit_report_entity "
+            + "WHERE requestSignature = :signature AND status IN ('Queued', 'Running') "
+            + "AND (deleted = FALSE OR deleted IS NULL) LIMIT 1")
+    String findActiveByRequestSignature(@Bind("signature") String signature);
   }
 
   interface McpServerDAO extends EntityDAO<org.openmetadata.schema.entity.ai.McpServer> {

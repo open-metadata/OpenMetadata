@@ -83,7 +83,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
               key={child.props.id}
               type="button"
               onClick={() => onAction?.(child.props.id)}>
-              {child.props.label}
+              {child.props.label ?? child.props.children}
             </button>
           ) : (
             child
@@ -95,6 +95,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       .fn()
       .mockImplementation(({ children }) => <div>{children}</div>),
     Root: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    Separator: jest.fn().mockImplementation(() => <hr />),
   },
   defaultColors: { gray: { 50: '#fafafa' } },
 }));
@@ -225,6 +226,16 @@ jest.mock('../../../components/PageHeader/PageHeader.component', () => ({
 jest.mock('../../../hoc/LimitWrapper', () => ({
   __esModule: true,
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
+}));
+
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: ({ open, onDelete }: { open: boolean; onDelete: () => void }) =>
+    open ? (
+      <button data-testid="confirm-button" onClick={onDelete}>
+        Delete
+      </button>
+    ) : null,
 }));
 
 describe('MetricListPage', () => {

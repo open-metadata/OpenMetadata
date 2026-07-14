@@ -12,7 +12,6 @@
  */
 import { expect } from '@playwright/test';
 import { get, startCase } from 'lodash';
-import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
 import { ContainerClass } from '../../../support/entity/ContainerClass';
 import { DashboardClass } from '../../../support/entity/DashboardClass';
@@ -111,7 +110,7 @@ test.afterEach(async ({ page }) => {
   await page.goto('about:blank');
 });
 
-test.describe('Data asset lineage', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
+test.describe('Data asset lineage', () => {
   const pipeline = new PipelineClass();
   const entities: EntityClassUnion[] = [];
 
@@ -378,7 +377,7 @@ test.describe('Column Level Lineage', () => {
       await test.step('Verify column layer is inactive initially', async () => {
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).not.toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).not.toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
@@ -388,7 +387,7 @@ test.describe('Column Level Lineage', () => {
 
         await page.click('[data-testid="lineage-layer-btn"]');
 
-        await expect(columnLayerBtn).toHaveClass(/Mui-selected/);
+        await expect(columnLayerBtn).toHaveAttribute('data-selected');
 
         await clickOutside(page);
       });
