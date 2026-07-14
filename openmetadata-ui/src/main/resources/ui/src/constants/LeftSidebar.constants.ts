@@ -17,10 +17,10 @@ import { ReactComponent as ClassificationIcon } from '../assets/svg/classificati
 import { ReactComponent as MemoriesIcon } from '../assets/svg/common/memories.svg';
 import { ReactComponent as KnowledgeCenterIcon } from '../assets/svg/context-center.svg';
 import { ReactComponent as DataQualityRulesIcon } from '../assets/svg/data-observability/data-quality-rules.svg';
+import { ReactComponent as ColumnBulkIcon } from '../assets/svg/entity/column.svg';
 import { ReactComponent as ExploreIcon } from '../assets/svg/explore.svg';
 import { ReactComponent as GlossaryIcon } from '../assets/svg/glossary.svg';
 import { ReactComponent as AlertIcon } from '../assets/svg/ic-alert.svg';
-import { ReactComponent as ColumnBulkIcon } from '../assets/svg/ic-column.svg';
 import { ReactComponent as DataQualityIcon } from '../assets/svg/ic-data-contract.svg';
 import { ReactComponent as MarketplaceIcon } from '../assets/svg/ic-data-marketplace.svg';
 import { ReactComponent as DomainsIcon } from '../assets/svg/ic-domain.svg';

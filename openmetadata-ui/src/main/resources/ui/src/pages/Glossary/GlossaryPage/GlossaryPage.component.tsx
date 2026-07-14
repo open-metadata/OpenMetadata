@@ -20,9 +20,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { DeleteType } from '../../../components/common/DeleteWidget/DeleteWidget.interface';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
-import { getGlossaryHomeCrumb } from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
-import HeaderShell from '../../../components/common/HeaderShell/HeaderShell.component';
 import Loader from '../../../components/common/Loader/Loader';
 import ResizableLeftPanels from '../../../components/common/ResizablePanels/ResizableLeftPanels';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
@@ -52,7 +49,6 @@ import { GlossaryTerm } from '../../../generated/entity/data/glossaryTerm';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { withPageLayout } from '../../../hoc/withPageLayout';
 import { usePaging } from '../../../hooks/paging/usePaging';
-import { useIsAiMode } from '../../../hooks/useAppMode';
 import { useElementInView } from '../../../hooks/useElementInView';
 import { useFqn } from '../../../hooks/useFqn';
 import {
@@ -80,7 +76,6 @@ const GlossaryPage = () => {
   const { permissions } = usePermissionProvider();
   const { fqn: glossaryFqn } = useFqn();
   const { t } = useTranslation();
-  const isAiMode = useIsAiMode();
   const navigate = useNavigate();
   const queryClient = useQueryClient();
   const { handleOnAsyncEntityDeleteConfirm } = useAsyncDeleteProvider();
@@ -595,24 +590,7 @@ const GlossaryPage = () => {
     glossaryElement
   );
 
-  return (
-    <div>
-      {isAiMode && (
-        <HeaderShell
-          breadcrumb={
-            <HeaderBreadcrumb
-              noMargin
-              items={[getGlossaryHomeCrumb(t), { label: t('label.glossary') }]}
-              showHome={false}
-            />
-          }
-          title={t('label.glossary')}
-          variant="gradient"
-        />
-      )}
-      {resizableLayout}
-    </div>
-  );
+  return <div>{resizableLayout}</div>;
 };
 
 export default withPageLayout(GlossaryPage);
