@@ -47,39 +47,66 @@ def _versions(*supported: str) -> MagicMock:
     return versions
 
 
-def _checks(get_connection) -> tuple[LookerChecks, MagicMock]:
-    """A provider whose lazily-built SDK is the returned mock."""
+def _checks() -> tuple[LookerChecks, MagicMock]:
+    """A provider whose ``connect`` thunk hands back the returned mock SDK."""
     client = MagicMock()
-    get_connection.return_value = client
 
-    return LookerChecks(connection=MagicMock()), client
+    return LookerChecks(connect=lambda: client), client
 
 
 def test_looker_connection_is_base_connection():
     assert issubclass(LookerConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = LookerConnection(MagicMock())
+def test_get_client_initialises_the_sdk():
+    config = MagicMock()
+    config.clientId = "client-id"
+    config.clientSecret.get_secret_value.return_value = "secret"
+    config.hostPort = "https://looker.example.com"
+    with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
+        conn = LookerConnection(config)
         client = conn.client
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    assert client is mock_sdk.init40.return_value
+    mock_sdk.init40.assert_called_once()
 
 
-def test_checks_does_not_touch_the_network():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+def test_checks_run_against_the_client_the_connection_owns():
+    # The provider holds no client of its own: it reads BaseConnection.client, so
+    # every step shares the one client the connection builds, caches, and closes.
+    with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
         conn = LookerConnection(MagicMock())
         provider = conn.checks()
+        provider.check_access()
 
     assert isinstance(provider, LookerChecks)
-    mock_get.assert_not_called()
+    mock_sdk.init40.return_value.me.assert_called_once_with()
+    assert conn._client is mock_sdk.init40.return_value
+
+
+def test_building_the_provider_does_not_build_the_client():
+    # The SDK must not be built while the provider is assembled: that would run
+    # before the runner's gate.
+    with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
+        conn = LookerConnection(MagicMock())
+        conn.checks()
+
+    mock_sdk.init40.assert_not_called()
+
+
+def test_the_client_is_built_once_and_shared_across_checks():
+    with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
+        mock_sdk.init40.return_value.versions.return_value = _versions("4.0")
+        conn = LookerConnection(MagicMock())
+        provider = conn.checks()
+        provider.check_access()
+        provider.validate_version()
+
+    mock_sdk.init40.assert_called_once()
 
 
 def test_collect_checks_maps_every_step():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, _ = _checks(mock_get)
+    provider, _ = _checks()
     collected = collect_checks(provider)
 
     assert set(collected) == {
@@ -90,21 +117,10 @@ def test_collect_checks_maps_every_step():
     }
 
 
-def test_client_is_built_once_and_shared_across_checks():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.versions.return_value = _versions("4.0")
-        provider.check_access()
-        provider.validate_version()
-
-    mock_get.assert_called_once_with(provider._connection)
-
-
 def test_check_access_reads_the_authenticated_user():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    provider, client = _checks()
 
-        evidence = provider.check_access()
+    evidence = provider.check_access()
 
     client.me.assert_called_once_with()
     assert evidence.summary == "authenticated"
@@ -114,35 +130,32 @@ def test_check_access_reads_the_authenticated_user():
 def test_check_access_wraps_a_rejected_login_as_check_error():
     # The SDK logs in lazily on its first call, so bad credentials surface as a
     # classified CheckAccess failure instead of escaping while the provider is built.
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.me.side_effect = _sdk_error("Not found", documentation_url=LOGIN_404)
+    provider, client = _checks()
+    client.me.side_effect = _sdk_error("Not found", documentation_url=LOGIN_404)
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.check_access()
+    with pytest.raises(CheckError) as exc_info:
+        provider.check_access()
 
     assert isinstance(exc_info.value.cause, SDKError)
     assert exc_info.value.evidence.command == "log in and read the authenticated user"
 
 
 def test_validate_version_passes_when_the_sdk_version_is_supported():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.versions.return_value = _versions("3.1", "4.0")
+    provider, client = _checks()
+    client.versions.return_value = _versions("3.1", "4.0")
 
-        evidence = provider.validate_version()
+    evidence = provider.validate_version()
 
     assert evidence.summary == "API 4.0 is supported"
     assert evidence.command == "list the API versions the instance supports"
 
 
 def test_validate_version_fails_when_the_sdk_version_is_missing():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.versions.return_value = _versions("3.1")
+    provider, client = _checks()
+    client.versions.return_value = _versions("3.1")
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.validate_version()
+    with pytest.raises(CheckError) as exc_info:
+        provider.validate_version()
 
     assert isinstance(exc_info.value.cause, UnsupportedApiVersionError)
     assert "3.1" in str(exc_info.value.cause)
@@ -150,11 +163,10 @@ def test_validate_version_fails_when_the_sdk_version_is_missing():
 
 
 def test_list_dashboards_counts_what_it_enumerated():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.all_dashboards.return_value = [MagicMock(), MagicMock()]
+    provider, client = _checks()
+    client.all_dashboards.return_value = [MagicMock(), MagicMock()]
 
-        evidence = provider.list_dashboards()
+    evidence = provider.list_dashboards()
 
     client.all_dashboards.assert_called_once_with(fields="id,title")
     assert evidence.summary == "2 dashboards enumerated"
@@ -162,11 +174,10 @@ def test_list_dashboards_counts_what_it_enumerated():
 
 
 def test_list_dashboards_warns_when_none_are_visible():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.all_dashboards.return_value = []
+    provider, client = _checks()
+    client.all_dashboards.return_value = []
 
-        evidence = provider.list_dashboards()
+    evidence = provider.list_dashboards()
 
     assert evidence.summary == "0 dashboards enumerated"
     assert evidence.caveat is not None
@@ -175,11 +186,10 @@ def test_list_dashboards_warns_when_none_are_visible():
 
 def test_list_lookml_models_warns_when_none_are_visible():
     # Not mandatory: unreadable models cost lineage, not the connection.
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.all_lookml_models.return_value = []
+    provider, client = _checks()
+    client.all_lookml_models.return_value = []
 
-        evidence = provider.list_lookml_models()
+    evidence = provider.list_lookml_models()
 
     client.all_lookml_models.assert_called_once_with(limit=1)
     assert evidence.caveat is not None
@@ -187,12 +197,11 @@ def test_list_lookml_models_warns_when_none_are_visible():
 
 
 def test_list_lookml_models_wraps_a_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.all_lookml_models.side_effect = _sdk_error("Insufficient permissions", documentation_url=DASHBOARDS_403)
+    provider, client = _checks()
+    client.all_lookml_models.side_effect = _sdk_error("Insufficient permissions", documentation_url=DASHBOARDS_403)
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.list_lookml_models()
+    with pytest.raises(CheckError) as exc_info:
+        provider.list_lookml_models()
 
     assert exc_info.value.evidence.command == "list LookML models"
 

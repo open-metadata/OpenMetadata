@@ -45,6 +45,8 @@ from metadata.generated.schema.entity.services.connections.dashboard.lookerConne
 from metadata.ingestion.connections.connection import BaseConnection
 
 if TYPE_CHECKING:
+    from collections.abc import Callable
+
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
@@ -186,20 +188,6 @@ LOOKER_ERRORS = ErrorPack(
 ).including(NETWORK_ERRORS)
 
 
-def get_connection(connection: LookerConnectionConfig) -> Looker40SDK:
-    """
-    Create connection
-    """
-    if not os.environ.get("LOOKERSDK_CLIENT_ID"):
-        os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
-    if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
-        os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.clientSecret.get_secret_value()
-    if not os.environ.get("LOOKERSDK_BASE_URL"):
-        os.environ["LOOKERSDK_BASE_URL"] = str(connection.hostPort)
-
-    return looker_sdk.init40()
-
-
 class LookerChecks:
     """Test-connection checks for Looker.
 
@@ -207,35 +195,28 @@ class LookerChecks:
     API3 credentials or an unreachable host fail there and the remaining steps are
     skipped rather than each re-dialling the instance.
 
-    The SDK is built lazily inside the first check, never at construction: it
-    reads credentials into the environment and the checks must not run before the
-    runner's gate, or a failure would surface as a raw workflow error instead of a
-    classified ``CheckAccess`` failure.
+    ``connect`` is ``BaseConnection.client`` underneath, so every step shares the
+    one client the connection owns and closes. It is a thunk rather than the
+    client itself so the build - which reads the credentials into the environment
+    - still happens inside the first check, never while the provider is assembled.
     """
 
     errors = LOOKER_ERRORS
 
-    def __init__(self, connection: LookerConnectionConfig) -> None:
-        self._connection = connection
-        self._looker_client: Looker40SDK | None = None
-
-    def _client(self) -> Looker40SDK:
-        """Build (once) and return the SDK. Only ever called from inside a check."""
-        if self._looker_client is None:
-            self._looker_client = get_connection(self._connection)
-        return self._looker_client
+    def __init__(self, connect: Callable[[], Looker40SDK]) -> None:
+        self._connect = connect
 
     @check(DashboardStep.CheckAccess)
     def check_access(self) -> Evidence:
         return verify_access(
-            lambda: self._client().me(),
+            lambda: self._connect().me(),
             command="log in and read the authenticated user",
         )
 
     @check(DashboardStep.ValidateVersion)
     def validate_version(self) -> Evidence:
         command = "list the API versions the instance supports"
-        versions = call_endpoint(lambda: self._client().versions(), command=command)
+        versions = call_endpoint(lambda: self._connect().versions(), command=command)
         supported = [version.version for version in versions.supported_versions or []]
         if SDK_API_VERSION not in supported:
             raise CheckError(
@@ -250,7 +231,7 @@ class LookerChecks:
     @check(DashboardStep.ListDashboards)
     def list_dashboards(self) -> Evidence:
         return fetch_list(
-            lambda: self._client().all_dashboards(fields="id,title"),
+            lambda: self._connect().all_dashboards(fields="id,title"),
             noun="dashboard",
             command="list dashboards",
             empty_caveat=Diagnosis(
@@ -264,7 +245,7 @@ class LookerChecks:
     @check(DashboardStep.ListLookMLModels)
     def list_lookml_models(self) -> Evidence:
         return fetch_list(
-            lambda: self._client().all_lookml_models(limit=1),
+            lambda: self._connect().all_lookml_models(limit=1),
             noun="LookML model",
             command="list LookML models",
             empty_caveat=Diagnosis(
@@ -278,7 +259,17 @@ class LookerChecks:
 
 class LookerConnection(BaseConnection[LookerConnectionConfig, Looker40SDK]):
     def _get_client(self) -> Looker40SDK:
-        return get_connection(self.service_connection)
+        connection = self.service_connection
+        if not os.environ.get("LOOKERSDK_CLIENT_ID"):
+            os.environ["LOOKERSDK_CLIENT_ID"] = connection.clientId
+        if not os.environ.get("LOOKERSDK_CLIENT_SECRET"):
+            os.environ["LOOKERSDK_CLIENT_SECRET"] = connection.clientSecret.get_secret_value()
+        if not os.environ.get("LOOKERSDK_BASE_URL"):
+            os.environ["LOOKERSDK_BASE_URL"] = str(connection.hostPort)
+
+        return looker_sdk.init40()
 
     def checks(self) -> ChecksProvider:
-        return LookerChecks(connection=self.service_connection)
+        # Pass a thunk, not self.client: the checks then run against the one
+        # client this connection owns, and its build still lands inside the gate.
+        return LookerChecks(connect=lambda: self.client)
