@@ -43,9 +43,12 @@ export interface EmptyPlaceholderShellProps
   actions?: EmptyPlaceholderAction[];
   /** Replaces the generated action buttons entirely */
   footer?: ReactNode;
-  /** Container width. Full width when omitted. */
+  /**
+   * Content width. The root is absolutely positioned and fills its nearest
+   * positioned ancestor, so the host container MUST set `position: relative`.
+   */
   width?: number | string;
-  /** Vertical gap between the shell's direct children */
+  /** Vertical gap between the content items */
   gap?: GapValues;
   className?: string;
   children?: ReactNode;
@@ -101,16 +104,17 @@ export const EmptyPlaceholderShell = (props: EmptyPlaceholderShellProps) => {
   return (
     <Box
       align="center"
-      className={cx('tw:w-full', className)}
+      className={cx('tw:absolute tw:inset-0 tw:h-full tw:w-full', className)}
       data-testid="empty-placeholder"
       direction="col"
-      gap={gap}
       justify="center"
       ref={ref}
-      style={{ width, ...style }}
+      style={style}
       {...otherProps}>
-      {children}
-      {footer ?? renderEmptyPlaceholderActions(actions)}
+      <Box align="center" direction="col" gap={gap} style={{ width }}>
+        {children}
+        {footer ?? renderEmptyPlaceholderActions(actions)}
+      </Box>
     </Box>
   );
 };

@@ -20,6 +20,21 @@ const meta = {
   parameters: {
     layout: 'centered',
   },
+  decorators: [
+    (Story) => (
+      <div
+        style={{
+          position: 'relative',
+          width: 960,
+          height: 620,
+          border: '1px solid var(--color-border-secondary)',
+          borderRadius: 12,
+          overflow: 'hidden',
+        }}>
+        <Story />
+      </div>
+    ),
+  ],
   tags: ['autodocs'],
   argTypes: {
     variant: {
