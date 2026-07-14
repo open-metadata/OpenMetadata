@@ -244,7 +244,7 @@ test.describe('Data Products', () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('pagination')).toBeVisible();
+      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
