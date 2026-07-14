@@ -1072,6 +1072,18 @@ class TableauUnitTest(TestCase):
         assert registry._global["Dashboard"].total is None
         self.tableau.client.get_workbook_count.assert_not_called()
 
+    def test_get_dashboards_list_reconcilable_when_count_fails(self):
+        self.tableau.client = SimpleNamespace(
+            get_workbook_count=MagicMock(side_effect=Exception("boom")),
+            get_workbooks=MagicMock(return_value=iter([])),
+        )
+
+        list(self.tableau.get_dashboards_list())
+
+        registry = self.tableau.progress_tracking.registry
+        assert registry._global["Dashboard"].reconcilable is True
+        assert registry._global["Dashboard"].total is None
+
     def test_yield_dashboard_tracks_progress(self):
         self.tableau.progress_tracking.manual.set_total(Dashboard.__name__, 3)
 
