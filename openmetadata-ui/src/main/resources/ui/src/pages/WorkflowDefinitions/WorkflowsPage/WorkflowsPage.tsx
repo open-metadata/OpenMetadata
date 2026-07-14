@@ -343,7 +343,7 @@ const WorkflowsPage = () => {
           </div>
         )}
 
-        {true ? (
+        {isWorkflowsEmpty ? (
           emptyPlaceholder
         ) : (
           <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:justify-between">
