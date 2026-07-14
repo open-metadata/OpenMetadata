@@ -52,13 +52,9 @@ export interface CreateContextMemory {
     shareConfig?:            ShareConfig;
     sourceAssistantMessage?: string;
     sourceConversation?:     string;
-    /**
-     * The Context Center file this memory was extracted from.
-     */
-    sourceFile?:         EntityReference;
-    sourceHumanMessage?: string;
-    sourceType?:         SourceType;
-    status?:             MemoryStatus;
+    sourceHumanMessage?:     string;
+    sourceType?:             SourceType;
+    status?:                 MemoryStatus;
     /**
      * Optional summary of the memory.
      */
@@ -143,8 +139,6 @@ export enum MemoryType {
  * the relationship of a table `belongs to a` database.
  *
  * Principal receiving access. Supported principal types are user, team, and domain.
- *
- * The Context Center file this memory was extracted from.
  */
 export interface EntityReference {
     /**
@@ -238,7 +232,6 @@ export enum ShareVisibility {
  */
 export enum SourceType {
     ChatPromotion = "ChatPromotion",
-    FileExtraction = "FileExtraction",
     Manual = "Manual",
     RememberRequest = "RememberRequest",
 }

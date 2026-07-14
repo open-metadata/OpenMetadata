@@ -26,7 +26,6 @@ import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import CopyLinkButton from '../../CopyLinkButton/CopyLinkButton.component';
-import DocumentStatusBadge from '../DocumentStatusBadge/DocumentStatusBadge.component';
 import {
   DocumentPreviewPanelProps,
   MetaRowProps,
@@ -53,6 +52,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
   const { folderName, fileName, formattedFileSize } = useMemo(() => {
     return {
       folderName: getEntityName(file.folder),
+      fileName: getEntityName(file),
       formattedFileSize: formatBytes(file.fileSize),
       fileName: getEntityName(file),
     };
@@ -106,7 +106,45 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
       </Box>
 
       <Box
-        className="tw:flex-1 tw:min-h-0 tw:overflow-y-auto tw:p-4"
+        align="center"
+        className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
+        gap={3}
+        justify="between">
+        <Box align="center" className="tw:max-w-[78%]" gap={2}>
+          <FileIcon
+            className="tw:size-6 tw:shrink-0"
+            theme="light"
+            type={file.fileExtension ?? ''}
+            variant="default"
+          />
+          <div className="tw:min-w-0">
+            <Typography
+              ellipsis
+              className="tw:flex-1"
+              data-testid="preview-file-name"
+              size="text-sm"
+              weight="semibold">
+              {fileName}
+            </Typography>
+          </div>
+        </Box>
+        <Box align="center" gap={2}>
+          <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
+            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+          </CopyLinkButton>
+          <ButtonUtility
+            color="tertiary"
+            data-testid="close-preview-btn"
+            icon={XClose}
+            size="xs"
+            tooltip={t('label.close')}
+            onClick={onClose}
+          />
+        </Box>
+      </Box>
+
+      <Box
+        className="tw:flex-1 tw:overflow-y-auto tw:p-4 tw:bg-gray-50"
         direction="col"
         gap={4}>
         <Card className="tw:p-4 tw:shrink-0">
@@ -122,12 +160,7 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             <Typography className="tw:text-quaternary" size="text-sm">
               {t('label.status')}
             </Typography>
-            <DocumentStatusBadge
-              error={file.processingError}
-              stats={file.extractionStats}
-              status={file.processingStatus}
-            />
-          </Box>
+          </div>
           {folderName && (
             <MetaRow label={t('label.folder')} value={folderName} />
           )}
@@ -140,19 +173,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
               label={t('label.updated-at')}
               value={getShortRelativeTime(file.updatedAt)}
             />
-          )}
-          {file.processingError && (
-            <Box className="tw:py-1.5" direction="col" gap={1}>
-              <Typography className="tw:text-quaternary" size="text-sm">
-                {t('label.error')}
-              </Typography>
-              <Typography
-                className="tw:text-error-primary tw:break-words"
-                data-testid="processing-error"
-                size="text-sm">
-                {file.processingError}
-              </Typography>
-            </Box>
           )}
         </Card>
       </Box>
