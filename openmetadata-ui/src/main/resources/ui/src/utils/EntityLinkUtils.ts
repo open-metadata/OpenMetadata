@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { ROUTES } from '../constants/constants';
 import { EntityTabs, EntityType } from '../enums/entity.enum';
 import { ServiceCategory } from '../enums/service.enum';
 import {
@@ -18,7 +19,6 @@ import {
   type EventSubscription,
 } from '../generated/events/eventSubscription';
 import type { SearchSourceAlias } from '../interface/search.interface';
-import { ROUTES } from '../constants/constants';
 import {
   getApplicationDetailsPath,
   getBotsPath,
