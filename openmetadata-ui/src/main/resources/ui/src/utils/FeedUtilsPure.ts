@@ -18,6 +18,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import Showdown from 'showdown';
 import TurndownService from 'turndown';
 import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
+import { FEED_COUNT_INITIAL_DATA } from '../constants/entity.constants';
 import {
   EntityField,
   entityLinkRegEx,
@@ -39,16 +40,15 @@ import type { FeedCounts } from '../interface/feed.interface';
 import {
   deletePostById,
   deleteThread,
-  getEntityActivityByFqn,
   getFeedById,
+  getFeedCount,
   updatePost,
   updateThread,
 } from '../rest/feedsAPI';
-import { getTaskCounts } from '../rest/tasksAPI';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
 import entityUtilClassBase from './EntityUtilClassBase';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityUtils';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
@@ -559,6 +559,25 @@ export const prepareFeedLink = (
   }
 };
 
+const getAggregatedFeedCounts = (
+  counts: Awaited<ReturnType<typeof getFeedCount>>
+): FeedCounts => {
+  return counts.reduce((acc, item) => {
+    const conversationCount =
+      acc.conversationCount + (item.conversationCount || 0);
+    const totalTasksCount = acc.totalTasksCount + (item.totalTaskCount || 0);
+
+    return {
+      conversationCount,
+      totalTasksCount,
+      openTaskCount: acc.openTaskCount + (item.openTaskCount || 0),
+      closedTaskCount: acc.closedTaskCount + (item.closedTaskCount || 0),
+      totalCount: conversationCount + totalTasksCount,
+      mentionCount: acc.mentionCount + (item.mentionCount || 0),
+    };
+  }, FEED_COUNT_INITIAL_DATA);
+};
+
 export const getFeedCounts = async (
   entityType: string,
   entityFQN: string,
@@ -566,10 +585,6 @@ export const getFeedCounts = async (
   callback?: (countValue: FeedCounts) => void
 ) => {
   try {
-    const domain =
-      typeof domainOrCallback === 'string' || domainOrCallback === undefined
-        ? domainOrCallback
-        : undefined;
     const feedCountCallback =
       typeof domainOrCallback === 'function' ? domainOrCallback : callback;
 
@@ -577,29 +592,13 @@ export const getFeedCounts = async (
       return;
     }
 
-    const [activityRes, taskCounts] = await Promise.all([
-      getEntityActivityByFqn(entityType, entityFQN, {
-        days: 30,
-        limit: 100,
-        domain,
-      }),
-      getTaskCounts({ aboutEntity: entityFQN, domain }),
-    ]);
+    const counts = await getFeedCount(getEntityFeedLink(entityType, entityFQN));
 
-    const activityCount = activityRes?.data?.length ?? 0;
-
-    const openTaskCount = taskCounts.open ?? 0;
-    const closedTaskCount = taskCounts.completed ?? 0;
-    const totalTasksCount = taskCounts.total ?? 0;
-
-    feedCountCallback({
-      conversationCount: activityCount,
-      totalTasksCount,
-      openTaskCount,
-      closedTaskCount,
-      totalCount: activityCount + totalTasksCount,
-      mentionCount: 0,
-    });
+    if (counts) {
+      feedCountCallback(getAggregatedFeedCounts(counts));
+    } else {
+      throw t('server.entity-feed-fetch-error');
+    }
   } catch (err) {
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
   }
@@ -608,20 +607,24 @@ export const getFeedCounts = async (
 export const fetchEntityTaskCountsInto = async (
   entityFqn: string,
   setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
-  domain?: string
+  _domain?: string
 ) => {
   try {
-    const taskCounts = await getTaskCounts({ aboutEntity: entityFqn, domain });
+    const counts = await getFeedCount();
+    const aggregatedCounts = getAggregatedFeedCounts(
+      counts.filter((item) => getEntityFQN(item.entityLink) === entityFqn)
+    );
+
     setFeedCount((prev) => {
-      const openTaskCount = taskCounts.open ?? 0;
-      const closedTaskCount = taskCounts.completed ?? 0;
-      const totalTasksCount = taskCounts.total ?? 0;
+      const { openTaskCount, closedTaskCount, totalTasksCount, mentionCount } =
+        aggregatedCounts;
 
       return {
         ...prev,
         openTaskCount,
         closedTaskCount,
         totalTasksCount,
+        mentionCount,
         totalCount: (prev.conversationCount ?? 0) + totalTasksCount,
       };
     });
@@ -634,17 +637,13 @@ export const fetchEntityActivityCountInto = async (
   entityType: string,
   entityFqn: string,
   setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
-  domain?: string
+  _domain?: string
 ) => {
   try {
-    const activityRes = await getEntityActivityByFqn(entityType, entityFqn, {
-      days: 30,
-      limit: 0,
-      domain,
-    });
-    setFeedCount((prev) => {
-      const conversationCount = activityRes?.paging?.total ?? 0;
+    const counts = await getFeedCount(getEntityFeedLink(entityType, entityFqn));
+    const { conversationCount } = getAggregatedFeedCounts(counts);
 
+    setFeedCount((prev) => {
       return {
         ...prev,
         conversationCount,
