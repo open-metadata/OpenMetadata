@@ -22,15 +22,6 @@ def test_grafana_connection_is_base_connection():
     assert issubclass(GrafanaConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = GrafanaConnection(MagicMock())
-        client = conn.client
-
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
-
-
 def test_test_connection_runs_steps():
     conn = GrafanaConnection(MagicMock())
     conn._client = MagicMock()
@@ -38,3 +29,20 @@ def test_test_connection_runs_steps():
         result = conn.test_connection(metadata=MagicMock())
 
     assert result is mock_step.return_value
+
+
+def _client_kwargs(verify_ssl_value):
+    service_connection = MagicMock()
+    service_connection.verifySSL = verify_ssl_value
+    conn = GrafanaConnection(service_connection)
+    with patch(f"{CONNECTION_MODULE}.GrafanaApiClient") as mock_client:
+        conn._get_client()
+    return mock_client.call_args.kwargs
+
+
+def test_verify_ssl_honors_explicit_false():
+    assert _client_kwargs(False)["verify_ssl"] is False
+
+
+def test_verify_ssl_defaults_to_true_when_unset():
+    assert _client_kwargs(None)["verify_ssl"] is True

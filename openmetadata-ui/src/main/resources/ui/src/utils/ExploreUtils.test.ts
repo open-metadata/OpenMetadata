@@ -16,6 +16,7 @@ import { EntityFields } from '../enums/AdvancedSearch.enum';
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { QueryFieldInterface } from '../pages/ExplorePage/ExplorePage.interface';
+import * as miscAPI from '../rest/miscAPI';
 import { nlqSearch, searchQuery } from '../rest/searchAPI';
 import {
   extractTermKeys,
@@ -26,7 +27,7 @@ import {
   getSubLevelHierarchyKey,
   updateTreeData,
 } from './ExplorePureUtils';
-import { fetchEntityData } from './ExploreUtils';
+import { fetchEntityData, getAggregationOptions } from './ExploreUtils';
 
 jest.mock('../rest/searchAPI');
 jest.mock('./ToastUtils');
@@ -35,6 +36,33 @@ const mockSearchQuery = searchQuery as jest.Mock;
 const mockNlqSearch = nlqSearch as jest.Mock;
 
 describe('Explore Utils', () => {
+  it('passes search text to independent aggregation requests', async () => {
+    const postAggregateSpy = jest
+      .spyOn(miscAPI, 'postAggregateFieldOptions')
+      .mockResolvedValue({ data: {} } as never);
+
+    await getAggregationOptions(
+      SearchIndex.DATA_ASSET,
+      EntityFields.SERVICE,
+      '',
+      '{}',
+      true,
+      false,
+      10,
+      false,
+      'customer'
+    );
+
+    expect(postAggregateSpy).toHaveBeenCalledWith({
+      fieldName: EntityFields.SERVICE,
+      fieldValue: '',
+      index: SearchIndex.DATA_ASSET,
+      query: '{}',
+      queryText: 'customer',
+      size: 10,
+    });
+  });
+
   it('should return undefined if data is empty', () => {
     const data: ExploreQuickFilterField[] = [];
     const result = getQuickFilterQuery(data);
