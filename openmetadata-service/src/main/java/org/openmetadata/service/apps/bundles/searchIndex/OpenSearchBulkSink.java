@@ -448,11 +448,13 @@ public class OpenSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        // Recreate detection scopes chunk writes to the staged generation: only recreate-run
-        // writers may target a discovered generation (see OpenSearchVectorService).
-        boolean recreateRun =
-            reindexContext != null && reindexContext.getStagedIndex(entityType).isPresent();
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker, recreateRun);
+        // Run-scoped chunk routing: the staged chunk generation (when this run created one) is
+        // carried in the ReindexContext, so writes target exactly this run's generation — partial
+        // recreates and normal runs carry none and write to the live index.
+        String stagedChunkTarget =
+            reindexContext != null ? reindexContext.getStagedChunkIndex().orElse(null) : null;
+        json =
+            enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker, stagedChunkTarget);
       }
 
       String finalJson = json;
@@ -926,7 +928,7 @@ public class OpenSearchBulkSink implements BulkSink {
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
       StageStatsTracker tracker,
-      boolean recreateRun) {
+      String stagedChunkTarget) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
       if (vectorService == null) {
@@ -954,7 +956,7 @@ public class OpenSearchBulkSink implements BulkSink {
         // shipped). The call is fingerprint-guarded, so it is a cheap no-op once chunks exist;
         // chunk docs reflect committed entity state, so writing them mid-reindex is safe even if
         // the staged index is never promoted.
-        vectorService.backfillEntityChunks(entity, recreateRun);
+        vectorService.backfillEntityChunks(entity, stagedChunkTarget);
       } else if (embeddingClient != null && embeddingClient.isAvailable()) {
         // Build the chunk docs once (one embedding call per chunk): chunk 0's embedding fields
         // are spliced into the staged entity doc for hybrid search, and the full set is written to
@@ -967,7 +969,7 @@ public class OpenSearchBulkSink implements BulkSink {
               (ObjectNode)
                   OBJECT_MAPPER.valueToTree(
                       OpenSearchVectorService.legacyEmbeddingFields(chunkDocs.get(0))));
-          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs, recreateRun);
+          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs, stagedChunkTarget);
         }
       }
 

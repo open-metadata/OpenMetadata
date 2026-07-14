@@ -15,8 +15,26 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   public ReindexContext reCreateIndexes(Set<String> entities) {
     SearchRepository searchRepository = Entity.getSearchRepository();
     searchRepository.initializeVectorSearchService();
-    recreateChunkIndexIfFullRun(entities);
-    return super.reCreateIndexes(entities);
+    String stagedChunkIndex = recreateChunkIndexIfFullRun(entities);
+    ReindexContext context;
+    try {
+      context = super.reCreateIndexes(entities);
+    } catch (RuntimeException e) {
+      // The run dies before any type can finalize — clear the JVM's staged state so a later,
+      // unrelated run's callbacks can never complete and promote this dead generation. The bare
+      // generation index itself is swept by the next staged recreate.
+      clearStagedChunkStateQuietly(stagedChunkIndex);
+      throw e;
+    }
+    context.setStagedChunkIndex(stagedChunkIndex);
+    return context;
+  }
+
+  private void clearStagedChunkStateQuietly(String stagedChunkIndex) {
+    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    if (stagedChunkIndex != null && vectorService != null) {
+      vectorService.clearStagedChunkState(stagedChunkIndex);
+    }
   }
 
   /**
@@ -32,16 +50,16 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
    * vector-indexable entity type (a partial recreate must not stage a sweep of types it will not
    * re-embed).
    */
-  private void recreateChunkIndexIfFullRun(Set<String> entities) {
+  private String recreateChunkIndexIfFullRun(Set<String> entities) {
     OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
     if (vectorService == null
         || entities == null
         || getJobData() == null
         || !Boolean.TRUE.equals(getJobData().getRecreateIndex())) {
-      return;
+      return null;
     }
     if (coversAllVectorTypes(entities)) {
-      vectorService.beginStagedChunkRecreate();
+      return vectorService.beginStagedChunkRecreate();
     } else {
       LOG.info(
           "Partial recreate ({} of {} vector-indexable types) — keeping the chunk index; orphaned "
@@ -49,6 +67,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
           coveredVectorTypeCount(entities),
           AvailableEntityTypes.SET.size());
     }
+    return null;
   }
 
   /**
@@ -75,25 +94,25 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
     // invoke both callbacks for a type are harmless. The mark lives in a finally so a throwing
     // promotion still reports the type (as failed) — otherwise the staged chunk run would wait
     // forever instead of reaching a safe terminal state.
-    boolean promoted = false;
+    RuntimeException superFailure = null;
     try {
       super.promoteEntityIndex(context, reindexSuccess);
-      promoted = true;
-    } finally {
-      markChunkTypeOutcome(context, reindexSuccess && promoted);
+    } catch (RuntimeException e) {
+      superFailure = e;
     }
+    markChunkTypeOutcomeAndRethrow(context, reindexSuccess, superFailure);
   }
 
   @Override
   public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
-    // Same finally-shape as promoteEntityIndex: a throwing finalize must still report the type.
-    boolean finalized = false;
+    // Same shape as promoteEntityIndex: a throwing finalize must still report the type.
+    RuntimeException superFailure = null;
     try {
       super.finalizeReindex(context, reindexSuccess);
-      finalized = true;
-    } finally {
-      markChunkTypeOutcome(context, reindexSuccess && finalized);
+    } catch (RuntimeException e) {
+      superFailure = e;
     }
+    markChunkTypeOutcomeAndRethrow(context, reindexSuccess, superFailure);
 
     if (reindexSuccess) {
       SearchRepository searchRepository = Entity.getSearchRepository();
@@ -107,13 +126,34 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
 
   /**
    * Feeds the staged chunk recreate: promotes the staged generation once every vector-indexable
-   * type has completed successfully; a failed type keeps the old chunks live. No-op without an
-   * active staged recreate.
+   * type has completed successfully; a failed type (including a throwing super callback) keeps the
+   * old chunks live. Marks are bound to the callback's own run via the context's staged chunk
+   * generation, so a later run's callbacks can never complete a stale generation. When the super
+   * callback itself failed, a marking failure is logged rather than thrown so it cannot mask the
+   * original exception; otherwise (e.g. the promotion swap failing) it propagates and fails the
+   * job loudly.
    */
-  private void markChunkTypeOutcome(EntityReindexContext context, boolean reindexSuccess) {
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
-    if (vectorService != null) {
-      vectorService.markEntityTypeReindexed(context.getEntityType(), reindexSuccess);
+  private void markChunkTypeOutcomeAndRethrow(
+      EntityReindexContext context, boolean reindexSuccess, RuntimeException superFailure) {
+    try {
+      OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+      if (vectorService != null) {
+        vectorService.markEntityTypeReindexed(
+            context.getEntityType(),
+            reindexSuccess && superFailure == null,
+            context.getStagedChunkIndex());
+      }
+    } catch (RuntimeException markFailure) {
+      if (superFailure == null) {
+        throw markFailure;
+      }
+      LOG.error(
+          "Suppressed chunk-outcome failure while the callback for {} was already failing",
+          context.getEntityType(),
+          markFailure);
+    }
+    if (superFailure != null) {
+      throw superFailure;
     }
   }
 }

@@ -14,28 +14,29 @@ class OpenSearchVectorServiceChunkStagingTest {
   private static final String BASE = "data_asset_embeddings_chunks";
 
   @Test
-  void chunkGenerationNumber_parsesGenerationNames() {
-    assertEquals(1, OpenSearchVectorService.chunkGenerationNumber(BASE + "_g1", BASE));
-    assertEquals(12, OpenSearchVectorService.chunkGenerationNumber(BASE + "_g12", BASE));
+  void chunkGenerationNumber_parsesGenerationStamps() {
+    assertEquals(1L, OpenSearchVectorService.chunkGenerationNumber(BASE + "_g1", BASE));
+    assertEquals(
+        1784030121722L,
+        OpenSearchVectorService.chunkGenerationNumber(BASE + "_g1784030121722", BASE));
   }
 
   @Test
   void chunkGenerationNumber_zeroForLegacyAndForeignNames() {
-    assertEquals(0, OpenSearchVectorService.chunkGenerationNumber(BASE, BASE));
-    assertEquals(0, OpenSearchVectorService.chunkGenerationNumber(null, BASE));
-    assertEquals(0, OpenSearchVectorService.chunkGenerationNumber(BASE + "_gX", BASE));
-    assertEquals(0, OpenSearchVectorService.chunkGenerationNumber("other_index", BASE));
+    assertEquals(0L, OpenSearchVectorService.chunkGenerationNumber(BASE, BASE));
+    assertEquals(0L, OpenSearchVectorService.chunkGenerationNumber(null, BASE));
+    assertEquals(0L, OpenSearchVectorService.chunkGenerationNumber(BASE + "_gX", BASE));
+    assertEquals(0L, OpenSearchVectorService.chunkGenerationNumber("other_index", BASE));
   }
 
   @Test
-  void nextChunkGenerationName_startsAtG1OnLegacyOrFreshLayout() {
-    assertEquals(BASE + "_g1", OpenSearchVectorService.nextChunkGenerationName(BASE, BASE));
-    assertEquals(BASE + "_g1", OpenSearchVectorService.nextChunkGenerationName(BASE, null));
-  }
-
-  @Test
-  void nextChunkGenerationName_incrementsPastTheLiveGeneration() {
-    assertEquals(BASE + "_g3", OpenSearchVectorService.nextChunkGenerationName(BASE, BASE + "_g2"));
+  void nextChunkGenerationName_isRunUniqueAndParseable() {
+    // Run-unique names: a blocked run's poison marker must never match a later run's generation,
+    // and a superseded run's pending promote must miss (loudly) instead of aliasing another run's
+    // half-built index.
+    String name = OpenSearchVectorService.nextChunkGenerationName(BASE);
+    assertTrue(name.startsWith(BASE + "_g"));
+    assertTrue(OpenSearchVectorService.chunkGenerationNumber(name, BASE) > 0);
   }
 
   @Test

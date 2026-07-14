@@ -107,7 +107,9 @@ public class AIContextFinder {
     if (item != null && !items.containsKey(item.getFullyQualifiedName())) {
       items.put(item.getFullyQualifiedName(), item);
       for (CandidateAsset asset : routeToAssets(hit, item)) {
-        candidates.putIfAbsent(asset.fullyQualifiedName(), asset);
+        // FQNs are only unique per entity type (a chart and a dashboard under the same service
+        // can share one) — a name-only key would silently drop the second asset.
+        candidates.putIfAbsent(asset.entityType() + ":" + asset.fullyQualifiedName(), asset);
       }
     }
   }
