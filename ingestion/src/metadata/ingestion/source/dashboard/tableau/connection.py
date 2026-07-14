@@ -239,14 +239,8 @@ def build_server_config(connection: TableauConnectionConfig) -> Dict[str, Dict[s
 class TableauChecks:
     """Test-connection checks for Tableau.
 
-    The server client is borrowed from the connection that owns it. Signing in is
-    what building it does, and the borrow defers that to the first read - inside
-    ``ServerInfo``, the gate - so bad credentials or an unreachable host fail there
-    and the remaining steps are skipped rather than each re-dialling.
-
-    Reusing the owner's client is what keeps a Personal Access Token working: a PAT
-    allows a single active session, so signing in a second time here would silently
-    invalidate the session the ingestion is about to use.
+    ``ServerInfo`` is the gate: reading the borrowed client signs in, so bad
+    credentials or an unreachable server fail there and the rest are skipped.
     """
 
     errors = TABLEAU_ERRORS
@@ -256,9 +250,8 @@ class TableauChecks:
 
     @check(DashboardStep.ServerInfo)
     def server_info(self) -> Evidence:
-        # The lambda is load-bearing: reading the borrow signs in, and that must
-        # happen inside the helper's try so a bad credential is classified as a
-        # failed ServerInfo step instead of escaping while the argument is built.
+        # Lambda, not a bound method: the sign-in must happen inside verify_access's
+        # try, or a bad credential escapes unclassified.
         return verify_access(
             lambda: self._server.client.server_info(),  # noqa: PLW0108
             command="sign in and read server info",
@@ -308,8 +301,7 @@ class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
 
     def _get_client(self) -> TableauClient:
         client = get_connection(self.service_connection)
-        # Signing in holds a server session, and sign_out also clears the SSL temp
-        # files. Deferred via a lambda so building the client touches none of it.
+        # sign_out releases the server session and clears the SSL temp files.
         self._on_close(lambda: client.sign_out())  # noqa: PLW0108
         return client
 

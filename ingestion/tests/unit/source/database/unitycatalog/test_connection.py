@@ -363,3 +363,21 @@ class TestErrorPack:
 
     def test_an_unmatched_error_is_left_unclassified(self):
         assert UNITY_CATALOG_ERRORS.classify(RuntimeError("something else entirely")) is None
+
+
+def test_closing_disposes_the_sql_engine_on_every_reuse_cycle():
+    # close() resets the teardown registry, so a sub-owner registered once in
+    # __init__ would leak its engine on the second cycle.
+    engines = [MagicMock(), MagicMock()]
+    with (
+        patch(f"{CONNECTION_MODULE}.get_connection"),
+        patch(f"{CONNECTION_MODULE}.get_sqlalchemy_connection", side_effect=engines),
+    ):
+        connection = UnityCatalogConnection(_config())
+        _ = connection.sql.client
+        connection.close()
+        _ = connection.sql.client
+        connection.close()
+
+    for engine in engines:
+        engine.dispose.assert_called_once_with()

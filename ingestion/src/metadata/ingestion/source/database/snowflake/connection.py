@@ -325,8 +325,7 @@ class SnowflakeChecks:
 
     @property
     def _engine_wrapper(self) -> SnowflakeEngineWrapper:
-        """Built on first use, never at construction: it holds the engine, and
-        reading the borrow is what builds it."""
+        """Built on first use: it holds the engine, and reading the borrow builds it."""
         if self._wrapper is None:
             self._wrapper = SnowflakeEngineWrapper(
                 service_connection=self.service_connection,

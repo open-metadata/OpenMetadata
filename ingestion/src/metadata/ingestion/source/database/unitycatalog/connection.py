@@ -337,9 +337,8 @@ def get_sqlalchemy_connection(connection: UnityCatalogConnectionConfig) -> Engin
 class UnityCatalogChecks:
     """Test-connection checks for Unity Catalog.
 
-    Catalog, schema and table steps go through the workspace REST client. The
-    lineage and tag steps need a SQL warehouse, so their Engine is built inside the
-    check that uses it - nothing connects before the gate.
+    Catalog, schema and table steps borrow the workspace client; lineage and tag
+    steps borrow the SQL-warehouse Engine. Each is built on first read, in a check.
     """
 
     errors = UNITY_CATALOG_ERRORS
@@ -438,12 +437,8 @@ class UnityCatalogChecks:
 
 
 class UnityCatalogSqlConnection(BaseConnection[UnityCatalogConnectionConfig, Engine]):
-    """Owns the SQL-warehouse Engine.
-
-    Its own owner because its lifetime differs from the workspace client's: the
-    Engine needs an httpPath to a running warehouse, and only the lineage and tag
-    steps reach for it. A workspace without one never builds it.
-    """
+    """Owns the SQL-warehouse Engine: a separate lifetime from the workspace client,
+    reached only by the lineage and tag steps and never built without an httpPath."""
 
     def _get_client(self) -> Engine:
         engine = get_sqlalchemy_connection(self.service_connection)
@@ -457,13 +452,17 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
         # Honor the user-facing connectionTimeout as the per-step budget; a cold
         # serverless warehouse can exceed the framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
-        # A sub-owner, not a client: constructing it opens nothing. Its Engine is
-        # built on first read and disposed when this connection closes.
+        # A sub-owner, not a client: constructing it opens nothing.
         self.sql = UnityCatalogSqlConnection(service_connection)
-        self._on_close(self.sql.close)
 
     def _get_client(self) -> WorkspaceClient:
         return get_connection(self.service_connection)
+
+    def close(self) -> None:
+        # Not _on_close: that registry is reset by close(), so a sub-owner
+        # registered once would not be released on a later reuse cycle.
+        self.sql.close()
+        super().close()
 
     def checks(self) -> ChecksProvider:
         return UnityCatalogChecks(

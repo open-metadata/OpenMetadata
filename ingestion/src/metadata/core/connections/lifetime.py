@@ -9,12 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-The reference a collaborator may hold to a client it does not own.
-
-A connection owns exactly one client: it knows the recipe (the service config and
-``_get_client``) and it owns the teardown. A collaborator - a checks provider -
-needs to *use* that client without being able to build another one or to close
-this one. ``Borrowed`` is that reference.
+The reference a collaborator holds to a client it does not own.
 """
 
 from __future__ import annotations
@@ -30,14 +25,8 @@ C = TypeVar("C")
 class Borrowed(Generic[C]):
     """A client someone else owns: read it, never build it, never close it.
 
-    Reads through to the owner, which builds the client on first read and caches
-    it, so every reader sees the one client the owner also uses. Carries no
-    service config - so a holder cannot construct a second client - and no
-    teardown - so it cannot destroy the one it borrowed.
-
-    A checks provider takes its clients as ``Borrowed``: reading one inside a
-    ``@check`` is what makes the owner build it, which keeps the first connection
-    behind the runner's gate instead of running while the provider is assembled.
+    Reading ``client`` delegates to the owner, which builds it once on first read.
+    Carries no config and no teardown, so a holder can do neither.
     """
 
     __slots__ = ("_read",)

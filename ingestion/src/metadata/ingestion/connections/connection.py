@@ -75,12 +75,8 @@ class BaseConnection(ABC, Generic[S, C]):
         return self._client
 
     def borrow(self) -> Borrowed[C]:
-        """A read-only reference to this connection's client, for a collaborator
-        such as its checks: readable, not buildable, not closable.
-
-        Reading it is what triggers the build, so a collaborator that only reads it
-        inside a ``@check`` never connects before the runner's gate - and it always
-        gets the one client this connection owns, never a second one."""
+        """A read-only reference to this connection's client: readable, not
+        buildable, not closable. The first read is what builds the client."""
         return Borrowed(lambda: self.client)
 
     def _build_client(self) -> C:

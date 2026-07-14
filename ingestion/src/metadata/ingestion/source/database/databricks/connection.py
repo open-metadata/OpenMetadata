@@ -161,9 +161,8 @@ def _summarize(rows: Sequence[object], noun: str) -> str:
 
 
 class DatabricksEngineWrapper:
-    """Wraps the borrowed engine, caching the resolved catalog and schema. Every
-    lookup reads the engine through the borrow, so the first read - and therefore
-    the first connection - happens inside a check, behind the CheckAccess gate."""
+    """Wraps the borrowed engine, caching the resolved catalog and schema. Lookups
+    are lazy, so constructing it touches no network and stays behind the gate."""
 
     def __init__(self, db: Borrowed[Engine]):
         self._db = db

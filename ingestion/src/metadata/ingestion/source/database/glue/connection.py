@@ -141,8 +141,8 @@ def _no_tables_caveat() -> Diagnosis:
 class GlueChecks:
     """Test-connection checks for the Glue Data Catalog.
 
-    The client is borrowed from the connection that owns it: reading it inside a
-    check is what builds it, so the STS assume-role handshake stays behind the gate."""
+    Reading the borrowed client is what builds it, so an assume-role config's STS
+    handshake stays behind the gate."""
 
     errors = GLUE_ERRORS
 

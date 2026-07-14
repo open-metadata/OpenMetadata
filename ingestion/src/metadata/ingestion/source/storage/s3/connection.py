@@ -94,9 +94,8 @@ def get_connection(connection: S3ConnectionConfig) -> S3ObjectStoreClient:
 class S3Checks:
     """Test-connection checks for S3.
 
-    The store is borrowed from the connection that owns it: reading it inside a
-    check is what builds it, so the STS assume-role handshake happens behind the
-    runner's gate - and both steps share the one client the owner also uses.
+    Reading the borrowed store is what builds it, so an assume-role config's STS
+    handshake stays behind the runner's gate.
     """
 
     errors = S3_ERRORS

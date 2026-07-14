@@ -137,11 +137,8 @@ class PowerBIChecks:
     principal fails fast before any list endpoint is dialled. ``GetDashboards``
     then exercises list access.
 
-    The client is borrowed from the connection that owns it, so the checks and the
-    ingestion share one authenticated session instead of acquiring a second token.
-    The MSAL client does authority/instance discovery over the network in its
-    constructor, and the borrow defers that to the first read - inside
-    ``CheckAccess``, the gate - so a bad service principal fails there.
+    ``CheckAccess`` is the gate: reading the borrowed client does MSAL discovery
+    and acquires the token, so a bad service principal fails there.
     """
 
     errors = POWERBI_ERRORS

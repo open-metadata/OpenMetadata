@@ -282,10 +282,8 @@ class BigQueryChecks:
     happens a layer up (``BigquerySource._test_connection`` clones the connection
     per project and drives this provider once per clone).
 
-    The engine is built lazily on first use inside ``CheckAccess`` (never at
-    construction), so credential parsing - which happens while building the engine
-    (e.g. a malformed private key) - fails *inside the gate step* and is classified
-    by the error pack, instead of escaping before the runner starts.
+    Reading the borrowed engine is what builds it, so credential parsing (e.g. a
+    malformed private key) fails inside the gate step and is classified.
     """
 
     errors = BIGQUERY_ERRORS

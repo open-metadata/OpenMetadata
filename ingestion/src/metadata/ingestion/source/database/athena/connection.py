@@ -288,8 +288,7 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
         return engine
 
     def checks(self) -> ChecksProvider:
-        # The borrow defers the build: reading it inside CheckAccess keeps the STS
-        # assume-role handshake behind the gate, where a denial is classified.
+        # The borrow defers the build, keeping the STS handshake behind the gate.
         return AthenaChecks(
             db=self.borrow(),
             schema_filter_pattern=self.service_connection.schemaFilterPattern,
