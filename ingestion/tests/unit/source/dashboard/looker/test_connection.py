@@ -270,9 +270,10 @@ def test_a_403_is_diagnosed_as_missing_permissions():
     assert diagnosis.title == "Insufficient permissions"
 
 
-def test_an_unavailable_instance_is_diagnosed():
-    # Looker serves an HTML "Looker is unavailable" 404 when the hostname does not
-    # reach a running instance - a Looker answer, but with no error document.
+def test_lookers_generic_404_page_is_diagnosed_as_an_auth_failure():
+    # What a live Looker actually returns for a rejected sign-in: a generic HTML 404
+    # page with no error document. It serves the same page for a host that is not a
+    # live instance, so the two cannot be told apart here.
     diagnosis = LOOKER_ERRORS.classify(
         _sdk_error(
             "<html><head><title>Looker Not Found (404)</title></head><body><h1>Looker is unavailable.</h1></body></html>"
@@ -280,7 +281,7 @@ def test_an_unavailable_instance_is_diagnosed():
     )
 
     assert diagnosis is not None
-    assert diagnosis.title == "The Looker instance is unavailable"
+    assert diagnosis.title == "Authentication failed"
 
 
 def test_a_host_that_is_not_looker_is_diagnosed():

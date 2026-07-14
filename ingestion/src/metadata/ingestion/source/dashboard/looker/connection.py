@@ -184,12 +184,15 @@ LOOKER_ERRORS = ErrorPack(
         fix="Check Host Port, the network route, and that the Looker instance is online and "
         "reachable from where ingestion runs.",
     ),
-    # Looker itself serves this page when the hostname does not reach a running
-    # instance, so it is a Looker answer even though it carries no error document.
-    when(_contains_any("looker is unavailable")).diagnose(
-        "The Looker instance is unavailable",
-        fix="Looker answered but reported the instance as unavailable. Check that the instance is "
-        "running and not in maintenance, and that Host Port matches its URL.",
+    # Looker answers a rejected sign-in with a generic HTML 404 page carrying no
+    # error document, and serves that same page for a host that is not a live
+    # instance - the two are indistinguishable here, so the fix names both.
+    when(_contains_any("looker is unavailable", "looker not found")).diagnose(
+        "Authentication failed",
+        fix="Looker returned its generic 404 page, which it serves both for a wrong Client ID or "
+        "Client Secret and for a host that is not a live Looker instance. Check the API3 credentials "
+        "(Admin > Users > Edit > API Keys) and that Host Port points at the instance.",
+        doc=API_SDK_DOC,
     ),
     # Last: something answered, but not as Looker - the body carries no Looker error
     # document, so a real Looker 404 (which does, and is matched above) never lands here.
