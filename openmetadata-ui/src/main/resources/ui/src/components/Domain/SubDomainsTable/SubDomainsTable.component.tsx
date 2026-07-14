@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Card,
-  PaginationCardDefault,
-} from '@openmetadata/ui-core-components';
-import { isEmpty } from 'lodash';
+import { Box, Card, Input, PaginationCardDefault } from '@openmetadata/ui-core-components';
+import { SearchLg } from '@untitledui/icons';
+import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
@@ -26,7 +23,6 @@ import { useDomainCardTemplates } from '../../common/atoms/domain/ui/useDomainCa
 import { useDomainFilters } from '../../common/atoms/domain/ui/useDomainFilters';
 import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTableColumns';
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
-import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
@@ -68,13 +64,25 @@ const SubDomainsTable = ({
     loading: subdomainListing.loading,
   });
 
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search-entity', {
-      entity: t('label.sub-domain'),
-    }),
-    onSearchChange: subdomainListing.handleSearchChange,
-    initialSearchQuery: subdomainListing.urlState.searchQuery,
-  });
+  const [searchInputValue, setSearchInputValue] = useState(
+    subdomainListing.urlState.searchQuery ?? ''
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(subdomainListing.handleSearchChange, 300),
+    [subdomainListing.handleSearchChange]
+  );
+
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(subdomainListing.urlState.searchQuery ?? '');
+  }, [subdomainListing.urlState.searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDomainCard } = useDomainCardTemplates();
@@ -206,7 +214,18 @@ const SubDomainsTable = ({
           gap={4}>
           <Box align="center" direction="row" gap={5}>
             {titleAndCount}
-            {search}
+            <Input
+              className="tw:max-w-86"
+              icon={SearchLg}
+              placeholder={t('label.search-entity', {
+                entity: t('label.sub-domain'),
+              })}
+              value={searchInputValue}
+              onChange={(value) => {
+                setSearchInputValue(value);
+                debouncedSearch(value);
+              }}
+            />
             {quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle value={view} onChange={setView} />

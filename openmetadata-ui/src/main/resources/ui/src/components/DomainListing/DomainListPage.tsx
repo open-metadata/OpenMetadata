@@ -11,12 +11,9 @@
  *  limitations under the License.
  */
 
-import {
-  Box,
-  Card,
-  PaginationCardDefault,
-} from '@openmetadata/ui-core-components';
-import { isEmpty } from 'lodash';
+import { Box, Card, Input, PaginationCardDefault } from '@openmetadata/ui-core-components';
+import { SearchLg } from '@untitledui/icons';
+import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -40,7 +37,6 @@ import { useDomainTableColumns } from '../common/atoms/domain/ui/useDomainTableC
 import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
-import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
@@ -189,11 +185,25 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
     loading: domainListing.loading,
   });
 
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search'),
-    onSearchChange: domainListing.handleSearchChange,
-    initialSearchQuery: domainListing.urlState.searchQuery,
-  });
+  const [searchInputValue, setSearchInputValue] = useState(
+    domainListing.urlState.searchQuery ?? ''
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(domainListing.handleSearchChange, 300),
+    [domainListing.handleSearchChange]
+  );
+
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(domainListing.urlState.searchQuery ?? '');
+  }, [domainListing.urlState.searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const isTreeView = view === ViewMode.Tree;
@@ -356,7 +366,16 @@ const DomainListPage = ({ renderPageHeader }: DomainListPageProps) => {
           gap={4}>
           <Box align="center" direction="row" gap={5}>
             {titleAndCount}
-            {search}
+            <Input
+              className="tw:max-w-86"
+              icon={SearchLg}
+              placeholder={t('label.search')}
+              value={searchInputValue}
+              onChange={(value) => {
+                setSearchInputValue(value);
+                debouncedSearch(value);
+              }}
+            />
             {!isTreeView && quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle
