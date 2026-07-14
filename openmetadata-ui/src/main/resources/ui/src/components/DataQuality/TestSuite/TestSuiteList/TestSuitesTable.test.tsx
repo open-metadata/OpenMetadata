@@ -121,7 +121,29 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <td className={className}>{children}</td>
   );
 
+  const MockBox = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div {...props}>{children}</div>
+  );
+
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+    </div>
+  );
+
   return {
+    Box: MockBox,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Table: MockTable,
   };
 });
@@ -137,25 +159,6 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
-);
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`} />
-    )),
-}));
-
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => ({
-    __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
-  })
 );
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
@@ -291,32 +294,46 @@ describe('TestSuitesTable component', () => {
     expect(mockOnSortChange).not.toHaveBeenCalled();
   });
 
-  it('should render FilterTablePlaceHolder when data is empty for table suites', () => {
-    renderTable({ data: [] });
+  it('should render the EmptyPlaceholder for empty table suites', () => {
+    render(
+      <TestSuitesTable
+        {...defaultProps}
+        data={[]}
+        hasActiveFilters={false}
+        isLoading={false}
+        subTab={DataQualitySubTabs.TABLE_SUITES}
+      />,
+      { wrapper: MemoryRouter }
+    );
 
-    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-table-suites-yet')).toBeInTheDocument();
   });
 
-  it('should render create placeholder when empty bundle suites with no active filters', () => {
+  it('should render the EmptyPlaceholder for empty bundle suites when no active filters', () => {
     renderTable({
       data: [],
       subTab: DataQualitySubTabs.BUNDLE_SUITES,
       hasActiveFilters: false,
     });
 
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
-      screen.getByTestId('error-placeholder-type-CREATE')
+      screen.getByText('message.no-bundle-suites-yet')
     ).toBeInTheDocument();
   });
 
-  it('should render FilterTablePlaceHolder for empty bundle suites when filters are active', () => {
+  it('should render the filtered EmptyPlaceholder copy when filters are active', () => {
     renderTable({
       data: [],
       subTab: DataQualitySubTabs.BUNDLE_SUITES,
       hasActiveFilters: true,
     });
 
-    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-matching-test-suites')
+    ).toBeInTheDocument();
   });
 
   it('should not render rows while loading', () => {
