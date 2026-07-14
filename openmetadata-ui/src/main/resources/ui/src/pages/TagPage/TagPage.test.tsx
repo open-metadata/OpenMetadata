@@ -221,8 +221,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
-  return jest.fn().mockImplementation(() => <div>EntityDeleteModal</div>);
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
+  return jest.fn().mockImplementation(() => <div>DeleteModal</div>);
 });
 
 jest.mock(
@@ -234,6 +234,10 @@ jest.mock(
 
 jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
   return jest.fn().mockImplementation(() => <div>StyleModal</div>);
+});
+
+jest.mock('../../components/Modals/IconColorModal', () => {
+  return jest.fn().mockImplementation(() => <div>IconColorModal</div>);
 });
 
 jest.mock(

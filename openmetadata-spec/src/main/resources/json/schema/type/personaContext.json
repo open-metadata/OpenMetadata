@@ -1,0 +1,124 @@
+{
+  "$id": "https://open-metadata.org/schema/type/personaContext.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "PersonaContext",
+  "description": "Structured form of the materialized AI context shared by members of a Persona.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.type.PersonaContext",
+  "definitions": {
+    "ruleResult": {
+      "description": "Materialization result for one persona context rule.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.personaContext.RuleResult",
+      "properties": {
+        "ruleName": {
+          "type": "string"
+        },
+        "entityType": {
+          "type": "string"
+        },
+        "matched": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderedFull": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "renderedCompact": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "manifestOnly": {
+          "type": "integer",
+          "minimum": 0
+        },
+        "entities": {
+          "type": "array",
+          "items": {
+            "$ref": "aiContext.json"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "sharedKnowledge": {
+      "description": "Distinct knowledge referenced by selected assets, rendered once in full in the document appendix.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.personaContext.SharedKnowledge",
+      "properties": {
+        "glossaryTerms": {
+          "type": "array",
+          "items": {
+            "$ref": "aiContext.json#/definitions/knowledgeItem"
+          }
+        },
+        "metrics": {
+          "type": "array",
+          "items": {
+            "$ref": "aiContext.json#/definitions/knowledgeItem"
+          }
+        },
+        "articles": {
+          "type": "array",
+          "items": {
+            "$ref": "aiContext.json#/definitions/knowledgeItem"
+          }
+        }
+      },
+      "additionalProperties": false
+    },
+    "manifestEntry": {
+      "description": "An entity that was compacted or omitted because the global character budget was exhausted.",
+      "type": "object",
+      "javaType": "org.openmetadata.schema.type.personaContext.ManifestEntry",
+      "properties": {
+        "entityType": {
+          "type": "string"
+        },
+        "fullyQualifiedName": {
+          "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+        },
+        "reason": {
+          "type": "string",
+          "enum": ["compact", "omitted"]
+        }
+      },
+      "required": ["entityType", "fullyQualifiedName", "reason"],
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "persona": {
+      "$ref": "entityReference.json"
+    },
+    "generatedAt": {
+      "$ref": "basic.json#/definitions/timestamp"
+    },
+    "fingerprint": {
+      "description": "Stable definition hash followed by a content hash for detecting a changed materialization.",
+      "type": "string"
+    },
+    "truncated": {
+      "description": "Whether at least one selected entity was compacted or omitted, or required knowledge exceeded the configured budget.",
+      "type": "boolean",
+      "default": false
+    },
+    "rules": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/ruleResult"
+      }
+    },
+    "sharedKnowledge": {
+      "$ref": "#/definitions/sharedKnowledge"
+    },
+    "manifest": {
+      "type": "array",
+      "items": {
+        "$ref": "#/definitions/manifestEntry"
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -133,7 +133,9 @@ test('Test suite tab switching keeps active bundle suite data after stale table 
   await tableSuiteRequestReceived.promise;
 
   await expect(page.getByTestId('test-suite-table')).toBeVisible();
-  await expect(page.getByTestId('loader')).toBeVisible();
+  await expect(
+    page.getByTestId('test-suite-table').getByText(tableFqn)
+  ).not.toBeVisible();
 
   const bundleSuiteListResponse = page.waitForResponse((response) => {
     const responseUrl = new URL(response.url());
@@ -200,7 +202,9 @@ test(
       );
       await page.click('[data-testid="add-test-suite-btn"]');
       await initialListResponse;
-      await page.fill('[data-testid="test-suite-name"]', NEW_TEST_SUITE.name);
+      await page
+        .locator('[data-testid="test-suite-name"] input')
+        .fill(NEW_TEST_SUITE.name);
       await page.locator(descriptionBox).fill(NEW_TEST_SUITE.description);
       await page.waitForSelector(
         "[data-testid='test-case-selection-card'] [data-testid='loader']",
@@ -359,9 +363,6 @@ test(
       await ownerPage.click('[data-testid="manage-button"]');
       await ownerPage.click('[data-testid="delete-button"]');
 
-      // Click on Permanent/Hard delete option
-      await ownerPage.click('[data-testid="hard-delete-option"]');
-      await ownerPage.fill('[data-testid="confirmation-text-input"]', 'DELETE');
       const deleteResponse = ownerPage.waitForResponse(
         '/api/v1/dataQuality/testSuites/*?hardDelete=true&recursive=true'
       );

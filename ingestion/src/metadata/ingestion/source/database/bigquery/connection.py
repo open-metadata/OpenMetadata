@@ -13,24 +13,34 @@
 Source connection handler
 """
 
+from __future__ import annotations
+
 import os
 from datetime import datetime
-from functools import partial
-from typing import Optional
+from typing import TYPE_CHECKING, Optional
 from urllib.parse import parse_qs, quote, urlparse
 
-from google.api_core.exceptions import NotFound
+from google.api_core.exceptions import Forbidden, NotFound
+from google.auth.exceptions import DefaultCredentialsError, RefreshError
 from google.cloud.datacatalog_v1 import PolicyTagManagerClient
 from sqlalchemy.engine import Engine
 
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
+from metadata.core.connections.test_connection import (
+    ErrorPack,
+    Evidence,
+    Matchers,
+    check,
+    when,
 )
+from metadata.core.connections.test_connection.checks.database import (
+    DatabaseStep,
+    list_schemas,
+    ping,
+    run_sql,
+)
+from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection as BigQueryConnectionConfig,
-)
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
 )
 from metadata.generated.schema.security.credentials.gcpCredentials import (
     GcpADC,
@@ -46,19 +56,73 @@ from metadata.ingestion.connections.builders import (
     get_connection_args_common,
 )
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import (
-    execute_inspector_func,
-    test_connection_engine_step,
-    test_connection_steps,
-    test_query,
+from metadata.ingestion.source.database.bigquery.helper import (
+    get_impersonate_client_kwargs,
 )
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.database.bigquery.queries import BIGQUERY_TEST_STATEMENT
+from metadata.utils.bigquery_utils import get_bigquery_client
 from metadata.utils.constants import THREE_MIN
-from metadata.utils.credentials import set_google_credentials
+from metadata.utils.credentials import (
+    InvalidPrivateKeyException,
+    set_google_credentials,
+)
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from collections.abc import Callable
+
+    from metadata.core.connections.test_connection import ChecksProvider
+
 logger = ingestion_logger()
+
+# BigQuery authenticates through Google credentials + a project id; there is no
+# host:port to preflight, so CheckAccess skips the shared TCP probe and folds in
+# NETWORK_ERRORS only for genuine socket/DNS failures reaching the Google
+# endpoint. The real failures are google.auth / google.api_core errors, keyed by
+# type and stable message token below (customer project ids never appear in a
+# rule).
+BIGQUERY_ERRORS = ErrorPack(
+    when(Matchers.exception(InvalidPrivateKeyException)).diagnose(
+        "Malformed service account private key",
+        fix="The private key in the GCP credentials could not be parsed as a PEM key. Paste the "
+        "full key from the service account JSON, including the BEGIN/END lines and real newlines.",
+    ),
+    when(Matchers.contains("invalid_grant")).diagnose(
+        "Invalid service account credentials",
+        fix="The service account key was rejected (invalid_grant). Verify the private key and "
+        "client email are correct and that the key has not been revoked, disabled, or expired.",
+    ),
+    when(Matchers.exception(DefaultCredentialsError)).diagnose(
+        "Could not determine GCP credentials",
+        fix="No usable credentials were found. Provide a service account key, or configure "
+        "Application Default Credentials (ADC) in the environment where ingestion runs.",
+    ),
+    when(Matchers.exception(RefreshError)).diagnose(
+        "Failed to obtain a GCP access token",
+        fix="The credentials could not be exchanged for an access token. Check the service "
+        "account key, its client email, and that the account is enabled.",
+    ),
+    when(Matchers.contains("bigquery.jobs.create")).diagnose(
+        "Missing permission to run BigQuery jobs",
+        fix="Grant the service account the BigQuery Job User role (bigquery.jobs.create) on the "
+        "billing project so it can run queries.",
+    ),
+    when(Matchers.contains("access denied")).diagnose(
+        "Access denied",
+        fix="The service account is authenticated but lacks permission for the requested "
+        "resource. Grant the appropriate BigQuery role (e.g. BigQuery Data Viewer / Metadata "
+        "Viewer), or, for query history, access to INFORMATION_SCHEMA.JOBS_BY_PROJECT.",
+    ),
+    when(Matchers.exception(Forbidden)).diagnose(
+        "Permission denied",
+        fix="The service account is authenticated but not authorized. Grant it the BigQuery "
+        "roles needed to read metadata (BigQuery Data Viewer / Metadata Viewer / Job User).",
+    ),
+    when(Matchers.exception(NotFound)).diagnose(
+        "Project or dataset not found",
+        fix="Verify the configured project id (and dataset, if set) exist and that the service account can see them.",
+    ),
+).including(NETWORK_ERRORS)
 
 
 def _add_location(url: str, connection: BigQueryConnectionConfig) -> str:
@@ -140,6 +204,168 @@ def get_connection_url(connection: BigQueryConnectionConfig) -> str:  # noqa: C9
     return _add_location(url, connection)
 
 
+def get_connection_args(connection: BigQueryConnectionConfig) -> dict:
+    """
+    Build the SQLAlchemy connect args for BigQuery.
+
+    When service account impersonation is configured, inject a pre-built
+    impersonated ``bigquery.Client`` so that every query issued through the
+    engine (Test Connection and information_schema reads) runs under the
+    target identity. Without impersonation this is identical to the common
+    connection args, preserving the previous behaviour.
+    """
+    connect_args = get_connection_args_common(connection)
+    impersonate_kwargs = get_impersonate_client_kwargs(connection)
+    if impersonate_kwargs:
+        billing_or_project_id = connection.billingProjectId or _get_first_project_id(connection)
+        if billing_or_project_id is None:
+            logger.warning(
+                "Could not resolve a project id for the impersonated BigQuery client from "
+                "billingProjectId or the credentials config. The project will be resolved from the "
+                "environment (e.g. GOOGLE_CLOUD_PROJECT) at query time; set billingProjectId or a "
+                "projectId to make this explicit."
+            )
+        connect_args = {
+            **connect_args,
+            "client": get_bigquery_client(project_id=billing_or_project_id, **impersonate_kwargs),
+        }
+    return connect_args
+
+
+def _get_first_project_id(connection: BigQueryConnectionConfig) -> Optional[str]:  # noqa: UP045
+    """
+    Return a single project id from the connection config to scope the
+    impersonated client. Falls back to None when it cannot be determined.
+    """
+    project_id = None
+    gcp_config = connection.credentials.gcpConfig
+    config_project_id = getattr(gcp_config, "projectId", None)
+    if config_project_id is not None:
+        if isinstance(config_project_id, SingleProjectId):
+            project_id = config_project_id.root
+        elif isinstance(config_project_id, MultipleProjectId) and config_project_id.root:
+            project_id = config_project_id.root[0]
+    return project_id
+
+
+_OBJECT_TYPES = ("TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW")
+
+
+def _enumerated(count: int, noun: str) -> str:
+    return f"{count} {noun if count == 1 else noun + 's'} enumerated"
+
+
+def probe_table_view_enumeration(connection: Engine) -> Evidence:
+    """Probe that datasets and their objects can be enumerated.
+
+    A ``NotFound`` on a dataset is tolerated - it can be dropped between listing
+    datasets and listing its tables (python-bigquery-sqlalchemy#105); any other
+    failure propagates so the step fails and is classified.
+    """
+    dataset_count = 0
+    with connection.connect() as conn:
+        client = conn.connection._client
+        for dataset in client.list_datasets():
+            dataset_count += 1
+            try:
+                for table in client.list_tables(dataset.reference, page_size=1):
+                    if table.table_type in _OBJECT_TYPES:
+                        break
+            except NotFound:
+                continue
+    return Evidence(summary=_enumerated(dataset_count, "dataset"))
+
+
+class BigQueryChecks:
+    """Test-connection checks for BigQuery.
+
+    Steps run against a single-project ``Engine``; the multi-project fan-out
+    happens a layer up (``BigquerySource._test_connection`` clones the connection
+    per project and drives this provider once per clone).
+
+    The engine is built lazily on first use inside ``CheckAccess`` (never at
+    construction), so credential parsing - which happens while building the engine
+    (e.g. a malformed private key) - fails *inside the gate step* and is classified
+    by the error pack, instead of escaping before the runner starts.
+    """
+
+    errors = BIGQUERY_ERRORS
+
+    def __init__(
+        self,
+        get_client: Callable[[], Engine],
+        service_connection: BigQueryConnectionConfig,
+    ) -> None:
+        self._get_client = get_client
+        self._client: Engine | None = None
+        self.service_connection = service_connection
+
+    @property
+    def client(self) -> Engine:
+        if self._client is None:
+            self._client = self._get_client()
+        return self._client
+
+    @check(DatabaseStep.CheckAccess)
+    def check_access(self) -> Evidence:
+        return ping(self.client)
+
+    @check(DatabaseStep.GetSchemas)
+    def get_schemas(self) -> Evidence:
+        return list_schemas(self.client)
+
+    @check(DatabaseStep.GetTables)
+    def get_tables(self) -> Evidence:
+        return probe_table_view_enumeration(self.client)
+
+    @check(DatabaseStep.GetViews)
+    def get_views(self) -> Evidence:
+        return probe_table_view_enumeration(self.client)
+
+    @check(DatabaseStep.GetTags)
+    def get_tags(self) -> Evidence | None:
+        return self._list_policy_tags()
+
+    @check(DatabaseStep.GetQueries)
+    def get_queries(self) -> Evidence:
+        statement = BIGQUERY_TEST_STATEMENT.format(
+            region=self.service_connection.usageLocation,
+            creation_date=datetime.now().strftime("%Y-%m-%d"),
+        )
+        return run_sql(self.client, statement, lambda _: "query history accessible")
+
+    def _taxonomy_project_ids(self) -> list[str]:
+        project_ids: list[str] = []
+        if self.client.url.host:
+            project_ids.append(self.client.url.host)
+        if self.service_connection.taxonomyProjectID:
+            project_ids.extend(self.service_connection.taxonomyProjectID)
+        return project_ids
+
+    def _list_policy_tags(self) -> Evidence | None:
+        if not self.service_connection.includePolicyTags:
+            logger.info("'includePolicyTags' is set to false, so skipping this test.")
+            return None
+
+        project_ids = self._taxonomy_project_ids()
+        if not project_ids:
+            logger.info("'taxonomyProjectID' is not set, so skipping this test.")
+            return None
+
+        location = self.service_connection.taxonomyLocation
+        if not location:
+            logger.info("'taxonomyLocation' is not set, so skipping this test.")
+            return None
+
+        client = PolicyTagManagerClient()
+        tag_count = 0
+        for project_id in project_ids:
+            parent = f"projects/{project_id}/locations/{location}"
+            for taxonomy in client.list_taxonomies(parent=parent):
+                tag_count += sum(1 for _ in client.list_policy_tags(parent=taxonomy.name))
+        return Evidence(summary=_enumerated(tag_count, "policy tag"))
+
+
 class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
     def _get_client(self) -> Engine:
         connection = self.service_connection
@@ -151,110 +377,18 @@ class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
         engine = create_generic_db_connection(
             connection=connection,
             get_connection_url_fn=get_connection_url,
-            get_connection_args_fn=get_connection_args_common,
+            get_connection_args_fn=get_connection_args,
             **kwargs,
         )
         self._on_close(engine.dispose)
         return engine
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        engine = self.client
-        service_connection = self.service_connection
+    # BigQuery enumerates every dataset and queries INFORMATION_SCHEMA; keep the
+    # pre-migration 3-minute per-step budget so slow projects are not failed.
+    step_timeout_seconds = THREE_MIN
 
-        def get_tags(taxonomies):  # noqa: RET503  # pyright: ignore[reportMissingParameterType]
-            for taxonomy in taxonomies:
-                policy_tags = PolicyTagManagerClient().list_policy_tags(parent=taxonomy.name)
-                return policy_tags  # noqa: RET504
-
-        def test_tags():
-            if not service_connection.includePolicyTags:
-                logger.info("'includePolicyTags' is set to false, so skipping this test.")
-                return None
-
-            taxonomy_project_ids = []
-            if engine.url.host:
-                taxonomy_project_ids.append(engine.url.host)
-            if service_connection.taxonomyProjectID:
-                taxonomy_project_ids.extend(service_connection.taxonomyProjectID)
-            if not taxonomy_project_ids:
-                logger.info("'taxonomyProjectID' is not set, so skipping this test.")
-                return None
-
-            taxonomy_location = service_connection.taxonomyLocation
-            if not taxonomy_location:
-                logger.info("'taxonomyLocation' is not set, so skipping this test.")
-                return None
-
-            taxonomies = []
-            for project_id in taxonomy_project_ids:
-                taxonomies.extend(
-                    PolicyTagManagerClient().list_taxonomies(
-                        parent=f"projects/{project_id}/locations/{taxonomy_location}"
-                    )
-                )
-            return get_tags(taxonomies)
-
-        def test_connection_inner(engine):  # pyright: ignore[reportMissingParameterType]
-            test_fn = {
-                "CheckAccess": partial(test_connection_engine_step, engine),
-                "GetSchemas": partial(execute_inspector_func, engine, "get_schema_names"),
-                "GetTables": partial(get_table_view_names, engine),
-                "GetViews": partial(get_table_view_names, engine),
-                "GetTags": test_tags,
-                "GetQueries": partial(
-                    test_query,
-                    engine=engine,
-                    statement=BIGQUERY_TEST_STATEMENT.format(
-                        region=service_connection.usageLocation,
-                        creation_date=datetime.now().strftime("%Y-%m-%d"),
-                    ),
-                ),
-            }
-
-            return test_connection_steps(
-                metadata=metadata,
-                test_fn=test_fn,
-                service_type=service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-                automation_workflow=automation_workflow,
-                timeout_seconds=timeout_seconds,
-            )
-
-        try:
-            result = test_connection_inner(engine)
-        finally:
-            self.close()
-        return result
-
-
-def get_table_view_names(connection, schema=None):
-    with connection.connect() as conn:
-        current_schema = schema
-        client = conn.connection._client
-        item_types = ["TABLE", "EXTERNAL", "VIEW", "MATERIALIZED_VIEW"]
-        datasets = client.list_datasets()
-        result = []
-        for dataset in datasets:
-            if current_schema is not None and current_schema != dataset.dataset_id:
-                continue
-
-            try:
-                tables = client.list_tables(dataset.reference, page_size=1)
-                for table in tables:
-                    if table.table_type in item_types:
-                        break
-            except NotFound:
-                # It's possible that the dataset was deleted between when we
-                # fetched the list of datasets and when we try to list the
-                # tables from it. See:
-                # https://github.com/googleapis/python-bigquery-sqlalchemy/issues/105
-                pass
-        return result
+    def checks(self) -> ChecksProvider:
+        return BigQueryChecks(
+            get_client=lambda: self.client,
+            service_connection=self.service_connection,
+        )

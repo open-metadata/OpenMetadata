@@ -651,13 +651,10 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
     awaitSearchPresence(
         entityMemory.getId().toString(), true, "ENTITY-visibility memory must be searchable");
 
-    assertFalse(
-        searchForEntity(privateMemory.getId().toString())
-            .contains(privateMemory.getId().toString()),
-        "PRIVATE memory must not be in the search index");
-    assertFalse(
-        searchForEntity(sharedMemory.getId().toString()).contains(sharedMemory.getId().toString()),
-        "SHARED memory must not be in the search index");
+    awaitStaysAbsent(
+        privateMemory.getId().toString(), "PRIVATE memory must not be in the search index");
+    awaitStaysAbsent(
+        sharedMemory.getId().toString(), "SHARED memory must not be in the search index");
   }
 
   @Test
@@ -689,6 +686,17 @@ public class ContextMemoryIT extends BaseEntityIT<ContextMemory, CreateContextMe
         .atMost(Duration.ofSeconds(180))
         .ignoreExceptions()
         .untilAsserted(() -> assertEquals(present, searchForEntity(id).contains(id), message));
+  }
+
+  private void awaitStaysAbsent(String id, String message) {
+    // Give the async indexer a window to (wrongly) index a regressed PRIVATE/SHARED doc, then
+    // assert
+    // it never showed up — resilient to out-of-order indexing the ENTITY fence can't rule out.
+    Awaitility.await(message)
+        .pollDelay(Duration.ofSeconds(5))
+        .atMost(Duration.ofSeconds(10))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertFalse(searchForEntity(id).contains(id), message));
   }
 
   private CreateContextMemory memoryWithVisibility(

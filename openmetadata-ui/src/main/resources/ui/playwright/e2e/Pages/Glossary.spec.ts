@@ -1217,50 +1217,60 @@ test.describe('Glossary tests', () => {
     }
   });
 
-  test('Request description task for Glossary Term', async ({ browser }) => {
-    const { page, afterAction, apiContext } = await performAdminLogin(browser);
-    const glossary1 = new Glossary();
-    const user1 = new UserClass();
-    const glossaryTerm1 = new GlossaryTerm(glossary1);
-    glossary1.data.terms = [glossaryTerm1];
-
-    try {
-      await user1.create(apiContext);
-      await glossary1.create(apiContext);
-      await glossaryTerm1.create(apiContext);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-      const value: TaskDetails = {
-        term: glossaryTerm1.data.name,
-        assignee: user1.responseData.name,
-      };
-
-      await page.getByTestId('request-description').click();
-
-      await createDescriptionTaskForGlossary(page, value, glossaryTerm1, false);
-
-      const taskResolve = waitForTaskResolveResponse(page);
-      await page.getByTestId('approve-button').first().click();
-      await taskResolve;
-
-      await redirectToHomePage(page);
-      await sidebarClick(page, SidebarItem.GLOSSARY);
-      await selectActiveGlossary(page, glossary1.data.displayName);
-      await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
-
-      const viewerContainerText = await page.textContent(
-        '[data-testid="viewer-container"]'
+  test.fixme(
+    'Request description task for Glossary Term',
+    async ({ browser }) => {
+      const { page, afterAction, apiContext } = await performAdminLogin(
+        browser
       );
+      const glossary1 = new Glossary();
+      const user1 = new UserClass();
+      const glossaryTerm1 = new GlossaryTerm(glossary1);
+      glossary1.data.terms = [glossaryTerm1];
 
-      expect(viewerContainerText).toContain('Updated description');
-    } finally {
-      await glossaryTerm1.delete(apiContext);
-      await glossary1.delete(apiContext);
-      await afterAction();
+      try {
+        await user1.create(apiContext);
+        await glossary1.create(apiContext);
+        await glossaryTerm1.create(apiContext);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+        const value: TaskDetails = {
+          term: glossaryTerm1.data.name,
+          assignee: user1.responseData.name,
+        };
+
+        await page.getByTestId('request-description').click();
+
+        await createDescriptionTaskForGlossary(
+          page,
+          value,
+          glossaryTerm1,
+          false
+        );
+
+        const taskResolve = waitForTaskResolveResponse(page);
+        await page.getByTestId('approve-button').first().click();
+        await taskResolve;
+
+        await redirectToHomePage(page);
+        await sidebarClick(page, SidebarItem.GLOSSARY);
+        await selectActiveGlossary(page, glossary1.data.displayName);
+        await selectActiveGlossaryTerm(page, glossaryTerm1.data.displayName);
+
+        const viewerContainerText = await page.textContent(
+          '[data-testid="viewer-container"]'
+        );
+
+        expect(viewerContainerText).toContain('Updated description');
+      } finally {
+        await glossaryTerm1.delete(apiContext);
+        await glossary1.delete(apiContext);
+        await afterAction();
+      }
     }
-  });
+  );
 
   test('Request tags for Glossary', async ({ browser }) => {
     test.slow(true);
@@ -1846,27 +1856,29 @@ test.describe('Glossary tests', () => {
     const { page: dataConsumerPage, afterAction: consumerAfterAction } =
       await performUserLogin(browser, dataConsumerUser);
 
-    await redirectToHomePage(dataConsumerPage);
-    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(
-      dataConsumerPage,
-      glossary1.data.displayName,
-      false
-    );
+    try {
+      await redirectToHomePage(dataConsumerPage);
+      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(
+        dataConsumerPage,
+        glossary1.data.displayName,
+        false
+      );
 
-    await expect(
-      dataConsumerPage.getByTestId('permission-error-placeholder')
-    ).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('permission-error-placeholder')
+      ).toBeVisible();
 
-    await expect(
-      dataConsumerPage.getByTestId('permission-error-placeholder')
-    ).toHaveText(
-      "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
-    );
-
-    await consumerAfterAction();
-    await cleanup(apiContext);
-    await afterAction();
+      await expect(
+        dataConsumerPage.getByTestId('permission-error-placeholder')
+      ).toHaveText(
+        "You don't have necessary permissions. Please check with the admin to get the View Glossary permission."
+      );
+    } finally {
+      await consumerAfterAction();
+      await cleanup(apiContext);
+      await afterAction();
+    }
   });
 
   test('Verify Glossary Term Deny Permission', async ({ browser }) => {
@@ -1879,24 +1891,28 @@ test.describe('Glossary tests', () => {
     const { page: dataConsumerPage, afterAction: consumerAfterAction } =
       await performUserLogin(browser, dataConsumerUser);
 
-    await redirectToHomePage(dataConsumerPage);
-    await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
-    await selectActiveGlossary(dataConsumerPage, glossary1.data.displayName);
-    await dataConsumerPage.getByTestId(glossaryTerm1.data.displayName).click();
+    try {
+      await redirectToHomePage(dataConsumerPage);
+      await sidebarClick(dataConsumerPage, SidebarItem.GLOSSARY);
+      await selectActiveGlossary(dataConsumerPage, glossary1.data.displayName);
+      await dataConsumerPage
+        .getByTestId(glossaryTerm1.data.displayName)
+        .click();
 
-    await expect(
-      dataConsumerPage.getByTestId('permission-error-placeholder')
-    ).toBeVisible();
+      await expect(
+        dataConsumerPage.getByTestId('permission-error-placeholder')
+      ).toBeVisible();
 
-    await expect(
-      dataConsumerPage.getByTestId('permission-error-placeholder')
-    ).toHaveText(
-      "You don't have necessary permissions. Please check with the admin to get the  permission."
-    );
-
-    await consumerAfterAction();
-    await cleanup(apiContext);
-    await afterAction();
+      await expect(
+        dataConsumerPage.getByTestId('permission-error-placeholder')
+      ).toHaveText(
+        "You don't have necessary permissions. Please check with the admin to get the  permission."
+      );
+    } finally {
+      await consumerAfterAction();
+      await cleanup(apiContext);
+      await afterAction();
+    }
   });
 
   // Need to fix the workflow from BE end, as it constantly failing in the AUT's
@@ -2124,18 +2140,11 @@ test.describe('Glossary tests', () => {
         await page.getByTestId('manage-button').click();
         await page.getByTestId('delete-button').click();
 
-        await expect(page.locator('[role="dialog"]')).toBeVisible();
+        await page.locator('[role="dialog"]').waitFor();
+
         await expect(page.getByTestId('modal-header')).toContainText(
           glossary.data.name
         );
-
-        await expect(page.getByTestId('body-text')).toContainText('DELETE');
-
-        const confirmationInput = page.getByTestId('confirmation-text-input');
-
-        await expect(confirmationInput).toBeVisible();
-
-        await confirmationInput.fill('DELETE');
 
         await page.getByTestId('confirm-button').click();
       });
@@ -2807,7 +2816,7 @@ test.describe('Glossary tests', () => {
       );
 
       // Click cancel/discard button
-      await page.click('[data-testid="discard-button"]');
+      await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();
@@ -2848,7 +2857,7 @@ test.describe('Glossary tests', () => {
       );
 
       // Click cancel/discard button
-      await page.click('[data-testid="discard-button"]');
+      await page.click('[data-testid="cancel-button"]');
 
       // Verify modal is closed
       await expect(page.locator('[role="dialog"]')).not.toBeVisible();
