@@ -253,7 +253,12 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
               Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
           return isInTeam(parentTeam, team.getEntityReference());
         } catch (Exception ex) {
-          // Ignore and return false
+          LOG.warn(
+              "Failed to check team asset ownership for team [{}] with owner [{}]: {}",
+              parentTeam,
+              owner.getId(),
+              ex.getMessage(),
+              ex);
         }
       }
     }
@@ -266,8 +271,8 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
     Set<UUID> visitedTeams = new HashSet<>();
     stack.push(team); // Start with team and see if the parent matches
     while (!stack.isEmpty()) {
+      EntityReference currentTeamRef = stack.pop();
       try {
-        EntityReference currentTeamRef = stack.pop();
         // Skip if we've already visited this team to prevent circular dependencies
         if (visitedTeams.contains(currentTeamRef.getId())) {
           LOG.warn(
@@ -283,7 +288,12 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
         listOrEmpty(parent.getParents())
             .forEach(stack::push); // Continue to go up the chain of parents
       } catch (Exception ex) {
-        // Ignore and return false
+        LOG.warn(
+            "Failed to traverse team hierarchy for parent [{}] at team [{}]: {}",
+            parentTeam,
+            currentTeamRef != null ? currentTeamRef.getName() : null,
+            ex.getMessage(),
+            ex);
       }
     }
     return false;
@@ -310,7 +320,8 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
         roles.addAll(team.getDefaultRoles());
         roles.addAll(getRolesForTeams(team.getParents(), visitedTeams));
       } catch (Exception ex) {
-        // Ignore and continue
+        LOG.warn(
+            "Failed to resolve roles for team [{}]: {}", teamRef.getName(), ex.getMessage(), ex);
       }
     }
     return roles.stream().distinct().collect(Collectors.toList());
@@ -369,8 +380,8 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
     }
     listOrEmpty(user.getTeams()).forEach(stack::push); // Continue to go up the chain of parents
     while (!stack.isEmpty()) {
+      EntityReference currentTeamRef = stack.pop();
       try {
-        EntityReference currentTeamRef = stack.pop();
         // Skip if we've already visited this team to prevent circular dependencies
         if (visitedTeams.contains(currentTeamRef.getId())) {
           LOG.warn(
@@ -387,7 +398,12 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
         listOrEmpty(parent.getParents())
             .forEach(stack::push); // Continue to go up the chain of parents
       } catch (Exception ex) {
-        // Ignore the exception and return false
+        LOG.warn(
+            "Failed to check role [{}] for team [{}]: {}",
+            role,
+            currentTeamRef != null ? currentTeamRef.getName() : null,
+            ex.getMessage(),
+            ex);
       }
     }
     return false;
@@ -560,7 +576,11 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
                       Entity.TEAM, resourceOwner.getId(), TEAM_FIELDS, Include.NON_DELETED);
               iterators.add(new TeamPolicyIterator(team.getId(), teamsVisited, true));
             } catch (Exception ex) {
-              // Ignore
+              LOG.warn(
+                  "Failed to load policies for resource owner team [{}]: {}",
+                  resourceOwner.getId(),
+                  ex.getMessage(),
+                  ex);
             }
           }
         }
