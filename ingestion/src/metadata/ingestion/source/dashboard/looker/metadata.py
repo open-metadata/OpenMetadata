@@ -432,18 +432,11 @@ class LookerSource(DashboardServiceSource):
                 # Store the models for later processing of standalone views
                 self._all_lookml_models = all_lookml_models
 
-                explore_total = sum(
-                    1
-                    for model in all_lookml_models
-                    if model.explores and not filter_by_datamodel(self.source_config.dataModelFilterPattern, model.name)
-                    for explore in model.explores
-                    if not filter_by_datamodel(
-                        self.source_config.dataModelFilterPattern,
-                        build_datamodel_name(model.name, explore.name),
-                    )
-                )
                 manual = self.progress_tracking.manual
-                manual.set_total(DashboardDataModel.__name__, explore_total)
+                manual.set_total(
+                    DashboardDataModel.__name__,
+                    self._reconcilable_explore_total(all_lookml_models),
+                )
                 manual.mark_reconcilable(DashboardDataModel.__name__)
 
                 # Finally, iterate through them to ingest Explores and Views
@@ -452,6 +445,27 @@ class LookerSource(DashboardServiceSource):
             except Exception as err:
                 logger.debug(traceback.format_exc())
                 logger.error(f"Unexpected error fetching LookML models - {err}")
+
+    def _reconcilable_explore_total(self, all_lookml_models: Sequence[LookmlModel]) -> int:
+        """Count the explores that ``fetch_lookml_explores`` would actually
+        yield, i.e. those whose model and composite datamodel name survive the
+        dataModelFilterPattern. This is the DashboardDataModel progress total."""
+        total = 0
+        for model in all_lookml_models:
+            model_name = model.name
+            explores = model.explores
+            if not model_name or not explores:
+                continue
+            if filter_by_datamodel(self.source_config.dataModelFilterPattern, model_name):
+                continue
+            for explore in explores:
+                explore_name = explore.name
+                if explore_name and not filter_by_datamodel(
+                    self.source_config.dataModelFilterPattern,
+                    build_datamodel_name(model_name, explore_name),
+                ):
+                    total += 1
+        return total
 
     def fetch_lookml_explores(self, all_lookml_models: Sequence[LookmlModel]) -> Iterable[LookmlModelExplore]:
         """
