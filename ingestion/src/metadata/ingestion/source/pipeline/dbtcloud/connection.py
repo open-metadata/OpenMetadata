@@ -48,14 +48,17 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
-ACCOUNT_ID_DOC = "https://docs.getdbt.com/docs/dbt-cloud-apis/service-tokens"
+TOKENS_DOC = "https://docs.getdbt.com/docs/dbt-apis/authentication"
+RATE_LIMITS_DOC = "https://docs.getdbt.com/docs/dbt-apis/rate-limits"
+
+ACCOUNT_ID_FIX = (
+    "Check the Account Id - it is the number in https://<host>/settings/accounts/<accountId>/ - "
+    "and that the Token belongs to that account."
+)
 
 
 def _http_status(*codes: int) -> Matcher:
-    """Match a dbt Cloud API error by HTTP status, across the cause chain.
-
-    The status is the stable signal - dbt Cloud's error text varies by endpoint.
-    """
+    """Match a dbt Cloud API error by HTTP status, across the cause chain."""
     wanted = frozenset(codes)
 
     def match(error: BaseException) -> bool:
@@ -69,60 +72,49 @@ def _http_status(*codes: int) -> Matcher:
 
 NO_JOBS_CAVEAT = Diagnosis(
     title="No jobs visible",
-    remediation="The account is reachable but exposes no job. Check that the account has at least "
-    "one dbt Cloud job defined and that the token's permission set covers the project it "
-    "belongs to; ingestion reads pipelines from jobs, so it would otherwise find nothing.",
+    remediation="The account is readable but has no job. Ingestion reads pipelines from dbt Cloud "
+    "jobs, so it would find nothing.",
 )
 
 DBTCLOUD_ERRORS = ErrorPack(
-    when(_http_status(401)).diagnose(
-        "Authentication failed",
-        fix="dbt Cloud rejected the token (401). Check the Token is a valid, unexpired service "
-        "token or personal access token for this account.",
-        doc=ACCOUNT_ID_DOC,
-    ),
-    # dbt Cloud answers a wrong account id with this 403, not a 404: an account the
-    # token cannot see is indistinguishable from one that does not exist. Lead the
-    # fix with the account id, which is the likelier mistake of the two.
+    # A wrong account id answers 403 "Token is not scoped to account.", never 404.
     when(Matchers.contains("not scoped to account")).diagnose(
         "Token is not scoped to this account",
-        fix="dbt Cloud refused the account (403). Check the Account Id - it is the number in the "
-        "dbt Cloud URL, https://<host>/deploy/<accountId>/... - and that the Token was issued by "
-        "that same account. If both are right, grant the token's permission set read access to "
-        "the jobs and runs of the projects to ingest.",
-        doc=ACCOUNT_ID_DOC,
+        fix=ACCOUNT_ID_FIX,
+        doc=TOKENS_DOC,
+    ),
+    when(_http_status(401)).diagnose(
+        "Authentication failed",
+        fix="dbt Cloud rejected the token. Check the Token is a valid, unexpired service token or "
+        "personal access token.",
+        doc=TOKENS_DOC,
     ),
     when(_http_status(403)).diagnose(
-        "Insufficient permissions",
-        fix="The token is valid but not authorized for this resource (403). Grant its permission "
-        "set at least read access to the jobs and runs of the projects to ingest.",
-        doc=ACCOUNT_ID_DOC,
-    ),
-    when(_http_status(404)).diagnose(
-        "Account not found",
-        fix="dbt Cloud could not find the account (404). Check the Account Id - it is the number "
-        "in the dbt Cloud URL, https://<host>/deploy/<accountId>/... - and that Host matches the "
-        "region the account lives in.",
+        "Access denied",
+        fix=f"dbt Cloud refused the request. {ACCOUNT_ID_FIX} If both are right, check the token's "
+        "permission set covers the projects to ingest.",
+        doc=TOKENS_DOC,
     ),
     when(_http_status(429)).diagnose(
         "Rate limited",
-        fix="dbt Cloud is rate limiting the token (429). Wait for the limit to reset and retry; if "
-        "it persists, use a token that is not shared with other integrations.",
+        fix="dbt Cloud rate limits the API at 5,000 requests per minute per account and then "
+        "enforces a five-minute cooldown. Retry in five minutes.",
+        doc=RATE_LIMITS_DOC,
     ),
     when(Matchers.exception(SSLError)).diagnose(
         "TLS verification failed",
-        fix="The certificate presented by the host could not be verified. Check that Host points at "
-        "dbt Cloud and that any TLS-intercepting proxy on the path is trusted where ingestion runs.",
+        fix="The host's certificate could not be verified. Check Host points at dbt Cloud and that "
+        "any TLS-intercepting proxy is trusted where ingestion runs.",
     ),
     when(Matchers.exception(Timeout)).diagnose(
         "Connection timed out",
-        fix="dbt Cloud did not answer in time; check that a firewall, security group, or network "
-        "ACL allows egress to the Host from where ingestion runs.",
+        fix="dbt Cloud did not answer in time. Check that a firewall or network ACL allows egress "
+        "to Host from where ingestion runs.",
     ),
     when(Matchers.exception(RequestsConnectionError)).diagnose(
         "Cannot reach the host",
-        fix="Check Host for typos, that DNS resolves it, and that it is reachable from where "
-        "ingestion runs - dbt Cloud is regional, e.g. https://emea.dbt.com.",
+        fix="Check Host for typos and that it resolves from where ingestion runs. dbt Cloud is "
+        "regional - the access URL differs per region.",
     ),
 ).including(NETWORK_ERRORS)
 
@@ -130,14 +122,10 @@ DBTCLOUD_ERRORS = ErrorPack(
 class DBTCloudChecks:
     """Test-connection checks for dbt Cloud.
 
-    ``CheckAccess`` is the gate: it reads the first page of one job, the smallest
-    authenticated call that proves the host, the token and the account id at once,
-    so a bad token or a wrong account fails there and the remaining steps are
-    skipped rather than each re-dialling the API.
-
-    The client is the one ``BaseConnection`` owns, not a second one built here.
-    Constructing it opens no connection - it only builds the REST client config and
-    a session - so the gate is still the first call that reaches dbt Cloud.
+    ``CheckAccess`` is the gate: it reads one job, which proves the host, the token
+    and the account id at once, so the later steps are skipped rather than each
+    re-dialling the API. Building the client opens no connection, so the gate stays
+    the first call that reaches dbt Cloud.
     """
 
     errors = DBTCLOUD_ERRORS

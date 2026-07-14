@@ -62,9 +62,8 @@ def _count(number: int, noun: str, cap: int | None = None) -> str:
 def verify_access(authenticate: Callable[[], object], command: str) -> Evidence:
     """Prove the connector can authenticate against the REST API.
 
-    Runs the connector's smallest authenticated call and, on failure, re-raises as
-    ``CheckError`` carrying the attempted command so the gate step still reports
-    what it tried.
+    On failure, re-raise as ``CheckError`` carrying the attempted command, so the
+    gate step still reports what it tried.
     """
     try:
         authenticate()
@@ -82,14 +81,10 @@ def fetch_list(
 ) -> Evidence:
     """Call a REST list endpoint and report how many items it returned.
 
-    Reports the command it attempted and a count summary; the count is capped at
-    ``cap`` and rendered ``<cap>+`` when it meets or exceeds it, so a huge account
-    does not produce an unbounded figure. When the endpoint returns nothing and
-    ``empty_caveat`` is given, the step still passes but carries the caveat as a
-    non-blocking Warning - a connector opts in when "nothing visible" is worth
-    surfacing (e.g. the token is scoped to a project with no jobs, so ingestion
-    would yield nothing). On failure, re-raise as ``CheckError`` carrying the
-    command so the failed step still reports what it ran.
+    The count is capped at ``cap`` and rendered ``<cap>+`` at the boundary. When the
+    endpoint returns nothing and ``empty_caveat`` is given, the step passes but
+    carries the caveat as a non-blocking Warning. On failure, re-raise as
+    ``CheckError`` carrying the command, so the failed step still reports what it ran.
     """
     try:
         items = fetch()

@@ -120,24 +120,27 @@ def test_a_failed_check_still_reports_what_it_ran(checks, client):
     assert failure.value.cause is client.test_get_runs.side_effect
 
 
-# The body dbt Cloud answers a wrong account id with - a 403, not a 404 (observed
-# against a live account).
+# The bodies dbt Cloud really answers with, captured against the live API: a wrong
+# account id is a 403, never a 404.
 NOT_SCOPED_BODY = (
     '{"status": {"code": 403, "is_success": false, '
-    '"user_message": "Access denied: Token is not scoped to account.", "developer_message": null}}'
+    '"user_message": "Access denied: Token is not scoped to account.", "developer_message": null}, "data": null}'
+)
+INVALID_TOKEN_BODY = (
+    '{"status": {"code": 401, "is_success": false, '
+    '"user_message": "Invalid token.", "developer_message": null}, "data": null}'
 )
 
 
 @pytest.mark.parametrize(
     ("error", "title"),
     [
-        (DBTCloudApiError(401, "/accounts/1/jobs/", "unauthorized"), "Authentication failed"),
         (
             DBTCloudApiError(403, "/accounts/99999/jobs/", NOT_SCOPED_BODY),
             "Token is not scoped to this account",
         ),
-        (DBTCloudApiError(403, "/accounts/1/jobs/", "forbidden"), "Insufficient permissions"),
-        (DBTCloudApiError(404, "/accounts/9/jobs/", "not found"), "Account not found"),
+        (DBTCloudApiError(401, "/accounts/1/jobs/", INVALID_TOKEN_BODY), "Authentication failed"),
+        (DBTCloudApiError(403, "/accounts/1/jobs/", "forbidden"), "Access denied"),
         (DBTCloudApiError(429, "/accounts/1/jobs/", "too many requests"), "Rate limited"),
         (SSLError("certificate verify failed"), "TLS verification failed"),
         (ReadTimeout("timed out"), "Connection timed out"),
@@ -167,10 +170,6 @@ def test_error_pack_leaves_an_unknown_error_unclassified():
 
 
 CLIENT_MODULE = "metadata.ingestion.source.pipeline.dbtcloud.client"
-
-# What dbt Cloud answers a rejected token with: the error `code` is nested under
-# `status`, which is why the shared REST client cannot report the status.
-UNAUTHORIZED_BODY = '{"status": {"code": 401, "is_success": false, "user_message": "Invalid token."}}'
 
 
 def _dbtcloud_client(host="https://cloud.getdbt.com", account_id=1):
@@ -206,7 +205,7 @@ def test_a_rejected_token_surfaces_its_http_status():
     with patch(f"{CLIENT_MODULE}.requests.get") as mock_get:
         mock_get.return_value.ok = False
         mock_get.return_value.status_code = 401
-        mock_get.return_value.text = UNAUTHORIZED_BODY
+        mock_get.return_value.text = INVALID_TOKEN_BODY
 
         with pytest.raises(DBTCloudApiError) as failure:
             client.test_get_jobs()
