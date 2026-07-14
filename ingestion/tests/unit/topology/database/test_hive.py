@@ -399,6 +399,62 @@ class HiveUnitTest(TestCase):
             String.__eq__ = custom_eq
             self.assertEqual(expected, original)
 
+    def test_get_columns_nested_decimal_in_complex_types(self):
+        """
+        A DECIMAL(p,s) nested inside a complex type must not be mistaken for the
+        parameters of the complex type itself. Issue #30061: `array<struct<a:decimal(16,4)>>`
+        and `map<string,decimal(10,2)>` used to raise
+        `ValueError: invalid literal for int() with base 10: '16,4'`, which callers
+        swallow, so the whole table was ingested without any column.
+        """
+        table_columns = [
+            ("id", "string", None),
+            ("plain", "decimal(16,4)", None),
+            ("name", "varchar(255)", None),
+            ("nested_struct", "struct<fee:decimal(16,4),amount:bigint>", None),
+            ("nested_array", "array<struct<fee:decimal(16,4),amount:bigint>>", None),
+            ("nested_map", "map<string,decimal(10,2)>", None),
+            ("nested_union", "uniontype<int,decimal(10,2)>", None),
+        ]
+        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
+            lambda connection, table_name, schema_name: table_columns
+        )
+
+        col_list = hive_dialect.get_columns(
+            self=hive_dialect,
+            connection=mock_hive_config["source"],
+            table_name="nested_types_table",
+            schema="test_schema",
+        )
+
+        self.assertEqual(
+            [col["name"] for col in col_list],
+            [
+                "id",
+                "plain",
+                "name",
+                "nested_struct",
+                "nested_array",
+                "nested_map",
+                "nested_union",
+            ],
+        )
+
+        columns = {col["name"]: col for col in col_list}
+
+        # The raw type is what the nested fields are resolved from downstream
+        self.assertEqual(
+            columns["nested_array"]["system_data_type"],
+            "array<struct<fee:decimal(16,4),amount:bigint>>",
+        )
+        for name in ("nested_struct", "nested_array", "nested_map"):
+            self.assertTrue(columns[name]["is_complex"], f"{name} should be complex")
+
+        # Parameters of top-level types are still picked up
+        self.assertEqual(columns["plain"]["type"].precision, 16)
+        self.assertEqual(columns["plain"]["type"].scale, 4)
+        self.assertEqual(columns["name"]["type"].length, 255)
+
     def test_get_columns_deduplicates_partition_column_no_sentinel(self):
         """
         Partition key column appears as a plain duplicate row at the end of
