@@ -315,6 +315,35 @@
       }
     },
     {
+      "name": "get_persona_context",
+      "description": "Get the shared AI context document curated for a persona. With no personaName, uses the caller's active persona. The document can contain many assets and is returned in deterministic parts; call again with part=2, part=3, and so on while hasMore is true. Access is limited to persona members, admins, and bots.",
+      "parameters": {
+        "type": "object",
+        "properties": {
+          "personaName": {
+            "type": "string",
+            "description": "Optional persona fully qualified name. Omit to use the caller's active persona."
+          },
+          "format": {
+            "type": "string",
+            "description": "Output format to page: markdown (default) or json.",
+            "enum": [
+              "markdown",
+              "json"
+            ],
+            "default": "markdown"
+          },
+          "part": {
+            "type": "integer",
+            "description": "One-based document part to return. Start at 1 and continue while hasMore is true.",
+            "minimum": 1,
+            "default": 1
+          }
+        },
+        "required": []
+      }
+    },
+    {
       "name": "find_context",
       "description": "For a business question when no specific asset has been chosen yet: semantically searches the company-knowledge layer (glossary term definitions, metric definitions, Context Center articles) and returns the relevant definitions PLUS the candidate data assets each concept points to (glossary terms → the tables tagged with them, metrics → the assets they apply to, articles → the assets they are about). Use this to bootstrap a data question from business concepts into candidate tables, then call get_asset_context on those candidate fullyQualifiedNames. Returns LLM-friendly markdown by default.",
       "parameters": {
