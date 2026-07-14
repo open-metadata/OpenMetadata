@@ -91,12 +91,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
     onOpenChange: (v: boolean) => void;
   }) => (
     <div data-testid="date-field-dropdown-root">
-      <button
+      <div
         data-testid="date-field-dropdown-trigger"
-        type="button"
+        role="button"
+        tabIndex={0}
         onClick={() => onOpenChange(!isOpen)}>
         {children[0]}
-      </button>
+      </div>
       {isOpen && children[1]}
     </div>
   );
@@ -176,9 +177,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
         dependencies?: unknown[];
       }) => (
         <tbody>
-          {!items || items.length === 0
-            ? renderEmptyState?.()
-            : items.map((item) => children(item))}
+          {!items || items.length === 0 ? (
+            <tr>
+              <td>{renderEmptyState?.()}</td>
+            </tr>
+          ) : (
+            items.map((item) => children(item))
+          )}
         </tbody>
       ),
       Row: ({ children, id }: { children?: React.ReactNode; id?: string }) => (
@@ -259,20 +264,17 @@ jest.mock('../common/DatePickerMenu/DatePickerMenu.component', () => {
           <span className={defaultDateRange?.key ? '' : 'tw:text-disabled'}>
             {selectedLabel}
           </span>
-          {allowClear && defaultDateRange?.key && (
-            <span
-              className="tw:inline-flex tw:size-4 tw:cursor-pointer tw:items-center tw:justify-center"
-              data-testid="clear-date-picker"
-              role="button"
-              tabIndex={0}
-              onClick={(event) => {
-                event.stopPropagation();
-                onClear?.();
-              }}>
-              clear
-            </span>
-          )}
         </button>
+        {allowClear && defaultDateRange?.key && (
+          <button
+            aria-label="label.clear"
+            className="tw:inline-flex tw:size-4 tw:cursor-pointer tw:items-center tw:justify-center"
+            data-testid="clear-date-picker"
+            type="button"
+            onClick={onClear}>
+            clear
+          </button>
+        )}
         {isOpen && (
           <div>
             <button
@@ -810,6 +812,8 @@ describe('IncidentManagerPage', () => {
     expect(clearButton).toHaveClass('tw:items-center');
     expect(clearButton).toHaveClass('tw:justify-center');
     expect(clearButton).toHaveClass('tw:cursor-pointer');
+    expect(clearButton.tagName).toBe('BUTTON');
+    expect(dateRangeTrigger).not.toContainElement(clearButton);
   });
 
   it('should clear the selected date range from the trigger', async () => {

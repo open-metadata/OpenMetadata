@@ -19,8 +19,7 @@ import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
-import type { KeyboardEvent, MouseEvent } from 'react';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
 import {
@@ -119,34 +118,31 @@ const DatePickerMenu = ({
     translatedDefaultRange,
     translatedProfileFilterRange,
   ]);
+  const { key: defaultTimeRangeKey, title: defaultTimeRangeTitle } =
+    defaultOptions;
 
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
-    defaultOptions.title
+    defaultTimeRangeTitle
   );
   // state to determine the selected value to highlight in the dropdown
-  const [selectedTimeRangeKey, setSelectedTimeRangeKey] = useState<string>(
-    defaultOptions.key
-  );
+  const [selectedTimeRangeKey, setSelectedTimeRangeKey] =
+    useState<string>(defaultTimeRangeKey);
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
-  const handleClear = (
-    event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>
-  ) => {
-    event.preventDefault();
-    event.stopPropagation();
+  useEffect(() => {
+    setSelectedTimeRange(defaultTimeRangeTitle);
+    setSelectedTimeRangeKey(defaultTimeRangeKey);
+  }, [defaultTimeRangeKey, defaultTimeRangeTitle]);
+
+  const handleClear = () => {
     setSelectedTimeRange(
       placeholder ?? t('label.select-entity', { entity: t('label.date') })
     );
     setSelectedTimeRangeKey('');
     setIsMenuOpen(false);
     onClear?.();
-  };
-
-  const handleClearMouseDown = (event: MouseEvent<HTMLElement>) => {
-    event.preventDefault();
-    event.stopPropagation();
   };
 
   const handleCustomDateChange = (
@@ -242,52 +238,51 @@ const DatePickerMenu = ({
   const items: MenuProps['items'] = getMenuItems();
 
   return (
-    <Dropdown
-      destroyPopupOnHide
-      getPopupContainer={getPopupContainer}
-      menu={{
-        items,
-        triggerSubMenuAction: 'click',
-        onClick: handleOptionClick,
-        selectedKeys: [selectedTimeRangeKey],
-      }}
-      open={isMenuOpen}
-      trigger={['click']}
-      onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button
-        className={
-          allowClear ? 'tw:h-8 tw:max-w-64 tw:overflow-hidden' : undefined
-        }
-        data-testid="date-picker-menu"
-        size={size}>
-        <Space align="center" size={8}>
-          <span
-            className={`tw:min-w-0 tw:truncate ${
-              selectedTimeRangeKey ? '' : 'tw:text-disabled'
-            }`}>
-            {selectedTimeRange}
-          </span>
-          {allowClear && selectedTimeRangeKey && (
+    <div className={allowClear ? 'tw:flex tw:h-8 tw:max-w-64' : undefined}>
+      <Dropdown
+        destroyPopupOnHide
+        getPopupContainer={getPopupContainer}
+        menu={{
+          items,
+          triggerSubMenuAction: 'click',
+          onClick: handleOptionClick,
+          selectedKeys: [selectedTimeRangeKey],
+        }}
+        open={isMenuOpen}
+        trigger={['click']}
+        onOpenChange={(value) => setIsMenuOpen(value)}>
+        <Button
+          className={
+            allowClear
+              ? `tw:h-8 tw:max-w-64 tw:min-w-0 tw:overflow-hidden ${
+                  selectedTimeRangeKey ? 'tw:rounded-r-none' : ''
+                }`
+              : undefined
+          }
+          data-testid="date-picker-menu"
+          size={size}>
+          <Space align="center" size={8}>
             <span
-              aria-label={t('label.clear')}
-              className="tw:inline-flex tw:size-4 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center"
-              data-testid="clear-date-picker"
-              role="button"
-              tabIndex={0}
-              onClick={handleClear}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  handleClear(event);
-                }
-              }}
-              onMouseDown={handleClearMouseDown}>
-              <XClose className="tw:size-4" />
+              className={`tw:min-w-0 tw:truncate ${
+                selectedTimeRangeKey ? '' : 'tw:text-disabled'
+              }`}>
+              {selectedTimeRange}
             </span>
-          )}
-          <DropdownIcon className="align-middle" height={14} width={14} />
-        </Space>
-      </Button>
-    </Dropdown>
+            <DropdownIcon className="align-middle" height={14} width={14} />
+          </Space>
+        </Button>
+      </Dropdown>
+      {allowClear && selectedTimeRangeKey && (
+        <Button
+          aria-label={t('label.clear')}
+          className="tw:-ml-px tw:flex tw:h-8 tw:w-8 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center tw:rounded-l-none tw:px-0"
+          data-testid="clear-date-picker"
+          icon={<XClose className="tw:size-4" />}
+          size={size}
+          onClick={handleClear}
+        />
+      )}
+    </div>
   );
 };
 

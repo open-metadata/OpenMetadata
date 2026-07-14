@@ -22,11 +22,15 @@ import TabFilters from './TabFilters';
 jest.mock('@openmetadata/ui-core-components', () => {
   const Button = ({
     children,
+    iconLeading,
+    iconTrailing,
     size,
     ...props
   }: PropsWithChildren<Record<string, unknown>>) => (
     <button data-size={size} {...props}>
+      {iconLeading as ReactNode}
       {children}
+      {iconTrailing as ReactNode}
     </button>
   );
 
@@ -259,7 +263,8 @@ jest.mock('../../../../../hoc/LimitWrapper', () => {
 
 const renderComponent = () => {
   return render(
-    <MemoryRouter>
+    <MemoryRouter
+      future={{ v7_relativeSplatPath: true, v7_startTransition: true }}>
       <TabFilters />
     </MemoryRouter>
   );

@@ -167,9 +167,6 @@ const IncidentManager = ({
                 showSelectedCustomRange
                 defaultDateRange={dateRangeKey}
                 handleDateRangeChange={handleDateRangeChange}
-                key={`${dateRangeKey?.key ?? 'empty'}-${
-                  dateRangeKey?.startTs ?? ''
-                }-${dateRangeKey?.endTs ?? ''}`}
                 placeholder={t('label.select-entity', {
                   entity: t('label.date'),
                 })}

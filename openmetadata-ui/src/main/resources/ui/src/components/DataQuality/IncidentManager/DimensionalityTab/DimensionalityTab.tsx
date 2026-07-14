@@ -92,9 +92,13 @@ const DimensionalityTab = () => {
   const [selectedDimension, setSelectedDimension] = useState(selectedColumn);
 
   const handleDateRangeChange = (value: DateRangeObject) => {
+    const isCustomRange = value.key === 'customRange';
+
     setDateRange({
-      startTs: getStartOfDayInMillis(value.startTs),
-      endTs: getEndOfDayInMillis(value.endTs),
+      startTs: isCustomRange
+        ? value.startTs
+        : getStartOfDayInMillis(value.startTs),
+      endTs: isCustomRange ? value.endTs : getEndOfDayInMillis(value.endTs),
     });
   };
 

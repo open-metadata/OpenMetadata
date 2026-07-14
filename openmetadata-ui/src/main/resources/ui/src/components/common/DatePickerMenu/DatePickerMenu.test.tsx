@@ -67,6 +67,48 @@ describe('DatePickerMenu', () => {
     expect(screen.getByText('Default Range')).toBeInTheDocument();
   });
 
+  it('should update the selected range when the default range changes', () => {
+    const { rerender } = render(
+      <DatePickerMenu
+        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        handleDateRangeChange={mockHandleDateRangeChange}
+      />
+    );
+
+    rerender(
+      <DatePickerMenu
+        defaultDateRange={{ key: 'customRange', title: 'Updated Range' }}
+        handleDateRangeChange={mockHandleDateRangeChange}
+      />
+    );
+
+    expect(screen.getByText('Updated Range')).toBeInTheDocument();
+    expect(screen.queryByText('Last 3 days')).not.toBeInTheDocument();
+  });
+
+  it('should preserve a selection when equivalent default props are recreated', async () => {
+    const { rerender } = render(
+      <DatePickerMenu
+        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        handleDateRangeChange={mockHandleDateRangeChange}
+      />
+    );
+
+    fireEvent.click(screen.getByTestId('date-picker-menu'));
+    fireEvent.click(await screen.findByText('Last 7 days'));
+
+    rerender(
+      <DatePickerMenu
+        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        handleDateRangeChange={mockHandleDateRangeChange}
+      />
+    );
+
+    expect(screen.getByTestId('date-picker-menu')).toHaveTextContent(
+      'Last 7 days'
+    );
+  });
+
   it('should clear the selected range and restore the disabled placeholder', () => {
     const onClear = jest.fn();
 
@@ -88,6 +130,8 @@ describe('DatePickerMenu', () => {
     expect(clearButton).toHaveClass('tw:items-center');
     expect(clearButton).toHaveClass('tw:justify-center');
     expect(clearButton).toHaveClass('tw:cursor-pointer');
+    expect(clearButton.tagName).toBe('BUTTON');
+    expect(datePickerTrigger).not.toContainElement(clearButton);
 
     fireEvent.mouseDown(clearButton);
     fireEvent.click(clearButton);
