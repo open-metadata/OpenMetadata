@@ -86,7 +86,7 @@ def _http_status(*codes: int) -> Matcher:
 
 
 def _login_rejected(error: BaseException) -> bool:
-    """Match Looker rejecting the API3 credentials.
+    """Match Looker rejecting the credentials.
 
     The login endpoint answers a wrong client id or secret with ``404 Not found``
     rather than a 401, so the status alone cannot separate bad credentials from a
@@ -116,42 +116,35 @@ def _contains_any(*tokens: str) -> Matcher:
 
 
 LOOKER_ERRORS = ErrorPack(
-    # Ordered before the generic 404: Looker reports rejected API3 credentials as
-    # a 404 on /login, so the endpoint is what separates them from a wrong host.
+    # Ordered before the generic 404: Looker rejects credentials with a 404 on
+    # /login, so the endpoint is what separates them from a wrong host.
     when(_login_rejected).diagnose(
         "Authentication failed",
-        fix="Looker rejected the API3 credentials. Check the Client ID and Client Secret of the "
-        "API3 key (Admin > Users > Edit > API Keys) and that the key is still enabled.",
+        fix="Looker rejected the credentials. Check the Client ID and Client Secret.",
         doc=API_SDK_DOC,
     ),
     when(Matchers.contains("Required auth credentials not found")).diagnose(
         "Missing credentials",
-        fix="The SDK found no API3 credentials to log in with. Provide both the Client ID and the "
-        "Client Secret in the service configuration.",
+        fix="Provide both the Client ID and the Client Secret.",
         doc=API_SDK_DOC,
     ),
     when(_http_status(401)).diagnose(
         "Authentication failed",
-        fix="Looker did not accept the session (401). Check the Client ID and Client Secret of the "
-        "API3 key and that it has not been disabled.",
+        fix="Looker did not accept the credentials. Check the Client ID and Client Secret.",
         doc=API_SDK_DOC,
     ),
     when(_http_status(403)).diagnose(
         "Insufficient permissions",
-        fix="The API3 user is authenticated but not authorized for this call (403). Grant it a role "
-        "with the see_lookml, see_looks, and see_user_dashboards permissions on the models to ingest.",
+        fix="The credentials are valid but not authorized for this call. Grant the user access to "
+        "the dashboards and models to ingest.",
     ),
     when(_http_status(404)).diagnose(
         "Resource not found",
-        fix="Looker could not find the requested resource (404). Check that Host Port is the root URL "
-        "of the Looker API, e.g. https://<instance>.cloud.looker.com (port 19999 on a self-hosted "
-        "instance).",
+        fix="Looker could not find the requested resource. Check that Host Port is the instance URL.",
     ),
     when(Matchers.exception(UnsupportedApiVersionError)).diagnose(
         f"API {SDK_API_VERSION} is not supported by this instance",
-        fix=f"The instance does not list API {SDK_API_VERSION} among its supported versions, which "
-        "is the version this connector speaks. Upgrade the Looker instance, or enable the API "
-        f"{SDK_API_VERSION} endpoint on it.",
+        fix=f"This connector uses API {SDK_API_VERSION}, which the instance does not list as supported.",
         doc=API_SDK_DOC,
     ),
     # The transport flattens every IOError into an SDKError message, so these
@@ -162,45 +155,38 @@ LOOKER_ERRORS = ErrorPack(
         _contains_any("failed to resolve", "name or service not known", "nodename nor servname", "getaddrinfo failed")
     ).diagnose(
         "Host could not be resolved",
-        fix="Check Host Port for typos and that DNS can resolve it from where ingestion runs.",
+        fix="Check Host Port and that DNS resolves it from where ingestion runs.",
     ),
     when(_contains_any("connection refused")).diagnose(
         "Connection refused",
-        fix="The host answered but nothing is listening on that port; check the port in Host Port "
-        "and that the Looker API is served on it.",
+        fix="Nothing is listening on that port. Check the host and port in Host Port.",
     ),
     when(_contains_any("timed out", "timeout")).diagnose(
         "Connection timed out",
-        fix="The host did not answer in time; check that a firewall, security group, or network ACL "
-        "allows access to this host and port.",
+        fix="The host did not answer in time. Check that the network allows access to this host and port.",
     ),
     when(_contains_any("certificate verify failed", "sslerror", "ssl: ")).diagnose(
         "TLS verification failed",
-        fix="The Looker instance's certificate could not be verified. Install a certificate trusted "
-        "by the host running ingestion, or use a Host Port whose certificate validates.",
+        fix="The instance's certificate could not be verified from where ingestion runs.",
     ),
     when(_contains_any("max retries exceeded", "connection aborted", "connection error")).diagnose(
         "Cannot reach the host",
-        fix="Check Host Port, the network route, and that the Looker instance is online and "
-        "reachable from where ingestion runs.",
+        fix="Check Host Port and that the instance is reachable from where ingestion runs.",
     ),
     # Looker answers a rejected sign-in with a generic HTML 404 page carrying no
     # error document, and serves that same page for a host that is not a live
     # instance - the two are indistinguishable here, so the fix names both.
     when(_contains_any("looker is unavailable", "looker not found")).diagnose(
         "Authentication failed",
-        fix="Looker returned its generic 404 page, which it serves both for a wrong Client ID or "
-        "Client Secret and for a host that is not a live Looker instance. Check the API3 credentials "
-        "(Admin > Users > Edit > API Keys) and that Host Port points at the instance.",
+        fix="Looker returns this same page for wrong credentials and for a host that is not a live "
+        "instance. Check the Client ID and Client Secret, then Host Port.",
         doc=API_SDK_DOC,
     ),
     # Last: something answered, but not as Looker - the body carries no Looker error
     # document, so a real Looker 404 (which does, and is matched above) never lands here.
     when(_contains_any("404", "not found")).diagnose(
         "The host is not serving the Looker API",
-        fix="A server answered but did not return a Looker error, so Host Port does not reach the "
-        "Looker API. Check it points at the Looker instance, e.g. https://<instance>.cloud.looker.com "
-        "(port 19999 on a self-hosted instance).",
+        fix="A server answered but did not return a Looker error. Check that Host Port points at the Looker instance.",
     ),
 ).including(NETWORK_ERRORS)
 
@@ -209,7 +195,7 @@ class LookerChecks:
     """Test-connection checks for Looker.
 
     ``CheckAccess`` is the gate: the SDK logs in lazily on its first call, so bad
-    API3 credentials or an unreachable host fail there and the remaining steps are
+    credentials or an unreachable host fail there and the remaining steps are
     skipped rather than each re-dialling the instance.
 
     ``connect`` is ``BaseConnection.client`` underneath, so every step shares the
@@ -253,9 +239,8 @@ class LookerChecks:
             command="list dashboards",
             empty_caveat=Diagnosis(
                 title="No dashboards visible",
-                remediation="The connection works but returned no dashboards. Confirm the API3 user "
-                "has a role granting see_user_dashboards and access to the folders that hold them - "
-                "an empty result can also mean the listing was filtered rather than genuinely empty.",
+                remediation="The connection works but returned no dashboards. Confirm the user can see "
+                "the dashboards to ingest.",
             ),
         )
 
@@ -267,9 +252,8 @@ class LookerChecks:
             command="list LookML models",
             empty_caveat=Diagnosis(
                 title="No LookML models visible",
-                remediation="The connection works but returned no LookML model. Grant the API3 user "
-                "a role with the see_lookml permission on the models to ingest; without them, "
-                "lineage between dashboards and their source tables will not be present.",
+                remediation="The connection works but returned no LookML model. Grant the user access "
+                "to the models to ingest; without them, lineage will not be present.",
             ),
         )
 
