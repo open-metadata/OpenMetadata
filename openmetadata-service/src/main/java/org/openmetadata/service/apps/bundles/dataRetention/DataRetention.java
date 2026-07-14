@@ -4,7 +4,6 @@ import static org.openmetadata.service.apps.scheduler.OmAppJobListener.APP_RUN_S
 
 import java.time.Duration;
 import java.time.Instant;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -18,6 +17,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataRetentionConfiguration;
 import org.openmetadata.schema.system.EntityStats;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -29,6 +29,7 @@ import org.openmetadata.service.jdbi3.FeedRepository;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.socket.WebSocketManager;
 import org.openmetadata.service.util.EntityRelationshipCleanupUtil;
+import org.openmetadata.service.util.OrphanIngestionPipelineCleanup;
 import org.openmetadata.service.util.OrphanTestCaseCleanup;
 import org.openmetadata.service.util.OrphanTestCaseRelationshipCleanup;
 import org.openmetadata.service.util.TagUsageCleanup;
@@ -44,7 +45,7 @@ public class DataRetention extends AbstractNativeApplication {
   private JobExecutionContext jobExecutionContext;
 
   private AppRunRecord.Status internalStatus = AppRunRecord.Status.COMPLETED;
-  private Map<String, Object> failureDetails = null;
+  private IndexingError failureDetails = null;
 
   private final FeedRepository feedRepository;
   private final CollectionDAO.FeedDAO feedDAO;
@@ -93,9 +94,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("DataRetention job failed.", ex);
       internalStatus = AppRunRecord.Status.FAILED;
 
-      failureDetails = new HashMap<>();
-      failureDetails.put("message", ex.getMessage());
-      failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+      failureDetails = toIndexingError(ex);
 
       updateRecordToDbAndNotify(ex);
     }
@@ -126,6 +125,12 @@ public class DataRetention extends AbstractNativeApplication {
     entityStats.withAdditionalProperty("orphaned_test_cases", new StepStats());
     entityStats.withAdditionalProperty("test_cases_missing_test_definition", new StepStats());
     entityStats.withAdditionalProperty("test_cases_missing_executable_suite", new StepStats());
+    entityStats.withAdditionalProperty("orphaned_ingestion_pipelines", new StepStats());
+    entityStats.withAdditionalProperty("orphan_test_case_resolution_status", new StepStats());
+    entityStats.withAdditionalProperty("orphan_agent_execution", new StepStats());
+    entityStats.withAdditionalProperty("orphan_mcp_execution", new StepStats());
+    entityStats.withAdditionalProperty("orphan_profile_data", new StepStats());
+    entityStats.withAdditionalProperty("orphan_query_cost_time_series", new StepStats());
     entityStats.withAdditionalProperty("audit_logs", new StepStats());
 
     retentionStats.setEntityStats(entityStats);
@@ -158,6 +163,18 @@ public class DataRetention extends AbstractNativeApplication {
     // repaired is not mistaken for missing.
     LOG.info("Starting cleanup for test cases with missing relationships.");
     cleanTestCasesWithMissingRelationships();
+
+    // Clean up ingestion pipelines whose container (service/test suite) CONTAINS row is gone. Such
+    // a pipeline can never run and breaks search indexing ("does not have expected relationship
+    // contains to/from entity type null"). Runs after the relationship/hierarchy cleanup above so a
+    // container relationship that was just repaired is not mistaken for missing.
+    LOG.info("Starting cleanup for orphaned ingestion pipelines.");
+    cleanOrphanedIngestionPipelines();
+
+    // Run after orphan test case cleanup so resolution-status rows for deleted test cases
+    // also get swept up.
+    LOG.info("Starting cleanup for orphaned time-series rows.");
+    cleanOrphanedTimeSeriesRows();
 
     int retentionPeriod = config.getChangeEventRetentionPeriod();
     LOG.info("Starting cleanup for change events with retention period: {} days.", retentionPeriod);
@@ -262,11 +279,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphaned relationships and hierarchies", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -285,11 +298,7 @@ public class DataRetention extends AbstractNativeApplication {
       LOG.error("Failed to clean orphaned tag usages", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -307,11 +316,7 @@ public class DataRetention extends AbstractNativeApplication {
     } catch (Exception ex) {
       LOG.error("Failed to clean orphan test cases", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
-      if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-      }
+      recordFirstFailure(ex);
     }
   }
 
@@ -339,12 +344,57 @@ public class DataRetention extends AbstractNativeApplication {
     } catch (Exception ex) {
       LOG.error("Failed to clean test cases with missing relationships", ex);
       internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+      recordFirstFailure(ex);
+    }
+  }
+
+  private void cleanOrphanedIngestionPipelines() {
+    try {
+      OrphanIngestionPipelineCleanup cleanup =
+          new OrphanIngestionPipelineCleanup(collectionDAO, false);
+      OrphanIngestionPipelineCleanup.Result result = cleanup.performCleanup(BATCH_SIZE);
+      updateStats(
+          "orphaned_ingestion_pipelines", result.getOrphansDeleted(), result.getOrphanFailures());
+      LOG.info(
+          "Orphan ingestion pipeline cleanup completed - Scanned: {}, Deleted: {}, Failed: {}",
+          result.getTotalScanned(),
+          result.getOrphansDeleted(),
+          result.getOrphanFailures());
+    } catch (Exception ex) {
+      LOG.error("Failed to clean orphan ingestion pipelines", ex);
+      internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
       if (failureDetails == null) {
-        failureDetails = new HashMap<>();
-        failureDetails.put("message", ex.getMessage());
-        failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
+        failureDetails = new IndexingError();
+        failureDetails.setMessage(ex.getMessage());
+        failureDetails.setStackTrace(ExceptionUtils.getStackTrace(ex));
       }
     }
+  }
+
+  private void cleanOrphanedTimeSeriesRows() {
+    LOG.info("Initiating orphaned time-series rows cleanup.");
+
+    CollectionDAO.TestCaseResolutionStatusTimeSeriesDAO resolutionStatusDao =
+        collectionDAO.testCaseResolutionStatusTimeSeriesDao();
+    CollectionDAO.AgentExecutionDAO agentExecutionDao = collectionDAO.agentExecutionDAO();
+    CollectionDAO.McpExecutionDAO mcpExecutionDao = collectionDAO.mcpExecutionDAO();
+    CollectionDAO.ProfilerDataTimeSeriesDAO profilerDao = collectionDAO.profilerDataTimeSeriesDao();
+    CollectionDAO.QueryCostTimeSeriesDAO queryCostDao =
+        collectionDAO.queryCostRecordTimeSeriesDAO();
+
+    executeOrphanCleanup(
+        "orphan_test_case_resolution_status",
+        () -> resolutionStatusDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_agent_execution", () -> agentExecutionDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_mcp_execution", () -> mcpExecutionDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_profile_data", () -> profilerDao.deleteOrphanedRecords(BATCH_SIZE));
+    executeOrphanCleanup(
+        "orphan_query_cost_time_series", () -> queryCostDao.deleteOrphanedRecords(BATCH_SIZE));
+
+    LOG.info("Orphaned time-series rows cleanup complete.");
   }
 
   @Transaction
@@ -381,6 +431,48 @@ public class DataRetention extends AbstractNativeApplication {
     LOG.info("Audit logs cleanup complete.");
   }
 
+  // Safety cap on the orphan-cleanup loop. With BATCH_SIZE=10k this allows up to 10M
+  // rows per entity per run — well above any healthy catalog's orphan count. A buggy
+  // delete query that always returns a non-zero count (e.g., rows it can't actually
+  // delete due to FK constraints) would otherwise spin forever and block the rest of
+  // the DataRetention job.
+  private static final int MAX_ORPHAN_CLEANUP_ITERATIONS = 1000;
+
+  private void executeOrphanCleanup(String entity, Supplier<Integer> deleteFunction) {
+    int totalDeleted = 0;
+    int totalFailed = 0;
+    boolean stoppedByCondition = false;
+
+    for (int iteration = 0; iteration < MAX_ORPHAN_CLEANUP_ITERATIONS; iteration++) {
+      try {
+        int deleted = deleteFunction.get();
+        totalDeleted += deleted;
+        if (deleted == 0) {
+          stoppedByCondition = true;
+          break;
+        }
+      } catch (Exception ex) {
+        LOG.error("Failed to clean orphan time-series rows for {}", entity, ex);
+        totalFailed += BATCH_SIZE;
+        internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
+
+        recordFirstFailure(ex);
+        stoppedByCondition = true;
+        break;
+      }
+    }
+
+    if (!stoppedByCondition) {
+      LOG.warn(
+          "Orphan cleanup for {} hit the iteration cap ({}) before draining; "
+              + "remaining rows will be retried on the next DataRetention run.",
+          entity,
+          MAX_ORPHAN_CLEANUP_ITERATIONS);
+    }
+
+    updateStats(entity, totalDeleted, totalFailed);
+  }
+
   private void executeWithStatsTracking(String entity, Supplier<Integer> deleteFunction) {
     int totalDeleted = 0;
     int totalFailed = 0;
@@ -395,11 +487,7 @@ public class DataRetention extends AbstractNativeApplication {
         totalFailed += BATCH_SIZE;
         internalStatus = AppRunRecord.Status.ACTIVE_ERROR;
 
-        if (failureDetails == null) {
-          failureDetails = new HashMap<>();
-          failureDetails.put("message", ex.getMessage());
-          failureDetails.put("jobStackTrace", ExceptionUtils.getStackTrace(ex));
-        }
+        recordFirstFailure(ex);
         break;
       }
     }
@@ -432,13 +520,25 @@ public class DataRetention extends AbstractNativeApplication {
     jobStats.setFailedRecords(jobStats.getFailedRecords() + failureCount);
   }
 
+  private void recordFirstFailure(Exception ex) {
+    if (failureDetails == null) {
+      failureDetails = toIndexingError(ex);
+    }
+  }
+
+  private static IndexingError toIndexingError(Exception ex) {
+    return new IndexingError()
+        .withErrorSource(IndexingError.ErrorSource.JOB)
+        .withMessage(ex.getMessage())
+        .withStackTrace(ExceptionUtils.getStackTrace(ex));
+  }
+
   private void updateRecordToDbAndNotify(Exception error) {
     AppRunRecord appRecord = getJobRecord(jobExecutionContext);
     appRecord.setStatus(internalStatus);
 
     if (failureDetails != null) {
-      appRecord.setFailureContext(
-          new FailureContext().withAdditionalProperty("failure", failureDetails));
+      appRecord.setFailureContext(new FailureContext().withFailure(failureDetails));
     }
 
     if (WebSocketManager.getInstance() != null) {
