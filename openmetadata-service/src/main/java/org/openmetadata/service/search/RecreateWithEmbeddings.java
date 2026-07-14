@@ -68,15 +68,20 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   }
 
   @Override
+  public void promoteEntityIndex(EntityReindexContext context, boolean reindexSuccess) {
+    super.promoteEntityIndex(context, reindexSuccess);
+    // Distributed full recreates promote entity indexes through this per-entity path instead of
+    // finalizeReindex — without this hook the staged chunk generation would never reach its
+    // completion gate on distributed runs. markEntityTypeReindexed is idempotent, so runs that
+    // invoke both callbacks for a type are harmless.
+    markChunkTypeOutcome(context, reindexSuccess);
+  }
+
+  @Override
   public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
     super.finalizeReindex(context, reindexSuccess);
 
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
-    if (vectorService != null) {
-      // Feeds the staged chunk recreate: promotes the staged generation once every
-      // vector-indexable type has finalized successfully; a failed type keeps the old chunks live.
-      vectorService.markEntityTypeReindexed(context.getEntityType(), reindexSuccess);
-    }
+    markChunkTypeOutcome(context, reindexSuccess);
 
     if (reindexSuccess) {
       SearchRepository searchRepository = Entity.getSearchRepository();
@@ -85,6 +90,18 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
             "Reindex finalized for entity type '{}' with vector embeddings enabled",
             context.getEntityType());
       }
+    }
+  }
+
+  /**
+   * Feeds the staged chunk recreate: promotes the staged generation once every vector-indexable
+   * type has completed successfully; a failed type keeps the old chunks live. No-op without an
+   * active staged recreate.
+   */
+  private void markChunkTypeOutcome(EntityReindexContext context, boolean reindexSuccess) {
+    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    if (vectorService != null) {
+      vectorService.markEntityTypeReindexed(context.getEntityType(), reindexSuccess);
     }
   }
 }

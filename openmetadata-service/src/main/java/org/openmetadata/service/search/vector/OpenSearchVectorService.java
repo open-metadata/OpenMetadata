@@ -301,15 +301,23 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   @Override
   public void deleteEntityChunks(String parentId) {
+    // Always delete from the live index: a staged run can be abandoned, and a delete applied only
+    // to the staged generation would then be lost — the deleted entity's chunks would keep
+    // surfacing until the next full recreate, the exact staleness this feature exists to prevent.
+    deleteChunksFrom(getChunkIndexName(), parentId);
+    // Also delete from an in-flight staged generation so a promoted run does not resurrect them.
+    String staged = resolveChunkSinkTarget();
+    if (staged != null) {
+      deleteChunksFrom(staged, parentId);
+    }
+  }
+
+  private void deleteChunksFrom(String indexName, String parentId) {
     try {
-      // During a staged recreate, delete from the generation being built — the old generation's
-      // copy dies with it at promotion anyway.
-      String chunkIndexName =
-          Optional.ofNullable(resolveChunkSinkTarget()).orElse(getChunkIndexName());
-      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
-      replaceChunks(chunkIndexName, parentId, List.of(), previousCount(header));
+      ChunkHeader header = getChunkHeader(indexName, parentId);
+      replaceChunks(indexName, parentId, List.of(), previousCount(header));
     } catch (Exception e) {
-      LOG.debug("Failed to delete chunks for {}: {}", parentId, e.getMessage());
+      LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
     }
   }
 
