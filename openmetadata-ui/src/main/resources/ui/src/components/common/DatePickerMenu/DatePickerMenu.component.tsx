@@ -132,6 +132,7 @@ const DatePickerMenu = ({
   // state to determine the selected value to highlight in the dropdown
   const [selectedTimeRangeKey, setSelectedTimeRangeKey] =
     useState<string>(defaultTimeRangeKey);
+  const isCustomRangeSelected = selectedTimeRangeKey === CUSTOM_DATE_RANGE_KEY;
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
 
@@ -223,7 +224,7 @@ const DatePickerMenu = ({
                 allowClear
                 bordered={false}
                 clearIcon={<CloseCircleOutlined />}
-                format={(value) => value.toUTC().toFormat('YYYY-MM-DD')}
+                format={(value) => value.toFormat('yyyy-MM-dd')}
                 open={isMenuOpen}
                 placement="bottomRight"
                 suffixIcon={null}
@@ -255,18 +256,21 @@ const DatePickerMenu = ({
       trigger={['click']}
       onOpenChange={(value) => setIsMenuOpen(value)}>
       <Button
-        className={
-          size === 'small'
-            ? 'tw:inline-flex tw:h-8 tw:max-w-72 tw:min-w-0 tw:items-center tw:justify-center tw:overflow-hidden'
-            : undefined
-        }
+        className={classNames(
+          size === 'small' &&
+            'tw:inline-flex tw:h-8 tw:min-w-0 tw:items-center tw:justify-center tw:overflow-hidden',
+          size === 'small' &&
+            (isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-72')
+        )}
         data-testid="date-picker-menu"
         size={size}>
         <Space align="center" size={8}>
           <span
-            className={`tw:min-w-0 tw:truncate ${
-              selectedTimeRangeKey ? '' : 'tw:text-disabled'
-            }`}>
+            className={classNames(
+              'tw:min-w-0',
+              isCustomRangeSelected ? 'tw:whitespace-nowrap' : 'tw:truncate',
+              !selectedTimeRangeKey && 'tw:text-disabled'
+            )}>
             {selectedTimeRange}
           </span>
           <DropdownIcon className="align-middle" height={14} width={14} />
@@ -282,7 +286,8 @@ const DatePickerMenu = ({
   return (
     <div
       className={classNames(
-        'tw:relative tw:inline-flex tw:h-8 tw:max-w-80 tw:items-center',
+        'tw:relative tw:inline-flex tw:h-8 tw:items-center',
+        isCustomRangeSelected ? 'tw:max-w-none' : 'tw:max-w-80',
         selectedTimeRangeKey &&
           'tw:[&_[data-testid=date-picker-menu]_.ant-space-item:first-child]:pr-6'
       )}
@@ -292,9 +297,9 @@ const DatePickerMenu = ({
         <Button
           aria-label={t('label.clear')}
           className={classNames(
-            'tw:absolute tw:right-8 tw:top-1/2 tw:z-10 tw:inline-flex tw:size-4',
+            'tw:absolute! tw:right-8 tw:top-1/2 tw:z-10 tw:inline-flex! tw:size-4!',
             'tw:min-w-0 tw:-translate-y-1/2 tw:items-center tw:justify-center',
-            'tw:border-0 tw:bg-transparent tw:p-0 tw:text-disabled tw:shadow-none',
+            'tw:border-0 tw:bg-transparent tw:p-0! tw:text-disabled tw:shadow-none',
             'tw:hover:bg-transparent tw:hover:text-secondary'
           )}
           data-testid="clear-date-picker"

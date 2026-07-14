@@ -19,12 +19,11 @@ export const getTimestampLabel = (
   endDate: string,
   showSelectedCustomRange?: boolean
 ) => {
-  let label = t('label.custom-range');
   if (showSelectedCustomRange) {
-    label += `: ${startDate} -> ${endDate}`;
+    return `${startDate} -> ${endDate}`;
   }
 
-  return label;
+  return t('label.custom-range');
 };
 
 export const getDaysCount = (startDate: string, endDate: string) => {
