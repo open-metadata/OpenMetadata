@@ -51,5 +51,9 @@ public final class TaskBucketSql {
 
   public static final String STATUS_APPROVED = "Approved";
 
+  public static final String STATUS_IN_PROGRESS = "InProgress";
+
+  public static final String STATUS_GRANTED = "Granted";
+
   private TaskBucketSql() {}
 }

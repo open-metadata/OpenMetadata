@@ -98,6 +98,16 @@ class TaskBucketSqlDriftTest {
     assertEquals(TaskEntityStatus.Approved.value(), TaskBucketSql.STATUS_APPROVED);
   }
 
+  @Test
+  void statusInProgressLiteralMatchesEnumValue() {
+    assertEquals(TaskEntityStatus.InProgress.value(), TaskBucketSql.STATUS_IN_PROGRESS);
+  }
+
+  @Test
+  void statusGrantedLiteralMatchesEnumValue() {
+    assertEquals(TaskEntityStatus.Granted.value(), TaskBucketSql.STATUS_GRANTED);
+  }
+
   private static String csv(Set<TaskEntityStatus> statuses) {
     List<TaskEntityStatus> ordered =
         statuses.stream().sorted(java.util.Comparator.comparingInt(Enum::ordinal)).toList();

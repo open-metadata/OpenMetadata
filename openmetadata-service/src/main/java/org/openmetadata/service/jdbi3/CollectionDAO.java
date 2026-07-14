@@ -4663,11 +4663,15 @@ public interface CollectionDAO {
             + TaskBucketSql.STATUS_APPROVED
             + "' THEN 1"
             + " ELSE 0 END), 0) AS completedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_IN_PROGRESS
+            + "' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
             + "COALESCE(SUM(CASE WHEN status = '"
             + TaskBucketSql.STATUS_APPROVED
             + "' THEN 1 ELSE 0 END), 0) AS approvedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Granted' THEN 1 ELSE 0 END), 0) AS grantedCount "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_GRANTED
+            + "' THEN 1 ELSE 0 END), 0) AS grantedCount "
             + "FROM task_entity <condition>")
     TaskCountSummary getTaskCountSummary(
         @Define("condition") String condition, @BindMap Map<String, String> params);
