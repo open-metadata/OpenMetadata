@@ -1310,7 +1310,9 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await waitForMetricBulkEditGrid(page, selectedMetric.name);
 
     await expect.poll(() => exportRequestCount).toBe(0);
-    await expect(page.getByText(selectedMetric.name)).toBeVisible();
+    await expect(
+      page.getByText(selectedMetric.name, { exact: true })
+    ).toBeVisible();
     await expect(page.getByText(unselectedMetric.name)).not.toBeVisible();
   });
 

@@ -792,14 +792,14 @@ public class SystemResourceIT {
             .filter(b -> "usageSummary.monthlyStats.count".equals(b.getField()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Usage count field value boost not found"));
-    assertEquals(0.002, usageCountBoost.getFactor(), 1e-6);
+    assertEquals(0.000025, usageCountBoost.getFactor(), 1e-6);
 
     FieldValueBoost percentileBoost =
         tableConfig.getFieldValueBoosts().stream()
             .filter(b -> "usageSummary.monthlyStats.percentileRank".equals(b.getField()))
             .findFirst()
             .orElseThrow(() -> new AssertionError("Percentile rank field value boost not found"));
-    assertEquals(0.0005, percentileBoost.getFactor(), 1e-6);
+    assertEquals(0.0025, percentileBoost.getFactor(), 1e-6);
 
     List<TermBoost> globalTermBoosts = searchConfig.getGlobalSettings().getTermBoosts();
     assertNotNull(globalTermBoosts);
