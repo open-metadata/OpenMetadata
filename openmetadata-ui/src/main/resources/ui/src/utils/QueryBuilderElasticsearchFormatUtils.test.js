@@ -111,6 +111,10 @@ describe('elasticSearchFormat – extension dateTime field range operators (Issu
 
     expect(result).toContain('"gte":"2024-01-01 00:00:00"');
     expect(result).toContain('"lte":"2024-12-31 23:59:59"');
+    // Date strings must not be routed into numeric longValue/doubleValue ranges
+    // (that raises an ES number_format_exception and fails the whole search).
+    expect(result).not.toContain('customPropertiesTyped.longValue');
+    expect(result).not.toContain('customPropertiesTyped.doubleValue');
   });
 
   it('dateTime not_between: should wrap both gte/lte bounds in a must_not clause', () => {
