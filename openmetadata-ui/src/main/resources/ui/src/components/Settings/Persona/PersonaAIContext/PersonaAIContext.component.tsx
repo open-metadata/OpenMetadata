@@ -12,7 +12,6 @@
  */
 import {
   Badge,
-  BadgeColors,
   Box,
   Button,
   Card,
@@ -26,7 +25,10 @@ import { Clock, ClockRewind, Eye, FolderPlus, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { DEFAULT_PERSONA_CONTEXT_DEFINITION } from '../../../../constants/PersonaAIContext.constants';
+import {
+  CACHE_STATE_BADGE_COLOR,
+  DEFAULT_PERSONA_CONTEXT_DEFINITION,
+} from '../../../../constants/PersonaAIContext.constants';
 import { Persona } from '../../../../generated/entity/teams/persona';
 import {
   CacheState,
@@ -65,12 +67,6 @@ const VERSION_BADGE_CLASS = [
   'tw:transition tw:hover:bg-primary_hover',
 ].join(' ');
 
-const CACHE_STATE_BADGE_COLOR: Record<CacheState, BadgeColors> = {
-  [CacheState.Fresh]: 'success',
-  [CacheState.Stale]: 'gray',
-  [CacheState.Generating]: 'warning',
-  [CacheState.Failed]: 'error',
-};
 
 export const PersonaAIContext = ({
   canEdit,
