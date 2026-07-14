@@ -279,4 +279,51 @@ describe('usePaginatedLiveLog', () => {
     // A final read must fetch the post-termination tail, not stop at tail-v1.
     await waitFor(() => expect(result.current.logs).toBe('p0tail-v2'));
   });
+
+  it('does not replay a rolled-forward page when the run terminates mid-poll', async () => {
+    let resolveRoll: (value: LogPage) => void = () => undefined;
+    const fetchPage = jest
+      .fn()
+      // Initial: already at the tail (no `after`), tail content 'v1'.
+      .mockResolvedValueOnce(page('v1'))
+      // Poll rolls the tail forward: 'chunk' completes (has `after`)...
+      .mockImplementationOnce(
+        () =>
+          new Promise<LogPage>((resolve) => {
+            resolveRoll = resolve;
+          })
+      )
+      // ...then the new tail 'v2'. Any later read must NOT re-walk 'chunk'.
+      .mockResolvedValueOnce(page('v2'))
+      .mockResolvedValue(page('v2'));
+    const { result, rerender } = renderHook(
+      ({ isLive }) =>
+        usePaginatedLiveLog({
+          fetchPage,
+          resetKey: 'k',
+          enabled: true,
+          isLive,
+          intervalMs: 20,
+        }),
+      { initialProps: { isLive: true } }
+    );
+
+    await waitFor(() => expect(result.current.logs).toBe('v1'));
+
+    // The interval poll starts and rolls forward — hold it in flight.
+    await waitFor(() => expect(fetchPage).toHaveBeenCalledTimes(2));
+
+    // Run goes terminal while the roll-forward poll is in flight.
+    rerender({ isLive: false });
+
+    // Resolve the in-flight page as a completed chunk (rolls the tail forward).
+    await act(async () => {
+      resolveRoll(page('chunk', '1', '2'));
+    });
+
+    // 'chunk' is committed once, then the tail is 'v2' — never 'chunkchunk'.
+    await waitFor(() => expect(result.current.logs).toBe('chunkv2'));
+
+    expect(result.current.logs).toBe('chunkv2');
+  });
 });

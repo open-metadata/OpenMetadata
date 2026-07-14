@@ -67,7 +67,6 @@ export const usePaginatedLiveLog = ({
 }: UsePaginatedLiveLogParams): UsePaginatedLiveLogResult => {
   const [committed, setCommitted] = useState('');
   const [tail, setTail] = useState('');
-  const [tailCursor, setTailCursor] = useState<string | undefined>();
   const [nextCursor, setNextCursor] = useState<string | undefined>();
   const [reachedTail, setReachedTail] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -91,8 +90,14 @@ export const usePaginatedLiveLog = ({
   // ordering. `reachedTailRef`/`pollTailRef` mirror state so `attemptFinalRead`
   // can gate on the latest values from any of those trigger points.
   const finalReadOwedRef = useRef(false);
-  const reachedTailRef = useRef(false);
   const pollTailRef = useRef<() => Promise<void>>();
+
+  // `reachedTail`/`tailCursor` are also held as refs, advanced SYNCHRONOUSLY at
+  // every mutation site. `pollTail` reads only these refs, so it's a stable
+  // callback and `pollTailRef.current` is never a lagging closure — a flush that
+  // runs before React commits still sees the current tail cursor (no replay/skip).
+  const reachedTailRef = useRef(false);
+  const tailCursorRef = useRef<string | undefined>(undefined);
 
   // Mirrors `nextCursor` but updated synchronously, so a bottom-scroll firing in
   // the gap after `busyRef` releases and before React commits the new cursor
@@ -129,12 +134,14 @@ export const usePaginatedLiveLog = ({
         }
         if (isTailPage(page)) {
           setTail(page.content);
-          setTailCursor(cursor);
+          tailCursorRef.current = cursor;
+          reachedTailRef.current = true;
           nextCursorRef.current = undefined;
           setNextCursor(undefined);
           setReachedTail(true);
         } else {
           setCommitted((prev) => prev + page.content);
+          reachedTailRef.current = false;
           nextCursorRef.current = page.after;
           setNextCursor(page.after);
           setReachedTail(false);
@@ -163,9 +170,10 @@ export const usePaginatedLiveLog = ({
     busyRef.current = false;
     finalReadOwedRef.current = false;
     nextCursorRef.current = undefined;
+    tailCursorRef.current = undefined;
+    reachedTailRef.current = false;
     setCommitted('');
     setTail('');
-    setTailCursor(undefined);
     setNextCursor(undefined);
     setReachedTail(false);
     if (enabled && resetKey) {
@@ -183,13 +191,13 @@ export const usePaginatedLiveLog = ({
   }, [fetchForward]);
 
   const pollTail = useCallback(async () => {
-    if (!reachedTail || busyRef.current) {
+    if (!reachedTailRef.current || busyRef.current) {
       return;
     }
     const requestId = requestIdRef.current;
     busyRef.current = true;
     try {
-      let cursor = tailCursor;
+      let cursor = tailCursorRef.current;
       let carried = '';
       // Re-read the tail; if it rolled over into new complete chunks, commit
       // them and walk forward to the new tail.
@@ -204,7 +212,7 @@ export const usePaginatedLiveLog = ({
             setCommitted((prev) => prev + carried);
           }
           setTail(page.content);
-          setTailCursor(cursor);
+          tailCursorRef.current = cursor;
           done = true;
         } else {
           carried += page.content;
@@ -221,13 +229,12 @@ export const usePaginatedLiveLog = ({
         attemptFinalRead();
       }
     }
-  }, [reachedTail, tailCursor, attemptFinalRead]);
+  }, [attemptFinalRead]);
 
-  // Keep the mirror refs current and re-attempt an owed final read once state
-  // settles — covers `reachedTail` flipping true only after the run terminated
-  // (the last forward page reached the tail at the live→terminal transition).
+  // `pollTail` is stable, so this just keeps `pollTailRef` populated; the trailing
+  // `attemptFinalRead()` covers an owed read whose gating state (`reachedTail`)
+  // only settled true on this render (last forward page reached tail at terminal).
   useEffect(() => {
-    reachedTailRef.current = reachedTail;
     pollTailRef.current = pollTail;
     attemptFinalRead();
   });
