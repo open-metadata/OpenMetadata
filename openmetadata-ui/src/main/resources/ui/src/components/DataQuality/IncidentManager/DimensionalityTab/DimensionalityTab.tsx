@@ -27,6 +27,11 @@ import { SIZE } from '../../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { useTestCaseStore } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/useTestCase.store';
 import { getTestCaseDimensionResultsByFqn } from '../../../../rest/testAPI';
+import {
+  getEndOfDayInMillis,
+  getStartOfDayInMillis,
+} from '../../../../utils/date-time/DateTimeUtils';
+import { CUSTOM_DATE_RANGE_KEY } from '../../../../utils/DatePickerMenuUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
 import {
   getEntityDetailsPath,
@@ -88,9 +93,13 @@ const DimensionalityTab = () => {
   const [selectedDimension, setSelectedDimension] = useState(selectedColumn);
 
   const handleDateRangeChange = (value: DateRangeObject) => {
+    const isCustomRange = value.key === CUSTOM_DATE_RANGE_KEY;
+
     setDateRange({
-      startTs: value.startTs,
-      endTs: value.endTs,
+      startTs: isCustomRange
+        ? value.startTs
+        : getStartOfDayInMillis(value.startTs),
+      endTs: isCustomRange ? value.endTs : getEndOfDayInMillis(value.endTs),
     });
   };
 
