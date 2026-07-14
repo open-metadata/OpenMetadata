@@ -537,14 +537,21 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  private static final String STAGED_POISON_DOC_ID = "__staged_write_failure__";
+  private static final String STAGED_POISON_DOC_PREFIX = "__staged_write_failure__";
   private static final int POISON_SIGNAL_ATTEMPTS = 3;
 
+  private static String poisonDocId(String generation) {
+    return STAGED_POISON_DOC_PREFIX + generation;
+  }
+
   /**
-   * Records a failed write against the staged generation: sets the local poison flag and
-   * best-effort writes a marker document into the generation itself, so promotion is blocked even
-   * when the failure happened on a different node than the coordinator. The marker carries no
-   * embedding or parentId, so it is invisible to every chunk query and dies with the generation.
+   * Records a failed write against the staged generation: sets the local poison flag and writes a
+   * generation-scoped marker document into the LIVE chunk index — deliberately NOT the staged
+   * generation, whose unavailability may be the very reason the write failed. The live index is
+   * the store promotion already depends on (the swap removes it), so a coordinator that can
+   * promote can necessarily observe the marker; and a successful promotion of a later run removes
+   * the old live index and its stale markers with it. The marker carries no embedding or parentId,
+   * so it is invisible to every chunk query.
    */
   private void recordStagedWriteFailure(String target, String parentId, Exception e) {
     stagedChunkRunFailed = true;
@@ -555,6 +562,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         target,
         e.getMessage(),
         e);
+    String liveIndex = getChunkIndexName();
     boolean recorded = false;
     for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS && !recorded; attempt++) {
       try {
@@ -562,13 +570,13 @@ public class OpenSearchVectorService implements VectorIndexService {
         // the same second, before a periodic refresh would surface it.
         executeGenericRequest(
             "PUT",
-            "/" + target + "/_doc/" + STAGED_POISON_DOC_ID + "?refresh=true",
+            "/" + liveIndex + "/_doc/" + poisonDocId(target) + "?refresh=true",
             "{\"poisoned\":true}");
         recorded = true;
       } catch (Exception markerFailure) {
         LOG.warn(
             "Staged poison marker write to {} failed (attempt {}/{}): {}",
-            target,
+            liveIndex,
             attempt,
             POISON_SIGNAL_ATTEMPTS,
             markerFailure.getMessage());
@@ -576,25 +584,33 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
     if (!recorded) {
       LOG.error(
-          "Staged poison marker could not be durably recorded in {} — if this node is not the "
-              + "recreate coordinator, promotion may proceed with an incomplete generation",
-          target);
+          "Staged poison marker could not be recorded in the live index {} — the cluster is "
+              + "likely unhealthy enough that promotion will fail loudly on its own; if not, "
+              + "promotion may proceed with an incomplete generation",
+          liveIndex);
     }
   }
 
   /**
-   * True when the staged generation carries a poison marker written by any node's failed write.
-   * Uses a search-by-id rather than GET-by-id so "no marker" is an unambiguous 200 with zero hits
-   * (a GET 404 is indistinguishable from a transport error here). Read errors retry and then FAIL
-   * CLOSED: promoting a generation whose integrity cannot be verified risks the silent chunk drop
-   * this whole feature exists to prevent, while blocking costs only a rerun.
+   * True when any node recorded a failed write against this staged generation. The marker lives in
+   * the LIVE chunk index (see {@link #recordStagedWriteFailure}); the check uses search-by-id so
+   * "no marker" is an unambiguous 200 with zero hits (a GET 404 is indistinguishable from a
+   * transport error here). Read errors retry and then FAIL CLOSED: promoting a generation whose
+   * integrity cannot be verified risks the silent chunk drop this whole feature exists to prevent,
+   * while blocking costs only a rerun.
    */
   private boolean stagedGenerationPoisoned(String generation) {
+    String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
+    if (liveIndex == null) {
+      // Fresh install: no live index exists to hold a marker — and nothing to lose at the swap.
+      // Failing closed here would permanently block the first-ever promotion.
+      return false;
+    }
     String query =
-        "{\"size\":0,\"query\":{\"ids\":{\"values\":[\"" + STAGED_POISON_DOC_ID + "\"]}}}";
+        "{\"size\":0,\"query\":{\"ids\":{\"values\":[\"" + poisonDocId(generation) + "\"]}}}";
     for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
       try {
-        String response = executeGenericRequest("POST", "/" + generation + "/_search", query);
+        String response = executeGenericRequest("POST", "/" + liveIndex + "/_search", query);
         long hits = MAPPER.readTree(response).path("hits").path("total").path("value").asLong(0);
         return hits > 0;
       } catch (Exception e) {
