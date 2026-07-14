@@ -247,6 +247,31 @@ def test_rejected_credentials_are_diagnosed_from_the_raw_login_body():
     assert diagnosis.title == "Authentication failed"
 
 
+def test_rejected_credentials_are_diagnosed_when_str_omits_the_doc_url():
+    # looker-sdk only renders documentation_url in __str__ from 24.x on; on the
+    # oldest supported version (22.20.0) it lives on the attribute alone.
+    class OldSdkError(Exception):
+        documentation_url = LOGIN_404
+
+    diagnosis = LOOKER_ERRORS.classify(OldSdkError("Not found"))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Authentication failed"
+
+
+def test_a_network_error_carrying_an_incidental_404_stays_a_network_error():
+    # "404" inside a port must not read as an HTTP 404 from a non-Looker host.
+    error = _sdk_error(
+        "HTTPConnectionPool(host='looker.example.com', port=8404): Max retries exceeded with url: "
+        "/api/4.0/login (Caused by NewConnectionError('Connection refused'))"
+    )
+
+    diagnosis = LOOKER_ERRORS.classify(error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Connection refused"
+
+
 def test_a_404_away_from_login_is_diagnosed_as_a_missing_resource():
     diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not found", documentation_url=DASHBOARDS_404))
 

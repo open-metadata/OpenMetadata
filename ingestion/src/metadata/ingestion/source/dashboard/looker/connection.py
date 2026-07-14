@@ -59,6 +59,10 @@ API_SDK_DOC = "https://cloud.google.com/looker/docs/api-sdk"
 # https://cloud.google.com/looker/docs/r/err/4.0/404/post/api/4.0/login
 _ERROR_DOC_URL = re.compile(r"/r/err/[^/]+/(?P<status>\d{3})/(?P<path>\S*)", re.IGNORECASE)
 
+# A 404 from a server that is not Looker. Word-bounded so a port or byte count
+# containing 404 does not match.
+_FOREIGN_404 = re.compile(r"\b404\b|not found", re.IGNORECASE)
+
 
 class UnsupportedApiVersionError(Exception):
     """The Looker instance does not list the API version the SDK speaks."""
@@ -67,10 +71,12 @@ class UnsupportedApiVersionError(Exception):
 def _error_doc(error: BaseException) -> re.Match[str] | None:
     """Parse the status and endpoint from the documentation URL the error carries.
 
-    Matches ``str(error)``: an API call deserializes the URL onto
-    ``documentation_url``, a failed login raises the raw body as the message.
+    Searches the message and the attribute: an API call deserializes the URL onto
+    ``documentation_url``, a failed login raises the raw body as the message, and
+    only newer ``looker-sdk`` renders the attribute in ``__str__``.
     """
-    return _ERROR_DOC_URL.search(str(error))
+    doc_url = getattr(error, "documentation_url", "") or ""
+    return _ERROR_DOC_URL.search(f"{error} {doc_url}")
 
 
 def _http_status(*codes: int) -> Matcher:
@@ -88,6 +94,11 @@ def _login_rejected(error: BaseException) -> bool:
         (match := _error_doc(current)) is not None and match["status"] == "404" and "login" in match["path"].lower()
         for current in exception_chain(error)
     )
+
+
+def _matches(pattern: re.Pattern[str]) -> Matcher:
+    """Match ``pattern`` against the error (or its cause chain)."""
+    return lambda error: any(pattern.search(str(current)) for current in exception_chain(error))
 
 
 def _contains_any(*tokens: str) -> Matcher:
@@ -166,8 +177,9 @@ LOOKER_ERRORS = ErrorPack(
         doc=API_SDK_DOC,
     ),
     # Last: a 404 from something that is not Looker - a real one carries an error
-    # document and is matched above.
-    when(_contains_any("404", "not found")).diagnose(
+    # document and is matched above. The status is matched on a word boundary so a
+    # port or byte count that happens to contain 404 does not look like one.
+    when(_matches(_FOREIGN_404)).diagnose(
         "The host is not serving the Looker API",
         fix="A server answered but did not return a Looker error. Check that Host Port points at the Looker instance.",
     ),
