@@ -32,7 +32,7 @@ import {
 import type { User } from '../generated/entity/teams/user';
 import { searchQuery } from '../rest/searchAPI';
 import { getRandomColor } from './ColorUtils';
-import { getEntityPlaceHolder } from './EntityDisplayUtils';
+import { getEntityPlaceHolder } from './CommonUtils';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityBreadcrumbs,
