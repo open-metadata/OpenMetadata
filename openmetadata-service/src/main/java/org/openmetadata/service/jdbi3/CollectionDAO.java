@@ -4618,19 +4618,40 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
-        // 'Approved' double-counts in `completedCount` AND `approvedCount` because the
-        // same status means different things across task types: terminal for
-        // Glossary/DescriptionUpdate (legacy dashboards expect it under "completed") and
-        // non-terminal for Data Access Requests (the dedicated DAR list uses
-        // `approvedCount` / `grantedCount` and the `active` status group instead).
-        // See ListFilter.getTaskStatusCondition for the matching status-group semantics.
+        // Row-aware bucketing so openCount + completedCount = total across mixed task types.
+        // Bucket predicates and status/type literals are shared with ListFilter via
+        // TaskBucketSql — see that class for the invariant + drift-guard test.
         "SELECT "
             + "COUNT(id) AS total, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1 ELSE 0 END), 0) AS openCount, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked') THEN 1 ELSE 0 END), 0) AS completedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END), 0) AS approvedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Granted' THEN 1 ELSE 0 END), 0) AS grantedCount "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_OPEN_STATUSES
+            + ") THEN 1"
+            + " WHEN type = '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS openCount, "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_TERMINAL_STATUSES
+            + ") THEN 1"
+            + " WHEN type <> '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS completedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_IN_PROGRESS
+            + "' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1 ELSE 0 END), 0) AS approvedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_GRANTED
+            + "' THEN 1 ELSE 0 END), 0) AS grantedCount "
             + "FROM task_entity <condition>")
     TaskCountSummary getTaskCountSummary(
         @Define("condition") String condition, @BindMap Map<String, String> params);
