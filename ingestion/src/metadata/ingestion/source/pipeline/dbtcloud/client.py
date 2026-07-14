@@ -22,6 +22,7 @@ from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConn
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
+from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTJob,
     DBTJobList,
@@ -83,6 +84,11 @@ class DBTCloudClient:
 
         self.client = TrackedREST(client_config, source_name="dbtcloud")
         self.graphql_client = TrackedREST(graphql_client_config, source_name="dbtcloud")
+
+        # The test-connection calls bypass TrackedREST (see _test_get), so they mount
+        # the same resilient adapter to keep its transport retries.
+        self._test_session = requests.Session()
+        mount_resilient_adapter(self._test_session)
 
     def _get_jobs(
         self,
@@ -148,7 +154,7 @@ class DBTCloudClient:
         returns and the caller is left with a bare None. Ingestion keeps using it.
         """
         url = f"{clean_uri(str(self.config.host))}/{API_VERSION}{path}"
-        response = requests.get(
+        response = self._test_session.get(
             url,
             headers={AUTHORIZATION_HEADER: f"Bearer {self.config.token.get_secret_value()}"},
             params=params,

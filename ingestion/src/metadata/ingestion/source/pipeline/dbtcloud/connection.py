@@ -18,7 +18,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from requests.exceptions import ConnectionError as RequestsConnectionError
-from requests.exceptions import SSLError, Timeout
+from requests.exceptions import JSONDecodeError, SSLError, Timeout
 
 from metadata.core.connections.test_connection import (
     Diagnosis,
@@ -95,11 +95,22 @@ DBTCLOUD_ERRORS = ErrorPack(
         "permission set covers the projects to ingest.",
         doc=TOKENS_DOC,
     ),
+    when(_http_status(404)).diagnose(
+        "Endpoint not found",
+        fix=f"Host and Account Id build the path the API answered 404 for. {ACCOUNT_ID_FIX}",
+    ),
     when(_http_status(429)).diagnose(
         "Rate limited",
         fix="dbt Cloud rate limits the API at 5,000 requests per minute per account and then "
         "enforces a five-minute cooldown. Retry in five minutes.",
         doc=RATE_LIMITS_DOC,
+    ),
+    # A Host that is a valid URL but not the dbt Cloud API (e.g. the marketing site)
+    # redirects to an HTML page, which answers 200 and fails to decode.
+    when(Matchers.exception(JSONDecodeError)).diagnose(
+        "Host is not the dbt Cloud API",
+        fix="Host answered with a response that is not dbt Cloud API JSON. Set it to your dbt "
+        "Cloud access URL, e.g. https://cloud.getdbt.com.",
     ),
     when(Matchers.exception(SSLError)).diagnose(
         "TLS verification failed",

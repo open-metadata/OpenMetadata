@@ -14,7 +14,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from requests.exceptions import ConnectionError as RequestsConnectionError
-from requests.exceptions import ReadTimeout, SSLError
+from requests.exceptions import JSONDecodeError, ReadTimeout, SSLError
 
 from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.check import CheckError
@@ -141,7 +141,9 @@ INVALID_TOKEN_BODY = (
         ),
         (DBTCloudApiError(401, "/accounts/1/jobs/", INVALID_TOKEN_BODY), "Authentication failed"),
         (DBTCloudApiError(403, "/accounts/1/jobs/", "forbidden"), "Access denied"),
+        (DBTCloudApiError(404, "/accounts/1/jobs/", "not found"), "Endpoint not found"),
         (DBTCloudApiError(429, "/accounts/1/jobs/", "too many requests"), "Rate limited"),
+        (JSONDecodeError("Expecting value", "<html>", 0), "Host is not the dbt Cloud API"),
         (SSLError("certificate verify failed"), "TLS verification failed"),
         (ReadTimeout("timed out"), "Connection timed out"),
         (RequestsConnectionError("name resolution failed"), "Cannot reach the host"),
@@ -186,29 +188,50 @@ def _dbtcloud_client(host="https://cloud.getdbt.com", account_id=1):
 
 def test_test_check_access_reads_a_single_job():
     client = _dbtcloud_client()
-    with patch(f"{CLIENT_MODULE}.requests.get") as mock_get:
-        mock_get.return_value.ok = True
-        mock_get.return_value.json.return_value = {"data": []}
+    client._test_session = MagicMock()
+    client._test_session.get.return_value.ok = True
+    client._test_session.get.return_value.json.return_value = {"data": []}
 
-        client.test_check_access()
+    client.test_check_access()
 
-    url, kwargs = mock_get.call_args[0][0], mock_get.call_args[1]
-    assert url == "https://cloud.getdbt.com/api/v2/accounts/1/jobs/"
-    assert kwargs["params"] == {"limit": 1, "offset": 0}
-    assert kwargs["headers"]["Authorization"] == "Bearer secret-token"
+    call = client._test_session.get.call_args
+    assert call[0][0] == "https://cloud.getdbt.com/api/v2/accounts/1/jobs/"
+    assert call[1]["params"] == {"limit": 1, "offset": 0}
+    assert call[1]["headers"]["Authorization"] == "Bearer secret-token"
+
+
+def test_the_test_calls_keep_the_resilient_transport_retries():
+    """They bypass TrackedREST, so they must mount the same adapter it does."""
+    client = _dbtcloud_client()
+
+    assert client._test_session.get_adapter("https://cloud.getdbt.com").max_retries.total == 3
 
 
 def test_a_rejected_token_surfaces_its_http_status():
     """A dbt Cloud error body nests its code under `status`; the status must still
     reach the error pack, or a bad token reads as an opaque validation error."""
     client = _dbtcloud_client()
-    with patch(f"{CLIENT_MODULE}.requests.get") as mock_get:
-        mock_get.return_value.ok = False
-        mock_get.return_value.status_code = 401
-        mock_get.return_value.text = INVALID_TOKEN_BODY
+    client._test_session = MagicMock()
+    client._test_session.get.return_value.ok = False
+    client._test_session.get.return_value.status_code = 401
+    client._test_session.get.return_value.text = INVALID_TOKEN_BODY
 
-        with pytest.raises(DBTCloudApiError) as failure:
-            client.test_get_jobs()
+    with pytest.raises(DBTCloudApiError) as failure:
+        client.test_get_jobs()
 
     assert failure.value.status_code == 401
     assert DBTCLOUD_ERRORS.classify(failure.value).title == "Authentication failed"
+
+
+def test_a_host_that_is_not_the_api_is_diagnosed():
+    """A valid URL that is not the dbt Cloud API redirects to an HTML page, which
+    answers 200 and fails to decode."""
+    client = _dbtcloud_client(host="https://www.getdbt.com")
+    client._test_session = MagicMock()
+    client._test_session.get.return_value.ok = True
+    client._test_session.get.return_value.json.side_effect = JSONDecodeError("Expecting value", "<html>", 0)
+
+    with pytest.raises(JSONDecodeError) as failure:
+        client.test_get_jobs()
+
+    assert DBTCLOUD_ERRORS.classify(failure.value).title == "Host is not the dbt Cloud API"
