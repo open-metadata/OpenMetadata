@@ -126,6 +126,23 @@ class ListFilterTest {
   }
 
   @Test
+  void getCondition_primaryEntityIdFiltersPillsByAppliedToEdge() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("primaryEntityId", "11111111-1111-1111-1111-111111111111");
+    String condition = filter.getCondition("cm");
+    assertTrue(condition.contains("SELECT entity_relationship.toId"));
+    assertTrue(condition.contains("entity_relationship.fromId = :primaryEntityIdParam"));
+    assertTrue(condition.contains("entity_relationship.toEntity = 'contextMemory'"));
+    assertTrue(
+        condition.contains(
+            "entity_relationship.relation = "
+                + org.openmetadata.schema.type.Relationship.APPLIED_TO.ordinal()));
+    assertEquals(
+        "11111111-1111-1111-1111-111111111111",
+        filter.getQueryParams().get("primaryEntityIdParam"));
+  }
+
+  @Test
   void test_getAgentTypeCondition_singleAgentType() {
     ListFilter filter = new ListFilter();
 
@@ -326,6 +343,38 @@ class ListFilterTest {
     ListFilter delFilter = new ListFilter(Include.DELETED).addQueryParam("service", "aws_s3");
     String delCond = delFilter.getCondition("storage_container_entity");
     assertTrue(delCond.contains("storage_container_entity.deleted = TRUE"), delCond);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_bothBounds() {
+    ListFilter filter = new ListFilter();
+    filter.addQueryParam("taskStartTs", "1000");
+    filter.addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_startOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskStartTs", "1000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt >= 1000"), condition);
+    assertFalse(condition.contains("createdAt <="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_endOnly() {
+    ListFilter filter = new ListFilter().addQueryParam("taskEndTs", "2000");
+    String condition = filter.getCondition("task_entity");
+    assertTrue(condition.contains("task_entity.createdAt <= 2000"), condition);
+    assertFalse(condition.contains("createdAt >="), condition);
+  }
+
+  @Test
+  void test_getTaskCreatedAtRangeCondition_absentWhenNoParams() {
+    String condition = new ListFilter().getCondition("task_entity");
+    assertFalse(condition.contains("createdAt"), condition);
   }
 
   @Test

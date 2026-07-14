@@ -113,6 +113,56 @@ public class DataContractResource extends EntityResource<DataContract, DataContr
     super(Entity.DATA_CONTRACT, authorizer, limits);
   }
 
+  @GET
+  @Path("/search")
+  @Valid
+  @Operation(
+      operationId = "searchDataContracts",
+      summary = "Search data contracts",
+      description =
+          "Search data contracts by name or display name. Use `q` parameter to provide the search query.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "List of matching data contracts",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = DataContractList.class)))
+      })
+  public ResultList<DataContract> search(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Search query for data contract names or display names")
+          @QueryParam("q")
+          String query,
+      @Parameter(
+              description = "Fields requested in the returned resource",
+              schema = @Schema(type = "string", example = FIELDS))
+          @QueryParam("fields")
+          String fieldsParam,
+      @Parameter(description = "Limit the number of data contracts returned")
+          @DefaultValue("10")
+          @Min(value = 1, message = "must be greater than or equal to 1")
+          @Max(value = 1000, message = "must be less than or equal to 1000")
+          @QueryParam("limit")
+          int limitParam,
+      @Parameter(description = "Offset for pagination")
+          @DefaultValue("0")
+          @Min(value = 0, message = "must be greater than or equal to 0")
+          @QueryParam("offset")
+          int offsetParam,
+      @Parameter(
+              description = "Include all, deleted, or non-deleted entities",
+              schema = @Schema(implementation = Include.class))
+          @QueryParam("include")
+          @DefaultValue("non-deleted")
+          Include include) {
+    ListFilter filter = new ListFilter(include);
+    return searchInternal(
+        uriInfo, securityContext, fieldsParam, filter, query, limitParam, offsetParam);
+  }
+
   // Set the PipelineServiceClient so the repository can manage the Ingestion Pipelines for Test
   // Suites
   @Override
