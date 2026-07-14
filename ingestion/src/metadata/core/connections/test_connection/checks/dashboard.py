@@ -22,13 +22,15 @@ their ``@check`` methods.
 
 from __future__ import annotations
 
-from typing import TYPE_CHECKING
+from typing import TYPE_CHECKING, TypeVar
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sized
+
+_T = TypeVar("_T")
 
 
 # A check only needs to prove the list endpoint is reachable and returns items,
@@ -43,6 +45,13 @@ class DashboardStep(StepName):
 
     CheckAccess = "CheckAccess"
     GetDashboards = "GetDashboards"
+    ServerInfo = "ServerInfo"
+    ValidateApiVersion = "ValidateApiVersion"
+    ValidateSiteUrl = "ValidateSiteUrl"
+    GetWorkbooks = "GetWorkbooks"
+    GetViews = "GetViews"
+    GetOwners = "GetOwners"
+    GetDataModels = "GetDataModels"
 
 
 def _count(number: int, noun: str, cap: int | None = None) -> str:
@@ -70,6 +79,20 @@ def verify_access(authenticate: Callable[[], object], command: str) -> Evidence:
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     return Evidence(summary="authenticated", command=command)
+
+
+def call_endpoint(call: Callable[[], _T], command: str) -> _T:
+    """Call a REST endpoint and hand its result back to the check.
+
+    For steps whose evidence is not a count: the check summarizes the returned
+    value itself (an API version, a resolved owner). On failure, re-raise as
+    ``CheckError`` carrying the attempted command so the failed step still
+    reports what it ran.
+    """
+    try:
+        return call()
+    except Exception as cause:
+        raise CheckError(cause, Evidence(command=command)) from cause
 
 
 def fetch_list(
