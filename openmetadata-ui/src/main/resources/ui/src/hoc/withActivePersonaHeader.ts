@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2026 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,6 +10,19 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { InternalAxiosRequestConfig } from 'axios';
+import { useApplicationStore } from '../hooks/useApplicationStore';
 
-export { default } from './MUIFormItemLabel';
-export type { MUIFormItemLabelProps } from './MUIFormItemLabel';
+export const ACTIVE_PERSONA_HEADER = 'X-OpenMetadata-Persona';
+
+export const withActivePersonaHeader = (
+  config: InternalAxiosRequestConfig
+): InternalAxiosRequestConfig => {
+  const activePersonaId = useApplicationStore.getState().selectedPersona?.id;
+
+  if (activePersonaId) {
+    config.headers[ACTIVE_PERSONA_HEADER] = activePersonaId;
+  }
+
+  return config;
+};

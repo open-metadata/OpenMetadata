@@ -21,7 +21,7 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Button, Col, Form, FormInstance, Row } from 'antd';
 import { AxiosError } from 'axios';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 
 import { isArray, isUndefined, map, omit, omitBy, startCase } from 'lodash';
 import { FocusEvent, useCallback, useEffect, useMemo, useState } from 'react';
