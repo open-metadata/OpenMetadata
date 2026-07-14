@@ -593,27 +593,21 @@ export const getFeedCounts = async (
     }
 
     const counts = await getFeedCount(getEntityFeedLink(entityType, entityFQN));
-
-    if (counts) {
-      feedCountCallback(getAggregatedFeedCounts(counts));
-    } else {
-      throw t('server.entity-feed-fetch-error');
-    }
+    feedCountCallback(getAggregatedFeedCounts(counts));
   } catch (err) {
     showErrorToast(err as AxiosError, t('server.entity-feed-fetch-error'));
   }
 };
 
 export const fetchEntityTaskCountsInto = async (
+  entityType: string,
   entityFqn: string,
   setFeedCount: Dispatch<SetStateAction<FeedCounts>>,
   _domain?: string
 ) => {
   try {
-    const counts = await getFeedCount();
-    const aggregatedCounts = getAggregatedFeedCounts(
-      counts.filter((item) => getEntityFQN(item.entityLink) === entityFqn)
-    );
+    const counts = await getFeedCount(getEntityFeedLink(entityType, entityFqn));
+    const aggregatedCounts = getAggregatedFeedCounts(counts);
 
     setFeedCount((prev) => {
       const { openTaskCount, closedTaskCount, totalTasksCount, mentionCount } =
