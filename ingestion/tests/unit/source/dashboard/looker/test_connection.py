@@ -8,37 +8,300 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""Unit tests for Looker connection handling."""
+"""Unit tests for Looker test-connection checks."""
 
+import socket
 from unittest.mock import MagicMock, patch
 
+import pytest
+from looker_sdk.error import SDKError
+
+from metadata.core.connections.test_connection.check import CheckError, collect_checks
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.source.dashboard.looker.connection import LookerConnection
+from metadata.ingestion.source.dashboard.looker.connection import (
+    LOOKER_ERRORS,
+    LookerChecks,
+    LookerConnection,
+    UnsupportedApiVersionError,
+)
 
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.looker.connection"
+
+LOGIN_404 = "https://cloud.google.com/looker/docs/r/err/4.0/404/post/api/4.0/login"
+DASHBOARDS_401 = "https://cloud.google.com/looker/docs/r/err/4.0/401/get/api/4.0/dashboards"
+DASHBOARDS_403 = "https://cloud.google.com/looker/docs/r/err/4.0/403/get/api/4.0/dashboards"
+DASHBOARDS_404 = "https://cloud.google.com/looker/docs/r/err/4.0/404/get/api/4.0/dashboards"
+
+
+def _sdk_error(message: str, documentation_url: str = "") -> SDKError:
+    """A Looker SDK error: it carries no status code, only a message and the
+    documentation URL that encodes the status of the call that failed."""
+    return SDKError(message, documentation_url=documentation_url)
+
+
+def _versions(*supported: str) -> MagicMock:
+    versions = MagicMock()
+    versions.supported_versions = [MagicMock(version=version) for version in supported]
+
+    return versions
+
+
+def _checks(get_connection) -> tuple[LookerChecks, MagicMock]:
+    """A provider whose lazily-built SDK is the returned mock."""
+    client = MagicMock()
+    get_connection.return_value = client
+
+    return LookerChecks(connection=MagicMock()), client
 
 
 def test_looker_connection_is_base_connection():
     assert issubclass(LookerConnection, BaseConnection)
 
 
-def test_get_client_initialises_the_sdk():
-    config = MagicMock()
-    config.clientId = "client-id"
-    config.clientSecret.get_secret_value.return_value = "secret"
-    config.hostPort = "https://looker.example.com"
-    with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
-        conn = LookerConnection(config)
+def test_get_client_delegates_to_get_connection():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        conn = LookerConnection(MagicMock())
         client = conn.client
 
-    assert client is mock_sdk.init40.return_value
-    mock_sdk.init40.assert_called_once()
+    assert client is mock_get.return_value
+    mock_get.assert_called_once_with(conn.service_connection)
 
 
-def test_test_connection_runs_steps():
-    conn = LookerConnection(MagicMock())
-    conn._client = MagicMock()
-    with patch(f"{CONNECTION_MODULE}.test_connection_steps") as mock_step:
-        result = conn.test_connection(metadata=MagicMock())
+def test_checks_does_not_touch_the_network():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        conn = LookerConnection(MagicMock())
+        provider = conn.checks()
 
-    assert result is mock_step.return_value
+    assert isinstance(provider, LookerChecks)
+    mock_get.assert_not_called()
+
+
+def test_collect_checks_maps_every_step():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, _ = _checks(mock_get)
+    collected = collect_checks(provider)
+
+    assert set(collected) == {
+        DashboardStep.CheckAccess,
+        DashboardStep.ValidateVersion,
+        DashboardStep.ListDashboards,
+        DashboardStep.ListLookMLModels,
+    }
+
+
+def test_client_is_built_once_and_shared_across_checks():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.versions.return_value = _versions("4.0")
+        provider.check_access()
+        provider.validate_version()
+
+    mock_get.assert_called_once_with(provider._connection)
+
+
+def test_check_access_reads_the_authenticated_user():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+
+        evidence = provider.check_access()
+
+    client.me.assert_called_once_with()
+    assert evidence.summary == "authenticated"
+    assert evidence.command == "log in and read the authenticated user"
+
+
+def test_check_access_wraps_a_rejected_login_as_check_error():
+    # The SDK logs in lazily on its first call, so bad credentials surface as a
+    # classified CheckAccess failure instead of escaping while the provider is built.
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.me.side_effect = _sdk_error("Not found", documentation_url=LOGIN_404)
+
+        with pytest.raises(CheckError) as exc_info:
+            provider.check_access()
+
+    assert isinstance(exc_info.value.cause, SDKError)
+    assert exc_info.value.evidence.command == "log in and read the authenticated user"
+
+
+def test_validate_version_passes_when_the_sdk_version_is_supported():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.versions.return_value = _versions("3.1", "4.0")
+
+        evidence = provider.validate_version()
+
+    assert evidence.summary == "API 4.0 is supported"
+    assert evidence.command == "list the API versions the instance supports"
+
+
+def test_validate_version_fails_when_the_sdk_version_is_missing():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.versions.return_value = _versions("3.1")
+
+        with pytest.raises(CheckError) as exc_info:
+            provider.validate_version()
+
+    assert isinstance(exc_info.value.cause, UnsupportedApiVersionError)
+    assert "3.1" in str(exc_info.value.cause)
+    assert exc_info.value.evidence.command == "list the API versions the instance supports"
+
+
+def test_list_dashboards_counts_what_it_enumerated():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.all_dashboards.return_value = [MagicMock(), MagicMock()]
+
+        evidence = provider.list_dashboards()
+
+    client.all_dashboards.assert_called_once_with(fields="id,title")
+    assert evidence.summary == "2 dashboards enumerated"
+    assert evidence.caveat is None
+
+
+def test_list_dashboards_warns_when_none_are_visible():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.all_dashboards.return_value = []
+
+        evidence = provider.list_dashboards()
+
+    assert evidence.summary == "0 dashboards enumerated"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No dashboards visible"
+
+
+def test_list_lookml_models_warns_when_none_are_visible():
+    # Not mandatory: unreadable models cost lineage, not the connection.
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.all_lookml_models.return_value = []
+
+        evidence = provider.list_lookml_models()
+
+    client.all_lookml_models.assert_called_once_with(limit=1)
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No LookML models visible"
+
+
+def test_list_lookml_models_wraps_a_failure_as_check_error():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        provider, client = _checks(mock_get)
+        client.all_lookml_models.side_effect = _sdk_error("Insufficient permissions", documentation_url=DASHBOARDS_403)
+
+        with pytest.raises(CheckError) as exc_info:
+            provider.list_lookml_models()
+
+    assert exc_info.value.evidence.command == "list LookML models"
+
+
+def test_rejected_credentials_are_diagnosed_as_an_auth_failure():
+    # Looker answers a wrong client id or secret with a 404 on /login, so the
+    # endpoint - not the status - is what separates it from a wrong host.
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not found", documentation_url=LOGIN_404))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Authentication failed"
+
+
+def test_a_404_away_from_login_is_diagnosed_as_a_missing_resource():
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not found", documentation_url=DASHBOARDS_404))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Resource not found"
+
+
+def test_a_401_is_diagnosed_as_an_auth_failure():
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not authenticated", documentation_url=DASHBOARDS_401))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Authentication failed"
+
+
+def test_a_403_is_diagnosed_as_missing_permissions():
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Insufficient permissions", documentation_url=DASHBOARDS_403))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Insufficient permissions"
+
+
+def test_missing_credentials_are_diagnosed():
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Required auth credentials not found."))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Missing credentials"
+
+
+def test_an_unsupported_api_version_is_diagnosed():
+    diagnosis = LOOKER_ERRORS.classify(UnsupportedApiVersionError("API 4.0 is not listed"))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "API 4.0 is not supported by this instance"
+
+
+def test_a_dns_failure_is_diagnosed_from_the_flattened_message():
+    # The SDK's transport catches every IOError and re-raises it as an SDKError
+    # whose message is the stringified original, so the exception type is gone and
+    # only the text can be matched.
+    error = _sdk_error(
+        "HTTPSConnectionPool(host='nope.cloud.looker.com', port=443): Max retries exceeded with "
+        'url: /api/4.0/login (Caused by NameResolutionError("Failed to resolve '
+        "'nope.cloud.looker.com' ([Errno 8] nodename nor servname provided, or not known)\"))"
+    )
+
+    diagnosis = LOOKER_ERRORS.classify(error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Host could not be resolved"
+
+
+def test_a_refused_connection_is_diagnosed_from_the_flattened_message():
+    error = _sdk_error(
+        "HTTPSConnectionPool(host='looker.example.com', port=19999): Max retries exceeded with "
+        "url: /api/4.0/login (Caused by NewConnectionError('Connection refused'))"
+    )
+
+    diagnosis = LOOKER_ERRORS.classify(error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Connection refused"
+
+
+def test_a_tls_failure_is_diagnosed_from_the_flattened_message():
+    error = _sdk_error(
+        "HTTPSConnectionPool(host='looker.example.com', port=443): Max retries exceeded with url: "
+        "/api/4.0/login (Caused by SSLError(SSLCertVerificationError(1, 'certificate verify "
+        "failed: self signed certificate')))"
+    )
+
+    diagnosis = LOOKER_ERRORS.classify(error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "TLS verification failed"
+
+
+def test_an_unreachable_host_is_diagnosed_from_the_flattened_message():
+    error = _sdk_error(
+        "HTTPSConnectionPool(host='looker.example.com', port=443): Max retries exceeded with url: "
+        "/api/4.0/login (Caused by NewConnectionError('Network is unreachable'))"
+    )
+
+    diagnosis = LOOKER_ERRORS.classify(error)
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Cannot reach the host"
+
+
+def test_the_shared_network_pack_still_classifies_a_raw_socket_error():
+    # Anything raised outside the SDK's transport keeps its type, so the folded
+    # NETWORK_ERRORS rules remain the fallback.
+    diagnosis = LOOKER_ERRORS.classify(socket.gaierror("nodename nor servname provided"))
+
+    assert diagnosis is not None
+    assert diagnosis.title == "Host could not be resolved"
+
+
+def test_an_unknown_error_is_not_classified():
+    assert LOOKER_ERRORS.classify(_sdk_error("something entirely new")) is None
