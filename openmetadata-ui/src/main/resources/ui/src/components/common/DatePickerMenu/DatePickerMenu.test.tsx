@@ -14,6 +14,7 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import DatePickerMenu from './DatePickerMenu.component';
 
 jest.mock('../../../utils/DatePickerMenuUtils', () => ({
+  CUSTOM_DATE_RANGE_KEY: 'customRange',
   getDaysCount: jest.fn().mockReturnValue(3),
   getTimestampLabel: jest.fn().mockReturnValue('custom range'),
 }));

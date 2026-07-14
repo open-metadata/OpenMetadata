@@ -12,6 +12,8 @@
  */
 import { t } from './i18next/LocalUtil';
 
+export const CUSTOM_DATE_RANGE_KEY = 'customRange';
+
 export const getTimestampLabel = (
   startDate: string,
   endDate: string,

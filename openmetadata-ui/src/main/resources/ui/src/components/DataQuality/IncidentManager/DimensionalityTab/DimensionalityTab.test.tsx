@@ -26,6 +26,13 @@ const CUSTOM_RANGE = {
   title: '2024-03-04 -> 2024-03-04',
 };
 
+const PRESET_RANGE = {
+  startTs: 1709490600000,
+  endTs: 1709576999999,
+  key: 'last7days',
+  title: 'Last 7 days',
+};
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Select: Object.assign(
     jest.fn().mockImplementation(() => <div data-testid="dimension-select" />),
@@ -67,11 +74,18 @@ jest.mock('../../../../utils/RouterUtils', () => ({
 
 jest.mock('../../../common/DatePickerMenu/DatePickerMenu.component', () =>
   jest.fn().mockImplementation(({ handleDateRangeChange }) => (
-    <button
-      data-testid="date-picker-menu"
-      onClick={() => handleDateRangeChange(CUSTOM_RANGE)}>
-      Change date
-    </button>
+    <div>
+      <button
+        data-testid="date-picker-menu"
+        onClick={() => handleDateRangeChange(CUSTOM_RANGE)}>
+        Change custom date
+      </button>
+      <button
+        data-testid="preset-date-range"
+        onClick={() => handleDateRangeChange(PRESET_RANGE)}>
+        Change preset date
+      </button>
+    </div>
   ))
 );
 
@@ -101,6 +115,28 @@ describe('DimensionalityTab', () => {
           dimensionName: 'country',
           startTs: CUSTOM_RANGE.startTs,
           endTs: CUSTOM_RANGE.endTs,
+        }
+      )
+    );
+  });
+
+  it('normalizes preset ranges to UTC day boundaries', async () => {
+    render(<DimensionalityTab />);
+
+    await waitFor(() =>
+      expect(mockGetTestCaseDimensionResultsByFqn).toHaveBeenCalled()
+    );
+    mockGetTestCaseDimensionResultsByFqn.mockClear();
+
+    fireEvent.click(screen.getByTestId('preset-date-range'));
+
+    await waitFor(() =>
+      expect(mockGetTestCaseDimensionResultsByFqn).toHaveBeenCalledWith(
+        'service.database.schema.table.test',
+        {
+          dimensionName: 'country',
+          startTs: 1709424000000,
+          endTs: 1709596799999,
         }
       )
     );

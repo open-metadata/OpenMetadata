@@ -31,6 +31,7 @@ import {
   getEpochMillisForPastDays,
 } from '../../../utils/date-time/DateTimeUtils';
 import {
+  CUSTOM_DATE_RANGE_KEY,
   getDaysCount,
   getTimestampLabel,
 } from '../../../utils/DatePickerMenuUtils';
@@ -92,7 +93,10 @@ const DatePickerMenu = ({
 
     if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
-      if (defaultDateRange.key === 'customRange' && defaultDateRange.title) {
+      if (
+        defaultDateRange.key === CUSTOM_DATE_RANGE_KEY &&
+        defaultDateRange.title
+      ) {
         defaultOptions.title = defaultDateRange.title;
       } else if (
         options &&
@@ -163,13 +167,13 @@ const DatePickerMenu = ({
       );
 
       setSelectedTimeRange(selectedRangeLabel);
-      setSelectedTimeRangeKey('customRange');
+      setSelectedTimeRangeKey(CUSTOM_DATE_RANGE_KEY);
       setIsMenuOpen(false);
       handleDateRangeChange?.(
         {
           startTs,
           endTs,
-          key: 'customRange',
+          key: CUSTOM_DATE_RANGE_KEY,
           title: selectedRangeLabel,
         },
         daysCount
@@ -211,7 +215,7 @@ const DatePickerMenu = ({
     allowCustomRange &&
       items.push({
         label: t('label.custom-range'),
-        key: 'customRange',
+        key: CUSTOM_DATE_RANGE_KEY,
         children: [
           {
             label: (
