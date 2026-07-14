@@ -8,4 +8,9 @@
 -- a full-table scan that grows with history and times out on large catalogs. This supplementary
 -- index restores the (usageDate, entityType) slice lookup. It deliberately excludes the mutable
 -- count columns, so the count-update path optimized by the unique-key reorder is untouched.
-CREATE INDEX IF NOT EXISTS entity_usage_percentile_idx ON entity_usage (usageDate, entityType);
+--
+-- Built CONCURRENTLY so the migration does not take a write lock on entity_usage (a large,
+-- actively-written table) for the duration of the build. The DROP ... IF EXISTS first clears any
+-- INVALID leftover from a previously interrupted CONCURRENTLY build so this re-runs cleanly.
+DROP INDEX CONCURRENTLY IF EXISTS entity_usage_percentile_idx;
+CREATE INDEX CONCURRENTLY IF NOT EXISTS entity_usage_percentile_idx ON entity_usage (usageDate, entityType);
