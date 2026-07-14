@@ -42,14 +42,9 @@ import TreeAsyncSelectList from '../components/common/AsyncSelectList/TreeAsyncS
 import ColorPicker from '../components/common/ColorPicker/ColorPicker.component';
 import DomainSelectableList from '../components/common/DomainSelectableList/DomainSelectableList.component';
 import { DomainSelectableListProps } from '../components/common/DomainSelectableList/DomainSelectableList.interface';
-import DomainTreeSelect from '../components/common/DomainTreeSelect/DomainTreeSelect';
-import { DomainTreeSelectProps } from '../components/common/DomainTreeSelect/DomainTreeSelect.interface';
 import FilterPattern from '../components/common/FilterPattern/FilterPattern';
 import { FilterPatternProps } from '../components/common/FilterPattern/filterPattern.interface';
 import FormItemLabel from '../components/common/Form/FormItemLabel';
-import GlossaryTermTreeSelect, {
-  GlossaryTermTreeSelectProps,
-} from '../components/common/GlossaryTermTreeSelect/GlossaryTermTreeSelect';
 import { InlineAlertProps } from '../components/common/InlineAlert/InlineAlert.interface';
 import RichTextEditor from '../components/common/RichTextEditor/RichTextEditor';
 import { RichTextEditorProp } from '../components/common/RichTextEditor/RichTextEditor.interface';
@@ -267,23 +262,6 @@ export const getField = (field: FieldProp) => {
       );
     }
 
-    case FieldTypes.GLOSSARY_TAG_SUGGESTION_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <GlossaryTermTreeSelect
-            {...(props as unknown as GlossaryTermTreeSelectProps)}
-            label={typeof label === 'string' ? label : undefined}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
-
     case FieldTypes.TREE_ASYNC_SELECT_LIST:
       fieldElement = (
         <TreeAsyncSelectList
@@ -312,22 +290,6 @@ export const getField = (field: FieldProp) => {
       }
 
       break;
-    case FieldTypes.DOMAIN_SELECT_MUI: {
-      const isRequired = fieldRules.some(
-        (rule) => (rule as RuleObject).required
-      );
-
-      return (
-        <Form.Item {...formProps}>
-          <DomainTreeSelect
-            {...(props as unknown as DomainTreeSelectProps)}
-            label={typeof label === 'string' ? label : undefined}
-            placeholder={placeholder}
-            required={isRequired}
-          />
-        </Form.Item>
-      );
-    }
     case FieldTypes.USER_TEAM_SELECT:
       {
         const { children, ...rest } = props;
