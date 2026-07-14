@@ -16,6 +16,7 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.nio.charset.StandardCharsets;
+import java.util.List;
 import java.util.UUID;
 import org.apache.hc.core5.http.ContentType;
 import org.apache.hc.core5.http.io.entity.StringEntity;
@@ -34,6 +35,8 @@ public class IndexTemplateIT {
 
   private static final ObjectMapper MAPPER = new ObjectMapper();
   private static final String CLUSTER_ALIAS = "openmetadata";
+  private static final List<String> READ_ONLY_INDEX_TEMPLATE_FIELDS =
+      List.of("created_date", "created_date_millis", "modified_date", "modified_date_millis");
 
   @Test
   void testIndexTemplatesExist(TestNamespace ns) throws Exception {
@@ -414,15 +417,25 @@ public class IndexTemplateIT {
                 getResponse.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8));
     ObjectNode template =
         (ObjectNode) response.path("index_templates").get(0).path("index_template").deepCopy();
+    template.remove(READ_ONLY_INDEX_TEMPLATE_FIELDS);
     template.set("index_patterns", MAPPER.createArrayNode().add(testIndexName));
 
     Request putRequest = new Request("PUT", "/_index_template/" + testTemplateName);
     putRequest.setEntity(
         new StringEntity(MAPPER.writeValueAsString(template), ContentType.APPLICATION_JSON));
     Response putResponse = client.performRequest(putRequest);
+    int putStatus = putResponse.getStatusCode();
+    String putResponseBody =
+        putResponse.getEntity() == null
+            ? ""
+            : new String(
+                putResponse.getEntity().getContent().readAllBytes(), StandardCharsets.UTF_8);
     assertTrue(
-        putResponse.getStatusCode() == 200 || putResponse.getStatusCode() == 201,
-        "Test index template should be created successfully");
+        putStatus == 200 || putStatus == 201,
+        "Test index template should be created successfully. HTTP "
+            + putStatus
+            + ": "
+            + putResponseBody);
   }
 
   private static String uniqueTestResourceName(String label) {
