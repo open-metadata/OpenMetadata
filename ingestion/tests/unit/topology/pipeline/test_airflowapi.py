@@ -286,6 +286,7 @@ class TestClientGetDagsCount:
 class TestDeclareProgressTotals:
     def test_sets_pipeline_total_when_count_positive(self):
         source = MagicMock()
+        source.has_pipeline_filter.return_value = False
         source.connection.get_dags_count.return_value = 7
         totals = MagicMock()
 
@@ -295,6 +296,7 @@ class TestDeclareProgressTotals:
 
     def test_does_not_declare_when_count_none(self):
         source = MagicMock()
+        source.has_pipeline_filter.return_value = False
         source.connection.get_dags_count.return_value = None
         totals = MagicMock()
 
@@ -304,12 +306,24 @@ class TestDeclareProgressTotals:
 
     def test_does_not_declare_when_count_zero(self):
         source = MagicMock()
+        source.has_pipeline_filter.return_value = False
         source.connection.get_dags_count.return_value = 0
         totals = MagicMock()
 
         AirflowApiSource.declare_progress_totals(source, totals)
 
         totals.set_total.assert_not_called()
+
+    def test_does_not_declare_when_pipeline_filter_configured(self):
+        source = MagicMock()
+        source.has_pipeline_filter.return_value = True
+        source.connection.get_dags_count.return_value = 7
+        totals = MagicMock()
+
+        AirflowApiSource.declare_progress_totals(source, totals)
+
+        totals.set_total.assert_not_called()
+        source.connection.get_dags_count.assert_not_called()
 
 
 # ── Client: Date Field ───────────────────────────────────────────────────

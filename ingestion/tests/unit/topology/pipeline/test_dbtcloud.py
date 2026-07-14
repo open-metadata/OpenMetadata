@@ -551,6 +551,15 @@ class DBTCloudUnitTest(TestCase):
             self.dbtcloud.declare_progress_totals(totals)
         totals.set_total.assert_not_called()
 
+    def test_declare_progress_totals_skips_when_pipeline_filter_configured(self):
+        totals = MagicMock()
+        with patch.object(self.dbtcloud, "has_pipeline_filter", return_value=True), patch.object(
+            self.dbtcloud.client, "get_jobs_count", return_value=5
+        ) as get_jobs_count:
+            self.dbtcloud.declare_progress_totals(totals)
+        totals.set_total.assert_not_called()
+        get_jobs_count.assert_not_called()
+
     def test_get_jobs_count_uses_job_ids_length(self):
         client = self.dbtcloud.client
         client.job_ids = ["1", "2", "3"]

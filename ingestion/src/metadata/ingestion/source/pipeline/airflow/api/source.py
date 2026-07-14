@@ -94,7 +94,16 @@ class AirflowApiSource(PipelineServiceSource):
                 logger.warning(f"Error building DAG details for {dag_data.get('dag_id')}: {exc}")
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
-        """Seed the ``Pipeline`` denominator from the Airflow REST DAG count."""
+        """Seed the ``Pipeline`` denominator from the Airflow REST DAG count.
+
+        Skipped when a ``pipelineFilterPattern`` is configured: the cheap
+        server-side DAG count cannot honor the include/exclude regex, so the
+        declared total would overstate the pipelines actually processed. Since
+        ``Pipeline`` is a leaf counter that is never reconciled down, a filtered
+        run would otherwise sit permanently below 100%; fall back to
+        denominator-less progress instead."""
+        if self.has_pipeline_filter():
+            return
         count = self.connection.get_dags_count()
         if isinstance(count, int) and count > 0:
             totals.set_total("Pipeline", count)
