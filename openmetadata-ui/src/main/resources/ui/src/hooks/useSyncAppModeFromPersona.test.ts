@@ -14,10 +14,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, ReactNode } from 'react';
-import {
-  AI_APP_MODE,
-  DEFAULT_APP_MODE,
-} from '../constants/appMode.constants';
+import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
 import { AppMode } from '../generated/type/personaPreferences';
 import { useApplicationStore } from './useApplicationStore';
 import { useAppModeStore } from './useAppMode';

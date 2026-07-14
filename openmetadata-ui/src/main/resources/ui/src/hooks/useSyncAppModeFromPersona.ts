@@ -16,11 +16,11 @@ import { useEffect } from 'react';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Document } from '../generated/entity/docStore/document';
-import { AppMode } from '../generated/type/personaPreferences';
 import {
   PersonaPreferences,
   UICustomization,
 } from '../generated/system/ui/uiCustomization';
+import { AppMode } from '../generated/type/personaPreferences';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useApplicationStore } from './useApplicationStore';
 import { writeAppMode } from './useAppMode';
