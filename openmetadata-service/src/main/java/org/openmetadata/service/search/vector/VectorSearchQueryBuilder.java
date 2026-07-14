@@ -126,6 +126,10 @@ public class VectorSearchQueryBuilder {
             sb.append(',');
             appendFlat(sb, "primaryEntity.id", values);
           }
+          case "parentId" -> {
+            sb.append(',');
+            appendFlat(sb, "parentId", values);
+          }
           default -> LOG.debug("Ignoring unrecognized filter key: {}", field);
         }
       }

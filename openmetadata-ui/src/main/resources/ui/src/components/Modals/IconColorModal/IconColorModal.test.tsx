@@ -11,18 +11,29 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
+import { FormEvent, ReactNode } from 'react';
+import { Controller, FormProvider, UseFormReturn } from 'react-hook-form';
 import { Style } from '../../../generated/type/schema';
 import { StyleModalProps } from '../StyleModal/StyleModal.interface';
 import IconColorModal from './IconColorModal';
 
+type MockFieldProp = {
+  id?: string;
+  name: 'iconURL' | 'color';
+  label: ReactNode;
+  props?: { 'data-testid'?: string };
+};
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest
     .fn()
-    .mockImplementation(({ children, onPress, 'data-testid': testId }) => (
-      <button data-testid={testId} onClick={onPress}>
-        {children}
-      </button>
-    )),
+    .mockImplementation(
+      ({ children, onPress, isDisabled, 'data-testid': testId }) => (
+        <button data-testid={testId} disabled={isDisabled} onClick={onPress}>
+          {children}
+        </button>
+      )
+    ),
   Dialog: Object.assign(
     jest.fn().mockImplementation(({ children, title }) => (
       <div role="dialog">
@@ -45,6 +56,51 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     .mockImplementation(({ children, isOpen }) =>
       isOpen ? <div>{children}</div> : null
     ),
+  FieldTypes: { COLOR_PICKER: 'color_picker', ICON_PICKER: 'icon_picker' },
+  HelperTextType: { ALERT: 'alert', TOOLTIP: 'tooltip' },
+  HookForm: ({
+    children,
+    form,
+    id,
+    onSubmit,
+  }: {
+    children: ReactNode;
+    form: UseFormReturn<Style>;
+    id?: string;
+    onSubmit?: (event?: FormEvent<HTMLFormElement>) => void;
+  }) => (
+    <FormProvider {...form}>
+      <form
+        id={id}
+        onSubmit={(event) => {
+          event.preventDefault();
+          onSubmit?.(event);
+        }}>
+        {children}
+      </form>
+    </FormProvider>
+  ),
+  getField: (field: MockFieldProp) => {
+    const testId = field.props?.['data-testid'] ?? field.id ?? field.name;
+
+    return (
+      <Controller
+        key={field.id}
+        name={field.name}
+        render={({ field: { value, onChange } }) => (
+          <div data-testid={testId}>
+            <label>{field.label}</label>
+            <input
+              data-testid={`${testId}-input`}
+              type="text"
+              value={(value as string) ?? ''}
+              onChange={(event) => onChange(event.target.value)}
+            />
+          </div>
+        )}
+      />
+    );
+  },
 }));
 
 const mockOnSubmit = jest.fn();
@@ -62,42 +118,15 @@ const mockProps: StyleModalProps = {
   style: mockStyle,
 };
 
-jest.mock('../../common/ColorPicker', () => ({
-  ColorSwatchPicker: jest
-    .fn()
-    .mockImplementation(({ label, value, onChange }) => (
-      <div data-testid="color-picker">
-        <label>{label}</label>
-        <input
-          data-testid="color-input"
-          type="text"
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
-      </div>
-    )),
-}));
-
 jest.mock('../../common/IconPicker', () => ({
-  MUIIconPicker: jest
-    .fn()
-    .mockImplementation(({ label, value, onChange, placeholder }) => (
-      <div data-testid="icon-picker">
-        <label>{label}</label>
-        <input
-          data-testid="icon-input"
-          placeholder={placeholder}
-          type="text"
-          value={value}
-          onChange={(e) => onChange?.(e.target.value)}
-        />
-      </div>
-    )),
-  DEFAULT_TAG_ICON: 'default-icon',
-}));
-
-jest.mock('../../../utils/DomainUtils', () => ({
-  iconTooltipDataRender: jest.fn().mockReturnValue('Icon tooltip'),
+  AVAILABLE_ICONS: [
+    { category: 'default', component: jest.fn(), name: 'LayersThree01' },
+  ],
+  DEFAULT_TAG_ICON: {
+    category: 'default',
+    component: jest.fn(),
+    name: 'LayersThree01',
+  },
 }));
 
 describe('IconColorModal component', () => {
@@ -109,8 +138,8 @@ describe('IconColorModal component', () => {
     render(<IconColorModal {...mockProps} />);
 
     expect(await screen.findByRole('dialog')).toBeInTheDocument();
-    expect(await screen.findByTestId('icon-picker')).toBeInTheDocument();
-    expect(await screen.findByTestId('color-picker')).toBeInTheDocument();
+    expect(await screen.findByTestId('icon-picker-btn')).toBeInTheDocument();
+    expect(await screen.findByTestId('root/color')).toBeInTheDocument();
   });
 
   it('should not render the modal when open is false', () => {
@@ -135,8 +164,8 @@ describe('IconColorModal component', () => {
   it('should populate form with initial style values', async () => {
     render(<IconColorModal {...mockProps} />);
 
-    const iconInput = await screen.findByTestId('icon-input');
-    const colorInput = await screen.findByTestId('color-input');
+    const iconInput = await screen.findByTestId('icon-picker-btn-input');
+    const colorInput = await screen.findByTestId('root/color-input');
 
     expect(iconInput).toHaveValue(mockStyle.iconURL);
     expect(colorInput).toHaveValue(mockStyle.color);
@@ -169,7 +198,7 @@ describe('IconColorModal component', () => {
   it('should update icon value when icon picker changes', async () => {
     render(<IconColorModal {...mockProps} />);
 
-    const iconInput = await screen.findByTestId('icon-input');
+    const iconInput = await screen.findByTestId('icon-picker-btn-input');
     const newIconUrl = 'Tag01';
 
     await act(async () => {
@@ -182,7 +211,7 @@ describe('IconColorModal component', () => {
   it('should update color value when color picker changes', async () => {
     render(<IconColorModal {...mockProps} />);
 
-    const colorInput = await screen.findByTestId('color-input');
+    const colorInput = await screen.findByTestId('root/color-input');
     const newColor = '#00FF00';
 
     await act(async () => {
@@ -237,7 +266,7 @@ describe('IconColorModal component', () => {
   it('should update icon picker backgroundColor when color changes', async () => {
     const { rerender } = render(<IconColorModal {...mockProps} />);
 
-    const colorInput = await screen.findByTestId('color-input');
+    const colorInput = await screen.findByTestId('root/color-input');
     const newColor = '#00FF00';
 
     fireEvent.change(colorInput, { target: { value: newColor } });
@@ -245,5 +274,24 @@ describe('IconColorModal component', () => {
     rerender(<IconColorModal {...mockProps} />);
 
     expect(colorInput).toHaveValue(newColor);
+  });
+
+  it('should refresh form values when reopened with a new style while staying mounted', async () => {
+    const { rerender } = render(<IconColorModal {...mockProps} />);
+
+    expect(await screen.findByTestId('icon-picker-btn-input')).toHaveValue(
+      mockStyle.iconURL
+    );
+
+    rerender(<IconColorModal {...mockProps} open={false} />);
+
+    const newStyle: Style = { iconURL: 'Tag01', color: '#00FF00' };
+    rerender(<IconColorModal {...mockProps} open style={newStyle} />);
+
+    const iconInput = await screen.findByTestId('icon-picker-btn-input');
+    const colorInput = await screen.findByTestId('root/color-input');
+
+    expect(iconInput).toHaveValue(newStyle.iconURL);
+    expect(colorInput).toHaveValue(newStyle.color);
   });
 });

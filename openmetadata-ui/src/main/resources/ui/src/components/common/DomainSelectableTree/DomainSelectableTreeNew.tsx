@@ -10,9 +10,16 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Button as MUIButton, useTheme } from '@mui/material';
+import {
+  Button,
+  Input,
+  Tag,
+  TagGroup,
+  TagList,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { Plus } from '@untitledui/icons';
-import { Button, Empty, Select, Space, Tree } from 'antd';
+import { Tree } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce, uniqBy } from 'lodash';
 import {
@@ -50,12 +57,13 @@ import {
 } from '../../../utils/StringUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import Loader from '../Loader/Loader';
-import { TagRenderer } from '../TagRenderer/TagRenderer';
 import './domain-selectable.less';
 import {
   DomainSelectableTreeProps,
   TreeListItem,
 } from './DomainSelectableTree.interface';
+
+const MAX_VISIBLE_TAGS = 2;
 
 const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   onSubmit,
@@ -64,15 +72,12 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   onCancel,
   isMultiple = false,
   initialDomains,
-  dropdownRef,
-  handleDropdownChange,
   isClearable = true,
-  open,
 }) => {
-  const theme = useTheme();
   const { t } = useTranslation();
   const [treeData, setTreeData] = useState<TreeListItem[]>([]);
   const [domains, setDomains] = useState<Domain[]>([]);
+  const [searchValue, setSearchValue] = useState<string>('');
   const [isLoading, setIsLoading] = useState<boolean>(false);
   const [isSubmitLoading, setIsSubmitLoading] = useState(false);
   const [selectedDomains, setSelectedDomains] = useState<Domain[]>([]);
@@ -97,6 +102,8 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
 
   const pagingRef = useRef(INITIAL_PAGING_STATE);
   const scrollContainerRef = useRef<HTMLDivElement | null>(null);
+  const selectionInitializedRef = useRef<boolean>(false);
+  const searchInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     pagingRef.current = paging;
@@ -237,30 +244,17 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
           disabled: true,
           className: 'load-more-node',
           title: (
-            <MUIButton
-              startIcon={isLoadingMore ? null : <Plus />}
-              sx={{
-                p: 0,
-                ml: 7,
-                cursor: 'pointer',
-                fontSize: '14px',
-                color: theme.palette.primary.main,
-                fontWeight: theme.typography.fontWeightMedium,
-                textTransform: 'none',
-                '&:hover': {
-                  color: theme.palette.primary.dark,
-                  backgroundColor: 'transparent',
-                },
-              }}
-              variant="text"
-              onClick={(e) => {
-                e.stopPropagation();
-                handleLoadMore?.(parentFqn);
-              }}>
-              {isLoadingMore ? <Loader size="small" /> : t('label.load-more')}
-            </MUIButton>
+            <div onClick={(e) => e.stopPropagation()}>
+              <Button
+                color="link-color"
+                iconLeading={isLoadingMore ? undefined : Plus}
+                size="sm"
+                onPress={() => handleLoadMore?.(parentFqn)}>
+                {isLoadingMore ? <Loader size="small" /> : t('label.load-more')}
+              </Button>
+            </div>
           ),
-        } as TreeListItem);
+        });
       }
 
       return processedItems;
@@ -443,6 +437,14 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     return props?.expanded ? <IconDown /> : <IconRight />;
   }, []);
 
+  const selectedKeys = useMemo(
+    () =>
+      selectedDomains
+        .map((domain) => domain.fullyQualifiedName)
+        .filter(Boolean) as string[],
+    [selectedDomains]
+  );
+
   const onSearch = useCallback(
     debounce(async (value: string) => {
       setSearchTerm(value);
@@ -523,16 +525,16 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
       return <Loader />;
     } else if (treeData.length === 0) {
       return (
-        <Empty
-          description={t('label.no-entity-available', {
+        <div className="tw:py-4 tw:text-center tw:text-sm tw:text-tertiary">
+          {t('label.no-entity-available', {
             entity: t('label.domain-plural'),
           })}
-          image={Empty.PRESENTED_IMAGE_SIMPLE}
-        />
+        </div>
       );
     } else {
       return (
         <div
+          className="domain-custom-dropdown-class"
           ref={scrollContainerRef}
           style={{ maxHeight: 200, overflowY: 'auto' }}
           onScroll={handleScroll}>
@@ -542,11 +544,11 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
             showLine
             autoExpandParent={Boolean(searchTerm)}
             checkable={isMultiple}
+            checkedKeys={isMultiple ? selectedKeys : undefined}
             className="domain-selectable-tree-new"
-            defaultCheckedKeys={isMultiple ? value : []}
-            defaultSelectedKeys={isMultiple ? [] : value}
             loadData={searchTerm ? undefined : onLoadData}
             multiple={isMultiple}
+            selectedKeys={isMultiple ? undefined : selectedKeys}
             switcherIcon={switcherIcon}
             treeData={treeData}
             virtual={false}
@@ -565,7 +567,7 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
     isLoading,
     isLoadingMore,
     treeData,
-    value,
+    selectedKeys,
     onSelect,
     isMultiple,
     searchTerm,
@@ -579,97 +581,148 @@ const DomainSelectablTreeNew: FC<DomainSelectableTreeProps> = ({
   useEffect(() => {
     if (visible) {
       setSearchTerm('');
+      setSearchValue('');
+      selectionInitializedRef.current = false;
       fetchAPI();
+      searchInputRef.current?.focus();
     }
   }, [visible]);
 
-  const handleSelectChange = (selectedFqns: string[]) => {
-    const selectedData = selectedFqns
-      .map((fqn) => domainMapper[fqn])
-      .filter(Boolean);
-    setSelectedDomains(selectedData);
-  };
+  const handleRemoveDomains = useCallback(
+    (keys: Set<Key>) => {
+      setSelectedDomains((prev) => {
+        if (!isMultiple && !isClearable && prev.length === 1) {
+          return prev;
+        }
+
+        return prev.filter(
+          (domain) => !keys.has(domain.fullyQualifiedName as string)
+        );
+      });
+    },
+    [isMultiple, isClearable]
+  );
+
+  const handleSearchChange = useCallback(
+    (searchText: string) => {
+      setSearchValue(searchText);
+      onSearch(searchText);
+    },
+    [onSearch]
+  );
+
+  const handleBoxClick = useCallback(
+    (event: React.MouseEvent<HTMLDivElement>) => {
+      if ((event.target as HTMLElement).closest('button')) {
+        return;
+      }
+      searchInputRef.current?.focus();
+    },
+    []
+  );
+
+  const selectedTagItems = useMemo(
+    () =>
+      selectedDomains
+        .filter((domain) => domain?.fullyQualifiedName)
+        .map((domain) => ({
+          id: domain.fullyQualifiedName as string,
+          label: domain.displayName ?? domain.name,
+        })),
+    [selectedDomains]
+  );
+
+  const visibleTagItems = selectedTagItems.slice(0, MAX_VISIBLE_TAGS);
+  const hiddenTagCount = selectedTagItems.length - visibleTagItems.length;
 
   useEffect(() => {
+    if (selectionInitializedRef.current) {
+      return;
+    }
+
     if (initialDomains) {
       setSelectedDomains(initialDomains as unknown as Domain[]);
-    } else if (value) {
+      selectionInitializedRef.current = true;
+    } else if (value && value.length > 0) {
       const selectedData = value
         .map((fqn) => domainMapper[fqn])
         .filter(Boolean);
-      setSelectedDomains(selectedData);
+      if (selectedData.length > 0) {
+        setSelectedDomains(selectedData);
+        selectionInitializedRef.current = true;
+      }
     }
   }, [initialDomains, value, domainMapper]);
 
   return (
     <div data-testid="domain-selectable-tree" style={{ width: '339px' }}>
-      <div style={{ borderRadius: '5px', width: '100px' }}>
-        <Select
-          className="custom-domain-edit-select"
-          dropdownRender={() => treeContent}
-          dropdownStyle={{ maxHeight: 'fit-content' }}
-          filterOption={false}
-          maxTagCount={3}
-          maxTagPlaceholder={(omittedValues) => (
-            <span className="max-tag-text">
-              {t('label.plus-count-more', { count: omittedValues.length })}
-            </span>
+      <div
+        className="custom-domain-edit-select tw:flex tw:cursor-text tw:flex-col tw:gap-1 tw:rounded-lg tw:border tw:border-primary tw:px-2.5 tw:py-1.5 tw:focus-within:border-brand"
+        data-testid="domain-search-input-wrapper"
+        onClick={handleBoxClick}>
+        {selectedTagItems.length > 0 && (
+          <div className="tw:flex tw:flex-nowrap tw:items-center tw:gap-1 tw:overflow-hidden">
+            <TagGroup
+              className="tw:flex tw:min-w-0 tw:flex-nowrap tw:gap-1"
+              label={t('label.domain-plural')}
+              size="sm"
+              onRemove={handleRemoveDomains}>
+              <TagList
+                className="tw:flex tw:min-w-0 tw:flex-nowrap tw:gap-1"
+                items={visibleTagItems}>
+                {(item) => (
+                  <Tag id={item.id}>
+                    <span className="tw:inline-block tw:max-w-20 tw:truncate tw:align-bottom">
+                      {item.label}
+                    </span>
+                  </Tag>
+                )}
+              </TagList>
+            </TagGroup>
+          </div>
+        )}
+        <div className="tw:flex tw:min-w-0 tw:items-center tw:gap-2">
+          {hiddenTagCount > 0 && (
+            <Typography
+              className="tw:shrink-0 tw:text-brand-secondary"
+              data-testid="domain-tag-more-count"
+              size="text-xs"
+              weight="medium">
+              {t('label.plus-count-more', { count: hiddenTagCount })}
+            </Typography>
           )}
-          mode={isMultiple ? 'multiple' : undefined}
-          open={open}
-          options={domains.map((domain) => ({
-            value: domain?.fullyQualifiedName,
-            label: domain?.name,
-          }))}
-          placeholder="Select a domain"
-          popupClassName="domain-custom-dropdown-class"
-          ref={dropdownRef}
-          tagRender={TagRenderer}
-          value={
-            selectedDomains
-              ?.map((domain) => domain?.fullyQualifiedName)
-              .filter(Boolean) as string[]
-          }
-          onChange={handleSelectChange}
-          onDropdownVisibleChange={handleDropdownChange}
-          onSearch={onSearch}
+          <Input
+            className="tw:min-w-16 tw:flex-1"
+            inputClassName="tw:p-0!"
+            inputDataTestId="domain-search-input"
+            placeholder={t('label.select-entity', {
+              entity: t('label.domain'),
+            })}
+            ref={searchInputRef}
+            value={searchValue}
+            wrapperClassName="tw:bg-transparent! tw:shadow-none! tw:ring-0!"
+            onChange={handleSearchChange}
+          />
+        </div>
+      </div>
+      <div className="tw:mt-2">{treeContent}</div>
+      <div className="tw:mt-3 tw:flex tw:justify-end tw:gap-2">
+        <Button
+          className="profile-edit-save tw:size-7.5 tw:p-0!"
+          data-testid="user-profile-domain-edit-save"
+          iconLeading={<ClosePopoverIcon height={24} />}
+          size="sm"
+          onPress={onCancel}
+        />
+        <Button
+          className="profile-edit-cancel tw:size-7.5 tw:p-0!"
+          data-testid="user-profile-domain-edit-cancel"
+          iconLeading={<SavePopoverIcon height={24} />}
+          isLoading={isSubmitLoading}
+          size="sm"
+          onPress={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}
         />
       </div>
-      <Space className="d-flex" size={8}>
-        <Button
-          className="profile-edit-save"
-          data-testid="user-profile-domain-edit-save"
-          icon={<ClosePopoverIcon height={24} />}
-          size="small"
-          style={{
-            width: '30px',
-            height: '30px',
-            background: '#0950C5',
-            position: 'absolute',
-            bottom: '20px',
-            right: '58px',
-          }}
-          type="primary"
-          onClick={onCancel}
-        />
-        <Button
-          className="profile-edit-cancel"
-          data-testid="user-profile-domain-edit-cancel"
-          icon={<SavePopoverIcon height={24} />}
-          loading={isSubmitLoading}
-          size="small"
-          style={{
-            width: '30px',
-            height: '30px',
-            background: '#0950C5',
-            position: 'absolute',
-            bottom: '20px',
-            right: '20px',
-          }}
-          type="primary"
-          onClick={isMultiple ? handleMultiDomainSave : handleSingleDomainSave}
-        />
-      </Space>
     </div>
   );
 };

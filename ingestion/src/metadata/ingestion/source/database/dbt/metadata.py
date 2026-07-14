@@ -1539,7 +1539,7 @@ class DbtSource(DbtServiceSource):
                         )
                     ],
                     sampleData=None,
-                    result=None,
+                    result=(dbt_test_result.message if test_case_status != TestCaseStatus.Success else None),
                 )
 
                 # Create the test case fqns and add the results

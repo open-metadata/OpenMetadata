@@ -73,9 +73,26 @@ public final class TableDataQualityPage extends PageObject {
                 && r.url().contains("entityType=COLUMN"),
         () -> {
           page.locator("[id='root\\/column']").click();
-          page.locator("[title='" + columnName + "']").click();
+          page.getByRole(AriaRole.OPTION)
+              .filter(new Locator.FilterOptions().setHasText(columnName))
+              .first()
+              .click();
         });
     return this;
+  }
+
+  /**
+   * Select a test definition in the type combobox by its display name. The migrated
+   * react-hook-form field renders options as {@code role=option} with no per-option testid,
+   * so filter by the visible label (mirrors the {@code selectTestType} TS helper).
+   */
+  private void selectTestType(final String displayName) {
+    page.locator("[id='root\\/testType']").click();
+    page.locator("[id='root\\/testType']").fill(displayName);
+    page.getByRole(AriaRole.OPTION)
+        .filter(new Locator.FilterOptions().setHasText(displayName))
+        .first()
+        .click();
   }
 
   /**
@@ -84,9 +101,8 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitColumnValueLengthsToBeBetween(
       final String testCaseName, final String minLength, final String maxLength) {
-    byTestId("test-case-name").fill(testCaseName);
-    page.locator("[id='root\\/testType']").click();
-    byTestId("columnValueLengthsToBeBetween").click();
+    byTestId("test-case-name").locator("input").fill(testCaseName);
+    selectTestType("Column Value Lengths To Be Between");
     page.locator("#testCaseFormV1_params_minLength").fill(minLength);
     page.locator("#testCaseFormV1_params_maxLength").fill(maxLength);
 
@@ -104,9 +120,8 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitColumnValuesToBeInSet(
       final String testCaseName, final java.util.List<String> allowedValues) {
-    byTestId("test-case-name").fill(testCaseName);
-    page.locator("[id='root\\/testType']").click();
-    byTestId("columnValuesToBeInSet").click();
+    byTestId("test-case-name").locator("input").fill(testCaseName);
+    selectTestType("Column Values To Be In Set");
     // Fill each allowed-value row. UI renders one row by default; click "+" for extras.
     for (int i = 0; i < allowedValues.size(); i++) {
       if (i > 0) {
@@ -129,9 +144,8 @@ public final class TableDataQualityPage extends PageObject {
    */
   public TableDataQualityPage submitTableColumnNameToExist(
       final String testCaseName, final String columnName) {
-    byTestId("test-case-name").fill(testCaseName);
-    page.locator("[id='root\\/testType']").click();
-    byTestId("tableColumnNameToExist").click();
+    byTestId("test-case-name").locator("input").fill(testCaseName);
+    selectTestType("Table Column Name To Exist");
     page.locator("#testCaseFormV1_params_columnName").fill(columnName);
 
     page.waitForResponse(
@@ -170,14 +184,14 @@ public final class TableDataQualityPage extends PageObject {
     page.waitForResponse(
         r -> r.url().matches(API_TEST_DEFINITION_REGEX),
         () -> byTestId("edit-" + testCaseName).click());
-    byTestId("edit-test-case-drawer-title")
+    byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     return this;
   }
 
-  /** Update a single param field (id starts with {@code tableTestForm_params_}) and save. */
+  /** Update a single param field (id starts with {@code testCaseFormV1_params_}) and save. */
   public TableDataQualityPage updateParamAndSave(final String paramName, final String newValue) {
-    final String selector = "#tableTestForm_params_" + paramName;
+    final String selector = "#testCaseFormV1_params_" + paramName;
     page.locator(selector).clear();
     page.locator(selector).fill(newValue);
     page.waitForResponse(
@@ -193,10 +207,10 @@ public final class TableDataQualityPage extends PageObject {
   /**
    * Read an array-shaped param at a given index from the OPEN edit drawer (caller
    * already invoked {@link #openEditDrawer}). Form field id pattern:
-   * {@code #tableTestForm_params_<name>_<idx>_value}.
+   * {@code #testCaseFormV1_params_<name>_<idx>_value}.
    */
   public String readArrayParamValue(final String paramName, final int index) {
-    final String selector = "#tableTestForm_params_" + paramName + "_" + index + "_value";
+    final String selector = "#testCaseFormV1_params_" + paramName + "_" + index + "_value";
     page.locator(selector)
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     return page.locator(selector).inputValue();
@@ -205,7 +219,7 @@ public final class TableDataQualityPage extends PageObject {
   /** Update an array-shaped param at a given index in the OPEN edit drawer and save. */
   public TableDataQualityPage updateArrayParamAndSave(
       final String paramName, final int index, final String newValue) {
-    final String selector = "#tableTestForm_params_" + paramName + "_" + index + "_value";
+    final String selector = "#testCaseFormV1_params_" + paramName + "_" + index + "_value";
     page.locator(selector).clear();
     page.locator(selector).fill(newValue);
     page.waitForResponse(
@@ -229,7 +243,7 @@ public final class TableDataQualityPage extends PageObject {
   /** Re-open the edit drawer, read a param input value, then close (Cancel). */
   public String readParam(final String testCaseName, final String paramName) {
     openEditDrawer(testCaseName);
-    final String selector = "#tableTestForm_params_" + paramName;
+    final String selector = "#testCaseFormV1_params_" + paramName;
     page.locator(selector)
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     final String value = page.locator(selector).inputValue();
@@ -243,7 +257,8 @@ public final class TableDataQualityPage extends PageObject {
   public TableDataQualityPage deleteTestCase(final String testCaseName) {
     byTestId("action-dropdown-" + testCaseName).click();
     byTestId("delete-" + testCaseName).click();
-    page.locator("#deleteTextInput").fill("DELETE");
+    byTestId("confirm-button")
+        .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.VISIBLE));
     page.waitForResponse(
         r ->
             r.url().contains("/api/v1/dataQuality/testCases/")

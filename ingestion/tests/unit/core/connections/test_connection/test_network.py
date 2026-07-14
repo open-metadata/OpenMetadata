@@ -11,6 +11,7 @@
 """Unit tests for the TCP reachability preflight and its diagnosis pack."""
 
 import socket
+from unittest.mock import patch
 
 import pytest
 
@@ -48,6 +49,28 @@ def test_tcp_probe_raises_network_error_when_port_is_closed(closed_port):
         tcp_probe("127.0.0.1", closed_port)
     assert f"127.0.0.1:{closed_port}" in str(exc.value)
     assert isinstance(exc.value.__cause__, ConnectionRefusedError)
+
+
+def test_tcp_probe_connects_to_one_resolved_ip_bounded_by_timeout():
+    # Resolving to a single IP first means one connect attempt at the given
+    # timeout, so a multi-IP host on a dead port cannot multiply the wait.
+    with (
+        patch("socket.gethostbyname", return_value="10.0.0.5") as resolve,
+        patch("socket.create_connection") as connect,
+    ):
+        tcp_probe("many-ips.example.com", 443, timeout=20)
+
+    resolve.assert_called_once_with("many-ips.example.com")
+    connect.assert_called_once_with(("10.0.0.5", 443), timeout=20)
+
+
+def test_tcp_probe_raises_when_the_name_cannot_be_resolved():
+    with (
+        patch("socket.gethostbyname", side_effect=socket.gaierror(-2, "Name or service not known")),
+        pytest.raises(NetworkUnreachableError) as exc,
+    ):
+        tcp_probe("nope.example.com", 443)
+    assert isinstance(exc.value.__cause__, socket.gaierror)
 
 
 def test_network_errors_classifies_connection_refused():
