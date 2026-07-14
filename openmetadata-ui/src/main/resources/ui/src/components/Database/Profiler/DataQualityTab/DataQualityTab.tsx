@@ -22,7 +22,7 @@ import {
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { ChevronDown, ClipboardCheck, DotsVertical } from '@untitledui/icons';
+import { ChevronDown, DotsVertical, File02 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isUndefined, sortBy, toLower } from 'lodash';
@@ -852,7 +852,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
                         ? 'message.no-matching-test-cases-description'
                         : 'message.no-test-cases-yet-description'
                     )}
-                    icon={ClipboardCheck}
+                    icon={<File02 className="tw:text-fg-brand-primary" />}
                     title={t(
                       hasActiveFilters
                         ? 'message.no-matching-test-cases'
