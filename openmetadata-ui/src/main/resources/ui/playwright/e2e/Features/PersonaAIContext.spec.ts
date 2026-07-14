@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, Route } from '@playwright/test';
+import { Page, Request, Route } from '@playwright/test';
 import { EntityType } from '../../../src/enums/entity.enum';
 import {
   CacheState,
@@ -20,7 +20,10 @@ import {
 } from '../../../src/generated/type/personaContextDefinition';
 import { expect, test } from '../../support/fixtures/userPages';
 import { PersonaClass } from '../../support/persona/PersonaClass';
-import { getDefaultAdminAPIContext } from '../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  toastNotification,
+} from '../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   navigateToPersonaSettings,
@@ -69,10 +72,60 @@ const createDocument = (): PersonaContextDocument => ({
   truncatedCount: 0,
 });
 
+// Builds a realistically-shaped, very large context document (one rule section
+// per matched table, with a column list and prose) so the preview has to render
+// hundreds of KB of markdown — the case that stresses the block-editor renderer.
+const buildLargeMarkdown = (ruleCount: number): string => {
+  const columns = Array.from(
+    { length: 40 },
+    (_, c) => `\`col_${c}:VARCHAR\``
+  ).join(', ');
+  const body = Array.from({ length: ruleCount }, (_, i) =>
+    [
+      `## Rule: dataset group ${i}`,
+      '',
+      `### Table: warehouse.public.fact_events_${i}`,
+      '',
+      `**Columns:** ${columns}`,
+      '',
+      `One row per event for dataset ${i}. `.repeat(24),
+      '',
+    ].join('\n')
+  ).join('\n');
+
+  return [
+    '---',
+    'persona: "Load Test"',
+    'generated_at: "2026-07-13T00:00:00Z"',
+    'rules: 1',
+    'budget: 2000000',
+    'tokens_est: 120000',
+    '---',
+    '',
+    '# Persona context: Load Test',
+    '',
+    body,
+  ].join('\n');
+};
+
+const isPersonaContextWrite = (
+  basePath: string,
+  path: string,
+  request: Request
+): boolean => {
+  const isRuleWrite =
+    path.startsWith(`${basePath}/rules`) &&
+    path !== `${basePath}/rules/preview`;
+  const isSettingsWrite = path === basePath && request.method() === 'PUT';
+
+  return isRuleWrite || isSettingsWrite;
+};
+
 const mockPersonaContextApi = async (
   page: Page,
   personaId: string,
-  initialRules: ContextRule[]
+  initialRules: ContextRule[],
+  options: { failWrites?: boolean; resolveGenerating?: boolean } = {}
 ) => {
   const basePath = `/api/v1/personas/${personaId}/aiContext`;
   let documentRequestCount = 0;
@@ -95,6 +148,14 @@ const mockPersonaContextApi = async (
   await page.route(`**${basePath}**`, async (route) => {
     const request = route.request();
     const path = new URL(request.url()).pathname;
+
+    if (options.failWrites && isPersonaContextWrite(basePath, path, request)) {
+      return route.fulfill({
+        body: JSON.stringify({ message: 'Injected failure' }),
+        contentType: 'application/json',
+        status: 500,
+      });
+    }
 
     if (path === `${basePath}/rules/preview`) {
       const rule = request.postDataJSON() as ContextRule;
@@ -187,6 +248,13 @@ const mockPersonaContextApi = async (
       definition = { ...definition, ...settings };
 
       return fulfill(route, definition);
+    }
+
+    if (
+      options.resolveGenerating &&
+      definition.cacheState === CacheState.Generating
+    ) {
+      definition = { ...definition, cacheState: CacheState.Fresh };
     }
 
     return fulfill(route, definition);
@@ -293,7 +361,7 @@ test.describe.serial('Persona AI Context', () => {
     await openPersonaContext(adminPage);
 
     await expect(
-      adminPage.locator('.persona-ai-context-settings-card')
+      adminPage.getByTestId('persona-ai-context-settings-card')
     ).toHaveAttribute('data-disabled', 'true');
     await expect(
       adminPage.getByTestId('preview-persona-context')
@@ -304,9 +372,7 @@ test.describe.serial('Persona AI Context', () => {
     await expect(adminPage.getByTestId('form-heading')).toHaveText('Add Rule');
     await expect(adminPage.getByText(/142 entities matched/)).toBeVisible();
 
-    const drawerBody = adminPage.locator(
-      '.persona-ai-context-rule-drawer .drawer-form-content'
-    );
+    const drawerBody = adminPage.getByRole('dialog').getByRole('main');
     await expect(drawerBody).toHaveCSS('overflow-y', 'auto');
     expect(
       await drawerBody.evaluate(
@@ -323,24 +389,14 @@ test.describe.serial('Persona AI Context', () => {
     await adminPage.getByTestId('context-rule-name').fill('Analytics articles');
     await adminPage
       .getByTestId('context-rule-description')
+      .locator('textarea')
       .fill('Guidance for dashboard authors');
 
     const entitySelect = adminPage.getByTestId('context-rule-entity-type');
     await entitySelect.click();
-    const entityTypePopup = adminPage.locator(
-      '.persona-ai-context-entity-type-popup'
-    );
+    const entityTypePopup = adminPage.getByRole('listbox');
     await expect(entityTypePopup).toBeVisible();
-    await expect(
-      entityTypePopup.locator('.ant-select-item-option')
-    ).toHaveCount(18);
-    const entityTypeList = entityTypePopup.locator('.rc-virtual-list-holder');
-    await expect(entityTypeList).toHaveCSS('overflow-y', 'auto');
-    expect(
-      await entityTypeList.evaluate(
-        (element) => element.scrollHeight > element.clientHeight
-      )
-    ).toBe(true);
+    await expect(entityTypePopup.getByRole('option')).toHaveCount(18);
     for (const option of [
       'Table',
       'Topic',
@@ -375,13 +431,15 @@ test.describe.serial('Persona AI Context', () => {
 
     await expect(adminPage.getByText(/Generic content/)).toBeVisible();
     await expect(
-      adminPage.getByTestId('context-rule-always-in-context')
-    ).toHaveAttribute('aria-checked', 'true');
+      adminPage
+        .getByTestId('context-rule-always-in-context')
+        .getByRole('switch')
+    ).toBeChecked();
     await expect(
-      adminPage.getByTestId('context-rule-fully-rendered')
-    ).toHaveAttribute('aria-checked', 'true');
+      adminPage.getByTestId('context-rule-fully-rendered').getByRole('switch')
+    ).toBeChecked();
     await expect(
-      adminPage.getByTestId('context-rule-fully-rendered')
+      adminPage.getByTestId('context-rule-fully-rendered').getByRole('switch')
     ).toBeDisabled();
     for (const section of [
       'Title & summary',
@@ -451,7 +509,7 @@ test.describe.serial('Persona AI Context', () => {
     // Conjunction toggle is a react-aria ToggleButtonGroup (selectionMode
     // "single"), which exposes role="radio" items — not buttons.
     const orOperator = adminPage
-      .locator('.persona-ai-context-rule-drawer')
+      .getByRole('dialog')
       .getByRole('radio', { name: 'Or', exact: true });
     await expect(orOperator).toBeVisible();
     await orOperator.click();
@@ -462,7 +520,7 @@ test.describe.serial('Persona AI Context', () => {
 
     await entitySelect.click();
     await entityTypePopup.getByText('Article', { exact: true }).click();
-    await adminPage.getByRole('dialog').getByRole('spinbutton').fill('25');
+    await adminPage.getByTestId('context-rule-max-assets').fill('25');
 
     const createRuleRequest = adminPage.waitForRequest(
       (request) =>
@@ -490,9 +548,9 @@ test.describe.serial('Persona AI Context', () => {
       (request) =>
         request.url().endsWith('/aiContext') && request.method() === 'PUT'
     );
-    const budgetInput = adminPage
-      .locator('.persona-ai-context-settings-card .ant-input-number-input')
-      .first();
+    const budgetInput = adminPage.getByTestId(
+      'persona-context-character-budget'
+    );
     await budgetInput.fill('175000');
     await budgetInput.blur();
     expect((await settingsRequest).postDataJSON()).toMatchObject({
@@ -557,14 +615,14 @@ test.describe.serial('Persona AI Context', () => {
         request.method() === 'DELETE'
     );
     await adminPage
-      .locator('.ant-popconfirm')
-      .getByRole('button', { name: 'Delete', exact: true })
+      .getByTestId('delete-modal')
+      .getByTestId('confirm-button')
       .click();
     await deleteRuleRequest;
 
     await expect(adminPage.getByText('No AI context rules yet')).toBeVisible();
     await expect(
-      adminPage.locator('.persona-ai-context-settings-card')
+      adminPage.getByTestId('persona-ai-context-settings-card')
     ).toHaveAttribute('data-disabled', 'true');
   });
 
@@ -599,7 +657,7 @@ test.describe.serial('Persona AI Context', () => {
 
     await adminPage.getByText('Rendered', { exact: true }).click();
     await adminPage
-      .getByRole('button', { name: 'Rule: Semantic layer tables' })
+      .getByRole('button', { name: 'Semantic layer tables' })
       .click();
 
     await adminPage.getByTestId('copy-persona-context').click();
@@ -617,5 +675,433 @@ test.describe.serial('Persona AI Context', () => {
         .getByTestId('persona-context-preview-modal')
         .getByText('fresh', { exact: true })
     ).toBeVisible();
+  });
+
+  test('measures the large-document preview render cost', async ({
+    adminPage,
+  }) => {
+    test.slow();
+    const personaId = persona.responseData.id as string;
+    await mockPersonaContextApi(adminPage, personaId, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 5000,
+        maxAssets: 1000,
+        name: 'Everything, fully rendered',
+        sections: [],
+      },
+    ]);
+
+    const markdown = buildLargeMarkdown(350);
+    const bytes = new TextEncoder().encode(markdown).length;
+    const largeDocument: PersonaContextDocument = {
+      bytes,
+      cacheState: CacheState.Fresh,
+      entitiesIncluded: 350,
+      generatedAt: Date.now(),
+      markdown,
+      tokensEst: Math.ceil(markdown.length / 4),
+      truncated: true,
+      truncatedCount: 141,
+    };
+    // Override just the document endpoint with the large payload.
+    await adminPage.route('**/aiContext/document', (route) =>
+      route.fulfill({
+        body: JSON.stringify(largeDocument),
+        contentType: 'application/json',
+        status: 200,
+      })
+    );
+
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('preview-persona-context').click();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+    // The modal opens in "Rendered" mode, so the block editor parses the whole
+    // document up front. Measure how long the rendered heading takes to paint.
+    const startedAt = Date.now();
+    await expect(
+      adminPage.getByRole('heading', { name: 'Persona context: Load Test' })
+    ).toBeVisible({ timeout: 60_000 });
+    const renderMs = Date.now() - startedAt;
+
+    console.log(
+      `[large-doc] Rendered ${(bytes / 1024).toFixed(0)} KB in ${renderMs} ms`
+    );
+
+    // Raw mode is a plain <pre>, so it stays responsive regardless of size.
+    await adminPage.getByText('Raw', { exact: true }).click();
+    await expect(
+      adminPage.getByTestId('persona-context-raw-document')
+    ).toContainText('warehouse.public.fact_events_0');
+  });
+
+  test('builds real version history and restores an earlier version', async ({
+    browser,
+    adminPage,
+  }) => {
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
+    const personaId = persona.responseData.id as string;
+    const aiBase = `/api/v1/personas/${personaId}/aiContext`;
+    const versionsUrl = `/api/v1/personas/${personaId}/versions`;
+    const formatVersion = (version: number) => version.toFixed(1);
+    const RULE_NAME = 'Version history probe rule';
+    try {
+      await apiContext.put(aiBase, {
+        data: { cacheTtlMinutes: 30, characterBudget: 120000, enabled: true },
+      });
+      const ruleResponse = await apiContext.post(`${aiBase}/rules`, {
+        data: {
+          entityType: EntityType.TABLE,
+          maxAssets: 25,
+          name: RULE_NAME,
+          queryFilter: '',
+          sections: [],
+        },
+      });
+      expect(ruleResponse.ok()).toBe(true);
+      expect(
+        ((await ruleResponse.json()) as PersonaContextDefinition).rules?.some(
+          ({ name }) => name === RULE_NAME
+        )
+      ).toBe(true);
+
+      const historyResponse = await apiContext.get(versionsUrl);
+      const history = (await historyResponse.json()) as { versions: string[] };
+      const snapshots = history.versions
+        .map(
+          (snapshot) =>
+            JSON.parse(snapshot) as {
+              version: number;
+              contextDefinition?: PersonaContextDefinition;
+            }
+        )
+        .sort((a, b) => b.version - a.version);
+      const currentVersion = snapshots[0].version;
+      const beforeRuleVersion = snapshots.find(
+        (snapshot) =>
+          !(snapshot.contextDefinition?.rules ?? []).some(
+            ({ name }) => name === RULE_NAME
+          )
+      )?.version;
+      expect(beforeRuleVersion).toBeDefined();
+
+      await openPersonaContext(adminPage);
+      await expect(adminPage.getByText(RULE_NAME)).toBeVisible();
+
+      await adminPage.getByTestId('persona-context-version').click();
+      const drawer = adminPage.getByTestId('persona-context-version-history');
+      await expect(drawer).toBeVisible();
+      await expect(drawer.getByText('Current')).toBeVisible();
+      await expect(
+        adminPage.getByTestId(`version-dot-${formatVersion(currentVersion)}`)
+      ).toBeVisible();
+      await expect(drawer.getByText(`Rule '${RULE_NAME}' added`)).toBeVisible();
+
+      const restoreRequest = adminPage.waitForRequest(
+        (request) =>
+          request.url().endsWith(`/personas/${personaId}`) &&
+          request.method() === 'PATCH'
+      );
+      await adminPage
+        .getByTestId(`restore-version-${formatVersion(beforeRuleVersion!)}`)
+        .click();
+      await adminPage.getByTestId('confirm-restore-version').click();
+      await restoreRequest;
+
+      await expect(
+        adminPage.getByTestId('empty-add-context-rule')
+      ).toBeVisible();
+
+      const restoredDefinition = (await (
+        await apiContext.get(aiBase)
+      ).json()) as PersonaContextDefinition;
+      expect(restoredDefinition.rules ?? []).toHaveLength(0);
+    } finally {
+      await afterAction();
+    }
+  });
+
+  test('rolls back the optimistic rule and toasts when the save fails', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      [],
+      { failWrites: true }
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage.getByTestId('context-rule-name').fill('Doomed rule');
+
+    const failedCreate = adminPage.waitForResponse(
+      (response) =>
+        response.url().endsWith('/aiContext/rules') &&
+        response.request().method() === 'POST' &&
+        response.status() === 500
+    );
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+    await failedCreate;
+
+    await toastNotification(adminPage, /Injected failure/);
+    await expect(adminPage.getByTestId('form-heading')).toBeVisible();
+    await expect(
+      adminPage
+        .getByTestId('context-rule-card')
+        .filter({ hasText: 'Doomed rule' })
+    ).toHaveCount(0);
+  });
+
+  test('reverts the enabled toggle when the settings update fails', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      [
+        {
+          entityType: EntityType.TABLE,
+          id: RULE_ID,
+          matchedCount: 142,
+          maxAssets: 50,
+          name: 'Semantic layer tables',
+          sections: [ContextSection.Description],
+        },
+      ],
+      { failWrites: true }
+    );
+    await openPersonaContext(adminPage);
+
+    const toggle = adminPage
+      .getByTestId('persona-context-enabled')
+      .getByRole('switch');
+    await expect(toggle).toBeChecked();
+
+    const failedUpdate = adminPage.waitForResponse(
+      (response) =>
+        response.url().endsWith('/aiContext') &&
+        response.request().method() === 'PUT' &&
+        response.status() === 500
+    );
+    await adminPage.getByTestId('persona-context-enabled').click();
+    await failedUpdate;
+
+    await toastNotification(adminPage, /Injected failure/);
+    await expect(toggle).toBeChecked();
+  });
+
+  test('surfaces the generating cache state and settles to fresh', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      [],
+      { resolveGenerating: true }
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('Kick off generation');
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+
+    const settingsCard = adminPage.getByTestId(
+      'persona-ai-context-settings-card'
+    );
+    await expect(
+      settingsCard.getByText('generating', { exact: true })
+    ).toBeVisible();
+    await expect(
+      settingsCard.getByText('fresh', { exact: true })
+    ).toBeVisible();
+  });
+
+  test('retries the preview after a failed document load', async ({
+    adminPage,
+  }) => {
+    const personaId = persona.responseData.id as string;
+    await mockPersonaContextApi(adminPage, personaId, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Semantic layer tables',
+        sections: [ContextSection.Description],
+      },
+    ]);
+
+    let documentCalls = 0;
+    await adminPage.route('**/aiContext/document', (route) => {
+      documentCalls++;
+
+      return route.fulfill({
+        body: JSON.stringify(
+          documentCalls === 1 ? { message: 'boom' } : createDocument()
+        ),
+        contentType: 'application/json',
+        status: documentCalls === 1 ? 500 : 200,
+      });
+    });
+
+    await openPersonaContext(adminPage);
+    await adminPage.getByTestId('preview-persona-context').click();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
+
+    await adminPage.getByRole('button', { name: 'Try Again' }).click();
+    await expect(adminPage.getByText('1 entities included')).toBeVisible();
+  });
+
+  test('blocks saving a rule whose name already exists', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Semantic layer tables',
+        sections: [ContextSection.Description],
+      },
+    ]);
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('add-context-rule').click();
+    await adminPage
+      .getByTestId('context-rule-name')
+      .fill('Semantic layer tables');
+    await adminPage.getByRole('button', { name: 'Save Rule' }).click();
+
+    await expect(adminPage.getByText('Name already exists')).toBeVisible();
+    await expect(adminPage.getByTestId('form-heading')).toBeVisible();
+  });
+
+  test('clears and persists the character budget and cache TTL', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(adminPage, persona.responseData.id as string, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Semantic layer tables',
+        sections: [ContextSection.Description],
+      },
+    ]);
+    await openPersonaContext(adminPage);
+
+    const budget = adminPage.getByTestId('persona-context-character-budget');
+    await budget.fill('');
+    await expect(budget).toHaveValue('');
+    await budget.fill('250000');
+
+    const budgetRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext') && request.method() === 'PUT'
+    );
+    await budget.blur();
+    expect((await budgetRequest).postDataJSON()).toMatchObject({
+      characterBudget: 250000,
+    });
+
+    const ttl = adminPage.getByTestId('persona-context-cache-ttl');
+    await ttl.fill('');
+    await expect(ttl).toHaveValue('');
+    await ttl.fill('45');
+
+    const ttlRequest = adminPage.waitForRequest(
+      (request) =>
+        request.url().endsWith('/aiContext') && request.method() === 'PUT'
+    );
+    await ttl.blur();
+    expect((await ttlRequest).postDataJSON()).toMatchObject({
+      cacheTtlMinutes: 45,
+    });
+  });
+
+  test('links View in Explore to the entity-type explore tab', async ({
+    adminPage,
+  }) => {
+    await mockPersonaContextApi(
+      adminPage,
+      persona.responseData.id as string,
+      []
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('empty-add-context-rule').click();
+    await expect(adminPage.getByText(/142 entities matched/)).toBeVisible();
+
+    await expect(
+      adminPage.getByRole('link', { name: 'View in Explore' })
+    ).toHaveAttribute('href', /\/explore\/tables/);
+  });
+
+  test('shows the empty version history state', async ({ adminPage }) => {
+    const personaId = persona.responseData.id as string;
+    await mockPersonaContextApi(adminPage, personaId, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Semantic layer tables',
+        sections: [ContextSection.Description],
+      },
+    ]);
+    await adminPage.route(`**/personas/${personaId}/versions`, (route) =>
+      route.fulfill({
+        body: JSON.stringify({ entityType: 'persona', versions: [] }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('persona-context-version').click();
+    const drawer = adminPage.getByTestId('persona-context-version-history');
+    await expect(drawer).toBeVisible();
+    await expect(drawer.getByText('No version history yet')).toBeVisible();
+  });
+
+  test('shows the truncated count in the preview stats', async ({
+    adminPage,
+  }) => {
+    const personaId = persona.responseData.id as string;
+    await mockPersonaContextApi(adminPage, personaId, [
+      {
+        entityType: EntityType.TABLE,
+        id: RULE_ID,
+        matchedCount: 142,
+        maxAssets: 50,
+        name: 'Semantic layer tables',
+        sections: [ContextSection.Description],
+      },
+    ]);
+    await adminPage.route('**/aiContext/document', (route) =>
+      route.fulfill({
+        body: JSON.stringify({
+          ...createDocument(),
+          truncated: true,
+          truncatedCount: 7,
+        }),
+        contentType: 'application/json',
+        status: 200,
+      })
+    );
+    await openPersonaContext(adminPage);
+
+    await adminPage.getByTestId('preview-persona-context').click();
+    await expect(adminPage.getByRole('dialog')).toBeVisible();
+    await expect(adminPage.getByText('7 truncated')).toBeVisible();
   });
 });

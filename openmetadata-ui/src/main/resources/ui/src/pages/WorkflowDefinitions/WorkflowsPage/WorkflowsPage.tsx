@@ -282,7 +282,7 @@ const WorkflowsPage = () => {
                 showHome={false}
               />
             }
-            className="tw:mb-4"
+            className="tw:mb-5"
             subtitle={t('message.workflow-subtitle')}
             title={t('label.workflow-plural')}
             variant="gradient"
