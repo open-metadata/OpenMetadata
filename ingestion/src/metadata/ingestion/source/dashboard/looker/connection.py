@@ -115,6 +115,10 @@ def _contains_any(*tokens: str) -> Matcher:
     return match
 
 
+# The statuses handled here are the ones the API spec documents for the endpoints
+# these checks call (/login, /user, /versions, /dashboards, /lookml_models): 400,
+# 404 and 429. It documents no 401 anywhere, and no 403 on any of them, so an
+# unmatched status keeps its raw errorLog rather than a made-up diagnosis.
 LOOKER_ERRORS = ErrorPack(
     # Ordered before the generic 404: Looker rejects credentials with a 404 on
     # /login, so the endpoint is what separates them from a wrong host.
@@ -128,19 +132,13 @@ LOOKER_ERRORS = ErrorPack(
         fix="Provide both the Client ID and the Client Secret.",
         doc=API_SDK_DOC,
     ),
-    when(_http_status(401)).diagnose(
-        "Authentication failed",
-        fix="Looker did not accept the credentials. Check the Client ID and Client Secret.",
-        doc=API_SDK_DOC,
-    ),
-    when(_http_status(403)).diagnose(
-        "Insufficient permissions",
-        fix="The credentials are valid but not authorized for this call. Grant the user access to "
-        "the dashboards and models to ingest.",
-    ),
     when(_http_status(404)).diagnose(
         "Resource not found",
         fix="Looker could not find the requested resource. Check that Host Port is the instance URL.",
+    ),
+    when(_http_status(429)).diagnose(
+        "Rate limited by Looker",
+        fix="Looker is throttling the requests. Retry once the instance is under less load.",
     ),
     when(Matchers.exception(UnsupportedApiVersionError)).diagnose(
         f"API {SDK_API_VERSION} is not supported by this instance",

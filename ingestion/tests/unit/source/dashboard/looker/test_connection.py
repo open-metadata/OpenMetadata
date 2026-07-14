@@ -30,9 +30,10 @@ from metadata.ingestion.source.dashboard.looker.connection import (
 CONNECTION_MODULE = "metadata.ingestion.source.dashboard.looker.connection"
 
 LOGIN_404 = "https://cloud.google.com/looker/docs/r/err/4.0/404/post/api/4.0/login"
+DASHBOARDS_404 = "https://cloud.google.com/looker/docs/r/err/4.0/404/get/api/4.0/dashboards"
+DASHBOARDS_429 = "https://cloud.google.com/looker/docs/r/err/4.0/429/get/api/4.0/dashboards"
 DASHBOARDS_401 = "https://cloud.google.com/looker/docs/r/err/4.0/401/get/api/4.0/dashboards"
 DASHBOARDS_403 = "https://cloud.google.com/looker/docs/r/err/4.0/403/get/api/4.0/dashboards"
-DASHBOARDS_404 = "https://cloud.google.com/looker/docs/r/err/4.0/404/get/api/4.0/dashboards"
 
 
 def _sdk_error(message: str, documentation_url: str = "") -> SDKError:
@@ -222,7 +223,7 @@ def test_list_lookml_models_warns_when_none_are_visible():
 
 def test_list_lookml_models_wraps_a_failure_as_check_error():
     provider, client = _checks()
-    client.all_lookml_models.side_effect = _sdk_error("Insufficient permissions", documentation_url=DASHBOARDS_403)
+    client.all_lookml_models.side_effect = _sdk_error("Not found", documentation_url=DASHBOARDS_404)
 
     with pytest.raises(CheckError) as exc_info:
         provider.list_lookml_models()
@@ -256,18 +257,18 @@ def test_a_404_away_from_login_is_diagnosed_as_a_missing_resource():
     assert diagnosis.title == "Resource not found"
 
 
-def test_a_401_is_diagnosed_as_an_auth_failure():
-    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Not authenticated", documentation_url=DASHBOARDS_401))
+def test_a_429_is_diagnosed_as_rate_limiting():
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Too many requests", documentation_url=DASHBOARDS_429))
 
     assert diagnosis is not None
-    assert diagnosis.title == "Authentication failed"
+    assert diagnosis.title == "Rate limited by Looker"
 
 
-def test_a_403_is_diagnosed_as_missing_permissions():
-    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Insufficient permissions", documentation_url=DASHBOARDS_403))
-
-    assert diagnosis is not None
-    assert diagnosis.title == "Insufficient permissions"
+def test_an_undocumented_status_keeps_its_raw_error():
+    # The API spec documents no 401 anywhere, and no 403 on any endpoint these
+    # checks call, so neither gets an invented diagnosis - the raw errorLog stands.
+    assert LOOKER_ERRORS.classify(_sdk_error("nope", documentation_url=DASHBOARDS_401)) is None
+    assert LOOKER_ERRORS.classify(_sdk_error("nope", documentation_url=DASHBOARDS_403)) is None
 
 
 def test_lookers_generic_404_page_is_diagnosed_as_an_auth_failure():
