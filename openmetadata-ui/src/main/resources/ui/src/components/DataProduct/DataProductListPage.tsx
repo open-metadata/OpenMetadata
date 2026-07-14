@@ -19,7 +19,6 @@ import {
 } from '@openmetadata/ui-core-components';
 import { Globe01 } from '@untitledui/icons';
 import { isEmpty } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { ReactNode, useCallback, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
@@ -32,6 +31,7 @@ import { EntityType } from '../../enums/entity.enum';
 import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { withPageLayout } from '../../hoc/withPageLayout';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
 import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
@@ -50,7 +50,6 @@ import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
 import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
@@ -60,19 +59,23 @@ import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
+import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,
   transformDomainFormData,
 } from '../Domain/AddDomainForm/AddDomainForm.component';
 import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
 import { DomainFormType } from '../Domain/DomainPage.interface';
+import { DataProductListPageProps } from './DataProductListPage.interface';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
-const DataProductListPage = () => {
+const DataProductListPage = ({
+  renderPageHeader,
+}: DataProductListPageProps) => {
   const dataProductListing = useDataProductListingData();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const { t } = useTranslation();
-  const { enqueueSnackbar, closeSnackbar } = useSnackbar();
+  const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
   const form = useForm<DomainFormValues>({
     defaultValues: DOMAIN_FORM_DEFAULTS,
@@ -110,15 +113,13 @@ const DataProductListPage = () => {
           onSuccess: () => {
             form.reset();
           },
-          enqueueSnackbar,
-          closeSnackbar,
           t,
         });
       } finally {
         setIsLoading(false);
       }
     },
-    [form, enqueueSnackbar, closeSnackbar, t]
+    [form, t]
   );
 
   const refreshDataProducts = useCallback(() => {
@@ -159,6 +160,28 @@ const DataProductListPage = () => {
       loading: isLoading,
     });
 
+  const breadcrumbItems = useMemo(
+    () => [
+      ...(isMarketplace
+        ? [
+            {
+              label: t('label.data-marketplace'),
+              href: ROUTES.DATA_MARKETPLACE,
+            },
+          ]
+        : []),
+      {
+        label: t('label.data-product-plural'),
+        href: dataProductBasePath,
+      },
+    ],
+    [dataProductBasePath, isMarketplace, t]
+  );
+
+  const headerBreadcrumb = (
+    <HeaderBreadcrumb noMargin items={breadcrumbItems} />
+  );
+
   const { pageHeader } = usePageHeader({
     titleKey: 'label.data-product-plural',
     descriptionMessageKey: 'message.data-product-description',
@@ -166,6 +189,8 @@ const DataProductListPage = () => {
     addButtonLabelKey: 'label.add-data-product',
     onAddClick: openDrawer,
     learningPageId: LEARNING_PAGE_IDS.DATA_PRODUCT,
+    variant: isAiMode ? 'search' : undefined,
+    breadcrumb: headerBreadcrumb,
   });
 
   const { titleAndCount } = useTitleAndCount({
@@ -180,7 +205,7 @@ const DataProductListPage = () => {
     initialSearchQuery: dataProductListing.urlState.searchQuery,
   });
 
-  const { view, viewToggle } = useViewToggle();
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
@@ -327,7 +352,7 @@ const DataProductListPage = () => {
       );
     }
 
-    if (view === 'table') {
+    if (view === ViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -374,20 +399,17 @@ const DataProductListPage = () => {
 
   return (
     <>
-      <HeaderBreadcrumb
-        items={[
-          ...(isMarketplace
-            ? [
-                {
-                  label: t('label.data-marketplace'),
-                  href: ROUTES.DATA_MARKETPLACE,
-                },
-              ]
-            : []),
-          { label: t('label.data-product-plural'), href: dataProductBasePath },
-        ]}
-      />
-      {pageHeader}
+      {!renderPageHeader && !isAiMode && (
+        <HeaderBreadcrumb items={breadcrumbItems} />
+      )}
+      {renderPageHeader
+        ? renderPageHeader({
+            onAddClick: openDrawer,
+            createPermission: permissions.dataProduct?.Create || false,
+            count: dataProductListing.totalEntities,
+            breadcrumb: headerBreadcrumb,
+          })
+        : pageHeader}
 
       <Card style={{ marginBottom: 20 }} variant="elevated">
         <Box
@@ -399,7 +421,7 @@ const DataProductListPage = () => {
             {search}
             {quickFilters}
             <Box className="tw:ml-auto" />
-            {viewToggle}
+            <ViewToggle value={view} onChange={setView} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

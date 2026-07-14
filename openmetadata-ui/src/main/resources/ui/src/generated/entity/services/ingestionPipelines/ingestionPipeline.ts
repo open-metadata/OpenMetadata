@@ -1628,10 +1628,6 @@ export interface Pipeline {
  * Cache Warmup Application Configuration.
  *
  * Configuration for the AutoPilot Application.
- *
- * Configuration for the MCP Chat Application. The LLM provider and credentials are
- * configured at the platform level via `llmConfiguration`; this app only governs chat
- * behavior.
  */
 export interface CollateAIAppConfig {
     /**
@@ -1836,10 +1832,6 @@ export interface CollateAIAppConfig {
      * Service Entity Link for which to trigger the application.
      */
     entityLink?: string;
-    /**
-     * The system prompt that guides the assistant behavior.
-     */
-    systemPrompt?: string;
     [property: string]: any;
 }
 
@@ -3501,12 +3493,17 @@ export interface DatabasePolicyConfig {
 }
 
 /**
- * Pattern of access being requested.
+ * Access operation the Policy Agent should perform. Grant variants — FullAccess (all
+ * columns), ColumnLevel (restricted to the columns listed in 'columns'), Masked
+ * (anonymized/masked columns) — grant privileges at the given scope. Revoke tears down
+ * whatever the principal currently holds at the scope (a revoke takes back everything, not
+ * a specific level).
  */
 export enum AccessType {
     ColumnLevel = "ColumnLevel",
     FullAccess = "FullAccess",
     Masked = "Masked",
+    Revoke = "Revoke",
 }
 
 /**
@@ -5245,8 +5242,7 @@ export interface ConfigObject {
      */
     accountUsageSchema?: string;
     /**
-     * Optional configuration for ingestion to keep the client session active in case the
-     * ingestion process runs for longer durations.
+     * Keep the session alive for long-running scans.
      */
     clientSessionKeepAlive?: boolean;
     /**
@@ -5254,17 +5250,15 @@ export interface ConfigObject {
      */
     creditCost?: number;
     /**
-     * Optional configuration for ingestion of Snowflake stages (internal and external). By
-     * default, stages are not ingested.
+     * Ingest external and internal stages.
      */
     includeStages?: boolean;
     /**
-     * Optional configuration for ingestion of streams, By default, it will skip the streams.
+     * Ingest Snowflake streams as data assets.
      */
     includeStreams?: boolean;
     /**
-     * Optional configuration for ingestion of TRANSIENT tables, By default, it will skip the
-     * TRANSIENT tables.
+     * Ingest transient tables alongside permanent ones.
      */
     includeTransientTables?: boolean;
     /**

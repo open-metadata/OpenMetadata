@@ -16,20 +16,26 @@ import {
   Skeleton,
   Typography,
 } from '@openmetadata/ui-core-components';
+import classNames from 'classnames';
 import { FC, useCallback, useEffect, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ContextMemory } from '../../../generated/entity/context/contextMemory';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getListContextMemories } from '../../../rest/contextMemoryAPI';
 import { getEntityName } from '../../../utils/EntityNameUtils';
+import WidgetCard from '../../common/WidgetCard/WidgetCard';
 import CreateMemoryModal from '../CreateMemoryModal/CreateMemoryModal.component';
 
 interface ExtractedMemoriesCardProps {
   sourceId: string;
+  collapsible?: boolean;
+  titleClassName?: string;
 }
 
 const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
   sourceId,
+  collapsible = false,
+  titleClassName,
 }) => {
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
@@ -81,33 +87,26 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
       false) ||
     Boolean(currentUser?.isAdmin);
 
-  return (
-    // shrink-0: Card sets overflow-hidden, which lets flexbox shrink it to fit
-    // the scroll container and clip the list instead of letting the body scroll
-    <Card className="tw:p-4 tw:shrink-0" data-testid="extracted-memories-card">
-      <div className="tw:mb-3">
-        <Typography
-          className="tw:text-gray-500 tw:uppercase"
-          size="text-xs"
-          weight="semibold">
-          {t('label.memory-plural')}
-          {!isLoading && memories.length > 0 ? ` (${memories.length})` : ''}
-        </Typography>
-      </div>
+  const memoriesTitle = `${t('label.memory-plural')}${
+    !isLoading && memories.length > 0 ? ` (${memories.length})` : ''
+  }`;
+
+  const memoriesContent = (
+    <>
       {isLoading ? (
         <Box direction="col" gap={2}>
           <Skeleton height="14px" variant="rounded" width="80%" />
           <Skeleton height="14px" variant="rounded" width="60%" />
         </Box>
       ) : memories.length === 0 ? (
-        <Typography className="tw:text-gray-400" size="text-sm">
+        <Typography className="tw:text-utility-gray-400" size="text-sm">
           {t('label.no-entity', { entity: t('label.memory-plural') })}
         </Typography>
       ) : (
         <Box direction="col">
           {memories.map((memory) => (
             <Box
-              className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-gray-50"
+              className="tw:py-1.5 tw:-mx-2 tw:px-2 tw:rounded-md tw:cursor-pointer hover:tw:bg-secondary"
               data-testid={`extracted-memory-${memory.id}`}
               direction="col"
               key={memory.id}
@@ -121,7 +120,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
               }}>
               <Typography
                 ellipsis
-                className="tw:text-gray-900"
+                className="tw:text-primary"
                 size="text-sm"
                 weight="medium">
                 {memory.title ?? getEntityName(memory)}
@@ -129,7 +128,7 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
               {memory.question && (
                 <Typography
                   ellipsis
-                  className="tw:text-gray-500"
+                  className="tw:text-quaternary"
                   size="text-xs">
                   {memory.question}
                 </Typography>
@@ -152,6 +151,33 @@ const ExtractedMemoriesCard: FC<ExtractedMemoriesCardProps> = ({
           onUpdated={handleMemoryDeleted}
         />
       )}
+    </>
+  );
+
+  if (collapsible) {
+    return (
+      <WidgetCard
+        dataTestId="extracted-memories-card"
+        isExpandDisabled={isLoading}
+        title={memoriesTitle}>
+        {memoriesContent}
+      </WidgetCard>
+    );
+  }
+
+  return (
+    // shrink-0: Card sets overflow-hidden, which lets flexbox shrink it to fit
+    // the scroll container and clip the list instead of letting the body scroll
+    <Card className="tw:p-4 tw:shrink-0" data-testid="extracted-memories-card">
+      <div className="tw:mb-3">
+        <Typography
+          className={classNames('tw:text-quaternary', titleClassName)}
+          size="text-xs"
+          weight="semibold">
+          {memoriesTitle}
+        </Typography>
+      </div>
+      {memoriesContent}
     </Card>
   );
 };

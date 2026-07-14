@@ -13,6 +13,18 @@
       "description": "Type of the Knowledge Page.",
       "type": "string",
       "enum": ["Article", "QuickLink"]
+    },
+    "pageProcessingStatus": {
+      "javaType": "org.openmetadata.schema.entity.data.PageProcessingStatus",
+      "description": "Status of the asynchronous knowledge-pill extraction for an article's body. Distinct from the governance entityStatus.",
+      "type": "string",
+      "enum": ["Queued", "Processing", "Processed", "Failed"],
+      "javaEnums": [
+        { "name": "Queued" },
+        { "name": "Processing" },
+        { "name": "Processed" },
+        { "name": "Failed" }
+      ]
     }
   },
   "properties": {
@@ -139,6 +151,14 @@
         "$ref": "../../attachments/asset.json"
       },
       "default": null
+    },
+    "processingStatus": {
+      "description": "Status of the most recent knowledge-pill extraction run on this article's body.",
+      "$ref": "#/definitions/pageProcessingStatus"
+    },
+    "processingError": {
+      "description": "Error message from the most recent failed knowledge-pill extraction run, if any.",
+      "type": "string"
     },
     "extractionStats": {
       "description": "Statistics from the most recent knowledge-pill extraction run on this page's body.",

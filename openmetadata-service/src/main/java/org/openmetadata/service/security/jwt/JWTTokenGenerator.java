@@ -62,8 +62,8 @@ public class JWTTokenGenerator {
   private static final JWTTokenGenerator INSTANCE = new JWTTokenGenerator();
   private RSAPrivateKey privateKey;
   @Getter private RSAPublicKey publicKey;
-  private String issuer;
-  private String kid;
+  @Getter private String issuer;
+  @Getter private String kid;
   private AuthenticationConfiguration.TokenValidationAlgorithm tokenValidationAlgorithm;
 
   private JWTTokenGenerator() {

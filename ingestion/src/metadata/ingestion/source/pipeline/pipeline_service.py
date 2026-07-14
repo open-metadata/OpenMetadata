@@ -351,6 +351,13 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
     def yield_create_request_pipeline_service(self, config: WorkflowSource):
         yield Either(right=self.metadata.get_create_service_from_source(entity=PipelineService, config=config))
 
+    def has_pipeline_filter(self) -> bool:
+        """Whether a ``pipelineFilterPattern`` that actually drops pipelines is
+        configured. An empty pattern object filters nothing, so a progress
+        pre-count stays accurate only while this is ``False``."""
+        pattern = self.source_config.pipelineFilterPattern
+        return bool(pattern and (pattern.includes or pattern.excludes))
+
     def get_pipeline(self) -> Any:
         for pipeline_detail in self.get_pipelines_list():
             pipeline_name = self.get_pipeline_name(pipeline_detail)

@@ -173,9 +173,15 @@ jest.mock('../../context/LineageProvider/LineageProvider', () =>
   jest.fn().mockReturnValue(<>LineageProvider</>)
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockReturnValue(<div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
@@ -202,7 +208,7 @@ jest.mock('../../rest/feedsAPI', () => ({
 
 jest.mock('../../rest/storageAPI');
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
 jest.mock('../../utils/RecentActivityUtils', () => ({
@@ -217,7 +223,7 @@ jest.mock('../../utils/TagsUtils', () => ({
   sortTagsCaseInsensitive: jest.fn().mockImplementation((tags) => tags),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
   getEntityMissingError: jest.fn().mockImplementation(() => <div>Error</div>),
 }));
 

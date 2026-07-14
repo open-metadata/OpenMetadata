@@ -5,6 +5,7 @@ import { Popover } from '@/components/base/select/popover';
 import {
   type SelectItemType,
   SelectContext,
+  SelectEmptyState,
   sizes,
 } from '@/components/base/select/select';
 import { Typography } from '@/components/foundations/typography';
@@ -18,8 +19,10 @@ import type {
   PointerEventHandler,
   ReactNode,
   RefAttributes,
+  RefObject,
 } from 'react';
 import {
+  Children,
   createContext,
   isValidElement,
   useCallback,
@@ -54,9 +57,14 @@ interface AutocompleteContextValue {
   selectedItems: SelectItemType[];
   onRemove: (keys: Set<Key>) => void;
   onInputChange: (value: string) => void;
+  onCreateItem?: (value: string) => void;
+  allowsCreation: boolean;
+  hideDropdown: boolean;
   renderTag?: (item: SelectItemType, onRemove: () => void) => ReactNode;
   maxVisibleItems?: number;
   multiple: boolean;
+  visibleItemCount: number;
+  triggerRef: RefObject<HTMLDivElement | null>;
 }
 
 const AutocompleteContext = createContext<AutocompleteContextValue>({
@@ -65,8 +73,13 @@ const AutocompleteContext = createContext<AutocompleteContextValue>({
   selectedItems: [],
   onRemove: () => {},
   onInputChange: () => {},
+  onCreateItem: undefined,
+  allowsCreation: false,
+  hideDropdown: false,
   maxVisibleItems: undefined,
   multiple: true,
+  visibleItemCount: 0,
+  triggerRef: { current: null },
 });
 
 interface AutocompleteTriggerProps extends AriaGroupProps {
@@ -98,6 +111,8 @@ export interface AutocompleteProps
   onSearchChange?: (value: string) => void;
   maxVisibleItems?: number;
   multiple?: boolean;
+  allowsCreation?: boolean;
+  hideDropdown?: boolean;
 }
 
 const renderChipIcon = (item: SelectItemType) => {
@@ -131,12 +146,24 @@ const InnerAutocomplete = ({
   const context = useContext(AutocompleteContext);
   const comboBoxStateContext = useContext(ComboBoxStateContext);
 
+  const canCreateItem =
+    context.allowsCreation &&
+    (context.hideDropdown || context.visibleItemCount === 0);
+
   const handleInputKeyDown = (event: KeyboardEvent<HTMLInputElement>) => {
+    const inputValue = event.currentTarget.value;
     const isCaretAtStart =
       event.currentTarget.selectionStart === 0 &&
       event.currentTarget.selectionEnd === 0;
 
-    if (!isCaretAtStart && event.currentTarget.value !== '') {
+    if (event.key === 'Enter' && canCreateItem && inputValue.trim() !== '') {
+      event.preventDefault();
+      context.onCreateItem?.(inputValue.trim());
+
+      return;
+    }
+
+    if (!isCaretAtStart && inputValue !== '') {
       return;
     }
 
@@ -256,6 +283,15 @@ const InnerAutocomplete = ({
         <AriaInput
           className="tw:w-full tw:flex-[1_0_0] tw:appearance-none tw:bg-transparent tw:text-sm tw:text-ellipsis tw:text-primary tw:caret-alpha-black/90 tw:outline-hidden tw:placeholder:text-placeholder tw:focus:outline-hidden tw:disabled:cursor-not-allowed tw:disabled:text-disabled tw:disabled:placeholder:text-disabled"
           placeholder={placeholder}
+          onBlur={(event) => {
+            const inputValue = event.target.value.trim();
+            const isMovingInsideWidget = context.triggerRef?.current?.contains(
+              event.relatedTarget
+            );
+            if (!isMovingInsideWidget && canCreateItem && inputValue !== '') {
+              context.onCreateItem?.(inputValue);
+            }
+          }}
           onKeyDown={handleInputKeyDown}
           onMouseDown={handleInputMouseDown}
         />
@@ -325,6 +361,8 @@ export const AutocompleteBase = ({
   multiple = true,
   onSearchChange,
   maxVisibleItems,
+  allowsCreation = false,
+  hideDropdown = false,
   name: _name,
   className: _className,
   ...props
@@ -365,6 +403,33 @@ export const AutocompleteBase = ({
     [allItems]
   );
 
+  // The ListBox renders the caller's static children. Filter them by the
+  // computed `visibleItems` so the default `contains` filter actually narrows
+  // the list as the user types. Async callers neutralize this by passing
+  // `filterOption={() => true}` (visibleItems === allItems), and any non-item
+  // child (create/footer rows, whose id isn't in the collection) is preserved.
+  const visibleIds = useMemo(
+    () => new Set(visibleItems.map((item) => String(item.id))),
+    [visibleItems]
+  );
+  const visibleChildren = useMemo(() => {
+    if (typeof children === 'function') {
+      return children;
+    }
+
+    return Children.toArray(children).filter((child) => {
+      if (!isValidElement(child)) {
+        return true;
+      }
+      const childId = (child.props as { id?: Key }).id;
+      if (childId == null || !itemMap.has(childId as SelectItemType['id'])) {
+        return true;
+      }
+
+      return visibleIds.has(String(childId));
+    });
+  }, [children, visibleIds, itemMap]);
+
   const onRemove = useCallback(
     (keys: Set<Key>) => {
       const key = keys.values().next().value;
@@ -404,21 +469,48 @@ export const AutocompleteBase = ({
     [onSearchChange]
   );
 
+  const onCreateItem = useCallback(
+    (value: string) => {
+      const newItem: SelectItemType = { id: value, label: value };
+      setAllItems((prev) =>
+        prev.some((item) => item.id === value) ? prev : [...prev, newItem]
+      );
+      const alreadySelected = internalSelected.some(
+        (item) => item.id === value
+      );
+      if (!multiple) {
+        setInternalSelected([newItem]);
+        if (!alreadySelected) {
+          onItemInserted?.(value);
+        }
+      } else if (!alreadySelected) {
+        setInternalSelected((prev) => [...prev, newItem]);
+        onItemInserted?.(value);
+      }
+      setFilterText('');
+    },
+    [onItemInserted, multiple, internalSelected]
+  );
+
   const triggerRef = useRef<HTMLDivElement>(null);
+
+  // Match the popover width to the trigger. The base Popover relies on
+  // `--trigger-width`, but react-aria only sets that on a trigger's own context
+  // popover — a standalone `<Popover triggerRef>` (as used here) never receives
+  // it, so the dropdown would otherwise collapse to its content width. Measure
+  // the trigger and set the width explicitly (same approach as MultiSelect).
   const [popoverWidth, setPopoverWidth] = useState('');
 
   const onResize = useCallback(() => {
-    if (!triggerRef.current) {
-      return;
+    if (triggerRef.current) {
+      setPopoverWidth(triggerRef.current.getBoundingClientRect().width + 'px');
     }
-    const rect = triggerRef.current.getBoundingClientRect();
-    setPopoverWidth(rect.width + 'px');
   }, [triggerRef]);
 
   useResizeObserver({ ref: triggerRef, onResize, box: 'border-box' });
 
   const selectContextValue = useMemo(
-    () => ({ size: 'sm' as const, fontSize: 'md' as const }),
+    () => ({ size: 'sm' as const, fontSize: 'sm' as const }),
     []
   );
 
@@ -429,18 +521,28 @@ export const AutocompleteBase = ({
       selectedItems: internalSelected,
       onInputChange,
       onRemove,
+      onCreateItem,
+      allowsCreation,
+      hideDropdown,
       renderTag,
       maxVisibleItems,
       multiple,
+      visibleItemCount: visibleItems.length,
+      triggerRef,
     }),
     [
       selectedKeys,
       internalSelected,
       onInputChange,
       onRemove,
+      onCreateItem,
+      allowsCreation,
+      hideDropdown,
       renderTag,
       maxVisibleItems,
       multiple,
+      visibleItems.length,
+      triggerRef,
     ]
   );
 
@@ -451,7 +553,7 @@ export const AutocompleteBase = ({
           allowsEmptyCollection
           inputValue={filterText}
           items={visibleItems}
-          menuTrigger="input"
+          menuTrigger="focus"
           selectedKey={null}
           onInputChange={onInputChange}
           onSelectionChange={onSelectionChange}
@@ -478,17 +580,20 @@ export const AutocompleteBase = ({
                 />
               </div>
 
-              <Popover
-                className={popoverClassName}
-                size="md"
-                style={{ width: popoverWidth }}
-                triggerRef={triggerRef}>
-                <AriaListBox
-                  className="tw:size-full tw:outline-hidden"
-                  selectionMode="multiple">
-                  {children}
-                </AriaListBox>
-              </Popover>
+              {!hideDropdown && (
+                <Popover
+                  className={popoverClassName}
+                  size="md"
+                  style={{ width: popoverWidth }}
+                  triggerRef={triggerRef}>
+                  <AriaListBox
+                    className="tw:size-full tw:outline-hidden"
+                    renderEmptyState={() => <SelectEmptyState />}
+                    selectionMode="multiple">
+                    {visibleChildren}
+                  </AriaListBox>
+                </Popover>
+              )}
 
               {hint && <HintText isInvalid={isInvalid}>{hint}</HintText>}
             </div>

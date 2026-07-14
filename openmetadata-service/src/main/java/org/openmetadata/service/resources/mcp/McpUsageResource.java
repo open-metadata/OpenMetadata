@@ -45,8 +45,6 @@ import java.util.function.Consumer;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.AppRepository;
 import org.openmetadata.service.resources.Collection;
@@ -414,10 +412,7 @@ public class McpUsageResource {
    * even if new MCP tool calls are recorded mid-request, preventing duplicate or skipped rows.
    */
   private void forEachRow(long from, long to, Consumer<McpToolCallUsage> visit) {
-    App app = resolveMcpApp();
-    if (app == null) {
-      return;
-    }
+    App app = new App().withName(McpAppConstants.MCP_APP_NAME);
     int offset = 0;
     while (true) {
       List<McpToolCallUsage> page =
@@ -438,12 +433,6 @@ public class McpUsageResource {
       }
       offset += PAGE_SIZE;
     }
-  }
-
-  private App resolveMcpApp() {
-    AbstractNativeApplication app =
-        ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
-    return app != null ? app.getApp() : null;
   }
 
   static long resolveStart(Long startTs) {

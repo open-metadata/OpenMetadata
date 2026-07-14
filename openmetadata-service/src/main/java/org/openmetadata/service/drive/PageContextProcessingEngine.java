@@ -13,6 +13,7 @@ import org.apache.commons.codec.digest.DigestUtils;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.entity.data.Page;
+import org.openmetadata.schema.entity.data.PageProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
@@ -138,9 +139,31 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     // cancel() (e.g. on delete) can reach it.
     pending.remove(pageId, firedFuture);
     try {
-      runExtraction(pageId);
+      ExtractionOutcome outcome = runExtraction(pageId);
+      if (outcome.skipped()) {
+        stampStatus(pageId, PageProcessingStatus.Processed, null);
+      }
     } catch (Exception e) {
       LOG.error("Knowledge pill extraction failed for page {}", pageId, e);
+      stampStatus(pageId, PageProcessingStatus.Failed, e.getMessage());
+    }
+  }
+
+  /**
+   * Persists a terminal processing status from the scheduler thread (post-commit, so it never races
+   * the body edit that armed the run) for the paths the pipeline does not stamp itself: a skip
+   * (content unchanged since the last run) and a failure. The success path stamps {@link
+   * PageProcessingStatus#Processed} through {@link #stampStats} alongside the run's stats. A no-op
+   * when the page already carries the target status, so an unchanged-content skip does not churn the
+   * row.
+   */
+  private void stampStatus(UUID pageId, PageProcessingStatus status, String error) {
+    Page current = getPage(pageId);
+    if (current != null && current.getProcessingStatus() != status) {
+      Page updated = JsonUtils.deepCopy(current, Page.class);
+      updated.setProcessingStatus(status);
+      updated.setProcessingError(error);
+      pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
     }
   }
 
@@ -169,6 +192,8 @@ public class PageContextProcessingEngine extends ContextProcessingEngine {
     if (current != null) {
       Page updated = JsonUtils.deepCopy(current, Page.class);
       updated.setExtractionStats(stats);
+      updated.setProcessingStatus(PageProcessingStatus.Processed);
+      updated.setProcessingError(null);
       pageRepository.update(null, current, updated, Entity.ADMIN_USER_NAME);
     }
   }

@@ -351,9 +351,7 @@ class TestTagProcessor:
         processor = TagProcessor(
             config=workflow_config,
             metadata=mock_metadata,
-            classification_manager=classification_manager.extend(
-                (pii_classification, [mixed_tag]),
-            ),
+            classification_manager=FakeClassificationManager((pii_classification, [mixed_tag])),
             score_tags_for_column=score_tags_for_column,
         )
 

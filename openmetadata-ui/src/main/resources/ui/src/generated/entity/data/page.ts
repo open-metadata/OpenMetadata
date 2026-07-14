@@ -103,6 +103,14 @@ export interface Page {
      */
     parent?: EntityReference;
     /**
+     * Error message from the most recent failed knowledge-pill extraction run, if any.
+     */
+    processingError?: string;
+    /**
+     * Status of the most recent knowledge-pill extraction run on this article's body.
+     */
+    processingStatus?: PageProcessingStatus;
+    /**
      * Related Entities for the Knowledge Page
      */
     relatedEntities?: EntityReference[];
@@ -394,6 +402,19 @@ export interface Article {
 export enum PageType {
     Article = "Article",
     QuickLink = "QuickLink",
+}
+
+/**
+ * Status of the most recent knowledge-pill extraction run on this article's body.
+ *
+ * Status of the asynchronous knowledge-pill extraction for an article's body. Distinct from
+ * the governance entityStatus.
+ */
+export enum PageProcessingStatus {
+    Failed = "Failed",
+    Processed = "Processed",
+    Processing = "Processing",
+    Queued = "Queued",
 }
 
 /**

@@ -1,0 +1,74 @@
+{
+  "$id": "https://open-metadata.org/schema/configuration/aiSettings.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "AISettings",
+  "description": "Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM system prompts.",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.configuration.AISettings",
+  "definitions": {
+    "deletionPolicy": {
+      "javaType": "org.openmetadata.schema.configuration.AIDeletionPolicy",
+      "type": "string",
+      "enum": ["cascade", "orphan", "deprecate"],
+      "default": "cascade"
+    },
+    "memoryExtraction": {
+      "javaType": "org.openmetadata.schema.configuration.MemoryExtractionSettings",
+      "type": "object",
+      "properties": {
+        "fromFiles": { "type": "boolean", "default": true },
+        "fromPages": { "type": "boolean", "default": true }
+      },
+      "additionalProperties": false
+    },
+    "memoryAgent": {
+      "javaType": "org.openmetadata.schema.configuration.MemoryAgentSettings",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": true },
+        "deriveGlossaryTerms": { "type": "boolean", "default": true },
+        "deriveMetrics": { "type": "boolean", "default": true },
+        "deletionPolicy": { "$ref": "#/definitions/deletionPolicy" }
+      },
+      "additionalProperties": false
+    },
+    "promptConfig": {
+      "javaType": "org.openmetadata.schema.configuration.PromptConfig",
+      "type": "object",
+      "properties": {
+        "systemPrompt": { "type": "string" }
+      },
+      "additionalProperties": false
+    },
+    "prompts": {
+      "javaType": "org.openmetadata.schema.configuration.AIPrompts",
+      "type": "object",
+      "properties": {
+        "memoryExtraction": { "$ref": "#/definitions/promptConfig" },
+        "memoryAgent": { "$ref": "#/definitions/promptConfig" }
+      },
+      "additionalProperties": false
+    },
+    "mcpChat": {
+      "javaType": "org.openmetadata.schema.configuration.McpChatSettings",
+      "description": "MCP Chat assistant. The LLM provider and credentials are configured at the platform level via llmConfiguration; this only governs chat enablement and behavior.",
+      "type": "object",
+      "properties": {
+        "enabled": { "type": "boolean", "default": false },
+        "systemPrompt": {
+          "type": "string",
+          "default": "You are a helpful metadata assistant for OpenMetadata. Use the available tools to search, explore, and manage metadata. Be concise and actionable."
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "properties": {
+    "enabled": { "type": "boolean", "default": true },
+    "memoryExtraction": { "$ref": "#/definitions/memoryExtraction" },
+    "memoryAgent": { "$ref": "#/definitions/memoryAgent" },
+    "prompts": { "$ref": "#/definitions/prompts" },
+    "mcpChat": { "$ref": "#/definitions/mcpChat" }
+  },
+  "additionalProperties": false
+}

@@ -11,14 +11,14 @@
  *  limitations under the License.
  */
 
-import { Card, Skeleton, Typography } from '@openmetadata/ui-core-components';
-import { File06 } from '@untitledui/icons';
+import { Card, Skeleton } from '@openmetadata/ui-core-components';
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { KnowledgePage } from '../../../interface/knowledge-center.interface';
 import contextCenterClassBase from '../../../utils/ContextCenterClassBase';
 import { getKnowledgePageName } from '../../../utils/KnowledgePagePureUtils';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import HeaderShell from '../../common/HeaderShell/HeaderShell.component';
 
 interface ArticleVersionHeaderProps {
   knowledgePage?: KnowledgePage;
@@ -29,11 +29,10 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 }) => {
   const { t } = useTranslation();
 
+  const isEmbedded = contextCenterClassBase.isEmbeddedMode();
+
   const breadcrumbItems = [
-    {
-      label: t('label.context-center'),
-      href: contextCenterClassBase.getContextCenterPath(),
-    },
+    contextCenterClassBase.getContextCenterRootBreadcrumb(t),
     {
       label: t('label.article-plural'),
       href: contextCenterClassBase.getArticlesListPath(),
@@ -57,41 +56,20 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
   }
 
   const breadcrumbInsideCard = contextCenterClassBase.isBreadcrumbInsideCard();
-  const cardStyle = contextCenterClassBase.getCardStyle();
-  const breadcrumbClassName = contextCenterClassBase.getBreadcrumbClassName();
 
   const breadcrumbEl = (
-    <HeaderBreadcrumb
-      showHome
-      className={breadcrumbClassName}
-      items={breadcrumbItems}
-    />
+    <HeaderBreadcrumb items={breadcrumbItems} showHome={!isEmbedded} />
   );
 
   return (
-    <div
-      className="tw:flex tw:flex-col tw:mb-5"
-      data-testid="article-version-header">
+    <div data-testid="article-version-header">
       {!breadcrumbInsideCard && breadcrumbEl}
-
-      <Card className="tw:mb-0 tw:p-6" style={cardStyle}>
-        {breadcrumbInsideCard && <div className="tw:mb-4">{breadcrumbEl}</div>}
-        <div className="tw:flex tw:gap-4 tw:items-center">
-          <div className="tw:w-auto tw:shrink-0 tw:bg-gray-100 tw:rounded-xl tw:flex tw:items-center tw:p-2">
-            <File06
-              className="tw:text-gray-500"
-              height={40}
-              strokeWidth={1.2}
-              style={{ verticalAlign: 'middle', flexShrink: 0 }}
-              width={40}
-            />
-          </div>
-
-          <Typography as="h3">
-            {getKnowledgePageName(knowledgePage, t)}
-          </Typography>
-        </div>
-      </Card>
+      <HeaderShell
+        breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
+        padding="comfortable"
+        title={getKnowledgePageName(knowledgePage, t)}
+        variant={isEmbedded ? 'gradient' : 'flat'}
+      />
     </div>
   );
 };

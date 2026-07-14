@@ -357,27 +357,18 @@ export const createTagTaskFromForm = async ({
 export const openEntityTasksTab = async (page: Page) => {
   logTaskDebug('openEntityTasksTab:start');
   const activityFeedTab = page.getByTestId('activity_feed');
-
-  if (await activityFeedTab.isVisible().catch(() => false)) {
-    await activityFeedTab.click();
-    await waitForPageLoaded(page);
-  }
+  await activityFeedTab.waitFor({ state: 'visible' });
+  await activityFeedTab.click();
+  await waitForPageLoaded(page);
 
   const menuItemTaskTab = page.getByRole('menuitem', { name: /tasks/i });
-  const buttonTaskTab = page.getByRole('button', { name: /tasks/i });
+  await menuItemTaskTab.waitFor({ state: 'visible' });
 
-  if (await menuItemTaskTab.isVisible().catch(() => false)) {
-    const taskListResponse = waitForTaskListResponse(page);
-    await menuItemTaskTab.click();
-    await taskListResponse.catch(() => undefined);
-  } else if (await buttonTaskTab.isVisible().catch(() => false)) {
-    const taskListResponse = waitForTaskListResponse(page);
-    await buttonTaskTab.click();
-    await taskListResponse.catch(() => undefined);
-  }
+  const taskListResponse = waitForTaskListResponse(page);
+  await menuItemTaskTab.click();
+  await taskListResponse.catch(() => undefined);
 
   await waitForPageLoaded(page);
-  await waitForAllLoadersToDisappear(page);
   logTaskDebug('openEntityTasksTab:done');
 };
 
@@ -393,7 +384,11 @@ export const getTaskCard = (page: Page, task: CreatedTask) => {
 export const openTaskDetails = async (page: Page, task: CreatedTask) => {
   const taskCard = getTaskCard(page, task);
   logTaskDebug('openTaskDetails:waitingForCard', task.taskId);
-  await expect(taskCard).toBeVisible({ timeout: 15000 });
+  // The activity-feed UI re-fetches its list after the task is created via
+  // API; under Basic-project parallelism the refresh can lag past 15s and
+  // the card never appears within the default timeout. 45s gives the feed
+  // enough time to propagate without slowing healthy runs.
+  await expect(taskCard).toBeVisible({ timeout: 45000 });
   logTaskDebug('openTaskDetails:click', task.taskId);
   await taskCard.click();
   await expect(page.locator(TASK_TAB_SELECTOR)).toBeVisible();

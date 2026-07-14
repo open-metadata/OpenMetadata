@@ -13,13 +13,10 @@
 
 package org.openmetadata.mcp.usage;
 
-import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppExtension;
 import org.openmetadata.schema.entity.app.mcp.McpToolCallUsage;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.apps.AbstractNativeApplication;
-import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.bundles.mcp.McpAppConstants;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.slf4j.Logger;
@@ -61,16 +58,10 @@ public final class McpUsageRecorder {
       McpToolCallUsage.ErrorCategory errorCategory,
       String clientName) {
     try {
-      App app = resolveMcpApp();
-      if (app == null) {
-        LOG.debug(
-            "McpApplication not initialized, skipping MCP usage record for tool {}", toolName);
-        return;
-      }
       McpToolCallUsage usage =
           new McpToolCallUsage()
-              .withAppId(app.getId())
-              .withAppName(app.getName())
+              .withAppId(McpAppConstants.MCP_APP_ID)
+              .withAppName(McpAppConstants.MCP_APP_NAME)
               .withTimestamp(System.currentTimeMillis())
               .withExtension(AppExtension.ExtensionType.LIMITS)
               .withToolName(toolName)
@@ -96,12 +87,6 @@ public final class McpUsageRecorder {
    */
   public static void record(String toolName, String userName, boolean success) {
     record(toolName, userName, success, null, null, null);
-  }
-
-  private static App resolveMcpApp() {
-    AbstractNativeApplication app =
-        ApplicationContext.getInstance().getAppIfExists(McpAppConstants.MCP_APP_NAME);
-    return app != null ? app.getApp() : null;
   }
 
   private static CollectionDAO.AppExtensionTimeSeries getDao() {

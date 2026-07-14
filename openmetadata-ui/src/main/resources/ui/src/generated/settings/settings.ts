@@ -28,6 +28,7 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
+    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
@@ -48,6 +49,7 @@ export enum SettingType {
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     ScimConfiguration = "scimConfiguration",
+    SearchIndexMappings = "searchIndexMappings",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SecurityConfiguration = "securityConfiguration",
@@ -108,6 +110,14 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
+ *
+ * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
+ * system prompts.
+ *
+ * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
+ * by language and entity type. The stored mapping is the effective mapping used when an
+ * index is (re)created; it already carries the field-safety guards (ignore_above,
+ * ignore_malformed, mapping limits) baked in at seed time.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -373,7 +383,13 @@ export interface PipelineServiceClientConfiguration {
      * Index factory name
      */
     searchIndexFactoryClassName?: string;
-    searchIndexMappingLanguage?:  SearchIndexMappingLanguage;
+    /**
+     * Limits applied while building search documents so that field values can never be rejected
+     * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+     * to tune without changing infrastructure settings.
+     */
+    searchIndexingLimits?:       SearchIndexingLimits;
+    searchIndexMappingLanguage?: SearchIndexMappingLanguage;
     /**
      * This enum defines the search Type elastic/open search.
      */
@@ -630,7 +646,16 @@ export interface PipelineServiceClientConfiguration {
     /**
      * List of configured glossary term relation types.
      */
-    relationTypes?: GlossaryTermRelationType[];
+    relationTypes?:    GlossaryTermRelationType[];
+    mcpChat?:          MCPChat;
+    memoryAgent?:      MemoryAgent;
+    memoryExtraction?: MemoryExtraction;
+    prompts?:          Prompts;
+    /**
+     * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
+     * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
+     */
+    languages?: { [key: string]: any };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -705,6 +730,11 @@ export interface AssetTypeConfiguration {
      */
     matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
     /**
+     * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+     * bounded metadata signals.
+     */
+    ranking?: RankingConfiguration;
+    /**
      * How to combine function scores if multiple boosts are applied.
      */
     scoreMode?: ScoreMode;
@@ -759,6 +789,8 @@ export enum AggregationType {
 
 /**
  * How the function score is combined with the main query score.
+ *
+ * How metadata signals combine with the lexical score.
  */
 export enum BoostMode {
     Avg = "avg",
@@ -841,6 +873,75 @@ export interface MatchTypeBoostMultipliers {
 }
 
 /**
+ * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+ * bounded metadata signals.
+ */
+export interface RankingConfiguration {
+    /**
+     * Human-readable ranking algorithm identifier.
+     */
+    algorithm?: string;
+    /**
+     * DisMax tie breaker used between ranking stages. Keep low so broad context matches do not
+     * overpower stronger name stages.
+     */
+    disMaxTieBreaker?: number;
+    /**
+     * Whether to use staged ranking for this asset. When disabled, legacy searchFields scoring
+     * is used.
+     */
+    enabled?: boolean;
+    /**
+     * Bounded metadata signals used after lexical relevance.
+     */
+    signals?: RankingSignals;
+    /**
+     * Ordered lexical ranking stages. Earlier stages should represent stronger relevance
+     * signals.
+     */
+    stages?: RankingStage[];
+    /**
+     * Language-neutral query words ignored by token-coverage ranking stages. These are unioned
+     * with stopWordsByLanguage.
+     */
+    stopWords?: string[];
+    /**
+     * Language-keyed query words ignored by token-coverage ranking stages. Keys should match
+     * search index mapping languages such as en, ru, zh, jp, or ja. Values are whole query
+     * tokens only; language analyzers still perform the actual index/query tokenization.
+     */
+    stopWordsByLanguage?: { [key: string]: string[] };
+}
+
+/**
+ * Bounded metadata signals used after lexical relevance.
+ */
+export interface RankingSignals {
+    /**
+     * How metadata signals combine with the lexical score.
+     */
+    boostMode?: BoostMode;
+    /**
+     * Metadata fields expected to contribute to signal scoring.
+     */
+    fields?: string[];
+    /**
+     * Maximum signal score added to lexical relevance. Keeps Tier and Usage as tie-breakers.
+     */
+    maxBoost?: number;
+    /**
+     * Human-readable explanation of how metadata signals should affect ranking.
+     */
+    purpose?: string;
+    /**
+     * How to combine metadata signal functions.
+     */
+    scoreMode?: ScoreMode;
+}
+
+/**
+ * How to combine metadata signal functions.
+ *
  * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
@@ -850,6 +951,45 @@ export enum ScoreMode {
     Min = "min",
     Multiply = "multiply",
     Sum = "sum",
+}
+
+export interface RankingStage {
+    /**
+     * Fields queried by this stage.
+     */
+    fields: string[];
+    /**
+     * Query strategy for this ranking stage.
+     */
+    matchType?: StageMatchType;
+    /**
+     * Minimum significant-token coverage for tokenCoverage or fuzzy stages.
+     */
+    minimumShouldMatch?: string;
+    /**
+     * Stable stage name used in ranking debug output.
+     */
+    name: string;
+    /**
+     * Human-readable explanation of what this ranking stage is intended to do.
+     */
+    purpose?: string;
+    /**
+     * Stage-level score band. Higher stages should use materially higher weights than later
+     * stages.
+     */
+    weight?: number;
+}
+
+/**
+ * Query strategy for this ranking stage.
+ */
+export enum StageMatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
+    TokenCoverage = "tokenCoverage",
 }
 
 export interface FieldBoost {
@@ -866,7 +1006,7 @@ export interface FieldBoost {
      * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
      * behavior.
      */
-    matchType?: MatchType;
+    matchType?: SearchFieldMatchType;
 }
 
 /**
@@ -874,7 +1014,7 @@ export interface FieldBoost {
  * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
  * behavior.
  */
-export enum MatchType {
+export enum SearchFieldMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
@@ -2057,6 +2197,33 @@ export enum LogStorageConfigurationType {
 }
 
 /**
+ * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
+ * via llmConfiguration; this only governs chat enablement and behavior.
+ */
+export interface MCPChat {
+    enabled?:      boolean;
+    systemPrompt?: string;
+}
+
+export interface MemoryAgent {
+    deletionPolicy?:      DeletionPolicy;
+    deriveGlossaryTerms?: boolean;
+    deriveMetrics?:       boolean;
+    enabled?:             boolean;
+}
+
+export enum DeletionPolicy {
+    Cascade = "cascade",
+    Deprecate = "deprecate",
+    Orphan = "orphan",
+}
+
+export interface MemoryExtraction {
+    fromFiles?: boolean;
+    fromPages?: boolean;
+}
+
+/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -2451,6 +2618,15 @@ export enum PipelineViewMode {
     Node = "Node",
 }
 
+export interface Prompts {
+    memoryAgent?:      PromptConfig;
+    memoryExtraction?: PromptConfig;
+}
+
+export interface PromptConfig {
+    systemPrompt?: string;
+}
+
 /**
  * Definition of a glossary term relation type.
  */
@@ -2477,14 +2653,40 @@ export interface GlossaryTermRelationType {
      */
     displayName: string;
     /**
+     * Glossary term FQNs (or external class IRIs) a source term must be typed as for this
+     * relation. Empty means unconstrained. Stored for RDF round-trip and optional validation;
+     * not enforced by default.
+     */
+    domain?: string[];
+    /**
      * Name of the inverse relation type (e.g., 'narrower' for 'broader'). Null for symmetric
      * relations.
      */
     inverseRelation?: string;
     /**
+     * Whether the relation is asymmetric (A relates B implies B does not relate A).
+     */
+    isAsymmetric?: boolean;
+    /**
      * Whether relations can be created between terms in different glossaries.
      */
     isCrossGlossaryAllowed?: boolean;
+    /**
+     * Whether the relation is functional (a source term has at most one target).
+     */
+    isFunctional?: boolean;
+    /**
+     * Whether the relation is inverse-functional (a target term has at most one source).
+     */
+    isInverseFunctional?: boolean;
+    /**
+     * Whether the relation is irreflexive (no term relates to itself).
+     */
+    isIrreflexive?: boolean;
+    /**
+     * Whether the relation is reflexive (every term relates to itself).
+     */
+    isReflexive?: boolean;
     /**
      * Whether the relation is symmetric (A relates B implies B relates A).
      */
@@ -2501,6 +2703,12 @@ export interface GlossaryTermRelationType {
      * Unique name of the relation type (e.g., 'broader', 'synonym').
      */
     name: string;
+    /**
+     * Glossary term FQNs (or external class IRIs) a target term must be typed as for this
+     * relation. Empty means unconstrained. Stored for RDF round-trip and optional validation;
+     * not enforced by default.
+     */
+    range?: string[];
     /**
      * RDF predicate URI for this relation (e.g., 'skos:broader').
      */
@@ -2580,6 +2788,44 @@ export enum SearchIndexMappingLanguage {
     Jp = "JP",
     Ru = "RU",
     Zh = "ZH",
+}
+
+/**
+ * Limits applied while building search documents so that field values can never be rejected
+ * by Elasticsearch/OpenSearch. Values default to the documented engine defaults; override
+ * to tune without changing infrastructure settings.
+ */
+export interface SearchIndexingLimits {
+    /**
+     * Enable injecting ignore_above / ignore_malformed and index.mapping.*.limit guardrails
+     * into index mappings at creation time so documents cannot be rejected. When false,
+     * mappings are created as-is.
+     */
+    enableMappingHardening?: boolean;
+    /**
+     * Maximum UTF-8 byte length of a single keyword term. ignore_above is set to a byte-safe
+     * character count derived from this (value/4). The hard Lucene limit is 32766 bytes.
+     */
+    keywordMaxBytes?: number;
+    /**
+     * Maximum object/column nesting depth. Mirrors index.mapping.depth.limit.
+     */
+    mappingDepthLimit?: number;
+    /**
+     * Maximum number of flattened columns or schema fields indexed for a single data asset.
+     * Items beyond this are dropped from the search document.
+     */
+    maxColumns?: number;
+    /**
+     * Maximum number of nested-type objects allowed in a single document before
+     * Elasticsearch/OpenSearch rejects it (the engine rejects rather than truncates). Mirrors
+     * index.mapping.nested_objects.limit.
+     */
+    nestedObjectsLimit?: number;
+    /**
+     * Maximum total fields per index. Mirrors index.mapping.total_fields.limit.
+     */
+    totalFieldsLimit?: number;
 }
 
 /**

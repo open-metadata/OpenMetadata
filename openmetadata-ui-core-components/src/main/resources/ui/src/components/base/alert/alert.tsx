@@ -11,16 +11,16 @@
  *  limitations under the License.
  */
 
-import type { FC, HTMLAttributes, ReactNode } from 'react';
+import { CloseButton } from '@/components/base/buttons/close-button';
+import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
+import { cx } from '@/utils/cx';
 import {
   AlertCircle,
   AlertTriangle,
   CheckCircle,
   InfoCircle,
 } from '@untitledui/icons';
-import { CloseButton } from '@/components/base/buttons/close-button';
-import { FeaturedIcon } from '@/components/foundations/featured-icon/featured-icon';
-import { cx } from '@/utils/cx';
+import type { FC, HTMLAttributes, ReactNode } from 'react';
 
 export type AlertVariant = 'success' | 'warning' | 'error' | 'brand' | 'gray';
 
@@ -35,22 +35,22 @@ const variantStyles: Record<
   }
 > = {
   success: {
-    root: 'tw:border-utility-success-300 tw:bg-success-25',
+    root: 'tw:border-utility-success-300 tw:bg-success-primary',
     iconColor: 'success',
     defaultIcon: CheckCircle,
   },
   warning: {
-    root: 'tw:border-utility-warning-300 tw:bg-warning-25',
+    root: 'tw:border-utility-warning-300 tw:bg-warning-primary',
     iconColor: 'warning',
     defaultIcon: AlertTriangle,
   },
   error: {
-    root: 'tw:border-utility-error-300 tw:bg-error-25',
+    root: 'tw:border-utility-error-300 tw:bg-error-primary',
     iconColor: 'error',
     defaultIcon: AlertCircle,
   },
   brand: {
-    root: 'tw:border-utility-blue-300 tw:bg-blue-25',
+    root: 'tw:border-utility-blue-300 tw:bg-utility-blue-50',
     iconColor: 'brand',
     defaultIcon: InfoCircle,
   },
@@ -71,6 +71,18 @@ export interface AlertProps
   children?: ReactNode;
   /** Override the default variant icon */
   icon?: FC<{ className?: string }>;
+  /** Size forwarded to FeaturedIcon — defaults to 'md' */
+  iconSize?: 'sm' | 'md' | 'lg' | 'xl';
+  /** 'square' renders the icon in a rounded-rect container instead of a circle */
+  iconShape?: 'circle' | 'square';
+  /** Corner radius for a square icon container */
+  iconRadius?: 'sm' | 'md' | 'lg' | 'xl';
+  /** Adds a variant-coloured border around the icon container */
+  iconOutlined?: boolean;
+  /** 'white' overrides the coloured icon background with a plain white fill */
+  iconBgColor?: 'colored' | 'white';
+  /** Node rendered on the far right, always vertically centred */
+  rightContent?: ReactNode;
   /** Shows the × close button when true. */
   closable?: boolean;
   /** Called when the × close button is clicked. */
@@ -82,6 +94,12 @@ export const Alert = ({
   title,
   children,
   icon,
+  iconSize = 'md',
+  iconShape,
+  iconRadius,
+  iconOutlined,
+  iconBgColor,
+  rightContent,
   closable = false,
   onClose,
   className,
@@ -101,22 +119,43 @@ export const Alert = ({
       )}
       role="alert">
       <FeaturedIcon
+        bgColor={iconBgColor}
         className={cx('tw:shrink-0', children && 'tw:self-start')}
         color={styles.iconColor}
+        data-testid="alert-icon"
         icon={Icon}
-        size="md"
-        theme="light"
+        outlined={iconOutlined}
+        radius={iconRadius}
+        shape={iconShape}
+        size={iconSize}
       />
 
       <div className="tw:flex tw:min-w-0 tw:flex-1 tw:flex-col tw:text-sm">
-        <p className="tw:font-semibold tw:text-secondary">{title}</p>
+        <p
+          className="tw:font-semibold tw:text-secondary"
+          data-testid="alert-title">
+          {title}
+        </p>
 
-        {children && <div className="tw:text-tertiary">{children}</div>}
+        {children && (
+          <div className="tw:text-tertiary" data-testid="alert-children">
+            {children}
+          </div>
+        )}
       </div>
+
+      {rightContent && (
+        <div
+          className="tw:shrink-0 tw:self-center"
+          data-testid="alert-right-content">
+          {rightContent}
+        </div>
+      )}
 
       {closable && (
         <CloseButton
           className="tw:shrink-0"
+          data-testid="alert-close-button"
           label="Close alert"
           size="sm"
           onPress={onClose}

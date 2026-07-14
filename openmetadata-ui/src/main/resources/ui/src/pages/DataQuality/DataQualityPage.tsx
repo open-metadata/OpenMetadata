@@ -18,8 +18,8 @@ import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
-import TestCaseFormV1 from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormV1';
-import BundleSuiteForm from '../../components/DataQuality/BundleSuiteForm/BundleSuiteForm';
+import TestCaseFormDrawer from '../../components/DataQuality/AddDataQualityTest/components/TestCaseFormDrawer';
+import BundleSuiteFormDrawer from '../../components/DataQuality/BundleSuiteForm/BundleSuiteFormDrawer';
 import PageHeader from '../../components/PageHeader/PageHeader.component';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
@@ -207,25 +207,16 @@ const DataQualityPage = () => {
           />
         </Col>
       </Row>
-      {isTestCaseModalOpen && (
-        <TestCaseFormV1
-          drawerProps={{
-            title: t('label.add-entity', {
-              entity: t('label.test-case'),
-            }),
-            open: isTestCaseModalOpen,
-          }}
-          onCancel={handleCloseTestCaseModal}
-          onFormSubmit={handleFormSubmit}
-        />
-      )}
-      {isBundleSuiteModalOpen && (
-        <BundleSuiteForm
-          drawerProps={{ open: isBundleSuiteModalOpen }}
-          onCancel={handleCloseBundleSuiteModal}
-          onSuccess={handleBundleSuiteSuccess}
-        />
-      )}
+      <TestCaseFormDrawer
+        open={isTestCaseModalOpen}
+        onClose={handleCloseTestCaseModal}
+        onFormSubmit={handleFormSubmit}
+      />
+      <BundleSuiteFormDrawer
+        open={isBundleSuiteModalOpen}
+        onClose={handleCloseBundleSuiteModal}
+        onSuccess={handleBundleSuiteSuccess}
+      />
     </DataQualityProvider>
   );
 };

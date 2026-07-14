@@ -12,18 +12,44 @@
  */
 import { useTranslation } from 'react-i18next';
 import HeaderBreadcrumb from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
+import {
+  getGlossaryHomeCrumb,
+  getHomeCrumb,
+} from '../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.utils';
+import HeaderShell from '../../components/common/HeaderShell/HeaderShell.component';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import { useIsAiMode } from '../../hooks/useAppMode';
 import ColumnGrid from './ColumnGrid/ColumnGrid.component';
 
 const ColumnBulkOperations = () => {
   const { t } = useTranslation();
+  const isAiMode = useIsAiMode();
+
+  const breadcrumbItems = [
+    isAiMode ? getGlossaryHomeCrumb(t) : getHomeCrumb(t),
+    { label: t('label.column-bulk-operations') },
+  ];
 
   return (
     <PageLayoutV1 pageTitle={t('label.column-bulk-operations')}>
       <div>
-        <HeaderBreadcrumb
-          items={[{ label: t('label.column-bulk-operations') }]}
-        />
+        {isAiMode ? (
+          <HeaderShell
+            breadcrumb={
+              <HeaderBreadcrumb
+                noMargin
+                items={breadcrumbItems}
+                showHome={false}
+              />
+            }
+            className="tw:mb-5"
+            subtitle={t('message.column-bulk-operations-subtitle')}
+            title={t('label.column-bulk-operations')}
+            variant="gradient"
+          />
+        ) : (
+          <HeaderBreadcrumb items={breadcrumbItems} showHome={false} />
+        )}
         <ColumnGrid />
       </div>
     </PageLayoutV1>

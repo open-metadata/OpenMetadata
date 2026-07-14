@@ -33,8 +33,8 @@ jest.mock('../../rest/apiEndpointsAPI', () => ({
   getApiEndPoints: jest.fn().mockResolvedValue({ paging: { total: 0 } }),
 }));
 
-jest.mock('../../utils/EntityDisplayUtils', () => ({
-  ...jest.requireActual('../../utils/EntityDisplayUtils'),
+jest.mock('../../utils/EntityDisplayPureUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayPureUtils'),
   getEntityMissingError: jest.fn(),
   getCountBadge: jest.fn().mockImplementation((count) => <span>{count}</span>),
 }));
@@ -86,9 +86,11 @@ jest.mock('../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder', () =>
   jest.fn().mockImplementation(() => <div>ErrorPlaceHolder</div>)
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockImplementation(() => <div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest.fn().mockImplementation(() => <div>Loader</div>),
+  PageLoader: jest.fn().mockImplementation(() => <div>Loader</div>),
+}));
 
 jest.mock('../../components/AppRouter/withActivityFeed', () => ({
   withActivityFeed: jest.fn().mockImplementation((Component) => Component),

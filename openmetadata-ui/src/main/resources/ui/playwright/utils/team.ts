@@ -119,12 +119,7 @@ export const softDeleteTeam = async (page: Page) => {
     .click();
   await page.getByTestId('delete-button').click();
 
-  await page.waitForLoadState('domcontentloaded');
-
-  await expect(page.getByTestId('confirmation-text-input')).toBeVisible();
-
-  await page.click('[data-testid="soft-delete-option"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  await page.getByTestId('delete-modal').waitFor();
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=false&recursive=true'
@@ -136,20 +131,25 @@ export const softDeleteTeam = async (page: Page) => {
   expect(response.status()).toBe(200);
 };
 
-export const hardDeleteTeam = async (page: Page, teamName: string) => {
+export const hardDeleteTeam = async (
+  page: Page,
+  teamName: string,
+  isSoftDeleted = false
+) => {
   await page
     .getByTestId('team-details-collapse')
     .getByTestId('manage-button')
     .click();
   await page.getByTestId('delete-button').click();
 
-  await page.locator('[role="dialog"].ant-modal').waitFor();
+  await page.getByTestId('delete-modal').waitFor();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-
-  await page.click('[data-testid="hard-delete-option"]');
-  await page.check('[data-testid="hard-delete"]');
-  await page.fill('[data-testid="confirmation-text-input"]', 'DELETE');
+  // A live team shows the radio-based modal (defaults to soft delete), so the
+  // hard-delete option must be selected. An already soft-deleted team shows the
+  // hard-delete-only modal where the radio is absent.
+  if (!isSoftDeleted) {
+    await page.click('[data-testid="hard-delete"]');
+  }
 
   const deleteResponse = page.waitForResponse(
     '/api/v1/teams/*?hardDelete=true&recursive=true'
