@@ -52,6 +52,7 @@ public class AIContextFinder {
   private static final Map<String, List<String>> CONTEXT_FILTER =
       Map.of("entityType", CONTEXT_ENTITY_TYPES);
   private static final int SEARCH_K = 100;
+  private static final int CHUNK_DEDUP_OVERSAMPLE = 3;
   private static final int MAX_ASSETS_PER_ITEM = 10;
   private static final int MAX_CONTENT_CHARS = 2000;
 
@@ -117,7 +118,12 @@ public class AIContextFinder {
       OpenSearchVectorService service = OpenSearchVectorService.getInstance();
       if (service != null) {
         try {
-          response = service.search(query, CONTEXT_FILTER, size, 0, SEARCH_K, 0.0);
+          // Over-fetch: collectHit dedupes chunk documents per FQN, so a long item occupying
+          // several top hits would otherwise shrink the page below the requested size. The KNN
+          // k (SEARCH_K) caps the real result set regardless.
+          response =
+              service.search(
+                  query, CONTEXT_FILTER, size * CHUNK_DEDUP_OVERSAMPLE, 0, SEARCH_K, 0.0);
         } catch (Exception e) {
           LOG.warn("AIContext find: vector search failed: {}", e.getMessage());
         }

@@ -61,17 +61,21 @@ public final class AttachedKnowledgeBatch {
 
   /** Resolves attached knowledge for each asset. Unknown or unloadable assets are skipped. */
   public static List<AssetKnowledge> resolve(List<AssetKey> assets) {
-    Map<String, EntityInterface> loaded = loadAssets(assets);
+    Map<AssetKey, EntityInterface> loaded = loadAssets(assets);
     Lookups lookups = lookupKnowledge(loaded);
     List<AssetKnowledge> result = new ArrayList<>();
-    for (Map.Entry<String, EntityInterface> entry : loaded.entrySet()) {
-      result.add(new AssetKnowledge(entry.getKey(), itemsFor(entry.getValue(), lookups)));
+    for (Map.Entry<AssetKey, EntityInterface> entry : loaded.entrySet()) {
+      result.add(
+          new AssetKnowledge(
+              entry.getKey().fullyQualifiedName(), itemsFor(entry.getValue(), lookups)));
     }
     return result;
   }
 
-  private static Map<String, EntityInterface> loadAssets(List<AssetKey> assets) {
-    Map<String, EntityInterface> loaded = new LinkedHashMap<>();
+  // Keyed by the full AssetKey (type + FQN): FQNs are only unique per entity type — a chart and
+  // a dashboard under the same service can share an FQN, and a name-only key would drop one.
+  private static Map<AssetKey, EntityInterface> loadAssets(List<AssetKey> assets) {
+    Map<AssetKey, EntityInterface> loaded = new LinkedHashMap<>();
     for (AssetKey key : assets.stream().limit(MAX_ASSETS).toList()) {
       if (!nullOrEmpty(key.fullyQualifiedName()) && !nullOrEmpty(key.entityType())) {
         loadAsset(key, loaded);
@@ -80,11 +84,11 @@ public final class AttachedKnowledgeBatch {
     return loaded;
   }
 
-  private static void loadAsset(AssetKey key, Map<String, EntityInterface> into) {
+  private static void loadAsset(AssetKey key, Map<AssetKey, EntityInterface> into) {
     try {
       String fields = Entity.TABLE.equals(key.entityType()) ? TABLE_FIELDS : DEFAULT_FIELDS;
       into.putIfAbsent(
-          key.fullyQualifiedName(),
+          key,
           Entity.getEntityByName(
               key.entityType(), key.fullyQualifiedName(), fields, Include.NON_DELETED));
     } catch (EntityNotFoundException | IllegalArgumentException e) {
@@ -92,7 +96,7 @@ public final class AttachedKnowledgeBatch {
     }
   }
 
-  private static Lookups lookupKnowledge(Map<String, EntityInterface> loaded) {
+  private static Lookups lookupKnowledge(Map<AssetKey, EntityInterface> loaded) {
     List<String> assetIds =
         loaded.values().stream().map(entity -> entity.getId().toString()).toList();
     Map<String, List<UUID>> pageIdsByAsset = Map.of();
@@ -123,7 +127,8 @@ public final class AttachedKnowledgeBatch {
   }
 
   /** Null values are cached too, so a missing/unapproved term is looked up once per batch. */
-  private static Map<String, KnowledgeItem> loadGlossaryTerms(Map<String, EntityInterface> loaded) {
+  private static Map<String, KnowledgeItem> loadGlossaryTerms(
+      Map<AssetKey, EntityInterface> loaded) {
     Map<String, KnowledgeItem> terms = new LinkedHashMap<>();
     for (EntityInterface entity : loaded.values()) {
       for (String fqn : AIContextBuilder.collectGlossaryFqns(entity)) {

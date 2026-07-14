@@ -207,7 +207,7 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbeddingChunks(EntityInterface entity) {
-    ensureChunkIndex();
+    requireChunkIndexForWrite();
     updateEntityEmbeddingChunks(entity, getChunkIndexName());
   }
 
@@ -226,7 +226,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     try {
       String parentId = entity.getId().toString();
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      ensureChunkIndex();
+      requireChunkIndexForWrite();
       String chunkIndexName = getChunkIndexName();
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
@@ -263,7 +263,7 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   public void writeEntityChunks(String parentId, List<Map<String, Object>> chunkDocs) {
     try {
-      ensureChunkIndex();
+      requireChunkIndexForWrite();
       String chunkIndexName = getChunkIndexName();
       ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
       replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
@@ -341,6 +341,15 @@ public class OpenSearchVectorService implements VectorIndexService {
    * will re-embed every vector-indexable entity type; the index is empty until they do.
    */
   public void recreateChunkIndex() {
+    // Pre-flight: prove the embedding pipeline works before destroying the only copy of the
+    // chunk embeddings. With a misconfigured or unreachable embedding client the drop would
+    // succeed and nothing would re-embed — turning a stale-but-working index into a data loss.
+    try {
+      embeddingClient.embedQuery("chunk index recreate pre-flight");
+    } catch (Exception e) {
+      throw new RuntimeException(
+          "Refusing to drop the vector chunk index: embedding client pre-flight failed", e);
+    }
     synchronized (this) {
       String indexName = getChunkIndexName();
       try {
@@ -351,10 +360,34 @@ public class OpenSearchVectorService implements VectorIndexService {
         }
         chunkIndexEnsured = false;
       } catch (Exception e) {
-        LOG.error("Failed to delete vector chunk index {} for recreate", indexName, e);
+        // Continuing would let the recreate job report success while orphaned chunks survive —
+        // the exact staleness this method exists to prevent. Fail the job loudly instead.
+        throw new RuntimeException(
+            "Failed to delete vector chunk index " + indexName + " for recreate", e);
       }
     }
     ensureChunkIndex();
+    if (!chunkIndexEnsured) {
+      // The old index is already gone; proceeding would let raw chunk writes auto-create it with
+      // dynamic mappings (embedding as float, not knn_vector). Fail here, once.
+      throw new RuntimeException(
+          "Failed to recreate vector chunk index " + getChunkIndexName() + " after delete");
+    }
+  }
+
+  /**
+   * Write-path gate: throws when the chunk index could not be ensured. A raw write against a
+   * missing index would auto-create it with dynamic mappings ({@code embedding} as float, not
+   * knn_vector), permanently wedging vector search until manual index surgery — worse than the
+   * skipped write. Read paths stay lenient: reads cannot auto-create an index.
+   */
+  private void requireChunkIndexForWrite() {
+    ensureChunkIndex();
+    if (!chunkIndexEnsured) {
+      throw new IllegalStateException(
+          "Vector chunk index unavailable (create/upgrade failed); refusing chunk write that "
+              + "would auto-create it with a non-knn mapping");
+    }
   }
 
   private void ensureChunkIndex() {
