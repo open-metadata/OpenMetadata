@@ -280,5 +280,5 @@ WHERE name = 'DataInsightsApplication'
 UPDATE entity_extension
 SET json = JSON_REMOVE(json, '$.appConfiguration.moduleConfiguration.dataQuality')
 WHERE extension LIKE 'app.version.%'
-  AND JSON_EXTRACT(json, '$.name') = 'DataInsightsApplication'
+  AND json->>'$.name' = 'DataInsightsApplication'
   AND JSON_EXTRACT(json, '$.appConfiguration.moduleConfiguration.dataQuality') IS NOT NULL;

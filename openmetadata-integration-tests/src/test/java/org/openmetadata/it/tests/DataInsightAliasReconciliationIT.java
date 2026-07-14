@@ -15,6 +15,7 @@ package org.openmetadata.it.tests;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.Collections;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.BeforeAll;
@@ -62,17 +63,27 @@ public class DataInsightAliasReconciliationIT {
     assertTrue(
         client.indexExists(canonicalIndex), canonicalIndex + " should exist after bootstrap");
 
-    // Simulate a cluster that predates the alias: detach it from the live index.
-    client.removeAliases(canonicalIndex, Set.of(dataInsightAlias));
-    assertFalse(
-        client.getIndicesByAlias(dataInsightAlias).contains(canonicalIndex),
+    // After a reindex the canonical name is itself an alias onto a *_rebuild_* index, so resolve
+    // the concrete index (or indices) actually serving this entity. Aliases attach to concrete
+    // indices, never to another alias.
+    Set<String> servingIndices = client.getIndicesByAlias(canonicalIndex);
+    if (servingIndices.isEmpty()) {
+      servingIndices = Set.of(canonicalIndex); // canonical is still a concrete index
+    }
+
+    // Simulate a cluster that predates the alias: detach it from the serving index/indices.
+    for (String servingIndex : servingIndices) {
+      client.removeAliases(servingIndex, Set.of(dataInsightAlias));
+    }
+    assertTrue(
+        Collections.disjoint(client.getIndicesByAlias(dataInsightAlias), servingIndices),
         "Precondition: Data Insights alias should be detached before reconciliation");
 
     // Startup reconciliation must re-attach it.
     repo.createMissingIndexes();
 
     assertTrue(
-        client.getIndicesByAlias(dataInsightAlias).contains(canonicalIndex),
+        client.getIndicesByAlias(dataInsightAlias).containsAll(servingIndices),
         "createMissingIndexes must reconcile the Data Insights alias back onto the live index so "
             + "custom Data Insights charts resolve it after an upgrade");
   }
