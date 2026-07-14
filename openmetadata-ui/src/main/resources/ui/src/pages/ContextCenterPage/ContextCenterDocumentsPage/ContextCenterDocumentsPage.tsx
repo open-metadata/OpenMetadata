@@ -593,7 +593,7 @@ const ContextCenterDocumentsPage: FC = () => {
           onUploadFile={() => setIsUploadModalOpen(true)}
         />
       </div>
-      <div className="context-center-content-section tw:px-5 tw:pb-5">
+      <div className="context-center-content-section tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:px-5 tw:pb-5">
         {showDocumentsEmptyState ? (
           <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
             <EmptyPlaceholder

@@ -389,58 +389,61 @@ const ContextCenterArticlesPage = () => {
         id="knowledge-center-layout-container">
         <DocumentTitle title={page.title || t('label.article-plural')} />
         {showArticlesEmptyState && (
-          <EmptyPlaceholder
-            actions={
-              permissions?.Create
-                ? [
-                    {
-                      color: 'primary',
-                      iconLeading: Plus,
-                      key: 'new-article',
-                      label: t('label.new-article'),
-                      onClick: addArticleKnowledgePage,
-                    },
-                  ]
-                : []
-            }
-            description={t('message.context-center-articles-empty-subtitle')}
-            features={[
-              {
-                key: 'create',
-                icon: <FileIcon className="tw:text-fg-brand-primary" />,
-                title: t('label.create-an-article'),
-                description: t(
-                  'message.context-center-articles-empty-feature-create'
-                ),
-              },
-              {
-                key: 'publish',
-                icon: (
-                  <ArrowCircleBrokenUp className="tw:text-fg-warning-primary" />
-                ),
-                title: t('label.publish-and-version'),
-                description: t(
-                  'message.context-center-articles-empty-feature-publish'
-                ),
-              },
-              {
-                key: 'ai',
-                icon: <Stars01 className="tw:text-fg-success-primary" />,
-                title: t('label.ai-takes-it-from-there'),
-                description: t(
-                  'message.context-center-articles-empty-feature-ai'
-                ),
-              },
-            ]}
-            title={t('label.write-it-once-let-ai-answer-it-forever')}
-            variant="features"
-          />
+          <div className="tw:relative tw:flex-1 tw:min-h-0 tw:overflow-hidden tw:rounded-xl">
+            <EmptyPlaceholder
+              actions={
+                permissions?.Create
+                  ? [
+                      {
+                        color: 'primary',
+                        iconLeading: Plus,
+                        key: 'new-article',
+                        label: t('label.new-article'),
+                        onClick: addArticleKnowledgePage,
+                      },
+                    ]
+                  : []
+              }
+              description={t('message.context-center-articles-empty-subtitle')}
+              features={[
+                {
+                  key: 'create',
+                  icon: <FileIcon className="tw:text-fg-brand-primary" />,
+                  title: t('label.create-an-article'),
+                  description: t(
+                    'message.context-center-articles-empty-feature-create'
+                  ),
+                },
+                {
+                  key: 'publish',
+                  icon: (
+                    <ArrowCircleBrokenUp className="tw:text-fg-warning-primary" />
+                  ),
+                  title: t('label.publish-and-version'),
+                  description: t(
+                    'message.context-center-articles-empty-feature-publish'
+                  ),
+                },
+                {
+                  key: 'ai',
+                  icon: <Stars01 className="tw:text-fg-success-primary" />,
+                  title: t('label.ai-takes-it-from-there'),
+                  description: t(
+                    'message.context-center-articles-empty-feature-ai'
+                  ),
+                },
+              ]}
+              title={t('label.write-it-once-let-ai-answer-it-forever')}
+              variant="features"
+            />
+          </div>
         )}
         <ReflexContainer
           className={classNames('knowledge-center-layout tw:h-full', {
             'tw:invisible tw:absolute tw:inset-0': showArticlesEmptyState,
           })}
-          orientation="vertical">
+          orientation="vertical"
+          style={showArticlesEmptyState ? { display: 'none' } : undefined}>
           {/* left */}
           <ReflexElement
             propagateDimensions
