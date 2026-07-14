@@ -280,7 +280,7 @@ const WorkflowsPage = () => {
   const isWorkflowsEmpty = workflows.length === 0;
 
   const emptyPlaceholder = (
-    <Box className="tw:relative tw:flex-1 tw:min-h-150 tw:rounded-xl tw:border tw:border-border-secondary">
+    <Box className="tw:relative tw:flex-1 tw:min-h-0 tw:rounded-xl tw:border tw:border-border-secondary">
       <EmptyPlaceholder
         actions={
           allowCreateWorkflow
@@ -305,10 +305,12 @@ const WorkflowsPage = () => {
 
   return (
     <PageLayoutV1
+      fullHeight
       className="workflow-page"
+      mainContainerClassName="workflow-page-layout"
       pageContainerStyle={{ paddingLeft: 0, paddingRight: 0 }}
       pageTitle={t('label.workflow-plural')}>
-      <div className="tw:flex tw:flex-col tw:overflow-hidden tw:mx-6 tw:my-4">
+      <div className="tw:flex tw:flex-col tw:h-full tw:min-h-0 tw:overflow-hidden tw:mx-6 tw:my-4">
         {isAiMode ? (
           <HeaderShell
             actions={createWorkflowButton}
@@ -347,8 +349,8 @@ const WorkflowsPage = () => {
         {isWorkflowsEmpty ? (
           emptyPlaceholder
         ) : (
-          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:justify-between">
-            <div className="tw:mb-4">
+          <div className="tw:px-6 tw:py-4 tw:bg-primary tw:rounded-xl tw:border tw:border-border-secondary tw:flex tw:flex-col tw:flex-1 tw:min-h-0 tw:justify-between">
+            <div className="tw:mb-4 tw:flex-1 tw:min-h-0 tw:overflow-y-auto">
               <div className="tw:grid tw:grid-cols-1 tw:sm:grid-cols-2 tw:lg:grid-cols-3 tw:gap-5">
                 {workflows.map((workflow) => (
                   <WorkflowCard
