@@ -13,7 +13,7 @@
 import { Box, Dropdown, Typography } from '@openmetadata/ui-core-components';
 import { Eye, EyeOff } from '@untitledui/icons';
 import classNames from 'classnames';
-import { FC, type MouseEvent, useCallback, useMemo } from 'react';
+import { FC, useCallback, useMemo, type MouseEvent } from 'react';
 import { useDrag, useDrop } from 'react-dnd';
 import { ReactComponent as ColumnDragIcon } from '../../../../assets/svg/menu-duo.svg';
 import { DraggableMenuItemProps } from './DraggableMenuItem.interface';
