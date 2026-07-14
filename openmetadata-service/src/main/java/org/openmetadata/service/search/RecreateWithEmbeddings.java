@@ -22,12 +22,15 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   /**
    * A recreate covering every vector-indexable entity type also recreates the dedicated chunk
    * index, so chunks of entities that no longer exist (DB restore/wipe — no delete events) don't
-   * survive the rebuild and keep surfacing in AI retrieval. Guarded three ways: the driving job
-   * must explicitly request recreateIndex (this handler is also invoked by non-recreate distributed
-   * runs and by the jobless ops-CLI createIndexes path — neither may drop chunks); the run must
-   * cover every vector-indexable entity type (a partial recreate would destroy chunks of types it
-   * will not re-embed); and after the drop, the chunk-header fingerprint lookup misses for every
-   * entity, so the reindex fully re-chunks and re-embeds — nothing is silently skipped.
+   * survive the rebuild and keep surfacing in AI retrieval. The recreate is STAGED: the run writes
+   * into a bare next-generation index (whose empty fingerprint lookups force a full re-embed), and
+   * the generation is only promoted — one atomic alias swap, old data removed — after every
+   * vector-indexable type finalizes successfully (see {@link #finalizeReindex}); any failure
+   * before promotion leaves the old chunks fully live. Guarded two ways: the driving job must
+   * explicitly request recreateIndex (this handler is also invoked by non-recreate distributed
+   * runs and by the jobless ops-CLI createIndexes path), and the run must cover every
+   * vector-indexable entity type (a partial recreate must not stage a sweep of types it will not
+   * re-embed).
    */
   private void recreateChunkIndexIfFullRun(Set<String> entities) {
     OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
@@ -38,7 +41,7 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
       return;
     }
     if (coversAllVectorTypes(entities)) {
-      vectorService.recreateChunkIndex();
+      vectorService.beginStagedChunkRecreate();
     } else {
       LOG.info(
           "Partial recreate ({} of {} vector-indexable types) — keeping the chunk index; orphaned "
@@ -67,6 +70,13 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
   @Override
   public void finalizeReindex(EntityReindexContext context, boolean reindexSuccess) {
     super.finalizeReindex(context, reindexSuccess);
+
+    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    if (vectorService != null) {
+      // Feeds the staged chunk recreate: promotes the staged generation once every
+      // vector-indexable type has finalized successfully; a failed type keeps the old chunks live.
+      vectorService.markEntityTypeReindexed(context.getEntityType(), reindexSuccess);
+    }
 
     if (reindexSuccess) {
       SearchRepository searchRepository = Entity.getSearchRepository();

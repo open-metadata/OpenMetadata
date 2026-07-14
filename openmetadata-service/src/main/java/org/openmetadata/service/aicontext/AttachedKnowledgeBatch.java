@@ -50,7 +50,8 @@ public final class AttachedKnowledgeBatch {
 
   public record AssetKey(String fullyQualifiedName, String entityType) {}
 
-  public record AssetKnowledge(String fullyQualifiedName, List<KnowledgeItem> items) {}
+  public record AssetKnowledge(
+      String fullyQualifiedName, String entityType, List<KnowledgeItem> items) {}
 
   private record Lookups(
       Map<String, List<UUID>> pageIdsByAsset,
@@ -67,7 +68,9 @@ public final class AttachedKnowledgeBatch {
     for (Map.Entry<AssetKey, EntityInterface> entry : loaded.entrySet()) {
       result.add(
           new AssetKnowledge(
-              entry.getKey().fullyQualifiedName(), itemsFor(entry.getValue(), lookups)));
+              entry.getKey().fullyQualifiedName(),
+              entry.getKey().entityType(),
+              itemsFor(entry.getValue(), lookups)));
     }
     return result;
   }
