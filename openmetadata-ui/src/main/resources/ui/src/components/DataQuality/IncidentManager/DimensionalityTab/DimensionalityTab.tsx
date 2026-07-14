@@ -10,14 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  DateRangePicker,
-  Select,
-  Skeleton,
-  Table,
-} from '@openmetadata/ui-core-components';
+import { Select, Skeleton, Table } from '@openmetadata/ui-core-components';
 import { format } from 'date-fns';
-import { isEmpty, isUndefined, split, toLower } from 'lodash';
+import { isEmpty, split, toLower } from 'lodash';
 import { DateRangeObject } from 'Models';
 import type { ComponentType, ReactElement } from 'react';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,7 +21,6 @@ import { Link } from 'react-router-dom';
 import {
   DEFAULT_RANGE_DATA,
   DEFAULT_SELECTED_RANGE,
-  PROFILER_FILTER_RANGE,
   TEST_CASE_STATUS_LABELS,
 } from '../../../../constants/profiler.constant';
 import { SIZE } from '../../../../enums/common.enum';
@@ -37,18 +31,13 @@ import {
   getEndOfDayInMillis,
   getStartOfDayInMillis,
 } from '../../../../utils/date-time/DateTimeUtils';
-import {
-  getCoreDateRangeValue,
-  getDateRangeObjectFromCorePicker,
-  getDateRangePickerPresets,
-} from '../../../../utils/DatePickerMenuUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtilsPure';
-import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
 import {
   getEntityDetailsPath,
   getTestCaseDimensionsDetailPagePath,
 } from '../../../../utils/RouterUtils';
 import { useRequiredParams } from '../../../../utils/useRequiredParams';
+import DatePickerMenu from '../../../common/DatePickerMenu/DatePickerMenu.component';
 import DateTimeDisplay from '../../../common/DateTimeDisplay/DateTimeDisplay';
 import NoDataPlaceholderNew from '../../../common/ErrorWithPlaceholder/NoDataPlaceholderNew';
 import StatusBadge from '../../../common/StatusBadge/StatusBadge.component';
@@ -67,28 +56,6 @@ const DimensionalityTab = () => {
   const { dimensionKey } = useRequiredParams<{ dimensionKey?: string }>();
   const { testCase } = useTestCaseStore();
   const [dateRange, setDateRange] = useState(DEFAULT_RANGE_DATA);
-  const menuOptions = useMemo(() => {
-    return Object.fromEntries(
-      Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
-        key,
-        {
-          ...value,
-          title: translateWithNestedKeys(value.title, value.titleData),
-        },
-      ])
-    );
-  }, [t]);
-  const [selectedDateRangeLabel, setSelectedDateRangeLabel] = useState(
-    menuOptions[DEFAULT_SELECTED_RANGE.key].title
-  );
-  const dateRangePickerValue = useMemo(
-    () => getCoreDateRangeValue(dateRange),
-    [dateRange]
-  );
-  const dateRangePickerPresets = useMemo(
-    () => getDateRangePickerPresets(menuOptions),
-    [menuOptions]
-  );
   const [dimensionData, setDimensionData] = useState<
     DimensionResultWithTimestamp[]
   >([]);
@@ -129,27 +96,6 @@ const DimensionalityTab = () => {
       startTs: getStartOfDayInMillis(value.startTs),
       endTs: getEndOfDayInMillis(value.endTs),
     });
-  };
-
-  const handleDateRangeApply = (
-    value:
-      | Parameters<typeof getDateRangeObjectFromCorePicker>[0]['value']
-      | null,
-    presetKey?: string
-  ) => {
-    if (isUndefined(value) || value === null) {
-      return;
-    }
-
-    const { range } = getDateRangeObjectFromCorePicker({
-      menuOptions,
-      presetKey,
-      showSelectedCustomRange: true,
-      value,
-    });
-
-    setSelectedDateRangeLabel(range.title ?? selectedDateRangeLabel);
-    handleDateRangeChange(range);
   };
 
   const handleDimensionChange = (value: string | number | null) => {
@@ -341,16 +287,11 @@ const DimensionalityTab = () => {
           <p className="tw:m-0 tw:text-sm tw:font-medium tw:whitespace-nowrap tw:text-primary">
             {`${t('label.date')}:`}
           </p>
-          <DateRangePicker
-            applyOnPresetSelect
-            buttonProps={{
-              'data-testid': 'date-range-picker',
-              size: 'sm',
-            }}
-            presets={dateRangePickerPresets}
-            triggerLabel={selectedDateRangeLabel}
-            value={dateRangePickerValue}
-            onApply={handleDateRangeApply}
+          <DatePickerMenu
+            showSelectedCustomRange
+            defaultDateRange={DEFAULT_SELECTED_RANGE}
+            handleDateRangeChange={handleDateRangeChange}
+            size="small"
           />
         </div>
       </div>

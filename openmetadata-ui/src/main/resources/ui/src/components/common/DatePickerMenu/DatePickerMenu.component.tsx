@@ -12,12 +12,14 @@
  */
 
 import { CloseCircleOutlined } from '@ant-design/icons';
+import { XClose } from '@untitledui/icons';
 import { Button, Dropdown, MenuProps, Space } from 'antd';
 import { SizeType } from 'antd/lib/config-provider/SizeContext';
 import { isUndefined, pick } from 'lodash';
 import { DateTime } from 'luxon';
 import { DateFilterType, DateRangeObject } from 'Models';
 import { MenuInfo } from 'rc-menu/lib/interface';
+import type { KeyboardEvent, MouseEvent } from 'react';
 import { useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropdownIcon } from '../../../assets/svg/drop-down.svg';
@@ -38,22 +40,28 @@ import { translateWithNestedKeys } from '../../../utils/i18next/LocalUtil';
 import MyDatePicker from '../DatePicker/DatePicker';
 import './date-picker-menu.less';
 interface DatePickerMenuProps {
+  allowClear?: boolean;
   defaultDateRange?: Partial<DateRangeObject>;
   showSelectedCustomRange?: boolean;
   handleDateRangeChange?: (value: DateRangeObject, days?: number) => void;
   options?: DateFilterType;
   allowCustomRange?: boolean;
   handleSelectedTimeRange?: (value: string) => void;
+  onClear?: () => void;
+  placeholder?: string;
   size?: SizeType;
 }
 
 const DatePickerMenu = ({
+  allowClear = false,
   defaultDateRange,
   showSelectedCustomRange,
   handleDateRangeChange,
   handleSelectedTimeRange,
   options,
   allowCustomRange = true,
+  onClear,
+  placeholder,
   size,
 }: DatePickerMenuProps) => {
   const { t } = useTranslation();
@@ -79,7 +87,9 @@ const DatePickerMenu = ({
     };
   }, [t]);
   const { menuOptions, defaultOptions } = useMemo(() => {
-    const defaultOptions = pick(translatedDefaultRange, ['title', 'key']);
+    const defaultOptions = placeholder
+      ? { key: '', title: placeholder }
+      : pick(translatedDefaultRange, ['title', 'key']);
 
     if (defaultDateRange?.key) {
       defaultOptions.key = defaultDateRange.key;
@@ -102,7 +112,13 @@ const DatePickerMenu = ({
       menuOptions: options ?? translatedProfileFilterRange,
       defaultOptions,
     };
-  }, [options]);
+  }, [
+    defaultDateRange,
+    options,
+    placeholder,
+    translatedDefaultRange,
+    translatedProfileFilterRange,
+  ]);
 
   // State to display the label for selected range value
   const [selectedTimeRange, setSelectedTimeRange] = useState<string>(
@@ -114,6 +130,24 @@ const DatePickerMenu = ({
   );
 
   const [isMenuOpen, setIsMenuOpen] = useState<boolean>(false);
+
+  const handleClear = (
+    event: MouseEvent<HTMLElement> | KeyboardEvent<HTMLElement>
+  ) => {
+    event.preventDefault();
+    event.stopPropagation();
+    setSelectedTimeRange(
+      placeholder ?? t('label.select-entity', { entity: t('label.date') })
+    );
+    setSelectedTimeRangeKey('');
+    setIsMenuOpen(false);
+    onClear?.();
+  };
+
+  const handleClearMouseDown = (event: MouseEvent<HTMLElement>) => {
+    event.preventDefault();
+    event.stopPropagation();
+  };
 
   const handleCustomDateChange = (
     values: [start: DateTime | null, end: DateTime | null] | null,
@@ -220,9 +254,36 @@ const DatePickerMenu = ({
       open={isMenuOpen}
       trigger={['click']}
       onOpenChange={(value) => setIsMenuOpen(value)}>
-      <Button data-testid="date-picker-menu" size={size}>
+      <Button
+        className={
+          allowClear ? 'tw:h-8 tw:max-w-64 tw:overflow-hidden' : undefined
+        }
+        data-testid="date-picker-menu"
+        size={size}>
         <Space align="center" size={8}>
-          {selectedTimeRange}
+          <span
+            className={`tw:min-w-0 tw:truncate ${
+              selectedTimeRangeKey ? '' : 'tw:text-disabled'
+            }`}>
+            {selectedTimeRange}
+          </span>
+          {allowClear && selectedTimeRangeKey && (
+            <span
+              aria-label={t('label.clear')}
+              className="tw:inline-flex tw:size-4 tw:shrink-0 tw:cursor-pointer tw:items-center tw:justify-center"
+              data-testid="clear-date-picker"
+              role="button"
+              tabIndex={0}
+              onClick={handleClear}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter' || event.key === ' ') {
+                  handleClear(event);
+                }
+              }}
+              onMouseDown={handleClearMouseDown}>
+              <XClose className="tw:size-4" />
+            </span>
+          )}
           <DropdownIcon className="align-middle" height={14} width={14} />
         </Space>
       </Button>

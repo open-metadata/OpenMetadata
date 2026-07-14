@@ -10,29 +10,17 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import {
-  Button,
-  DateRangePicker,
-  Dropdown,
-} from '@openmetadata/ui-core-components';
-import { XClose } from '@untitledui/icons';
+import { Button, Dropdown } from '@openmetadata/ui-core-components';
 import { Form, Select } from 'antd';
-import { isString, isUndefined } from 'lodash';
-import { useMemo, useState } from 'react';
+import { isString } from 'lodash';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DropDownIcon } from '../../assets/svg/bottom-arrow.svg';
-import { PROFILER_FILTER_RANGE } from '../../constants/profiler.constant';
 import { TEST_CASE_RESOLUTION_STATUS_LABELS } from '../../constants/TestSuite.constant';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
 import { TestCaseResolutionStatusTypes } from '../../generated/tests/testCaseResolutionStatus';
 import Assignees from '../../pages/TasksPage/shared/Assignees';
-import {
-  getCoreDateRangeValue,
-  getDateRangeObjectFromCorePicker,
-  getDateRangeObjectFromDateRangePreset,
-} from '../../utils/DatePickerMenuUtils';
-import { translateWithNestedKeys } from '../../utils/i18next/LocalUtil';
 import { AsyncSelect } from '../common/AsyncSelect/AsyncSelect';
+import DatePickerMenu from '../common/DatePickerMenu/DatePickerMenu.component';
 import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import { IncidentManagerProps } from './IncidentManager.interface';
 import IncidentManagerTable from './IncidentManagerTable.component';
@@ -44,19 +32,6 @@ const IncidentManager = ({
   isDateRangePickerVisible = true,
 }: IncidentManagerProps) => {
   const { t } = useTranslation();
-  const menuOptions = useMemo(
-    () =>
-      Object.fromEntries(
-        Object.entries(PROFILER_FILTER_RANGE).map(([key, value]) => [
-          key,
-          {
-            ...value,
-            title: translateWithNestedKeys(value.title, value.titleData),
-          },
-        ])
-      ),
-    [t]
-  );
   const {
     commonTestCasePermission,
     filters,
@@ -84,63 +59,6 @@ const IncidentManager = ({
     handleStatusSubmit,
     searchTestCases,
   } = useIncidentManagerListPage({ isIncidentPage, tableDetails });
-  const [isDateRangeMenuOpen, setIsDateRangeMenuOpen] = useState(false);
-  const selectedDateRangeLabel = useMemo(
-    () =>
-      dateRangeKey?.key === 'customRange' && dateRangeKey.title
-        ? dateRangeKey.title
-        : dateRangeKey?.key
-        ? menuOptions[dateRangeKey.key]?.title ?? dateRangeKey.title
-        : t('label.select-entity', { entity: t('label.date') }),
-    [dateRangeKey, menuOptions, t]
-  );
-  const dateRangePickerValue = useMemo(
-    () => getCoreDateRangeValue(dateRangeKey),
-    [dateRangeKey]
-  );
-  const dateRangeMenuItems = useMemo(
-    () =>
-      Object.entries(menuOptions).map(([id, value]) => ({
-        id,
-        label: value.title,
-      })),
-    [menuOptions]
-  );
-
-  const handleDateRangeApply = (
-    value:
-      | Parameters<typeof getDateRangeObjectFromCorePicker>[0]['value']
-      | null,
-    presetKey?: string
-  ) => {
-    if (isUndefined(value) || value === null) {
-      return;
-    }
-
-    const { range } = getDateRangeObjectFromCorePicker({
-      menuOptions,
-      presetKey,
-      showSelectedCustomRange: true,
-      value,
-    });
-
-    handleDateRangeChange(range);
-    setIsDateRangeMenuOpen(false);
-  };
-
-  const handleDateRangePresetSelect = (key: string) => {
-    const selectedPreset = getDateRangeObjectFromDateRangePreset({
-      menuOptions,
-      presetKey: key,
-    });
-    if (isUndefined(selectedPreset)) {
-      return;
-    }
-
-    handleDateRangeChange(selectedPreset.range);
-    setIsDateRangeMenuOpen(false);
-  };
-
   if (
     !commonTestCasePermission?.ViewAll &&
     !commonTestCasePermission?.ViewBasic
@@ -244,82 +162,20 @@ const IncidentManager = ({
                   </Dropdown.Menu>
                 </Dropdown.Popover>
               </Dropdown.Root>
-              <Dropdown.Root
-                isOpen={isDateRangeMenuOpen}
-                onOpenChange={setIsDateRangeMenuOpen}>
-                <Button
-                  noTextPadding
-                  className="tw:h-8 tw:max-w-64 tw:items-center"
-                  color="secondary"
-                  data-testid="date-range-picker"
-                  iconTrailing={
-                    <DropDownIcon
-                      className="align-middle"
-                      height={16}
-                      width={16}
-                    />
-                  }
-                  size="sm">
-                  <span className="tw:min-w-0 tw:truncate tw:px-0.5">
-                    {selectedDateRangeLabel}
-                  </span>
-                  {dateRangeKey && (
-                    <span
-                      className="tw:inline-flex tw:size-4 tw:shrink-0 tw:items-center tw:justify-center"
-                      data-testid="clear-date-picker"
-                      role="button"
-                      tabIndex={0}
-                      onClick={(event) => {
-                        event.stopPropagation();
-                        handleDateRangeClear();
-                        setIsDateRangeMenuOpen(false);
-                      }}
-                      onKeyDown={(event) => {
-                        if (event.key === 'Enter' || event.key === ' ') {
-                          event.preventDefault();
-                          event.stopPropagation();
-                          handleDateRangeClear();
-                          setIsDateRangeMenuOpen(false);
-                        }
-                      }}>
-                      <XClose className="tw:size-4" />
-                    </span>
-                  )}
-                </Button>
-                <Dropdown.Popover className="tw:w-56">
-                  <Dropdown.Menu
-                    items={dateRangeMenuItems}
-                    selectedKeys={dateRangeKey?.key ? [dateRangeKey.key] : []}
-                    selectionMode="single"
-                    onAction={(key) => {
-                      if (isString(key)) {
-                        handleDateRangePresetSelect(key);
-                      }
-                    }}>
-                    {(item) => (
-                      <Dropdown.Item
-                        data-testid={`date-range-option-${item.id}`}
-                        id={item.id}
-                        key={item.id}
-                        label={item.label}
-                      />
-                    )}
-                  </Dropdown.Menu>
-                  <Dropdown.Separator />
-                  <div className="tw:p-1.5">
-                    <DateRangePicker
-                      buttonProps={{
-                        'data-testid': 'custom-date-range-picker',
-                        size: 'sm',
-                      }}
-                      placeholder={t('label.custom-range')}
-                      triggerLabel={t('label.custom-range')}
-                      value={dateRangePickerValue}
-                      onApply={handleDateRangeApply}
-                    />
-                  </div>
-                </Dropdown.Popover>
-              </Dropdown.Root>
+              <DatePickerMenu
+                allowClear
+                showSelectedCustomRange
+                defaultDateRange={dateRangeKey}
+                handleDateRangeChange={handleDateRangeChange}
+                key={`${dateRangeKey?.key ?? 'empty'}-${
+                  dateRangeKey?.startTs ?? ''
+                }-${dateRangeKey?.endTs ?? ''}`}
+                placeholder={t('label.select-entity', {
+                  entity: t('label.date'),
+                })}
+                size="small"
+                onClear={handleDateRangeClear}
+              />
             </div>
           )}
         </div>

@@ -1,4 +1,4 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useMemo, useState } from 'react';
 import {
   endOfMonth,
   endOfWeek,
@@ -8,7 +8,7 @@ import {
   today,
 } from '@internationalized/date';
 import { useControlledState } from '@react-stately/utils';
-import { Calendar as CalendarIcon, XClose } from '@untitledui/icons';
+import { Calendar as CalendarIcon } from '@untitledui/icons';
 import { useDateFormatter } from 'react-aria';
 import type {
   DateRangePickerProps as AriaDateRangePickerProps,
@@ -22,9 +22,7 @@ import {
   useLocale,
 } from 'react-aria-components';
 import { Button } from '@/components/base/buttons/button';
-import type { ButtonProps } from '@/components/base/buttons/button';
 import { cx } from '@/utils/cx';
-import type { RangeValue } from '@react-types/shared';
 import { DateInput } from './date-input';
 import { RangeCalendar } from './range-calendar';
 import { RangePresetButton } from './range-preset';
@@ -33,55 +31,19 @@ const now = today(getLocalTimeZone());
 
 const highlightedDates = [today(getLocalTimeZone())];
 
-export type DateRangePickerValue = RangeValue<DateValue>;
-
-export interface DateRangePickerPreset {
-  key: string;
-  label: ReactNode;
-  value: DateRangePickerValue;
-}
-
-type DateRangePickerButtonProps = ButtonProps & {
-  [key: `data-${string}`]: string | undefined;
-};
-
 interface DateRangePickerProps extends AriaDateRangePickerProps<DateValue> {
   /** The function to call when the apply button is clicked. */
-  onApply?: (value: DateRangePickerValue | null, presetKey?: string) => void;
+  onApply?: () => void;
   /** The function to call when the cancel button is clicked. */
   onCancel?: () => void;
-  /** Preset ranges to show in the side rail. */
-  presets?: DateRangePickerPreset[];
-  /** Label to render in the trigger button instead of the formatted date range. */
-  triggerLabel?: ReactNode;
-  /** Placeholder to render when there is no selected date range. */
-  placeholder?: ReactNode;
-  /** Props passed to the trigger button. */
-  buttonProps?: DateRangePickerButtonProps;
-  /** Show an inline clear action in the trigger button when a range is selected. */
-  allowClear?: boolean;
-  /** The function to call when the clear action is clicked. */
-  onClear?: () => void;
-  /** Test id for the clear action. */
-  clearButtonTestId?: string;
-  /** Applies and closes the picker immediately when a preset is selected. */
-  applyOnPresetSelect?: boolean;
 }
 
 export const DateRangePicker = ({
-  allowClear,
-  applyOnPresetSelect,
-  buttonProps,
-  clearButtonTestId = 'clear-date-picker',
-  onClear,
   value: valueProp,
   defaultValue,
   onChange,
   onApply,
   onCancel,
-  placeholder = 'Select dates',
-  presets: presetsProp,
-  triggerLabel,
   ...props
 }: DateRangePickerProps) => {
   const { locale } = useLocale();
@@ -104,7 +66,7 @@ export const DateRangePicker = ({
     ? formatter.format(value.end.toDate(getLocalTimeZone()))
     : 'Select date';
 
-  const defaultPresets = useMemo(
+  const presets = useMemo(
     () => ({
       today: { label: 'Today', value: { start: now, end: now } },
       yesterday: {
@@ -160,40 +122,6 @@ export const DateRangePicker = ({
     }),
     [locale]
   );
-  const presets = useMemo(
-    () =>
-      presetsProp ??
-      Object.entries(defaultPresets).map(([key, preset]) => ({
-        key,
-        label: preset.label,
-        value: preset.value,
-      })),
-    [defaultPresets, presetsProp]
-  );
-  const calendarPresets = useMemo(
-    () =>
-      Object.fromEntries(
-        presets
-          .slice(0, 3)
-          .map((preset) => [
-            preset.key,
-            { label: preset.label, value: preset.value },
-          ])
-      ),
-    [presets]
-  );
-
-  const handleApply = (close: () => void, presetKey?: string) => {
-    onApply?.(value, presetKey);
-    close();
-  };
-  const triggerContent =
-    triggerLabel ??
-    (value ? (
-      `${formattedStartDate} – ${formattedEndDate}`
-    ) : (
-      <span className="tw:text-placeholder">{placeholder}</span>
-    ));
 
   return (
     <AriaDateRangePicker
@@ -203,32 +131,11 @@ export const DateRangePicker = ({
       value={value}
       onChange={setValue}>
       <AriaGroup>
-        <Button
-          color="secondary"
-          iconLeading={CalendarIcon}
-          size="md"
-          {...buttonProps}>
-          {triggerContent}
-          {allowClear && value && (
-            <span
-              data-testid={clearButtonTestId}
-              role="button"
-              tabIndex={0}
-              onClick={(event) => {
-                event.stopPropagation();
-                setValue(null);
-                onClear?.();
-              }}
-              onKeyDown={(event) => {
-                if (event.key === 'Enter' || event.key === ' ') {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  setValue(null);
-                  onClear?.();
-                }
-              }}>
-              <XClose className="tw:size-4" />
-            </span>
+        <Button color="secondary" iconLeading={CalendarIcon} size="md">
+          {!value ? (
+            <span className="tw:text-placeholder">Select dates</span>
+          ) : (
+            `${formattedStartDate} – ${formattedEndDate}`
           )}
         </Button>
       </AriaGroup>
@@ -250,15 +157,11 @@ export const DateRangePicker = ({
               <div className="tw:hidden tw:w-38 tw:flex-col tw:gap-0.5 tw:border-r tw:border-solid tw:border-secondary tw:p-3 tw:lg:flex">
                 {Object.values(presets).map((preset) => (
                   <RangePresetButton
-                    key={preset.key}
+                    key={preset.label}
                     value={preset.value}
                     onClick={() => {
                       setValue(preset.value);
                       setFocusedValue(preset.value.start);
-                      if (applyOnPresetSelect) {
-                        onApply?.(preset.value, preset.key);
-                        close();
-                      }
                     }}>
                     {preset.label}
                   </RangePresetButton>
@@ -268,7 +171,11 @@ export const DateRangePicker = ({
                 <RangeCalendar
                   focusedValue={focusedValue}
                   highlightedDates={highlightedDates}
-                  presets={calendarPresets}
+                  presets={{
+                    lastWeek: presets.lastWeek,
+                    lastMonth: presets.lastMonth,
+                    lastYear: presets.lastYear,
+                  }}
                   onFocusChange={setFocusedValue}
                 />
                 <div className="tw:flex tw:justify-between tw:gap-3 tw:border-t tw:border-secondary tw:p-4">
@@ -290,7 +197,10 @@ export const DateRangePicker = ({
                     <Button
                       color="primary"
                       size="md"
-                      onClick={() => handleApply(close)}>
+                      onClick={() => {
+                        onApply?.();
+                        close();
+                      }}>
                       Apply
                     </Button>
                   </div>

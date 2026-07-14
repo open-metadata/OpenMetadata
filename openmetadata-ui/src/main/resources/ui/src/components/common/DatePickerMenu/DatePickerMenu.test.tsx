@@ -10,7 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { render, screen } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import DatePickerMenu from './DatePickerMenu.component';
 
 jest.mock('../../../utils/DatePickerMenuUtils', () => ({
@@ -65,5 +65,34 @@ describe('DatePickerMenu', () => {
     );
 
     expect(screen.getByText('Default Range')).toBeInTheDocument();
+  });
+
+  it('should clear the selected range and restore the disabled placeholder', () => {
+    const onClear = jest.fn();
+
+    render(
+      <DatePickerMenu
+        allowClear
+        defaultDateRange={{ key: 'last3days', title: 'Last 3 days' }}
+        handleDateRangeChange={mockHandleDateRangeChange}
+        placeholder="Select date"
+        onClear={onClear}
+      />
+    );
+
+    const clearButton = screen.getByTestId('clear-date-picker');
+    const datePickerTrigger = screen.getByTestId('date-picker-menu');
+
+    expect(datePickerTrigger).toHaveClass('tw:h-8');
+    expect(datePickerTrigger).toHaveClass('tw:max-w-64');
+    expect(clearButton).toHaveClass('tw:items-center');
+    expect(clearButton).toHaveClass('tw:justify-center');
+    expect(clearButton).toHaveClass('tw:cursor-pointer');
+
+    fireEvent.mouseDown(clearButton);
+    fireEvent.click(clearButton);
+
+    expect(onClear).toHaveBeenCalledTimes(1);
+    expect(screen.getByText('Select date')).toHaveClass('tw:text-disabled');
   });
 });
