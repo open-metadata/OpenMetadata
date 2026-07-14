@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -232,7 +233,9 @@ public class UserMetricsResourceIT {
                 assertNotNull(usersApi.getByName(newUser.getName()));
                 Map<String, Object> m = getUserMetrics();
                 int total = (Integer) m.get("total_users");
-                assertTrue(total > 0, "Metrics should include at least the created user");
+                assertTrue(
+                    total >= listUserTotal(usersApi),
+                    "Metrics should include every visible user while the created user exists");
               });
 
       Map<String, Object> updatedMetrics = getUserMetrics();
@@ -266,6 +269,12 @@ public class UserMetricsResourceIT {
       deleteParams.put("hardDelete", "true");
       usersApi.delete(newUser.getId().toString(), deleteParams);
     }
+  }
+
+  private int listUserTotal(UserService usersApi) {
+    ListParams params = new ListParams();
+    params.setLimit(1);
+    return usersApi.list(params).getPaging().getTotal();
   }
 
   @Test
