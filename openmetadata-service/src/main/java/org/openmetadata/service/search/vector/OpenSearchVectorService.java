@@ -342,6 +342,10 @@ public class OpenSearchVectorService implements VectorIndexService {
           throw e;
         }
       }
+    } catch (IllegalStateException e) {
+      // Escalations (total poison-signal loss, bulk item failures on the live path) must reach
+      // the reindex machinery's per-record failure accounting rather than be logged away.
+      throw e;
     } catch (Exception e) {
       LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
     }
@@ -376,8 +380,17 @@ public class OpenSearchVectorService implements VectorIndexService {
         ChunkHeader header = getChunkHeader(staged, parentId);
         replaceChunks(staged, parentId, List.of(), previousCount(header));
       } catch (Exception e) {
-        // A delete missing from the staged generation resurrects the chunks at promotion.
-        recordStagedWriteFailure(staged, parentId, e);
+        // A delete missing from the staged generation resurrects the chunks at promotion. Record
+        // the failure but never let it explode out of the entity-delete lifecycle — the local
+        // poison flag plus the marker (when recordable) already block promotion.
+        try {
+          recordStagedWriteFailure(staged, parentId, e);
+        } catch (IllegalStateException signalLoss) {
+          LOG.error(
+              "Poison signal loss during live-delete cleanup for {}: {}",
+              parentId,
+              signalLoss.getMessage());
+        }
       }
     }
   }
@@ -611,38 +624,49 @@ public class OpenSearchVectorService implements VectorIndexService {
         e.getMessage(),
         e);
     String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-    if (liveIndex == null) {
-      // Fresh install: no live index to hold a marker, and nothing to lose at the swap. Writing
-      // to the bare base name would auto-create a junk index squatting on the promotion alias
-      // name, making the first-ever promotion collide — the local flag still guards this node.
-      return;
+    // Dual-location signal: the live index first (the store promotion must be able to read
+    // anyway), the staged generation itself as fallback — a transient blip on one store at
+    // failure time must not let a later, recovered promotion read "clean". Fresh installs have
+    // no live index (and nothing to lose at the swap); writing to the bare base name would
+    // auto-create a junk index squatting on the promotion alias name.
+    boolean recorded = liveIndex != null && writePoisonMarker(liveIndex, target);
+    if (!recorded) {
+      recorded = writePoisonMarker(target, target);
     }
-    boolean recorded = false;
-    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS && !recorded; attempt++) {
+    if (!recorded && liveIndex != null) {
+      // Neither store took the signal: escalate so the failure cannot be skipped — the exception
+      // propagates into the reindex machinery's per-record failure accounting instead of this
+      // method returning as if handled.
+      throw new IllegalStateException(
+          "Staged chunk write for "
+              + parentId
+              + " failed AND the failure could not be recorded in either the live index or the "
+              + "staged generation — failing loudly instead of risking a silent promotion of an "
+              + "incomplete generation",
+          e);
+    }
+  }
+
+  private boolean writePoisonMarker(String indexName, String generation) {
+    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
       try {
         // refresh=true makes the marker search-visible immediately — promotion may check within
         // the same second, before a periodic refresh would surface it.
         executeGenericRequest(
             "PUT",
-            "/" + liveIndex + "/_doc/" + poisonDocId(target) + "?refresh=true",
+            "/" + indexName + "/_doc/" + poisonDocId(generation) + "?refresh=true",
             "{\"poisoned\":true}");
-        recorded = true;
+        return true;
       } catch (Exception markerFailure) {
         LOG.warn(
             "Staged poison marker write to {} failed (attempt {}/{}): {}",
-            liveIndex,
+            indexName,
             attempt,
             POISON_SIGNAL_ATTEMPTS,
             markerFailure.getMessage());
       }
     }
-    if (!recorded) {
-      LOG.error(
-          "Staged poison marker could not be recorded in the live index {} — the cluster is "
-              + "likely unhealthy enough that promotion will fail loudly on its own; if not, "
-              + "promotion may proceed with an incomplete generation",
-          liveIndex);
-    }
+    return false;
   }
 
   /**
@@ -655,16 +679,22 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   private boolean stagedGenerationPoisoned(String generation) {
     String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-    if (liveIndex == null) {
-      // Fresh install: no live index exists to hold a marker — and nothing to lose at the swap.
-      // Failing closed here would permanently block the first-ever promotion.
-      return false;
+    // Check both marker locations: the live index (primary) and the generation itself (the
+    // fallback used when the live index rejected the marker write). Fresh installs have no live
+    // index — and nothing to lose at the swap — so only the generation check runs.
+    boolean poisoned = markerPresent(generation, generation);
+    if (!poisoned && liveIndex != null) {
+      poisoned = markerPresent(liveIndex, generation);
     }
+    return poisoned;
+  }
+
+  private boolean markerPresent(String indexName, String generation) {
     String query =
         "{\"size\":0,\"query\":{\"ids\":{\"values\":[\"" + poisonDocId(generation) + "\"]}}}";
     for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
       try {
-        String response = executeGenericRequest("POST", "/" + liveIndex + "/_search", query);
+        String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
         long hits = MAPPER.readTree(response).path("hits").path("total").path("value").asLong(0);
         return hits > 0;
       } catch (Exception e) {
@@ -1311,11 +1341,16 @@ public class OpenSearchVectorService implements VectorIndexService {
       StringBuilder reasons = new StringBuilder();
       int reported = 0;
       for (JsonNode item : root.path("items")) {
-        JsonNode error = item.path("index").path("error");
-        if (!error.isMissingNode() && reported < 3) {
-          reasons.append(error.path("type").asText("?")).append(": ");
-          reasons.append(error.path("reason").asText("?")).append("; ");
-          reported++;
+        // replaceChunks emits index AND delete actions (trailing-chunk cleanup); create for
+        // completeness — each item is keyed by whichever action it was.
+        for (String action : BULK_ACTIONS) {
+          JsonNode error = item.path(action).path("error");
+          if (!error.isMissingNode() && reported < 3) {
+            reasons.append(action).append(' ');
+            reasons.append(error.path("type").asText("?")).append(": ");
+            reasons.append(error.path("reason").asText("?")).append("; ");
+            reported++;
+          }
         }
       }
       throw new IllegalStateException(
@@ -1328,9 +1363,19 @@ public class OpenSearchVectorService implements VectorIndexService {
     } catch (IllegalStateException e) {
       throw e;
     } catch (Exception parseFailure) {
-      LOG.warn("Could not parse bulk response for {}: {}", parentId, parseFailure.getMessage());
+      // Conservative: an unparseable 200 could be hiding item failures, and in a staged
+      // generation silently accepting it becomes a chunk drop at promotion.
+      throw new IllegalStateException(
+          "Bulk chunk write for "
+              + parentId
+              + " into "
+              + indexName
+              + " returned an unparseable response",
+          parseFailure);
     }
   }
+
+  private static final List<String> BULK_ACTIONS = List.of("index", "delete", "create");
 
   /**
    * Belt-and-braces for a missing or corrupt chunk-0 header (e.g. a partial bulk failure).
