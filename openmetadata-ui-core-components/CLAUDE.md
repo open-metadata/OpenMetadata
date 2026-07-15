@@ -8,7 +8,7 @@ Shared UI component library for OpenMetadata, built on UntitledUI design system 
 - **Source root**: `src/main/resources/ui/src/`
 - **Build tool**: Vite (library mode) with `vite-plugin-dts` for type declarations
 - **Styling**: Tailwind CSS v4 with `tw:` prefix to avoid conflicts with the main app's Less/Ant Design styles
-- **Component foundation**: `react-aria-components` (NOT MUI or Ant Design)
+- **Component foundation**: `react-aria-components` (NOT Ant Design)
 - **Icons**: `@untitledui/icons`
 
 ## Development Commands
@@ -30,8 +30,7 @@ yarn clean              # Remove dist/
 | --------------------------------------------- | -------------------------------------------- |
 | `@openmetadata/ui-core-components`            | Main entry - re-exports everything           |
 | `@openmetadata/ui-core-components/components` | All UI components                            |
-| `@openmetadata/ui-core-components/theme`      | MUI theme, `createMuiTheme`                  |
-| `@openmetadata/ui-core-components/colors`     | Color utilities, `generateMuiPalettes`       |
+| `@openmetadata/ui-core-components/colors`     | Color utilities                              |
 | `@openmetadata/ui-core-components/utils`      | `cx`, `sortCx`, utilities                    |
 | `@openmetadata/ui-core-components/styles.css` | Compiled CSS (must be imported by consumers) |
 
@@ -69,7 +68,6 @@ src/
 ├── styles/
 │   ├── globals.css        # Shared Tailwind-facing CSS entry (tokens, typography, shared styles)
 │   └── typography.css     # Typography prose rules
-├── theme/                 # MUI theme configuration
 ├── colors/                # Color generation utilities
 ├── utils/                 # cx, sortCx, isReactComponent
 ├── types/                 # Shared TypeScript types
@@ -118,8 +116,6 @@ Dark mode uses a custom variant: `@custom-variant dark (&:where(.dark-mode, .dar
 These are externalized in the build and must be provided by the consuming app:
 
 - `react`, `react-dom`, `react/jsx-runtime`
-- `@mui/material`, `@mui/system`, `@mui/material/styles`, `@mui/material/Chip`, `@mui/icons-material`, `@mui/x-date-pickers`
-- `@emotion/react`, `@emotion/styled`
 - `@material/material-color-utilities`
 - `@untitledui/icons`
 - `react-aria`, `react-aria-components`, `react-stately`
