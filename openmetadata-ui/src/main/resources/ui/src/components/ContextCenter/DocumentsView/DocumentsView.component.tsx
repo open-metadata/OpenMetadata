@@ -19,6 +19,7 @@ import {
   Checkbox,
   Dot,
   Dropdown,
+  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
@@ -34,9 +35,9 @@ import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-i
 import { ReactComponent as DownloadIcon } from '../../../assets/svg/action-icons/download.svg';
 import { ReactComponent as MoveFolderIcon } from '../../../assets/svg/action-icons/move-folder.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as UploadIcon } from '../../../assets/svg/action-icons/upload.svg';
 import { ReactComponent as FolderIcon } from '../../../assets/svg/common/folder.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import { moveFileToFolder, moveFileToRoot } from '../../../rest/assetAPI';
 import { formatBytes } from '../../../utils/ContextCenterPureUtils';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
@@ -576,6 +577,7 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   isLoadingMore,
   previewFileId,
   selectedIds,
+  selectedFolderName,
   onBulkDelete,
   onBulkDownload,
   onBulkMove,
@@ -585,7 +587,9 @@ const DocumentsView: FC<DocumentsViewProps> = ({
   onPreview,
   onSelectFile,
   onScrollEnd,
+  onUploadFile,
 }) => {
+  const { t } = useTranslation();
   const selectedCount = selectedIds?.size ?? 0;
 
   const handleClear = () => {
@@ -661,10 +665,38 @@ const DocumentsView: FC<DocumentsViewProps> = ({
             )}
           </Box>
         </Box>
+      ) : selectedFolderName ? (
+        <div className="tw:relative tw:flex-1">
+          <EmptyPlaceholder
+            actions={
+              onUploadFile
+                ? [
+                    {
+                      color: 'primary',
+                      key: 'upload-file',
+                      label: t('label.upload-file'),
+                      onClick: onUploadFile,
+                    },
+                  ]
+                : []
+            }
+            description={t('message.context-center-folder-empty-subtitle')}
+            icon={<UploadIcon className="tw:text-fg-brand-primary" />}
+            title={t('label.folder-name-is-empty', {
+              folderName: selectedFolderName,
+            })}
+            variant="blank"
+          />
+        </div>
       ) : (
-        <Box align="center" className="tw:flex-1 tw:p-12" justify="center">
-          <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-        </Box>
+        <div className="tw:relative tw:flex-1">
+          <EmptyPlaceholder
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+            variant="blank"
+          />
+        </div>
       )}
     </Card>
   );

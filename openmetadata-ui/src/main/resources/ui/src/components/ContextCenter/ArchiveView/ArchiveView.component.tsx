@@ -16,6 +16,7 @@ import {
   ButtonUtility,
   Card,
   Dot,
+  EmptyPlaceholder,
   FileIcon,
   Skeleton,
   Typography,
@@ -24,8 +25,7 @@ import { FC, UIEvent } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as RefreshIcon } from '../../../assets/svg/action-icons/refresh.svg';
 import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
-import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
+import { ReactComponent as ArchiveIcon } from '../../../assets/svg/sidebar-icons/archive.svg';
 import { getShortRelativeTime } from '../../../utils/date-time/DateTimeUtils';
 import { ArchiveItem, ArchiveViewProps } from './ArchiveView.interface';
 
@@ -137,6 +137,8 @@ const ArchiveView: FC<ArchiveViewProps> = ({
   onRestore,
   onScrollEnd,
 }) => {
+  const { t } = useTranslation();
+
   const handleScroll = (e: UIEvent<HTMLDivElement>) => {
     if (isLoadingMore) {
       return;
@@ -158,9 +160,14 @@ const ArchiveView: FC<ArchiveViewProps> = ({
 
   if (data.length === 0) {
     return (
-      <Card className="tw:flex tw:flex-1 tw:items-center tw:justify-center tw:p-12">
-        <ErrorPlaceHolder type={ERROR_PLACEHOLDER_TYPE.NO_DATA} />
-      </Card>
+      <div className="tw:relative tw:flex-1 tw:min-h-0">
+        <EmptyPlaceholder
+          description={t('message.archived-items-appear-here')}
+          icon={<ArchiveIcon className="tw:text-utility-gray-600" />}
+          title={t('label.no-archived-item-plural-yet')}
+          variant="blank"
+        />
+      </div>
     );
   }
 
