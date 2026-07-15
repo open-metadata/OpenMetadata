@@ -68,7 +68,7 @@ import EntityLink from '../EntityLink';
 import { getColumnNameFromEntityLink } from '../EntityPureUtils';
 import { getEntityFQN } from '../FeedUtils';
 import { getDataQualityPagePath } from '../RouterUtils';
-import { generateEntityLink } from '../TableUtils';
+import { generateEntityLink } from '../TablePureUtils';
 
 /**
  * Builds the parameters for a test case search based on the given filters.
