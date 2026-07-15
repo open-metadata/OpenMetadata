@@ -19,14 +19,17 @@ export interface DrawerHeaderConfig {
   showCloseButton?: boolean;
   onClose?: () => void;
   actions?: ReactNode;
+  className?: string;
 }
 
 export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
-  const { title, showCloseButton = true, onClose, actions } = config;
+  const { title, showCloseButton = true, onClose, actions, className } = config;
 
   const drawerHeader = useMemo(
     () => (
-      <SlideoutMenu.Header onClose={showCloseButton ? onClose : undefined}>
+      <SlideoutMenu.Header
+        className={className}
+        onClose={showCloseButton ? onClose : undefined}>
         <div className="tw:flex tw:items-center tw:gap-2 tw:flex-1">
           {typeof title === 'string' ? (
             <Typography
@@ -45,7 +48,7 @@ export const useDrawerHeader = (config: DrawerHeaderConfig = {}) => {
         )}
       </SlideoutMenu.Header>
     ),
-    [title, showCloseButton, onClose, actions]
+    [title, showCloseButton, onClose, actions, className]
   );
 
   return {

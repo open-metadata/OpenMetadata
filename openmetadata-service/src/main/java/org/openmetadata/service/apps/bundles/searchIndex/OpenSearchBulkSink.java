@@ -936,10 +936,8 @@ public class OpenSearchBulkSink implements BulkSink {
         return json;
       }
 
-      int expectedDimension =
-          vectorService.getEmbeddingClient() != null
-              ? vectorService.getEmbeddingClient().getDimension()
-              : -1;
+      var embeddingClient = vectorService.getEmbeddingClient();
+      int expectedDimension = embeddingClient != null ? embeddingClient.getDimension() : -1;
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
       if (canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
@@ -952,12 +950,13 @@ public class OpenSearchBulkSink implements BulkSink {
         // chunk docs reflect committed entity state, so writing them mid-reindex is safe even if
         // the staged index is never promoted.
         vectorService.updateEntityEmbeddingChunks(entity);
-      } else {
+      } else if (embeddingClient != null && embeddingClient.isAvailable()) {
         // Build the chunk docs once (one embedding call per chunk): chunk 0's embedding fields
-        // are spliced into the staged entity doc for hybrid search, and the full set is written
-        // to the dedicated chunk index for the semantic vector path (issue #4789).
-        List<Map<String, Object>> chunkDocs =
-            VectorDocBuilder.fromEntity(entity, vectorService.getEmbeddingClient());
+        // are spliced into the staged entity doc for hybrid search, and the full set is written to
+        // the dedicated chunk index for the semantic vector path (issue #4789). Skipped when the
+        // provider circuit is open so a transient outage indexes without embeddings (self-heals on
+        // the next reindex) instead of failing every entity.
+        List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
         if (!chunkDocs.isEmpty()) {
           doc.setAll(
               (ObjectNode)
@@ -1268,6 +1267,11 @@ public class OpenSearchBulkSink implements BulkSink {
         if (!buffer.isEmpty() && !closed) {
           flushInternal();
         }
+      } catch (Exception e) {
+        // An exception escaping here would cancel the scheduled task permanently
+        // (ScheduledExecutorService contract), silently disabling periodic flushing so trailing
+        // buffers only ship on an explicit flush/close. Log and continue to the next interval.
+        LOG.error("Scheduled flush failed; will retry on the next interval", e);
       } finally {
         lock.unlock();
       }
