@@ -140,39 +140,20 @@ export const updateWidgetHeightRecursively = (
   widgetId: string,
   height: number,
   widgets: WidgetConfig[]
-) => {
-  const resizedWidget = widgets.find((widget) => widget.i === widgetId);
+) =>
+  widgets.reduce((acc, widget) => {
+    if (widget.i === widgetId) {
+      acc.push({ ...widget, h: height });
+    } else if (widget.children) {
+      acc.push({
+        ...widget,
+        children: widget.children.map((child) =>
+          child.i === widgetId ? { ...child, h: height } : child
+        ),
+      });
+    } else {
+      acc.push(widget);
+    }
 
-  if (resizedWidget) {
-    const heightDelta = height - resizedWidget.h;
-    const previousBottom = resizedWidget.y + resizedWidget.h;
-
-    // Top-level widgets are remeasured after rendering. Preserve their layout
-    // by shifting only widgets below them that share horizontal grid columns.
-    return widgets.map((widget) => {
-      if (widget.i === widgetId) {
-        return { ...widget, h: height };
-      }
-
-      const hasHorizontalOverlap =
-        widget.x < resizedWidget.x + resizedWidget.w &&
-        widget.x + widget.w > resizedWidget.x;
-      const isBelowResizedWidget = widget.y >= previousBottom;
-
-      return heightDelta !== 0 && hasHorizontalOverlap && isBelowResizedWidget
-        ? { ...widget, y: widget.y + heightDelta }
-        : widget;
-    });
-  }
-
-  return widgets.map((widget) =>
-    widget.children
-      ? {
-          ...widget,
-          children: widget.children.map((child) =>
-            child.i === widgetId ? { ...child, h: height } : child
-          ),
-        }
-      : widget
-  );
-};
+    return acc;
+  }, [] as WidgetConfig[]);

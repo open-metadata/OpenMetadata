@@ -24,21 +24,6 @@ interface DynamicHeightWidgetProps {
   onHeightChange?: (widgetId: string, height: number) => void;
 }
 
-const getVerticalBoxSpacing = (element: HTMLElement | null) => {
-  if (!element) {
-    return 0;
-  }
-
-  const styles = window.getComputedStyle(element);
-
-  return [
-    styles.paddingTop,
-    styles.paddingBottom,
-    styles.borderTopWidth,
-    styles.borderBottomWidth,
-  ].reduce((total, value) => total + (Number.parseFloat(value) || 0), 0);
-};
-
 export const DynamicHeightWidget = ({
   widget,
   children,
@@ -56,15 +41,8 @@ export const DynamicHeightWidget = ({
   useEffect(() => {
     const resizeObserver = new ResizeObserver((entries) => {
       for (const entry of entries) {
-        // ResizeObserver reports the content box only. Include the wrapper box
-        // spacing so padded grid items, such as LeftPanel, reserve their full height.
-        const verticalBoxSpacing =
-          getVerticalBoxSpacing(containerRef.current) +
-          getVerticalBoxSpacing(containerRef.current?.parentElement ?? null);
         const newHeight =
-          (entry.contentRect.height +
-            verticalBoxSpacing +
-            GRID_VERTICAL_MARGIN) /
+          (entry.contentRect.height + GRID_VERTICAL_MARGIN) /
           (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN);
         if (newHeight !== height) {
           setHeight(newHeight);

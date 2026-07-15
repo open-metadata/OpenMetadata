@@ -139,5 +139,9 @@ export const LeftPanelContainer = ({
     );
   }
 
-  return <Row gutter={[16, 16]}>{widgets}</Row>;
+  return (
+    <Row className="left-panel-content" gutter={[16, 16]}>
+      {widgets}
+    </Row>
+  );
 };

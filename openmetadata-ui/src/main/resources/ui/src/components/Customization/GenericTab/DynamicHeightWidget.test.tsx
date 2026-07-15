@@ -124,39 +124,6 @@ describe('DynamicHeightWidget', () => {
       expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 2);
     });
 
-    it('includes the grid item padding and borders in the measured height', () => {
-      const { container } = render(
-        <DynamicHeightWidget
-          widget={mockWidget}
-          onHeightChange={mockOnHeightChange}>
-          <div>Test Content</div>
-        </DynamicHeightWidget>
-      );
-      const gridItem = container.querySelector(
-        '.dynamic-height-widget'
-      )?.parentElement;
-
-      if (!gridItem) {
-        throw new Error('Expected the dynamic height widget to have a parent');
-      }
-
-      gridItem.style.paddingTop = '16px';
-      gridItem.style.paddingBottom = '16px';
-      gridItem.style.borderTop = '1px solid transparent';
-      gridItem.style.borderBottom = '1px solid transparent';
-
-      const resizeCallback = (global.ResizeObserver as jest.Mock).mock
-        .calls[0][0];
-      act(() => {
-        resizeCallback([{ contentRect: { height: 448 } }]);
-      });
-
-      expect(mockOnHeightChange).toHaveBeenCalledWith(
-        'test-widget',
-        (448 + 34 + 16) / 116
-      );
-    });
-
     it('does not call onHeightChange when height remains the same', () => {
       render(
         <DynamicHeightWidget
@@ -219,7 +186,10 @@ describe('DynamicHeightWidget', () => {
       resizeCallback([{ contentRect: { height: 0 } }]);
 
       // (0 + GRID_VERTICAL_MARGIN) / (GRID_ROW_HEIGHT + GRID_VERTICAL_MARGIN) = 16/116
-      expect(mockOnHeightChange).toHaveBeenCalledWith('test-widget', 16 / 116);
+      expect(mockOnHeightChange).toHaveBeenCalledWith(
+        'test-widget',
+        16 / 116
+      );
     });
 
     it('handles very large height values', () => {

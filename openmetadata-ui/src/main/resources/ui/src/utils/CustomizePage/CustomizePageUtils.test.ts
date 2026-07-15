@@ -309,47 +309,6 @@ describe('CustomizePageUtils', () => {
 
       expect(result).toEqual(widgets);
     });
-
-    it('should move a left-column widget below a resized left panel', () => {
-      const widgets = [
-        {
-          i: 'KnowledgePanel.LeftPanel',
-          h: 10,
-          w: 6,
-          x: 0,
-          y: 0,
-        },
-        {
-          i: 'KnowledgePanel.PipelineObservability',
-          h: 3,
-          w: 2,
-          x: 0,
-          y: 10,
-        },
-        {
-          i: 'KnowledgePanel.Tags',
-          h: 2,
-          w: 2,
-          x: 6,
-          y: 0,
-        },
-      ] as WidgetConfig[];
-
-      const result = updateWidgetHeightRecursively(
-        'KnowledgePanel.LeftPanel',
-        12,
-        widgets
-      );
-
-      expect(
-        result.find(
-          (widget) => widget.i === 'KnowledgePanel.PipelineObservability'
-        )?.y
-      ).toBe(12);
-      expect(
-        result.find((widget) => widget.i === 'KnowledgePanel.Tags')?.y
-      ).toBe(0);
-    });
   });
 
   // Registry-consistency invariant: getGlossaryTermDefaultTabs() seeds the
