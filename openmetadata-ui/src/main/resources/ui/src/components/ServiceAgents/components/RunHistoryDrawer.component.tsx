@@ -118,6 +118,8 @@ interface RunHistoryDrawerProps {
   agent: Agent;
   open: boolean;
   initialRunId?: string;
+  // Must be a stable reference (memoize with `useCallback`) — it feeds
+  // `useAgentRuns`' effect deps, so an inline function re-fetches every render.
   fetchRuns?: () => Promise<AgentRun[]>;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;

@@ -25,6 +25,10 @@ const RUN_HISTORY_LIMIT = 10;
  * AgentRun view-model. Only fetches while `enabled` (e.g. the drawer is open).
  * Pass `fetchRuns` to source the runs from somewhere other than the
  * ingestion-pipeline run history (e.g. app-backed agents).
+ *
+ * `fetchRuns` MUST be a stable reference (wrap it in `useCallback`). It is part
+ * of the effect dependency array, so an inline function would re-run the effect
+ * on every render and re-fetch in a loop.
  */
 export const useAgentRuns = (
   fqn: string,
