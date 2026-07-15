@@ -260,7 +260,7 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
   });
 
-  it('should render the new-alert action when the resource permission is unknown (fetch failed)', () => {
+  it('should not render the new-alert action when the resource permission is unknown (fails closed)', () => {
     renderTable({
       alerts: [],
       loading: false,
@@ -269,7 +269,7 @@ describe('ObservabilityAlertsTable component', () => {
     });
 
     expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
-    expect(screen.getByText('label.new-entity')).toBeInTheDocument();
+    expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
   });
 
   it('should render pagination when showPagination is true', () => {
