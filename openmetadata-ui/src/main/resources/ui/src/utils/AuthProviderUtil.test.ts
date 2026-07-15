@@ -476,6 +476,48 @@ describe('Test Auth Provider utils', () => {
     expect(email).toEqual('i_am_preferred_username@test.com');
     expect(picture).toEqual('test_picture');
   });
+
+  it('getNameFromUserData should map username/email via jwtPrincipalClaimsMapping', () => {
+    const { name, email } = getNameFromUserData(
+      userProfile,
+      ['preferred_username', 'email', 'sub'],
+      'test.com',
+      ['username:preferred_username', 'email:email']
+    );
+
+    expect(name).toEqual('i_am_preferred_username');
+    expect(email).toEqual('testUser@gmail.com');
+  });
+
+  it('getNameFromUserData should fall back to normalized name when mapped username claim is missing', () => {
+    const profileWithoutPreferredUsername = {
+      email: 'testUser@gmail.com',
+      sub: 'i_am_sub',
+      name: 'Test User',
+      picture: '',
+    } as UserProfile;
+
+    const { name, email } = getNameFromUserData(
+      profileWithoutPreferredUsername,
+      ['preferred_username', 'email', 'sub'],
+      'test.com',
+      ['username:preferred_username', 'email:email']
+    );
+
+    expect(name).toEqual('Test User');
+    expect(email).toEqual('testUser@gmail.com');
+  });
+
+  it('getNameFromUserData should fall back to user.email when mapped email claim is missing', () => {
+    const { email } = getNameFromUserData(
+      userProfile,
+      ['preferred_username', 'email', 'sub'],
+      'test.com',
+      ['username:preferred_username', 'email:upn']
+    );
+
+    expect(email).toEqual('testUser@gmail.com');
+  });
 });
 
 import { OidcUser } from '../components/Auth/AuthProviders/AuthProvider.interface';

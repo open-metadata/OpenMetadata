@@ -130,6 +130,7 @@ export const OktaAuthProvider: FunctionComponent<Props> = ({
           name: info.name ?? '',
           picture: info.imageUrl ?? '',
           locale: info.locale ?? '',
+          preferred_username: info.preferred_username ?? '',
           sub: info.sub,
         },
       };

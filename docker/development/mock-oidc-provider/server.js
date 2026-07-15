@@ -79,6 +79,21 @@ const TEST_ACCOUNTS = new Map([
       preferred_username: 'claim-user',
     },
   ],
+  // Identity that deliberately OMITS `preferred_username`. Used to verify that
+  // self-signup still succeeds when jwtPrincipalClaimsMapping maps
+  // username:preferred_username but the token carries no such claim — the UI
+  // must fall back to a normalized name derived from `name`/email/sub instead
+  // of leaving the required username field empty (issue #26591). `name` has no
+  // spaces so the fallback resolves to a clean username ('fallbackuser').
+  [
+    'fallback-user',
+    {
+      email: 'fallbackuser@open-metadata.org',
+      email_verified: true,
+      name: 'FallbackUser',
+      sub: 'fallback-user',
+    },
+  ],
 ]);
 
 const findAccount = (_ctx, id) => {

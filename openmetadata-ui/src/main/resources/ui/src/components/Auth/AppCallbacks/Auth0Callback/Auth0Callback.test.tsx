@@ -120,9 +120,41 @@ describe('Test Auth0Callback component', () => {
         name: 'test_user',
         picture: 'test_picture',
         locale: 'test_locale',
+        preferred_username: '',
         sub: '',
       },
       scope: '',
     });
+  });
+
+  it('Should include preferred_username in the profile when provided by Auth0', async () => {
+    const mockGetIdTokenClaims = jest.fn();
+    (useAuth0 as jest.Mock).mockReturnValue({
+      isAuthenticated: true,
+      getIdTokenClaims: mockGetIdTokenClaims.mockResolvedValue({
+        __raw: 'raw_id_token',
+      }),
+      user: {
+        email: 'test_email',
+        name: 'test_user',
+        picture: 'test_picture',
+        locale: 'test_locale',
+        preferred_username: 'preferred_user',
+      },
+    });
+
+    await act(async () => {
+      render(<Auth0Callback />, {
+        wrapper: MemoryRouter,
+      });
+    });
+
+    expect(mockHandleSuccessfulLogin).toHaveBeenCalledWith(
+      expect.objectContaining({
+        profile: expect.objectContaining({
+          preferred_username: 'preferred_user',
+        }),
+      })
+    );
   });
 });

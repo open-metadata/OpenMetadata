@@ -142,3 +142,14 @@ export const MOCK_OIDC_MAPPED_CLAIM_ACCOUNT = {
   sub: 'claim-user',
   email: 'claim.user.mapped@open-metadata.org',
 };
+
+// Seeded mock account that OMITS `preferred_username`. Used with a server
+// configured for public client type + jwtPrincipalClaimsMapping
+// [username:preferred_username, email:email] to verify self-signup still
+// completes via the UI's normalized-name fallback (issue #26591). `name`
+// resolves the username; `name` (lowercased) is what the created user gets.
+export const MOCK_OIDC_FALLBACK_ACCOUNT = {
+  sub: 'fallback-user',
+  name: 'fallbackuser',
+  email: 'fallbackuser@open-metadata.org',
+};

@@ -380,7 +380,13 @@ export const getNameFromUserData = (
 
     if (mappingObj['username'] && mappingObj['email']) {
       userName = get(user, mappingObj['username'], '');
-      email = get(user, mappingObj['email']);
+      email = get(user, mappingObj['email'], '');
+      if (isEmpty(userName)) {
+        userName = extractNameFromUserProfile(user);
+      }
+      if (isEmpty(email)) {
+        email = user.email ?? '';
+      }
     } else {
       // eslint-disable-next-line no-console
       console.error(

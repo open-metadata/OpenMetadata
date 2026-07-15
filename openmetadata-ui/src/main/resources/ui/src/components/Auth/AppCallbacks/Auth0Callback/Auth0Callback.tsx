@@ -34,6 +34,7 @@ const Auth0Callback: VFC = () => {
               name: user?.name || '',
               picture: user?.picture || '',
               locale: user?.locale || '',
+              preferred_username: user?.preferred_username || '',
               sub: user?.sub || '',
             },
           };

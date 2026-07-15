@@ -12,7 +12,7 @@
  */
 
 import { IDToken } from '@okta/okta-auth-js';
-import { render, waitFor } from '@testing-library/react';
+import { act, render, waitFor } from '@testing-library/react';
 import React from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import * as SwTokenStorageUtils from '../../../utils/SwTokenStorageUtils';
@@ -63,10 +63,20 @@ jest.mock('@okta/okta-auth-js', () => {
   };
 });
 
+const mockSecurityProps: { restoreOriginalUri?: () => Promise<void> } = {};
+
 jest.mock('@okta/okta-react', () => ({
-  Security: ({ children }: { children: React.ReactNode }) => (
-    <div>{children}</div>
-  ),
+  Security: ({
+    children,
+    restoreOriginalUri,
+  }: {
+    children: React.ReactNode;
+    restoreOriginalUri?: () => Promise<void>;
+  }) => {
+    mockSecurityProps.restoreOriginalUri = restoreOriginalUri;
+
+    return <div>{children}</div>;
+  },
 }));
 
 jest.mock('../../../hooks/useApplicationStore', () => ({
@@ -88,10 +98,11 @@ jest.mock('../../../utils/OktaCustomStorage', () => ({
 jest.mock('../../../utils/SwTokenStorageUtils');
 
 const mockSetOidcToken = jest.fn();
+const mockHandleSuccessfulLogin = jest.fn();
 
 jest.mock('./AuthProvider', () => ({
   useAuthProvider: () => ({
-    handleSuccessfulLogin: jest.fn(),
+    handleSuccessfulLogin: mockHandleSuccessfulLogin,
   }),
 }));
 
@@ -453,6 +464,84 @@ describe('OktaAuthProvider', () => {
         autoRenew: true,
         renewOnTabActivation: true,
       });
+    });
+  });
+
+  describe('restoreOriginalUri profile', () => {
+    beforeEach(() => {
+      mockOktaAuth.getIdToken.mockReturnValue('test-id-token');
+      mockOktaAuth.authStateManager.getAuthState.mockReturnValue({
+        idToken: { scopes: ['openid', 'profile', 'email'] },
+      });
+    });
+
+    it('should include preferred_username in the profile passed to handleSuccessfulLogin', async () => {
+      mockOktaAuth.getUser.mockResolvedValue({
+        email: 'jane@example.com',
+        name: 'Jane Doe',
+        preferred_username: 'jane.doe@example.com',
+        locale: 'en-US',
+        imageUrl: 'pic.png',
+        sub: 'okta-sub-123',
+      });
+
+      render(
+        <MemoryRouter>
+          <OktaAuthProvider>
+            <div>Test</div>
+          </OktaAuthProvider>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockSecurityProps.restoreOriginalUri).toBeDefined();
+      });
+
+      await act(async () => {
+        await mockSecurityProps.restoreOriginalUri?.();
+      });
+
+      await waitFor(() => {
+        expect(mockHandleSuccessfulLogin).toHaveBeenCalled();
+      });
+
+      const passedUser = mockHandleSuccessfulLogin.mock.calls[0][0];
+
+      expect(passedUser.profile.preferred_username).toBe(
+        'jane.doe@example.com'
+      );
+    });
+
+    it('should default preferred_username to empty string when Okta omits it', async () => {
+      mockOktaAuth.getUser.mockResolvedValue({
+        email: 'jane@example.com',
+        name: 'Jane Doe',
+        sub: 'okta-sub-123',
+      });
+
+      render(
+        <MemoryRouter>
+          <OktaAuthProvider>
+            <div>Test</div>
+          </OktaAuthProvider>
+        </MemoryRouter>
+      );
+
+      await waitFor(() => {
+        expect(mockSecurityProps.restoreOriginalUri).toBeDefined();
+      });
+
+      await act(async () => {
+        await mockSecurityProps.restoreOriginalUri?.();
+      });
+
+      await waitFor(() => {
+        expect(mockHandleSuccessfulLogin).toHaveBeenCalled();
+      });
+
+      const passedUser = mockHandleSuccessfulLogin.mock.calls[0][0];
+
+      expect(passedUser.profile.preferred_username).toBe('');
     });
   });
 });

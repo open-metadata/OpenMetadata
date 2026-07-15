@@ -41,11 +41,14 @@ on:
       - "openmetadata-ui/src/main/resources/ui/src/utils/UserDataUtils*"
       - "openmetadata-ui/src/main/resources/ui/src/hooks/useSignIn*"
       - "openmetadata-ui/src/main/resources/ui/playwright/e2e/Auth/**"
+      - "openmetadata-ui/src/main/resources/ui/playwright/e2e/AuthPublic/**"
       - "openmetadata-ui/src/main/resources/ui/playwright/utils/mockOidc*"
       - "openmetadata-ui/src/main/resources/ui/playwright.sso.config.ts"
+      - "openmetadata-ui/src/main/resources/ui/playwright.sso.public.config.ts"
       - "docker/development/mock-oidc-provider/**"
       - "docker/development/docker-compose.yml"
       - "docker/development/.env.sso-test"
+      - "docker/development/.env.sso-test-public"
       - ".github/workflows/playwright-sso-tests.yml"
   workflow_dispatch:
     inputs:
@@ -217,6 +220,132 @@ jobs:
           path: openmetadata-ui/src/main/resources/ui/playwright/output/sso-results.json
           retention-days: 1
           if-no-files-found: ignore
+
+      - name: Clean Up
+        run: |
+          cd ./docker/development
+          docker compose --profile sso-test down --remove-orphans 2>/dev/null || true
+          docker compose down --remove-orphans
+          sudo rm -rf ${PWD}/docker-volume
+
+  # Isolated public-client variant for issue #26591. Kept as a separate job (not
+  # a matrix entry on sso-auth-tests) because it needs a DIFFERENT server config
+  # — public client type + jwtPrincipalClaimsMapping [username:preferred_username,
+  # email:email] — which cannot coexist with the confidential mock-oidc server on
+  # one instance. Runs only for the mock-oidc PR path (safe to test).
+  sso-public-signup-tests:
+    runs-on: ubuntu-latest
+    if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') && (github.event_name != 'workflow_dispatch' || github.event.inputs.sso_provider == 'mock-oidc') }}
+    environment: test
+
+    steps:
+      - name: Free Disk Space (Ubuntu)
+        uses: jlumbroso/free-disk-space@main
+        with:
+          tool-cache: false
+          android: true
+          dotnet: true
+          haskell: true
+          large-packages: false
+          swap-storage: true
+          docker-images: false
+
+      - name: Wait for the labeler
+        uses: lewagon/wait-on-check-action@v1.7.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+          check-name: Team Label
+          repo-token: ${{ secrets.GITHUB_TOKEN }}
+          wait-interval: 90
+
+      - name: Verify PR labels
+        uses: jesusvasquez333/verify-pr-label-action@v1.4.0
+        if: ${{ github.event_name == 'pull_request_target' }}
+        with:
+          github-token: "${{ secrets.GITHUB_TOKEN }}"
+          valid-labels: "safe to test"
+          pull-request-number: "${{ github.event.pull_request.number }}"
+          disable-reviews: true
+
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Cache Maven Dependencies
+        id: cache-output
+        uses: actions/cache@v4
+        with:
+          path: ~/.m2
+          key: ${{ runner.os }}-maven-${{ hashFiles('**/pom.xml') }}
+          restore-keys: |
+            ${{ runner.os }}-maven-
+
+      - name: Start Mock OIDC Provider
+        run: |
+          cd docker/development
+          docker compose --profile sso-test build mock-oidc-provider
+          docker compose --profile sso-test up -d mock-oidc-provider
+          echo "Waiting for mock OIDC provider to be healthy..."
+          for i in $(seq 1 30); do
+            if curl -sf http://localhost:9090/health > /dev/null 2>&1; then
+              echo "Mock OIDC provider is ready"
+              break
+            fi
+            echo "Waiting... ($i/30)"
+            sleep 2
+          done
+          curl -sf http://localhost:9090/.well-known/openid-configuration || echo "WARNING: Discovery endpoint not ready"
+
+      - name: Setup Openmetadata Test Environment
+        uses: ./.github/actions/setup-openmetadata-test-environment
+        with:
+          python-version: "3.10"
+          args: "-d postgresql -i false"
+          ingestion_dependency: "all"
+        env:
+          AUTHENTICATION_PROVIDER: custom-oidc
+          CUSTOM_OIDC_AUTHENTICATION_PROVIDER_NAME: mock-oidc
+          AUTHENTICATION_CLIENT_TYPE: public
+          AUTHENTICATION_RESPONSE_TYPE: code
+          AUTHENTICATION_PUBLIC_KEYS: '[http://localhost:9090/jwks,http://localhost:8585/api/v1/system/config/jwks]'
+          AUTHENTICATION_AUTHORITY: http://localhost:9090
+          AUTHENTICATION_CLIENT_ID: openmetadata-test-public
+          AUTHENTICATION_CALLBACK_URL: http://localhost:8585/callback
+          AUTHENTICATION_ENABLE_SELF_SIGNUP: "true"
+          AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING: '[username:preferred_username,email:email]'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: 'openmetadata-ui/src/main/resources/ui/.nvmrc'
+
+      - name: Install dependencies
+        working-directory: openmetadata-ui/src/main/resources/ui/
+        run: yarn --ignore-scripts --frozen-lockfile
+
+      - name: Install Playwright Browsers
+        run: npx playwright@1.51.1 install chromium webkit --with-deps
+
+      - name: Run Public-Client SSO Self-Signup Tests
+        working-directory: openmetadata-ui/src/main/resources/ui
+        run: npx playwright test --config=playwright.sso.public.config.ts --workers=1
+        env:
+          MOCK_OIDC_URL: http://localhost:9090
+          PLAYWRIGHT_IS_OSS: true
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        timeout-minutes: 60
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: sso-public-signup-test-results
+          path: |
+            openmetadata-ui/src/main/resources/ui/playwright/output/sso-public-playwright-report
+            openmetadata-ui/src/main/resources/ui/playwright/output/sso-public-test-results
+          retention-days: 5
 
       - name: Clean Up
         run: |
