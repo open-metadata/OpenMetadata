@@ -390,6 +390,55 @@ export const getOperatorLabel = (operator: string): string => {
   return operatorMap[operator] || operator;
 };
 
+// The query builder renders native date/datetime inputs, which only accept
+// ISO-like fill values — convert from the CP display format
+// (dd-MM-yyyy[ HH:mm:ss]). Detection is pattern-based because several call
+// sites don't pass propertyType.
+const DATE_DISPLAY_PATTERN = /^(\d{2})-(\d{2})-(\d{4})$/;
+const DATE_TIME_DISPLAY_PATTERN =
+  /^(\d{2})-(\d{2})-(\d{4}) (\d{2}:\d{2}:\d{2})$/;
+
+const toNativeDateInputValue = (value: string | number): string => {
+  const stringValue = String(value);
+  let result = stringValue;
+
+  const dateTimeMatch = stringValue.match(DATE_TIME_DISPLAY_PATTERN);
+  const dateMatch = stringValue.match(DATE_DISPLAY_PATTERN);
+
+  if (dateTimeMatch) {
+    const [, day, month, year, time] = dateTimeMatch;
+    result = `${year}-${month}-${day}T${time}`;
+  } else if (dateMatch) {
+    const [, day, month, year] = dateMatch;
+    result = `${year}-${month}-${day}`;
+  }
+
+  return result;
+};
+
+// Playwright's fill() rejects datetime-local values that carry seconds even
+// when the input has step=1, so converted date values are written through the
+// native value setter (fill() is used for everything else).
+const fillPropertyValue = async (
+  input: ReturnType<Page['locator']>,
+  value: string | number
+) => {
+  const nativeValue = toNativeDateInputValue(value);
+
+  if (nativeValue === String(value)) {
+    await input.fill(String(value));
+  } else {
+    await input.evaluate((element, val) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLInputElement.prototype,
+        'value'
+      )?.set;
+      setter?.call(element, val);
+      element.dispatchEvent(new Event('input', { bubbles: true }));
+    }, nativeValue);
+  }
+};
+
 const handlePropertyValueInput = async (
   page: Page,
   ruleLocator: ReturnType<Page['locator']>,
@@ -403,7 +452,7 @@ const handlePropertyValueInput = async (
   // Fill the input only if it's visible
   if (await inputElement.isVisible()) {
     // Convert object values to JSON strings
-    const stringValue = isObject(value) ? JSON.stringify(value) : String(value);
+    const stringValue = isObject(value) ? JSON.stringify(value) : value;
 
     const apiResponsePromise = isEntityRefProperty
       ? page.waitForResponse('/api/v1/search/aggregate?*value=.%2A*')
@@ -415,7 +464,7 @@ const handlePropertyValueInput = async (
       await apiResponsePromise;
     }
 
-    await inputElement.fill(stringValue);
+    await fillPropertyValue(inputElement, stringValue);
 
     // Press Enter for multiselect operators and date types
     if (
@@ -486,9 +535,9 @@ export const applyCustomPropertyFilter = async (
       const endInput = ruleLocator.locator('.rule--value input').last();
 
       await startInput.click();
-      await startInput.fill(String(rangeValue.start));
+      await fillPropertyValue(startInput, rangeValue.start);
       await endInput.click();
-      await endInput.fill(String(rangeValue.end));
+      await fillPropertyValue(endInput, rangeValue.end);
 
       await page.keyboard.press('Enter');
     } else {

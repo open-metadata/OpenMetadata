@@ -205,25 +205,44 @@ export const selectOption = async (
     await triggerButton.click();
   }
 
-  // The ComboBox popup listbox mounts only while open, but other hidden
-  // listboxes stay in the DOM (e.g. the nav-bar search's "Suggestions").
-  // React Aria labels every ComboBox popup "Suggestions", so filter by
-  // visibility — never by aria-label or DOM order.
-  await page
-    .locator('[role="listbox"]:visible')
-    .first()
-    .waitFor({ state: 'visible' });
+  // Scope the popup to THIS control via aria-controls (react-aria sets it
+  // while expanded). Popovers portal to <body>, so a global
+  // [role="listbox"]:visible could match a popup left open by a previous
+  // interaction (MultiSelect keeps its popup open by design). The popup can
+  // also close and reopen under a new id while the builder re-renders, so
+  // re-resolve it (and reopen if needed) on every retry.
+  const control = comboboxInput.or(triggerButton).first();
+  await expect(async () => {
+    if ((await control.getAttribute('aria-expanded')) !== 'true') {
+      await control.press('ArrowDown');
+    }
+    const listboxId = await control.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Combobox popup did not open (aria-controls not set)');
+    }
+    await page
+      .locator(`[role="listbox"][id="${listboxId}"]`)
+      .getByRole('option', { name: optionTitle, exact: true })
+      .first()
+      .click({ timeout: 2000 });
+  }).toPass({ timeout: 30000 });
 
-  // eslint-disable-next-line playwright/no-wait-for-timeout -- dropdown animation settling
-  await page.waitForTimeout(100);
-
-  const optionLocator = page
-    .locator('[role="listbox"]:visible')
-    .getByRole('option', { name: optionTitle, exact: true })
-    .first();
-
-  await expect(optionLocator).toBeVisible();
-  await optionLocator.click({ timeout: 10000 });
+  // Close the popup if the click didn't: re-selecting the current value emits
+  // no selection change (so the popup stays open) and MultiSelect popups stay
+  // open by design — either would pollute the next interaction's locators.
+  // The control itself may be GONE by now (selecting a field can morph the
+  // whole rule row), which also unmounts its popup — tolerate that.
+  const openListboxId = await control
+    .getAttribute('aria-controls', { timeout: 1000 })
+    .catch(() => null);
+  if (openListboxId) {
+    await page
+      .locator(`[role="listbox"][id="${openListboxId}"]`)
+      .waitFor({ state: 'hidden', timeout: 2000 })
+      .catch(() =>
+        control.press('Escape', { timeout: 1000 }).catch(() => undefined)
+      );
+  }
 };
 
 export const selectRange = async (
@@ -663,8 +682,19 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   );
 
   await inputElement.fill('non-existing-value');
+  await inputElement.press('ArrowDown');
 
-  const listbox = page.locator('[role="listbox"]:visible');
+  // Scope to this input's own popup — a popup from a previous step may
+  // still be visible, which would break a global :visible locator.
+  let listboxId: string | null = null;
+  await expect(async () => {
+    listboxId = await inputElement.getAttribute('aria-controls');
+    if (!listboxId) {
+      throw new Error('Combobox popup did not open (aria-controls not set)');
+    }
+  }).toPass({ timeout: 15000 });
+
+  const listbox = page.locator(`[role="listbox"][id="${listboxId}"]`);
 
   await expect(listbox).toBeVisible();
 
