@@ -79,8 +79,10 @@ export function useObservabilityAlerts({
       );
 
       setAlertResourcePermission(permission);
-    } catch {
-      // Error
+    } catch (error) {
+      // Surface the failure instead of silently degrading to a create-less
+      // empty state; the user can refresh to retry the permission fetch.
+      showErrorToast(error as AxiosError);
     } finally {
       setLoadingCount((count) => count - 1);
     }
