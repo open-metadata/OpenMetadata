@@ -28,7 +28,7 @@ import {
 import { EntityType } from '../enums/entity.enum';
 import { SearchIndex } from '../enums/search.enum';
 import { Chart } from '../generated/entity/data/chart';
-import { getEntityLinkFromType } from './EntityBreadcrumbUtils';
+import { getEntityLinkFromType } from './EntityLinkUtils';
 import { SearchClassBase } from './SearchClassBase';
 import { getTestSuiteDetailsPath, getTestSuiteFQN } from './TestSuiteUtils';
 
@@ -37,9 +37,11 @@ jest.mock('./TestSuiteUtils', () => ({
   getTestSuiteFQN: jest.fn(),
 }));
 
-jest.mock('./EntityBreadcrumbUtils', () => ({
-  getEntityLinkFromType: jest.fn(),
+jest.mock('./EntityBreadcrumbPureUtils', () => ({
   getEntityBreadcrumbs: jest.fn(),
+}));
+jest.mock('./EntityLinkUtils', () => ({
+  getEntityLinkFromType: jest.fn(),
 }));
 jest.mock('./EntityNameUtils', () => ({
   getEntityName: jest.fn(),

@@ -34,7 +34,7 @@ import { mockTopicEntityDetails } from './mocks/TopicSummary.mock';
 
 const mockHandleClosePanel = jest.fn();
 
-jest.mock('../../../utils/EntityBreadcrumbUtils', () => ({
+jest.mock('../../../utils/EntityLinkUtils', () => ({
   getEntityLinkFromType: jest.fn().mockImplementation(() => 'link'),
 }));
 
