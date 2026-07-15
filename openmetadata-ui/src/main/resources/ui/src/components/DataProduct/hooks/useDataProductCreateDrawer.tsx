@@ -16,7 +16,10 @@ import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../enums/entity.enum';
 import { CreateDataProduct } from '../../../generated/api/domains/createDataProduct';
-import { addDataProducts, patchDataProduct } from '../../../rest/dataProductAPI';
+import {
+  addDataProducts,
+  patchDataProduct,
+} from '../../../rest/dataProductAPI';
 import { createEntityWithCoverImage } from '../../../utils/CoverImageUploadUtils';
 import { submitAndClose } from '../../../utils/FormDrawerUtils';
 import { useFormDrawerWithHook } from '../../common/atoms/drawer';
