@@ -81,6 +81,11 @@ class SalesforceSource(DatabaseServiceSource):
             self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
         self._connection = create_connection(self.service_connection)
         self.client = cast("BaseConnection", self._connection).client
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
         self.table_constraints = None
         self.database_source_state = set()
 
