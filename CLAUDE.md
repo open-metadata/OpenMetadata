@@ -510,7 +510,7 @@ These checks run automatically in CI. Code that violates them **will not merge**
 - **Blank lines around `describe`, `it`, `beforeEach`** in test files
 - **JSON keys sorted alphabetically** in locale files (`src/locale/**/*.json`)
 - **Apache 2.0 license header** on every new source file — run `yarn license-header-fix`
-- **i18n keys synced** — after adding keys to `en-us.json`, run `yarn i18n` to sync all 17 locales
+- **i18n keys synced AND translated** — after adding keys to `en-us.json`, run `yarn i18n` to propagate them into every locale file. `yarn i18n` copies the English string verbatim into each locale as a placeholder — **you MUST then replace those placeholders with real translations in every non-en-us file**. Shipping English text under a non-English locale key is a defect (reviewers will flag it). If a term is intentionally left in English (e.g. an acronym like "AI" in Chinese, or a product name), keep it — but that has to be a translation decision, not a "yarn i18n did it" default.
 - **Prettier formatting** — 2-space indent, single quotes, strict HTML whitespace
 
 #### Playwright Test Rules (lint-playwright)

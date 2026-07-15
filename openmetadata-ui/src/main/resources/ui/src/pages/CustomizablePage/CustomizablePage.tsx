@@ -31,10 +31,11 @@ import { EntityType } from '../../enums/entity.enum';
 import { Document } from '../../generated/entity/docStore/document';
 import { Persona } from '../../generated/entity/teams/persona';
 import { Page, PageType } from '../../generated/system/ui/page';
+import { UICustomization } from '../../generated/system/ui/uiCustomization';
 import {
+  AppMode,
   PersonaPreferences,
-  UICustomization,
-} from '../../generated/system/ui/uiCustomization';
+} from '../../generated/type/personaPreferences';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useFqn } from '../../hooks/useFqn';
 import {
@@ -60,6 +61,14 @@ const CustomizeGlossaryTermDetailPage = withSuspenseFallback(
       import(
         '../../components/MyData/CustomizableComponents/CustomiseGlossaryTermDetailPage/CustomiseGlossaryTermDetailPage'
       )
+  )
+);
+
+const SettingsAppModePage = withSuspenseFallback(
+  lazy(() =>
+    import('../SettingsAppModePage/SettingsAppModePage').then((m) => ({
+      default: m.SettingsAppModePage,
+    }))
   )
 );
 
@@ -249,6 +258,65 @@ export const CustomizablePage = () => {
     }
   };
 
+  const handleAppModeSave = async (appMode: AppMode) => {
+    if (!document) {
+      return;
+    }
+    try {
+      let response: Document;
+      const newDoc = cloneDeep(document);
+      const existing = (newDoc.data.personaPreferences ??
+        []) as PersonaPreferences[];
+      const match = existing.find(
+        (persona) => persona.personaId === personaDetails?.id
+      );
+
+      newDoc.data.personaPreferences = match
+        ? existing.map((persona) =>
+            persona.personaId === personaDetails?.id
+              ? { ...persona, appMode }
+              : persona
+          )
+        : [
+            ...existing,
+            {
+              personaId: personaDetails?.id ?? '',
+              personaName: personaDetails?.name ?? '',
+              appMode,
+            },
+          ];
+
+      if (document.id) {
+        const jsonPatch = compare(document, newDoc);
+        response = await updateDocument(document.id ?? '', jsonPatch);
+      } else {
+        response = await createDocument({
+          ...newDoc,
+          domains: newDoc.domains
+            ?.map((d) => d.fullyQualifiedName)
+            .filter(Boolean) as string[],
+        });
+      }
+      setDocument(response);
+
+      showSuccessToast(
+        t('server.page-layout-operation-success', {
+          operation: document.id
+            ? t('label.updated-lowercase')
+            : t('label.created-lowercase'),
+        })
+      );
+    } catch {
+      showErrorToast(
+        t('server.page-layout-operation-error', {
+          operation: document.id
+            ? t('label.updating-lowercase')
+            : t('label.creating-lowercase'),
+        })
+      );
+    }
+  };
+
   const initializeCustomizeStore = async () => {
     setIsLoading(true);
     const pageLayoutFQN = `${EntityType.PERSONA}.${personaFQN}`;
@@ -329,6 +397,14 @@ export const CustomizablePage = () => {
   switch (pageFqn) {
     case 'navigation':
       return <SettingsNavigationPage onSave={handleNavigationSave} />;
+
+    case 'app-mode':
+      return (
+        <SettingsAppModePage
+          personaDetails={personaDetails}
+          onSave={handleAppModeSave}
+        />
+      );
 
     case PageType.LandingPage:
     case 'homepage':
