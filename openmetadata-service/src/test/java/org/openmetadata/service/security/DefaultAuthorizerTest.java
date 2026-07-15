@@ -33,6 +33,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
+import org.openmetadata.service.security.policyevaluator.CreateResourceContext;
 import org.openmetadata.service.security.policyevaluator.OperationContext;
 import org.openmetadata.service.security.policyevaluator.PolicyEvaluator;
 import org.openmetadata.service.security.policyevaluator.ResourceContextInterface;
@@ -178,6 +179,32 @@ class DefaultAuthorizerTest {
           () -> authorizer.authorize(securityContext, operationContext, resourceContext));
 
       mockedPolicyEvaluator.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void authorizeDoesNotTreatSelfAssignedReviewerAsReviewerOnCreate() {
+    SecurityContext securityContext = securityContext("attacker");
+    SubjectContext attackerContext = subjectContext("attacker", false, false, null);
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getReviewers()).thenReturn(List.of(entityReference(Entity.USER, "attacker")));
+    CreateResourceContext<?> createResourceContext = mock(CreateResourceContext.class);
+    when(createResourceContext.getEntity()).thenReturn(entity);
+    OperationContext operationContext =
+        new OperationContext(Entity.DATA_PRODUCT, MetadataOperation.CREATE);
+
+    try (MockedStatic<DefaultAuthorizer> mockedAuthorizer = mockStatic(DefaultAuthorizer.class);
+        MockedStatic<PolicyEvaluator> mockedPolicyEvaluator = mockStatic(PolicyEvaluator.class)) {
+      mockedAuthorizer
+          .when(() -> DefaultAuthorizer.getSubjectContext(securityContext))
+          .thenReturn(attackerContext);
+
+      authorizer.authorize(securityContext, operationContext, createResourceContext);
+
+      mockedPolicyEvaluator.verify(
+          () ->
+              PolicyEvaluator.hasPermission(
+                  attackerContext, createResourceContext, operationContext));
     }
   }
 

@@ -22,7 +22,7 @@ import { TagLabel, TagSource } from '../../../../generated/type/tagLabel';
 import { useEntityRules } from '../../../../hooks/useEntityRules';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getUserPath } from '../../../../utils/RouterUtils';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import ExpandableCard from '../../../common/ExpandableCard/ExpandableCard';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import Loader from '../../../common/Loader/Loader';
@@ -122,7 +122,7 @@ const TableQueryRightPanel = ({
             </ExpandableCard>
           </Col>
           <Col span={24}>
-            <DescriptionV1
+            <Description
               wrapInCard
               className="w-full"
               description={query?.description || ''}

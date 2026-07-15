@@ -76,6 +76,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.engine import Row
 
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
@@ -316,15 +317,22 @@ class SnowflakeChecks:
     before the gate.
     """
 
-    def __init__(self, client: Engine, service_connection: SnowflakeConnectionConfig) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine], service_connection: SnowflakeConnectionConfig) -> None:
+        self._db = db
         self.service_connection = service_connection
         self.errors = _snowflake_errors(service_connection.accountUsageSchema)
-        self._engine_wrapper = SnowflakeEngineWrapper(
-            service_connection=service_connection,
-            engine=client,
-            database_name=None,
-        )
+        self._wrapper: SnowflakeEngineWrapper | None = None
+
+    @property
+    def _engine_wrapper(self) -> SnowflakeEngineWrapper:
+        """Built on first use: it holds the engine, and reading the borrow builds it."""
+        if self._wrapper is None:
+            self._wrapper = SnowflakeEngineWrapper(
+                service_connection=self.service_connection,
+                engine=self._db.client,
+                database_name=None,
+            )
+        return self._wrapper
 
     def _database(self) -> str | None:
         """Resolve (and cache) the database to probe. Runs ``SHOW DATABASES`` only
@@ -357,16 +365,16 @@ class SnowflakeChecks:
                 tcp_probe(host, port)
             except NetworkUnreachableError as error:
                 raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
-        return ping(self.client)
+        return ping(self._db.client)
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, SNOWFLAKE_GET_DATABASES, lambda rows: _count_summary(rows, "database"))
+        return run_sql(self._db.client, SNOWFLAKE_GET_DATABASES, lambda rows: _count_summary(rows, "database"))
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_SCHEMAS.format(database_name=self._database())
-        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "schema"))
+        return run_sql(self._db.client, statement, lambda rows: _count_summary(rows, "schema"))
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
@@ -378,7 +386,7 @@ class SnowflakeChecks:
             counts.append(len(rows))
             return _count_summary(rows, "table")
 
-        evidence = run_sql(self.client, statement, summarize)
+        evidence = run_sql(self._db.client, statement, summarize)
         if not counts[0]:
             evidence = replace(evidence, caveat=_no_tables_caveat(database))
         return evidence
@@ -386,27 +394,27 @@ class SnowflakeChecks:
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_VIEWS.format(database_name=self._database())
-        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "view"))
+        return run_sql(self._db.client, statement, lambda rows: _count_summary(rows, "view"))
 
     @check(DatabaseStep.GetStreams)
     def get_streams(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_STREAMS.format(database_name=self._database())
-        return run_sql(self.client, statement, lambda rows: _count_summary(rows, "stream"))
+        return run_sql(self._db.client, statement, lambda rows: _count_summary(rows, "stream"))
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:
         statement = SNOWFLAKE_TEST_FETCH_TAG.format(account_usage=self.service_connection.accountUsageSchema)
-        return run_sql(self.client, statement, lambda _: "tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "tags accessible")
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_QUERIES.format(account_usage=self.service_connection.accountUsageSchema)
-        return run_sql(self.client, statement, lambda _: "query history accessible")
+        return run_sql(self._db.client, statement, lambda _: "query history accessible")
 
     @check(DatabaseStep.GetAccessHistory)
     def get_access_history(self) -> Evidence:
         statement = SNOWFLAKE_ACCESS_HISTORY_PROBE.format(account_usage=self.service_connection.accountUsageSchema)
-        return run_sql(self.client, statement, lambda _: "access history accessible")
+        return run_sql(self._db.client, statement, lambda _: "access history accessible")
 
 
 class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
@@ -520,6 +528,6 @@ class SnowflakeConnection(BaseConnection[SnowflakeConnectionConfig, Engine]):
 
     def checks(self) -> ChecksProvider:
         return SnowflakeChecks(
-            client=self.client,
+            db=self.borrow(),
             service_connection=self.service_connection,
         )

@@ -130,7 +130,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     normalize_names,
 )
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_database, filter_by_schema
+from metadata.utils.filters import filter_by_database
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.sqlalchemy_utils import (
     get_all_table_comments,
@@ -466,20 +466,6 @@ class SnowflakeSource(
             if database_name in by_database and schema_name is not None:
                 by_database[database_name].append(str(schema_name))
         return by_database
-
-    def _is_schema_filtered(self, database_name: str, schema_name: str) -> bool:
-        """Whether a schema fails the schema filter pattern, matched the same way
-        as the lazy producer (FQN or bare name per ``useFqnForFiltering``).
-        Context-free: the FQN is built with the explicit database name."""
-        schema_fqn = fqn.build(
-            self.metadata,
-            entity_type=DatabaseSchema,
-            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
-            database_name=database_name,
-            schema_name=schema_name,
-        )
-        filter_name = schema_fqn if self.source_config.useFqnForFiltering and schema_fqn else schema_name
-        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
 
     def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
         """Seed the run-level ``Database`` and ``DatabaseSchema`` global counters

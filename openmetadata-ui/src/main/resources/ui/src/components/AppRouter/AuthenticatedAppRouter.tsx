@@ -249,10 +249,6 @@ const UpdateTagsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
-const LogsViewerPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/LogsViewerPage/LogsViewerPage'))
-);
-
 const DataInsightPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/DataInsightPage/DataInsightPage.component')
@@ -335,10 +331,6 @@ const ColumnBulkOperationsPage = withPageSuspenseFallback(
     () =>
       import('../../pages/ColumnBulkOperations/ColumnBulkOperations.component')
   )
-);
-
-const McpChatPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/McpChatPage/McpChatPage'))
 );
 
 const AuthenticatedAppRouter: FunctionComponent = () => {
@@ -582,7 +574,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<TestSuiteDetailsPage />}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
-      <Route element={<LogsViewerPage />} path={ROUTES.LOGS} />
       <Route
         element={
           <TestSuiteIngestionPage
@@ -836,8 +827,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<ColumnBulkOperationsPage />}
         path={ROUTES.COLUMN_BULK_OPERATIONS}
       />
-      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT} />
-      <Route element={<McpChatPage />} path={ROUTES.MCP_CHAT_WITH_ID} />
 
       <Route
         element={<EntityRouter />}
