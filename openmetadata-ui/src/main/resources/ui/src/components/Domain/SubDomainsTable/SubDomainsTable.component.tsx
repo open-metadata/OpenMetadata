@@ -11,7 +11,12 @@
  *  limitations under the License.
  */
 
-import { Box, Card, Input, PaginationCardDefault } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  Input,
+  PaginationCardDefault,
+} from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
 import { debounce, isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
