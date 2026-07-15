@@ -11,7 +11,11 @@
  *  limitations under the License.
  */
 
-import { Box, Card } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Card,
+  PaginationCardDefault,
+} from '@openmetadata/ui-core-components';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -24,7 +28,6 @@ import { useDomainTableColumns } from '../../common/atoms/domain/ui/useDomainTab
 import { useFilterSelection } from '../../common/atoms/filters/useFilterSelection';
 import { useSearch } from '../../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../../common/atoms/navigation/useTitleAndCount';
-import { usePaginationControls } from '../../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../../common/EntityListingTable/EntityListingTable.component';
@@ -81,15 +84,6 @@ const SubDomainsTable = ({
       nameLabelKey: 'label.sub-domain',
       tagSize: 'lg',
     });
-
-  const { paginationControls } = usePaginationControls({
-    currentPage: subdomainListing.currentPage,
-    totalPages: subdomainListing.totalPages,
-    totalEntities: subdomainListing.totalEntities,
-    pageSize: subdomainListing.pageSize,
-    onPageChange: subdomainListing.handlePageChange,
-    loading: subdomainListing.loading,
-  });
 
   const selectedSubdomainEntities = useMemo(
     () =>
@@ -162,7 +156,11 @@ const SubDomainsTable = ({
             onSelect={subdomainListing.handleSelect}
             onSelectAll={subdomainListing.handleSelectAll}
           />
-          {paginationControls}
+          <PaginationCardDefault
+            page={subdomainListing.currentPage}
+            total={subdomainListing.totalPages}
+            onPageChange={subdomainListing.handlePageChange}
+          />
         </>
       );
     }
@@ -175,7 +173,11 @@ const SubDomainsTable = ({
           renderCard={renderDomainCard}
           onEntityClick={subdomainListing.actionHandlers.onEntityClick}
         />
-        {paginationControls}
+        <PaginationCardDefault
+          page={subdomainListing.currentPage}
+          total={subdomainListing.totalPages}
+          onPageChange={subdomainListing.handlePageChange}
+        />
       </>
     );
   }, [
@@ -183,11 +185,13 @@ const SubDomainsTable = ({
     subdomainListing.entities,
     subdomainListing.selectedEntities,
     subdomainListing.actionHandlers,
+    subdomainListing.currentPage,
+    subdomainListing.totalPages,
+    subdomainListing.handlePageChange,
     isSearchOrFilterActive,
     view,
     renderSubDomainCell,
     renderDomainCard,
-    paginationControls,
     permissions.Create,
     onAddSubDomain,
     t,

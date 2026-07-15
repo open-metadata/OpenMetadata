@@ -228,6 +228,16 @@ jest.mock('../../../hoc/LimitWrapper', () => ({
   default: ({ children }: { children: React.ReactNode }) => <>{children}</>,
 }));
 
+jest.mock('../../../components/common/DeleteModal/DeleteModal', () => ({
+  __esModule: true,
+  default: ({ open, onDelete }: { open: boolean; onDelete: () => void }) =>
+    open ? (
+      <button data-testid="confirm-button" onClick={onDelete}>
+        Delete
+      </button>
+    ) : null,
+}));
+
 describe('MetricListPage', () => {
   beforeEach(() => {
     jest.clearAllMocks();
