@@ -203,6 +203,35 @@ public class McpSdkUpgradeTest {
     assertThat(patchTool.annotations().destructiveHint()).isTrue();
   }
 
+  private static final List<String> UPSERT_CAPABLE_CREATE_TOOLS =
+      List.of(
+          "create_glossary_term",
+          "create_glossary",
+          "create_tag",
+          "create_metric",
+          "create_classification",
+          "create_domain",
+          "create_data_product",
+          "create_test_case",
+          "create_context_memory");
+
+  @Test
+  void testMcpUtilsGetToolPropertiesMarksUpsertCapableCreateToolsAsDestructive() {
+    // These tools call repository.createOrUpdate(), so an existing entity with the requested
+    // name/FQN is silently overwritten instead of producing a create conflict. destructiveHint
+    // must be true so MCP clients require confirmation before the overwrite.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .filteredOn(tool -> UPSERT_CAPABLE_CREATE_TOOLS.contains(tool.name()))
+        .hasSize(UPSERT_CAPABLE_CREATE_TOOLS.size())
+        .allSatisfy(
+            tool ->
+                assertThat(tool.annotations().destructiveHint())
+                    .as("destructiveHint for tool %s", tool.name())
+                    .isTrue());
+  }
+
   @Test
   void testMcpUtilsGetToolPropertiesEveryToolHasTitleAndAnnotations() {
     // Regression guard: a new tool added to tools.json without title/annotations would fail
