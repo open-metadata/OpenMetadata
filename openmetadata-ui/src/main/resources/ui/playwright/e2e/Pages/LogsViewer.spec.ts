@@ -63,6 +63,10 @@ test.describe(
       // 6 minutes
       test.setTimeout(6 * 60 * 1000);
 
+      // The copy toolbar action writes to the clipboard; grant permission so
+      // the "Copied" state can be asserted.
+      await page.context().grantPermissions(['clipboard-write']);
+
       await test.step('Open Data Quality → Bundle Suites and click on the newly created bundle', async () => {
         await redirectToHomePage(page);
 
@@ -116,6 +120,47 @@ test.describe(
         await expect(fullScreen).toHaveAttribute('aria-pressed', 'true');
         await fullScreen.click();
         await expect(fullScreen).toHaveAttribute('aria-pressed', 'false');
+      });
+
+      await test.step('Hovering a toolbar button shows its tooltip', async () => {
+        await page.getByTestId('log-viewer-wrap').hover();
+
+        await expect(page.getByRole('tooltip')).toBeVisible();
+      });
+
+      await test.step('Toggling wrap flips its pressed state', async () => {
+        const wrap = page.getByTestId('log-viewer-wrap');
+
+        await expect(wrap).toHaveAttribute('aria-pressed', 'false');
+        await wrap.click();
+        await expect(wrap).toHaveAttribute('aria-pressed', 'true');
+        await wrap.click();
+        await expect(wrap).toHaveAttribute('aria-pressed', 'false');
+      });
+
+      await test.step('Copying the logs switches the button to the copied state', async () => {
+        const copy = page.getByTestId('log-viewer-copy');
+
+        await expect(copy).toContainText('Copy');
+        await copy.click();
+        await expect(copy).toContainText('Copied');
+      });
+
+      await test.step('Searching a non-matching term shows the empty state', async () => {
+        const search = page.getByTestId('log-viewer-search');
+
+        await search.fill('zzq-no-log-line-match-zzq');
+        await expect(page.getByTestId('log-viewer-match-count')).toBeVisible();
+        await expect(page.getByTestId('log-viewer-empty')).toBeVisible();
+
+        await search.clear();
+        await expect(page.getByTestId('log-viewer-empty')).not.toBeVisible();
+      });
+
+      await test.step('Jump-to-end keeps the log body visible', async () => {
+        await page.getByTestId('log-viewer-jump-to-end').click();
+
+        await expect(page.getByTestId('log-viewer-body')).toBeVisible();
       });
 
       await test.step('Closing the modal returns to the pipeline tab', async () => {
