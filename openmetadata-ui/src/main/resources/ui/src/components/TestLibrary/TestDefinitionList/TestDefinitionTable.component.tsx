@@ -210,6 +210,7 @@ const TestDefinitionTable = ({
             <Table.Head
               className={col.className}
               id={col.id}
+              isRowHeader={col.id === 'name'}
               key={col.id}
               label={col.label}
             />

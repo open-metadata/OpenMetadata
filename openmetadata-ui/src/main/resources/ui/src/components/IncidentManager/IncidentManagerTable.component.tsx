@@ -234,7 +234,14 @@ const IncidentManagerTable = ({
         data-testid="test-case-incident-manager-table"
         size="sm">
         <Table.Header columns={columns}>
-          {(col) => <Table.Head id={col.id} key={col.id} label={col.label} />}
+          {(col) => (
+            <Table.Head
+              id={col.id}
+              isRowHeader={col.id === 'name'}
+              key={col.id}
+              label={col.label}
+            />
+          )}
         </Table.Header>
         <Table.Body
           dependencies={[
