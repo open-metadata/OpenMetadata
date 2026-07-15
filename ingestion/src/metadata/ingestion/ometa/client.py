@@ -16,7 +16,7 @@ import time
 import traceback
 from contextlib import nullcontext
 from datetime import datetime, timezone
-from typing import Any, Callable, Dict, List, Optional, Union  # noqa: UP035
+from typing import Any, Callable, Dict, List, Optional, Union, cast  # noqa: UP035
 
 import requests
 from requests.exceptions import HTTPError, JSONDecodeError
@@ -185,6 +185,7 @@ class REST:
         headers: Optional[dict] = None,  # noqa: UP045
         timeout: Optional[Union[float, tuple[float, float]]] = None,  # noqa: UP007, UP045
         retries: Optional[int] = None,  # noqa: UP045
+        raw: bool = False,
     ):
         # pylint: disable=too-many-locals
         if path in self._limits_reached:
@@ -266,7 +267,7 @@ class REST:
         with http_cm, op_cm:
             while retry >= 0:
                 try:
-                    return self._one_request(method, url, opts, retry)
+                    return self._one_request(method, url, opts, retry, raw)
                 except LimitsException as exc:
                     logger.error(f"Feature limit exceeded for {url}")
                     self._limits_reached.add(path)
@@ -286,18 +287,24 @@ class REST:
                         traceback.format_exc()
             return None
 
-    def _one_request(self, method: str, url: URL, opts: dict, retry: int):
+    def _one_request(self, method: str, url: URL, opts: dict, retry: int, raw: bool = False):
         """
         Perform one request, possibly raising RetryException in the case
         the response is 429. Otherwise, if error text contain "code" string,
         then it decodes to json object and returns APIError.
         Returns the body json in the 200 status.
+
+        When ``raw`` is set, returns the response untouched - no status check, no
+        body decoding - so the caller can read a status the error handling below
+        would otherwise swallow.
         """
         retry_codes = self._retry_codes
         limit_codes = self._limit_codes
 
         try:
             resp = self._session.request(method, url, **opts)
+            if raw:
+                return resp
             resp.raise_for_status()
 
             if resp.text != "":
@@ -417,6 +424,17 @@ class REST:
         except Exception:
             return False
         return 200 <= resp.status_code < 300
+
+    def get_raw(self, path, data=None, headers=None) -> requests.Response:
+        """GET returning the raw ``Response`` without decoding or classifying it.
+
+        ``get`` decodes the JSON body and, for an error body ``_one_request`` cannot
+        classify, returns ``None`` and drops the HTTP status. A caller that must read
+        the status itself - e.g. an API that reports failures in a shape the shared
+        error handling does not recognise - uses this instead. Same request pipeline
+        as ``get`` (auth, session, adapter), only without the body handling.
+        """
+        return cast("requests.Response", self._request("GET", path, data, headers=headers, raw=True))
 
     def _build_request_headers(self, headers: Optional[dict] = None):  # noqa: UP045
         """Reader-only headers builder. Does NOT refresh auth token —

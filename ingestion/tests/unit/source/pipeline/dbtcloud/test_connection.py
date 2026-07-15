@@ -189,36 +189,35 @@ def _dbtcloud_client(host="https://cloud.getdbt.com", account_id=1):
 
 def test_test_check_access_reads_a_single_job():
     client = _dbtcloud_client()
-    client._test_session = MagicMock()
-    client._test_session.get.return_value.ok = True
-    client._test_session.get.return_value.json.return_value = {"data": []}
+    client.client.get_raw.return_value.ok = True
+    client.client.get_raw.return_value.json.return_value = {"data": []}
 
     client.test_check_access()
 
-    call = client._test_session.get.call_args
-    assert call[0][0] == "https://cloud.getdbt.com/api/v2/accounts/1/jobs/"
-    assert call[1]["params"] == {"limit": 1, "offset": 0}
-    assert call[1]["headers"]["Authorization"] == "Bearer secret-token"
+    call = client.client.get_raw.call_args
+    assert call[0][0] == "/accounts/1/jobs/"
+    assert call[1]["data"] == {"limit": 1, "offset": 0}
 
 
-def test_the_test_calls_retry_transient_transport_and_gateway_failures():
-    """They bypass TrackedREST, so they retry transport failures and gateway 5xx
-    like it does, without the REST client's slow backoff."""
+def test_the_test_calls_reuse_the_shared_client():
+    """They go through the owned REST client's get_raw, not a second session, so
+    they inherit its session, auth and retry adapter."""
     client = _dbtcloud_client()
+    client.client.get_raw.return_value.ok = True
+    client.client.get_raw.return_value.json.return_value = {}
 
-    retry = client._test_session.get_adapter("https://cloud.getdbt.com").max_retries
-    assert retry.total == 3
-    assert retry.status_forcelist == frozenset({502, 503, 504})
+    client.test_check_access()
+
+    client.client.get_raw.assert_called_once()
 
 
 def test_a_rejected_token_surfaces_its_http_status():
     """A dbt Cloud error body nests its code under `status`; the status must still
     reach the error pack, or a bad token reads as an opaque validation error."""
     client = _dbtcloud_client()
-    client._test_session = MagicMock()
-    client._test_session.get.return_value.ok = False
-    client._test_session.get.return_value.status_code = 401
-    client._test_session.get.return_value.text = INVALID_TOKEN_BODY
+    client.client.get_raw.return_value.ok = False
+    client.client.get_raw.return_value.status_code = 401
+    client.client.get_raw.return_value.text = INVALID_TOKEN_BODY
 
     with pytest.raises(DBTCloudApiError) as failure:
         client.test_get_jobs()
@@ -231,9 +230,8 @@ def test_a_host_that_is_not_the_api_is_diagnosed():
     """A valid URL that is not the dbt Cloud API redirects to an HTML page, which
     answers 200 and fails to decode."""
     client = _dbtcloud_client(host="https://www.getdbt.com")
-    client._test_session = MagicMock()
-    client._test_session.get.return_value.ok = True
-    client._test_session.get.return_value.json.side_effect = JSONDecodeError("Expecting value", "<html>", 0)
+    client.client.get_raw.return_value.ok = True
+    client.client.get_raw.return_value.json.side_effect = JSONDecodeError("Expecting value", "<html>", 0)
 
     with pytest.raises(JSONDecodeError) as failure:
         client.test_get_jobs()

@@ -15,17 +15,11 @@ Client to interact with DBT Cloud REST APIs
 import traceback
 from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
 
-import requests
-
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
-from metadata.ingestion.ometa.http_adapter import (
-    KeepAliveRetryAdapter,
-    build_transport_retry,
-)
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTJob,
     DBTJobList,
@@ -46,10 +40,6 @@ API_VERSION = "api/v2"
 
 # Bounds the error body kept in the step's error log.
 ERROR_DETAIL_LIMIT = 200
-
-# Gateway 5xx the test session retries. The shared REST client retries 504 too, but
-# on 30s+ sleeps that would blow a step budget; the adapter's backoff is 0/2/4s.
-GATEWAY_ERRORS = frozenset({502, 503, 504})
 
 
 class DBTCloudApiError(Exception):
@@ -91,15 +81,6 @@ class DBTCloudClient:
 
         self.client = TrackedREST(client_config, source_name="dbtcloud")
         self.graphql_client = TrackedREST(graphql_client_config, source_name="dbtcloud")
-
-        # The test-connection calls bypass TrackedREST (see _test_get), so they mount
-        # the same keepalive adapter, and add a fast retry on gateway 5xx to match
-        # the REST client retrying those, without importing its slow backoff.
-        self._test_session = requests.Session()
-        retry = build_transport_retry().new(status=2, status_forcelist=GATEWAY_ERRORS)
-        adapter = KeepAliveRetryAdapter(max_retries=retry)
-        self._test_session.mount("https://", adapter)
-        self._test_session.mount("http://", adapter)
 
     def _get_jobs(
         self,
@@ -160,17 +141,11 @@ class DBTCloudClient:
         """
         Authenticated GET that raises DBTCloudApiError on a non-success status.
 
-        The shared REST client cannot report the status: a dbt Cloud error body nests
-        its `code` under `status`, so the client's error branch neither raises nor
-        returns and the caller is left with a bare None. Ingestion keeps using it.
+        Uses get_raw, not get: a dbt Cloud error body nests its `code` under `status`,
+        which the shared error handling does not recognise, so get would drop the
+        status and return None. get_raw hands back the raw response with its status.
         """
-        url = f"{clean_uri(str(self.config.host))}/{API_VERSION}{path}"
-        response = self._test_session.get(
-            url,
-            headers={AUTHORIZATION_HEADER: f"Bearer {self.config.token.get_secret_value()}"},
-            params=params,
-            timeout=self.client.config.timeout,
-        )
+        response = self.client.get_raw(path, data=params)
         if not response.ok:
             raise DBTCloudApiError(response.status_code, path, response.text[:ERROR_DETAIL_LIMIT])
         return response.json()
