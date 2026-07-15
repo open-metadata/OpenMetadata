@@ -487,6 +487,16 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
+  /**
+   * Records that an entity's chunks were knowingly skipped during a staged recreate (e.g. the
+   * embedding provider's circuit is open) — a hole in the staged generation must block promotion
+   * exactly like a failed write, or it becomes a silent chunk drop at the swap.
+   */
+  public void recordStagedChunkGap(String stagedChunkTarget, String parentId, String reason) {
+    recordStagedWriteFailure(
+        stagedChunkTarget, parentId, new IllegalStateException("chunk write skipped: " + reason));
+  }
+
   private void preflightEmbedding() {
     try {
       embeddingClient.embedQuery("chunk index recreate pre-flight");

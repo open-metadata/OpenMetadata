@@ -971,6 +971,12 @@ public class OpenSearchBulkSink implements BulkSink {
                       OpenSearchVectorService.legacyEmbeddingFields(chunkDocs.get(0))));
           vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs, stagedChunkTarget);
         }
+      } else if (stagedChunkTarget != null) {
+        // Provider circuit open during a staged recreate: silently skipping would leave a hole
+        // that promotion turns into a silent chunk drop — poison the run so the old chunks stay
+        // live and the operator reruns once the provider recovers.
+        vectorService.recordStagedChunkGap(
+            stagedChunkTarget, entity.getId().toString(), "embedding provider circuit open");
       }
 
       vectorSuccess.incrementAndGet();
