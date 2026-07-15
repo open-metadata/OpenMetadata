@@ -3777,6 +3777,7 @@ public abstract class BaseEntityIT<T extends EntityInterface, K> {
     assertNotNull(result);
     assertEquals(5, result.getNumberOfRowsProcessed());
     assertEquals(ApiStatus.SUCCESS, result.getStatus());
+    awaitAsyncBulkEntitiesPersisted(result);
   }
 
   /**
