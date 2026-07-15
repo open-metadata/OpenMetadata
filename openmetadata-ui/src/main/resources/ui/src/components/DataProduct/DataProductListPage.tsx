@@ -15,12 +15,13 @@ import {
   Avatar,
   Box,
   Card,
+  Input,
   PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
-import { isEmpty } from 'lodash';
-import { ReactNode, useCallback, useMemo, useState } from 'react';
+import { Globe01, SearchLg } from '@untitledui/icons';
+import { debounce, isEmpty } from 'lodash';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
@@ -49,7 +50,6 @@ import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardT
 import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
-import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
@@ -199,11 +199,25 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search'),
-    onSearchChange: dataProductListing.handleSearchChange,
-    initialSearchQuery: dataProductListing.urlState.searchQuery,
-  });
+  const [searchInputValue, setSearchInputValue] = useState(
+    dataProductListing.urlState.searchQuery ?? ''
+  );
+
+  const debouncedSearch = useMemo(
+    () => debounce(dataProductListing.handleSearchChange, 300),
+    [dataProductListing.handleSearchChange]
+  );
+
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(dataProductListing.urlState.searchQuery ?? '');
+  }, [dataProductListing.urlState.searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDataProductCard } = useDomainCardTemplates();
@@ -419,7 +433,16 @@ const DataProductListPage = ({
           gap={4}>
           <Box align="center" direction="row" gap={5}>
             {titleAndCount}
-            {search}
+            <Input
+              className="tw:max-w-86"
+              icon={SearchLg}
+              placeholder={t('label.search')}
+              value={searchInputValue}
+              onChange={(value) => {
+                setSearchInputValue(value);
+                debouncedSearch(value);
+              }}
+            />
             {quickFilters}
             <Box className="tw:ml-auto" />
             <ViewToggle value={view} onChange={setView} />
