@@ -124,6 +124,7 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
+import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
 import org.openmetadata.service.migration.MigrationValidationClient;
@@ -265,6 +266,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Publish the platform-wide LLM configuration for features that need completions
     LlmConfigHolder.initialize(catalogConfig.getLlmConfiguration());
+    LLMClientHolder.initialize(catalogConfig.getLlmConfiguration());
 
     // init for dataSourceFactory
     DatasourceConfig.initialize(catalogConfig.getDataSourceFactory().getDriverClass());
