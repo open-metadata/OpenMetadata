@@ -15,6 +15,7 @@ import org.openmetadata.schema.entity.context.MemoryShareConfig;
 import org.openmetadata.schema.entity.context.MemoryVisibility;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.drive.DocumentMemoryExtractor.DeriveResult;
 import org.openmetadata.service.llm.KnowledgePill;
 import org.openmetadata.service.llm.LLMCompletionClient;
 import org.openmetadata.service.llm.LLMCompletionException;
@@ -30,7 +31,7 @@ import org.openmetadata.service.util.FullyQualifiedName;
  * ContextMemoryReconciler}'s job.
  */
 @Slf4j
-public class ContextMemoryExtractor {
+public class ContextMemoryExtractor implements DocumentMemoryExtractor {
   static final int MAX_PROMPT_CHARS = 60_000;
   static final int MAX_CHUNKS = 8;
   static final int MAX_NAME_BASE_LENGTH = 200;
@@ -46,9 +47,6 @@ public class ContextMemoryExtractor {
     this.llmClient = llmClient;
   }
 
-  /** Result of an LLM derive pass, carrying chunk-level stats for the source's extractionStats. */
-  public record DeriveResult(List<ContextMemory> memories, int chunksTotal, int chunksProcessed) {}
-
   /**
    * Derives memories from {@code text} without persisting anything. Long documents are processed in
    * paragraph-aligned chunks, one LLM call per chunk, with pills deduplicated across chunks. Chunk
@@ -57,6 +55,7 @@ public class ContextMemoryExtractor {
    * reconcile the source's previous pills only after the LLM pass succeeded. Each derived memory is
    * linked to {@code sourceRef} and tagged {@code sourceType}.
    */
+  @Override
   public DeriveResult derive(
       String text, EntityReference sourceRef, ContextMemorySourceType sourceType) {
     ChunkPlan plan = chunkText(text, sourceRef);

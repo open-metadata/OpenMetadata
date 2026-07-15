@@ -78,7 +78,7 @@ class PageContextProcessingEngineTest {
     String body = "Onboarding runbook body";
     pageReturns(page(body, "stale-hash"));
     when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
         .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0));
 
@@ -105,7 +105,7 @@ class PageContextProcessingEngineTest {
   void clearedBodyReconcilesToEmptyInsteadOfSkipping() {
     pageReturns(page("", "prior-content-hash"));
     when(extractor.derive(eq(""), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 0, 0));
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 0, 0));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
         .thenReturn(new ContextMemoryReconciler.ReconcileResult(0, 0, 0, 2));
 
@@ -121,7 +121,7 @@ class PageContextProcessingEngineTest {
     String body = "Onboarding runbook body";
     pageReturns(page(body, "stale-hash"));
     when(extractor.derive(eq(body), any(), eq(ContextMemorySourceType.PAGE_EXTRACTION)))
-        .thenReturn(new ContextMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
+        .thenReturn(new DocumentMemoryExtractor.DeriveResult(List.<ContextMemory>of(), 1, 1));
     when(reconciler.reconcile(any(), eq(Entity.PAGE), any()))
         .thenReturn(new ContextMemoryReconciler.ReconcileResult(1, 2, 3, 0));
 

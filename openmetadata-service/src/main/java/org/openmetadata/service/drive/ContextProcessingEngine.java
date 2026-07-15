@@ -5,8 +5,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.context.ContextMemorySourceType;
 import org.openmetadata.schema.entity.data.ExtractionStats;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.service.drive.ContextMemoryExtractor.DeriveResult;
 import org.openmetadata.service.drive.ContextMemoryReconciler.ReconcileResult;
+import org.openmetadata.service.drive.DocumentMemoryExtractor.DeriveResult;
 
 /**
  * Shared core of Context Center knowledge-pill extraction. Given a source entity (a ContextFile, a
@@ -17,11 +17,11 @@ import org.openmetadata.service.drive.ContextMemoryReconciler.ReconcileResult;
  */
 @Slf4j
 public abstract class ContextProcessingEngine {
-  protected final ContextMemoryExtractor extractor;
+  protected final DocumentMemoryExtractor extractor;
   protected final ContextMemoryReconciler reconciler;
 
   protected ContextProcessingEngine(
-      ContextMemoryExtractor extractor, ContextMemoryReconciler reconciler) {
+      DocumentMemoryExtractor extractor, ContextMemoryReconciler reconciler) {
     this.extractor = extractor;
     this.reconciler = reconciler;
   }
