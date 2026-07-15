@@ -43,6 +43,7 @@ import { getRelativeTime } from '../../../../../utils/date-time/DateTimeUtils';
 import { showErrorToast } from '../../../../../utils/ToastUtils';
 import Loader from '../../../../common/Loader/Loader';
 import RichTextEditorPreviewNew from '../../../../common/RichTextEditor/RichTextEditorPreviewNew';
+import './context-preview-modal.less';
 
 interface ContextPreviewModalProps {
   open: boolean;
@@ -76,7 +77,7 @@ const getHeadingStateClass = (isActive: boolean, isNested: boolean) => {
 
 const getHeadingClassName = (isActive: boolean, isNested: boolean) => {
   const sizeClass = isNested
-    ? 'tw:ml-5.5 tw:w-[calc(100%-1.375rem)] tw:truncate tw:px-2 tw:py-0.75 tw:font-mono tw:text-[12px]'
+    ? 'persona-context-toc-mono tw:ml-5.5 tw:w-[calc(100%-1.375rem)] tw:truncate tw:px-2 tw:py-0.75 tw:text-[12px]'
     : 'tw:w-full tw:truncate tw:px-2.5 tw:py-1.75 tw:text-[13px]';
 
   return [
@@ -85,6 +86,22 @@ const getHeadingClassName = (isActive: boolean, isNested: boolean) => {
     getHeadingStateClass(isActive, isNested),
   ].join(' ');
 };
+
+const STAT_NUMBER_SPLIT = /([~]?\d[\d,]*(?:\.\d+)?)/g;
+const STAT_NUMBER_TEST = /^[~]?\d[\d,]*(?:\.\d+)?$/;
+
+const renderStatWithBoldNumbers = (stat: string): ReactNode =>
+  stat.split(STAT_NUMBER_SPLIT).map((part, index) =>
+    STAT_NUMBER_TEST.test(part) ? (
+      <strong
+        className="tw:font-semibold tw:text-primary"
+        key={`${part}-${index}`}>
+        {part}
+      </strong>
+    ) : (
+      part
+    )
+  );
 
 export const ContextPreviewModal = ({
   open,
@@ -103,6 +120,7 @@ export const ContextPreviewModal = ({
     useState<PersonaContextDocument>();
   const [mode, setMode] = useState<PreviewMode>('rendered');
   const [activeHeading, setActiveHeading] = useState(0);
+  const [contentReady, setContentReady] = useState(false);
   const markdown = contextDocument?.markdown ?? '';
   const { hasCopied, onCopyToClipBoard } = useClipboard(markdown);
 
@@ -162,6 +180,16 @@ export const ContextPreviewModal = ({
       frontMatterText: `---\n${frontMatter[1].trim()}\n---`,
     };
   }, [markdown]);
+
+  useEffect(() => {
+    setContentReady(false);
+    if (!contextDocument || mode !== 'rendered') {
+      return undefined;
+    }
+    const frame = requestAnimationFrame(() => setContentReady(true));
+
+    return () => cancelAnimationFrame(frame);
+  }, [contextDocument, mode]);
 
   // Derive the TOC from the rendered body only (not the frontmatter) and ignore
   // heading-looking lines inside fenced code blocks, so the positional index
@@ -301,11 +329,17 @@ export const ContextPreviewModal = ({
           {frontMatterText && (
             <pre className={FRONT_MATTER_CLASS}>{frontMatterText}</pre>
           )}
-          <RichTextEditorPreviewNew
-            isDescriptionExpanded
-            enableSeeMoreVariant={false}
-            markdown={bodyMarkdown}
-          />
+          {contentReady ? (
+            <RichTextEditorPreviewNew
+              isDescriptionExpanded
+              enableSeeMoreVariant={false}
+              markdown={bodyMarkdown}
+            />
+          ) : (
+            <Box align="center" className="tw:min-h-40" justify="center">
+              <Loader />
+            </Box>
+          )}
         </Box>
       </Box>
     );
@@ -383,7 +417,7 @@ export const ContextPreviewModal = ({
                       </Typography>
                     )}
                     <Typography className="tw:text-secondary" size="text-sm">
-                      {stat}
+                      {renderStatWithBoldNumbers(stat)}
                     </Typography>
                   </Box>
                 ))}
