@@ -35,7 +35,7 @@ test.use({
 });
 
 test.describe.configure({
-  // 11 minutes max for ingestion tests
+  // 5 minutes max for ingestion tests
   timeout: 5 * 60 * 1000,
 });
 

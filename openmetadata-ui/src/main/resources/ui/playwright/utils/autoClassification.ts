@@ -85,7 +85,10 @@ export const addAndTriggerAutoClassificationPipeline = async (
   // eslint-disable-next-line playwright/no-wait-for-timeout -- pipeline deployment settling time
   await page.waitForTimeout(3000);
 
-  await page.getByTestId(`agent-card-${response.data[0].fullyQualifiedName}`).getByTestId('run-agent-button').click()
+  await page
+    .getByTestId(`agent-card-${response.data[0].fullyQualifiedName}`)
+    .getByTestId('run-agent-button')
+    .click();
   await toastNotification(page, `Pipeline triggered successfully!`);
 
   // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for latest pipeline run results
