@@ -101,7 +101,9 @@ export const selectActiveGlossaryTerm = async (
 
   await expect(glossaryTermEntry).toBeVisible();
   await glossaryTermEntry.scrollIntoViewIfNeeded().catch(() => undefined);
-  await glossaryTermEntry.click({ force: true }).catch(async () =>
+  // A plain click drives the term link's navigation on the TableV2 (react-aria)
+  // rows; a forced click is swallowed by the draggable row's pointer handling.
+  await glossaryTermEntry.click().catch(async () =>
     glossaryTermEntry.evaluate((node) => {
       (node as HTMLElement).click();
     })
@@ -692,26 +694,10 @@ export const validateGlossaryTerm = async (
   ).toBeHidden();
   await expect(page.locator('[data-testid="loader"]')).toHaveCount(0);
 
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Terms' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Description' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Owners' })
-  ).toBeVisible();
-  await expect(
-    page
-      .getByTestId('glossary-terms-table')
-      .getByRole('columnheader', { name: 'Status' })
-  ).toBeVisible();
+  const termsTable = page.getByTestId('glossary-terms-table');
+  for (const header of ['Terms', 'Description', 'Owners', 'Status']) {
+    await expect(termsTable.locator('th', { hasText: header })).toBeVisible();
+  }
 
   if (isGlossaryTermPage) {
     await expect(page.getByTestId(term.name)).toBeVisible();
@@ -1065,7 +1051,12 @@ export const confirmationDragAndDropGlossary = async (
   const patchGlossaryTermResponse = page.waitForResponse(
     '/api/v1/glossaryTerms/*'
   );
-  await page.getByRole('button', { name: 'Move' }).click();
+  // Scope to the modal: TableV2 drag handles expose aria-label "Move the term",
+  // which otherwise also matches getByRole('button', { name: 'Move' }).
+  await page
+    .getByTestId('confirmation-modal')
+    .getByRole('button', { name: 'Move' })
+    .click();
   await patchGlossaryTermResponse;
 };
 
@@ -1461,38 +1452,46 @@ export async function openColumnDropdown(page: Page): Promise<void> {
 
   await dropdownButton.click();
 
-  await page
-    .locator('.ant-dropdown [role="menu"]')
-    .getByTestId('column-dropdown-title')
-    .waitFor({
-      state: 'visible',
-    });
+  await page.getByTestId('column-dropdown-title').waitFor({
+    state: 'visible',
+  });
 }
 
 export async function selectColumns(
   page: Page,
-  checkboxLabels: string[]
+  columnKeys: string[]
 ): Promise<void> {
-  for (const label of checkboxLabels) {
-    const checkbox = page.locator('.draggable-menu-item-button', {
-      hasText: label,
-    });
-    await checkbox.click();
+  for (const key of columnKeys) {
+    await page.getByTestId(`column-menu-item-${key}`).click();
   }
   await clickOutside(page);
 }
 
 export async function deselectColumns(
   page: Page,
-  checkboxLabels: string[]
+  columnKeys: string[]
 ): Promise<void> {
-  for (const label of checkboxLabels) {
-    const checkbox = page.locator('.draggable-menu-item-button', {
-      hasText: label,
-    });
-    await checkbox.click();
+  for (const key of columnKeys) {
+    await page.getByTestId(`column-menu-item-${key}`).click();
   }
   await clickOutside(page);
+}
+
+export async function ensureColumnsVisible(
+  page: Page,
+  columns: { key: string; label: string }[]
+): Promise<void> {
+  const glossaryTermsTable = page.getByTestId('glossary-terms-table');
+
+  for (const column of columns) {
+    const columnHeader = glossaryTermsTable.locator('th', {
+      hasText: column.label,
+    });
+    if (!(await columnHeader.isVisible().catch(() => false))) {
+      await page.getByTestId(`column-menu-item-${column.key}`).click();
+      await expect(columnHeader).toBeVisible();
+    }
+  }
 }
 
 export async function verifyColumnsVisibility(
@@ -1571,22 +1570,17 @@ export const filterStatus = async (
   await dropdownButton.click();
 
   for (const label of statusLabels) {
-    const checkbox = page.locator('.glossary-dropdown-label', {
-      hasText: label,
-    });
-    await checkbox.click();
+    const optionValue = label === 'All' ? 'all' : label;
+    await page.getByTestId(`glossary-status-option-${optionValue}`).click();
   }
 
-  const saveButton = page.locator('.ant-btn-primary', {
-    hasText: 'Save',
-  });
-  await saveButton.click();
+  await page.getByTestId('glossary-status-save-btn').click();
 
   const glossaryTermsTable = page.getByTestId('glossary-terms-table');
   // will select all <tr> elements inside the <tbody> but exclude those with aria-hidden="true"
   // since we have added re-sizeable columns, that one <tr> entry is present in the tbody
   const rows = glossaryTermsTable.locator(
-    'tbody.ant-table-tbody > tr:not([aria-hidden="true"])'
+    'tbody > tr:not([aria-hidden="true"])'
   );
   const statusColumnIndex = 2;
 
@@ -1688,25 +1682,26 @@ export const addMultiOwnerInDialog = async (data: {
 
 export const dragAndDropColumn = async (
   page: Page,
-  dragColumn: string,
-  dropColumn: string
+  dragColumnKey: string,
+  dropColumnKey: string
 ) => {
-  await page.locator(`.draggable-menu-item:has-text("${dragColumn}")`).waitFor({
+  const dragColumn = page.getByTestId(`column-menu-item-${dragColumnKey}`);
+  const dropColumn = page.getByTestId(`column-menu-item-${dropColumnKey}`);
+
+  await dragColumn.waitFor({
     state: 'visible',
   });
 
-  await page
-    .locator('.draggable-menu-item', { hasText: dragColumn })
-    .dragTo(page.locator('.draggable-menu-item', { hasText: dropColumn }), {
-      sourcePosition: {
-        x: 16,
-        y: 16,
-      },
-      targetPosition: {
-        x: 16,
-        y: 16,
-      },
-    });
+  await dragColumn.dragTo(dropColumn, {
+    sourcePosition: {
+      x: 16,
+      y: 16,
+    },
+    targetPosition: {
+      x: 16,
+      y: 16,
+    },
+  });
 };
 
 export const getEscapedTermFqn = (term: GlossaryTermData) => {
