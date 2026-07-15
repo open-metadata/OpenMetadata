@@ -55,9 +55,16 @@ function ObservabilityAlertsTable({
 }: Readonly<ObservabilityAlertsTableProps>) {
   const { t } = useTranslation();
 
-  const hasCreatePermission = Boolean(
-    alertResourcePermission?.Create || alertResourcePermission?.All
+  // Hide the create CTA only on an explicit denial. When the resource
+  // permission is unknown — e.g. getResourcePermission failed and left it
+  // undefined — don't lock an authorized user out of creating alerts; show the
+  // CTA and let the backend enforce on submit.
+  const isCreateExplicitlyDenied = Boolean(
+    alertResourcePermission &&
+      !alertResourcePermission.Create &&
+      !alertResourcePermission.All
   );
+  const hasCreatePermission = !isCreateExplicitlyDenied;
 
   const emptyStateFeatures = useMemo(
     () => [
