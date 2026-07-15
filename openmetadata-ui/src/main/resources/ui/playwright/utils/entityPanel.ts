@@ -52,6 +52,29 @@ const findOptionByScrolling = async (page: Page, endpoint: string) => {
   );
 };
 
+const dismissVisiblePopovers = async (page: Page) => {
+  const visiblePopovers = page.locator('.ant-popover:not(.ant-popover-hidden)');
+
+  if ((await visiblePopovers.count()) === 0) {
+    return;
+  }
+
+  await page.mouse.move(0, 0);
+  await page.keyboard.press('Escape');
+
+  await expect(visiblePopovers)
+    .toHaveCount(0, { timeout: 5000 })
+    .catch(async () => {
+      await page.locator('body').click({
+        position: {
+          x: 0,
+          y: 0,
+        },
+      });
+      await expect(visiblePopovers).toHaveCount(0, { timeout: 5000 });
+    });
+};
+
 export const openEntitySummaryPanel = async ({
   page,
   entityName,
@@ -101,7 +124,7 @@ export const openEntitySummaryPanel = async ({
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
-
+    await dismissVisiblePopovers(page);
     // Since the directly clicking on the card can sometimes click on title element which is link,
     // we need to click on description container to open the summary panel.
     await cardByFqn.getByTestId('description-text').click();
@@ -115,13 +138,17 @@ export const openEntitySummaryPanel = async ({
     await knowledgeCenterItem.click();
   }
 
-  await page
+  const cardByEntityName = page
     .locator('[data-testid^="table-data-card"]')
     .filter({
       has: page.getByTestId('entity-link').filter({ hasText: entityName }),
     })
-    .getByTestId('description-text')
-    .click();
+    .first();
+  await cardByEntityName.getByTestId('description-text').waitFor({
+    state: 'visible',
+  });
+  await dismissVisiblePopovers(page);
+  await cardByEntityName.getByTestId('description-text').click();
 };
 // ... (lines 48-468 unchanged)
 export async function navigateToExploreAndSelectTable(
