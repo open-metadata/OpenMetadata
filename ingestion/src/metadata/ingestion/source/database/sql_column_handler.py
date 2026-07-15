@@ -164,7 +164,7 @@ class SqlColumnHandlerMixin:
     ) -> Tuple[List, List, List]:  # noqa: UP006
         try:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
-        except (NotImplementedError, KeyError):
+        except NotImplementedError:
             logger.debug(
                 f"Cannot obtain unique/primary constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
