@@ -18,6 +18,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -163,6 +164,10 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbedding(EntityInterface entity, String entityIndexName) {
+    if (!embeddingClient.isAvailable()) {
+      LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
+      return;
+    }
     try {
       String entityId = entity.getId().toString();
       String existingFingerprint = getExistingFingerprint(entityIndexName, entityId);
@@ -175,6 +180,8 @@ public class OpenSearchVectorService implements VectorIndexService {
 
       Map<String, Object> embeddingFields = generateEmbeddingFields(entity);
       partialUpdateEntity(entityIndexName, entityId, embeddingFields);
+    } catch (EmbeddingUnavailableException unavailable) {
+      LOG.debug("Skipping embedding for entity {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
       LOG.error("Failed to update embedding for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
@@ -214,6 +221,10 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   @Override
   public void updateEntityEmbeddings(EntityInterface entity, String entityIndexName) {
+    if (!embeddingClient.isAvailable()) {
+      LOG.debug("Embedding provider unavailable; skipping entity {}", entity.getId());
+      return;
+    }
     try {
       String parentId = entity.getId().toString();
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
@@ -232,6 +243,8 @@ public class OpenSearchVectorService implements VectorIndexService {
           partialUpdateEntity(entityIndexName, parentId, legacyEmbeddingFields(chunkDocs.get(0)));
         }
       }
+    } catch (EmbeddingUnavailableException unavailable) {
+      LOG.debug("Skipping embeddings for entity {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
       LOG.error("Failed to update embeddings for entity {}: {}", entity.getId(), e.getMessage(), e);
     }
@@ -419,6 +432,8 @@ public class OpenSearchVectorService implements VectorIndexService {
       }
       List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
       replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
+    } catch (EmbeddingUnavailableException unavailable) {
+      LOG.debug("Skipping chunk embeddings for {}: {}", entity.getId(), unavailable.getMessage());
     } catch (Exception e) {
       LOG.error("Failed to update chunk embeddings for {}: {}", entity.getId(), e.getMessage(), e);
     }

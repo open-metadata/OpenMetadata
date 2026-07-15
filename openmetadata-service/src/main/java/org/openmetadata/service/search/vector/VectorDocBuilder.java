@@ -31,6 +31,7 @@ import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.TermRelation;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
+import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
 import org.openmetadata.service.search.vector.utils.TextChunkManager;
 
 @Slf4j
@@ -120,6 +121,12 @@ public class VectorDocBuilder {
    */
   public static List<Map<String, Object>> fromEntity(
       EntityInterface entity, EmbeddingClient embeddingClient) {
+    if (embeddingClient == null || !embeddingClient.isAvailable()) {
+      // Signal the outage explicitly rather than returning an empty list, which callers cannot
+      // distinguish from "entity has no chunks" and would treat as a delete of existing vectors.
+      throw new EmbeddingUnavailableException(
+          "Embedding provider unavailable; skipping chunk build for " + entity.getId());
+    }
     List<Map<String, Object>> docs = buildChunkFields(entity, embeddingClient);
     if (entity instanceof GlossaryTerm term) {
       List<Map<String, Object>> relatedTermDocs = buildRelatedTermRefs(term);
