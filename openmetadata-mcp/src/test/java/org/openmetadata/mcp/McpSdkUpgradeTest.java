@@ -175,6 +175,49 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
+  void testMcpUtilsGetToolPropertiesSetsTitleAndReadOnlyAnnotation() {
+    // Anthropic's Claude Connectors Directory requires every tool to carry a title plus
+    // readOnlyHint/destructiveHint. Verify a read-only tool is annotated correctly.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    McpSchema.Tool searchTool =
+        tools.stream().filter(t -> "search_metadata".equals(t.name())).findFirst().orElse(null);
+
+    assertThat(searchTool).isNotNull();
+    assertThat(searchTool.title()).isEqualTo("Search Metadata");
+    assertThat(searchTool.annotations()).isNotNull();
+    assertThat(searchTool.annotations().readOnlyHint()).isTrue();
+    assertThat(searchTool.annotations().destructiveHint()).isFalse();
+  }
+
+  @Test
+  void testMcpUtilsGetToolPropertiesMarksPatchEntityAsDestructive() {
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    McpSchema.Tool patchTool =
+        tools.stream().filter(t -> "patch_entity".equals(t.name())).findFirst().orElse(null);
+
+    assertThat(patchTool).isNotNull();
+    assertThat(patchTool.annotations()).isNotNull();
+    assertThat(patchTool.annotations().readOnlyHint()).isFalse();
+    assertThat(patchTool.annotations().destructiveHint()).isTrue();
+  }
+
+  @Test
+  void testMcpUtilsGetToolPropertiesEveryToolHasTitleAndAnnotations() {
+    // Regression guard: a new tool added to tools.json without title/annotations would fail
+    // Claude Connectors Directory review. Fail the build instead of failing review.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .allSatisfy(
+            tool -> {
+              assertThat(tool.title()).as("title for tool %s", tool.name()).isNotBlank();
+              assertThat(tool.annotations()).as("annotations for tool %s", tool.name()).isNotNull();
+            });
+  }
+
+  @Test
   void testServerCapabilitiesDoNotAdvertiseLogging() {
     // The stateless MCP server has no handler for logging/setLevel.
     // Advertising logging capability causes spec-compliant clients (e.g. VSCode)
