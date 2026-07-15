@@ -786,12 +786,7 @@
         <type>pom</type>
         <scope>import</scope>
       </dependency>
-      <dependency>
-        <groupId>com.mchange</groupId>
-        <artifactId>mchange-commons-java</artifactId>
-        <version>0.6.1</version>
-      </dependency>
-      <!-- AWS SDK v2 BOM at root so every module resolves the patched line.
+<!-- AWS SDK v2 BOM at root so every module resolves the patched line.
            openmetadata-dist / -mcp / -k8s-operator are siblings that depend on
            -service (not children of it), so -service's BOM alone does not reach
            them. Clears cloudfront (SNYK-JAVA-SOFTWAREAMAZONAWSSDK-15810116). -->

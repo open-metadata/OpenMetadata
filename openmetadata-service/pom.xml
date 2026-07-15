@@ -864,10 +864,12 @@
       <version>${quartz.version}</version>
     </dependency>
     <!-- Needed for Quartz -->
+    <!-- 0.14.1 natively depends on mchange-commons-java 0.6.1 (clears
+         SNYK-JAVA-COMMCHANGE-17796416); avoids the 0.12.0-under-0.6.1 API mismatch. -->
     <dependency>
       <groupId>com.mchange</groupId>
       <artifactId>c3p0</artifactId>
-      <version>0.12.0</version>
+      <version>0.14.1</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
