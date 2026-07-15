@@ -120,6 +120,7 @@ const OntologyExplorerPage: React.FC = () => {
             hasStats
             badge={betaBadge}
             breadcrumb={breadcrumb}
+            className="tw:mb-5"
             meta={statsRow}
             title={heading}
             variant="gradient"

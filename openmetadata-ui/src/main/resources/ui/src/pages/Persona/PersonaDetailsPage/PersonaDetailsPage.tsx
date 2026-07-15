@@ -10,8 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import Icon from '@ant-design/icons/lib/components/Icon';
-import { Button, Col, Modal, Row, Tabs, Typography } from 'antd';
+import { FeaturedIcon, Tabs } from '@openmetadata/ui-core-components';
+import { User03 } from '@untitledui/icons';
+import { Button, Col, Modal, Row, Typography } from 'antd';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import { compare } from 'fast-json-patch';
@@ -21,7 +22,6 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as CheckCircleOutlined } from '../../../assets/svg/complete.svg';
 import { ReactComponent as CloseCircleOutlined } from '../../../assets/svg/ic-close-circle.svg';
-import { ReactComponent as IconPersona } from '../../../assets/svg/ic-personas.svg';
 import DescriptionV1 from '../../../components/common/EntityDescription/DescriptionV1';
 import ManageButton from '../../../components/common/EntityPageInfos/ManageButton/ManageButton';
 import NoDataPlaceholder from '../../../components/common/ErrorWithPlaceholder/NoDataPlaceholder';
@@ -273,7 +273,7 @@ export const PersonaDetailsPage = () => {
         hash: key,
       });
     },
-    [history, fullHash]
+    [navigate, fullHash]
   );
 
   const tabItems = useMemo(() => {
@@ -290,6 +290,7 @@ export const PersonaDetailsPage = () => {
           <PersonaAIContext
             canEdit={entityPermission.EditAll}
             persona={personaDetails}
+            onPersonaUpdate={fetchPersonaDetails}
           />
         ) : null,
       },
@@ -305,6 +306,11 @@ export const PersonaDetailsPage = () => {
       },
     ];
   }, [entityPermission.EditAll, personaDetails, t]);
+
+  const activeTabContent = useMemo(
+    () => tabItems.find((item) => item.key === activeKey)?.children,
+    [activeKey, tabItems]
+  );
 
   const extraDropdownContent = useMemo(() => {
     const isDefault = personaDetails?.default;
@@ -341,7 +347,7 @@ export const PersonaDetailsPage = () => {
 
   return (
     <PageLayoutV1 pageTitle={personaDetails.name}>
-      <Row className="m-b-md" gutter={[0, 16]}>
+      <Row className="m-b-md tw:isolate" gutter={[0, 16]}>
         <Col span={24}>
           <div className="d-flex justify-between items-start">
             <div className="persona-details-title-container">
@@ -349,9 +355,7 @@ export const PersonaDetailsPage = () => {
               <EntityHeaderTitle
                 className="m-t-xs"
                 displayName={personaDetails.displayName}
-                icon={
-                  <Icon component={IconPersona} style={{ fontSize: '36px' }} />
-                }
+                icon={<FeaturedIcon color="brand" icon={User03} size="lg" />}
                 name={personaDetails?.name}
                 serviceName={personaDetails.name}
               />
@@ -392,29 +396,37 @@ export const PersonaDetailsPage = () => {
         </Col>
         <Col span={24}>
           <Tabs
-            activeKey={activeKey}
-            className="tabs-new"
-            items={tabItems}
-            tabBarExtraContent={
-              activeKey === 'users' && (
-                <UserSelectableList
-                  hasPermission
-                  multiSelect
-                  selectedUsers={personaDetails.users ?? []}
-                  onUpdate={async (users) => {
-                    await handlePersonaUpdate({ users }, true);
-                  }}>
-                  <Button
-                    data-testid="add-persona-button"
-                    size="small"
-                    type="primary">
-                    {t('label.add-entity', { entity: t('label.user') })}
-                  </Button>
-                </UserSelectableList>
-              )
-            }
-            onTabClick={handleTabClick}
-          />
+            selectedKey={activeKey}
+            onSelectionChange={(key) => handleTabClick(String(key))}>
+            <div className="tw:relative tw:mb-6 tw:border-b tw:border-secondary">
+              <Tabs.List
+                className="tw:w-full tw:items-center tw:gap-7"
+                type="underline">
+                {tabItems.map(({ key, label }) => (
+                  <Tabs.Item id={key} key={key} label={label} />
+                ))}
+              </Tabs.List>
+              {activeKey === 'users' && (
+                <div className="tw:absolute tw:right-0 tw:bottom-2">
+                  <UserSelectableList
+                    hasPermission
+                    multiSelect
+                    selectedUsers={personaDetails.users ?? []}
+                    onUpdate={async (users) => {
+                      await handlePersonaUpdate({ users }, true);
+                    }}>
+                    <Button
+                      data-testid="add-persona-button"
+                      size="small"
+                      type="primary">
+                      {t('label.add-entity', { entity: t('label.user') })}
+                    </Button>
+                  </UserSelectableList>
+                </div>
+              )}
+            </div>
+          </Tabs>
+          <div>{activeTabContent}</div>
         </Col>
       </Row>
 

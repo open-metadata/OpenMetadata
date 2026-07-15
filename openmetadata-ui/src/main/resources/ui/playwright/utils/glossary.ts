@@ -787,10 +787,10 @@ export const addAssetToGlossaryTerm = async (
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -821,7 +821,7 @@ export const addAssetToGlossaryTerm = async (
     await page.click(
       `[data-testid="table-data-card_${entityFqn}"] input[type="checkbox"]`
     );
-
+    await waitForAllLoadersToDisappear(page);
     await expect(
       page.locator(
         `[data-testid="table-data-card_${entityFqn}"] [data-testid="entity-header-name"]`
@@ -854,15 +854,11 @@ const testFilterWithSpecificOption = async (
 
   await filterResponse;
 
-  await expect(
-    page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-  ).toBeVisible();
+  await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
   const clearFilterResponse = page.waitForResponse('/api/v1/search/query?*');
 
-  await page
-    .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-    .click();
+  await filterWrapper.getByTestId('clear-filters').click();
 
   await clearFilterResponse;
 };
@@ -875,9 +871,10 @@ const testFilterWithFirstOption = async (
   const filter = filterWrapper.getByTestId(`search-dropdown-${filterName}`);
   await filter.click();
 
-  await page.getByTestId('drop-down-menu').waitFor();
+  const dropdownMenu = page.getByTestId('drop-down-menu');
+  await dropdownMenu.waitFor();
 
-  const options = page.locator('[data-testid="drop-down-menu"]');
+  const options = dropdownMenu.locator('[data-testid$="-checkbox"]');
   await waitForAllLoadersToDisappear(page);
   const firstOption = options.first();
   const noDataPlaceholder = page.getByText(/No data available/i);
@@ -895,17 +892,13 @@ const testFilterWithFirstOption = async (
 
       await filterResponse;
 
-      await expect(
-        page.locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-      ).toBeVisible();
+      await expect(filterWrapper.getByTestId('clear-filters')).toBeVisible();
 
       const clearFilterResponse = page.waitForResponse(
         '/api/v1/search/query?*'
       );
 
-      await page
-        .locator('.asset-filters-wrapper .text-primary.cursor-pointer')
-        .click();
+      await filterWrapper.getByTestId('clear-filters').click();
 
       await clearFilterResponse;
     }
@@ -925,10 +918,10 @@ export const verifyAssetModalFilters = async (
   await page.click('[data-testid="glossary-term-add-button-menu"]');
   await page.getByRole('menuitem', { name: 'Assets' }).click();
 
-  await expect(page.locator('[role="dialog"].ant-modal')).toBeVisible();
-  await expect(
-    page.locator('[data-testid="asset-selection-modal"] .ant-modal-title')
-  ).toContainText('Add Assets');
+  const assetSelectionModal = page.getByTestId('asset-selection-modal');
+
+  await expect(assetSelectionModal).toBeVisible();
+  await expect(assetSelectionModal).toContainText('Add Assets');
 
   await expect(page.locator('.asset-filters-wrapper')).toBeVisible();
 
@@ -955,7 +948,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'entityType',
-    'table',
+    'table-checkbox',
     'table'
   );
 
@@ -963,7 +956,7 @@ export const verifyAssetModalFilters = async (
     page,
     filterWrapper,
     'serviceType',
-    'mysql',
+    'mysql-checkbox',
     'mysql'
   );
 
@@ -2006,9 +1999,10 @@ export const verifyMutualExclusivitySelection = async (
   await expect(deselectedRadio).not.toBeChecked();
 };
 
-// -- MUI Glossary Tree Select helpers --
+// -- Glossary Tree Select helpers --
 
-export const getTreeDropdown = (page: Page) => page.getByRole('tooltip');
+export const getTreeDropdown = (page: Page) =>
+  page.getByTestId('glossary-terms-popover');
 
 export const getTreeNode = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(`tree-node-${nodeId}`);
@@ -2017,19 +2011,15 @@ export const getSelectionControl = (page: Page, nodeId: string) =>
   getTreeDropdown(page).getByTestId(new RegExp(`^(radio|checkbox)-${nodeId}$`));
 
 export const expandTreeNodeByName = async (page: Page, displayName: string) => {
-  const tooltip = getTreeDropdown(page);
-  const nodeText = tooltip.getByText(displayName, { exact: true });
+  const popover = getTreeDropdown(page);
+  const nodeText = popover.getByText(displayName, { exact: true });
   await expect(nodeText).toBeVisible({ timeout: 10000 });
   await nodeText.scrollIntoViewIfNeeded();
 
-  const treeItem = nodeText.locator(
-    'xpath=ancestor::li[contains(@class, "MuiTreeItem-root")][1]'
-  );
-  const iconContainer = treeItem.locator(
-    '> .MuiTreeItem-content > .MuiTreeItem-iconContainer'
-  );
-  await expect(iconContainer).toBeVisible({ timeout: 5000 });
-  await iconContainer.click();
+  const treeItem = nodeText.locator('xpath=ancestor::*[@role="row"][1]');
+  const expandButton = treeItem.locator('button').first();
+  await expect(expandButton).toBeVisible({ timeout: 5000 });
+  await expandButton.click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -2042,7 +2032,7 @@ export const expandToGlossaryTermChildren = async (
   await expect(glossaryField).toBeVisible();
   await glossaryField.click();
 
-  await expect(page.locator('.MuiTreeItem-root').first()).toBeVisible({
+  await expect(page.getByTestId('glossary-terms-popover')).toBeVisible({
     timeout: 10000,
   });
 
@@ -2053,7 +2043,7 @@ export const expandToGlossaryTermChildren = async (
     const searchResponse = page.waitForResponse(
       /\/api\/v1\/search\/query\?q=.*index=glossaryTerm.*/
     );
-    await glossaryField.fill(glossaryDisplayName);
+    await glossaryField.locator('input').fill(glossaryDisplayName);
     await searchResponse;
     await waitForAllLoadersToDisappear(page);
     await expandTreeNodeByName(page, glossaryDisplayName);
@@ -2074,12 +2064,12 @@ export const expectCheckbox = async (page: Page, nodeId: string) => {
 
 export const expectChecked = async (page: Page, nodeId: string) => {
   const control = getSelectionControl(page, nodeId);
-  await expect(control).toHaveClass(/Mui-checked/);
+  await expect(control).toHaveAttribute('data-selected', 'true');
 };
 
 export const expectNotChecked = async (page: Page, nodeId: string) => {
   const control = getSelectionControl(page, nodeId);
-  await expect(control).not.toHaveClass(/Mui-checked/);
+  await expect(control).not.toHaveAttribute('data-selected', 'true');
 };
 
 export const clickTreeNode = async (page: Page, nodeId: string) => {
