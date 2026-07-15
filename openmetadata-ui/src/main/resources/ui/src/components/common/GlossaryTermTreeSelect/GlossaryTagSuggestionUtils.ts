@@ -1,5 +1,5 @@
 /*
- *  Copyright 2024 Collate.
+ *  Copyright 2025 Collate.
  *  Licensed under the Apache License, Version 2.0 (the "License");
  *  you may not use this file except in compliance with the License.
  *  You may obtain a copy of the License at
@@ -10,11 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { TreeSelectNode } from '@openmetadata/ui-core-components';
 import { TagSource } from '../../../generated/entity/data/container';
 import { TagLabel } from '../../../generated/type/tagLabel';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { ModifiedGlossaryTerm } from '../../Glossary/GlossaryTermTab/GlossaryTermTab.interface';
-import { TreeNode } from '../atoms/asyncTreeSelect/types';
 
 export interface TreeOptionNode {
   id: string;
@@ -28,7 +28,9 @@ export interface TreeOptionNode {
   isParentMutuallyExclusive?: boolean;
 }
 
-export const convertToTreeNodes = (options: TreeOptionNode[]): TreeNode[] => {
+export const convertToTreeNodes = (
+  options: TreeOptionNode[]
+): TreeSelectNode<TagLabel>[] => {
   return options.map((option) => ({
     id: option.id,
     label: option.title,
@@ -60,7 +62,8 @@ export const convertGlossaryTermsToTreeOptionsWithNames = (
     const isGlossaryTerm = level !== 0;
 
     return {
-      id: option.name || option.fullyQualifiedName || option.id, // Use name first, fallback to FQN, then ID
+      // FQN first so ids match the tag.tagFQN-keyed selection seeded in GlossaryTermTreeSelect
+      id: option.fullyQualifiedName || option.name || option.id,
       value: option.fullyQualifiedName || option.name || option.id,
       title: getEntityName(option),
       children: hasChildren
