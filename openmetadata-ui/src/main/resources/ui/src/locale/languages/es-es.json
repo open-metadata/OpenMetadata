@@ -3556,6 +3556,8 @@
     "new-conversation": "Estás iniciando una nueva conversación",
     "new-to-the-platform": "¿Nuevo en la plataforma?",
     "no-access-placeholder": "No tienes los permisos necesarios. Por favor, contacta con el administrador para obtener el permiso de <0>{{entity}}</0>.",
+    "no-active-incidents": "No active incidents",
+    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
     "no-activity-feed": "No hemos encontrado ninguna actividad dentro de los activos de datos que posees o los que estás siguiendo actualmente.",
     "no-activity-feed-description": "¡Aún no hay actividad! Una vez que todo comience, verás actualizaciones aquí.",
     "no-activity-feed-title": "Tu feed está vacío",

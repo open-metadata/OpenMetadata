@@ -3556,6 +3556,8 @@
     "new-conversation": "أنت تبدأ محادثة جديدة",
     "new-to-the-platform": "هل أنت جديد على المنصة؟",
     "no-access-placeholder": "ليس لديك الصلاحيات اللازمة. يرجى التحقق مع المسؤول للحصول على صلاحية <0>{{entity}}</0>.",
+    "no-active-incidents": "No active incidents",
+    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
     "no-activity-feed": "في الوقت الحالي، لا توجد تحديثات في أصول البيانات التي تملكها أو تتابعها. <0>{{explored}}</0> انطلق وطالب بالملكية أو اتبع أصول البيانات التي تهمك لتبقى على اطلاع بآخر أنشطتها!",
     "no-activity-feed-description": "لا يوجد نشاط بعد! بمجرد أن تبدأ الأمور، سترى التحديثات هنا.",
     "no-activity-feed-title": "موجزك فارغ",

@@ -3556,6 +3556,8 @@
     "new-conversation": "Начать новое обсуждение",
     "new-to-the-platform": "Новичок на платформе?",
     "no-access-placeholder": "У вас нет доступа, обратитесь к администратору, чтобы получить разрешения",
+    "no-active-incidents": "No active incidents",
+    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
     "no-activity-feed": "Новостей пока нет. Они появятся при активности в ваших объектах или подписках",
     "no-activity-feed-description": "Пока нет активности! Как только что-то произойдет, здесь появятся обновления.",
     "no-activity-feed-title": "Ваша лента пуста",

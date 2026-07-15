@@ -3556,6 +3556,8 @@
     "new-conversation": "You are starting a new conversation",
     "new-to-the-platform": "New to the platform?",
     "no-access-placeholder": "You don't have necessary permissions. Please check with the admin to get the <0>{{entity}}</0> permission.",
+    "no-active-incidents": "No active incidents",
+    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
     "no-activity-feed": "Right now, there are no updates in the data assets you own or follow. <0>{{explored}}</0> Dive in and claim ownership or follow the data assets that interest you to stay informed about their latest activities!",
     "no-activity-feed-description": "No activity yet! Once things get rolling, you’ll see updates here.",
     "no-activity-feed-title": "Your feed is empty",

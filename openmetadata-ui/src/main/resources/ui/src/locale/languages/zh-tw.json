@@ -3556,6 +3556,8 @@
     "new-conversation": "您正在開始一個新對話",
     "new-to-the-platform": "是平台新手嗎？",
     "no-access-placeholder": "您沒有必要的權限。請洽詢管理員以取得 <0>{{entity}}</0> 權限。",
+    "no-active-incidents": "No active incidents",
+    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
     "no-activity-feed": "目前，您擁有或追蹤的資料資產中沒有任何更新。<0>{{explored}}</0> 深入探索並聲明所有權或追蹤您感興趣的資料資產，以隨時了解其最新活動！",
     "no-activity-feed-description": "還沒有任何活動！一旦事情開始運作，您會在這裡看到更新。",
     "no-activity-feed-title": "您的摘要是空的",
