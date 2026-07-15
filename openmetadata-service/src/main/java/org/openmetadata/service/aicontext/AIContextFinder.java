@@ -95,21 +95,26 @@ public class AIContextFinder {
   }
 
   /**
-   * Items are keyed by FQN because the vector index holds one document per body chunk — a long
+   * Items are keyed by type + FQN. The vector index holds one document per body chunk — a long
    * article matches once per relevant chunk and would otherwise appear repeatedly, blowing the
-   * caller's size budget with duplicates. First (highest-scoring) chunk wins.
+   * caller's size budget with duplicates; first (highest-scoring) chunk wins. Type is part of the
+   * key because knowledge types can share an FQN (a metric and a page both named "Revenue") — an
+   * FQN-only key would drop the second item along with the assets it routes to.
    */
-  private void collectHit(
+  void collectHit(
       Map<String, Object> hit,
       Map<String, KnowledgeItem> items,
       Map<String, CandidateAsset> candidates) {
     KnowledgeItem item = toKnowledgeItem(hit);
-    if (item != null && !items.containsKey(item.getFullyQualifiedName())) {
-      items.put(item.getFullyQualifiedName(), item);
-      for (CandidateAsset asset : routeToAssets(hit, item)) {
-        // FQNs are only unique per entity type (a chart and a dashboard under the same service
-        // can share one) — a name-only key would silently drop the second asset.
-        candidates.putIfAbsent(asset.entityType() + ":" + asset.fullyQualifiedName(), asset);
+    if (item != null) {
+      String itemKey = item.getType().value() + ":" + item.getFullyQualifiedName();
+      if (!items.containsKey(itemKey)) {
+        items.put(itemKey, item);
+        for (CandidateAsset asset : routeToAssets(hit, item)) {
+          // FQNs are only unique per entity type (a chart and a dashboard under the same service
+          // can share one) — a name-only key would silently drop the second asset.
+          candidates.putIfAbsent(asset.entityType() + ":" + asset.fullyQualifiedName(), asset);
+        }
       }
     }
   }

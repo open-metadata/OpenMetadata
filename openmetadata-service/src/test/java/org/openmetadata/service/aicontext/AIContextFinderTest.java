@@ -16,6 +16,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.Test;
@@ -106,6 +107,30 @@ class AIContextFinderTest {
                     "entityStatus", "Draft"))
             .getType(),
         "the Approved filter applies to glossary terms only");
+  }
+
+  @Test
+  void collectHit_keepsItemsOfDifferentTypesSharingAnFqn() {
+    AIContextFinder finder = new AIContextFinder();
+    Map<String, KnowledgeItem> items = new LinkedHashMap<>();
+    Map<String, AIContextFinder.CandidateAsset> candidates = new LinkedHashMap<>();
+    finder.collectHit(
+        Map.of("entityType", "metric", "fullyQualifiedName", "Revenue", "name", "Revenue"),
+        items,
+        candidates);
+    finder.collectHit(
+        Map.of("entityType", "page", "fullyQualifiedName", "Revenue", "name", "Revenue"),
+        items,
+        candidates);
+    finder.collectHit(
+        Map.of("entityType", "page", "fullyQualifiedName", "Revenue", "name", "Revenue"),
+        items,
+        candidates);
+    assertEquals(
+        2,
+        items.size(),
+        "a metric and a page sharing an FQN are distinct knowledge items; a repeated chunk of the"
+            + " same item still dedupes");
   }
 
   @Test
