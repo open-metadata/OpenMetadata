@@ -520,7 +520,9 @@ class TestRedshiftExternalTableTypeMapping(unittest.TestCase):
                 )
                 # Resolve an instantiated type, matching how the dialect passes
                 # column types into the parser during reflection.
-                resolved = ColumnTypeParser.get_column_type(ischema_names[external_type]())
+                resolved = ColumnTypeParser.get_column_type(
+                    ischema_names[external_type]()
+                )
                 self.assertEqual(
                     resolved,
                     expected_om_type,

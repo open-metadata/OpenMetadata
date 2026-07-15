@@ -39,7 +39,6 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.sampler_interface import SamplerInterface
 from metadata.utils.bigquery_utils import copy_service_config
-from metadata.utils.constants import SAMPLE_DATA_DEFAULT_COUNT
 from metadata.utils.logger import test_suite_logger
 from metadata.utils.profiler_utils import get_context_entities
 from metadata.utils.service_spec.service_spec import (

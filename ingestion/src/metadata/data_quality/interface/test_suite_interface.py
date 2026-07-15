@@ -117,9 +117,13 @@ class TestSuiteInterface(ABC):
     def _should_collect_failed_rows_sample(self) -> bool:
         """Failed row samples are persisted sample data. Skip collecting them
         when the global profiler configuration disables storing sample data."""
-        return self.sample_data_config is None or bool(self.sample_data_config.storeSampleData)
+        return self.sample_data_config is None or bool(
+            self.sample_data_config.storeSampleData
+        )
 
-    def run_test_case(self, test_case: TestCase) -> Optional[TestCaseResultResponse]:  # noqa: UP045
+    def run_test_case(
+        self, test_case: TestCase
+    ) -> Optional[TestCaseResultResponse]:  # noqa: UP045
         """run column data quality tests"""
         runtime_params_setter_fact: RuntimeParameterSetterFactory = (
             self._get_runtime_params_setter_fact()
@@ -144,7 +148,9 @@ class TestSuiteInterface(ABC):
         validator: BaseTestValidator = validator_builder.validator
         try:
             test_result = validator.run_validation()
-            response = TestCaseResultResponse(testCaseResult=test_result, testCase=test_case)
+            response = TestCaseResultResponse(
+                testCaseResult=test_result, testCase=test_case
+            )
             if self._should_collect_failed_rows_sample():
                 validator.result_with_failed_samples(response)
             else:
