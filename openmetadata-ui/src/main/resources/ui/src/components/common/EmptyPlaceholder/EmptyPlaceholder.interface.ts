@@ -12,6 +12,7 @@
  */
 
 import { EmptyPlaceholderProps } from '@openmetadata/ui-core-components';
+import { ReactNode } from 'react';
 
 export type EmptyPlaceholderVariantProps = Omit<
   EmptyPlaceholderProps,
@@ -26,4 +27,18 @@ export interface NoFilteredResultsPlaceholderProps
 export interface SomethingWentWrongPlaceholderProps
   extends EmptyPlaceholderVariantProps {
   onReload?: () => void;
+}
+
+export interface PermissionPlaceholderProps
+  extends EmptyPlaceholderVariantProps {
+  permissionValue?: ReactNode;
+}
+
+export interface CreatePlaceholderProps extends EmptyPlaceholderVariantProps {
+  permission?: boolean;
+  heading?: ReactNode;
+  doc?: string;
+  buttonId?: string;
+  permissionValue?: ReactNode;
+  onCreate?: () => void;
 }

@@ -12,14 +12,21 @@
  */
 
 import { fireEvent, render, screen } from '@testing-library/react';
+import CreatePlaceholder from './CreatePlaceholder';
+import NoDataPlaceholder from './NoDataPlaceholder';
 import NoFilteredResultsPlaceholder from './NoFilteredResultsPlaceholder';
 import NoSearchResultsPlaceholder from './NoSearchResultsPlaceholder';
+import PermissionPlaceholder from './PermissionPlaceholder';
 import SomethingWentWrongPlaceholder from './SomethingWentWrongPlaceholder';
 
 jest.mock('react-i18next', () => ({
   useTranslation: jest.fn().mockReturnValue({
     t: (key: string) => key,
   }),
+}));
+
+jest.mock('../../../utils/i18next/LocalUtil', () => ({
+  Transi18next: ({ i18nKey }: { i18nKey: string }) => <span>{i18nKey}</span>,
 }));
 
 describe('NoSearchResultsPlaceholder', () => {
@@ -132,5 +139,96 @@ describe('SomethingWentWrongPlaceholder', () => {
     render(<SomethingWentWrongPlaceholder />);
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+});
+
+describe('NoDataPlaceholder', () => {
+  it('should render the default title and description', () => {
+    render(<NoDataPlaceholder />);
+
+    expect(screen.getByText('label.no-data')).toBeInTheDocument();
+    expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
+  });
+
+  it('should not render any action button by default', () => {
+    render(<NoDataPlaceholder />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('should allow overriding the title and description', () => {
+    render(
+      <NoDataPlaceholder
+        description="custom description"
+        title="custom title"
+      />
+    );
+
+    expect(screen.getByText('custom title')).toBeInTheDocument();
+    expect(screen.getByText('custom description')).toBeInTheDocument();
+    expect(screen.queryByText('label.no-data')).not.toBeInTheDocument();
+  });
+});
+
+describe('PermissionPlaceholder', () => {
+  it('should render the default no-access description', () => {
+    render(<PermissionPlaceholder permissionValue="view" />);
+
+    expect(
+      screen.getByText('message.no-access-placeholder')
+    ).toBeInTheDocument();
+  });
+
+  it('should not render any action button', () => {
+    render(<PermissionPlaceholder permissionValue="view" />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('should allow overriding the description', () => {
+    render(<PermissionPlaceholder description="custom description" />);
+
+    expect(screen.getByText('custom description')).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-access-placeholder')
+    ).not.toBeInTheDocument();
+  });
+});
+
+describe('CreatePlaceholder', () => {
+  it('should render the default create description', () => {
+    render(<CreatePlaceholder heading="label.template" />);
+
+    expect(
+      screen.getByText('message.adding-new-entity-is-easy-just-give-it-a-spin')
+    ).toBeInTheDocument();
+  });
+
+  it('should render the add action and fire the handler', () => {
+    const onCreate = jest.fn();
+    render(<CreatePlaceholder onCreate={onCreate} />);
+
+    const button = screen.getByRole('button', { name: 'label.add' });
+
+    fireEvent.click(button);
+
+    expect(onCreate).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not render the add action without a handler', () => {
+    render(<CreatePlaceholder />);
+
+    expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('should fall back to the permission placeholder when permission is false', () => {
+    render(<CreatePlaceholder permission={false} permissionValue="view" />);
+
+    expect(
+      screen.getByText('message.no-access-placeholder')
+    ).toBeInTheDocument();
+    expect(
+      screen.queryByText('message.adding-new-entity-is-easy-just-give-it-a-spin')
+    ).not.toBeInTheDocument();
   });
 });
