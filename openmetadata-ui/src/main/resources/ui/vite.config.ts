@@ -205,10 +205,6 @@ export default defineConfig(async ({ mode }) => {
       dedupe: [
         'react',
         'react-dom',
-        '@mui/material',
-        '@mui/system',
-        '@emotion/react',
-        '@emotion/styled',
         'react-aria',
         'react-aria-components',
         'react-stately',
