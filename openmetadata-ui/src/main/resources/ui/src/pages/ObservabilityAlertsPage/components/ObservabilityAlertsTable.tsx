@@ -140,71 +140,75 @@ function ObservabilityAlertsTable({
     );
   };
 
+  const isAlertsEmpty = !loading && alerts.length === 0;
+
+  const emptyStatePlaceholder = (
+    <Box className="tw:relative tw:min-h-[28rem] tw:w-full">
+      <EmptyPlaceholder
+        actions={
+          hasCreatePermission
+            ? [
+                {
+                  key: 'new-alert',
+                  label: t('label.new-entity', {
+                    entity: t('label.alert'),
+                  }),
+                  color: 'primary' as const,
+                  iconLeading: Plus,
+                  onPress: onAddAlert,
+                },
+              ]
+            : undefined
+        }
+        description={t('message.observability-alert-empty-description')}
+        features={emptyStateFeatures}
+        title={t('message.observability-alert-empty-heading')}
+        variant="features"
+      />
+    </Box>
+  );
+
   return (
     <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:ring-0">
-      <div className="tw:border-b tw:border-secondary">
-        <Table
-          aria-label={t('label.observability-alert')}
-          data-testid="alert-table">
-          <Table.Header columns={columnList}>
-            {(col) => (
-              <Table.Head
-                className={getAlertTableHeaderLayoutClassName(col.id)}
-                id={col.id}
-                key={col.id}
-                label={col.name}
-              />
-            )}
-          </Table.Header>
-          <Table.Body
-            dependencies={[loadingCount, alertPermissions]}
-            items={loading ? [] : alerts}
-            renderEmptyState={() =>
-              loading ? (
-                <></>
-              ) : (
-                <Box className="tw:relative tw:min-h-96 tw:w-full">
-                  <EmptyPlaceholder
-                    actions={
-                      hasCreatePermission
-                        ? [
-                            {
-                              key: 'new-alert',
-                              label: t('label.new-entity', {
-                                entity: t('label.alert'),
-                              }),
-                              color: 'primary' as const,
-                              iconLeading: Plus,
-                              onPress: onAddAlert,
-                            },
-                          ]
-                        : undefined
-                    }
-                    description={t(
-                      'message.observability-alert-empty-description'
-                    )}
-                    features={emptyStateFeatures}
-                    title={t('message.observability-alert-empty-heading')}
-                    variant="features"
+      {isAlertsEmpty ? (
+        emptyStatePlaceholder
+      ) : (
+        <>
+          <div className="tw:border-b tw:border-secondary">
+            <Table
+              aria-label={t('label.observability-alert')}
+              data-testid="alert-table">
+              <Table.Header columns={columnList}>
+                {(col) => (
+                  <Table.Head
+                    className={getAlertTableHeaderLayoutClassName(col.id)}
+                    id={col.id}
+                    key={col.id}
+                    label={col.name}
                   />
-                </Box>
-              )
-            }>
-            {(record) => renderRow(record as EventSubscription)}
-          </Table.Body>
-        </Table>
-      </div>
-      {showPagination && (
-        <div className="tw:py-3">
-          <NextPrevious
-            currentPage={currentPage}
-            isLoading={loading}
-            pageSize={pageSize}
-            paging={paging}
-            pagingHandler={onPageChange}
-            onShowSizeChange={onPageSizeChange}
-          />
-        </div>
+                )}
+              </Table.Header>
+              <Table.Body
+                dependencies={[loadingCount, alertPermissions]}
+                items={loading ? [] : alerts}
+                renderEmptyState={() => <></>}>
+                {(record) => renderRow(record as EventSubscription)}
+              </Table.Body>
+            </Table>
+          </div>
+          {showPagination && (
+            <div className="tw:py-3">
+              <NextPrevious
+                currentPage={currentPage}
+                isLoading={loading}
+                pageSize={pageSize}
+                paging={paging}
+                pagingHandler={onPageChange}
+                onShowSizeChange={onPageSizeChange}
+              />
+            </div>
+          )}
+        </>
       )}
     </TableCard.Root>
   );
