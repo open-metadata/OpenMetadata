@@ -668,14 +668,18 @@ const DocumentsView: FC<DocumentsViewProps> = ({
       ) : selectedFolderName ? (
         <div className="tw:relative tw:flex-1">
           <EmptyPlaceholder
-            actions={[
-              {
-                color: 'primary',
-                key: 'upload-file',
-                label: t('label.upload-file'),
-                onClick: onUploadFile,
-              },
-            ]}
+            actions={
+              onUploadFile
+                ? [
+                    {
+                      color: 'primary',
+                      key: 'upload-file',
+                      label: t('label.upload-file'),
+                      onClick: onUploadFile,
+                    },
+                  ]
+                : []
+            }
             description={t('message.context-center-folder-empty-subtitle')}
             icon={<UploadIcon className="tw:text-fg-brand-primary" />}
             title={t('label.folder-name-is-empty', {

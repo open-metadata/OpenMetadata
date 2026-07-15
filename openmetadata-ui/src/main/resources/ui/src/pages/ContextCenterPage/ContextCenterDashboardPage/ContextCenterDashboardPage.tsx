@@ -561,7 +561,11 @@ const ContextCenterDashboardPage: FC = () => {
               <DashboardFoldersCard
                 folders={folders}
                 isLoading={isFoldersLoading}
-                onCreateFolder={() => setIsCreateFolderModalOpen(true)}
+                onCreateFolder={
+                  hasCreatePermission
+                    ? () => setIsCreateFolderModalOpen(true)
+                    : undefined
+                }
               />
 
               <ContextSimplePillarCard

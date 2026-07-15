@@ -655,7 +655,9 @@ const ContextCenterDocumentsPage: FC = () => {
                 totalFileCount={globalFileCount}
                 onFoldersChanged={fetchFolders}
                 onSelectFolder={setSelectedFolderId}
-                onUploadToFolder={handleUploadToFolder}
+                onUploadToFolder={
+                  hasCreatePermission ? handleUploadToFolder : undefined
+                }
               />
             </ReflexElement>
 
@@ -689,8 +691,12 @@ const ContextCenterDocumentsPage: FC = () => {
                   onPreview={handlePreview}
                   onScrollEnd={handleLoadMore}
                   onSelectFile={handleSelectFile}
-                  onUploadFile={() =>
-                    selectedFolderId && handleUploadToFolder(selectedFolderId)
+                  onUploadFile={
+                    hasCreatePermission
+                      ? () =>
+                          selectedFolderId &&
+                          handleUploadToFolder(selectedFolderId)
+                      : undefined
                   }
                 />
                 {previewFile && (
