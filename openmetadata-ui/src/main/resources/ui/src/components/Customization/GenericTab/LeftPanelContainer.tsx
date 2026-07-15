@@ -127,7 +127,7 @@ export const LeftPanelContainer = ({
         verticalCompact
         className="grid-container"
         cols={1}
-        containerPadding={[0, 16]}
+        containerPadding={[16, 16]}
         isDraggable={isEditView}
         isResizable={isEditView}
         margin={[type === PageType.GlossaryTerm ? 16 : 0, 16]}
