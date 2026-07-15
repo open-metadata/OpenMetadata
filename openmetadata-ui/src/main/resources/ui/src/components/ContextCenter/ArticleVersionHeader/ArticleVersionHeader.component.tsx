@@ -63,7 +63,7 @@ const ArticleVersionHeader: FC<ArticleVersionHeaderProps> = ({
 
   return (
     <div className="tw:mb-5" data-testid="article-version-header">
-      <div className="tw:mb-3">{!breadcrumbInsideCard && breadcrumbEl}</div>
+      {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
       <HeaderShell
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
         padding="comfortable"

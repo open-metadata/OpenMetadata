@@ -635,7 +635,7 @@ const ArticleDetailHeader: FC<ArticleDetailHeaderProps> = ({
     <div
       className="tw:flex tw:flex-col tw:mb-5"
       data-testid="article-detail-header">
-      <div className="tw:mb-3">{!breadcrumbInsideCard && breadcrumbEl}</div>
+      {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
       <HeaderShell
         actions={actionsEl}
         badge={entityStatusBadge}

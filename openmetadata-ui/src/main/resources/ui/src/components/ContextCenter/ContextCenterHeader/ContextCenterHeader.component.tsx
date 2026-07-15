@@ -92,7 +92,7 @@ const ContextCenterHeader: FC<ContextCenterHeaderProps> = ({
 
   return (
     <div className="tw:mb-5" data-testid="context-center-header">
-      <div className="tw:mb-3">{!breadcrumbInsideCard && breadcrumbEl}</div>
+      {!breadcrumbInsideCard && <div className="tw:mb-3">{breadcrumbEl}</div>}
       <HeaderShell
         actions={actionsEl}
         breadcrumb={breadcrumbInsideCard ? breadcrumbEl : undefined}
