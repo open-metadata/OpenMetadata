@@ -57,11 +57,13 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
+    Set<String> inheritedPoisonMarkers = Set.of();
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
-      instance.shutdownPoisonRetryLoop();
+      inheritedPoisonMarkers = instance.shutdownPoisonRetryLoop();
     }
     instance = new OpenSearchVectorService(client, embeddingClient);
+    instance.adoptPendingPoisonMarkers(inheritedPoisonMarkers);
     instance.registerVectorEmbeddingHandler();
     LOG.info(
         "OpenSearchVectorService initialized with model={}, dimension={}",
@@ -719,24 +721,44 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * Unconditional teardown for instance shutdown/replacement — unlike {@link
    * #stopPoisonRetryLoop}, this stops the loop even with markers still pending (a retry thread
-   * held past {@code close()} would spin against a stale client). The instance's staged-run gate
-   * state dies with it, so the affected generation can never be promoted anyway — it is swept,
-   * unpromoted, by the next staged recreate.
+   * held past {@code close()} would spin against a stale client). A pending marker can be the
+   * only cross-node signal for a chunk hole on a participant whose partition otherwise completed,
+   * so it must not be dropped silently: one synchronous flush attempt runs first, and whatever
+   * remains is returned so a replacement instance (reinit — often carrying a freshly rebuilt,
+   * working client) can adopt it and keep retrying. On process shutdown there is no successor and
+   * an unflushed signal is lost with the JVM — logged loudly as the best remaining option.
    */
-  private void shutdownPoisonRetryLoop() {
+  private Set<String> shutdownPoisonRetryLoop() {
     synchronized (stagedChunkLock) {
       if (poisonRetryExecutor != null) {
         poisonRetryExecutor.shutdownNow();
         poisonRetryExecutor = null;
       }
       if (!pendingPoisonMarkers.isEmpty()) {
-        LOG.warn(
-            "Vector service closing with {} unpersisted staged poison marker(s): {} — the "
-                + "affected staged generation(s) are swept unpromoted by the next recreate",
-            pendingPoisonMarkers.size(),
-            pendingPoisonMarkers);
+        retryPendingPoisonMarkers();
+      }
+      Set<String> unflushed = Set.copyOf(pendingPoisonMarkers);
+      if (!unflushed.isEmpty()) {
+        LOG.error(
+            "Vector service closing with {} unpersisted staged poison marker(s): {} — if no "
+                + "replacement instance adopts them, a coordinator may promote the affected "
+                + "generation(s) despite missing chunks",
+            unflushed.size(),
+            unflushed);
         pendingPoisonMarkers.clear();
       }
+      return unflushed;
+    }
+  }
+
+  /** Reinit hand-off: adopt the predecessor instance's unflushed poison markers (see init). */
+  private void adoptPendingPoisonMarkers(Set<String> markers) {
+    if (markers != null && !markers.isEmpty()) {
+      pendingPoisonMarkers.addAll(markers);
+      ensurePoisonRetryLoop();
+      LOG.warn(
+          "Adopted {} pending staged poison marker(s) from the previous vector service instance",
+          markers.size());
     }
   }
 
