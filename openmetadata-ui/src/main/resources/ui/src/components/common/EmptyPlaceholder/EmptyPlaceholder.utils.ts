@@ -15,9 +15,9 @@ import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 
 /**
- * Returns `actions` when the caller supplied their own, otherwise builds a
- * single primary action from `handler`. When neither is present the placeholder
- * renders without a button.
+ * Returns `actions` when the caller supplied a non-empty array, otherwise
+ * builds a single primary action from `handler`. When neither is present the
+ * placeholder renders without a button.
  */
 export const resolveSingleAction = (
   actions: EmptyPlaceholderAction[] | undefined,
@@ -27,7 +27,7 @@ export const resolveSingleAction = (
 ): EmptyPlaceholderAction[] | undefined => {
   let resolvedActions = actions;
 
-  if (!resolvedActions && handler) {
+  if ((!resolvedActions || resolvedActions.length === 0) && handler) {
     resolvedActions = [{ key, label, color: 'primary', onPress: handler }];
   }
 

@@ -13,7 +13,6 @@
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@untitledui/icons';
-import { useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { PermissionPlaceholderProps } from './EmptyPlaceholder.interface';
 
@@ -32,8 +31,6 @@ const PermissionPlaceholder = ({
   permissionValue,
   ...props
 }: PermissionPlaceholderProps) => {
-  const { t } = useTranslation();
-
   return (
     <EmptyPlaceholder
       description={
