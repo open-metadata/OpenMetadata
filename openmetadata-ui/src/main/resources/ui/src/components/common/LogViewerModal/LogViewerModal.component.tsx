@@ -15,6 +15,8 @@ import {
   CloseButton,
   Modal,
   ModalOverlay,
+  Tooltip,
+  TooltipTrigger,
 } from '@openmetadata/ui-core-components';
 import {
   AlignLeft,
@@ -166,7 +168,7 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
       }}>
       <Modal
         className={classNames('tw:w-full', {
-          'tw:max-w-4xl': !isFullScreen,
+          'tw:max-w-[max(56rem,60vw)]': !isFullScreen,
           'tw:max-w-full': isFullScreen,
         })}>
         <AriaDialog
@@ -227,55 +229,72 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                   </span>
                 )}
                 {enableCopy && (
-                  <button
-                    className="lvm-copy-button"
-                    data-testid="log-viewer-copy"
-                    type="button"
-                    onClick={() => onCopyToClipBoard(resolvedLogs)}>
-                    <Copy01 aria-hidden className="lvm-copy-icon" />
-                    <span>
-                      {hasCopied ? t('label.copied') : t('label.copy')}
-                    </span>
-                  </button>
+                  <Tooltip
+                    delay={500}
+                    placement="top"
+                    title={hasCopied ? t('label.copied') : t('label.copy')}>
+                    <TooltipTrigger
+                      className="lvm-copy-button"
+                      data-testid="log-viewer-copy"
+                      onPress={() => onCopyToClipBoard(resolvedLogs)}>
+                      <Copy01 aria-hidden className="lvm-copy-icon" />
+                      <span>
+                        {hasCopied ? t('label.copied') : t('label.copy')}
+                      </span>
+                    </TooltipTrigger>
+                  </Tooltip>
                 )}
-                <button
-                  aria-label={t('label.jump-to-end')}
-                  className="lvm-icon-button"
-                  data-testid="log-viewer-jump-to-end"
-                  type="button"
-                  onClick={handleJumpToEnd}>
-                  <ChevronDownDouble aria-hidden className="lvm-icon" />
-                </button>
-                <button
-                  aria-label={t('label.wrap')}
-                  aria-pressed={wrap}
-                  className={classNames('lvm-icon-button', {
-                    'lvm-icon-button--active': wrap,
-                  })}
-                  data-testid="log-viewer-wrap"
-                  type="button"
-                  onClick={() => setWrap((value) => !value)}>
-                  <AlignLeft aria-hidden className="lvm-icon" />
-                </button>
-                <button
-                  aria-label={
+                <Tooltip
+                  delay={500}
+                  placement="top"
+                  title={t('label.jump-to-end')}>
+                  <TooltipTrigger
+                    aria-label={t('label.jump-to-end')}
+                    className="lvm-icon-button"
+                    data-testid="log-viewer-jump-to-end"
+                    onPress={handleJumpToEnd}>
+                    <ChevronDownDouble aria-hidden className="lvm-icon" />
+                  </TooltipTrigger>
+                </Tooltip>
+                <Tooltip delay={500} placement="top" title={t('label.wrap')}>
+                  <TooltipTrigger
+                    aria-label={t('label.wrap')}
+                    aria-pressed={wrap}
+                    className={classNames('lvm-icon-button', {
+                      'lvm-icon-button--active': wrap,
+                    })}
+                    data-testid="log-viewer-wrap"
+                    onPress={() => setWrap((value) => !value)}>
+                    <AlignLeft aria-hidden className="lvm-icon" />
+                  </TooltipTrigger>
+                </Tooltip>
+                <Tooltip
+                  delay={500}
+                  placement="top"
+                  title={
                     isFullScreen
                       ? t('label.exit-full-screen')
                       : t('label.full-screen-view')
-                  }
-                  aria-pressed={isFullScreen}
-                  className={classNames('lvm-icon-button', {
-                    'lvm-icon-button--active': isFullScreen,
-                  })}
-                  data-testid="log-viewer-fullscreen"
-                  type="button"
-                  onClick={() => setIsFullScreen((value) => !value)}>
-                  {isFullScreen ? (
-                    <Minimize01 aria-hidden className="lvm-icon" />
-                  ) : (
-                    <Maximize01 aria-hidden className="lvm-icon" />
-                  )}
-                </button>
+                  }>
+                  <TooltipTrigger
+                    aria-label={
+                      isFullScreen
+                        ? t('label.exit-full-screen')
+                        : t('label.full-screen-view')
+                    }
+                    aria-pressed={isFullScreen}
+                    className={classNames('lvm-icon-button', {
+                      'lvm-icon-button--active': isFullScreen,
+                    })}
+                    data-testid="log-viewer-fullscreen"
+                    onPress={() => setIsFullScreen((value) => !value)}>
+                    {isFullScreen ? (
+                      <Minimize01 aria-hidden className="lvm-icon" />
+                    ) : (
+                      <Maximize01 aria-hidden className="lvm-icon" />
+                    )}
+                  </TooltipTrigger>
+                </Tooltip>
                 {onDownload &&
                   (downloading ? (
                     <span
@@ -284,22 +303,28 @@ const LogViewerModal: FunctionComponent<LogViewerModalProps> = (props) => {
                       <Loader size="x-small" />
                     </span>
                   ) : (
-                    <button
-                      aria-label={t('label.download')}
-                      className="lvm-icon-button"
-                      data-testid="log-viewer-download"
-                      type="button"
-                      onClick={onDownload}>
-                      <Download01 aria-hidden className="lvm-icon" />
-                    </button>
+                    <Tooltip
+                      delay={500}
+                      placement="top"
+                      title={t('label.download')}>
+                      <TooltipTrigger
+                        aria-label={t('label.download')}
+                        className="lvm-icon-button"
+                        data-testid="log-viewer-download"
+                        onPress={onDownload}>
+                        <Download01 aria-hidden className="lvm-icon" />
+                      </TooltipTrigger>
+                    </Tooltip>
                   ))}
-                <CloseButton
-                  className="lvm-close-button"
-                  data-testid="log-viewer-close"
-                  size="sm"
-                  theme={theme === 'dark' ? 'dark' : 'light'}
-                  onPress={onClose}
-                />
+                <Tooltip delay={500} placement="top" title={t('label.close')}>
+                  <CloseButton
+                    className="lvm-close-button"
+                    data-testid="log-viewer-close"
+                    size="sm"
+                    theme={theme === 'dark' ? 'dark' : 'light'}
+                    onPress={onClose}
+                  />
+                </Tooltip>
               </div>
             </div>
             <div
