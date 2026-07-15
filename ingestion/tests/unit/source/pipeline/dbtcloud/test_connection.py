@@ -201,11 +201,14 @@ def test_test_check_access_reads_a_single_job():
     assert call[1]["headers"]["Authorization"] == "Bearer secret-token"
 
 
-def test_the_test_calls_keep_the_resilient_transport_retries():
-    """They bypass TrackedREST, so they must mount the same adapter it does."""
+def test_the_test_calls_retry_transient_transport_and_gateway_failures():
+    """They bypass TrackedREST, so they retry transport failures and gateway 5xx
+    like it does, without the REST client's slow backoff."""
     client = _dbtcloud_client()
 
-    assert client._test_session.get_adapter("https://cloud.getdbt.com").max_retries.total == 3
+    retry = client._test_session.get_adapter("https://cloud.getdbt.com").max_retries
+    assert retry.total == 3
+    assert retry.status_forcelist == frozenset({502, 503, 504})
 
 
 def test_a_rejected_token_surfaces_its_http_status():

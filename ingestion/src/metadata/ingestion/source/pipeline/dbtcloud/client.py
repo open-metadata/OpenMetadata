@@ -22,7 +22,10 @@ from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConn
 )
 from metadata.ingestion.connections.source_api_client import TrackedREST
 from metadata.ingestion.ometa.client import ClientConfig
-from metadata.ingestion.ometa.http_adapter import mount_resilient_adapter
+from metadata.ingestion.ometa.http_adapter import (
+    KeepAliveRetryAdapter,
+    build_transport_retry,
+)
 from metadata.ingestion.source.pipeline.dbtcloud.models import (
     DBTJob,
     DBTJobList,
@@ -43,6 +46,10 @@ API_VERSION = "api/v2"
 
 # Bounds the error body kept in the step's error log.
 ERROR_DETAIL_LIMIT = 200
+
+# Gateway 5xx the test session retries. The shared REST client retries 504 too, but
+# on 30s+ sleeps that would blow a step budget; the adapter's backoff is 0/2/4s.
+GATEWAY_ERRORS = frozenset({502, 503, 504})
 
 
 class DBTCloudApiError(Exception):
@@ -86,9 +93,13 @@ class DBTCloudClient:
         self.graphql_client = TrackedREST(graphql_client_config, source_name="dbtcloud")
 
         # The test-connection calls bypass TrackedREST (see _test_get), so they mount
-        # the same resilient adapter to keep its transport retries.
+        # the same keepalive adapter, and add a fast retry on gateway 5xx to match
+        # the REST client retrying those, without importing its slow backoff.
         self._test_session = requests.Session()
-        mount_resilient_adapter(self._test_session)
+        retry = build_transport_retry().new(status=2, status_forcelist=GATEWAY_ERRORS)
+        adapter = KeepAliveRetryAdapter(max_retries=retry)
+        self._test_session.mount("https://", adapter)
+        self._test_session.mount("http://", adapter)
 
     def _get_jobs(
         self,
