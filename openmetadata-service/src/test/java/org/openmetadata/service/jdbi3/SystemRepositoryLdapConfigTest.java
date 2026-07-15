@@ -69,8 +69,6 @@ public class SystemRepositoryLdapConfigTest {
 
     assertNotNull(ldapConfig.getAuthRolesMapping());
     assertEquals("", ldapConfig.getAuthRolesMapping());
-
-    assertFalse(Boolean.TRUE.equals(ldapConfig.getRecursiveGroupMembership()));
   }
 
   @Test
@@ -89,7 +87,6 @@ public class SystemRepositoryLdapConfigTest {
     assertEquals("", ldapConfig.getGroupBaseDN());
     assertEquals("", ldapConfig.getAllAttributeName());
     assertEquals("", ldapConfig.getAuthRolesMapping());
-    assertFalse(Boolean.TRUE.equals(ldapConfig.getRecursiveGroupMembership()));
   }
 
   @Test
@@ -147,6 +144,11 @@ public class SystemRepositoryLdapConfigTest {
     assertEquals("", ldapConfig.getRoleAdminName());
     assertEquals("", ldapConfig.getAllAttributeName());
     assertEquals("", ldapConfig.getAuthRolesMapping());
-    assertFalse(Boolean.TRUE.equals(ldapConfig.getRecursiveGroupMembership()));
+  }
+
+  @Test
+  void testRecursiveGroupMembershipDefaultsToFalse() {
+    LdapConfiguration ldapConfig = new LdapConfiguration();
+    assertFalse(ldapConfig.getRecursiveGroupMembership());
   }
 }
