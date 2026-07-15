@@ -352,9 +352,14 @@ export const permissionForApproveOrReject = (
   const isTaskAssignee = taskThread?.task?.assignees?.some(
     (assignee) => assignee.id === currentUserId
   );
+  const hasTaskAssignees = Boolean(taskThread?.task?.assignees?.length);
+
+  const permission = hasTaskAssignees
+    ? Boolean(isTaskAssignee)
+    : Boolean(taskThread && (isTaskAssignee || isReviewer));
 
   return {
-    permission: Boolean(taskThread && (isTaskAssignee || isReviewer)),
+    permission,
     taskId: taskThread?.task?.id ?? '',
   };
 };
