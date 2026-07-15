@@ -17,7 +17,13 @@ import {
   Table,
   TableCard,
 } from '@openmetadata/ui-core-components';
-import { Bell01, MarkerPin01, Plus, ZapFast } from '@untitledui/icons';
+import {
+  AlertTriangle,
+  Bell01,
+  MarkerPin01,
+  Plus,
+  ZapFast,
+} from '@untitledui/icons';
 import { Button } from 'antd';
 import { useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
@@ -37,6 +43,7 @@ import ObservabilityAlertActions from './ObservabilityAlertActions';
 function ObservabilityAlertsTable({
   alertPermissions,
   alertResourcePermission,
+  hasResourcePermissionError,
   alerts,
   columnList,
   currentPage,
@@ -47,6 +54,7 @@ function ObservabilityAlertsTable({
   onEditAlert,
   onPageChange,
   onPageSizeChange,
+  onRetryPermission,
   onSelectAlert,
   onViewAlert,
   paging,
@@ -176,10 +184,40 @@ function ObservabilityAlertsTable({
     </Box>
   );
 
+  // When the resource-permission fetch failed we can't tell allow from deny, and
+  // showErrorToast suppresses its 401/403 — so show an explicit error + retry
+  // cue instead of the create-less onboarding.
+  const errorStatePlaceholder = (
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
+      <EmptyPlaceholder
+        actions={
+          onRetryPermission
+            ? [
+                {
+                  key: 'retry',
+                  label: t('label.try-again'),
+                  color: 'primary' as const,
+                  onPress: onRetryPermission,
+                },
+              ]
+            : undefined
+        }
+        description={t('server.unexpected-error')}
+        icon={<AlertTriangle className="tw:text-fg-error-primary" />}
+        title={t('message.something-went-wrong')}
+        variant="blank"
+      />
+    </Box>
+  );
+
   return (
     <TableCard.Root className="tw:rounded-xl tw:border tw:border-secondary tw:shadow-none tw:ring-0">
       {isAlertsEmpty ? (
-        emptyStatePlaceholder
+        hasResourcePermissionError ? (
+          errorStatePlaceholder
+        ) : (
+          emptyStatePlaceholder
+        )
       ) : (
         <>
           <div className="tw:border-b tw:border-secondary">

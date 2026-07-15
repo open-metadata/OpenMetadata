@@ -57,6 +57,8 @@ export function useObservabilityAlerts({
   const [alertPermissions, setAlertPermissions] = useState<AlertPermission[]>();
   const [alertResourcePermission, setAlertResourcePermission] =
     useState<OperationPermission>();
+  const [hasResourcePermissionError, setHasResourcePermissionError] =
+    useState(false);
   const {
     pageSize,
     currentPage,
@@ -74,14 +76,17 @@ export function useObservabilityAlerts({
   const fetchAlertResourcePermission = useCallback(async () => {
     try {
       setLoadingCount((count) => count + 1);
+      setHasResourcePermissionError(false);
       const permission = await getResourcePermission(
         ResourceEntity.EVENT_SUBSCRIPTION
       );
 
       setAlertResourcePermission(permission);
     } catch (error) {
-      // Surface the failure instead of silently degrading to a create-less
-      // empty state; the user can refresh to retry the permission fetch.
+      // getResourcePermission is a GET, so showErrorToast suppresses its 401 /
+      // 403 responses. Track the failure explicitly so the empty state can show
+      // an error + retry cue instead of a silent create-less onboarding.
+      setHasResourcePermissionError(true);
       showErrorToast(error as AxiosError);
     } finally {
       setLoadingCount((count) => count - 1);
@@ -231,6 +236,8 @@ export function useObservabilityAlerts({
   return {
     alertPermissions,
     alertResourcePermission,
+    hasResourcePermissionError,
+    refetchResourcePermission: fetchAlertResourcePermission,
     alerts,
     columnList,
     currentPage,

@@ -272,6 +272,28 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
   });
 
+  it('should render an error + retry state when the resource-permission fetch failed', () => {
+    const onRetryPermission = jest.fn();
+    renderTable({
+      alerts: [],
+      loading: false,
+      loadingCount: 0,
+      hasResourcePermissionError: true,
+      onRetryPermission,
+    });
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.something-went-wrong')
+    ).toBeInTheDocument();
+    // The create onboarding is replaced, not shown.
+    expect(screen.queryByText('label.new-entity')).not.toBeInTheDocument();
+
+    fireEvent.click(screen.getByText('label.try-again'));
+
+    expect(onRetryPermission).toHaveBeenCalledTimes(1);
+  });
+
   it('should render pagination when showPagination is true', () => {
     renderTable();
 
