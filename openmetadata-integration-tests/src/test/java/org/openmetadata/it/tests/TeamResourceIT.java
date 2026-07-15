@@ -1358,6 +1358,48 @@ public class TeamResourceIT extends BaseEntityIT<Team, CreateTeam> {
         "Expected circular reference error but got: " + ex.getMessage());
   }
 
+  @Test
+  void test_teamHierarchy_createWithChildThatIsAncestorRejected(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Team org = client.teams().getByName("Organization");
+
+    Team grandParent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptCrossGrandParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(org.getId()))
+                .withDescription("Grand parent department"));
+
+    Team parent =
+        createEntity(
+            new CreateTeam()
+                .withName(ns.prefix("deptCrossParent"))
+                .withTeamType(TeamType.DEPARTMENT)
+                .withParents(List.of(grandParent.getId()))
+                .withDescription("Parent department"));
+
+    // New team declares parent=parent and child=grandParent; grandParent is already an ancestor of
+    // parent, so this closes the loop grandParent -> parent -> newTeam -> grandParent even though
+    // the new team is not persisted yet.
+    CreateTeam createLoop =
+        new CreateTeam()
+            .withName(ns.prefix("deptCrossLoop"))
+            .withTeamType(TeamType.DEPARTMENT)
+            .withParents(List.of(parent.getId()))
+            .withChildren(List.of(grandParent.getId()))
+            .withDescription("Cross-edge cycle declared on create");
+
+    Exception ex =
+        assertThrows(
+            Exception.class,
+            () -> createEntity(createLoop),
+            "Creating a team whose child is an ancestor of its parent must be rejected");
+    assertTrue(
+        ex.getMessage().contains("Circular reference detected"),
+        "Expected circular reference error but got: " + ex.getMessage());
+  }
+
   // ===================================================================
   // CSV IMPORT/EXPORT SUPPORT
   // ===================================================================

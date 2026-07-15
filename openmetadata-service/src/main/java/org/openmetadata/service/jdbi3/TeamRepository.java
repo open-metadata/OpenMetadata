@@ -45,9 +45,11 @@ import static org.openmetadata.service.util.EntityUtil.*;
 
 import jakarta.ws.rs.core.Response;
 import java.io.IOException;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Comparator;
+import java.util.Deque;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -1484,33 +1486,51 @@ public class TeamRepository extends EntityRepository<Team> {
     // Both directions of the PARENT_OF edge are validated - parent -> team from team.getParents()
     // and team -> child from team.getChildren() - so a cycle cannot be introduced from either side
     // through create, PUT, PATCH, bulk create, or CSV import (all run through prepare()).
-    validateParentChildOverlap(team);
     for (EntityReference parent : listOrEmpty(team.getParents())) {
       validateNoCircularReference(parent.getId(), parent.getName(), team.getId(), team.getName());
     }
-    for (EntityReference child : listOrEmpty(team.getChildren())) {
-      validateNoCircularReference(team.getId(), team.getName(), child.getId(), child.getName());
-    }
+    validateChildEdges(team);
   }
 
   /**
-   * Reject the same team being declared as both a parent and a child in a single request. Neither
-   * per-edge walk can see this 2-cycle because both read the pre-update database state. Team names
-   * are globally unique, so a name overlap is sufficient to detect it.
+   * Reject any child that is already an ancestor of the team, which would close a loop. The team's
+   * ancestor names are collected once (not per child) by walking up from both its proposed
+   * (in-request) parents and its persisted parents. Seeding from the proposed parents also catches a
+   * cycle formed within a single create request - e.g. parents=[P], children=[C] where C is an
+   * ancestor of P - which the per-edge walks miss because the new team has no id yet. The team's own
+   * name is included to reject a team being its own child.
    */
-  private void validateParentChildOverlap(Team team) {
-    Set<String> parentNames = new HashSet<>();
-    for (EntityReference parent : listOrEmpty(team.getParents())) {
-      parentNames.add(parent.getName());
-    }
-    for (EntityReference child : listOrEmpty(team.getChildren())) {
-      if (parentNames.contains(child.getName())) {
-        throw new IllegalArgumentException(
-            String.format(
-                "Circular reference detected: Team '%s' cannot be both a parent and a child of '%s'.",
-                child.getName(), team.getName()));
+  private void validateChildEdges(Team team) {
+    List<EntityReference> children = listOrEmpty(team.getChildren());
+    if (!children.isEmpty()) {
+      Set<String> ancestorNames = collectAncestorNames(team);
+      for (EntityReference child : children) {
+        if (ancestorNames.contains(child.getName())) {
+          throw new IllegalArgumentException(
+              String.format(
+                  "Circular reference detected: Team '%s' cannot be a child of '%s' because it is already an ancestor in the hierarchy.",
+                  child.getName(), team.getName()));
+        }
       }
     }
+  }
+
+  private Set<String> collectAncestorNames(Team team) {
+    Set<String> ancestorNames = new HashSet<>();
+    ancestorNames.add(team.getName());
+    Deque<EntityReference> stack = new ArrayDeque<>(listOrEmpty(team.getParents()));
+    if (team.getId() != null) {
+      stack.addAll(findFrom(team.getId(), TEAM, Relationship.PARENT_OF, TEAM));
+    }
+    Set<UUID> expanded = new HashSet<>();
+    while (!stack.isEmpty()) {
+      EntityReference current = stack.pop();
+      ancestorNames.add(current.getName());
+      if (current.getId() != null && expanded.add(current.getId())) {
+        stack.addAll(findFrom(current.getId(), TEAM, Relationship.PARENT_OF, TEAM));
+      }
+    }
+    return ancestorNames;
   }
 
   /**
