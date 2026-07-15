@@ -201,15 +201,70 @@ jest.mock('../../../utils/ToastUtils', () => ({
     .mockImplementation((...args) => mockShowSuccessToast(...args)),
 }));
 
-jest.mock('react-dnd', () => ({
-  useDrag: jest.fn().mockReturnValue([{ isDragging: false }, jest.fn()]),
-  useDrop: jest.fn().mockReturnValue([{ isOver: false }, jest.fn()]),
-  DndProvider: ({ children }: { children: ReactNode }) => <div>{children}</div>,
-}));
+interface MockTableColumn {
+  key?: string;
+  dataIndex?: string;
+  render?: (value: unknown, record: unknown, index: number) => ReactNode;
+}
 
-jest.mock('react-dnd-html5-backend', () => ({
-  HTML5Backend: jest.fn(),
-}));
+interface MockTableProps {
+  columns?: MockTableColumn[];
+  dataSource?: Record<string, unknown>[];
+  loading?: boolean;
+  locale?: { emptyText?: ReactNode };
+  expandable?: {
+    expandIcon?: (props: {
+      expanded: boolean;
+      onExpand: (record: unknown) => void;
+      record: unknown;
+    }) => ReactNode;
+    onExpand?: (expanded: boolean, record: unknown) => void;
+  };
+  extraTableFilters?: ReactNode;
+  'data-testid'?: string;
+}
+
+jest.mock('../../common/Table/TableV2', () =>
+  jest.fn().mockImplementation((props: MockTableProps) => {
+    const {
+      columns = [],
+      dataSource = [],
+      loading,
+      locale,
+      expandable,
+      extraTableFilters,
+    } = props;
+
+    return (
+      <div data-testid={props['data-testid']}>
+        {extraTableFilters}
+        {loading && <div data-testid="table-loading">Loading...</div>}
+        {dataSource.length === 0
+          ? !loading && locale?.emptyText
+          : dataSource.map((record, index) => (
+              <div data-testid={`glossary-row-${index}`} key={index}>
+                {expandable?.expandIcon?.({
+                  expanded: false,
+                  onExpand: (rec) => expandable?.onExpand?.(true, rec),
+                  record,
+                })}
+                {columns.map((col, colIndex) =>
+                  col.render ? (
+                    <span key={col.key ?? col.dataIndex ?? colIndex}>
+                      {col.render(
+                        col.dataIndex ? record[col.dataIndex] : undefined,
+                        record,
+                        index
+                      )}
+                    </span>
+                  ) : null
+                )}
+              </div>
+            ))}
+      </div>
+    );
+  })
+);
 
 jest.mock('../../../utils/EntityBulkEdit/EntityBulkEditUtils', () => ({
   getBulkEditButton: jest.fn().mockReturnValue(null),

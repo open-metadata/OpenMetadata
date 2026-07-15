@@ -46,7 +46,9 @@ import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.csv.CsvExportProgressCallback;
 import org.openmetadata.csv.CsvImportProgressCallback;
 import org.openmetadata.csv.EntityCsv;
+import org.openmetadata.schema.api.data.MetricDimension;
 import org.openmetadata.schema.api.data.MetricExpression;
+import org.openmetadata.schema.api.data.MetricMeasure;
 import org.openmetadata.schema.entity.data.Metric;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.type.EntityReference;
@@ -72,12 +74,13 @@ import org.openmetadata.service.security.AuthorizationException;
 import org.openmetadata.service.util.EntityFieldUtils;
 import org.openmetadata.service.util.EntityUtil;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 import org.openmetadata.service.util.MemoryOwnership;
 
 @Slf4j
 public class MetricRepository extends EntityRepository<Metric> {
-  private static final String UPDATE_FIELDS = "relatedMetrics,assets";
-  private static final String PATCH_FIELDS = "relatedMetrics,assets";
+  private static final String UPDATE_FIELDS = "relatedMetrics,assets,dimensions,measures,filters";
+  private static final String PATCH_FIELDS = "relatedMetrics,assets,dimensions,measures,filters";
   static final String FIELD_DERIVED_FROM = "derivedFrom";
   static final String FIELD_ASSETS = "assets";
 
@@ -99,6 +102,28 @@ public class MetricRepository extends EntityRepository<Metric> {
   @Override
   public void setFullyQualifiedName(Metric metric) {
     metric.setFullyQualifiedName(metric.getName());
+    setDimensionFQNs(metric.getFullyQualifiedName(), metric.getDimensions());
+    setMeasureFQNs(metric.getFullyQualifiedName(), metric.getMeasures());
+  }
+
+  private void setDimensionFQNs(String metricFqn, List<MetricDimension> dimensions) {
+    if (nullOrEmpty(dimensions)) {
+      return;
+    }
+    final String prefix = FullyQualifiedName.add(metricFqn, "dimension");
+    for (final MetricDimension dimension : dimensions) {
+      dimension.setFullyQualifiedName(FullyQualifiedName.add(prefix, dimension.getName()));
+    }
+  }
+
+  private void setMeasureFQNs(String metricFqn, List<MetricMeasure> measures) {
+    if (nullOrEmpty(measures)) {
+      return;
+    }
+    final String prefix = FullyQualifiedName.add(metricFqn, "measure");
+    for (final MetricMeasure measure : measures) {
+      measure.setFullyQualifiedName(FullyQualifiedName.add(prefix, measure.getName()));
+    }
   }
 
   @Override
@@ -510,6 +535,14 @@ public class MetricRepository extends EntityRepository<Metric> {
                   updated.getMetricExpression());
             }
           });
+      compareAndUpdate(
+          "dimensions",
+          () -> recordChange("dimensions", original.getDimensions(), updated.getDimensions()));
+      compareAndUpdate(
+          "measures",
+          () -> recordChange("measures", original.getMeasures(), updated.getMeasures()));
+      compareAndUpdate(
+          "filters", () -> recordChange("filters", original.getFilters(), updated.getFilters()));
       compareAndUpdate("relatedMetrics", () -> updateRelatedMetrics(original, updated));
       compareAndUpdate(FIELD_ASSETS, () -> updateAssets(original, updated));
       MemoryOwnership.releaseIfHumanEdited(updated, operation.isPatch(), managedFieldChanged());
