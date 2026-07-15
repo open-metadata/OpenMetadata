@@ -1553,7 +1553,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // (which starts at 0.1), ensuring the second edit always produces a diff
       // and the save button stays enabled.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1580,7 +1582,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       const versionInput = page
         .locator('.group')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill(actualVersion);
 
@@ -1670,7 +1674,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // (which starts at 0.1), ensuring the second edit always produces a diff
       // and the save button stays enabled.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1702,7 +1708,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       const versionInput = page
         .locator('.group')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill(domainBumpedVersion);
 
@@ -1784,7 +1792,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // Use 99.9 — any realistic entity version is always below this, so the
       // check passes regardless of how many version bumps CI introduces.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1806,7 +1816,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       const versionInput = page
         .locator('.group')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 
@@ -1861,7 +1873,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // Use 99.9 — any realistic entity version is always below this, so
       // entity_version > 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1884,7 +1898,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       const versionInput = page
         .locator('.group')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 
@@ -1941,7 +1957,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // Use 99.9 — any realistic entity version is always below this, so
       // entity_version <= 99.9 always passes regardless of version bumps in CI.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -1963,7 +1981,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       const versionInput = page
         .locator('.group')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 
@@ -2021,7 +2041,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       // Use 99.9 — any realistic entity version is always below this, so
       // entity_version >= 99.9 always fails regardless of version bumps in CI.
       await ruleLocator
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input')
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        )
         .fill('99.9');
 
       await saveAndTriggerDataContractValidation(page, true);
@@ -2043,7 +2065,9 @@ test.describe('Data Contracts Semantics Rule Version', () => {
       const versionInput = page
         .locator('.group')
         .first()
-        .locator('.rule--value .rule--widget--NUMBER .ant-input-number-input');
+        .locator(
+          '.rule--value .rule--widget--NUMBER input[data-testid="qb-number-input"]'
+        );
       await versionInput.clear();
       await versionInput.fill('0.01');
 

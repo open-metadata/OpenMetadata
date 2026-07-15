@@ -268,7 +268,7 @@ test.describe('Curated Assets Widget', () => {
     await selectOption(page, ruleLocator.locator('.rule--operator'), 'Is');
 
     await ruleLocator
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .locator('.rule--value .rule--widget--BOOLEAN label')
       .click();
 
     await expect(page.locator('[data-testid="saveButton"]')).toBeEnabled();
@@ -341,7 +341,10 @@ test.describe('Curated Assets Widget', () => {
     await page.getByRole('button', { name: 'Add Condition' }).click();
 
     // Switch to OR condition (AND is selected by default, click OR button)
-    await page.locator('.group--conjunctions button:has-text("OR")').click();
+    await page
+      .locator('.group--conjunctions')
+      .getByRole('radio', { name: 'Or' })
+      .click();
 
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
@@ -352,7 +355,7 @@ test.describe('Curated Assets Widget', () => {
     );
     await selectOption(page, ruleLocator2.locator('.rule--operator'), 'Is');
     await ruleLocator2
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .locator('.rule--value .rule--widget--BOOLEAN label')
       .click();
 
     const queryResponse = page.waitForResponse(
@@ -433,11 +436,14 @@ test.describe('Curated Assets Widget', () => {
     );
     await selectOption(page, ruleLocator1.locator('.rule--operator'), 'Is');
     await ruleLocator1
-      .locator('.rule--value .rule--widget--BOOLEAN .ant-switch')
+      .locator('.rule--value .rule--widget--BOOLEAN label')
       .click();
 
     await page.getByRole('button', { name: 'Add Condition' }).click();
-    await page.locator('.group--conjunctions button:has-text("AND")').click();
+    await page
+      .locator('.group--conjunctions')
+      .getByRole('radio', { name: 'And' })
+      .click();
 
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
@@ -554,7 +560,10 @@ test.describe('Curated Assets Widget', () => {
     await page.getByRole('button', { name: 'Add Condition' }).click();
 
     // Switch first group to OR condition (AND is default)
-    await page.locator('.group--conjunctions button:has-text("OR")').click();
+    await page
+      .locator('.group--conjunctions')
+      .getByRole('radio', { name: 'Or' })
+      .click();
 
     const ruleLocator2 = page.locator('.rule').nth(1);
     await selectOption(
