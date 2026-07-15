@@ -13,6 +13,7 @@ This script generates the Python models from the JSON Schemas definition. Additi
 pydantic class used for the password fields with the `CustomSecretStr` pydantic class which retrieves the secrets
 from a configured secrets' manager.
 """
+import glob
 import os
 import re
 
@@ -41,16 +42,15 @@ args = f"--input {directory_root}openmetadata-spec/src/main/resources/json/schem
 
 main(args)
 
+# Replace Unicode regex flags
 for file_path in UNICODE_REGEX_REPLACEMENT_FILE_PATHS:
     with open(file_path, "r", encoding=UTF_8) as file_:
         content = file_.read()
-        # Python now requires to move the global flags at the very start of the expression
         content = content.replace("(?U)", "(?u)")
     with open(file_path, "w", encoding=UTF_8) as file_:
         file_.write(content)
 
-# Until https://github.com/koxudaxi/datamodel-code-generator/issues/1895
-# TODO: This has been merged but `Union` is still not there. We'll need to validate
+# Add missing Union import
 MISSING_IMPORTS = [f"{ingestion_path}src/metadata/generated/schema/entity/applications/app.py",]
 WRITE_AFTER = "from __future__ import annotations"
 
@@ -64,17 +64,11 @@ for file_path in MISSING_IMPORTS:
                 file_.write("from typing import Union  # custom generate import\n\n")
 
 
-# unsupported rust regex pattern for pydantic v2
-# https://docs.pydantic.dev/2.7/api/config/#pydantic.config.ConfigDict.regex_engine
-# We'll remove the problematic pattern and add custom validators for entity names
-UNSUPPORTED_REGEX_PATTERN_FILE_PATHS = [
-    f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
-    f"{ingestion_path}src/metadata/generated/schema/entity/data/searchIndex.py",
-    f"{ingestion_path}src/metadata/generated/schema/entity/data/table.py",
-    f"{ingestion_path}src/metadata/generated/schema/type/schema.py",  # <-- added schema.py
-]
+# -------------------------------------------------------------------------
+# REMOVE UNSUPPORTED REGEX PATTERN FROM ALL GENERATED FILES
+# -------------------------------------------------------------------------
+generated_files = glob.glob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True)
 
-# More robust pattern removal: all variants
 patterns_to_remove = [
     "pattern='^((?!::).)*$',",
     "pattern='^((?!::).)*$'",
@@ -84,18 +78,17 @@ patterns_to_remove = [
     r"pattern='^((?!::)[^><\"|\\x00-\\x1f])*$'",
 ]
 
-for file_path in UNSUPPORTED_REGEX_PATTERN_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
-        content = file_.read()
+for file_path in generated_files:
+    with open(file_path, "r", encoding=UTF_8) as f:
+        content = f.read()
     for pat in patterns_to_remove:
         content = content.replace(pat, "")
-    with open(file_path, "w", encoding=UTF_8) as file_:
-        file_.write(content)
+    with open(file_path, "w", encoding=UTF_8) as f:
+        f.write(content)
 
 
 def replace_class(content: str, class_name: str, new_class_def: str) -> str:
     """Find and replace a Pydantic RootModel class definition."""
-    # Match from 'class ClassName(RootModel[str]):' up to the next class or end of file
     pattern = re.compile(
         r'class ' + re.escape(class_name) + r'\(RootModel\[str\]\):.*?(?=\nclass |\Z)',
         re.DOTALL
@@ -104,13 +97,15 @@ def replace_class(content: str, class_name: str, new_class_def: str) -> str:
 
 
 # -------------------------------------------------------------------------
-# Fix basic.py: EntityName and TestCaseEntityName
+# INJECT CUSTOM VALIDATORS FOR SPECIFIC CLASSES
 # -------------------------------------------------------------------------
-BASIC_TYPE_FILE_PATH = f"{ingestion_path}src/metadata/generated/schema/type/basic.py"
-with open(BASIC_TYPE_FILE_PATH, "r", encoding=UTF_8) as file_:
-    content = file_.read()
 
-# Add field_validator import if not already present
+# ---- basic.py: EntityName & TestCaseEntityName ----
+BASIC_TYPE_FILE_PATH = f"{ingestion_path}src/metadata/generated/schema/type/basic.py"
+with open(BASIC_TYPE_FILE_PATH, "r", encoding=UTF_8) as f:
+    content = f.read()
+
+# Add field_validator import if missing
 if "from pydantic import" in content and "field_validator" not in content:
     content = content.replace(
         "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel",
@@ -157,18 +152,15 @@ if 'class TestCaseEntityName(RootModel[str]):' in content and test_case_entity_n
         'class TestCaseEntityName(RootModel[str]):\n    root: Annotated[\n        str,\n        Field(\n            description=\'Name that identifies a test definition and test case.\',\n            min_length=1,\n        ),\n    ]' + test_case_entity_name_validator
     )
 
-with open(BASIC_TYPE_FILE_PATH, "w", encoding=UTF_8) as file_:
-    file_.write(content)
+with open(BASIC_TYPE_FILE_PATH, "w", encoding=UTF_8) as f:
+    f.write(content)
 
 
-# -------------------------------------------------------------------------
-# Fix table.py: Column2 and ColumnName
-# -------------------------------------------------------------------------
+# ---- table.py: Column2 & ColumnName ----
 TABLE_FILE_PATH = f"{ingestion_path}src/metadata/generated/schema/entity/data/table.py"
-with open(TABLE_FILE_PATH, "r", encoding=UTF_8) as file_:
-    content = file_.read()
+with open(TABLE_FILE_PATH, "r", encoding=UTF_8) as f:
+    content = f.read()
 
-# Add field_validator import if missing
 if "from pydantic import" in content and "field_validator" not in content:
     def add_field_validator_import(match):
         imports = match.group(1)
@@ -225,18 +217,15 @@ new_colname = '''class ColumnName(RootModel[str]):
 content = replace_class(content, 'Column2', new_col2)
 content = replace_class(content, 'ColumnName', new_colname)
 
-with open(TABLE_FILE_PATH, "w", encoding=UTF_8) as file_:
-    file_.write(content)
+with open(TABLE_FILE_PATH, "w", encoding=UTF_8) as f:
+    f.write(content)
 
 
-# -------------------------------------------------------------------------
-# Fix schema.py: FieldName
-# -------------------------------------------------------------------------
+# ---- schema.py: FieldName ----
 SCHEMA_FILE_PATH = f"{ingestion_path}src/metadata/generated/schema/type/schema.py"
-with open(SCHEMA_FILE_PATH, "r", encoding=UTF_8) as file_:
-    content = file_.read()
+with open(SCHEMA_FILE_PATH, "r", encoding=UTF_8) as f:
+    content = f.read()
 
-# Add field_validator import if missing
 if "from pydantic import" in content and "field_validator" not in content:
     def add_field_validator_import_schema(match):
         imports = match.group(1)
@@ -254,7 +243,6 @@ if "from pydantic import" in content and "field_validator" not in content:
         return match.group(0)
     content = re.sub(r'from pydantic import (.*)', add_field_validator_import_schema, content)
 
-# Define new FieldName class (no pattern, with validator)
 new_fieldname = '''class FieldName(RootModel[str]):
     root: str
 
@@ -272,26 +260,27 @@ new_fieldname = '''class FieldName(RootModel[str]):
 
 content = replace_class(content, 'FieldName', new_fieldname)
 
-with open(SCHEMA_FILE_PATH, "w", encoding=UTF_8) as file_:
-    file_.write(content)
+with open(SCHEMA_FILE_PATH, "w", encoding=UTF_8) as f:
+    f.write(content)
 
 
 # -------------------------------------------------------------------------
-# Until https://github.com/koxudaxi/datamodel-code-generator/issues/1996
-# Supporting timezone aware datetime is too complex for the profiler
+# DATETIME AWARE FIX (for basic.py)
 # -------------------------------------------------------------------------
 DATETIME_AWARE_FILE_PATHS = [
     f"{ingestion_path}src/metadata/generated/schema/type/basic.py",
 ]
 
 for file_path in DATETIME_AWARE_FILE_PATHS:
-    with open(file_path, "r", encoding=UTF_8) as file_:
-        content = file_.read()
+    with open(file_path, "r", encoding=UTF_8) as f:
+        content = f.read()
         content = content.replace(
             "from pydantic import AnyUrl, AwareDatetime, ConfigDict, EmailStr, Field, RootModel",
             "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel"
         )
         content = content.replace("from datetime import date, time", "from datetime import date, time, datetime")
         content = content.replace("AwareDatetime", "datetime")
-    with open(file_path, "w", encoding=UTF_8) as file_:
-        file_.write(content)
+    with open(file_path, "w", encoding=UTF_8) as f:
+        f.write(content)
+
+print("Model generation and post-processing completed successfully.")
