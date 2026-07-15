@@ -270,4 +270,6 @@ class DeltalakeSource(DatabaseServiceSource):
         """Not Implemented"""
 
     def close(self):
-        """No client to close"""
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None

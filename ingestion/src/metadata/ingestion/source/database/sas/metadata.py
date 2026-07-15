@@ -932,4 +932,6 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
         """Not implemented"""
 
     def close(self) -> None:
-        pass
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
