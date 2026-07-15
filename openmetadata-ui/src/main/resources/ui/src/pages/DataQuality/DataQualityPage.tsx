@@ -14,7 +14,7 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -85,17 +85,17 @@ const DataQualityPage = () => {
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
   const [isBundleSuiteModalOpen, setIsBundleSuiteModalOpen] = useState(false);
 
-  const handleOpenTestCaseModal = () => {
+  const handleOpenTestCaseModal = useCallback(() => {
     setIsTestCaseModalOpen(true);
-  };
+  }, []);
 
   const handleCloseTestCaseModal = () => {
     setIsTestCaseModalOpen(false);
   };
 
-  const handleOpenBundleSuiteModal = () => {
+  const handleOpenBundleSuiteModal = useCallback(() => {
     setIsBundleSuiteModalOpen(true);
-  };
+  }, []);
 
   const handleCloseBundleSuiteModal = () => {
     setIsBundleSuiteModalOpen(false);
