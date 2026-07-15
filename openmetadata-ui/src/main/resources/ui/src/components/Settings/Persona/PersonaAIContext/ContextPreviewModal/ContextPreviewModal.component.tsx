@@ -87,8 +87,12 @@ const getHeadingClassName = (isActive: boolean, isNested: boolean) => {
   ].join(' ');
 };
 
-const STAT_NUMBER_SPLIT = /([~]?\d[\d,]*(?:\.\d+)?)/g;
-const STAT_NUMBER_TEST = /^[~]?\d[\d,]*(?:\.\d+)?$/;
+// A number possibly grouped with locale-specific separators: comma (en),
+// period (de), regular/no-break/narrow-no-break space (fr). Keeping the whole
+// grouped run together avoids bolding only fragments in non-English locales.
+const STAT_NUMBER_PATTERN = '[~]?\\d(?:[\\d.,\\u00A0\\u202F ]*\\d)?';
+const STAT_NUMBER_SPLIT = new RegExp(`(${STAT_NUMBER_PATTERN})`, 'g');
+const STAT_NUMBER_TEST = new RegExp(`^${STAT_NUMBER_PATTERN}$`);
 
 const renderStatWithBoldNumbers = (stat: string): ReactNode =>
   stat.split(STAT_NUMBER_SPLIT).map((part, index) =>
