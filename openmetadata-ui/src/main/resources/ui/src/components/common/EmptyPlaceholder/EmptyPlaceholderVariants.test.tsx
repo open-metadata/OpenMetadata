@@ -223,7 +223,9 @@ describe('CreatePlaceholder', () => {
       screen.getByText('message.no-access-placeholder')
     ).toBeInTheDocument();
     expect(
-      screen.queryByText('message.adding-new-entity-is-easy-just-give-it-a-spin')
+      screen.queryByText(
+        'message.adding-new-entity-is-easy-just-give-it-a-spin'
+      )
     ).not.toBeInTheDocument();
   });
 });

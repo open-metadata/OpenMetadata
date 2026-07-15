@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 
+export { default as CreatePlaceholder } from './CreatePlaceholder';
 export * from './EmptyPlaceholder.interface';
 export * from './EmptyPlaceholder.utils';
-export { default as CreatePlaceholder } from './CreatePlaceholder';
 export { default as NoDataPlaceholder } from './NoDataPlaceholder';
 export { default as NoFilteredResultsPlaceholder } from './NoFilteredResultsPlaceholder';
 export { default as NoSearchResultsPlaceholder } from './NoSearchResultsPlaceholder';
