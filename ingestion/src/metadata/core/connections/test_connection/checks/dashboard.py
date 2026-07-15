@@ -47,11 +47,14 @@ class DashboardStep(StepName):
     GetDashboards = "GetDashboards"
     ServerInfo = "ServerInfo"
     ValidateApiVersion = "ValidateApiVersion"
+    ValidateVersion = "ValidateVersion"
     ValidateSiteUrl = "ValidateSiteUrl"
     GetWorkbooks = "GetWorkbooks"
     GetViews = "GetViews"
     GetOwners = "GetOwners"
     GetDataModels = "GetDataModels"
+    ListDashboards = "ListDashboards"
+    ListLookMLModels = "ListLookMLModels"
 
 
 def _count(number: int, noun: str, cap: int | None = None) -> str:
