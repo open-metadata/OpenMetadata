@@ -16,7 +16,6 @@ import React, { act } from 'react';
 import { Table } from '../../generated/entity/data/table';
 import { TestCasePageTabs } from '../../pages/IncidentManager/IncidentManager.interface';
 import { getListTestCaseIncidentStatusFromSearch } from '../../rest/incidentManagerAPI';
-import '../../test/unit/mocks/mui.mock';
 import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBase';
 import IncidentManager from './IncidentManager.component';
 
