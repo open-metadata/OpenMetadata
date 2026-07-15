@@ -28,7 +28,6 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
-    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
@@ -110,9 +109,6 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
- *
- * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
- * system prompts.
  *
  * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
  * by language and entity type. The stored mapping is the effective mapping used when an
@@ -651,11 +647,7 @@ export interface PipelineServiceClientConfiguration {
     /**
      * List of configured glossary term relation types.
      */
-    relationTypes?:    GlossaryTermRelationType[];
-    mcpChat?:          MCPChat;
-    memoryAgent?:      MemoryAgent;
-    memoryExtraction?: MemoryExtraction;
-    prompts?:          Prompts;
+    relationTypes?: GlossaryTermRelationType[];
     /**
      * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
      * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
@@ -2207,33 +2199,6 @@ export enum LogStorageConfigurationType {
 }
 
 /**
- * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
- * via llmConfiguration; this only governs chat enablement and behavior.
- */
-export interface MCPChat {
-    enabled?:      boolean;
-    systemPrompt?: string;
-}
-
-export interface MemoryAgent {
-    deletionPolicy?:      DeletionPolicy;
-    deriveGlossaryTerms?: boolean;
-    deriveMetrics?:       boolean;
-    enabled?:             boolean;
-}
-
-export enum DeletionPolicy {
-    Cascade = "cascade",
-    Deprecate = "deprecate",
-    Orphan = "orphan",
-}
-
-export interface MemoryExtraction {
-    fromFiles?: boolean;
-    fromPages?: boolean;
-}
-
-/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -2659,15 +2624,6 @@ export interface PolicyAgentConfiguration {
      * (pushed) when the run finishes, with a safety timer as the fallback.
      */
     pollingIntervalSeconds?: number;
-}
-
-export interface Prompts {
-    memoryAgent?:      PromptConfig;
-    memoryExtraction?: PromptConfig;
-}
-
-export interface PromptConfig {
-    systemPrompt?: string;
 }
 
 /**
