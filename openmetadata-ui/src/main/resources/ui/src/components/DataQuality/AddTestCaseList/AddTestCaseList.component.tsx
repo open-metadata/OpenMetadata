@@ -35,6 +35,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
@@ -61,7 +62,6 @@ import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { replacePlus } from '../../../utils/StringUtils';
-import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
