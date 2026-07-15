@@ -286,7 +286,7 @@ jest.mock(
       .mockImplementation(() => <div>ManageButton.component</div>);
   }
 );
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
     <div>
       Description.component

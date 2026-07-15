@@ -74,6 +74,9 @@ import org.slf4j.LoggerFactory;
 public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   private static final Logger LOG = LoggerFactory.getLogger(TestCaseResourceIT.class);
   private static final ObjectMapper MAPPER = new ObjectMapper();
+  // Search converges synchronously post-commit, but a transient ES write failure falls back to the
+  // async retry queue — allow generous headroom so heavy parallel runs don't trip the happy path.
+  private static final Duration SEARCH_CONVERGENCE_TIMEOUT = Duration.ofSeconds(120);
   private static final RetryConfig DEADLOCK_RETRY_CONFIG =
       RetryConfig.custom()
           .maxAttempts(3)
@@ -1393,8 +1396,9 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
 
     try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
       Awaitility.await("logical suite membership indexed before PUT")
-          .atMost(Duration.ofSeconds(60))
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
           .untilAsserted(
               () ->
                   assertSearchDocContainsTestSuite(
@@ -1406,14 +1410,25 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
       client.testCases().upsert(createRequest);
 
       TestCase fetched = client.testCases().get(testCase.getId().toString(), "testSuites");
+      // Read-your-write (DB + sync cache) is immediately consistent, so assert the PUT actually
+      // applied here — this pins the failure to search propagation rather than a dropped update.
+      assertEquals(
+          updatedDescription,
+          fetched.getDescription(),
+          "PUT should apply the new description at the API level");
       assertTrue(
           fetched.getTestSuites().stream()
               .anyMatch(suite -> suite.getId().equals(logicalSuite.getId())),
           "PUT should preserve the logical suite graph relationship");
 
+      // Search indexing runs synchronously post-commit, BUT a transient ES write failure falls back
+      // to the async SearchIndexRetryQueue, so convergence is eventually-consistent, not strictly
+      // bounded by the write returning. Poll generously (and ignore transient query hiccups) rather
+      // than assuming the sync drain always wins on the first sample under heavy parallel load.
       Awaitility.await("PUT preserves logical suite membership in search")
-          .atMost(Duration.ofSeconds(60))
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
           .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
           .untilAsserted(
               () -> {
                 JsonNode source = queryTestCaseSearchSource(searchClient, testCase.getId());
