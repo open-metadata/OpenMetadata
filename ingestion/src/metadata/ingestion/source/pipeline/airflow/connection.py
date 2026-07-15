@@ -328,7 +328,6 @@ def test_connection(
         )
 
     session_maker = sessionmaker(bind=connection_obj)
-    session = session_maker()
 
     def test_pipeline_details_access(session):
         try:
@@ -339,18 +338,19 @@ def test_connection(
         except Exception as e:
             raise AirflowPipelineDetailsAccessError(f"Pipeline details access error: {e}")  # noqa: B904
 
-    test_fn = {
-        "CheckAccess": partial(test_connection_engine_step, connection_obj),
-        "PipelineDetailsAccess": partial(test_pipeline_details_access, session),
-        "TaskDetailAccess": partial(_test_task_detail_access, session),
-    }
-    return test_connection_steps(
-        metadata=metadata,
-        test_fn=test_fn,
-        service_type=service_connection.type.value,
-        automation_workflow=automation_workflow,
-        timeout_seconds=timeout_seconds,
-    )
+    with session_maker() as session:
+        test_fn = {
+            "CheckAccess": partial(test_connection_engine_step, connection_obj),
+            "PipelineDetailsAccess": partial(test_pipeline_details_access, session),
+            "TaskDetailAccess": partial(_test_task_detail_access, session),
+        }
+        return test_connection_steps(
+            metadata=metadata,
+            test_fn=test_fn,
+            service_type=service_connection.type.value,
+            automation_workflow=automation_workflow,
+            timeout_seconds=timeout_seconds,
+        )
 
 
 class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
