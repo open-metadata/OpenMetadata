@@ -44,6 +44,8 @@ class PipelineStep(StepName):
     CheckAccess = "CheckAccess"
     GetJobs = "GetJobs"
     GetRuns = "GetRuns"
+    PipelineDetailsAccess = "PipelineDetailsAccess"
+    TaskDetailAccess = "TaskDetailAccess"
 
 
 def _count(number: int, noun: str, cap: int | None = None) -> str:
