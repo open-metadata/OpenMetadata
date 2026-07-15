@@ -47,8 +47,8 @@ import {
 } from '../rest/feedsAPI';
 import { getRelativeCalendar } from './date-time/DateTimeUtils';
 import EntityLink from './EntityLink';
-import entityUtilClassBase from './EntityUtilClassBase';
 import { ENTITY_LINK_SEPARATOR, getEntityFeedLink } from './EntityPureUtils';
+import entityUtilClassBase from './EntityUtilClassBase';
 import Fqn from './Fqn';
 import { getPartialNameFromFQN, getPartialNameFromTableFQN } from './FqnUtils';
 import { t } from './i18next/LocalUtil';
