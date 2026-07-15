@@ -17,6 +17,7 @@ package org.openmetadata.service.tasks;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.type.DataAccessRequestPayload;
@@ -25,10 +26,10 @@ import org.openmetadata.schema.type.TaskEntityType;
 
 /**
  * Unit tests for {@link TaskFieldValidator#validateDataAccessRequestDuration}. Every approved Data
- * Access Request reaches an {@code expiryTimer} boundary node whose {@code ${accessDuration}}
- * expression is built from {@code payload.duration}; a missing or malformed value would make that
- * timer unschedulable and fail the task mid-workflow, so it is rejected up front with a 400 ({@link
- * IllegalArgumentException}). ISO 8601 parsing itself is covered in {@code DurationUtilTest}.
+ * Access Request reaches an {@code expiryTimer} boundary node. Creation-time validation requires a
+ * usable expiry, either a future {@code expirationDate} timestamp or a legacy ISO 8601 duration,
+ * so malformed payloads are rejected up front with a 400 ({@link IllegalArgumentException}). ISO
+ * 8601 parsing itself is covered in {@code DurationUtilTest}.
  */
 class TaskFieldValidatorTest {
 
@@ -40,6 +41,16 @@ class TaskFieldValidatorTest {
                 .withAccessType(DataAccessType.FullAccess)
                 .withReason("need access")
                 .withDuration(duration));
+  }
+
+  private static Task darTaskWithExpirationDate(long expirationDate) {
+    return new Task()
+        .withType(TaskEntityType.DataAccessRequest)
+        .withPayload(
+            new DataAccessRequestPayload()
+                .withAccessType(DataAccessType.FullAccess)
+                .withReason("need access")
+                .withExpirationDate(expirationDate));
   }
 
   @Test
@@ -61,6 +72,15 @@ class TaskFieldValidatorTest {
   }
 
   @Test
+  void futureExpirationDatePasses() {
+    long expiresAt = System.currentTimeMillis() + Duration.ofDays(1).toMillis();
+    assertDoesNotThrow(
+        () ->
+            TaskFieldValidator.validateDataAccessRequestDuration(
+                darTaskWithExpirationDate(expiresAt)));
+  }
+
+  @Test
   void missingDurationIsRejected() {
     assertThrows(
         IllegalArgumentException.class,
@@ -79,5 +99,14 @@ class TaskFieldValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () -> TaskFieldValidator.validateDataAccessRequestDuration(darTask("14 days")));
+  }
+
+  @Test
+  void pastExpirationDateIsRejected() {
+    assertThrows(
+        IllegalArgumentException.class,
+        () ->
+            TaskFieldValidator.validateDataAccessRequestDuration(
+                darTaskWithExpirationDate(System.currentTimeMillis() - 1)));
   }
 }

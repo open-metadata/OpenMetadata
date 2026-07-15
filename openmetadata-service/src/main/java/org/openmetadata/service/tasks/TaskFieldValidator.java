@@ -122,11 +122,11 @@ public final class TaskFieldValidator {
   }
 
   /**
-   * Require a Data Access Request to carry a valid ISO 8601 {@code duration}. Every approved DAR
-   * reaches an {@code expiryTimer} boundary node whose {@code ${accessDuration}} expression is built
-   * from this field; a missing or malformed value leaves that boundary timer unschedulable and fails
-   * the task mid-workflow. Validating at creation turns that latent failure into a clean 400. No-op
-   * for non-DAR tasks.
+   * Require a Data Access Request to carry a usable expiry. Timestamp expiry ({@code
+   * expirationDate}) is preferred; ISO 8601 {@code duration} remains valid for existing clients.
+   * Every approved DAR reaches an {@code expiryTimer} boundary node, so a missing or malformed
+   * expiry would leave that boundary timer unschedulable and fail the task mid-workflow. Validating
+   * at creation turns that latent failure into a clean 400. No-op for non-DAR tasks.
    */
   public static void validateDataAccessRequestDuration(Task task) {
     if (task.getType() != TaskEntityType.DataAccessRequest) {
@@ -136,10 +136,21 @@ public final class TaskFieldValidator {
     if (payload == null) {
       return;
     }
+    Long expirationDate = payload.getExpirationDate();
+    if (expirationDate != null) {
+      if (expirationDate <= System.currentTimeMillis()) {
+        throw new IllegalArgumentException(
+            "Data Access Request expirationDate must be a future timestamp: '%s'."
+                .formatted(expirationDate));
+      }
+      return;
+    }
+
     String duration = payload.getDuration();
     if (nullOrEmpty(duration)) {
       throw new IllegalArgumentException(
-          "A Data Access Request requires an access duration (ISO 8601, e.g. 'P14D').");
+          "A Data Access Request requires an access expiry timestamp or duration "
+              + "(ISO 8601, e.g. 'P14D').");
     }
     if (!DurationUtil.isValidIso8601(duration)) {
       throw new IllegalArgumentException(
