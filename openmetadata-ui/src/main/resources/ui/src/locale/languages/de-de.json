@@ -12,6 +12,7 @@
     "access": "Zugriff",
     "access-block-time": "Zugangssperrzeit",
     "access-control": "Zugriffskontrolle",
+    "access-denied": "Zugriff verweigert",
     "access-policy": "Zugriffsrichtlinie",
     "access-policy-name": "Name der Zugangsrichtlinie",
     "access-request-plural": "Zugriffsanfragen",

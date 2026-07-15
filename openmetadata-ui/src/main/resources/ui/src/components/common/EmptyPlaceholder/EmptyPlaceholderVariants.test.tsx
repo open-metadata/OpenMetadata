@@ -166,9 +166,10 @@ describe('NoDataPlaceholder', () => {
 });
 
 describe('PermissionPlaceholder', () => {
-  it('should render the default no-access description', () => {
+  it('should render the default title and no-access description', () => {
     render(<PermissionPlaceholder permissionValue="view" />);
 
+    expect(screen.getByText('label.access-denied')).toBeInTheDocument();
     expect(
       screen.getByText('message.no-access-placeholder')
     ).toBeInTheDocument();
@@ -214,6 +215,15 @@ describe('CreatePlaceholder', () => {
     render(<CreatePlaceholder />);
 
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
+  });
+
+  it('should apply buttonId as the add action id', () => {
+    render(<CreatePlaceholder buttonId="create-btn" onCreate={jest.fn()} />);
+
+    expect(screen.getByRole('button', { name: 'label.add' })).toHaveAttribute(
+      'id',
+      'create-btn'
+    );
   });
 
   it('should fall back to the permission placeholder when permission is false', () => {

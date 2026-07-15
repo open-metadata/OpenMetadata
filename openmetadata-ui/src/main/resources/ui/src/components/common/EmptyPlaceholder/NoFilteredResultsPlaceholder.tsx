@@ -44,7 +44,7 @@ const NoFilteredResultsPlaceholder = ({
         t('label.clear-filter-plural')
       )}
       description={description ?? t('message.nothing-matches-current-filter')}
-      icon={icon ?? FilterFunnel01}
+      icon={icon ?? <FilterFunnel01 className="tw:text-secondary" />}
       title={title ?? t('label.no-result-for-these-filter-plural')}
       variant="blank"
       {...props}

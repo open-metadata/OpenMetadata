@@ -12,6 +12,7 @@
     "access": "存取",
     "access-block-time": "存取封鎖時間",
     "access-control": "存取控制",
+    "access-denied": "存取遭拒",
     "access-policy": "存取政策",
     "access-policy-name": "存取政策名稱",
     "access-request-plural": "存取請求",

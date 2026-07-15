@@ -12,6 +12,7 @@
     "access": "访问",
     "access-block-time": "访问阻止时间",
     "access-control": "访问控制",
+    "access-denied": "访问被拒绝",
     "access-policy": "访问策略",
     "access-policy-name": "访问策略名称",
     "access-request-plural": "访问请求",

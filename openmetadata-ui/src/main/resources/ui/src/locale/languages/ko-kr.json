@@ -12,6 +12,7 @@
     "access": "접근",
     "access-block-time": "접근 차단 시간",
     "access-control": "접근 제어",
+    "access-denied": "접근 거부됨",
     "access-policy": "액세스 정책",
     "access-policy-name": "접근 정책 이름",
     "access-request-plural": "액세스 요청",

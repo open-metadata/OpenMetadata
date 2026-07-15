@@ -12,6 +12,7 @@
     "access": "การเข้าถึง",
     "access-block-time": "เวลาบล็อกการเข้าถึง",
     "access-control": "การควบคุมการเข้าถึง",
+    "access-denied": "ปฏิเสธการเข้าถึง",
     "access-policy": "นโยบายการเข้าถึง",
     "access-policy-name": "ชื่อนโยบายการเข้าถึง",
     "access-request-plural": "คำขอเข้าถึง",

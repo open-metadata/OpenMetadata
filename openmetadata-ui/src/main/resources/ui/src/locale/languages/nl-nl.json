@@ -12,6 +12,7 @@
     "access": "Toegang",
     "access-block-time": "Blokkeertijd Toegang",
     "access-control": "Toegangscontrole",
+    "access-denied": "Toegang geweigerd",
     "access-policy": "Toegangsbeleid",
     "access-policy-name": "Naam Toegangsbeleid",
     "access-request-plural": "Toegangsverzoeken",

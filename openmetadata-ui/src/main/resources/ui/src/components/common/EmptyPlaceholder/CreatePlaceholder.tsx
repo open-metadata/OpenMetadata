@@ -60,14 +60,15 @@ const CreatePlaceholder = ({
       actions={resolveSingleAction(
         actions,
         onCreate,
-        buttonId ?? 'add',
-        t('label.add')
+        'add',
+        t('label.add'),
+        buttonId
       )}
       description={
         description ?? (
           <>
             {t('message.adding-new-entity-is-easy-just-give-it-a-spin', {
-              entity: heading,
+              entity: heading ?? t('label.entity'),
             })}
             {doc && (
               <>
@@ -75,7 +76,7 @@ const CreatePlaceholder = ({
                 <Transi18next
                   i18nKey="message.refer-to-our-doc"
                   renderElement={
-                    <a href={doc} rel="noreferrer" target="_blank" />
+                    <a href={doc} rel="noopener noreferrer" target="_blank" />
                   }
                   values={{ doc: t('label.doc-plural-lowercase') }}
                 />
@@ -84,7 +85,7 @@ const CreatePlaceholder = ({
           </>
         )
       }
-      icon={icon ?? Plus}
+      icon={icon ?? <Plus className="tw:text-secondary" />}
       title={title}
       variant="blank"
       {...props}

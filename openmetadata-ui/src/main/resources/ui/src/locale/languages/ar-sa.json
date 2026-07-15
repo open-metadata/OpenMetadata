@@ -12,6 +12,7 @@
     "access": "الوصول",
     "access-block-time": "وقت حظر الوصول",
     "access-control": "التحكم في الوصول",
+    "access-denied": "تم رفض الوصول",
     "access-policy": "سياسة الوصول",
     "access-policy-name": "اسم سياسة الوصول",
     "access-request-plural": "طلبات الوصول",

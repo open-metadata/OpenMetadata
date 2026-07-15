@@ -13,6 +13,7 @@
 
 import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import { Lock01 } from '@untitledui/icons';
+import { useTranslation } from 'react-i18next';
 import { Transi18next } from '../../../utils/i18next/LocalUtil';
 import { PermissionPlaceholderProps } from './EmptyPlaceholder.interface';
 
@@ -31,6 +32,8 @@ const PermissionPlaceholder = ({
   permissionValue,
   ...props
 }: PermissionPlaceholderProps) => {
+  const { t } = useTranslation();
+
   return (
     <EmptyPlaceholder
       description={
@@ -38,12 +41,12 @@ const PermissionPlaceholder = ({
           <Transi18next
             i18nKey="message.no-access-placeholder"
             renderElement={<b />}
-            values={{ entity: permissionValue }}
+            values={{ entity: permissionValue ?? t('label.resource') }}
           />
         )
       }
-      icon={icon ?? Lock01}
-      title={title}
+      icon={icon ?? <Lock01 className="tw:text-secondary" />}
+      title={title ?? t('label.access-denied')}
       variant="blank"
       {...props}
     />

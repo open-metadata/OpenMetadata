@@ -36,7 +36,7 @@ const NoSearchResultsPlaceholder = ({
       description={
         description ?? t('message.check-spelling-or-try-shorter-term')
       }
-      icon={icon ?? SearchLg}
+      icon={icon ?? <SearchLg className="tw:text-secondary" />}
       title={title ?? t('label.no-matching-result-plural')}
       variant="blank"
       {...props}

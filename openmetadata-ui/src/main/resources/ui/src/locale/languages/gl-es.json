@@ -12,6 +12,7 @@
     "access": "Acceso",
     "access-block-time": "Tempo de bloqueo de acceso",
     "access-control": "Control de Acceso",
+    "access-denied": "Acceso denegado",
     "access-policy": "Política de acceso",
     "access-policy-name": "Nome da Política de Acceso",
     "access-request-plural": "Solicitudes de acceso",

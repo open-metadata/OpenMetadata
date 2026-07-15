@@ -12,6 +12,7 @@
     "access": "Åtkomst",
     "access-block-time": "Tid för åtkomstblockering",
     "access-control": "Åtkomstkontroll",
+    "access-denied": "Åtkomst nekad",
     "access-policy": "Åtkomstpolicy",
     "access-policy-name": "Namn på åtkomstpolicy",
     "access-request-plural": "Åtkomstbegäranden",
