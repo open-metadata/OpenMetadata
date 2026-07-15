@@ -14,7 +14,7 @@ import Icon from '@ant-design/icons';
 import { Button, Col, Input, Row, Typography } from 'antd';
 import { AxiosError } from 'axios';
 import { debounce } from 'lodash';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconSearchV1 } from '../../../assets/svg/search.svg';
 import { ENTITY_PATH } from '../../../constants/constants';
@@ -53,6 +53,7 @@ const SearchPreview = ({
   const [isLoading, setIsLoading] = useState(true);
   const [data, setData] = useState<SearchedDataProps['data']>([]);
   const [searchValue, setSearchValue] = useState<string>('');
+  const latestRequestId = useRef(0);
   const {
     currentPage,
     pageSize,
@@ -75,6 +76,8 @@ const SearchPreview = ({
       searchTerm = searchValue,
     }: { page?: number; searchTerm?: string } = {}) => {
       if (searchConfig && Object.keys(searchConfig).length > 0) {
+        const requestId = latestRequestId.current + 1;
+        latestRequestId.current = requestId;
         try {
           setIsLoading(true);
           const res = await searchPreview({
@@ -86,15 +89,25 @@ const SearchPreview = ({
             searchSettings: searchConfig,
           });
 
+          // Ignore responses from superseded requests so a slow, stale response
+          // can never overwrite the latest preview.
+          if (requestId !== latestRequestId.current) {
+            return;
+          }
+
           const hits = res.hits.hits as unknown as SearchedDataProps['data'];
           const totalCount = res?.hits?.total.value ?? 0;
 
           handlePagingChange({ total: totalCount });
           setData(hits);
         } catch (error) {
-          showErrorToast(error as AxiosError);
+          if (requestId === latestRequestId.current) {
+            showErrorToast(error as AxiosError);
+          }
         } finally {
-          setIsLoading(false);
+          if (requestId === latestRequestId.current) {
+            setIsLoading(false);
+          }
         }
       }
     },
@@ -177,7 +190,8 @@ const SearchPreview = ({
         <Col>
           <Typography.Text
             className="header-title"
-            data-testid="search-preview">
+            data-testid="search-preview"
+          >
             {t('label.preview')}
           </Typography.Text>
         </Col>
@@ -185,7 +199,8 @@ const SearchPreview = ({
           <Button
             className="restore-defaults-btn font-semibold"
             data-testid="restore-defaults-btn"
-            onClick={handleRestoreDefaults}>
+            onClick={handleRestoreDefaults}
+          >
             {t('label.restore-default-plural')}
           </Button>
           <Button
@@ -193,7 +208,8 @@ const SearchPreview = ({
             data-testid="save-btn"
             disabled={disabledSave}
             loading={isSaving}
-            onClick={handleSaveChanges}>
+            onClick={handleSaveChanges}
+          >
             {t('label.save')}
           </Button>
         </Col>
