@@ -147,7 +147,7 @@ function ObservabilityAlertsTable({
   const isAlertsEmpty = !loading && loadingCount === 0 && alerts.length === 0;
 
   const emptyStatePlaceholder = (
-    <Box className="tw:relative tw:min-h-[28rem] tw:w-full">
+    <Box className="tw:relative tw:min-h-[calc(100vh_-_16rem)] tw:w-full">
       <EmptyPlaceholder
         actions={
           hasCreatePermission
