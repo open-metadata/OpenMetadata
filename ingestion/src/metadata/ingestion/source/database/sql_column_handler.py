@@ -169,7 +169,6 @@ class SqlColumnHandlerMixin:
                 f"Cannot obtain unique/primary constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
             unique_constraints = []
-            pk_constraints = {}
         try:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
