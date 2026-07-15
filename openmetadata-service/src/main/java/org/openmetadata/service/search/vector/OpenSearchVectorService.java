@@ -471,12 +471,15 @@ public class OpenSearchVectorService implements VectorIndexService {
     reindexChunks(oldIndex, desired);
     boolean legacyConcrete = oldIndex.equals(writeAlias);
     if (legacyConcrete) {
-      // The legacy concrete index occupies the write-alias name, so the write alias can only move
-      // once it is gone. Attach the shared read alias to the new index first to avoid a read gap.
-      runAliasActions(
-          MAPPER.createArrayNode().add(aliasAction("add", desired, getSearchAlias(), false)));
-      deleteIndexQuietly(oldIndex);
-      runAliasActions(MAPPER.createArrayNode().add(aliasAction("add", desired, writeAlias, true)));
+      // The legacy concrete index occupies the write-alias name. Delete it and attach both aliases
+      // to the new index in ONE atomic _aliases request, so the write-alias name is never an
+      // unresolved gap between the delete and the alias add. Deleting the index also detaches the
+      // shared read alias, which the same request re-adds to the new index (no orphan).
+      var actions = MAPPER.createArrayNode();
+      actions.add(removeIndexAction(oldIndex));
+      actions.add(aliasAction("add", desired, getSearchAlias(), false));
+      actions.add(aliasAction("add", desired, writeAlias, true));
+      runAliasActions(actions);
     } else {
       swapChunkAliases(desired, writeAlias);
       deleteIndexQuietly(oldIndex);
@@ -567,6 +570,18 @@ public class OpenSearchVectorService implements VectorIndexService {
       spec.put("must_exist", false);
     }
     return (ObjectNode) MAPPER.createObjectNode().set(op, spec);
+  }
+
+  /**
+   * A {@code remove_index} action that deletes a concrete index inside an {@code _aliases} request.
+   * Takes no {@code alias} and no {@code must_exist} — OpenSearch's parser rejects {@code must_exist}
+   * on {@code remove_index}.
+   */
+  private ObjectNode removeIndexAction(String index) {
+    return (ObjectNode)
+        MAPPER
+            .createObjectNode()
+            .set("remove_index", MAPPER.createObjectNode().put("index", index));
   }
 
   private boolean indexExists(String name) {
