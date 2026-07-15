@@ -64,11 +64,11 @@ import { useFqn } from '../../../hooks/useFqn';
 import { FeedCounts } from '../../../interface/feed.interface';
 import { getFeedCount } from '../../../rest/feedsAPI';
 import { getCountBadge, getFeedCounts } from '../../../utils/CommonUtils';
-import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import {
   ENTITY_LINK_SEPARATOR,
   getEntityUserLink,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntityPureUtils';
+import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ErrorPlaceHolderNew from '../../common/ErrorWithPlaceholder/ErrorPlaceHolderNew';

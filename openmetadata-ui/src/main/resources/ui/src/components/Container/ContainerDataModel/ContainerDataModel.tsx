@@ -47,14 +47,14 @@ import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
 } from '../../../utils/ContainerDetailUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../utils/TableColumn.util';
-import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
 import {
   getHighlightedRowClassName,
-  getTableExpandableConfig,
   pruneEmptyChildren,
-} from '../../../utils/TableUtils';
+} from '../../../utils/TablePureUtils';
+import { getAllTags } from '../../../utils/TableTags/TableTags.utils';
+import { getTableExpandableConfig } from '../../../utils/TableUtils';
 import CopyLinkButton from '../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

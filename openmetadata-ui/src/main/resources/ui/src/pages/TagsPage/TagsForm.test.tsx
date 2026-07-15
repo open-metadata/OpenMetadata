@@ -78,8 +78,8 @@ jest.mock('../../components/common/RichTextEditor/RichTextEditor', () => {
   });
 });
 
-jest.mock('../../utils/EntityUtils', () => ({
-  ...jest.requireActual('../../utils/EntityUtils'),
+jest.mock('../../utils/EntityDisplayUtils', () => ({
+  ...jest.requireActual('../../utils/EntityDisplayUtils'),
   getCountBadge: jest.fn().mockReturnValue(''),
 }));
 jest.mock('../../utils/StringUtils', () => ({

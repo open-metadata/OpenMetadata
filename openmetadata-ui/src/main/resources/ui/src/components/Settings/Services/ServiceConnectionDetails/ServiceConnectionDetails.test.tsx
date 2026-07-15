@@ -20,52 +20,41 @@ import {
   ATLAS_CONNECTION,
   MOCK_ATHENA_SERVICE,
 } from '../../../../mocks/Service.mock';
-import { getDashboardConfig } from '../../../../utils/DashboardServiceUtils';
-import { getMessagingConfig } from '../../../../utils/MessagingServiceUtils';
-import { getMetadataConfig } from '../../../../utils/MetadataServiceUtils';
-import { getMlmodelConfig } from '../../../../utils/MlmodelServiceUtils';
-import { getPipelineConfig } from '../../../../utils/PipelineServiceUtils';
-import { getSearchServiceConfig } from '../../../../utils/SearchServiceUtils';
+import serviceUtilClassBase from '../../../../utils/ServiceUtilClassBase';
 import ServiceConnectionDetails from './ServiceConnectionDetails.component';
 
-jest.mock('../../../../utils/DatabaseServiceUtils', () => ({
-  getDatabaseConfig: jest.fn().mockReturnValue({
+jest.mock('../../../../utils/ServiceUtilClassBase', () => ({
+  getDatabaseServiceConfig: jest.fn().mockReturnValue({
     schema: MOCK_ATHENA_SERVICE,
   }),
-}));
-
-jest.mock('../../../../utils/DashboardServiceUtils', () => ({
-  getDashboardConfig: jest.fn().mockReturnValue({
+  getDashboardServiceConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
-}));
-
-jest.mock('../../../../utils/MessagingServiceUtils', () => ({
-  getMessagingConfig: jest.fn().mockReturnValue({
+  getMessagingServiceConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
-}));
-
-jest.mock('../../../../utils/MetadataServiceUtils', () => ({
-  getMetadataConfig: jest.fn().mockReturnValue({
+  getMetadataServiceConfig: jest.fn().mockReturnValue({
     schema: ATLAS_CONNECTION,
   }),
-}));
-
-jest.mock('../../../../utils/MlmodelServiceUtils', () => ({
-  getMlmodelConfig: jest.fn().mockReturnValue({
+  getMlModelServiceConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
-}));
-
-jest.mock('../../../../utils/PipelineServiceUtils', () => ({
-  getPipelineConfig: jest.fn().mockReturnValue({
+  getPipelineServiceConfig: jest.fn().mockReturnValue({
     schema: AIR_BYTE_CONNECTION,
   }),
-}));
-
-jest.mock('../../../../utils/SearchServiceUtils', () => ({
   getSearchServiceConfig: jest.fn().mockReturnValue({
+    schema: {},
+  }),
+  getStorageServiceConfig: jest.fn().mockReturnValue({
+    schema: {},
+  }),
+  getAPIServiceConfig: jest.fn().mockReturnValue({
+    schema: {},
+  }),
+  getSecurityServiceConfig: jest.fn().mockReturnValue({
+    schema: {},
+  }),
+  getDriveServiceConfig: jest.fn().mockReturnValue({
     schema: {},
   }),
 }));
@@ -105,27 +94,27 @@ const metaDataSchema = {
 const services = [
   {
     name: ServiceCategory.DASHBOARD_SERVICES,
-    configVal: getDashboardConfig as jest.Mock,
+    configVal: serviceUtilClassBase.getDashboardServiceConfig as jest.Mock,
   },
   {
     name: ServiceCategory.MESSAGING_SERVICES,
-    configVal: getMessagingConfig as jest.Mock,
+    configVal: serviceUtilClassBase.getMessagingServiceConfig as jest.Mock,
   },
   {
     name: ServiceCategory.METADATA_SERVICES,
-    configVal: getMetadataConfig as jest.Mock,
+    configVal: serviceUtilClassBase.getMetadataServiceConfig as jest.Mock,
   },
   {
     name: ServiceCategory.ML_MODEL_SERVICES,
-    configVal: getMlmodelConfig as jest.Mock,
+    configVal: serviceUtilClassBase.getMlModelServiceConfig as jest.Mock,
   },
   {
     name: ServiceCategory.PIPELINE_SERVICES,
-    configVal: getPipelineConfig as jest.Mock,
+    configVal: serviceUtilClassBase.getPipelineServiceConfig as jest.Mock,
   },
   {
     name: ServiceCategory.SEARCH_SERVICES,
-    configVal: getSearchServiceConfig as jest.Mock,
+    configVal: serviceUtilClassBase.getSearchServiceConfig as jest.Mock,
   },
 ];
 

@@ -117,10 +117,8 @@ import InlineEdit from '../../../common/InlineEdit/InlineEdit.component';
 import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/tests/testCase';
 import { getUsers } from '../../../../rest/userAPI';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../../utils/EntityReferenceUtils';
 import {
   getClassificationTagPath,
   getDomainDetailsPath,

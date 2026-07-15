@@ -25,7 +25,7 @@ import { postTestCaseIncidentStatus } from '../../../rest/incidentManagerAPI';
 import {
   getEntityReferenceFromEntity,
   getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+} from '../../../utils/EntityReferenceUtils';
 import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 

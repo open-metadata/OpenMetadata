@@ -91,11 +91,16 @@ jest.mock('../../../rest/contractAPI', () => ({
   getContractByEntityId: jest.fn().mockImplementation(() => Promise.resolve()),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn().mockImplementation(() => 'name'),
+}));
+
+jest.mock('../../../utils/EntityPureUtils', () => ({
   getEntityFeedLink: jest.fn().mockImplementation(() => 'entityFeedLink'),
+}));
+
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockImplementation(() => 'unVoted'),
-  hasEditAccess: jest.fn().mockReturnValue(false),
 }));
 
 jest.mock('../../../utils/DataAssetsHeader.utils', () => ({

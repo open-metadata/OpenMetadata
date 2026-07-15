@@ -50,7 +50,7 @@ import {
   updateThread,
 } from '../../../rest/feedsAPI';
 import { getListTestCaseIncidentByStateId } from '../../../rest/incidentManagerAPI';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getUpdatedThread } from '../../../utils/FeedUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import ActivityFeedDrawer from '../ActivityFeedDrawer/ActivityFeedDrawer';

@@ -64,16 +64,16 @@ import { SecurityService } from '../generated/entity/services/securityService';
 import { StorageService } from '../generated/entity/services/storageService';
 import { EntityReference } from '../generated/type/entityReference';
 import { formatDateTime } from './date-time/DateTimeUtils';
+import { getEntityBreadcrumbs } from './EntityBreadcrumbPureUtils';
 import {
   getBreadcrumbForEntitiesWithServiceOnly,
   getBreadcrumbForEntityWithParent,
   getBreadcrumbForTable,
-  getEntityBreadcrumbs,
-} from './EntityUtils';
+} from './EntityDataBreadcrumbUtils';
 import i18n from './i18next/LocalUtil';
 import { getEntityDetailsPath } from './RouterUtils';
 import { bytesToSize } from './StringUtils';
-import { getUsagePercentile } from './TableUtils';
+import { getUsagePercentile } from './TablePureUtils';
 
 const { t } = i18n;
 

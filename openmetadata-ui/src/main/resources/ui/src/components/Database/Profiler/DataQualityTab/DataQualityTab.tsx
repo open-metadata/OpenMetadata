@@ -48,10 +48,8 @@ import { TestCasePageTabs } from '../../../../pages/IncidentManager/IncidentMana
 import { getListTestCaseIncidentByStateId } from '../../../../rest/incidentManagerAPI';
 import { removeTestCaseFromTestSuite } from '../../../../rest/testAPI';
 import { getNameFromFQN } from '../../../../utils/CommonUtils';
-import {
-  getColumnNameFromEntityLink,
-  getEntityName,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getColumnNameFromEntityLink } from '../../../../utils/EntityPureUtils';
 import { getEntityFQN } from '../../../../utils/FeedUtils';
 import { Transi18next } from '../../../../utils/i18next/LocalUtil';
 import {

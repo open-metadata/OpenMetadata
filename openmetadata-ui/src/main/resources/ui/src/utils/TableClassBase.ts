@@ -32,7 +32,7 @@ import i18n from './i18next/LocalUtil';
 import {
   getTableDetailPageBaseTabs,
   getTableWidgetFromKey,
-} from './TableUtils';
+} from './TableTabsUtils';
 
 export interface TableDetailPageTabProps {
   queryCount: number;

@@ -128,7 +128,7 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/EntityUtils', () => ({
+jest.mock('../../../utils/EntityVoteUtils', () => ({
   getEntityVoteStatus: jest.fn().mockReturnValue(QueryVoteType.votedUp),
 }));
 

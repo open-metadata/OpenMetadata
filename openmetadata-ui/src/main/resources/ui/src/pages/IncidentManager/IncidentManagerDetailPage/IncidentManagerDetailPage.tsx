@@ -59,7 +59,7 @@ import {
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import { getFeedCounts } from '../../../utils/CommonUtils';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
 import {
   getTestCaseDetailPagePath,

@@ -27,7 +27,7 @@ import {
 import { Thread } from '../../../../generated/entity/feed/thread';
 import { TestCaseResolutionStatusTypes } from '../../../../generated/tests/testCaseResolutionStatus';
 import { formatDateTime } from '../../../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { useActivityFeedProvider } from '../../../ActivityFeed/ActivityFeedProvider/ActivityFeedProvider';
 
 import { OwnerType } from '../../../../enums/user.enum';

@@ -38,17 +38,15 @@ import {
   getTableColumnsByFQN,
   searchTableColumnsByFQN,
 } from '../../../../../rest/tableAPI';
-import { getEntityName } from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
 import { getTableFQNFromColumnFQN } from '../../../../../utils/FqnUtils';
 import {
   calculatePercentage,
   formatNumberWithComma,
 } from '../../../../../utils/NumberUtils';
 import { getEntityDetailsPath } from '../../../../../utils/RouterUtils';
-import {
-  getTableExpandableConfig,
-  pruneEmptyChildren,
-} from '../../../../../utils/TableUtils';
+import { pruneEmptyChildren } from '../../../../../utils/TablePureUtils';
+import { getTableExpandableConfig } from '../../../../../utils/TableUtils';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import FilterTablePlaceHolder from '../../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder';
 import { PagingHandlerParams } from '../../../../common/NextPrevious/NextPrevious.interface';

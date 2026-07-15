@@ -25,10 +25,8 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { EntityReference } from '../../../../generated/entity/type';
 import { getServiceLogo } from '../../../../utils/EntityDisplayUtils';
 import { getUpstreamDownstreamNodesEdges } from '../../../../utils/EntityLineageUtils';
-import {
-  getEntityLinkFromType,
-  getEntityName,
-} from '../../../../utils/EntityUtils';
+import { getEntityLinkFromType } from '../../../../utils/EntityLinkUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { FormattedDatabaseServiceType } from '../../../../utils/EntityUtils.interface';
 import { getTruncatedPath } from '../../../../utils/Lineage/LineageUtils';
 import searchClassBase from '../../../../utils/SearchClassBase';

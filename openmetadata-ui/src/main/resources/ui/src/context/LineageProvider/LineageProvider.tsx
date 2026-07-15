@@ -96,6 +96,7 @@ import {
 } from '../../rest/lineageAPI';
 import { drawEdgesForExport } from '../../utils/CanvasUtils';
 import { getCurrentISODate } from '../../utils/date-time/DateTimeUtils';
+import { getEntityBreadcrumbs } from '../../utils/EntityBreadcrumbPureUtils';
 import {
   addLineageHandler,
   centerNodePosition,
@@ -124,11 +125,8 @@ import {
   removeLineageHandler,
   removeUnconnectedNodes,
 } from '../../utils/EntityLineageUtils';
-import {
-  getEntityBreadcrumbs,
-  getEntityReferenceFromEntity,
-  updateNodeType,
-} from '../../utils/EntityUtils';
+import { updateNodeType } from '../../utils/EntityPureUtils';
+import { getEntityReferenceFromEntity } from '../../utils/EntityReferenceUtils';
 import { getQuickFilterQuery } from '../../utils/ExploreUtils';
 import { addBaseNodeDepthToNodes } from '../../utils/Lineage/LineageUtils';
 import tableClassBase from '../../utils/TableClassBase';

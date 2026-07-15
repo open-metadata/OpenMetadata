@@ -39,10 +39,8 @@ import { useApplicationStore } from '../../../../hooks/useApplicationStore';
 import { Option } from '../../../../pages/TasksPage/TasksPage.interface';
 import { postTestCaseIncidentStatus } from '../../../../rest/incidentManagerAPI';
 import { getUserAndTeamSearch } from '../../../../rest/miscAPI';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../utils/EntityReferenceUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import Loader from '../../../common/Loader/Loader';
 import { UserTag } from '../../../common/UserTag/UserTag.component';

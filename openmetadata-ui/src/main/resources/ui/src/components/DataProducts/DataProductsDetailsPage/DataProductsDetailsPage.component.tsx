@@ -81,13 +81,11 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import {
-  getEntityFeedLink,
-  getEntityName,
-  getEntityVoteStatus,
-} from '../../../utils/EntityUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVoteStatus } from '../../../utils/EntityVoteUtils';
 import { downloadFile } from '../../../utils/Export/ExportUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
 import { showNotistackError } from '../../../utils/NotistackUtils';

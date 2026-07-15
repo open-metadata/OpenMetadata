@@ -54,7 +54,7 @@ import {
   addTestCasesToLogicalTestSuiteBulk,
   createTestSuites,
 } from '../../../rest/testAPI';
-import { getEntityName } from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
 import {
   createScrollToErrorHandler,
   generateFormFields,

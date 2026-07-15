@@ -235,7 +235,7 @@ jest.mock('../../../../utils/date-time/DateTimeUtils', () => ({
   getEndOfDayInMillis: jest.fn().mockImplementation((val) => val),
 }));
 
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityPureUtils', () => ({
   getColumnNameFromEntityLink: jest
     .fn()
     .mockImplementation((entityLink: string) => {

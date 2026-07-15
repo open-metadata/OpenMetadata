@@ -22,7 +22,8 @@ import {
   Directory,
   EntityReference,
 } from '../../../../generated/entity/data/directory';
-import { getColumnSorter, getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
+import { getColumnSorter } from '../../../../utils/EntitySortUtils';
 import { getEntityDetailsPath } from '../../../../utils/RouterUtils';
 import { descriptionTableObject } from '../../../../utils/TableColumn.util';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';

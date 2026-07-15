@@ -13,20 +13,9 @@
 import { isNil, isUndefined } from 'lodash';
 import type { ServiceTypes } from 'Models';
 import type { DataInsightCustomChartResult } from '../rest/DataInsightAPI';
-import { getEntityNameLabel } from './EntityUtils';
+import { getEntityNameLabel } from './EntityNameUtils';
 import { getAssetsByServiceType } from './ServiceInsightsTabPureUtils';
 import { getEntityIcon } from './TableUtils';
-
-export {
-  filterDistributionChartItem,
-  getAssetsByServiceType,
-  getAutoPilotIngestionPipelines,
-  getChartsDataFromWidgetName,
-  getChartTypeForWidget,
-  getPlatformInsightsChartDataFormattingMethod,
-  getTitleByChartType,
-} from './ServiceInsightsTabPureUtils';
-export { getServiceInsightsWidgetPlaceholder } from './ServiceInsightsWidgets';
 
 export const getFormattedTotalAssetsDataFromSocketData = (
   socketData: DataInsightCustomChartResult,

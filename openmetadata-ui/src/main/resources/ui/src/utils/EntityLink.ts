@@ -17,7 +17,7 @@ import { FQN_SEPARATOR_CHAR } from '../constants/char.constants';
 import { FqnPart } from '../enums/entity.enum';
 import EntityLinkLexer from '../generated/antlr/EntityLinkLexer';
 import EntityLinkParser from '../generated/antlr/EntityLinkParser';
-import { ENTITY_LINK_SEPARATOR } from './EntityUtils';
+import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
 import { getPartialNameFromTableFQN } from './FqnUtils';
 
 export default class EntityLink {

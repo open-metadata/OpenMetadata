@@ -38,15 +38,17 @@ import {
 } from '../../../../generated/entity/data/worksheet';
 import { TagLabel } from '../../../../generated/type/tagLabel';
 import { useTreeTagFilter } from '../../../../hooks/useTreeTagFilter';
-import { getEntityName } from '../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { columnFilterIcon } from '../../../../utils/TableColumn.util';
+import {
+  pruneEmptyChildren,
+  updateFieldDescription,
+  updateFieldTags,
+} from '../../../../utils/TablePureUtils';
 import { getAllTags } from '../../../../utils/TableTags/TableTags.utils';
 import {
   getTableExpandableConfig,
   prepareConstraintIcon,
-  pruneEmptyChildren,
-  updateFieldDescription,
-  updateFieldTags,
 } from '../../../../utils/TableUtils';
 import CopyLinkButton from '../../../common/CopyLinkButton/CopyLinkButton';
 import { EntityAttachmentProvider } from '../../../common/EntityDescription/EntityAttachmentProvider/EntityAttachmentProvider';

@@ -113,7 +113,7 @@ jest.mock('../../../../rest/testAPI', () => {
 jest.mock('../../../../hooks/useCustomLocation/useCustomLocation', () => {
   return jest.fn().mockImplementation(() => ({ ...mockLocation }));
 });
-jest.mock('../../../../utils/EntityUtils', () => ({
+jest.mock('../../../../utils/EntityNameUtils', () => ({
   getEntityName: jest.fn(
     (entity) =>
       entity?.displayName ?? entity?.fullyQualifiedName ?? entity?.name

@@ -74,7 +74,7 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../utils/CustomizePage/CustomizePageUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import Fqn from '../../utils/Fqn';
 import {
   DEFAULT_ENTITY_PERMISSION,
@@ -82,7 +82,7 @@ import {
   getPrioritizedViewPermission,
 } from '../../utils/PermissionsUtils';
 import { getEntityDetailsPath, getVersionPath } from '../../utils/RouterUtils';
-import { flattenColumns } from '../../utils/TableUtils';
+import { flattenColumns } from '../../utils/TablePureUtils';
 import { updateCertificationTag, updateTierTag } from '../../utils/TagsUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';

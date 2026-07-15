@@ -45,10 +45,8 @@ import { searchQuery } from '../../../../../rest/searchAPI';
 import { exportUserOfTeam } from '../../../../../rest/teamsAPI';
 import { getUsers } from '../../../../../rest/userAPI';
 import { formatUsersResponse } from '../../../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceFromEntity,
-} from '../../../../../utils/EntityUtils';
+import { getEntityName } from '../../../../../utils/EntityNameUtils';
+import { getEntityReferenceFromEntity } from '../../../../../utils/EntityReferenceUtils';
 import { getSettingsPathWithFqn } from '../../../../../utils/RouterUtils';
 import { getTermQuery } from '../../../../../utils/SearchUtils';
 import { commonUserDetailColumns } from '../../../../../utils/Users.util';

@@ -27,10 +27,8 @@ import { EntityReference } from '../../../generated/entity/data/table';
 import { searchQuery } from '../../../rest/searchAPI';
 import { getUsers } from '../../../rest/userAPI';
 import { formatUsersResponse } from '../../../utils/APIUtils';
-import {
-  getEntityName,
-  getEntityReferenceListFromEntities,
-} from '../../../utils/EntityUtils';
+import { getEntityName } from '../../../utils/EntityNameUtils';
+import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
 import { getTermQuery } from '../../../utils/SearchUtils';
 
 import { useApplicationStore } from '../../../hooks/useApplicationStore';

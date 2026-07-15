@@ -22,7 +22,7 @@ import { ExportTypes } from '../constants/Export.constants';
 import { EntityType } from '../enums/entity.enum';
 import LimitWrapper from '../hoc/LimitWrapper';
 import { exportTestCasesInCSV } from '../rest/testAPI';
-import { getEntityBulkEditPath, getEntityImportPath } from './EntityUtils';
+import { getEntityBulkEditPath, getEntityImportPath } from './EntityPureUtils';
 import { t } from './i18next/LocalUtil';
 
 interface TestCasePermission {

@@ -71,7 +71,7 @@ import {
   getEpochMillisForPastDays,
   getScheduleDescriptionTexts,
 } from '../../utils/date-time/DateTimeUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import {
   downloadAppLogs,
   downloadIngestionLog,

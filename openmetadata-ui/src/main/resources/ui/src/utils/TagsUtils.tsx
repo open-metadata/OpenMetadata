@@ -34,7 +34,7 @@ import {
   getClassificationByName,
   getTags,
 } from '../rest/tagAPI';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 import { getQueryFilterToIncludeApprovedTerm } from './GlossaryPureUtils';
 import { getTagDisplay } from './TagsPureUtils';
 

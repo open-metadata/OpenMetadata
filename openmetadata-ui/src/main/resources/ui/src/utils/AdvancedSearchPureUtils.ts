@@ -41,7 +41,7 @@ import type {
   TableSearchSource,
   TopicSearchSource,
 } from '../interface/search.interface';
-import { getEntityName } from './EntityUtils';
+import { getEntityName } from './EntityNameUtils';
 
 export const getAssetsPageQuickFilters = (
   type?: AssetsOfEntity

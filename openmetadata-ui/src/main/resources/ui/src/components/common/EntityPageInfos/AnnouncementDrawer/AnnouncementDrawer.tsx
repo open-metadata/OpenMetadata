@@ -19,7 +19,7 @@ import { FC, useCallback, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Post } from '../../../../generated/entity/feed/thread';
 import { postFeedById } from '../../../../rest/feedsAPI';
-import { getEntityFeedLink } from '../../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../../utils/EntityPureUtils';
 import { deletePost, updateThreadData } from '../../../../utils/FeedUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import AnnouncementThreadBody from '../../../Announcement/AnnouncementThreadBody.component';

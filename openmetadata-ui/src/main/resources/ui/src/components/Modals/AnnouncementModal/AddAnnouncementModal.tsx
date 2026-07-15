@@ -23,7 +23,7 @@ import {
 } from '../../../generated/api/feed/createThread';
 import { postThread } from '../../../rest/feedsAPI';
 import { getTimeZone } from '../../../utils/date-time/DateTimeUtils';
-import { getEntityFeedLink } from '../../../utils/EntityUtils';
+import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 
 import { useSnackbar } from 'notistack';

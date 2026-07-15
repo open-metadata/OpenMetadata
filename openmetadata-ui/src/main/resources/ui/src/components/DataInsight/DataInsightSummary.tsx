@@ -39,7 +39,7 @@ import {
   getQueryFilterForDataInsightChart,
   getWebChartSummary,
 } from '../../utils/DataInsightUtils';
-import { getEntityName } from '../../utils/EntityUtils';
+import { getEntityName } from '../../utils/EntityNameUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';

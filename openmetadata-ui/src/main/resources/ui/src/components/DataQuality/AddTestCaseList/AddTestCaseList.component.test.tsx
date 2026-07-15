@@ -55,13 +55,18 @@ jest.mock('../../../utils/FeedUtils', () => {
     getEntityFQN: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
-jest.mock('../../../utils/EntityUtils', () => {
+jest.mock('../../../utils/EntityNameUtils', () => {
   return {
     getEntityName: jest
       .fn()
       .mockImplementation(
         (entity: EntityReference) => entity?.displayName ?? entity?.name
       ),
+  };
+});
+
+jest.mock('../../../utils/EntityPureUtils', () => {
+  return {
     getColumnNameFromEntityLink: jest.fn().mockImplementation((fqn) => fqn),
   };
 });
