@@ -196,6 +196,21 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Box: ({ children }: { children?: React.ReactNode }) => (
+      <div>{children}</div>
+    ),
+    EmptyPlaceholder: ({
+      title,
+      description,
+    }: {
+      title?: React.ReactNode;
+      description?: React.ReactNode;
+    }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    ),
     Dropdown: {
       Root: DropdownRoot,
       Popover: jest
