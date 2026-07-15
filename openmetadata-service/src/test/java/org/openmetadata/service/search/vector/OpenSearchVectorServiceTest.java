@@ -11,6 +11,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -556,36 +558,57 @@ class OpenSearchVectorServiceTest {
   }
 
   @Test
-  void chunkMappingUpgradeBody_omitsKnnVectorButAddsDenormalizedFields() throws Exception {
-    Method m = OpenSearchVectorService.class.getDeclaredMethod("buildChunkMappingUpgradeBody");
+  void chunkIndexMapping_hasAnalyzerParityWithEntityIndices() throws Exception {
+    Method m = OpenSearchVectorService.class.getDeclaredMethod("buildChunkIndexMapping");
     m.setAccessible(true);
     String body = (String) m.invoke(vectorService);
+    JsonNode root = new ObjectMapper().readTree(body);
 
-    // The unchanged embedding knn_vector must NOT be re-declared: PUT _mapping is atomic and some
-    // OpenSearch versions reject re-declaring an existing knn_vector, which would fail the whole
-    // additive upgrade and silently leave the new fields unmapped.
-    assertTrue(!body.contains("knn_vector"), "upgrade body must not re-declare the knn_vector");
-    assertTrue(
-        !body.contains("\"embedding\""), "embedding field excluded from the additive upgrade");
-    // The genuinely new denormalized fields and the version marker must be present.
-    assertTrue(body.contains("\"owners\""), "new nested owners field present");
-    assertTrue(body.contains("\"service\""), "new service field present");
-    assertTrue(body.contains("\"columns\""), "new columns field present");
-    assertTrue(body.contains("\"description\""), "new description field present");
-    assertTrue(body.contains("chunkDocVersion"), "_meta.chunkDocVersion bumped");
+    // The om_* analyzers must be defined and max_ngram_diff must permit the 3..20 ngram span,
+    // otherwise index creation is rejected.
+    JsonNode analyzers = root.path("settings").path("analysis").path("analyzer");
+    assertTrue(analyzers.has("om_analyzer"), "om_analyzer defined");
+    assertTrue(analyzers.has("om_ngram"), "om_ngram defined");
+    assertTrue(analyzers.has("om_compound_analyzer"), "om_compound_analyzer defined");
+    assertEquals(
+        17,
+        root.path("settings").path("index").path("max_ngram_diff").asInt(),
+        "max_ngram_diff must equal the ngram span (20 - 3)");
 
-    // databaseSchema must map both name and displayName (like service/database):
-    // buildDenormalizedFields
-    // copies both onto the chunk doc, so mapping only `name` would leave displayName unindexed.
-    com.fasterxml.jackson.databind.JsonNode schema =
-        new com.fasterxml.jackson.databind.ObjectMapper()
-            .readTree(body)
-            .path("properties")
-            .path("databaseSchema")
-            .path("properties");
-    assertTrue(schema.has("name"), "databaseSchema.name mapped");
+    // name must carry an om_analyzer text root plus .compound/.ngram/.keyword subfields so the
+    // phrase/compound lexical clauses resolve on chunk docs, not only the exact keyword clause.
+    JsonNode name = root.path("mappings").path("properties").path("name");
+    assertEquals("om_analyzer", name.path("analyzer").asText(), "name uses om_analyzer");
+    assertTrue(name.path("fields").has("compound"), "name.compound subfield present");
+    assertTrue(name.path("fields").has("ngram"), "name.ngram subfield present");
+    assertEquals(
+        "om_analyzer",
+        root.path("mappings").path("properties").path("description").path("analyzer").asText(),
+        "description uses om_analyzer");
+
+    // Denormalized parity fields still mapped (regression guard carried over from the v1 mapping).
+    JsonNode props = root.path("mappings").path("properties");
+    assertTrue(props.has("owners"), "owners mapped");
+    assertTrue(props.has("columns"), "columns mapped");
+    JsonNode schema = props.path("databaseSchema").path("properties");
     assertTrue(
-        schema.has("displayName"), "databaseSchema.displayName mapped (matches service/database)");
+        schema.has("name") && schema.has("displayName"),
+        "databaseSchema maps both name and displayName");
+    assertTrue(
+        root.path("mappings").path("_meta").has("chunkDocVersion"),
+        "_meta.chunkDocVersion present");
+
+    // Keyword parity with the entity indices: fullyQualifiedName/serviceType carry the
+    // lowercase_normalizer, and fqnParts stays keyword (identifier tokens, not analyzed text).
+    assertEquals(
+        "lowercase_normalizer",
+        props.path("fullyQualifiedName").path("normalizer").asText(),
+        "fullyQualifiedName uses lowercase_normalizer");
+    assertEquals(
+        "lowercase_normalizer",
+        props.path("serviceType").path("normalizer").asText(),
+        "serviceType uses lowercase_normalizer");
+    assertEquals("keyword", props.path("fqnParts").path("type").asText(), "fqnParts stays keyword");
   }
 
   @Test

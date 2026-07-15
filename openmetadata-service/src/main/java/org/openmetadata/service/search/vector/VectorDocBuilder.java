@@ -44,12 +44,19 @@ public class VectorDocBuilder {
   /**
    * Schema version of the denormalized chunk document (issue #862/#858). Stamped on every chunk doc
    * as {@code docVersion} and mirrored on the chunk index mapping as {@code _meta.chunkDocVersion}.
-   * Bump this whenever {@link #buildDenormalizedFields} materializes a new field or changes an existing one
-   * so {@code OpenSearchVectorService} triggers an additive {@code PUT _mapping} and an
-   * embedding-reuse backfill on the next Search Reindex — without forcing a re-embed (the
-   * fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
+   * Bump this whenever {@link #buildDenormalizedFields} materializes a new field or changes an
+   * existing one so {@code OpenSearchVectorService} rebuilds the chunk index (recreate + reindex,
+   * reusing stored embeddings) and swaps the aliases on the next ensure — without forcing a re-embed
+   * (the fingerprint is deliberately left untouched, see {@link #computeFingerprintForEntity}).
+   *
+   * <p>v2: analyzer parity — name/displayName gain an {@code om_analyzer} text root with
+   * {@code .keyword}/{@code .ngram}/{@code .compound} subfields, {@code columns.name} gains an
+   * {@code om_analyzer} root with {@code .keyword}/{@code .ngram} (no {@code .compound}, matching the
+   * entity mapping), and {@code description} switches to {@code om_analyzer} — so the lexical clauses
+   * score chunk docs the same. Analyzers and field types cannot change on a live index, so the rollout
+   * is an index recreate.
    */
-  public static final int CHUNK_DOC_VERSION = 1;
+  public static final int CHUNK_DOC_VERSION = 2;
 
   /**
    * Upper bound on the denormalized {@code description} copied onto each chunk doc. The full body
