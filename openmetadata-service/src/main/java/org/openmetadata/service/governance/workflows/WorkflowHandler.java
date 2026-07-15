@@ -4,6 +4,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.APPROVE_CON
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_APPROVE_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.LEGACY_REJECT_CONDITION;
 import static org.openmetadata.service.governance.workflows.Workflow.REJECT_CONDITION;
+import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
 
@@ -1352,28 +1353,49 @@ public class WorkflowHandler {
   }
 
   /**
-   * Returns workflow instance ID (if available as runtime variable) for an active task.
-   * Returns null if task is not active or the variable is missing.
+   * Returns workflow instance ID for an active task. Reads the modern task-scoped
+   * {@code workflowInstanceId} variable when present. Pre-2.0 umbrella workflows never
+   * set that variable — for those, fall back to the {@code workflowInstanceExecutionId}
+   * process variable and resolve the OM WorkflowInstance UUID via the state DAO.
+   * Returns null if the task is not active or neither variable is present.
    */
   public UUID getRuntimeWorkflowInstanceId(UUID customTaskId) {
+    UUID resolvedId = null;
     try {
       Task task = getTaskFromCustomTaskId(customTaskId);
-      if (task == null) {
-        return null;
+      if (task != null) {
+        Object workflowInstanceId =
+            processEngine.getTaskService().getVariable(task.getId(), "workflowInstanceId");
+        if (workflowInstanceId != null) {
+          resolvedId = UUID.fromString(workflowInstanceId.toString());
+        } else {
+          resolvedId = resolveInstanceIdViaExecutionVariable(task);
+        }
       }
-      Object workflowInstanceId =
-          processEngine.getTaskService().getVariable(task.getId(), "workflowInstanceId");
-      if (workflowInstanceId == null) {
-        return null;
-      }
-      return UUID.fromString(workflowInstanceId.toString());
     } catch (Exception e) {
       LOG.debug(
           "Could not fetch runtime workflowInstanceId for customTaskId '{}': {}",
           customTaskId,
           e.getMessage());
-      return null;
     }
+    return resolvedId;
+  }
+
+  private UUID resolveInstanceIdViaExecutionVariable(Task task) {
+    UUID resolvedId = null;
+    Object executionId =
+        processEngine
+            .getRuntimeService()
+            .getVariable(task.getExecutionId(), WORKFLOW_INSTANCE_EXECUTION_ID_VARIABLE);
+    if (executionId != null) {
+      CollectionDAO.WorkflowInstanceStateTimeSeriesDAO dao =
+          Entity.getCollectionDAO().workflowInstanceStateTimeSeriesDAO();
+      String instanceIdStr = dao.findWorkflowInstanceIdByExecutionId(executionId.toString());
+      if (instanceIdStr != null) {
+        resolvedId = UUID.fromString(instanceIdStr);
+      }
+    }
+    return resolvedId;
   }
 
   /**
