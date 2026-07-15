@@ -353,10 +353,6 @@ entities.forEach((EntityClass) => {
 
       await entity.visitEntityPage(page);
 
-      const isDbEntity = ['Table', 'Store Procedure'].includes(
-        entity.getType()
-      );
-
       // Navigate to the parent entity page (which already exposes
       // KnowledgePanel.DataProducts) and assign a domain there. For
       // Table/StoredProcedure that parent is the database, for ApiEndpoint the
@@ -383,10 +379,12 @@ entities.forEach((EntityClass) => {
       await assignSingleSelectDomain(page, domain.responseData);
       await waitForAllLoadersToDisappear(page);
 
-      // For service management pages KnowledgePanel.DataProducts is rendered
-      // inside ServiceMainTabContent, which lives in the entity-count tab
-      // (e.g. "ML Models", "Dashboards"). Click it so the panel becomes visible.
-      if (!isDbEntity && entity.serviceType) {
+      // Entities that navigate to a parent entity page (Table/StoredProcedure →
+      // database, ApiEndpoint → API collection) expose KnowledgePanel.DataProducts
+      // directly, so they skip this step. The rest land on the service crumb's
+      // management page, where the panel lives inside ServiceMainTabContent —
+      // reached via the entity-count tab (e.g. "Collections", "Dashboards").
+      if (!parentCrumbName && entity.serviceType) {
         const tabLabel = SERVICE_ENTITY_TAB[entity.serviceType];
 
         if (tabLabel) {
