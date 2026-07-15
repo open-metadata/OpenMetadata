@@ -16,6 +16,7 @@ import pytest
 from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import JSONDecodeError, ReadTimeout, SSLError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
@@ -37,7 +38,7 @@ def client():
 
 @pytest.fixture
 def checks(client):
-    return DBTCloudChecks(client=client)
+    return DBTCloudChecks(dbt=Borrowed.of(client))
 
 
 def test_dbtcloud_connection_is_base_connection():
@@ -64,15 +65,15 @@ def test_checks_expose_every_step():
     }
 
 
-def test_checks_run_against_the_connection_client():
-    """The provider checks the client BaseConnection owns, rather than opening a
+def test_checks_borrow_the_connection_client():
+    """The provider borrows the client BaseConnection owns, rather than opening a
     second one behind its back."""
     with patch(f"{CONNECTION_MODULE}.DBTCloudClient") as mock_builder:
         conn = DBTCloudConnection(MagicMock())
         provider = conn.checks()
 
-    assert provider._client is conn.client
-    mock_builder.assert_called_once()
+        assert provider._dbt.client is conn.client
+        mock_builder.assert_called_once()
 
 
 def test_check_access_proves_the_account_is_readable(checks, client):

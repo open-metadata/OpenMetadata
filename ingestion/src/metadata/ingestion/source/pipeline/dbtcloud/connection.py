@@ -45,6 +45,7 @@ from metadata.ingestion.source.pipeline.dbtcloud.client import (
 )
 
 if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
@@ -135,26 +136,25 @@ class DBTCloudChecks:
 
     ``CheckAccess`` is the gate: it reads one job, which proves the host, the token
     and the account id at once, so the later steps are skipped rather than each
-    re-dialling the API. Building the client opens no connection, so the gate stays
-    the first call that reaches dbt Cloud.
+    re-dialling the API. The client is borrowed from the connection that owns it.
     """
 
     errors = DBTCLOUD_ERRORS
 
-    def __init__(self, client: DBTCloudClient) -> None:
-        self._client = client
+    def __init__(self, dbt: Borrowed[DBTCloudClient]) -> None:
+        self._dbt = dbt
 
     @check(PipelineStep.CheckAccess)
     def check_access(self) -> Evidence:
         return verify_access(
-            self._client.test_check_access,
+            lambda: self._dbt.client.test_check_access(),  # noqa: PLW0108
             command="read one job of the configured account",
         )
 
     @check(PipelineStep.GetJobs)
     def get_jobs(self) -> Evidence:
         return fetch_list(
-            self._client.test_get_jobs,
+            lambda: self._dbt.client.test_get_jobs(),  # noqa: PLW0108
             noun="job",
             command="fetch the jobs of the account",
             empty_caveat=NO_JOBS_CAVEAT,
@@ -163,7 +163,7 @@ class DBTCloudChecks:
     @check(PipelineStep.GetRuns)
     def get_runs(self) -> Evidence:
         return fetch_list(
-            self._client.test_get_runs,
+            lambda: self._dbt.client.test_get_runs(),  # noqa: PLW0108
             noun="run",
             command="fetch the runs of the account",
         )
@@ -174,4 +174,4 @@ class DBTCloudConnection(BaseConnection[DBTCloudConnectionConfig, DBTCloudClient
         return DBTCloudClient(self.service_connection)
 
     def checks(self) -> ChecksProvider:
-        return DBTCloudChecks(client=self.client)
+        return DBTCloudChecks(dbt=self.borrow())
