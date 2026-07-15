@@ -74,6 +74,7 @@ from metadata.utils.logger import ingestion_logger
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
 
 logger = ingestion_logger()
@@ -160,15 +161,19 @@ def _summarize(rows: Sequence[object], noun: str) -> str:
 
 
 class DatabricksEngineWrapper:
-    """Engine wrapper caching the resolved catalog and schema. Lookups are lazy, so
-    constructing it touches no network and stays behind the CheckAccess gate."""
+    """Wraps the borrowed engine, caching the resolved catalog and schema. Lookups
+    are lazy, so constructing it touches no network and stays behind the gate."""
 
-    def __init__(self, engine: Engine):
-        self.engine = engine
+    def __init__(self, db: Borrowed[Engine]):
+        self._db = db
         self._inspector = None
         self.schemas = None
         self.first_schema = None
         self.first_catalog = None
+
+    @property
+    def engine(self) -> Engine:
+        return self._db.client
 
     @property
     def inspector(self):
@@ -275,10 +280,10 @@ class DatabricksChecks:
 
     errors = DATABRICKS_ERRORS
 
-    def __init__(self, client: Engine, service_connection: DatabricksConnectionConfig) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine], service_connection: DatabricksConnectionConfig) -> None:
+        self._db = db
         self.service_connection = service_connection
-        self._engine_wrapper = DatabricksEngineWrapper(client)
+        self._engine_wrapper = DatabricksEngineWrapper(db)
 
     def _first_catalog(self) -> str:
         """Resolve and cache the catalog to scope tag probes to."""
@@ -310,7 +315,7 @@ class DatabricksChecks:
             tcp_probe(host, port)
         except NetworkUnreachableError as error:
             raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
-        return run_sql(self.client, "SELECT 1", lambda _: "connection established")
+        return run_sql(self._db.client, "SELECT 1", lambda _: "connection established")
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
@@ -342,39 +347,39 @@ class DatabricksChecks:
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
         statement = DATABRICKS_SQL_STATEMENT_TEST.format(query_history=self.service_connection.queryHistoryTable)
-        return run_sql(self.client, statement, lambda _: "query history accessible")
+        return run_sql(self._db.client, statement, lambda _: "query history accessible")
 
     @check(DatabaseStep.GetViewDefinitions)
     def get_view_definitions(self) -> Evidence:
-        return run_sql(self.client, TEST_VIEW_DEFINITIONS, lambda _: "view definitions accessible")
+        return run_sql(self._db.client, TEST_VIEW_DEFINITIONS, lambda _: "view definitions accessible")
 
     @check(DatabaseStep.GetCatalogTags)
     def get_catalog_tags(self) -> Evidence:
         statement = TEST_CATALOG_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "catalog tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "catalog tags accessible")
 
     @check(DatabaseStep.GetSchemaTags)
     def get_schema_tags(self) -> Evidence:
         statement = TEST_SCHEMA_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "schema tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "schema tags accessible")
 
     @check(DatabaseStep.GetTableTags)
     def get_table_tags(self) -> Evidence:
         statement = TEST_TABLE_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "table tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "table tags accessible")
 
     @check(DatabaseStep.GetColumnTags)
     def get_column_tags(self) -> Evidence:
         statement = TEST_COLUMN_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "column tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "column tags accessible")
 
     @check(DatabaseStep.GetTableLineage)
     def get_table_lineage(self) -> Evidence:
-        return run_sql(self.client, TEST_TABLE_LINEAGE, lambda _: "table lineage accessible")
+        return run_sql(self._db.client, TEST_TABLE_LINEAGE, lambda _: "table lineage accessible")
 
     @check(DatabaseStep.GetColumnLineage)
     def get_column_lineage(self) -> Evidence:
-        return run_sql(self.client, TEST_COLUMN_LINEAGE, lambda _: "column lineage accessible")
+        return run_sql(self._db.client, TEST_COLUMN_LINEAGE, lambda _: "column lineage accessible")
 
 
 class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
@@ -391,6 +396,6 @@ class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
 
     def checks(self) -> ChecksProvider:
         return DatabricksChecks(
-            client=self.client,
+            db=self.borrow(),
             service_connection=self.service_connection,
         )

@@ -39,6 +39,7 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -356,6 +357,7 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
     if (!update) {
+      TaskFieldValidator.validateDataAccessRequestDuration(task);
       validateNoDuplicateActiveDataAccessRequest(task);
     }
 
@@ -439,11 +441,12 @@ public class TaskRepository extends EntityRepository<Task> {
     try {
       List<EntityReference> owners = Entity.getOwners(about);
       if (!nullOrEmpty(owners)) {
-        task.setAssignees(owners);
+        List<EntityReference> expandedAssignees = expandTeamsToUsers(owners);
+        task.setAssignees(expandedAssignees);
         LOG.debug(
             "Task {} defaulting assignees to entity owners: {}",
             task.getTaskId(),
-            owners.stream().map(EntityReference::getName).toList());
+            expandedAssignees.stream().map(EntityReference::getName).toList());
       }
     } catch (Exception e) {
       LOG.debug(
@@ -452,6 +455,31 @@ public class TaskRepository extends EntityRepository<Task> {
           about.getId(),
           e.getMessage());
     }
+  }
+
+  private List<EntityReference> expandTeamsToUsers(List<EntityReference> refs) {
+    List<EntityReference> result = new ArrayList<>();
+    for (EntityReference ref : refs) {
+      if (!Entity.TEAM.equals(ref.getType())) {
+        result.add(ref);
+        continue;
+      }
+      try {
+        Team team = Entity.getEntity(Entity.TEAM, ref.getId(), "users", Include.NON_DELETED);
+        if (!nullOrEmpty(team.getUsers())) {
+          result.addAll(team.getUsers());
+        }
+        // A team with no members intentionally contributes no assignees: for workflow-managed tasks
+        // (e.g. Data Access Requests) an empty assignee list triggers the node's
+        // emptyAssigneeStrategy
+        // (assignAdmins) in SetApprovalAssigneesImpl, so it routes to platform admins rather than
+        // being pinned to a member-less team.
+      } catch (Exception e) {
+        LOG.debug(
+            "Failed to expand team {} to users: {}", ref.getFullyQualifiedName(), e.getMessage());
+      }
+    }
+    return result;
   }
 
   /**

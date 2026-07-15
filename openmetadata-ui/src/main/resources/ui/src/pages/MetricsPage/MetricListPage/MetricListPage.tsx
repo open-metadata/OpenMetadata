@@ -15,12 +15,8 @@ import {
   Badge,
   Box,
   Button,
-  Dialog,
-  DialogTrigger,
   Dropdown,
   Input,
-  Modal,
-  ModalOverlay,
 } from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
@@ -50,6 +46,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -192,7 +189,6 @@ const MetricListPage = () => {
     }
   });
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeletingMetrics, setIsDeletingMetrics] = useState(false);
 
   // All filtering (search + status) and pagination is done server-side via the
@@ -412,15 +408,6 @@ const MetricListPage = () => {
     [metrics, selectedMetricIds]
   );
 
-  const canConfirmDelete = useMemo(() => {
-    const confirmation = deleteConfirmation.trim().toLowerCase();
-
-    return (
-      confirmation === String(selectedMetricIds.length) ||
-      confirmation === 'delete'
-    );
-  }, [deleteConfirmation, selectedMetricIds.length]);
-
   const persistVisibleColumns = useCallback((columns: MetricColumnId[]) => {
     setVisibleColumns(columns);
     localStorage.setItem(METRIC_COLUMN_STORAGE_KEY, JSON.stringify(columns));
@@ -471,12 +458,6 @@ const MetricListPage = () => {
     [debouncedSearchFetch, pageSize, statusFilter]
   );
 
-  const handleDeleteConfirmationChange = useCallback(
-    (value: string | ChangeEvent<HTMLInputElement>) =>
-      setDeleteConfirmation(getInputChangeValue(value)),
-    []
-  );
-
   const handleBulkDelete = useCallback(async () => {
     try {
       setIsDeletingMetrics(true);
@@ -489,7 +470,6 @@ const MetricListPage = () => {
         })
       );
       setSelectedMetricIds([]);
-      setDeleteConfirmation('');
       setIsDeleteDialogOpen(false);
       // Deletion can shrink the result set below the current page; return to the
       // first page so the user never lands on an empty page.
@@ -1019,81 +999,14 @@ const MetricListPage = () => {
           </div>
         </div>
       </div>
-      {isDeleteDialogOpen && (
-        <DialogTrigger
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={(isOpen) => {
-            setIsDeleteDialogOpen(isOpen);
-            if (!isOpen) {
-              setDeleteConfirmation('');
-            }
-          }}>
-          <span />
-          <ModalOverlay>
-            <Modal className="metric-delete-modal">
-              <Dialog
-                showCloseButton
-                title={t('message.delete-metrics-title', {
-                  count: selectedMetricIds.length,
-                })}
-                onClose={() => setIsDeleteDialogOpen(false)}>
-                <div className="metric-delete-dialog">
-                  <div className="metric-delete-icon">
-                    <Trash01 size={22} />
-                  </div>
-                  <p className="metric-delete-description">
-                    {t('message.delete-metrics-warning')}
-                  </p>
-                  <div className="metric-delete-list">
-                    {selectedMetrics.slice(0, 3).map((metric) => (
-                      <div className="metric-delete-list-item" key={metric.id}>
-                        <span className="metric-delete-list-name">
-                          {metric.name}
-                        </span>
-                        <span className="metric-delete-list-display">
-                          {getEntityName(metric)}
-                        </span>
-                      </div>
-                    ))}
-                    {selectedMetrics.length > 3 && (
-                      <div className="metric-delete-list-item">
-                        {t('label.plus-count-more', {
-                          count: selectedMetrics.length - 3,
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <Input
-                    data-testid="metric-delete-confirmation"
-                    label={t('message.delete-metrics-type-to-confirm', {
-                      count: selectedMetricIds.length,
-                    })}
-                    value={deleteConfirmation}
-                    onChange={handleDeleteConfirmationChange}
-                  />
-                  <div className="metric-delete-actions">
-                    <Button
-                      color="secondary"
-                      onPress={() => setIsDeleteDialogOpen(false)}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      className="metric-delete-confirm-button"
-                      color="primary"
-                      iconLeading={Trash01}
-                      isDisabled={!canConfirmDelete || isDeletingMetrics}
-                      onPress={handleBulkDelete}>
-                      {t('message.delete-metrics-action', {
-                        count: selectedMetricIds.length,
-                      })}
-                    </Button>
-                  </div>
-                </div>
-              </Dialog>
-            </Modal>
-          </ModalOverlay>
-        </DialogTrigger>
-      )}
+      <DeleteModal
+        entityTitle={t('label.metric-plural')}
+        isDeleting={isDeletingMetrics}
+        message={t('message.delete-metrics-warning')}
+        open={isDeleteDialogOpen}
+        onCancel={() => setIsDeleteDialogOpen(false)}
+        onDelete={handleBulkDelete}
+      />
     </PageLayoutV1>
   );
 };

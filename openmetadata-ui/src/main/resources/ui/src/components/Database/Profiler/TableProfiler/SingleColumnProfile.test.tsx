@@ -20,7 +20,6 @@ import { Operation } from '../../../../generated/entity/policies/accessControl/r
 import { DataType } from '../../../../generated/tests/testDefinition';
 import useCustomLocation from '../../../../hooks/useCustomLocation/useCustomLocation';
 import { getColumnProfilerList } from '../../../../rest/tableAPI';
-import '../../../../test/unit/mocks/mui.mock';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import SingleColumnProfile from './SingleColumnProfile';
 import { useTableProfiler } from './TableProfilerProvider';

@@ -657,13 +657,6 @@ class GlobalSettingsClassBase {
             icon: PreferencesSearchIcon,
           },
           {
-            label: t('label.ai'),
-            description: t('message.page-sub-header-for-ai-setting'),
-            isProtected: Boolean(isAdminUser),
-            key: `${GlobalSettingsMenuCategory.PREFERENCES}.${GlobalSettingOptions.AI_SETTINGS}`,
-            icon: MetadataIcon,
-          },
-          {
             label: t('label.lineage'),
             description: t(
               'message.page-sub-header-for-lineage-config-setting'
