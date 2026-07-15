@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "Es novo na plataforma?",
     "no-access-placeholder": "Non tes os permisos necesarios. Consulta co administrador para obter permisos <0>{{entity}}</0>.",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "Agora mesmo non hai actualizacións nos activos de datos que posúes ou segues. <0>{{explored}}</0> Mergúllate e reclama a propiedade ou segue os activos de datos que che interesen para manterte informado sobre as súas últimas actividades!",
     "no-activity-feed-description": "Aínda non hai actividade! Unha vez que comece, verás actualizacións aquí.",
     "no-activity-feed-title": "O teu feed está baleiro",

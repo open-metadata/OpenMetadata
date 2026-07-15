@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "ใหม่ต่อแพลตฟอร์มหรือไม่?",
     "no-access-placeholder": "คุณไม่มีสิทธิ์ที่จำเป็น โปรดติดต่อผู้ดูแลระบบเพื่อขอสิทธิ์ <0>{{entity}}</0>.",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "ตอนนี้ไม่มีข้อมูลอัปเดตในสินทรัพย์ข้อมูลที่คุณเป็นเจ้าของหรือติดตาม <0>{{explored}}</0> เริ่มต้นและรับสิทธิ์ความเป็นเจ้าของหรือติดตามสินทรัพย์ข้อมูลที่คุณสนใจเพื่อรับข้อมูลเกี่ยวกับกิจกรรมล่าสุด!",
     "no-activity-feed-description": "ยังไม่มีความเคลื่อนไหว! เมื่อมีกิจกรรม คุณจะเห็นการอัปเดตที่นี่",
     "no-activity-feed-title": "ฟีดของคุณว่างเปล่า",

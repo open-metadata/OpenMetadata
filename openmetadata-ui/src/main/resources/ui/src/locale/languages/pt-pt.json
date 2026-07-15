@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "Novo na plataforma?",
     "no-access-placeholder": "Não tem as permissões necessárias. Verifique com o administrador para obter a permissão de <0>{{entity}}</0>.",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "Neste momento, não há atualizações nos ativos de dados que possui ou segue. <0>{{explored}}</0> Mergulhe e reivindique a propriedade ou siga os ativos de dados que lhe interessam para se manter informado sobre as suas atividades mais recentes!",
     "no-activity-feed-description": "Ainda sem atividade! Assim que começar, verá as atualizações aqui.",
     "no-activity-feed-title": "O seu feed está vazio",

@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "このプラットフォームを初めて利用する方へ",
     "no-access-placeholder": "必要な権限がありません。管理者に連絡して <0>{{entity}}</0> の権限を取得してください。",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "あなたが所有している、またはフォローしているデータ資産にアクティビティが見つかりませんでした。",
     "no-activity-feed-description": "まだアクティビティがありません！何か動きがあれば、ここに表示されます。",
     "no-activity-feed-title": "フィードは空です",

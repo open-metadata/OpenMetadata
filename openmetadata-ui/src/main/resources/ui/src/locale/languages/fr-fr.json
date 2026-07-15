@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "Nouveau sur la plateforme ?",
     "no-access-placeholder": "Vous n'avez pas les autorisations nécessaires. Veuillez contacter l'administrateur pour obtenir l'autorisation <0>{{entity}}</0>.",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "Nous n'avons trouvé aucune activité dans les actifs de données que vous possédez ou ceux que vous suivez actuellement.",
     "no-activity-feed-description": "Aucune activité pour le moment ! Une fois que cela commencera, vous verrez des mises à jour ici.",
     "no-activity-feed-title": "Votre fil est vide",

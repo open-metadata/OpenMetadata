@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "您是平台新用户？",
     "no-access-placeholder": "您没有所需的权限。请联系管理员以获取<0>{{entity}}</0>的权限.",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "您拥有或者跟进的数据集近期没有活动信息",
     "no-activity-feed-description": "暂无活动！一旦有更新，您将在这里看到。",
     "no-activity-feed-title": "您的动态为空",

@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "Ny på plattformen?",
     "no-access-placeholder": "Du har inte nödvändiga behörigheter. Kontakta administratören för att få behörigheten <0>{{entity}}</0>.",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "Just nu finns det inga uppdateringar i de datatillgångar du äger eller följer. <0>{{explored}}</0> Dyk in och ta ägarskap eller följ de datatillgångar som intresserar dig för att hålla dig informerad om deras senaste aktiviteter!",
     "no-activity-feed-description": "Ingen aktivitet ännu! När saker och ting kommer igång ser du uppdateringar här.",
     "no-activity-feed-title": "Ditt flöde är tomt",

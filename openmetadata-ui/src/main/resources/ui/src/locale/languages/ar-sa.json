@@ -3557,7 +3557,7 @@
     "new-to-the-platform": "هل أنت جديد على المنصة؟",
     "no-access-placeholder": "ليس لديك الصلاحيات اللازمة. يرجى التحقق مع المسؤول للحصول على صلاحية <0>{{entity}}</0>.",
     "no-active-incidents": "No active incidents",
-    "no-active-incidents-description": "Incidents open automatically when a test fails, so you can track and resolve them — they'll show up here when they do.",
+    "no-active-incidents-description": "When a test case fails, an incident is created automatically and appears here so you can track and resolve it.",
     "no-activity-feed": "في الوقت الحالي، لا توجد تحديثات في أصول البيانات التي تملكها أو تتابعها. <0>{{explored}}</0> انطلق وطالب بالملكية أو اتبع أصول البيانات التي تهمك لتبقى على اطلاع بآخر أنشطتها!",
     "no-activity-feed-description": "لا يوجد نشاط بعد! بمجرد أن تبدأ الأمور، سترى التحديثات هنا.",
     "no-activity-feed-title": "موجزك فارغ",
