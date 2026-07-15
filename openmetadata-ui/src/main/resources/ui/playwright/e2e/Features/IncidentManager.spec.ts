@@ -1124,11 +1124,11 @@ test.describe('Incident Manager', PLAYWRIGHT_INGESTION_TAG_OBJ, () => {
       .click();
     await nonTestCaseFilterRes;
 
-    await page.click('[data-testid="mui-date-picker-menu"]');
+    await page.getByTestId('date-picker-menu').click();
     const timeSeriesFilterRes = page.waitForResponse(
       '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list?*'
     );
-    await page.getByTestId('date-range-option-yesterday').click();
+    await page.getByRole('menuitem', { name: 'Yesterday' }).click();
     await timeSeriesFilterRes;
 
     for (const testCase of table1.testCasesResponseData) {

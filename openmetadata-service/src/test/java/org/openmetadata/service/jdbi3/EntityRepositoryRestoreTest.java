@@ -40,6 +40,7 @@ import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
 
@@ -235,6 +236,25 @@ class EntityRepositoryRestoreTest {
 
     verify(pipelineDAO, atLeastOnce()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
+  }
+
+  @Test
+  void invalidate_clearsRegisteredCacheLayers() {
+    CountingPipelineRepo repo = new CountingPipelineRepo(pipelineDAO);
+    Pipeline pipeline =
+        new Pipeline()
+            .withId(UUID.randomUUID())
+            .withName("pipeline")
+            .withFullyQualifiedName("service.pipeline");
+
+    try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
+      repo.invalidate(pipeline);
+
+      cacheBundle.verify(
+          () ->
+              CacheBundle.invalidateEntity(
+                  Entity.PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName()));
+    }
   }
 
   @Test
