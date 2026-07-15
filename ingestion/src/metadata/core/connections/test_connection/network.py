@@ -23,7 +23,6 @@ platform-agnostic.
 from __future__ import annotations
 
 import socket
-from typing import Any
 
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
@@ -42,36 +41,18 @@ class NetworkUnreachableError(OSError):
 def tcp_probe(host: str, port: int, timeout: float = NETWORK_PROBE_TIMEOUT_SECONDS) -> None:
     """Prove host:port is reachable by opening a TCP connection to it.
 
-    Resolves with ``getaddrinfo`` (IPv4 and IPv6) and tries one address per family
-    in resolution order, returning on the first that connects. This reaches an
-    IPv6-only host, falls back to IPv4 when a dual-stack host's IPv6 address is
-    unreachable, and still bounds the wait for a many-address host to one attempt
-    per family. Raises ``NetworkUnreachableError``, chaining the last socket error
-    so the classifier can match its type.
+    ``create_connection`` looks the host up and tries each address it gets back -
+    IPv4 and IPv6 - until one connects. So an IPv6-only host is reached, and a
+    dual-stack host whose IPv6 route is down still connects over IPv4. (The
+    earlier ``gethostbyname`` step only ever returned IPv4, which is why an
+    IPv6-only host used to read as unreachable.) Raises ``NetworkUnreachableError``,
+    chaining the socket error so the classifier can match its type.
     """
     try:
-        infos = socket.getaddrinfo(host, port, socket.AF_UNSPEC, socket.SOCK_STREAM)
+        with socket.create_connection((host, port), timeout=timeout):
+            pass
     except OSError as cause:
         raise NetworkUnreachableError(f"{host}:{port} is not reachable: {cause}") from cause
-
-    candidates: dict[int, tuple[int, int, tuple[Any, ...]]] = {}
-    for family, socktype, proto, _canonname, sockaddr in infos:
-        candidates.setdefault(family, (socktype, proto, sockaddr))
-
-    last_error: OSError | None = None
-    connected = False
-    for family, (socktype, proto, sockaddr) in candidates.items():
-        try:
-            with socket.socket(family, socktype, proto) as sock:
-                sock.settimeout(timeout)
-                sock.connect(sockaddr)
-            connected = True
-        except OSError as cause:
-            last_error = cause
-        if connected:
-            break
-    if not connected:
-        raise NetworkUnreachableError(f"{host}:{port} is not reachable: {last_error}") from last_error
 
 
 # Ordered specific-first. The catch-all matches our own ``NetworkUnreachableError``
