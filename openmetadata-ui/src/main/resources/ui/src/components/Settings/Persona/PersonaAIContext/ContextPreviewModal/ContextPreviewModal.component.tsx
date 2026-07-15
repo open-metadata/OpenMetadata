@@ -283,7 +283,6 @@ export const ContextPreviewModal = ({
           </Box>
           {headings.map((heading, index) => (
             <Typography
-              ellipsis
               as="button"
               className={getHeadingClassName(
                 activeHeading === index,
