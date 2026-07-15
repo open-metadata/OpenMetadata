@@ -98,9 +98,13 @@ public class GlossaryTermMoveApprovalIT {
   private static final String WORKFLOW_STATUS_FINISHED = "FINISHED";
   private static final Set<String> TERMINAL_WORKFLOW_STATUSES =
       Set.of("FINISHED", "EXCEPTION", "FAILURE");
-  private static final Duration TASK_TIMEOUT = Duration.ofMinutes(3);
-  private static final Duration MOVE_TIMEOUT = Duration.ofMinutes(2);
-  private static final Duration STATUS_TIMEOUT = Duration.ofMinutes(2);
+  // Every wait below is gated on the async Flowable job executor (BPMN trigger → approval task →
+  // status transition → workflow completion), which contends with the rest of the concurrent
+  // suite. Under nightly load any one of these could lose the race first, so all budgets are
+  // generous rather than only the approval-task wait that happened to time out.
+  private static final Duration TASK_TIMEOUT = Duration.ofMinutes(5);
+  private static final Duration MOVE_TIMEOUT = Duration.ofMinutes(3);
+  private static final Duration STATUS_TIMEOUT = Duration.ofMinutes(3);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
 
   protected SharedEntities shared() {
