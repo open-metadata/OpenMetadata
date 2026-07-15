@@ -339,7 +339,7 @@ test.describe('Context Center Articles', () => {
     await scrollListingToCard(page, articleEntity.responseData.displayName);
 
     await verifyArticleSearch(page, 'zzznomatchzzz_playwright');
-    await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+    await expect(page.getByText('No matching results')).toBeVisible({
       timeout: 8000,
     });
 
