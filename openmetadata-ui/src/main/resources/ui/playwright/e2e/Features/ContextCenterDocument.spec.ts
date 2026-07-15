@@ -347,7 +347,7 @@ test.describe('Context Center - Documents Page', () => {
       const docNoMatchRes = await docNoMatchResPromise;
       expect(docNoMatchRes.status()).toBe(200);
 
-      await expect(page.getByTestId('no-data-placeholder')).toBeVisible({
+      await expect(page.getByText('No matching results')).toBeVisible({
         timeout: 8000,
       });
     });
@@ -420,7 +420,7 @@ test.describe('Context Center - Documents Page', () => {
     await expect(modal).toBeVisible();
 
     const hint = modal.locator('[class*="hint"], p').filter({
-      hasText: /svg|png|jpg|gif|5mb/i,
+      hasText: /supports all file types/i,
     });
     await expect(hint.first()).toBeVisible();
 

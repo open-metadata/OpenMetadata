@@ -874,7 +874,7 @@ test.describe(
         await searchResPromise;
         await waitForAllLoadersToDisappear(page);
 
-        await expect(page.getByText('No Memories are available')).toBeVisible();
+        await expect(page.getByText('No matching results')).toBeVisible();
       });
     });
 
@@ -1764,7 +1764,9 @@ test.describe(
 
         // "Clear All" appears since an asset filter is now active
         await expect(
-          page.getByRole('button', { name: /clear all/i })
+          page
+            .getByTestId('empty-placeholder')
+            .getByRole('button', { name: 'Clear All' })
         ).toBeVisible();
 
         // Reopen the same filter trigger (now showing the selected asset's
@@ -1787,7 +1789,9 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByRole('button', { name: /clear all/i })
+          page
+            .getByTestId('empty-placeholder')
+            .getByRole('button', { name: 'Clear All' })
         ).not.toBeVisible();
       });
     });
