@@ -472,6 +472,7 @@ export const getNodeLineageData = (node: EntityReference) => {
       'fields',
       'serviceType',
       'testSuite',
+      'lineageSqlQueries',
     ]) as unknown as LineageEntityReference),
     ...{ flattenChildren: getFlattenChildrenFromEntity(node) },
   };
