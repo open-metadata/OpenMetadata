@@ -38,7 +38,13 @@ export const DataQualityContext = createContext<DataQualityContextInterface>(
   {} as DataQualityContextInterface
 );
 
-const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
+const DataQualityProvider = ({
+  children,
+  createActions,
+}: {
+  children: React.ReactNode;
+  createActions?: DataQualityContextInterface['createActions'];
+}) => {
   const { tab: activeTab = DataQualityPageTabs.TEST_CASES } =
     useRequiredParams<{
       tab: DataQualityPageTabs;
@@ -74,8 +80,6 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     useState<TestSummary>(INITIAL_TEST_SUMMARY);
   const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
     useState(true);
-  const [createActions, setCreateActions] =
-    useState<DataQualityContextInterface['createActions']>();
 
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
@@ -86,7 +90,6 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       isTestCaseSummaryLoading,
       activeTab,
       createActions,
-      setCreateActions,
     };
   }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 

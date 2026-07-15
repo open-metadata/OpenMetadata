@@ -36,9 +36,6 @@ export interface DataQualityContextInterface {
     canCreateTestCase?: boolean;
     canCreateBundleSuite?: boolean;
   };
-  setCreateActions?: (
-    actions: DataQualityContextInterface['createActions']
-  ) => void;
 }
 
 export type DataQualityDashboardChartFilters = {

@@ -21,6 +21,7 @@ import {
 import { MemoryRouter, Route, Routes } from 'react-router-dom';
 import DataQualityPage from './DataQualityPage';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
+import DataQualityProvider from './DataQualityProvider';
 
 const DATA_QUALITY_TEST_PATHS = {
   testCases: `/data-quality/${DataQualityPageTabs.TEST_CASES}`,
@@ -51,17 +52,12 @@ const renderDataQualityPage = (initialPath: string) =>
 // Mock navigation function
 const mockNavigate = jest.fn();
 
-// mock components
-const mockSetCreateActions = jest.fn();
-
 jest.mock('./DataQualityProvider', () => ({
   __esModule: true,
   default: jest
     .fn()
     .mockImplementation(({ children }) => <div>{children}</div>),
-  useDataQualityProvider: jest.fn().mockImplementation(() => ({
-    setCreateActions: mockSetCreateActions,
-  })),
+  useDataQualityProvider: jest.fn().mockImplementation(() => ({})),
 }));
 jest.mock('../../components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
@@ -260,13 +256,16 @@ describe('DataQualityPage', () => {
   });
 
   describe('DataQualityContext create-action registration', () => {
-    it('should register create handlers and permissions into DataQualityContext', async () => {
+    it('should pass create handlers and permissions into DataQualityProvider', async () => {
       renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
 
       await screen.findByTestId('data-insight-container');
 
       await waitFor(() => {
-        expect(mockSetCreateActions).toHaveBeenCalledWith(
+        const calls = (DataQualityProvider as unknown as jest.Mock).mock.calls;
+        const lastProps = calls[calls.length - 1][0];
+
+        expect(lastProps.createActions).toEqual(
           expect.objectContaining({
             canCreateTestCase: true,
             canCreateBundleSuite: true,
