@@ -92,7 +92,11 @@ const fullFile: ContextFile = {
 describe('DocumentPreviewPanel', () => {
   it('renders the preview panel container', () => {
     render(
-      <DocumentPreviewPanel file={baseFile} url="http://x" onClose={jest.fn()} />
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
     );
 
     expect(screen.getByTestId('document-preview-panel')).toBeInTheDocument();
@@ -100,7 +104,11 @@ describe('DocumentPreviewPanel', () => {
 
   it('renders the file name', () => {
     render(
-      <DocumentPreviewPanel file={baseFile} url="http://x" onClose={jest.fn()} />
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
     );
 
     expect(screen.getByTestId('preview-file-name')).toHaveTextContent(
@@ -124,7 +132,11 @@ describe('DocumentPreviewPanel', () => {
 
   it('renders the file icon based on file extension', () => {
     render(
-      <DocumentPreviewPanel file={baseFile} url="http://x" onClose={jest.fn()} />
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
     );
 
     expect(screen.getByTestId('file-icon-pdf')).toBeInTheDocument();
@@ -132,7 +144,11 @@ describe('DocumentPreviewPanel', () => {
 
   it('renders the formatted file size', () => {
     render(
-      <DocumentPreviewPanel file={baseFile} url="http://x" onClose={jest.fn()} />
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
     );
 
     expect(screen.getByText('2.0 MB')).toBeInTheDocument();
@@ -140,7 +156,11 @@ describe('DocumentPreviewPanel', () => {
 
   it('renders folder, updated-by and updated-at rows when present', () => {
     render(
-      <DocumentPreviewPanel file={fullFile} url="http://x" onClose={jest.fn()} />
+      <DocumentPreviewPanel
+        file={fullFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
     );
 
     expect(screen.getByText('Reports')).toBeInTheDocument();
@@ -149,7 +169,11 @@ describe('DocumentPreviewPanel', () => {
 
   it('does not render folder, updated-by or updated-at rows when absent', () => {
     render(
-      <DocumentPreviewPanel file={baseFile} url="http://x" onClose={jest.fn()} />
+      <DocumentPreviewPanel
+        file={baseFile}
+        url="http://x"
+        onClose={jest.fn()}
+      />
     );
 
     expect(screen.queryByText('Reports')).not.toBeInTheDocument();
