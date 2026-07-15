@@ -171,7 +171,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>description</div>)
 );
 
