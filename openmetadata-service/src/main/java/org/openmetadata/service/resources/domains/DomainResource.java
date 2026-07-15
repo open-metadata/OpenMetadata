@@ -488,6 +488,81 @@ public class DomainResource extends EntityResource<Domain, DomainRepository> {
         .build();
   }
 
+  @PUT
+  @Path("/{name}/members/add")
+  @Operation(
+      operationId = "bulkAddMembers",
+      summary = "Bulk Add Members",
+      description =
+          "Bulk add users or teams as members of the domain. The `assets` field must contain "
+              + "entity references of type `user` or `team` only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "A reference is not of type `user` or `team`"),
+        @ApiResponse(responseCode = "404", description = "Domain for instance {name} is not found")
+      })
+  public Response bulkAddMembers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the domain", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return Response.ok()
+        .entity(
+            repository.bulkAddMembers(name, request, securityContext.getUserPrincipal().getName()))
+        .build();
+  }
+
+  @PUT
+  @Path("/{name}/members/remove")
+  @Operation(
+      operationId = "bulkRemoveMembers",
+      summary = "Bulk Remove Members",
+      description =
+          "Bulk remove users or teams from the domain's members. The `assets` field must contain "
+              + "entity references of type `user` or `team` only.",
+      responses = {
+        @ApiResponse(
+            responseCode = "200",
+            description = "OK",
+            content =
+                @Content(
+                    mediaType = "application/json",
+                    schema = @Schema(implementation = BulkOperationResult.class))),
+        @ApiResponse(
+            responseCode = "400",
+            description = "A reference is not of type `user` or `team`"),
+        @ApiResponse(responseCode = "404", description = "Domain for instance {name} is not found")
+      })
+  public Response bulkRemoveMembers(
+      @Context UriInfo uriInfo,
+      @Context SecurityContext securityContext,
+      @Parameter(description = "Name of the domain", schema = @Schema(type = "string"))
+          @PathParam("name")
+          String name,
+      @Valid BulkAssets request) {
+    OperationContext operationContext =
+        new OperationContext(entityType, MetadataOperation.EDIT_ALL);
+    authorizer.authorize(securityContext, operationContext, getResourceContextByName(name));
+    return Response.ok()
+        .entity(
+            repository.bulkRemoveMembers(
+                name, request, securityContext.getUserPrincipal().getName()))
+        .build();
+  }
+
   @PATCH
   @Path("/{id}")
   @Operation(

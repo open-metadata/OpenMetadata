@@ -58,6 +58,7 @@ import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.cache.CachedRelationshipDao;
+import org.openmetadata.service.exception.BadRequestException;
 import org.openmetadata.service.resources.domains.DomainResource;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 import org.openmetadata.service.search.DefaultInheritedFieldEntitySearch;
@@ -78,6 +79,7 @@ public class DomainRepository extends EntityRepository<Domain> {
   private static final String UPDATE_FIELDS = "parent,children,experts";
   private static final String FIELD_CHILDREN_COUNT = "childrenCount";
   private static final String DESCENDANT_WILDCARD = "%";
+  private static final Set<String> ALLOWED_MEMBER_TYPES = Set.of(Entity.USER, Entity.TEAM);
 
   private InheritedFieldEntitySearch inheritedFieldEntitySearch;
   private final ThreadLocal<DomainHardDeleteContext> domainHardDeleteSubtree = new ThreadLocal<>();
@@ -295,6 +297,35 @@ public class DomainRepository extends EntityRepository<Domain> {
       String domainName, BulkAssets request, String userName) {
     Domain domain = getByName(null, domainName, getFields("id"));
     return bulkAssetsOperation(domain.getId(), DOMAIN, Relationship.HAS, request, false, userName);
+  }
+
+  public BulkOperationResult bulkAddMembers(
+      String domainName, BulkAssets request, String userName) {
+    Domain domain = getByName(null, domainName, getFields("id"));
+    validateMemberReferences(request);
+    // Members are multi-domain: bypass the domain-asset override above, whose
+    // cleanupOldDomain() would strip the user/team from every other domain.
+    return super.bulkAssetsOperation(
+        domain.getId(), DOMAIN, Relationship.HAS, request, true, userName);
+  }
+
+  public BulkOperationResult bulkRemoveMembers(
+      String domainName, BulkAssets request, String userName) {
+    Domain domain = getByName(null, domainName, getFields("id"));
+    validateMemberReferences(request);
+    return super.bulkAssetsOperation(
+        domain.getId(), DOMAIN, Relationship.HAS, request, false, userName);
+  }
+
+  private void validateMemberReferences(BulkAssets request) {
+    for (EntityReference ref : listOrEmpty(request.getAssets())) {
+      if (ref.getType() == null || !ALLOWED_MEMBER_TYPES.contains(ref.getType())) {
+        throw BadRequestException.of(
+            String.format(
+                "Domain members must be of type %s; got '%s'",
+                ALLOWED_MEMBER_TYPES, ref.getType()));
+      }
+    }
   }
 
   public ResultList<EntityReference> getDomainAssets(UUID domainId, int limit, int offset) {
