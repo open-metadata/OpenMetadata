@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "Bu veriyi görüntülemek için gerekli izinlere sahip değilsiniz.",
     "no-persona-assigned": "Persona atanmadı",
     "no-persona-message": "Açılış sayfasını özelleştirmek için personalar gereklidir. Lütfen <0>{{link}}</0> adresinden bir persona oluşturun.",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "Soy görüntülenecek port yok",
     "no-profiler-card-message-with-link": "Tablonuz hakkında değerli bilgiler keşfetmek için profilleyiciyi etkinleştirin. Kurulum adımları için belgelerimizi <0>buradan</0> ziyaret edin",
     "no-profiler-message": "Profilleyici iş akışını çalıştırarak tablonuzun metriklerini keşfedin. Satır Sayısı, Tablo Güncellemeleri, Hacim Değişiklikleri ve daha fazlasını göreceksiniz. Kurulum adımları için belgelerimizi ziyaret edin ",

@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "Sie verfügen nicht über die erforderlichen Berechtigungen, um diese Daten anzuzeigen.",
     "no-persona-assigned": "Keine persona zugewiesen",
     "no-persona-message": "Personas sind erforderlich, um die Landingpage anzupassen. Bitte erstellen Sie eine Persona unter <0>{{link}}</0>.",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "Für die Anzeige der Herkunft sind keine Ports verfügbar",
     "no-profiler-card-message-with-link": "Aktivieren Sie den Profiler, um wertvolle Erkenntnisse über Ihren Tabelle zu entdecken. Besuchen Sie unsere Dokumentation für Einrichtungsschritte <0>hier</0>",
     "no-profiler-message": "Erkunden Sie die Metriken Ihrer Tabelle, indem Sie den Profiler-Workflow ausführen. Sie werden sehen: Zeilenanzahl, Tabellenaktualisierungen, Volumenänderungen und vieles mehr. Besuchen Sie unsere Dokumentation für Einrichtungsschritte ",

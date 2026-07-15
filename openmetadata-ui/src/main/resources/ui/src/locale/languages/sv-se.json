@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "Du har inte de nödvändiga behörigheterna för att visa dessa data.",
     "no-persona-assigned": "Ingen persona tilldelad",
     "no-persona-message": "Personas är nödvändiga för att anpassa landningssidan. Skapa en persona från <0>{{link}}</0>",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "Inga portar tillgängliga för att visa härkomst",
     "no-profiler-card-message-with-link": "Aktivera profileraren för att upptäcka värdefulla insikter om din tabell. Besök vår dokumentation för installationssteg <0>här</0>",
     "no-profiler-message": "Utforska din tabells mätvärden genom att köra profilerararbetsflödet. Du ser radantal, tabelluppdateringar, volymförändringar och mer. Besök vår dokumentation för installationssteg ",

@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "Vous n'avez pas les autorisations nécessaires pour afficher ces données.",
     "no-persona-assigned": "Pas de persona assigné",
     "no-persona-message": "Des Personas sont nécessaires pour personnaliser la page d'accueil. Veuillez créer un Persona ici <0>{{link}}</0>",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "Aucun port disponible pour afficher la lignée",
     "no-profiler-card-message-with-link": "Activer le profiler pour découvrir des insights précieux sur votre table. Visitez notre documentation pour les étapes de configuration <0>ici</0>",
     "no-profiler-message": "Explorez les métriques de votre table en exécutant le workflow de profilage. Vous verrez: Nombre de lignes, Mises à jour de tables, Changements de volume, et plus encore. Visitez notre documentation pour les étapes de configuration ",

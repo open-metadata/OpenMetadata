@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "이 데이터를 볼 수 있는 필요한 권한이 없습니다.",
     "no-persona-assigned": "할당된 페르소나 없음",
     "no-persona-message": "랜딩 페이지를 사용자 정의하려면 페르소나가 필요합니다. <0>{{link}}</0>에서 페르소나를 만들어주세요",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "리니지를 표시할 포트가 없습니다",
     "no-profiler-card-message-with-link": "프로파일러를 활성화하여 테이블에 대한 유용한 인사이트를 발견하세요. 설정 방법은 <0>여기</0>에서 문서를 참고하세요.",
     "no-profiler-message": "데이터 프로파일러는 수집의 선택적 구성입니다. 문서를 따라 데이터 프로파일러를 활성화하세요.",

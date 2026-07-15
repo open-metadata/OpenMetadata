@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "このデータを表示する権限がありません。",
     "no-persona-assigned": "ペルソナが割り当てられていません",
     "no-persona-message": "ペルソナはランディングページのカスタマイズに必要です。<0>{{link}}</0> から作成してください。",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "リネージを表示するために使用できるポートがありません",
     "no-profiler-card-message-with-link": "プロファイラーを有効にして、テーブルに関する洞察を得ましょう。手順は <0>こちら</0> から。",
     "no-profiler-message": "テーブルのメトリクスを実行するプロファイラーを設定して探索しましょう。行数、更新頻度、ボリュームの変化などを確認できます。開始手順は次の通りです。",

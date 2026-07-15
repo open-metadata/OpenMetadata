@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "Non tes os permisos necesarios para ver estes datos.",
     "no-persona-assigned": "Non se asignou ningunha persoa",
     "no-persona-message": "As persoas son necesarias para personalizar a páxina de inicio. Crea unha persoa desde <0>{{link}}</0>",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "Non hai portos dispoñibles para mostrar a liñaxe",
     "no-profiler-card-message-with-link": "Activa o perfilador para descubrir valiosas conclusións sobre a túa táboa. Visita a nosa documentación para os pasos de configuración <0>aquí</0>",
     "no-profiler-message": "Explora as métricas da túa táboa executando o flujo de traballo do perfilador. Verás: Número de filas, Actualizacións de táboas, Cambios de volume, e máis. Visita a nosa documentación para os pasos de configuración ",

@@ -3659,6 +3659,7 @@
     "no-permission-to-view": "您沒有檢視此資料所需的權限。",
     "no-persona-assigned": "未指派角色",
     "no-persona-message": "需要角色來自訂登陸頁面。請從 <0>{{link}}</0> 建立一個角色",
+    "no-pipelines-yet": "No pipelines yet",
     "no-ports-to-display-lineage": "沒有可顯示沿襲的通訊埠",
     "no-profiler-card-message-with-link": "啟用分析器以探索關於您資料表的寶貴洞察。請造訪我們的文件以了解設定步驟 <0>這裡</0>",
     "no-profiler-message": "透過執行分析器工作流程來探索您資料表的指標。您將看到資料列計數、資料表更新、量變更等等。請造訪我們的文件以了解設定步驟",
