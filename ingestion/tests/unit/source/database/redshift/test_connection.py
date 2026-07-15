@@ -20,6 +20,7 @@ import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
@@ -172,7 +173,7 @@ def test_get_queries_failure_reports_the_attempted_command_as_evidence():
     # CheckError wrapping; get_queries must re-raise with the statement so the
     # failed step still shows the command it ran, like every other step.
     engine = MagicMock()
-    checks = RedshiftChecks(client=engine)
+    checks = RedshiftChecks(db=Borrowed.of(engine))
     with (
         patch(f"{CONNECTION_MODULE}.get_redshift_instance_type", return_value=RedshiftInstanceType.PROVISIONED),
         patch(f"{CONNECTION_MODULE}.run_sql", side_effect=SourceConnectionException("missing privilege")) as mock_run,
@@ -186,7 +187,7 @@ def test_get_queries_failure_reports_the_attempted_command_as_evidence():
 
 def test_checks_cover_exactly_the_seeded_steps():
     engine = create_engine("sqlite://", poolclass=StaticPool)
-    checks = RedshiftChecks(client=engine)
+    checks = RedshiftChecks(db=Borrowed.of(engine))
     collected = collect_checks(checks)
     assert set(collected.keys()) == {
         DatabaseStep.CheckAccess,
@@ -202,7 +203,7 @@ def test_check_access_reports_unreachable_host_as_network_failure():
     client = MagicMock()
     client.url.host = "cluster.invalid"
     client.url.port = 5439
-    checks = RedshiftChecks(client=client)
+    checks = RedshiftChecks(db=Borrowed.of(client))
     probe_error = NetworkUnreachableError("cluster.invalid:5439 is not reachable")
     probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
     with (
@@ -228,5 +229,5 @@ def test_instance_type_probe_is_run_lazily_not_at_construction():
         side_effect=lambda engine: calls.append(1),
     ):
         engine = create_engine("sqlite://", poolclass=StaticPool)
-        RedshiftChecks(client=engine)
+        RedshiftChecks(db=Borrowed.of(engine))
         assert calls == []
