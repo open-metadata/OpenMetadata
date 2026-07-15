@@ -41,15 +41,19 @@ class NetworkUnreachableError(OSError):
 def tcp_probe(host: str, port: int, timeout: float = NETWORK_PROBE_TIMEOUT_SECONDS) -> None:
     """Prove host:port is reachable by opening a TCP connection to it.
 
-    Resolves to a single IPv4 address and connects once, so an unreachable multi-IP
-    host fails within ``timeout`` instead of retrying every IP. An IPv6-only host
-    reads as unreachable. Raises ``NetworkUnreachableError``, chaining the socket
-    error so the classifier can match its type.
+    Resolves with ``getaddrinfo`` (IPv4 or IPv6) and connects to the first address
+    only, so an unreachable multi-address host fails within ``timeout`` instead of
+    retrying every address, while an IPv6-only host still resolves. Raises
+    ``NetworkUnreachableError``, chaining the socket error so the classifier can
+    match its type.
     """
     try:
-        address = socket.gethostbyname(host)
-        with socket.create_connection((address, port), timeout=timeout):
-            pass
+        family, socktype, proto, _canonname, sockaddr = socket.getaddrinfo(
+            host, port, socket.AF_UNSPEC, socket.SOCK_STREAM
+        )[0]
+        with socket.socket(family, socktype, proto) as sock:
+            sock.settimeout(timeout)
+            sock.connect(sockaddr)
     except OSError as cause:
         raise NetworkUnreachableError(f"{host}:{port} is not reachable: {cause}") from cause
 

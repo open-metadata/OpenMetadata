@@ -11,7 +11,7 @@
 """Unit tests for the TCP reachability preflight and its diagnosis pack."""
 
 import socket
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 import pytest
 
@@ -51,22 +51,44 @@ def test_tcp_probe_raises_network_error_when_port_is_closed(closed_port):
     assert isinstance(exc.value.__cause__, ConnectionRefusedError)
 
 
-def test_tcp_probe_connects_to_one_resolved_ip_bounded_by_timeout():
-    # Resolving to a single IP first means one connect attempt at the given
-    # timeout, so a multi-IP host on a dead port cannot multiply the wait.
+def test_tcp_probe_connects_once_to_the_first_resolved_address():
+    # Connecting to only the first resolved address means one connect attempt at
+    # the given timeout, so a multi-address host on a dead port cannot multiply
+    # the wait. The first address (here IPv6) is the one dialed.
+    v6 = (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::1", 443, 0, 0))
+    v4 = (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.5", 443))
+    sock = MagicMock()
+    sock.__enter__.return_value = sock
     with (
-        patch("socket.gethostbyname", return_value="10.0.0.5") as resolve,
-        patch("socket.create_connection") as connect,
+        patch("socket.getaddrinfo", return_value=[v6, v4]) as resolve,
+        patch("socket.socket", return_value=sock) as make_socket,
     ):
-        tcp_probe("many-ips.example.com", 443, timeout=20)
+        tcp_probe("dual-stack.example.com", 443, timeout=20)
 
-    resolve.assert_called_once_with("many-ips.example.com")
-    connect.assert_called_once_with(("10.0.0.5", 443), timeout=20)
+    resolve.assert_called_once_with("dual-stack.example.com", 443, socket.AF_UNSPEC, socket.SOCK_STREAM)
+    make_socket.assert_called_once_with(socket.AF_INET6, socket.SOCK_STREAM, 0)
+    sock.settimeout.assert_called_once_with(20)
+    sock.connect.assert_called_once_with(("::1", 443, 0, 0))
+
+
+def test_tcp_probe_supports_an_ipv6_only_host():
+    # An IPv6-only host resolves to an AF_INET6 address; the probe must dial it
+    # rather than read it as unreachable.
+    v6 = (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("2001:db8::1", 443, 0, 0))
+    sock = MagicMock()
+    sock.__enter__.return_value = sock
+    with (
+        patch("socket.getaddrinfo", return_value=[v6]),
+        patch("socket.socket", return_value=sock),
+    ):
+        assert tcp_probe("ipv6-only.example.com", 443) is None
+
+    sock.connect.assert_called_once_with(("2001:db8::1", 443, 0, 0))
 
 
 def test_tcp_probe_raises_when_the_name_cannot_be_resolved():
     with (
-        patch("socket.gethostbyname", side_effect=socket.gaierror(-2, "Name or service not known")),
+        patch("socket.getaddrinfo", side_effect=socket.gaierror(-2, "Name or service not known")),
         pytest.raises(NetworkUnreachableError) as exc,
     ):
         tcp_probe("nope.example.com", 443)
