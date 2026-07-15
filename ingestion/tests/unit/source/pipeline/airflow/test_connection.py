@@ -23,6 +23,7 @@ from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.pipeline.airflow.api.client import AirflowApiClient
 from metadata.ingestion.source.pipeline.airflow.connection import (
@@ -36,6 +37,7 @@ CONNECTION_MODULE = "metadata.ingestion.source.pipeline.airflow.connection"
 
 def _rest_client(host="https://airflow.example.com:8080"):
     client = MagicMock(spec=AirflowApiClient)
+    client.mwaa_client = None
     client.config = MagicMock()
     client.config.hostPort = host
     client.config.connection = MagicMock(authConfig=None, verifySSL=True)
@@ -104,7 +106,8 @@ def test_checks_borrow_the_connection_client():
 # ── REST path ────────────────────────────────────────────────────────────────
 
 
-def test_rest_check_access_reads_the_version():
+@patch(f"{CONNECTION_MODULE}.tcp_probe")
+def test_rest_check_access_reads_the_version(_mock_probe):
     client = _rest_client()
     client.get_version.return_value = {"version": "2.9.0"}
 
@@ -114,7 +117,8 @@ def test_rest_check_access_reads_the_version():
     assert evidence.summary == "authenticated"
 
 
-def test_rest_check_access_failure_reports_a_check_error():
+@patch(f"{CONNECTION_MODULE}.tcp_probe")
+def test_rest_check_access_failure_reports_a_check_error(_mock_probe):
     client = _rest_client()
     client.get_version.side_effect = RuntimeError("transport closed")
 
@@ -128,6 +132,33 @@ def test_rest_check_access_failure_reports_a_check_error():
         _rest_checks(client).check_access()
 
     assert failure.value.evidence.command == "read the Airflow REST API version"
+
+
+@patch(f"{CONNECTION_MODULE}.tcp_probe", side_effect=NetworkUnreachableError("10.0.0.1:8080 is not reachable"))
+def test_rest_gate_preflights_an_unreachable_host(_mock_probe):
+    """An unreachable host fails fast at the TCP preflight instead of waiting out
+    the REST client's connect-retry budget; get_version is never called."""
+    client = _rest_client(host="http://10.0.0.1:8080")
+
+    with pytest.raises(CheckError) as failure:
+        _rest_checks(client).check_access()
+
+    assert failure.value.evidence.command == "TCP connect 10.0.0.1:8080"
+    client.get_version.assert_not_called()
+    assert AIRFLOW_ERRORS.classify(failure.value.cause).title == "Cannot reach the host"
+
+
+@patch(f"{CONNECTION_MODULE}.tcp_probe")
+def test_rest_gate_skips_preflight_for_mwaa(mock_probe):
+    """MWAA reaches Airflow through the AWS SDK, not a socket to the host, so the
+    preflight must not run for it."""
+    client = _rest_client()
+    client.mwaa_client = MagicMock()
+    client.get_version.return_value = {"version": "2.9.0"}
+
+    _rest_checks(client).check_access()
+
+    mock_probe.assert_not_called()
 
 
 def test_rest_pipeline_details_lists_one_dag():
@@ -202,7 +233,7 @@ def _http_error(status_code):
         (RequestsConnectionError("name resolution failed"), "Cannot reach the host"),
         (
             OperationalError("SELECT 1", {}, Exception("Access denied for user 'airflow'@'%'")),
-            "Database access denied",
+            "Database authentication failed",
         ),
         (
             OperationalError("SELECT 1", {}, Exception('password authentication failed for user "airflow"')),

@@ -18,7 +18,7 @@ from __future__ import annotations
 import os
 from functools import singledispatch
 from typing import TYPE_CHECKING, Any, Optional
-from urllib.parse import quote
+from urllib.parse import quote, urlparse
 
 from packaging import version
 from requests.exceptions import ConnectionError as RequestsConnectionError
@@ -45,7 +45,11 @@ from metadata.core.connections.test_connection.checks.pipeline import (
     verify_access,
 )
 from metadata.core.connections.test_connection.classifier import exception_chain
-from metadata.core.connections.test_connection.network import NETWORK_ERRORS
+from metadata.core.connections.test_connection.network import (
+    NETWORK_ERRORS,
+    NetworkUnreachableError,
+    tcp_probe,
+)
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MysqlConnectionConfig,
 )
@@ -317,54 +321,53 @@ def _db_message(*tokens: str) -> Matcher:
     return match
 
 
+# Only signals we exercised live or that follow directly from HTTP / driver
+# documentation are diagnosed here; everything else keeps its raw error log.
 AIRFLOW_ERRORS = ErrorPack(
     when(_http_status(401)).diagnose(
         "Authentication failed",
-        fix="Airflow rejected the credentials. Check the auth configuration - the token, "
-        "username/password, or managed-service credentials for this host.",
+        fix="Airflow rejected the credentials. Check the username and password (or token) are "
+        "correct and not expired.",
     ),
     when(_http_status(403)).diagnose(
         "Access denied",
-        fix="Airflow authenticated the request but refused it. Grant the user (or the "
-        "managed-service principal) permission to read the Airflow REST API.",
+        fix="The credentials are valid but lack access. Grant this user permission to read the "
+        "Airflow REST API.",
     ),
     when(_http_status(404)).diagnose(
         "Endpoint not found",
-        fix="hostPort builds the API path Airflow answered 404 for. Check it points at the "
-        "Airflow web server base URL, not a UI or console page.",
+        fix="Airflow returned 404 for this URL. Check the Host and Port point to the Airflow web "
+        "server, not a UI or console page.",
     ),
-    # A host that is a valid URL but not the Airflow REST API (an SSO login page,
-    # the marketing site) answers with HTML that fails to decode as JSON.
+    # A URL that is not the Airflow REST API (an SSO login page, the marketing
+    # site) answers with HTML that fails to decode as JSON.
     when(Matchers.exception(JSONDecodeError)).diagnose(
         "Host is not the Airflow REST API",
-        fix="The host answered with a response that is not Airflow REST API JSON. Point "
-        "hostPort at the Airflow web server and enable its REST API auth backend.",
+        fix="The host replied with a web page, not the Airflow REST API. Point the Host and Port "
+        "at the Airflow web server and make sure its REST API is enabled.",
     ),
     when(Matchers.exception(SSLError)).diagnose(
         "TLS verification failed",
-        fix="The host's certificate could not be verified. Check hostPort, or uncheck "
-        "'Verify SSL' for a self-signed certificate.",
+        fix="The server's certificate could not be verified. Check the Host, or uncheck "
+        "'Verify SSL' if you use a self-signed certificate.",
     ),
     when(Matchers.exception(Timeout)).diagnose(
         "Connection timed out",
-        fix="Airflow did not answer in time. Check that a firewall or network ACL allows "
-        "egress to hostPort from where ingestion runs.",
+        fix="Airflow did not respond in time. Check the Host and Port and that a firewall allows "
+        "access to it.",
     ),
     when(Matchers.exception(RequestsConnectionError)).diagnose(
         "Cannot reach the host",
-        fix="Check hostPort for typos and that it resolves from where ingestion runs.",
+        fix="Could not reach the host. Check the Host and Port for typos and that it is reachable.",
     ),
-    # Metadata-DB backend path: the driver reports auth failures as message tokens.
-    # Gated to a SQLAlchemy error so a REST failure carrying the same words is not
+    # Metadata-DB backend path. MySQL answers a bad login with "Access denied"
+    # (1045) and PostgreSQL with "password authentication failed" (28P01). Gated
+    # to a SQLAlchemy error so a REST failure carrying the same words is never
     # mislabeled as a database problem.
-    when(_db_message("access denied")).diagnose(
-        "Database access denied",
-        fix="The Airflow metadata database rejected the credentials. Check the database user "
-        "and password have read access to the Airflow schema.",
-    ),
-    when(_db_message("password authentication failed")).diagnose(
+    when(_db_message("access denied", "password authentication failed")).diagnose(
         "Database authentication failed",
-        fix="The Airflow metadata database rejected the credentials. Check the database user and password.",
+        fix="The Airflow metadata database rejected the credentials. Check the database username "
+        "and password.",
     ),
 ).including(NETWORK_ERRORS)
 
@@ -392,11 +395,30 @@ class AirflowChecks:
         client = self.client
         if isinstance(client, AirflowApiClient):
             host, auth_config, verify = self._rest_context(client)
+            self._preflight(client, host)
             return verify_access(
                 lambda: _decorated_check_access(client, host, auth_config, verify),
                 command="read the Airflow REST API version",
             )
         return run_sql(client, "SELECT 1", lambda _: "connection established")
+
+    @staticmethod
+    def _preflight(client: AirflowApiClient, host: str | None) -> None:
+        """TCP-probe the host so an unreachable Airflow fails fast as a network
+        error, instead of waiting out the REST client's connect-retry budget.
+
+        Skipped for MWAA, whose transport is the AWS SDK rather than a socket to
+        ``host``, and when the host carries no resolvable host:port.
+        """
+        if client.mwaa_client is not None or not host:
+            return
+        parsed = urlparse(host)
+        port = parsed.port or (443 if parsed.scheme == "https" else 80)
+        if parsed.hostname:
+            try:
+                tcp_probe(parsed.hostname, port)
+            except NetworkUnreachableError as error:
+                raise CheckError(error, Evidence(command=f"TCP connect {parsed.hostname}:{port}")) from error
 
     @staticmethod
     def _rest_context(client: AirflowApiClient) -> tuple[str | None, Any, bool]:
