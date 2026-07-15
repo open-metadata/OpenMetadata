@@ -65,6 +65,8 @@ export const TestCases = () => {
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    setShowDeleted,
   } = useTestCaseListPage();
 
   if (!testCasePermission?.ViewAll && !testCasePermission?.ViewBasic) {
@@ -287,7 +289,9 @@ export const TestCases = () => {
             <TestCaseListTableHeader
               extraDropdownContent={extraDropdownContent}
               searchValue={searchValue}
+              showDeleted={showDeleted}
               onSearch={(value) => handleSearchParam('searchValue', value)}
+              onShowDeletedChange={setShowDeleted}
             />
           }
           testCases={testCase}

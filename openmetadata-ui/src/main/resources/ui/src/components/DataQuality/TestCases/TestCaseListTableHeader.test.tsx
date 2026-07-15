@@ -43,6 +43,27 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   }: React.PropsWithChildren<{ 'data-testid'?: string }>) => (
     <span data-testid={testId}>{children}</span>
   ),
+  Toggle: ({
+    isSelected,
+    label,
+    onChange,
+    ...rest
+  }: {
+    isSelected?: boolean;
+    label?: string;
+    onChange?: (value: boolean) => void;
+    [key: string]: unknown;
+  }) => (
+    <label>
+      {label}
+      <input
+        checked={isSelected}
+        type="checkbox"
+        {...rest}
+        onChange={(e) => onChange?.(e.target.checked)}
+      />
+    </label>
+  ),
 }));
 
 jest.mock('@untitledui/icons', () => ({
@@ -59,11 +80,14 @@ jest.mock('../../common/ManageMenuButton/ManageMenuButton.component', () => ({
 }));
 
 const mockOnSearch = jest.fn();
+const mockOnShowDeletedChange = jest.fn();
 
 const defaultProps = {
   searchValue: '',
   onSearch: mockOnSearch,
   extraDropdownContent: [],
+  showDeleted: false,
+  onShowDeletedChange: mockOnShowDeletedChange,
 };
 
 describe('TestCaseListTableHeader component', () => {
@@ -125,6 +149,20 @@ describe('TestCaseListTableHeader component', () => {
     });
 
     expect(mockOnSearch).toHaveBeenCalledWith('foo');
+  });
+
+  it('should reflect the showDeleted prop on the toggle', () => {
+    render(<TestCaseListTableHeader {...defaultProps} showDeleted />);
+
+    expect(screen.getByTestId('show-deleted')).toBeChecked();
+  });
+
+  it('should call onShowDeletedChange when the toggle is clicked', () => {
+    render(<TestCaseListTableHeader {...defaultProps} />);
+
+    fireEvent.click(screen.getByTestId('show-deleted'));
+
+    expect(mockOnShowDeletedChange).toHaveBeenCalledWith(true);
   });
 
   it('should pass extraDropdownContent through to the manage menu', () => {

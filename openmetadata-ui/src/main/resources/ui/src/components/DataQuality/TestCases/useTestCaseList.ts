@@ -27,6 +27,7 @@ import { OperationPermission } from '../../../context/PermissionProvider/Permiss
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { TestCase } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { UsePagingInterface } from '../../../hooks/paging/usePaging';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import {
@@ -85,6 +86,7 @@ export const useTestCaseList = ({
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
+  const [showDeleted, setShowDeleted] = useState<boolean>(false);
 
   const fetchTestCases = useCallback(
     async (
@@ -115,6 +117,7 @@ export const useTestCaseList = ({
           ],
           q: searchValue ? `*${searchValue}*` : undefined,
           offset: (page - 1) * pageSize,
+          include: showDeleted ? Include.Deleted : Include.NonDeleted,
         });
         setTestCase(data);
         handlePagingChange(pagingResponse);
@@ -130,6 +133,7 @@ export const useTestCaseList = ({
       sortOptions,
       pageSize,
       searchValue,
+      showDeleted,
       handlePagingChange,
     ]
   );
@@ -175,7 +179,7 @@ export const useTestCaseList = ({
     } else {
       setIsLoading(false);
     }
-  }, [tab, testCasePermission, pageSize, params, currentPage]);
+  }, [tab, testCasePermission, pageSize, params, currentPage, showDeleted]);
 
   const pagingData = useMemo(
     () => ({
@@ -197,5 +201,7 @@ export const useTestCaseList = ({
     sortTestCase,
     pagingData,
     showPagination,
+    showDeleted,
+    setShowDeleted,
   };
 };

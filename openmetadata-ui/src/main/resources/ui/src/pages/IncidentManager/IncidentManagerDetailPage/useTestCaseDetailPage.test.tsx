@@ -19,6 +19,7 @@ import { MOCK_TEST_CASE_DATA } from '../../../mocks/TestCase.mock';
 import {
   getTestCaseVersionDetails,
   getTestCaseVersionList,
+  restoreTestCase,
   updateTestCaseById,
 } from '../../../rest/testAPI';
 import {
@@ -26,6 +27,7 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { DEFAULT_ENTITY_PERMISSION } from '../../../utils/PermissionsUtils';
+import { showSuccessToast } from '../../../utils/ToastUtils';
 import { TestCasePageTabs } from '../IncidentManager.interface';
 import { UseTestCaseStoreInterface } from './useTestCase.store';
 import { useTestCaseDetailPage } from './useTestCaseDetailPage';
@@ -80,6 +82,12 @@ jest.mock('../../../rest/testAPI', () => ({
         jest.requireActual('../../../mocks/TestCase.mock').MOCK_TEST_CASE_DATA
       )
     ),
+  restoreTestCase: jest.fn().mockImplementation(() =>
+    Promise.resolve({
+      ...jest.requireActual('../../../mocks/TestCase.mock').MOCK_TEST_CASE_DATA,
+      deleted: false,
+    })
+  ),
 }));
 
 const mockNavigate = jest.fn();
@@ -100,6 +108,7 @@ jest.mock('../../../utils/FeedUtilsPure', () => ({
 
 jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 let mockParams: Record<string, string | undefined> = {
@@ -358,6 +367,19 @@ describe('useTestCaseDetailPage', () => {
     );
 
     expect(result.current.extraDropdownContent[0].key).toBe('edit-dimensions');
+  });
+
+  it('handleRestore should restore the test case and toast success', async () => {
+    const { result } = renderDetailPageHook();
+
+    await waitFor(() => expect(result.current.isLoading).toBe(false));
+
+    await act(async () => {
+      await result.current.handleRestore();
+    });
+
+    expect(restoreTestCase).toHaveBeenCalledWith(MOCK_TEST_CASE_DATA.id);
+    expect(showSuccessToast).toHaveBeenCalled();
   });
 
   it('getEntityFeedCount should fetch feed counts', async () => {

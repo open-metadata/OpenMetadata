@@ -17,11 +17,13 @@ import {
   fireEvent,
   render,
   screen,
+  waitFor,
 } from '@testing-library/react';
 import React, { act } from 'react';
 import { TestCaseStatus } from '../../../../generated/tests/testCase';
 import { MOCK_PERMISSIONS } from '../../../../mocks/Glossary.mock';
 import { MOCK_TEST_CASE } from '../../../../mocks/TestSuite.mock';
+import { restoreTestCase } from '../../../../rest/testAPI';
 import { DataQualityTabProps } from '../ProfilerDashboard/profilerDashboard.interface';
 import DataQualityTab from './DataQualityTab';
 
@@ -230,6 +232,12 @@ jest.mock('@openmetadata/ui-core-components', () => {
       Menu: DropdownMenu,
       Item: DropdownItem,
     },
+    toast: {
+      success: jest.fn(),
+      error: jest.fn(),
+      warning: jest.fn(),
+      info: jest.fn(),
+    },
   };
 });
 
@@ -239,6 +247,12 @@ jest.mock('../../../../rest/incidentManagerAPI', () => ({
 
 jest.mock('../../../../rest/testAPI', () => ({
   removeTestCaseFromTestSuite: jest.fn().mockResolvedValue({}),
+  restoreTestCase: jest.fn().mockResolvedValue({}),
+}));
+
+jest.mock('../../../../utils/ToastUtils', () => ({
+  showErrorToast: jest.fn(),
+  showSuccessToast: jest.fn(),
 }));
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
@@ -337,12 +351,14 @@ jest.mock('../../../common/Loader/Loader', () =>
   jest.fn().mockImplementation(() => <span>Loader</span>)
 );
 
-jest.mock('../../../common/DeleteModal/DeleteModal', () =>
-  jest.fn().mockImplementation(({ open, onCancel, onDelete }) =>
-    open ? (
+jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
+  jest.fn().mockImplementation(({ visible, onCancel, afterDeleteAction }) =>
+    visible ? (
       <div>
-        <p>DeleteModal</p>
-        <button data-testid="confirm-button" onClick={onDelete}>
+        <p>DeleteEntityModal</p>
+        <button
+          data-testid="confirm-button"
+          onClick={() => afterDeleteAction?.()}>
           delete
         </button>
         <button onClick={onCancel}>cancel</button>
@@ -1064,6 +1080,99 @@ describe('DataQualityTab test', () => {
 
     expect(queuedReason).toBeInTheDocument();
     expect(queuedReason).toHaveTextContent('Queued: Waiting for execution');
+  });
+
+  describe('Restore functionality', () => {
+    const deletedTestCase = {
+      ...MOCK_TEST_CASE[0],
+      name: 'deleted_test_case',
+      deleted: true,
+    };
+
+    it('should show only the Restore action for a deleted test case', async () => {
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} testCases={[deletedTestCase]} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      expect(
+        await screen.findByTestId(`restore-${deletedTestCase.name}`)
+      ).toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`edit-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+      expect(
+        screen.queryByTestId(`delete-${deletedTestCase.name}`)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should not show the Restore action for a non-deleted test case', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      expect(
+        screen.queryByTestId(`restore-${firstRowData.name}`)
+      ).not.toBeInTheDocument();
+    });
+
+    it('should call restoreTestCase and afterDeleteAction on restore confirm', async () => {
+      const afterDeleteAction = jest.fn();
+      await act(async () => {
+        render(
+          <DataQualityTab
+            {...mockProps}
+            afterDeleteAction={afterDeleteAction}
+            testCases={[deletedTestCase]}
+          />
+        );
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const restoreButton = await screen.findByTestId(
+        `restore-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(restoreButton);
+      });
+
+      const confirmationModal = await screen.findByText('ConfirmationModal');
+
+      expect(confirmationModal).toBeInTheDocument();
+
+      const confirmButton = screen.getByText('submit');
+
+      await act(async () => {
+        fireEvent.click(confirmButton);
+      });
+
+      expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id);
+      await waitFor(() => expect(afterDeleteAction).toHaveBeenCalled());
+    });
   });
 
   describe('BundleSuiteFormDrawer integration', () => {

@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, Input, Typography } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Input,
+  Toggle,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { SearchLg } from '@untitledui/icons';
 import { debounce } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -23,6 +28,8 @@ export interface TestCaseListTableHeaderProps {
   searchValue: string;
   onSearch: (value: string) => void;
   extraDropdownContent: ManageMenuItem[];
+  showDeleted: boolean;
+  onShowDeletedChange: (value: boolean) => void;
 }
 
 /**
@@ -34,6 +41,8 @@ export const TestCaseListTableHeader = ({
   searchValue,
   onSearch,
   extraDropdownContent,
+  showDeleted,
+  onShowDeletedChange,
 }: TestCaseListTableHeaderProps) => {
   const { t } = useTranslation();
   const [localValue, setLocalValue] = useState(searchValue);
@@ -71,6 +80,12 @@ export const TestCaseListTableHeader = ({
         </Typography>
       </Box>
       <Box align="center" className="tw:shrink-0" gap={3}>
+        <Toggle
+          data-testid="show-deleted"
+          isSelected={showDeleted}
+          label={t('label.show-deleted')}
+          onChange={onShowDeletedChange}
+        />
         <div className="tw:w-75" data-testid="searchbar-component">
           <Input
             icon={SearchLg}

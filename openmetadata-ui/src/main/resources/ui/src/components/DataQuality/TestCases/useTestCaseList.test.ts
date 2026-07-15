@@ -17,6 +17,7 @@ import { TEST_CASE_FILTERS } from '../../../constants/profiler.constant';
 import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { TabSpecificField } from '../../../enums/entity.enum';
 import { TestCaseStatus } from '../../../generated/tests/testCase';
+import { Include } from '../../../generated/type/include';
 import { DataQualityPageTabs } from '../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestCaseBySearch } from '../../../rest/testAPI';
 import { TestCaseSearchParams } from '../DataQuality.interface';
@@ -238,6 +239,36 @@ describe('useTestCaseList', () => {
           sortType: 'asc',
           offset: 10,
         })
+      )
+    );
+  });
+
+  it('should default to include=non-deleted and expose the showDeleted toggle', async () => {
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    expect(lastPayload().include).toBe(Include.NonDeleted);
+    expect(result.current.showDeleted).toBe(false);
+    expect(typeof result.current.setShowDeleted).toBe('function');
+  });
+
+  it('should refetch with include=deleted when showDeleted is toggled on', async () => {
+    const { result } = renderList();
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenCalledTimes(1)
+    );
+
+    act(() => {
+      result.current.setShowDeleted(true);
+    });
+
+    await waitFor(() =>
+      expect(getListTestCaseBySearch).toHaveBeenLastCalledWith(
+        expect.objectContaining({ include: Include.Deleted })
       )
     );
   });

@@ -97,6 +97,8 @@ export const useTestCaseListPage = () => {
     sortTestCase,
     pagingData,
     showPagination,
+    showDeleted,
+    setShowDeleted,
   } = useTestCaseList({
     params,
     selectedFilter,
@@ -182,5 +184,7 @@ export const useTestCaseListPage = () => {
     handleTestCaseUpdate,
     handleStatusSubmit,
     extraDropdownContent,
+    showDeleted,
+    setShowDeleted,
   };
 };

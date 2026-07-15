@@ -91,7 +91,7 @@ export interface ProfilerLatestValueProps {
 
 export type TestCaseAction = {
   data: TestCase;
-  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS';
+  action: 'UPDATE' | 'DELETE' | 'UPDATE_STATUS' | 'RESTORE';
 };
 
 export type TestCaseChartDataType = {

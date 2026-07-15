@@ -149,6 +149,7 @@ describe('useTestCaseListPage', () => {
     expect(typeof current.debounceFetchServiceOptions).toBe('function');
     expect(typeof current.debounceFetchDataProductOptions).toBe('function');
     expect(typeof current.clearAll).toBe('function');
+    expect(typeof current.setShowDeleted).toBe('function');
 
     expect(Array.isArray(current.selectedFilter)).toBe(true);
     expect(Array.isArray(current.filterMenu)).toBe(true);
@@ -166,6 +167,7 @@ describe('useTestCaseListPage', () => {
     expect(typeof current.isTestCaseSummaryLoading).toBe('boolean');
     expect(typeof current.showPagination).toBe('boolean');
     expect(typeof current.hasActiveFilters).toBe('boolean');
+    expect(current.showDeleted).toBe(false);
 
     expect(typeof current.searchValue).toBe('string');
 
