@@ -48,7 +48,8 @@ export type CustomizeIconKeys =
   | PageType
   | 'govern'
   | 'dataAssets'
-  | 'navigation';
+  | 'navigation'
+  | 'app-mode';
 
 const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   [PageType.Table]: TableIcon,
@@ -69,6 +70,7 @@ const ENTITY_ICONS: Record<CustomizeIconKeys, SvgComponent> = {
   ['dataAssets']: DataAssetsIcon,
   [PageType.LandingPage]: HomepageIcon,
   ['navigation']: NavigationIcon,
+  ['app-mode']: NavigationIcon,
   [PageType.APICollection]: APICollectionIcon,
   [PageType.APIEndpoint]: APIEndpointIcon,
   [PageType.MlModel]: MlModelIcon,
@@ -98,6 +100,13 @@ class PersonaClassBase {
         isBeta: false,
         description: 'Customize left sidebar ',
         icon: entityIcons['navigation'],
+      },
+      {
+        key: 'app-mode',
+        label: i18n.t('label.app-mode'),
+        isBeta: false,
+        description: i18n.t('message.app-mode-description'),
+        icon: entityIcons['app-mode'],
       },
       {
         key: PageType.LandingPage,
