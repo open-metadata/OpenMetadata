@@ -78,12 +78,11 @@ const ObservabilityAlertsPage = () => {
           <ObservabilityAlertsTable
             alertPermissions={alertPermissions}
             alertResourcePermission={alertResourcePermission}
-            hasResourcePermissionError={hasResourcePermissionError}
-            onRetryPermission={refetchResourcePermission}
             alerts={alerts}
             columnList={columnList}
             currentPage={currentPage}
             getAlertDetailsPath={getAlertDetailsPath}
+            hasResourcePermissionError={hasResourcePermissionError}
             loading={loading}
             loadingCount={loadingCount}
             pageSize={pageSize}
@@ -92,6 +91,7 @@ const ObservabilityAlertsPage = () => {
             onAddAlert={handleAddAlert}
             onPageChange={onPageChange}
             onPageSizeChange={handlePageSizeChange}
+            onRetryPermission={refetchResourcePermission}
             onSelectAlert={handleSelectAlert}
             onViewAlert={onViewAlert}
           />
