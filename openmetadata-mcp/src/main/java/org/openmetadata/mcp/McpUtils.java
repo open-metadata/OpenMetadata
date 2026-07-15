@@ -114,6 +114,9 @@ public class McpUtils {
   @SuppressWarnings("unchecked")
   private static McpSchema.ToolAnnotations buildToolAnnotations(
       Map<String, Object> toolDef, String title) {
+    // openWorldHint defaults to true per the MCP spec when omitted, which would mislabel every
+    // tool here as reaching external/public systems. All tools only read/write our own
+    // OpenMetadata catalog, so tools.json sets it to false explicitly for each tool.
     McpSchema.ToolAnnotations result = null;
     Map<String, Object> annotations = (Map<String, Object>) toolDef.get("annotations");
     if (annotations != null) {

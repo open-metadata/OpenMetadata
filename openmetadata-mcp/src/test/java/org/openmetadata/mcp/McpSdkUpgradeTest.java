@@ -218,6 +218,22 @@ public class McpSdkUpgradeTest {
   }
 
   @Test
+  void testMcpUtilsGetToolPropertiesEveryToolHasExplicitOpenWorldHintFalse() {
+    // Regression guard: openWorldHint defaults to true when omitted, which would mislabel
+    // every tool as reaching external/public systems and fail OpenAI Apps SDK review
+    // ("incorrect or missing action labels"). All tools only touch our own OpenMetadata
+    // catalog, so every tool must set this explicitly to false.
+    List<McpSchema.Tool> tools = McpUtils.getToolProperties("json/data/mcp/tools.json");
+
+    assertThat(tools)
+        .allSatisfy(
+            tool ->
+                assertThat(tool.annotations().openWorldHint())
+                    .as("openWorldHint for tool %s", tool.name())
+                    .isFalse());
+  }
+
+  @Test
   void testServerCapabilitiesDoNotAdvertiseLogging() {
     // The stateless MCP server has no handler for logging/setLevel.
     // Advertising logging capability causes spec-compliant clients (e.g. VSCode)
