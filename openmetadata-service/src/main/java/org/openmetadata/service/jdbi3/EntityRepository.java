@@ -2485,12 +2485,17 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       String beforeCursor;
       String afterCursor = null;
-      // entities can be empty when the caller holds a valid cursor but all rows past it were
-      // deleted concurrently — guard against get(0) throwing IndexOutOfBounds (HTTP 500).
-      beforeCursor =
-          (after == null || after.isEmpty() || entities.isEmpty())
-              ? null
-              : getCursorValue(entities.getFirst());
+      if (after == null || after.isEmpty()) {
+        beforeCursor = null; // genuine first page — no page before it
+      } else if (entities.isEmpty()) {
+        // Valid cursor but every row past it was deleted concurrently, so the page is empty. Echo
+        // the caller's own cursor as beforeCursor rather than null: a null before reads as "first
+        // page" and dead-ends backward navigation, whereas echoing lets the caller page back to
+        // the rows that still exist. Also guards entities.getFirst() from IndexOutOfBounds (500).
+        beforeCursor = after;
+      } else {
+        beforeCursor = getCursorValue(entities.getFirst());
+      }
       if (entities.size()
           > limitParam) { // If extra result exists, then next page exists - return after cursor
         entities.remove(limitParam);
@@ -2597,6 +2602,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // the same logical filter under a different cache field than listAfter / listAfterWithOffset.
     int total = ListCountCache.getOrCompute(entityType, filter, () -> dao.listCount(filter));
 
+    if (limitParam <= 0) {
+      // limit == 0 → count-only request. Mirror listAfter and skip the query/cursor math: with
+      // limitParam 0 the "extra row" branch below removes the only fetched row and then calls
+      // getFirst() on an empty list, throwing IndexOutOfBounds (HTTP 500) on reverse count requests.
+      return getResultList(new ArrayList<>(), null, null, total);
+    }
+
     // Reverse scrolling - Get one extra result used for computing before cursor
     Map<String, String> cursorMap = parseCursorMap(RestUtil.decodeCursor(before));
     String beforeName = FullyQualifiedName.unquoteName(cursorMap.get("name"));
@@ -2615,8 +2627,10 @@ public abstract class EntityRepository<T extends EntityInterface> {
       beforeCursor = getCursorValue(entities.getFirst());
     }
     // entities can be empty when the caller holds a valid before-cursor but all earlier rows were
-    // deleted concurrently — guard against get(-1) throwing IndexOutOfBounds (HTTP 500).
-    afterCursor = entities.isEmpty() ? null : getCursorValue(entities.getLast());
+    // deleted concurrently, so the page is empty. Echo the caller's cursor as afterCursor rather
+    // than null: a null after reads as end-of-pagination and dead-ends forward navigation, whereas
+    // echoing lets the caller page forward to rows that still exist. Also guards getLast() (500).
+    afterCursor = entities.isEmpty() ? before : getCursorValue(entities.getLast());
     return getResultList(entities, beforeCursor, afterCursor, total);
   }
 

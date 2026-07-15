@@ -255,15 +255,19 @@ public record SubjectContext(User user, String impersonatedBy, String requestedP
 
   private boolean isOwnerUnderTeam(EntityReference owner, String parentTeam) {
     boolean result = false;
-    if (owner.getType().equals(Entity.USER)) {
-      result = getSubjectContext(owner.getName()).isUserUnderTeam(parentTeam);
-    } else if (owner.getType().equals(Entity.TEAM)) {
-      try {
+    try {
+      if (owner.getType().equals(Entity.USER)) {
+        result = getSubjectContext(owner.getName()).isUserUnderTeam(parentTeam);
+      } else if (owner.getType().equals(Entity.TEAM)) {
         Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
         result = isInTeam(parentTeam, team.getEntityReference());
-      } catch (Exception ex) {
-        // Team could not be resolved (e.g. deleted); treat as not under the team.
       }
+    } catch (Exception ex) {
+      // Owner could not be resolved (e.g. a deleted user/team still referenced as an owner).
+      // getSubjectContext(userName) throws EntityNotFoundException for an unresolved user; without
+      // this catch that would propagate out of isTeamAsset and abort the multi-owner scan, so an
+      // asset owned by [deletedUser, matchingTeam] would wrongly deny the matching team. Treat this
+      // owner as not-under-team and let isTeamAsset keep checking the rest (OR semantics).
     }
     return result;
   }

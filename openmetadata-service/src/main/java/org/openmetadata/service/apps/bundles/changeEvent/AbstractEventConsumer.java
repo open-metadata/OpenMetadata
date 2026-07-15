@@ -391,6 +391,13 @@ public abstract class AbstractEventConsumer
       maxOffset = Math.max(maxOffset, eventRecord.offset());
       try {
         ChangeEvent event = JsonUtils.readValue(eventRecord.json(), ChangeEvent.class);
+        if (event == null) {
+          // JsonUtils.readValue returns null (it does not throw) on a null/blank json column, which
+          // would add a null ChangeEvent to the delivered batch and NPE downstream. Route it to
+          // errorEvents like any other unparseable row instead of silently delivering null.
+          throw new IllegalStateException(
+              "Null or blank change_event.json at offset " + eventRecord.offset());
+        }
         changeEvents.add(event);
       } catch (Exception ex) {
         errorEvents.add(
