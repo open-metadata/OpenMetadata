@@ -59,6 +59,7 @@ public class OpenSearchVectorService implements VectorIndexService {
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
+      instance.shutdownPoisonRetryLoop();
     }
     instance = new OpenSearchVectorService(client, embeddingClient);
     instance.registerVectorEmbeddingHandler();
@@ -83,11 +84,12 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   public void close() {
-    // No-op by design. The opensearch-java client stored here was constructed
-    // elsewhere and its transport is shared with OpenSearchClient and every
-    // other manager. Closing the transport from here permanently shuts down
-    // the HC5 IOReactor for the whole application, which was a root cause of
-    // production "I/O reactor has been shut down" errors.
+    // The opensearch-java client stored here is deliberately NOT closed: it was constructed
+    // elsewhere and its transport is shared with OpenSearchClient and every other manager.
+    // Closing the transport from here permanently shuts down the HC5 IOReactor for the whole
+    // application, which was a root cause of production "I/O reactor has been shut down" errors.
+    // The poison-retry executor, however, is owned by this instance and must not outlive it.
+    shutdownPoisonRetryLoop();
   }
 
   public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
@@ -652,20 +654,24 @@ public class OpenSearchVectorService implements VectorIndexService {
   private final Set<String> pendingPoisonMarkers = ConcurrentHashMap.newKeySet();
   private volatile ScheduledExecutorService poisonRetryExecutor;
 
+  /**
+   * Check-and-create must stay atomic with {@link #stopPoisonRetryLoop}'s check-and-destroy
+   * (same lock, no lock-free fast path): reading the executor outside the lock can observe an
+   * instance the retry thread is about to shut down, skip scheduling, and strand the just-queued
+   * marker with no loop left to persist it.
+   */
   private void ensurePoisonRetryLoop() {
-    if (poisonRetryExecutor == null) {
-      synchronized (stagedChunkLock) {
-        if (poisonRetryExecutor == null) {
-          poisonRetryExecutor =
-              Executors.newSingleThreadScheduledExecutor(
-                  runnable -> {
-                    Thread thread = new Thread(runnable, "chunk-poison-marker-retry");
-                    thread.setDaemon(true);
-                    return thread;
-                  });
-          poisonRetryExecutor.scheduleWithFixedDelay(
-              this::retryPendingPoisonMarkers, 5, 15, TimeUnit.SECONDS);
-        }
+    synchronized (stagedChunkLock) {
+      if (poisonRetryExecutor == null) {
+        poisonRetryExecutor =
+            Executors.newSingleThreadScheduledExecutor(
+                runnable -> {
+                  Thread thread = new Thread(runnable, "chunk-poison-marker-retry");
+                  thread.setDaemon(true);
+                  return thread;
+                });
+        poisonRetryExecutor.scheduleWithFixedDelay(
+            this::retryPendingPoisonMarkers, 5, 15, TimeUnit.SECONDS);
       }
     }
   }
@@ -706,6 +712,30 @@ public class OpenSearchVectorService implements VectorIndexService {
       if (poisonRetryExecutor != null && pendingPoisonMarkers.isEmpty()) {
         poisonRetryExecutor.shutdown();
         poisonRetryExecutor = null;
+      }
+    }
+  }
+
+  /**
+   * Unconditional teardown for instance shutdown/replacement — unlike {@link
+   * #stopPoisonRetryLoop}, this stops the loop even with markers still pending (a retry thread
+   * held past {@code close()} would spin against a stale client). The instance's staged-run gate
+   * state dies with it, so the affected generation can never be promoted anyway — it is swept,
+   * unpromoted, by the next staged recreate.
+   */
+  private void shutdownPoisonRetryLoop() {
+    synchronized (stagedChunkLock) {
+      if (poisonRetryExecutor != null) {
+        poisonRetryExecutor.shutdownNow();
+        poisonRetryExecutor = null;
+      }
+      if (!pendingPoisonMarkers.isEmpty()) {
+        LOG.warn(
+            "Vector service closing with {} unpersisted staged poison marker(s): {} — the "
+                + "affected staged generation(s) are swept unpromoted by the next recreate",
+            pendingPoisonMarkers.size(),
+            pendingPoisonMarkers);
+        pendingPoisonMarkers.clear();
       }
     }
   }
