@@ -55,7 +55,10 @@ const UserTeamSelectableList = withSuspenseFallback(
 );
 
 const MAX_VISIBLE_MEMBERS = 8;
-const MEMBER_FETCH_SIZE = 50;
+const MEMBER_FETCH_PAGE_SIZE = 50;
+// hard bound on pagination: 50 * 20 = 1000 members per index; beyond this the
+// list (and the picker's remove diff) is truncated
+const MAX_MEMBER_FETCH_PAGES = 20;
 
 export const DomainMembersWidget = () => {
   const {
@@ -98,6 +101,44 @@ export const DomainMembersWidget = () => {
     [domainFqn]
   );
 
+  const fetchAllMemberSources = useCallback(
+    async (
+      searchIndex: SearchIndex,
+      queryFilter: ReturnType<typeof getTermQuery>
+    ): Promise<DomainMemberSearchSource[]> => {
+      const sources: DomainMemberSearchSource[] = [];
+      let total = Number.POSITIVE_INFINITY;
+
+      for (
+        let pageNumber = 1;
+        sources.length < total && pageNumber <= MAX_MEMBER_FETCH_PAGES;
+        pageNumber++
+      ) {
+        const res = await searchQuery({
+          query: '',
+          pageNumber,
+          pageSize: MEMBER_FETCH_PAGE_SIZE,
+          queryFilter,
+          sortField: 'displayName.keyword',
+          sortOrder: 'asc',
+          searchIndex,
+        });
+
+        total = res.hits.total.value;
+        sources.push(
+          ...res.hits.hits.map((hit) => hit._source as DomainMemberSearchSource)
+        );
+
+        if (res.hits.hits.length === 0) {
+          break;
+        }
+      }
+
+      return sources;
+    },
+    []
+  );
+
   const fetchMembers = useCallback(async () => {
     if (!domainFqn) {
       setIsLoading(false);
@@ -107,53 +148,45 @@ export const DomainMembersWidget = () => {
 
     setIsLoading(true);
     const [teamsResult, usersResult] = await Promise.allSettled([
-      searchQuery({
-        query: '',
-        pageNumber: 1,
-        pageSize: MEMBER_FETCH_SIZE,
-        queryFilter: getTermQuery({
+      fetchAllMemberSources(
+        SearchIndex.TEAM,
+        getTermQuery({
           'domains.fullyQualifiedName': domainFqn,
-        }),
-        sortField: 'displayName.keyword',
-        sortOrder: 'asc',
-        searchIndex: SearchIndex.TEAM,
-      }),
-      searchQuery({
-        query: '',
-        pageNumber: 1,
-        pageSize: MEMBER_FETCH_SIZE,
-        queryFilter: getTermQuery({
+        })
+      ),
+      fetchAllMemberSources(
+        SearchIndex.USER,
+        getTermQuery({
           'domains.fullyQualifiedName': domainFqn,
           isBot: 'false',
-        }),
-        sortField: 'displayName.keyword',
-        sortOrder: 'asc',
-        searchIndex: SearchIndex.USER,
-      }),
+        })
+      ),
     ]);
 
     const teamMembers =
       teamsResult.status === 'fulfilled'
-        ? toDomainMembers(
-            teamsResult.value.hits.hits.map(
-              (hit) => hit._source as DomainMemberSearchSource
-            ),
-            EntityType.TEAM
-          )
+        ? toDomainMembers(teamsResult.value, EntityType.TEAM)
         : [];
     const userMembers =
       usersResult.status === 'fulfilled'
-        ? toDomainMembers(
-            usersResult.value.hits.hits.map(
-              (hit) => hit._source as DomainMemberSearchSource
-            ),
-            EntityType.USER
-          )
+        ? toDomainMembers(usersResult.value, EntityType.USER)
         : [];
+
+    const fetchFailure = [teamsResult, usersResult].find(
+      (result) => result.status === 'rejected'
+    );
+    if (fetchFailure) {
+      showErrorToast(
+        (fetchFailure as PromiseRejectedResult).reason as AxiosError,
+        t('server.entity-fetch-error', {
+          entity: t('label.user-and-team-plural'),
+        })
+      );
+    }
 
     setMembers([...teamMembers, ...userMembers]);
     setIsLoading(false);
-  }, [domainFqn, toDomainMembers]);
+  }, [domainFqn, toDomainMembers, fetchAllMemberSources, t]);
 
   useEffect(() => {
     fetchMembers();

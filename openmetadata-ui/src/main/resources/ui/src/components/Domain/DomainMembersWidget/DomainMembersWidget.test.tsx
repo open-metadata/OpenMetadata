@@ -233,6 +233,58 @@ describe('DomainMembersWidget', () => {
     ]);
   });
 
+  it('paginates beyond the first page when the domain has more members', async () => {
+    const pagedUserHit = (index: number) => ({
+      _source: {
+        id: `user-page-${index}`,
+        name: `paged_user_${index}`,
+        displayName: `Paged User ${index}`,
+        fullyQualifiedName: `paged_user_${index}`,
+        domains: [
+          { id: 'domain-1', type: 'domain', fullyQualifiedName: 'TestDomain' },
+        ],
+      },
+    });
+
+    mockSearchQuery.mockImplementation(({ searchIndex, pageNumber }) =>
+      Promise.resolve({
+        hits: {
+          hits: searchIndex === 'team' ? [] : [pagedUserHit(pageNumber)],
+          total: { value: searchIndex === 'team' ? 0 : 3 },
+        },
+      })
+    );
+
+    render(<DomainMembersWidget />);
+
+    expect(
+      await screen.findByTestId('domain-member-paged_user_1')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('domain-member-paged_user_2')
+    ).toBeInTheDocument();
+    expect(
+      screen.getByTestId('domain-member-paged_user_3')
+    ).toBeInTheDocument();
+  });
+
+  it('shows an error toast when fetching members fails', async () => {
+    mockSearchQuery.mockImplementation(({ searchIndex }) =>
+      searchIndex === 'user'
+        ? Promise.reject(new Error('search unavailable'))
+        : Promise.resolve({
+            hits: { hits: [teamHit], total: { value: 1 } },
+          })
+    );
+
+    render(<DomainMembersWidget />);
+
+    expect(
+      await screen.findByTestId('domain-member-data_eng')
+    ).toBeInTheDocument();
+    expect(mockShowErrorToast).toHaveBeenCalled();
+  });
+
   it('shows an error toast when the bulk call fails', async () => {
     mockAddMembersToDomain.mockRejectedValueOnce(new Error('forbidden'));
 
