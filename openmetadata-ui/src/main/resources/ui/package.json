@@ -68,7 +68,6 @@
     "@fontsource/source-code-pro": "^5.0.0",
     "@github/g-emoji-element": "^1.1.5",
     "@internationalized/date": "^3.11.0",
-    "@material/material-color-utilities": "^0.3.0",
     "@melloware/react-logviewer": "6.4.1",
     "@microsoft/fetch-event-source": "^2.0.1",
     "@okta/okta-auth-js": "^7.11.3",

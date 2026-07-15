@@ -93,7 +93,6 @@ export default defineConfig({
         'react',
         'react-dom',
         'react/jsx-runtime',
-        '@material/material-color-utilities',
         '@untitledui/icons',
         'react-aria',
         'react-aria-components',
