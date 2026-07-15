@@ -33,6 +33,7 @@ from metadata.generated.schema.api.data.createDataContract import (
     CreateDataContractRequest,
 )
 from metadata.generated.schema.api.data.createGlossary import CreateGlossaryRequest
+from metadata.generated.schema.api.data.createMetric import CreateMetricRequest
 from metadata.generated.schema.api.data.createPipeline import CreatePipelineRequest
 from metadata.generated.schema.api.data.createQuery import CreateQueryRequest
 from metadata.generated.schema.api.domains.createDataProduct import (
@@ -255,6 +256,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
                     CreateTestDefinitionRequest,
                     CreateMcpServerRequest,
                     CreateGlossaryRequest,
+                    CreateMetricRequest,
                 ),
             )
         ):

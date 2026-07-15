@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
 from metadata.core.connections.test_connection.records import Evidence
@@ -90,7 +91,7 @@ def test_checks_returns_provider_over_the_client():
     conn._client = MagicMock()
     provider = conn.checks()
     assert isinstance(provider, AthenaChecks)
-    assert provider.client is conn._client
+    assert provider._db.client is conn._client
 
 
 def test_checks_wires_filter_pattern_and_catalog_from_service_connection():
@@ -103,7 +104,7 @@ def test_checks_wires_filter_pattern_and_catalog_from_service_connection():
 
 
 def test_every_athena_step_resolves_to_a_check():
-    provider = AthenaChecks(client_factory=MagicMock)
+    provider = AthenaChecks(db=Borrowed(MagicMock))
     resolved = collect_checks(provider)
     assert set(resolved) == {
         DatabaseStep.CheckAccess,
@@ -246,12 +247,28 @@ def test_error_pack_returns_none_for_unknown_error():
 
 
 def test_client_is_built_lazily_not_at_construction():
+    # Building the engine runs the STS assume-role handshake, so it must not happen
+    # while the provider is assembled - only when a check reads the borrow.
     calls = []
-    provider = AthenaChecks(client_factory=lambda: calls.append(1) or MagicMock())
+    provider = AthenaChecks(db=Borrowed(lambda: calls.append(1) or MagicMock()))
+
     assert calls == []
-    _ = provider.client
-    _ = provider.client
+
+    _ = provider._db.client
+
     assert calls == [1]
+
+
+def test_client_is_built_once_by_its_owner_and_shared_across_checks():
+    # Caching is the connection's job, not the provider's: every read of the borrow
+    # goes back to the owner, which builds once.
+    conn = AthenaConnection(_config())
+    with patch.object(AthenaConnection, "_get_client", return_value=MagicMock()) as mock_build:
+        provider = conn.checks()
+        _ = provider._db.client
+        _ = provider._db.client
+
+    assert mock_build.call_count == 1
 
 
 def test_check_access_surfaces_client_build_failure_for_classification():
@@ -259,7 +276,7 @@ def test_check_access_surfaces_client_build_failure_for_classification():
     # inside CheckAccess (the gate), so its exception propagates from the check and
     # the runner can classify it - instead of raising at provider construction.
     error = _client_error("InvalidClientTokenId", "The security token included in the request is invalid")
-    provider = AthenaChecks(client_factory=_raising_factory(error))
+    provider = AthenaChecks(db=Borrowed(_raising_factory(error)))
     with pytest.raises(ClientError) as exc_info:
         provider.check_access()
     assert ATHENA_ERRORS.classify(exc_info.value).title == "AWS access key not recognized"

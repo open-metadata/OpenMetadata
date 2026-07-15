@@ -961,7 +961,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          sharedMemoryName,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
@@ -994,7 +998,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          sharedMemoryName,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
@@ -1017,7 +1025,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          sharedMemoryName,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
 

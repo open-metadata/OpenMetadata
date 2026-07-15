@@ -215,14 +215,12 @@ jest.mock('../../common/IconPicker', () => ({
   DEFAULT_DOMAIN_ICON: { name: 'domain' },
 }));
 
-jest.mock(
-  '../../common/MUIGlossaryTagSuggestion/MUIGlossaryTagSuggestion',
-  () =>
-    jest
-      .fn()
-      .mockReturnValue(
-        <div data-testid="glossary-terms">MUIGlossaryTagSuggestion</div>
-      )
+jest.mock('../../common/GlossaryTermTreeSelect/GlossaryTermTreeSelect', () =>
+  jest
+    .fn()
+    .mockReturnValue(
+      <div data-testid="glossary-terms">GlossaryTermTreeSelect</div>
+    )
 );
 
 type RichTextEditorMockProps = {
