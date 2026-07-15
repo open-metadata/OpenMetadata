@@ -326,6 +326,14 @@ def test_a_looker_error_with_an_undiagnosed_status_keeps_its_raw_error():
     assert diagnosis is None
 
 
+def test_a_looker_error_whose_message_mentions_a_transport_word_keeps_its_raw_error():
+    # A structured Looker error (carries a doc) whose text happens to contain a
+    # transport token must not be read as a network failure.
+    diagnosis = LOOKER_ERRORS.classify(_sdk_error("Query exceeded the timeout", documentation_url=DASHBOARDS_400))
+
+    assert diagnosis is None
+
+
 def test_the_step_timeout_keeps_the_legacy_three_minute_budget():
     # Listing dashboards and LookML models can be slow on large instances.
     assert LookerConnection.step_timeout_seconds == THREE_MIN

@@ -96,28 +96,36 @@ def _login_rejected(error: BaseException) -> bool:
     )
 
 
-def _foreign_404(error: BaseException) -> bool:
-    """Match a 404 from a server that is not Looker.
+def _has_error_doc(error: BaseException) -> bool:
+    """Whether any error in the chain carries a Looker error document.
 
-    Requires the absence of a Looker error document: a Looker error carrying a
-    status this pack does not diagnose (e.g. a 400 reading "parameter not found")
-    keeps its raw errorLog instead of being blamed on Host Port.
+    A real transport failure is flattened into a message with no such document, so
+    its presence marks a structured Looker answer that must keep its raw errorLog
+    rather than be diagnosed from incidental text.
     """
-    chain = list(exception_chain(error))
-    has_error_doc = any(_error_doc(current) is not None for current in chain)
-    return not has_error_doc and any(_FOREIGN_404.search(str(current)) for current in chain)
+    return any(_error_doc(current) is not None for current in exception_chain(error))
 
 
-def _contains_any(*tokens: str) -> Matcher:
-    """Match when any of ``tokens`` appears in the error (or its cause chain).
+def _foreign_404(error: BaseException) -> bool:
+    """Match a 404 from a server that is not Looker: a 404 token, but no Looker
+    error document (a Looker 404 carries one and is matched above)."""
+    return not _has_error_doc(error) and any(_FOREIGN_404.search(str(current)) for current in exception_chain(error))
 
-    The SDK's transport re-raises every ``IOError`` as an ``SDKError`` whose message
-    is the stringified original, so DNS, refused, TLS and timeout errors lose their
-    type and can only be matched on text.
+
+def _transport_text(*tokens: str) -> Matcher:
+    """Match a flattened transport error by text: the SDK re-raises every
+    ``IOError`` as an ``SDKError`` whose message is the stringified original, so
+    DNS, refused, TLS and timeout errors lose their type.
+
+    Guarded by the absence of a Looker error document, so a structured Looker
+    error whose message happens to contain a transport token (e.g. a 400 reading
+    "timeout") keeps its raw errorLog instead of being blamed on the network.
     """
     lowered = tuple(token.lower() for token in tokens)
 
     def match(error: BaseException) -> bool:
+        if _has_error_doc(error):
+            return False
         chain = " ".join(str(current) for current in exception_chain(error)).lower()
         return any(token in chain for token in lowered)
 
@@ -151,33 +159,34 @@ LOOKER_ERRORS = ErrorPack(
         fix=f"This connector uses API {SDK_API_VERSION}, which the instance does not list as supported.",
         doc=API_SDK_DOC,
     ),
-    # Matched on text: the transport flattens these into an SDKError message. They
-    # precede the type-based NETWORK_ERRORS, which only fires outside the transport.
+    # Matched on text: the transport flattens these into an SDKError message. Guarded
+    # so a structured Looker error is not read as a transport failure; the type-based
+    # NETWORK_ERRORS below only fires outside the transport.
     when(
-        _contains_any("failed to resolve", "name or service not known", "nodename nor servname", "getaddrinfo failed")
+        _transport_text("failed to resolve", "name or service not known", "nodename nor servname", "getaddrinfo failed")
     ).diagnose(
         "Host could not be resolved",
         fix="Check Host Port and that DNS resolves it from where ingestion runs.",
     ),
-    when(_contains_any("connection refused")).diagnose(
+    when(_transport_text("connection refused")).diagnose(
         "Connection refused",
         fix="Nothing is listening on that port. Check the host and port in Host Port.",
     ),
-    when(_contains_any("timed out", "timeout")).diagnose(
+    when(_transport_text("timed out", "timeout")).diagnose(
         "Connection timed out",
         fix="The host did not answer in time. Check that the network allows access to this host and port.",
     ),
-    when(_contains_any("certificate verify failed", "sslerror", "ssl: ")).diagnose(
+    when(_transport_text("certificate verify failed", "sslerror", "ssl: ")).diagnose(
         "TLS verification failed",
         fix="The instance's certificate could not be verified from where ingestion runs.",
     ),
-    when(_contains_any("max retries exceeded", "connection aborted", "connection error")).diagnose(
+    when(_transport_text("max retries exceeded", "connection aborted", "connection error")).diagnose(
         "Cannot reach the host",
         fix="Check Host Port and that the instance is reachable from where ingestion runs.",
     ),
     # Looker serves this page, with no error document, both for a rejected sign-in
     # and for a host that is not a live instance; the two cannot be told apart.
-    when(_contains_any("looker is unavailable", "looker not found")).diagnose(
+    when(_transport_text("looker is unavailable", "looker not found")).diagnose(
         "Authentication failed",
         fix="Looker returns this same page for wrong credentials and for a host that is not a live "
         "instance. Check the Client ID and Client Secret, then Host Port.",
