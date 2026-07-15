@@ -594,9 +594,9 @@ elasticsearch:
     # Embedding provider/model/credentials now live under llmConfiguration.embeddings (single LLM config home).
 
 # Platform-wide LLM provider configuration. Generic - consumed by any feature that needs LLM
-# completions (e.g. Context Center knowledge-pill extraction and the MCP Chat application). The
-# file content of uploaded documents is sent to the configured provider when enabled. Disabled by
-# default; set provider + credentials (or the matching env vars) to enable.
+# completions or embeddings (currently the semantic-search embeddings under
+# llmConfiguration.embeddings). Disabled by default; set provider + credentials (or the matching
+# env vars) to enable.
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic

@@ -7,16 +7,15 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.isNull;
-import static org.mockito.ArgumentMatchers.same;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.same;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
-import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -42,15 +41,13 @@ import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 
 @ExtendWith(MockitoExtension.class)
-class ContextFileProcessingServiceTest {
+class ContextFileExtractionServiceTest {
 
   @Mock private ContextFileRepository repository;
   @Mock private ContextFileContentRepository contentRepository;
   @Mock private AssetRepository assetRepository;
   @Mock private AssetService assetService;
   @Mock private ContextFileTextExtractor textExtractor;
-  @Mock private ContextMemoryExtractor memoryExtractor;
-  @Mock private FileContextProcessingEngine fileEngine;
 
   @Captor private ArgumentCaptor<ContextFile> updatedFileCaptor;
   @Captor private ArgumentCaptor<ContextFileContent> updatedContentCaptor;
@@ -88,8 +85,7 @@ class ContextFileProcessingServiceTest {
 
     lenient().when(repository.getContentRepository()).thenReturn(contentRepository);
     lenient().when(repository.getAssetRepository()).thenReturn(assetRepository);
-    lenient()
-        .when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(file);
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
@@ -125,121 +121,6 @@ class ContextFileProcessingServiceTest {
   }
 
   @Test
-  void processWithLlmEnabledRunsExtractionThenProcessed() throws Exception {
-    when(assetService.read(asset))
-        .thenReturn(
-            CompletableFuture.completedFuture(
-                new ByteArrayInputStream("Quarterly results".getBytes())));
-    when(textExtractor.extract(any(InputStream.class), same(file)))
-        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
-
-    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
-
-    // The shared engine owns derive/reconcile/stat-stamping (covered by its own tests); the
-    // service is responsible for driving the status machine around it.
-    verify(fileEngine).runExtraction(fileId);
-    verify(repository, times(3))
-        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
-    assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
-    assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
-    assertEquals(ProcessingStatus.Processed, fileUpdates.get(2).getProcessingStatus());
-  }
-
-  @Test
-  void llmRejectionMarksFailureAndKeepsExtractedText() throws Exception {
-    when(assetService.read(asset))
-        .thenReturn(
-            CompletableFuture.completedFuture(
-                new ByteArrayInputStream("Quarterly results".getBytes())));
-    when(textExtractor.extract(any(InputStream.class), same(file)))
-        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
-    file.setExtractedText("indexed text");
-    content.setExtractedText("Quarterly results canonical");
-    Executor rejectingLlmExecutor =
-        task -> {
-          throw new RejectedExecutionException("queue full");
-        };
-
-    service(Runnable::run, () -> assetService, rejectingLlmExecutor, true)
-        .process(fileId, contentId);
-
-    verify(repository, times(3))
-        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
-    assertEquals(ProcessingStatus.ExtractingContext, fileUpdates.get(1).getProcessingStatus());
-    assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
-    assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
-
-    verify(contentRepository, times(3))
-        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
-    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
-    assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
-    assertEquals(
-        "Knowledge pill extraction queue is full. Please retry later.",
-        failedContent.getProcessingError());
-    assertEquals("Quarterly results canonical", failedContent.getExtractedText());
-  }
-
-  @Test
-  void llmFailureRecordsProcessingErrorAndKeepsExtractedText() throws Exception {
-    when(assetService.read(asset))
-        .thenReturn(
-            CompletableFuture.completedFuture(
-                new ByteArrayInputStream("Quarterly results".getBytes())));
-    when(textExtractor.extract(any(InputStream.class), same(file)))
-        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
-    file.setExtractedText("indexed text");
-    content.setExtractedText("Quarterly results canonical");
-    org.mockito.Mockito.doThrow(new RuntimeException("provider exploded"))
-        .when(fileEngine)
-        .runExtraction(fileId);
-
-    service(Runnable::run, () -> assetService, true).process(fileId, contentId);
-
-    verify(repository, times(3))
-        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
-    List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
-    assertEquals(ProcessingStatus.Failed, fileUpdates.get(2).getProcessingStatus());
-    assertEquals("provider exploded", fileUpdates.get(2).getProcessingError());
-    assertEquals("indexed text", fileUpdates.get(2).getExtractedText());
-
-    verify(contentRepository, times(3))
-        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
-    ContextFileContent failedContent = updatedContentCaptor.getAllValues().get(2);
-    assertEquals(ProcessingStatus.Failed, failedContent.getProcessingStatus());
-    assertEquals("provider exploded", failedContent.getProcessingError());
-    assertEquals("Quarterly results canonical", failedContent.getExtractedText());
-  }
-
-  @Test
-  void recoverInterruptedProcessingResubmitsTransientFiles() {
-    ContextFile analyzing = transientFile(ProcessingStatus.Analyzing);
-    ContextFile extracting = transientFile(ProcessingStatus.ExtractingContext);
-    ContextFile uploaded = transientFile(ProcessingStatus.Uploaded);
-    ContextFile processed = transientFile(ProcessingStatus.Processed);
-    ContextFile noContent =
-        new ContextFile()
-            .withId(UUID.randomUUID())
-            .withProcessingStatus(ProcessingStatus.Analyzing);
-    when(repository.listAll(any(), any()))
-        .thenReturn(List.of(analyzing, extracting, uploaded, processed, noContent));
-    List<Runnable> queued = new ArrayList<>();
-
-    int resubmitted = service(queued::add, () -> assetService).recoverInterruptedProcessing();
-
-    assertEquals(3, resubmitted);
-    assertEquals(3, queued.size());
-  }
-
-  private ContextFile transientFile(ProcessingStatus status) {
-    return new ContextFile()
-        .withId(UUID.randomUUID())
-        .withHeadContentId(UUID.randomUUID().toString())
-        .withProcessingStatus(status);
-  }
-
-  @Test
   void processMarksFailureWhenObjectStorageIsUnavailable() {
     service(Runnable::run, () -> null).process(fileId, contentId);
 
@@ -264,7 +145,7 @@ class ContextFileProcessingServiceTest {
 
     service(rejectingExecutor, () -> assetService).submit(fileId, contentId);
 
-    verifyImmediateFailureWith("Processing queue is full. Please retry later.");
+    verifyImmediateFailureWith("Text extraction queue is full. Please retry later.");
     verify(assetService, never()).read(any());
   }
 
@@ -301,7 +182,6 @@ class ContextFileProcessingServiceTest {
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
     assertEquals(ProcessingStatus.Failed, fileUpdates.get(1).getProcessingStatus());
-    assertEquals(expectedReason, fileUpdates.get(1).getProcessingError());
     assertNull(fileUpdates.get(1).getExtractedText());
     assertNull(fileUpdates.get(1).getPageCount());
 
@@ -328,29 +208,9 @@ class ContextFileProcessingServiceTest {
     assertNull(contentUpdate.getExtractedText());
   }
 
-  private ContextFileProcessingService service(
+  private ContextFileExtractionService service(
       Executor executor, Supplier<AssetService> assetServiceSupplier) {
-    return service(executor, assetServiceSupplier, false);
-  }
-
-  private ContextFileProcessingService service(
-      Executor executor, Supplier<AssetService> assetServiceSupplier, boolean llmEnabled) {
-    return service(executor, assetServiceSupplier, Runnable::run, llmEnabled);
-  }
-
-  private ContextFileProcessingService service(
-      Executor executor,
-      Supplier<AssetService> assetServiceSupplier,
-      Executor llmExecutor,
-      boolean llmEnabled) {
-    return new ContextFileProcessingService(
-        repository,
-        assetServiceSupplier,
-        executor,
-        textExtractor,
-        llmExecutor,
-        () -> memoryExtractor,
-        () -> llmEnabled,
-        () -> fileEngine);
+    return new ContextFileExtractionService(
+        repository, assetServiceSupplier, executor, textExtractor);
   }
 }

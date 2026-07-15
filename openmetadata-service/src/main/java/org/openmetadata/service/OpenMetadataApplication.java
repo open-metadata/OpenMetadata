@@ -77,18 +77,15 @@ import org.hibernate.validator.resourceloading.PlatformResourceBundleLocator;
 import org.jdbi.v3.core.Jdbi;
 import org.jdbi.v3.sqlobject.SqlObjects;
 import org.jetbrains.annotations.NotNull;
-import org.openmetadata.schema.api.configuration.MCPConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.security.AuthenticationConfiguration;
 import org.openmetadata.schema.api.security.AuthorizerConfiguration;
-import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.LimitsConfiguration;
-import org.openmetadata.schema.configuration.McpChatSettings;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
-import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMappingLoader;
+import org.openmetadata.service.apps.ApplicationContext;
 import org.openmetadata.service.apps.ApplicationHandler;
 import org.openmetadata.service.apps.McpServerProvider;
 import org.openmetadata.service.apps.bundles.rdf.distributed.RdfDistributedJobParticipant;
@@ -127,10 +124,8 @@ import org.openmetadata.service.jobs.JobDAO;
 import org.openmetadata.service.jobs.JobHandlerRegistry;
 import org.openmetadata.service.limits.DefaultLimits;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.llm.LLMClientHolder;
 import org.openmetadata.service.logging.SwitchableAccessLayoutFactory;
 import org.openmetadata.service.logging.SwitchableEventLayoutFactory;
-import org.openmetadata.service.mcpclient.McpChatServiceHolder;
 import org.openmetadata.service.migration.MigrationValidationClient;
 import org.openmetadata.service.migration.api.MigrationWorkflow;
 import org.openmetadata.service.monitoring.EventMonitorConfiguration;
@@ -268,8 +263,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     // Initialize the IndexMapping class
     IndexMappingLoader.init(catalogConfig.getElasticSearchConfiguration());
 
-    // Initialize the shared LLM completion client from llmConfiguration
-    LLMClientHolder.initialize(catalogConfig.getLlmConfiguration());
     // Publish the platform-wide LLM configuration for features that need completions
     LlmConfigHolder.initialize(catalogConfig.getLlmConfiguration());
 
@@ -441,7 +434,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
 
     // Register MCP (depends on Auth Handlers for SSO)
     registerMCPServer(catalogConfig, environment);
-    initializeMcpChatService();
 
     // Handle Services Jobs
     registerHealthCheckJobs(catalogConfig);
@@ -457,7 +449,7 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
       return;
     }
     try {
-      if (isMcpServerEnabled()) {
+      if (ApplicationContext.getInstance().getAppIfExists("McpApplication") != null) {
         Class<?> mcpServerClass = Class.forName("org.openmetadata.mcp.McpServer");
         McpServerProvider mcpServer =
             (McpServerProvider) mcpServerClass.getDeclaredConstructor().newInstance();
@@ -470,20 +462,6 @@ public class OpenMetadataApplication extends Application<OpenMetadataApplication
     } catch (Exception ex) {
       LOG.error("Error initializing MCP server", ex);
     }
-  }
-
-  private boolean isMcpServerEnabled() {
-    MCPConfiguration mcpConfig =
-        SettingsCache.getSettingOrDefault(
-            SettingsType.MCP_CONFIGURATION, new MCPConfiguration(), MCPConfiguration.class);
-    return mcpConfig != null && Boolean.TRUE.equals(mcpConfig.getEnabled());
-  }
-
-  private void initializeMcpChatService() {
-    AISettings aiSettings =
-        SettingsCache.getSettingOrDefault(SettingsType.AI_SETTINGS, null, AISettings.class);
-    McpChatSettings mcpChat = aiSettings == null ? null : aiSettings.getMcpChat();
-    McpChatServiceHolder.initialize(LlmConfigHolder.get(), mcpChat);
   }
 
   protected @NotNull JobHandlerRegistry getJobHandlerRegistry() {
