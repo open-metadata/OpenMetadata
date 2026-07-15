@@ -161,6 +161,7 @@ export const usePageHeader = (config: PageHeaderConfig) => {
         actions={actions}
         badge={badge}
         breadcrumb={config.breadcrumb}
+        className="tw:mb-5"
         data-testid="page-header-container"
         leading={leading}
         subtitle={displayDescription}

@@ -25,6 +25,8 @@ import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
 /** Persona-membership authorization shared by the REST endpoint and MCP tool. */
 public final class PersonaContextAccess {
+  private static final String CONTEXT_DEFINITION_FIELD = "contextDefinition";
+
   private PersonaContextAccess() {}
 
   public static void authorize(SecurityContext securityContext, Persona persona) {
@@ -32,8 +34,7 @@ public final class PersonaContextAccess {
     if (subject.isAdmin() || subject.isBot()) {
       return;
     }
-    UserRepository users = (UserRepository) Entity.getEntityRepository(Entity.USER);
-    if (!users.hasPersona(subject.user(), persona.getId())) {
+    if (!subject.hasPersona(persona.getId())) {
       throw new AuthorizationException(
           "User is not assigned to persona " + persona.getFullyQualifiedName());
     }
@@ -41,13 +42,29 @@ public final class PersonaContextAccess {
 
   public static Persona activePersona(SecurityContext securityContext) {
     SubjectContext subject = DefaultAuthorizer.getSubjectContext(securityContext);
+    Persona persona = loadPersona(subject.getActivePersona());
+    if (persona != null) {
+      return persona;
+    }
     UserRepository users = (UserRepository) Entity.getEntityRepository(Entity.USER);
     EntityReference personaReference = users.getDefaultPersona(subject.user());
-    if (personaReference == null) {
+    persona = loadPersona(personaReference);
+    if (persona == null) {
       throw EntityNotFoundException.byMessage("No active persona is configured for this user");
     }
-    return Entity.getEntity(
-        Entity.PERSONA, personaReference.getId(), "contextDefinition", Include.NON_DELETED);
+    return persona;
+  }
+
+  private static Persona loadPersona(EntityReference personaReference) {
+    if (personaReference == null) {
+      return null;
+    }
+    try {
+      return Entity.getEntity(
+          Entity.PERSONA, personaReference.getId(), CONTEXT_DEFINITION_FIELD, Include.NON_DELETED);
+    } catch (EntityNotFoundException e) {
+      return null;
+    }
   }
 
   public static void authorizeRefresh(SecurityContext securityContext) {

@@ -10,9 +10,9 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { PlusOutlined } from '@ant-design/icons';
+import { Button } from '@openmetadata/ui-core-components';
 import { Actions, JsonTree } from '@react-awesome-query-builder/antd';
-import { Button } from 'antd';
+import { Plus } from '@untitledui/icons';
 import { useCallback, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { EntityType } from '../../../../../enums/entity.enum';
@@ -65,11 +65,12 @@ export const RuleQueryBuilderField = ({
       />
       {!readonly && (
         <Button
-          className="m-t-sm"
+          className="m-t-sm tw:self-start"
+          color="link-color"
           data-testid="add-context-condition"
-          disabled={!queryActions?.addRule}
-          icon={<PlusOutlined />}
-          type="link"
+          iconLeading={Plus}
+          isDisabled={!queryActions?.addRule}
+          size="sm"
           onClick={() => queryActions?.addRule([])}>
           {t('label.add-condition-button')}
         </Button>

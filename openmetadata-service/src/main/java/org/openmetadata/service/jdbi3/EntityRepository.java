@@ -4909,6 +4909,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityCacheRepair.scheduleRepair(
         entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
+    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -10276,6 +10277,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // so the next GET on this instance can't race an in-flight async repopulate.
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
+      CacheBundle.invalidateEntity(entityType, id, fqn);
 
       EntityCacheRepair.scheduleRepair(entityType, id, fqn, originalFqn);
 
