@@ -392,6 +392,10 @@ export const getJsonTreeFromQueryFilter = (
     const id1 = generateUUID();
     const id2 = generateUUID();
     const mustFilters = queryFilter?.query?.bool?.must as QueryFieldInterface[];
+    const innerMust =
+      (mustFilters?.[0]?.bool as EsBoolQuery)?.must as
+        | QueryFieldInterface[]
+        | undefined;
 
     return {
       type: 'group',
@@ -402,8 +406,7 @@ export const getJsonTreeFromQueryFilter = (
           properties: { conjunction: 'AND', not: false },
           children1: getJsonTreePropertyFromQueryFilter(
             [id1, id2],
-            (mustFilters?.[0]?.bool as EsBoolQuery)
-              .must as QueryFieldInterface[],
+            innerMust ?? mustFilters ?? [],
             fields
           ),
           id: id2,
