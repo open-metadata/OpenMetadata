@@ -131,13 +131,27 @@ jest.mock('@openmetadata/ui-core-components', () => {
   const MockEmptyPlaceholder = ({
     title,
     description,
+    actions,
   }: {
     title?: React.ReactNode;
     description?: React.ReactNode;
+    actions?: {
+      key: string;
+      label: React.ReactNode;
+      onPress?: () => void;
+    }[];
   }) => (
     <div data-testid="empty-placeholder">
       <span>{title}</span>
       <span>{description}</span>
+      {(actions ?? []).map((action) => (
+        <button
+          data-testid={`empty-placeholder-action-${action.key}`}
+          key={action.key}
+          onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
     </div>
   );
 
@@ -334,6 +348,50 @@ describe('TestSuitesTable component', () => {
     expect(
       screen.getByText('message.no-matching-test-suites')
     ).toBeInTheDocument();
+  });
+
+  it('should render the empty-state CTA when emptyStateAction is provided and no active filters', () => {
+    const mockOnPress = jest.fn();
+    const emptyStateAction = {
+      key: 'new-bundle-suite',
+      label: 'label.new-entity',
+      onPress: mockOnPress,
+    };
+
+    renderTable({
+      data: [],
+      hasActiveFilters: false,
+      emptyStateAction,
+    });
+
+    const actionButton = screen.getByTestId(
+      'empty-placeholder-action-new-bundle-suite'
+    );
+
+    expect(actionButton).toBeInTheDocument();
+    expect(actionButton).toHaveTextContent('label.new-entity');
+
+    fireEvent.click(actionButton);
+
+    expect(mockOnPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
+    const emptyStateAction = {
+      key: 'new-bundle-suite',
+      label: 'label.new-entity',
+      onPress: jest.fn(),
+    };
+
+    renderTable({
+      data: [],
+      hasActiveFilters: true,
+      emptyStateAction,
+    });
+
+    expect(
+      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+    ).not.toBeInTheDocument();
   });
 
   it('should not render rows while loading', () => {

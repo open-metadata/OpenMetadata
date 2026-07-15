@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 
+import { EmptyPlaceholderAction } from '@openmetadata/ui-core-components';
 import { ReactNode } from 'react';
 import { CurveType } from 'recharts/types/shape/Curve';
 import { OperationPermission } from '../../../../context/PermissionProvider/PermissionProvider.interface';
@@ -77,6 +78,7 @@ export interface DataQualityTabProps {
   enableBulkActions?: boolean;
   editVariant?: 'drawer' | 'modal';
   hasActiveFilters?: boolean;
+  emptyStateAction?: EmptyPlaceholderAction;
 }
 
 export interface TestSummaryProps {

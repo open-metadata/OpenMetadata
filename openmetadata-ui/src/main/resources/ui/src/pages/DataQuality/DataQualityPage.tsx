@@ -14,7 +14,7 @@
 import { DownOutlined } from '@ant-design/icons';
 import { Button, Card, Col, Dropdown, Row, Space, Tabs } from 'antd';
 import { isEmpty } from 'lodash';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate, useParams } from 'react-router-dom';
 import TabsLabel from '../../components/common/TabsLabel/TabsLabel.component';
@@ -30,7 +30,47 @@ import observabilityRouterClassBase from '../../utils/ObservabilityRouterClassBa
 import './data-quality-page.less';
 import DataQualityClassBase from './DataQualityClassBase';
 import { DataQualityPageTabs } from './DataQualityPage.interface';
-import DataQualityProvider from './DataQualityProvider';
+import DataQualityProvider, {
+  useDataQualityProvider,
+} from './DataQualityProvider';
+
+/**
+ * Registers the page-level create handlers into DataQualityContext so
+ * components deep inside the provider tree (e.g. the DQ empty-state CTAs)
+ * can trigger the create drawers that live here at the page level. Must be
+ * rendered as a child of DataQualityProvider — DataQualityPage itself
+ * renders the provider rather than being rendered inside it, so it cannot
+ * call useDataQualityProvider directly.
+ */
+const RegisterDataQualityCreateActions = ({
+  onAddTestCase,
+  onAddBundleSuite,
+  canCreateTestCase,
+  canCreateBundleSuite,
+}: {
+  onAddTestCase: () => void;
+  onAddBundleSuite: () => void;
+  canCreateTestCase: boolean;
+  canCreateBundleSuite: boolean;
+}) => {
+  const { setCreateActions } = useDataQualityProvider();
+
+  useEffect(() => {
+    setCreateActions?.({
+      onAddTestCase,
+      onAddBundleSuite,
+      canCreateTestCase,
+      canCreateBundleSuite,
+    });
+  }, [
+    onAddTestCase,
+    onAddBundleSuite,
+    canCreateTestCase,
+    canCreateBundleSuite,
+  ]);
+
+  return null;
+};
 
 const DataQualityPage = () => {
   const { tab: activeTab = DataQualityClassBase.getDefaultActiveTab() } =
@@ -38,7 +78,8 @@ const DataQualityPage = () => {
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { permissions } = usePermissionProvider();
-  const { testSuite: testSuitePermission } = permissions;
+  const { testSuite: testSuitePermission, testCase: testCasePermission } =
+    permissions;
 
   // Add state for modal open/close
   const [isTestCaseModalOpen, setIsTestCaseModalOpen] = useState(false);
@@ -133,6 +174,12 @@ const DataQualityPage = () => {
 
   return (
     <DataQualityProvider>
+      <RegisterDataQualityCreateActions
+        canCreateBundleSuite={Boolean(testSuitePermission?.Create)}
+        canCreateTestCase={Boolean(testCasePermission?.Create)}
+        onAddBundleSuite={handleOpenBundleSuiteModal}
+        onAddTestCase={handleOpenTestCaseModal}
+      />
       <Row
         className="data-quality-page m-b-md"
         data-testid="data-insight-container"

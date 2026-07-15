@@ -52,9 +52,17 @@ const renderDataQualityPage = (initialPath: string) =>
 const mockNavigate = jest.fn();
 
 // mock components
-jest.mock('./DataQualityProvider', () => {
-  return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
-});
+const mockSetCreateActions = jest.fn();
+
+jest.mock('./DataQualityProvider', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(({ children }) => <div>{children}</div>),
+  useDataQualityProvider: jest.fn().mockImplementation(() => ({
+    setCreateActions: mockSetCreateActions,
+  })),
+}));
 jest.mock('../../components/common/LeftPanelCard/LeftPanelCard', () => {
   return jest.fn().mockImplementation(({ children }) => <div>{children}</div>);
 });
@@ -126,6 +134,16 @@ jest.mock('../../context/PermissionProvider/PermissionProvider', () => ({
   usePermissionProvider: jest.fn().mockReturnValue({
     permissions: {
       testSuite: {
+        Create: true,
+        Delete: true,
+        ViewAll: true,
+        ViewBasic: true,
+        EditAll: true,
+        EditDescription: true,
+        EditDisplayName: true,
+        EditCustomFields: true,
+      },
+      testCase: {
         Create: true,
         Delete: true,
         ViewAll: true,
@@ -238,6 +256,25 @@ describe('DataQualityPage', () => {
       expect(
         await screen.findByTestId('add-test-suite-btn')
       ).toBeInTheDocument();
+    });
+  });
+
+  describe('DataQualityContext create-action registration', () => {
+    it('should register create handlers and permissions into DataQualityContext', async () => {
+      renderDataQualityPage(DATA_QUALITY_TEST_PATHS.testCases);
+
+      await screen.findByTestId('data-insight-container');
+
+      await waitFor(() => {
+        expect(mockSetCreateActions).toHaveBeenCalledWith(
+          expect.objectContaining({
+            canCreateTestCase: true,
+            canCreateBundleSuite: true,
+            onAddTestCase: expect.any(Function),
+            onAddBundleSuite: expect.any(Function),
+          })
+        );
+      });
     });
   });
 

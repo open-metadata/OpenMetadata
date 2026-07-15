@@ -127,6 +127,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   enableBulkActions = false,
   editVariant = getDefaultTestCaseFormVariant(),
   hasActiveFilters = false,
+  emptyStateAction,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -847,6 +848,11 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
               ) : (
                 <Box className="tw:relative tw:min-h-80 tw:w-full">
                   <EmptyPlaceholder
+                    actions={
+                      !hasActiveFilters && emptyStateAction
+                        ? [emptyStateAction]
+                        : undefined
+                    }
                     description={t(
                       hasActiveFilters
                         ? 'message.no-matching-test-cases-description'

@@ -74,6 +74,8 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
     useState<TestSummary>(INITIAL_TEST_SUMMARY);
   const [isTestCaseSummaryLoading, setIsTestCaseSummaryLoading] =
     useState(true);
+  const [createActions, setCreateActions] =
+    useState<DataQualityContextInterface['createActions']>();
 
   const { permissions } = usePermissionProvider();
   const { testCase: testCasePermission } = permissions;
@@ -83,8 +85,10 @@ const DataQualityProvider = ({ children }: { children: React.ReactNode }) => {
       testCaseSummary,
       isTestCaseSummaryLoading,
       activeTab,
+      createActions,
+      setCreateActions,
     };
-  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab]);
+  }, [testCaseSummary, isTestCaseSummaryLoading, activeTab, createActions]);
 
   const fetchTestSummary = async (params?: DataQualityPageParams) => {
     const filters = {

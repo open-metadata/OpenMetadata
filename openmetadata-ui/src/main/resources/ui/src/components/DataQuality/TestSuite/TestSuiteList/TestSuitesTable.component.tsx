@@ -10,7 +10,12 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Box, EmptyPlaceholder, Table } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  EmptyPlaceholder,
+  EmptyPlaceholderAction,
+  Table,
+} from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
@@ -53,6 +58,7 @@ export interface TestSuitesTableProps {
   showPagination: boolean;
   pagingHandler: (params: PagingHandlerParams) => void;
   onShowSizeChange: (size: number) => void;
+  emptyStateAction?: EmptyPlaceholderAction;
 }
 
 /**
@@ -74,6 +80,7 @@ export const TestSuitesTable = ({
   showPagination,
   pagingHandler,
   onShowSizeChange,
+  emptyStateAction,
 }: TestSuitesTableProps) => {
   const { t } = useTranslation();
 
@@ -155,6 +162,11 @@ export const TestSuitesTable = ({
     return (
       <Box className="tw:relative tw:min-h-80 tw:w-full">
         <EmptyPlaceholder
+          actions={
+            !hasActiveFilters && emptyStateAction
+              ? [emptyStateAction]
+              : undefined
+          }
           description={description}
           icon={<EmptyTableSuiteIcon className="tw:text-fg-brand-primary" />}
           title={title}
@@ -162,7 +174,7 @@ export const TestSuitesTable = ({
         />
       </Box>
     );
-  }, [hasActiveFilters, subTab, t]);
+  }, [hasActiveFilters, subTab, t, emptyStateAction]);
 
   return (
     <>
