@@ -245,6 +245,25 @@ public class SubjectContextTest {
     assertTrue(subjectContext.isTeamAsset("team12", List.of(teamOwner)));
     assertTrue(subjectContext.isTeamAsset("team1", List.of(teamOwner)));
     assertFalse(subjectContext.isTeamAsset("team13", List.of(teamOwner)));
+
+    //
+    // Multi-owner OR semantics: isTeamAsset must evaluate ALL owners, not short-circuit on the
+    // first. team13 is not under team11 but team111 (teamOwner) is — a matching owner that is not
+    // the first element must still win.
+    //
+    EntityReference team13Owner =
+        new EntityReference().withId(team13.getId()).withType(Entity.TEAM);
+    assertTrue(subjectContext.isTeamAsset("team11", List.of(team13Owner, teamOwner)));
+    assertFalse(subjectContext.isTeamAsset("team13", List.of(teamOwner, userOwner)));
+
+    //
+    // A deleted/unresolved earlier owner must not abort the scan. getSubjectContext(name) fails for
+    // an owner whose user no longer resolves; isOwnerUnderTeam swallows that so the matching later
+    // team owner still grants access (without the guard the exception aborts the whole evaluation).
+    //
+    EntityReference deletedUserOwner =
+        new EntityReference().withName("deleted_ghost_user").withType(Entity.USER);
+    assertTrue(subjectContext.isTeamAsset("team11", List.of(deletedUserOwner, teamOwner)));
   }
 
   private static List<Role> getRoles(String prefix) {

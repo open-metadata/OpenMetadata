@@ -157,23 +157,35 @@ public record SubjectContext(User user, String impersonatedBy) {
     return false;
   }
 
-  /** Returns true if the given resource owner is under the team hierarchy of parentTeam */
+  /** Returns true if any of the resource owners is under the team hierarchy of parentTeam */
   public boolean isTeamAsset(String parentTeam, List<EntityReference> owners) {
-    for (EntityReference owner : owners) {
-      if (owner.getType().equals(Entity.USER)) {
-        SubjectContext subjectContext = getSubjectContext(owner.getName());
-        return subjectContext.isUserUnderTeam(parentTeam);
-      } else if (owner.getType().equals(Entity.TEAM)) {
-        try {
-          Team team =
-              Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
-          return isInTeam(parentTeam, team.getEntityReference());
-        } catch (Exception ex) {
-          // Ignore and return false
-        }
+    boolean isUnderTeam = false;
+    for (EntityReference owner : listOrEmpty(owners)) {
+      if (isOwnerUnderTeam(owner, parentTeam)) {
+        isUnderTeam = true;
+        break;
       }
     }
-    return false;
+    return isUnderTeam;
+  }
+
+  private boolean isOwnerUnderTeam(EntityReference owner, String parentTeam) {
+    boolean result = false;
+    try {
+      if (owner.getType().equals(Entity.USER)) {
+        result = getSubjectContext(owner.getName()).isUserUnderTeam(parentTeam);
+      } else if (owner.getType().equals(Entity.TEAM)) {
+        Team team = Entity.getEntity(Entity.TEAM, owner.getId(), TEAM_FIELDS, Include.NON_DELETED);
+        result = isInTeam(parentTeam, team.getEntityReference());
+      }
+    } catch (Exception ex) {
+      // Owner could not be resolved (e.g. a deleted user/team still referenced as an owner).
+      // getSubjectContext(userName) throws EntityNotFoundException for an unresolved user; without
+      // this catch that would propagate out of isTeamAsset and abort the multi-owner scan, so an
+      // asset owned by [deletedUser, matchingTeam] would wrongly deny the matching team. Treat this
+      // owner as not-under-team and let isTeamAsset keep checking the rest (OR semantics).
+    }
+    return result;
   }
 
   /** Return true if the team is part of the hierarchy of parentTeam */
