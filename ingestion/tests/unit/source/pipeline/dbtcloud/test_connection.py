@@ -21,7 +21,10 @@ from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.source.pipeline.dbtcloud.client import DBTCloudApiError
+from metadata.ingestion.source.pipeline.dbtcloud.client import (
+    TEST_RETRY_WAIT_SECONDS,
+    DBTCloudApiError,
+)
 from metadata.ingestion.source.pipeline.dbtcloud.connection import (
     DBTCLOUD_ERRORS,
     DBTCloudChecks,
@@ -197,6 +200,7 @@ def test_test_check_access_reads_a_single_job():
     call = client.client.get_raw.call_args
     assert call[0][0] == "/accounts/1/jobs/"
     assert call[1]["data"] == {"limit": 1, "offset": 0}
+    assert call[1]["retry_wait"] == TEST_RETRY_WAIT_SECONDS
 
 
 def test_the_test_calls_reuse_the_shared_client():

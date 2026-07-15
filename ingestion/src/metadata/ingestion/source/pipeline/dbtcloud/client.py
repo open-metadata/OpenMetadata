@@ -41,6 +41,9 @@ API_VERSION = "api/v2"
 # Bounds the error body kept in the step's error log.
 ERROR_DETAIL_LIMIT = 200
 
+# Between-retry sleep for the test calls; the client default (30s) would blow a step budget.
+TEST_RETRY_WAIT_SECONDS = 2
+
 
 class DBTCloudApiError(Exception):
     """A dbt Cloud API call answered with a non-success HTTP status."""
@@ -141,11 +144,10 @@ class DBTCloudClient:
         """
         Authenticated GET that raises DBTCloudApiError on a non-success status.
 
-        Uses get_raw, not get: a dbt Cloud error body nests its `code` under `status`,
-        which the shared error handling does not recognise, so get would drop the
-        status and return None. get_raw hands back the raw response with its status.
+        Uses get_raw: dbt Cloud nests the error `code` under `status`, which get does
+        not recognise, so it would drop the status and return None.
         """
-        response = self.client.get_raw(path, data=params)
+        response = self.client.get_raw(path, data=params, retry_wait=TEST_RETRY_WAIT_SECONDS)
         if not response.ok:
             raise DBTCloudApiError(response.status_code, path, response.text[:ERROR_DETAIL_LIMIT])
         return response.json()
