@@ -13,8 +13,9 @@ Source connection handler for BurstIQ
 """
 
 import hashlib
-from collections import OrderedDict
 from typing import Optional
+
+from cachetools import LRUCache
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -36,7 +37,7 @@ logger = ingestion_logger()
 
 CLIENT_CACHE_SIZE = 100
 
-_CLIENT_CACHE: "OrderedDict[str, BurstIQClient]" = OrderedDict()
+_CLIENT_CACHE: "LRUCache[str, BurstIQClient]" = LRUCache(maxsize=CLIENT_CACHE_SIZE)
 
 
 class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
@@ -44,11 +45,11 @@ class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
         """Return a BurstIQ client, cached by a digest of the serialised config."""
         connection = self.service_connection
         key = hashlib.sha256(connection.model_dump_json().encode()).hexdigest()
-        if key not in _CLIENT_CACHE:
-            _CLIENT_CACHE[key] = BurstIQClient(config=connection)
-            if len(_CLIENT_CACHE) > CLIENT_CACHE_SIZE:
-                _CLIENT_CACHE.popitem(last=False)
-        return _CLIENT_CACHE[key]
+        client = _CLIENT_CACHE.get(key)
+        if client is None:
+            client = BurstIQClient(config=connection)
+            _CLIENT_CACHE[key] = client
+        return client
 
     def test_connection(
         self,
