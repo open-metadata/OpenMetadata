@@ -51,10 +51,8 @@ def test_tcp_probe_raises_network_error_when_port_is_closed(closed_port):
     assert isinstance(exc.value.__cause__, ConnectionRefusedError)
 
 
-def test_tcp_probe_connects_once_to_the_first_resolved_address():
-    # Connecting to only the first resolved address means one connect attempt at
-    # the given timeout, so a multi-address host on a dead port cannot multiply
-    # the wait. The first address (here IPv6) is the one dialed.
+def test_tcp_probe_connects_to_the_first_reachable_address():
+    # The first resolved address (here IPv6) connects, so no other family is tried.
     v6 = (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("::1", 443, 0, 0))
     v4 = (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.5", 443))
     sock = MagicMock()
@@ -69,6 +67,67 @@ def test_tcp_probe_connects_once_to_the_first_resolved_address():
     make_socket.assert_called_once_with(socket.AF_INET6, socket.SOCK_STREAM, 0)
     sock.settimeout.assert_called_once_with(20)
     sock.connect.assert_called_once_with(("::1", 443, 0, 0))
+
+
+def test_tcp_probe_falls_back_to_ipv4_when_ipv6_is_unreachable():
+    # A dual-stack host whose IPv6 address is unreachable must still connect over
+    # IPv4 rather than reporting the host as unreachable.
+    v6 = (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("2001:db8::1", 443, 0, 0))
+    v4 = (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.5", 443))
+    sock_v6 = MagicMock()
+    sock_v6.__enter__.return_value = sock_v6
+    sock_v6.connect.side_effect = OSError("network is unreachable")
+    sock_v4 = MagicMock()
+    sock_v4.__enter__.return_value = sock_v4
+    with (
+        patch("socket.getaddrinfo", return_value=[v6, v4]),
+        patch("socket.socket", side_effect=[sock_v6, sock_v4]) as make_socket,
+    ):
+        assert tcp_probe("dual-stack.example.com", 443) is None
+
+    assert make_socket.call_count == 2
+    sock_v6.connect.assert_called_once()
+    sock_v4.connect.assert_called_once_with(("10.0.0.5", 443))
+
+
+def test_tcp_probe_raises_when_every_family_is_unreachable():
+    v6 = (socket.AF_INET6, socket.SOCK_STREAM, 0, "", ("2001:db8::1", 443, 0, 0))
+    v4 = (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.5", 443))
+
+    def make(*_args):
+        sock = MagicMock()
+        sock.__enter__.return_value = sock
+        sock.connect.side_effect = ConnectionRefusedError(111, "Connection refused")
+        return sock
+
+    with (
+        patch("socket.getaddrinfo", return_value=[v6, v4]),
+        patch("socket.socket", side_effect=make),
+        pytest.raises(NetworkUnreachableError) as exc,
+    ):
+        tcp_probe("dead.example.com", 443)
+    assert isinstance(exc.value.__cause__, ConnectionRefusedError)
+
+
+def test_tcp_probe_tries_only_one_address_per_family():
+    # Many addresses in one family cannot multiply the wait: only the first of the
+    # family is dialed.
+    entries = [
+        (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.1", 443)),
+        (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.2", 443)),
+        (socket.AF_INET, socket.SOCK_STREAM, 0, "", ("10.0.0.3", 443)),
+    ]
+    sock = MagicMock()
+    sock.__enter__.return_value = sock
+    sock.connect.side_effect = ConnectionRefusedError(111, "Connection refused")
+    with (
+        patch("socket.getaddrinfo", return_value=entries),
+        patch("socket.socket", return_value=sock) as make_socket,
+        pytest.raises(NetworkUnreachableError),
+    ):
+        tcp_probe("many-ipv4.example.com", 443)
+
+    make_socket.assert_called_once()
 
 
 def test_tcp_probe_supports_an_ipv6_only_host():
