@@ -1,5 +1,6 @@
 package org.openmetadata.service.search;
 
+import java.lang.management.ManagementFactory;
 import java.util.Map;
 import lombok.Builder;
 import lombok.Getter;
@@ -37,6 +38,14 @@ public class SearchClusterMetrics {
       10 * 1024 * 1024L; // Conservative 10MB default (AWS OpenSearch hard limit)
   // Safe bulk payload threshold: 90% of max_content_length to leave headroom for HTTP framing
   public static final long DEFAULT_BULK_PAYLOAD_SIZE_BYTES = DEFAULT_MAX_CONTENT_LENGTH * 9 / 10;
+  // Fraction of the pod's off-heap headroom (container limit - max heap) usable for in-flight bulk
+  // payloads. Bulk buffers are off-heap, so they escape -Xmx and count against the cgroup limit.
+  public static final double INFLIGHT_MEMORY_SAFETY_FACTOR = 0.5;
+  // Conservative per-entity heap footprint, used to bound the buffered entity queue by bytes rather
+  // than a flat count. Wide tables / large descriptions / sampleData run far above a naive 10 KB;
+  // genuinely huge entities are still caught by the bulk sink's runtime backpressure.
+  public static final long ESTIMATED_ENTITY_BYTES = 100 * 1024L;
+  public static final double QUEUE_HEAP_FRACTION = 0.25;
 
   public static SearchClusterMetrics fetchClusterMetrics(
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
@@ -254,6 +263,8 @@ public class SearchClusterMetrics {
     int queueBatches = Math.min(recommendedProducerThreads * 2, 20);
     int recommendedQueueSize = Math.min(10000, recommendedBatchSize * queueBatches);
     recommendedQueueSize = Math.max(1000, recommendedQueueSize);
+    recommendedQueueSize =
+        boundQueueSizeToHeap(recommendedQueueSize, Runtime.getRuntime().maxMemory());
 
     // --- CPU budget: derive internal thread pool sizes from available cores ---
     // Consumer threads are mostly I/O-bound (waiting on search bulk responses), so they
@@ -271,6 +282,9 @@ public class SearchClusterMetrics {
     int recommendedDocBuildThreads = Math.max(1, Math.min(50, (int) Math.floor(cpuBudget * 2)));
     recommendedConcurrentRequests =
         Math.min(recommendedConcurrentRequests, Math.max(10, availableCores * 10));
+    recommendedConcurrentRequests =
+        boundConcurrentRequestsToMemory(
+            recommendedConcurrentRequests, maxPayloadSize, availableOffHeapBudgetBytes());
     long recommendedStatsIntervalMs =
         availableCores <= 2 ? 2000 : availableCores <= 4 ? 1500 : 1000;
 
@@ -416,6 +430,61 @@ public class SearchClusterMetrics {
     return defaultValue;
   }
 
+  /**
+   * Cap in-flight bulk requests so {@code concurrentRequests * maxPayloadSize} fits the pod's
+   * off-heap headroom. Bulk payloads are held largely in off-heap direct buffers, so they escape
+   * {@code -Xmx} and count against the container cgroup limit; sizing only against heap lets the
+   * aggregate exceed the container limit and get OOMKilled (137). Reducing concurrency to fit lets
+   * reindex adapt to any pod size.
+   */
+  static int boundConcurrentRequestsToMemory(
+      int concurrentRequests, long maxPayloadSizeBytes, long offHeapBudgetBytes) {
+    long safeBytes = (long) (offHeapBudgetBytes * INFLIGHT_MEMORY_SAFETY_FACTOR);
+    long maxByMemory = Math.max(1, safeBytes / Math.max(1, maxPayloadSizeBytes));
+    int bounded = (int) Math.min(concurrentRequests, maxByMemory);
+    if (bounded < concurrentRequests) {
+      LOG.info(
+          "Capping concurrent bulk requests {} -> {} to fit off-heap budget {} MB (payload {} MB); "
+              + "bulk buffers are off-heap and count against the container memory limit",
+          concurrentRequests,
+          bounded,
+          safeBytes / (1024 * 1024),
+          maxPayloadSizeBytes / (1024 * 1024));
+    }
+    return bounded;
+  }
+
+  /**
+   * Cap the buffered entity queue so {@code queueSize * ESTIMATED_ENTITY_BYTES} stays within a
+   * fraction of the JVM heap, instead of a flat entity count that silently blows heap on big
+   * entities or small pods.
+   */
+  static int boundQueueSizeToHeap(int queueSize, long maxHeapBytes) {
+    long heapBudget = (long) (maxHeapBytes * QUEUE_HEAP_FRACTION);
+    long budgeted = heapBudget / ESTIMATED_ENTITY_BYTES;
+    if (budgeted < 1000) {
+      LOG.info(
+          "Queue floor of 1000 entities exceeds heap budget (~{} fit {}% of heap at {} KB/entity); heap is very small",
+          budgeted, (int) (QUEUE_HEAP_FRACTION * 100), ESTIMATED_ENTITY_BYTES / 1024);
+    }
+    int maxByHeap = (int) Math.max(1000, budgeted);
+    return Math.min(queueSize, maxByHeap);
+  }
+
+  private static long availableOffHeapBudgetBytes() {
+    long headroom = containerMemoryLimitBytes() - Runtime.getRuntime().maxMemory();
+    return Math.max(0L, headroom);
+  }
+
+  private static long containerMemoryLimitBytes() {
+    long limit = 0L;
+    if (ManagementFactory.getOperatingSystemMXBean()
+        instanceof com.sun.management.OperatingSystemMXBean osBean) {
+      limit = osBean.getTotalMemorySize();
+    }
+    return limit > 0 ? limit : Runtime.getRuntime().maxMemory();
+  }
+
   private static SearchClusterMetrics getConservativeDefaults(
       SearchRepository searchRepository, long totalEntities, int maxDbConnections) {
     int conservativeBatchSize;
@@ -439,7 +508,6 @@ public class SearchClusterMetrics {
     conservativeConcurrentRequests =
         Math.min(conservativeConcurrentRequests, Math.max(10, availCores * 10));
     int conservativeConsumerThreads = Math.min(20, Math.max(1, availCores - 1));
-    int conservativeQueueSize = conservativeBatchSize * conservativeConcurrentRequests * 2;
 
     long maxHeap = Runtime.getRuntime().maxMemory();
     long totalHeap = Runtime.getRuntime().totalMemory();
@@ -480,6 +548,12 @@ public class SearchClusterMetrics {
       LOG.debug(
           "Could not fetch max content length from cluster, using default: {}", e.getMessage());
     }
+
+    conservativeConcurrentRequests =
+        boundConcurrentRequestsToMemory(
+            conservativeConcurrentRequests, maxPayloadSize, availableOffHeapBudgetBytes());
+    int conservativeQueueSize =
+        boundQueueSizeToHeap(conservativeBatchSize * conservativeConcurrentRequests * 2, maxHeap);
 
     double cpuBudget = availCores * 0.70;
     int conservativeFieldFetchThreads = Math.max(2, Math.min(50, availCores * 2));
@@ -540,8 +614,11 @@ public class SearchClusterMetrics {
         estimatedThroughput / 5); // Assume 5 sec per batch
 
     // Memory usage estimate
-    long queueMemoryMB = (recommendedQueueSize * 10L) / 1024; // Assume 10KB per entity
+    long queueMemoryMB = ((long) recommendedQueueSize * ESTIMATED_ENTITY_BYTES) / (1024 * 1024);
     LOG.info("Estimated queue memory usage: ~{} MB", queueMemoryMB);
+    long inflightBulkMemoryMB =
+        ((long) recommendedConcurrentRequests * maxPayloadSizeBytes) / (1024 * 1024);
+    LOG.info("Estimated in-flight bulk memory (mostly off-heap): ~{} MB", inflightBulkMemoryMB);
 
     LOG.info(
         "Note: Settings are conservative to ensure stability. The system will adapt during execution.");

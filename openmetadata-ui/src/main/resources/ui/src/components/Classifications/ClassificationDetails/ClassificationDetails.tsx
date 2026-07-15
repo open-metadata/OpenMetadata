@@ -58,7 +58,7 @@ import { getErrorText } from '../../../utils/StringUtils';
 import tagClassBase from '../../../utils/TagClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import AppBadge from '../../common/Badge/Badge.component';
-import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
+import Description from '../../common/EntityDescription/Description';
 import ManageButton from '../../common/EntityPageInfos/ManageButton/ManageButton';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
@@ -489,7 +489,7 @@ const ClassificationDetails = forwardRef(
               <Col span={18}>
                 <Card className="classification-details-card">
                   <div className="m-b-sm" data-testid="description-container">
-                    <DescriptionV1
+                    <Description
                       wrapInCard
                       description={description}
                       entityName={getEntityName(currentClassification)}

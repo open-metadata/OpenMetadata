@@ -18,6 +18,7 @@ from azure.identity import ClientSecretCredential
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
@@ -198,7 +199,7 @@ def test_unknown_error_returns_no_diagnosis():
 
 def test_checks_cover_exactly_the_seeded_steps():
     engine = create_engine("sqlite://", poolclass=StaticPool)
-    checks = PostgresChecks(client=engine, query_statement_source=None)
+    checks = PostgresChecks(db=Borrowed.of(engine), query_statement_source=None)
     collected = collect_checks(checks)
     assert set(collected.keys()) == {
         DatabaseStep.CheckAccess,
@@ -224,7 +225,7 @@ def test_check_access_reports_unreachable_host_as_network_failure():
     client = MagicMock()
     client.url.host = "db.invalid"
     client.url.port = 5432
-    checks = PostgresChecks(client=client, query_statement_source=None)
+    checks = PostgresChecks(db=Borrowed.of(client), query_statement_source=None)
     probe_error = NetworkUnreachableError("db.invalid:5432 is not reachable")
     probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
     with (
@@ -250,7 +251,7 @@ def test_query_statement_is_built_lazily_not_at_construction():
         side_effect=lambda engine: calls.append(1) or "total_exec_time",
     ):
         engine = create_engine("sqlite://", poolclass=StaticPool)
-        PostgresChecks(client=engine, query_statement_source=None)
+        PostgresChecks(db=Borrowed.of(engine), query_statement_source=None)
         assert calls == []
 
 

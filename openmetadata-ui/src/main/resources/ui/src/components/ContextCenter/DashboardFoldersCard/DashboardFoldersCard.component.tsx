@@ -17,6 +17,7 @@ import {
   Tree,
   Typography,
 } from '@openmetadata/ui-core-components';
+import { Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { FC, useCallback, useEffect, useState } from 'react';
@@ -33,6 +34,7 @@ import { DashboardFoldersCardProps } from './DashboardFoldersCard.interface';
 const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
   folders,
   isLoading = false,
+  onCreateFolder,
 }) => {
   const { t } = useTranslation();
   const [expandedKeys, setExpandedKeys] = useState<Set<string>>(new Set());
@@ -75,7 +77,16 @@ const DashboardFoldersCard: FC<DashboardFoldersCardProps> = ({
   return (
     <ContextSimplePillarCard
       dataTestId="dashboard-folders-card"
-      emptyMessage={t('label.no-entity', { entity: t('label.folder-plural') })}
+      emptyAction={
+        onCreateFolder
+          ? {
+              label: t('label.new-folder'),
+              icon: Plus,
+              onClick: onCreateFolder,
+            }
+          : undefined
+      }
+      emptyMessage={t('message.no-folders-yet-create-one')}
       icon={FolderIcon}
       isEmpty={folders.length === 0}
       isLoading={isLoading}

@@ -249,10 +249,6 @@ const UpdateTagsPage = withPageSuspenseFallback(
   React.lazy(() => import('../../pages/TasksPage/UpdateTagPage/UpdateTagPage'))
 );
 
-const LogsViewerPage = withPageSuspenseFallback(
-  React.lazy(() => import('../../pages/LogsViewerPage/LogsViewerPage'))
-);
-
 const DataInsightPage = withPageSuspenseFallback(
   React.lazy(
     () => import('../../pages/DataInsightPage/DataInsightPage.component')
@@ -582,7 +578,6 @@ const AuthenticatedAppRouter: FunctionComponent = () => {
         element={<TestSuiteDetailsPage />}
         path={ROUTES.TEST_SUITES_WITH_FQN}
       />
-      <Route element={<LogsViewerPage />} path={ROUTES.LOGS} />
       <Route
         element={
           <TestSuiteIngestionPage

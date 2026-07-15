@@ -17,6 +17,7 @@ tests/unit/test_source_url.py and tests/unit/test_source_connection.py.
 import socket
 from unittest.mock import MagicMock, patch
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.checks.database import DEFAULT_SAMPLE_ROWS, DatabaseStep
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
@@ -74,7 +75,7 @@ def test_non_pyodbc_scheme_uses_common_url_builder():
 
 
 def _checks() -> MssqlChecks:
-    return MssqlChecks(client=MagicMock(), get_databases_statement="SELECT 1")
+    return MssqlChecks(db=Borrowed.of(MagicMock()), get_databases_statement="SELECT 1")
 
 
 def test_every_definition_step_resolves_to_a_check():
