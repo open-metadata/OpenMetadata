@@ -198,7 +198,7 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("update-btn").click());
+        () -> byTestId("create-btn").click());
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
@@ -226,7 +226,7 @@ public final class TableDataQualityPage extends PageObject {
         r ->
             r.url().matches(API_TEST_CASE_UPDATE_REGEX)
                 && (r.request().method().equals("PUT") || r.request().method().equals("PATCH")),
-        () -> byTestId("update-btn").click());
+        () -> byTestId("create-btn").click());
     byTestId("test-case-form-v1")
         .waitFor(new Locator.WaitForOptions().setState(WaitForSelectorState.DETACHED));
     return this;
