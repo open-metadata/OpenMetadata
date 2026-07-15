@@ -25,6 +25,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import JSONDecodeError, SSLError, Timeout
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import SQLAlchemyError
 from sqlalchemy.orm import sessionmaker
 
 from airflow import __version__ as airflow_version
@@ -297,6 +298,25 @@ def _http_status(*codes: int) -> Matcher:
     return match
 
 
+def _db_message(*tokens: str) -> Matcher:
+    """Match a metadata-DB driver error by message token.
+
+    Requires a SQLAlchemy error in the cause chain, so a REST/transport failure
+    that happens to carry the same words is never diagnosed as a database problem.
+    """
+    needles = [token.lower() for token in tokens]
+
+    def match(error: BaseException) -> bool:
+        chain = list(exception_chain(error))
+        result = False
+        if any(isinstance(current, SQLAlchemyError) for current in chain):
+            text = " ".join(str(current).lower() for current in chain)
+            result = any(needle in text for needle in needles)
+        return result
+
+    return match
+
+
 AIRFLOW_ERRORS = ErrorPack(
     when(_http_status(401)).diagnose(
         "Authentication failed",
@@ -335,12 +355,14 @@ AIRFLOW_ERRORS = ErrorPack(
         fix="Check hostPort for typos and that it resolves from where ingestion runs.",
     ),
     # Metadata-DB backend path: the driver reports auth failures as message tokens.
-    when(Matchers.contains("access denied")).diagnose(
+    # Gated to a SQLAlchemy error so a REST failure carrying the same words is not
+    # mislabeled as a database problem.
+    when(_db_message("access denied")).diagnose(
         "Database access denied",
         fix="The Airflow metadata database rejected the credentials. Check the database user "
         "and password have read access to the Airflow schema.",
     ),
-    when(Matchers.contains("password authentication failed")).diagnose(
+    when(_db_message("password authentication failed")).diagnose(
         "Database authentication failed",
         fix="The Airflow metadata database rejected the credentials. Check the database user and password.",
     ),

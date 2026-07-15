@@ -17,6 +17,7 @@ from requests.exceptions import ConnectionError as RequestsConnectionError
 from requests.exceptions import HTTPError, JSONDecodeError, SSLError, Timeout
 from sqlalchemy import create_engine
 from sqlalchemy.engine import Engine
+from sqlalchemy.exc import OperationalError
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
@@ -199,9 +200,12 @@ def _http_error(status_code):
         (SSLError("certificate verify failed"), "TLS verification failed"),
         (Timeout("timed out"), "Connection timed out"),
         (RequestsConnectionError("name resolution failed"), "Cannot reach the host"),
-        (RuntimeError("Access denied for user 'airflow'@'%'"), "Database access denied"),
         (
-            RuntimeError('password authentication failed for user "airflow"'),
+            OperationalError("SELECT 1", {}, Exception("Access denied for user 'airflow'@'%'")),
+            "Database access denied",
+        ),
+        (
+            OperationalError("SELECT 1", {}, Exception('password authentication failed for user "airflow"')),
             "Database authentication failed",
         ),
     ],
@@ -212,6 +216,14 @@ def test_error_pack_diagnoses_known_failures(error, title):
     assert diagnosis is not None
     assert diagnosis.title == title
     assert diagnosis.remediation
+
+
+def test_db_matcher_ignores_a_rest_error_carrying_the_same_words():
+    """A REST/transport error with no SQLAlchemy in its chain must not be diagnosed
+    as a database problem just because its message says 'access denied'."""
+    rest_error = RuntimeError("Access denied by the upstream proxy")
+
+    assert AIRFLOW_ERRORS.classify(rest_error) is None
 
 
 def test_error_pack_leaves_an_unknown_error_unclassified():
