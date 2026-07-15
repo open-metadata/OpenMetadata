@@ -16,9 +16,6 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -57,13 +54,10 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
-    Set<String> inheritedPoisonMarkers = Set.of();
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
-      inheritedPoisonMarkers = instance.shutdownPoisonRetryLoop();
     }
     instance = new OpenSearchVectorService(client, embeddingClient);
-    instance.adoptPendingPoisonMarkers(inheritedPoisonMarkers);
     instance.registerVectorEmbeddingHandler();
     LOG.info(
         "OpenSearchVectorService initialized with model={}, dimension={}",
@@ -86,12 +80,10 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   public void close() {
-    // The opensearch-java client stored here is deliberately NOT closed: it was constructed
-    // elsewhere and its transport is shared with OpenSearchClient and every other manager.
-    // Closing the transport from here permanently shuts down the HC5 IOReactor for the whole
-    // application, which was a root cause of production "I/O reactor has been shut down" errors.
-    // The poison-retry executor, however, is owned by this instance and must not outlive it.
-    shutdownPoisonRetryLoop();
+    // No-op by design. The opensearch-java client stored here was constructed elsewhere and its
+    // transport is shared with OpenSearchClient and every other manager. Closing the transport
+    // from here permanently shuts down the HC5 IOReactor for the whole application, which was a
+    // root cause of production "I/O reactor has been shut down" errors.
   }
 
   public void ensureHybridSearchPipeline(double keywordWeight, double semanticWeight) {
@@ -263,7 +255,16 @@ public class OpenSearchVectorService implements VectorIndexService {
         replaceChunks(staged, parentId, chunkDocs, previousCount(stagedHeader));
       }
     } catch (Exception e) {
-      recordStagedWriteFailure(staged, entity.getId().toString(), e);
+      // A failed chunk write is tolerated like any failed document index: the chunk is simply
+      // absent from the staged generation. Promotion is gated on the run's aggregate success
+      // (see markEntityTypeReindexed), so a run that failed overall never promotes; a sub-document
+      // failure on an otherwise-successful run leaves a gap that the next recreate heals.
+      LOG.error(
+          "Failed to backfill chunks for {} into staged {}: {}",
+          entity.getId(),
+          staged,
+          e.getMessage(),
+          e);
     }
   }
 
@@ -332,24 +333,15 @@ public class OpenSearchVectorService implements VectorIndexService {
       String parentId, List<Map<String, Object>> chunkDocs, String stagedChunkTarget) {
     try {
       String target = stagedChunkTarget;
-      String liveTarget = null;
       if (target == null) {
         requireChunkIndexForWrite();
         target = getChunkIndexName();
-        liveTarget = target;
       }
-      try {
-        ChunkHeader header = getChunkHeader(target, parentId);
-        replaceChunks(target, parentId, chunkDocs, previousCount(header));
-      } catch (Exception e) {
-        if (liveTarget == null) {
-          // A hole in the staged generation becomes a silent drop at promotion — poison the run.
-          recordStagedWriteFailure(target, parentId, e);
-        } else {
-          throw e;
-        }
-      }
+      ChunkHeader header = getChunkHeader(target, parentId);
+      replaceChunks(target, parentId, chunkDocs, previousCount(header));
     } catch (Exception e) {
+      // Tolerated like a failed document index — the chunk is absent, and the run's aggregate
+      // success (see markEntityTypeReindexed) gates whether the staged generation ever promotes.
       LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
     }
   }
@@ -379,13 +371,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     // Also delete from an in-flight staged generation so a promoted run does not resurrect them.
     String staged = resolveChunkSinkTarget();
     if (staged != null) {
-      try {
-        ChunkHeader header = getChunkHeader(staged, parentId);
-        replaceChunks(staged, parentId, List.of(), previousCount(header));
-      } catch (Exception e) {
-        // A delete missing from the staged generation resurrects the chunks at promotion.
-        recordStagedWriteFailure(staged, parentId, e);
-      }
+      deleteChunksFrom(staged, parentId);
     }
   }
 
@@ -491,16 +477,6 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  /**
-   * Records that an entity's chunks were knowingly skipped during a staged recreate (e.g. the
-   * embedding provider's circuit is open) — a hole in the staged generation must block promotion
-   * exactly like a failed write, or it becomes a silent chunk drop at the swap.
-   */
-  public void recordStagedChunkGap(String stagedChunkTarget, String parentId, String reason) {
-    recordStagedWriteFailure(
-        stagedChunkTarget, parentId, new IllegalStateException("chunk write skipped: " + reason));
-  }
-
   private void preflightEmbedding() {
     try {
       embeddingClient.embedQuery("chunk index recreate pre-flight");
@@ -511,10 +487,14 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /**
-   * Records one entity type's reindex outcome for an active staged chunk recreate. A failed type
-   * poisons the run — the old generation stays live and the staged one is swept by the next
-   * recreate. Once every vector-indexable type completes successfully, the staged generation is
-   * promoted atomically. No-op when no staged recreate is active or for non-vector types.
+   * Records one entity type's reindex outcome for an active staged chunk recreate, using the same
+   * aggregate success signal every other index promotes on. A type finalizing with {@code
+   * success=false} marks the run failed, so the staged generation is never promoted and the old
+   * chunks stay live (swept by the next recreate). Once every vector-indexable type finalizes
+   * successfully the staged generation is promoted atomically. This runs on the coordinator — the
+   * only JVM that finalizes entity types (participant-completed partitions are reconciled to the
+   * coordinator's completion callbacks). No-op when no staged recreate is active or for non-vector
+   * types.
    */
   public void markEntityTypeReindexed(String entityType, boolean success, String runGeneration) {
     String normalized = entityType == null ? null : entityType.toLowerCase(Locale.ROOT);
@@ -548,9 +528,9 @@ public class OpenSearchVectorService implements VectorIndexService {
         }
       } else {
         stagedChunkRunFailed = true;
-        // Poison only — never delete mid-run: writers on other nodes may still be flushing into
-        // the generation, and a write against a deleted index auto-creates a junk index. The
-        // un-promoted generation is swept by the next staged recreate.
+        // Never delete mid-run: writers on other nodes may still be flushing into the generation,
+        // and a write against a deleted index auto-creates a junk index. The un-promoted
+        // generation is swept by the next staged recreate.
         LOG.warn(
             "Staged chunk recreate: entity type {} failed to reindex — promotion blocked, old "
                 + "chunks stay live; staged index {} will be swept by the next recreate",
@@ -567,20 +547,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   private void promoteStagedChunkIndex() {
     synchronized (stagedChunkLock) {
       String generation = stagedChunkIndex;
-      if (generation != null
-          && (stagedChunkRunFailed || pendingPoisonMarkers.contains(generation))) {
-        // Re-check under the lock: a concurrent live-delete failure may have poisoned the run
-        // between the caller's check and this swap.
+      if (generation != null && stagedChunkRunFailed) {
+        // Re-check under the lock: a type may have finalized as failed between the caller's
+        // containsAll check and this swap.
         LOG.warn(
-            "Staged chunk index {} poisoned by a concurrent write failure — promotion blocked",
-            generation);
-        stagedChunkIndex = null;
-        generation = null;
-      }
-      if (generation != null && stagedGenerationPoisoned(generation)) {
-        LOG.warn(
-            "Staged chunk index {} carries a write-failure poison marker — promotion blocked, "
-                + "old chunks stay live; the generation will be swept by the next recreate",
+            "Staged chunk index {} — run marked failed, promotion blocked; old chunks stay live",
             generation);
         stagedChunkIndex = null;
         generation = null;
@@ -601,231 +572,6 @@ public class OpenSearchVectorService implements VectorIndexService {
         LOG.info("Promoted staged chunk index {} (previous target: {})", generation, oldTarget);
       }
     }
-  }
-
-  private static final String STAGED_POISON_DOC_PREFIX = "__staged_write_failure__";
-  private static final int POISON_SIGNAL_ATTEMPTS = 3;
-
-  private static String poisonDocId(String generation) {
-    return STAGED_POISON_DOC_PREFIX + generation;
-  }
-
-  /**
-   * Records a failed write against the staged generation: sets the local poison flag and writes a
-   * generation-scoped marker document into the LIVE chunk index — deliberately NOT the staged
-   * generation, whose unavailability may be the very reason the write failed. The live index is
-   * the store promotion already depends on (the swap removes it), so a coordinator that can
-   * promote can necessarily observe the marker; and a successful promotion of a later run removes
-   * the old live index and its stale markers with it. The marker carries no embedding or parentId,
-   * so it is invisible to every chunk query.
-   */
-  private void recordStagedWriteFailure(String target, String parentId, Exception e) {
-    stagedChunkRunFailed = true;
-    LOG.error(
-        "Staged chunk write failed for {} in {} — promotion will be blocked so the old chunks "
-            + "stay live: {}",
-        parentId,
-        target,
-        e.getMessage(),
-        e);
-    String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-    // Dual-location signal: the live index first (the store promotion must be able to read
-    // anyway), the staged generation itself as fallback — a transient blip on one store at
-    // failure time must not let a later, recovered promotion read "clean". Fresh installs have
-    // no live index (and nothing to lose at the swap); writing to the bare base name would
-    // auto-create a junk index squatting on the promotion alias name.
-    boolean recorded = liveIndex != null && writePoisonMarker(liveIndex, target);
-    if (!recorded) {
-      recorded = writePoisonMarker(target, target);
-    }
-    if (!recorded) {
-      // Neither store took the signal right now. Throwing here is useless — the sink's broad
-      // embedding catch swallows it — so instead the marker is queued for persistent retry: a
-      // daemon loop re-attempts it every few seconds until one store accepts it. Promotion
-      // happens at run end, long after any transient blip recovers, so the signal arrives late
-      // rather than never.
-      pendingPoisonMarkers.add(target);
-      ensurePoisonRetryLoop();
-      LOG.error(
-          "Staged poison marker for {} could not be recorded anywhere — queued for persistent "
-              + "retry until a store accepts it",
-          target);
-    }
-  }
-
-  private final Set<String> pendingPoisonMarkers = ConcurrentHashMap.newKeySet();
-  private volatile ScheduledExecutorService poisonRetryExecutor;
-
-  /**
-   * Check-and-create must stay atomic with {@link #stopPoisonRetryLoop}'s check-and-destroy
-   * (same lock, no lock-free fast path): reading the executor outside the lock can observe an
-   * instance the retry thread is about to shut down, skip scheduling, and strand the just-queued
-   * marker with no loop left to persist it.
-   */
-  private void ensurePoisonRetryLoop() {
-    synchronized (stagedChunkLock) {
-      if (poisonRetryExecutor == null) {
-        poisonRetryExecutor =
-            Executors.newSingleThreadScheduledExecutor(
-                runnable -> {
-                  Thread thread = new Thread(runnable, "chunk-poison-marker-retry");
-                  thread.setDaemon(true);
-                  return thread;
-                });
-        poisonRetryExecutor.scheduleWithFixedDelay(
-            this::retryPendingPoisonMarkers, 5, 15, TimeUnit.SECONDS);
-      }
-    }
-  }
-
-  private void retryPendingPoisonMarkers() {
-    for (String generation : pendingPoisonMarkers) {
-      if (!indexExists(generation)) {
-        // The generation was swept — its run is dead and can never be promoted, so the signal is
-        // moot. Writing anyway would auto-create a phantom index squatting on the dead name.
-        pendingPoisonMarkers.remove(generation);
-        continue;
-      }
-      String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-      boolean recorded =
-          (liveIndex != null && writePoisonMarker(liveIndex, generation))
-              || writePoisonMarker(generation, generation);
-      if (recorded) {
-        pendingPoisonMarkers.remove(generation);
-        LOG.info("Persistent retry recorded staged poison marker for {}", generation);
-      }
-    }
-    if (pendingPoisonMarkers.isEmpty()) {
-      stopPoisonRetryLoop();
-    }
-  }
-
-  private boolean indexExists(String indexName) {
-    try {
-      return client.indices().exists(x -> x.index(indexName)).value();
-    } catch (Exception e) {
-      // Unknown — keep the marker pending rather than dropping a live signal.
-      return true;
-    }
-  }
-
-  private void stopPoisonRetryLoop() {
-    synchronized (stagedChunkLock) {
-      if (poisonRetryExecutor != null && pendingPoisonMarkers.isEmpty()) {
-        poisonRetryExecutor.shutdown();
-        poisonRetryExecutor = null;
-      }
-    }
-  }
-
-  /**
-   * Unconditional teardown for instance shutdown/replacement — unlike {@link
-   * #stopPoisonRetryLoop}, this stops the loop even with markers still pending (a retry thread
-   * held past {@code close()} would spin against a stale client). A pending marker can be the
-   * only cross-node signal for a chunk hole on a participant whose partition otherwise completed,
-   * so it must not be dropped silently: one synchronous flush attempt runs first, and whatever
-   * remains is returned so a replacement instance (reinit — often carrying a freshly rebuilt,
-   * working client) can adopt it and keep retrying. On process shutdown there is no successor and
-   * an unflushed signal is lost with the JVM — logged loudly as the best remaining option.
-   */
-  private Set<String> shutdownPoisonRetryLoop() {
-    synchronized (stagedChunkLock) {
-      if (poisonRetryExecutor != null) {
-        poisonRetryExecutor.shutdownNow();
-        poisonRetryExecutor = null;
-      }
-      if (!pendingPoisonMarkers.isEmpty()) {
-        retryPendingPoisonMarkers();
-      }
-      Set<String> unflushed = Set.copyOf(pendingPoisonMarkers);
-      if (!unflushed.isEmpty()) {
-        LOG.error(
-            "Vector service closing with {} unpersisted staged poison marker(s): {} — if no "
-                + "replacement instance adopts them, a coordinator may promote the affected "
-                + "generation(s) despite missing chunks",
-            unflushed.size(),
-            unflushed);
-        pendingPoisonMarkers.clear();
-      }
-      return unflushed;
-    }
-  }
-
-  /** Reinit hand-off: adopt the predecessor instance's unflushed poison markers (see init). */
-  private void adoptPendingPoisonMarkers(Set<String> markers) {
-    if (markers != null && !markers.isEmpty()) {
-      pendingPoisonMarkers.addAll(markers);
-      ensurePoisonRetryLoop();
-      LOG.warn(
-          "Adopted {} pending staged poison marker(s) from the previous vector service instance",
-          markers.size());
-    }
-  }
-
-  private boolean writePoisonMarker(String indexName, String generation) {
-    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
-      try {
-        // refresh=true makes the marker search-visible immediately — promotion may check within
-        // the same second, before a periodic refresh would surface it.
-        executeGenericRequest(
-            "PUT",
-            "/" + indexName + "/_doc/" + poisonDocId(generation) + "?refresh=true",
-            "{\"poisoned\":true}");
-        return true;
-      } catch (Exception markerFailure) {
-        LOG.warn(
-            "Staged poison marker write to {} failed (attempt {}/{}): {}",
-            indexName,
-            attempt,
-            POISON_SIGNAL_ATTEMPTS,
-            markerFailure.getMessage());
-      }
-    }
-    return false;
-  }
-
-  /**
-   * True when any node recorded a failed write against this staged generation. The marker lives in
-   * the LIVE chunk index (see {@link #recordStagedWriteFailure}); the check uses search-by-id so
-   * "no marker" is an unambiguous 200 with zero hits (a GET 404 is indistinguishable from a
-   * transport error here). Read errors retry and then FAIL CLOSED: promoting a generation whose
-   * integrity cannot be verified risks the silent chunk drop this whole feature exists to prevent,
-   * while blocking costs only a rerun.
-   */
-  private boolean stagedGenerationPoisoned(String generation) {
-    String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-    // Check both marker locations: the live index (primary) and the generation itself (the
-    // fallback used when the live index rejected the marker write). Fresh installs have no live
-    // index — and nothing to lose at the swap — so only the generation check runs.
-    boolean poisoned = markerPresent(generation, generation);
-    if (!poisoned && liveIndex != null) {
-      poisoned = markerPresent(liveIndex, generation);
-    }
-    return poisoned;
-  }
-
-  private boolean markerPresent(String indexName, String generation) {
-    String query =
-        "{\"size\":0,\"query\":{\"ids\":{\"values\":[\"" + poisonDocId(generation) + "\"]}}}";
-    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
-      try {
-        String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
-        long hits = MAPPER.readTree(response).path("hits").path("total").path("value").asLong(0);
-        return hits > 0;
-      } catch (Exception e) {
-        LOG.warn(
-            "Staged poison marker check failed for {} (attempt {}/{}): {}",
-            generation,
-            attempt,
-            POISON_SIGNAL_ATTEMPTS,
-            e.getMessage());
-      }
-    }
-    LOG.error(
-        "Staged poison marker check kept failing for {} — failing closed: promotion blocked, "
-            + "old chunks stay live, generation swept by the next recreate",
-        generation);
-    return true;
   }
 
   private static final long SINK_TARGET_CACHE_MS = 15_000;
@@ -976,10 +722,8 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   /**
-   * Run-unique generation name (epoch-millis stamp). Uniqueness matters twice: a blocked run's
-   * poison marker (keyed by generation name) must never match a later run's generation, and a
-   * pending promote from a superseded run must fail loudly on a missing index rather than
-   * silently aliasing another run's half-built one.
+   * Run-unique generation name (epoch-millis stamp) so a pending promote from a superseded run
+   * fails loudly on a missing index rather than silently aliasing another run's half-built one.
    */
   static String nextChunkGenerationName(String chunkBase) {
     return chunkBase + "_g" + System.currentTimeMillis();
@@ -1444,8 +1188,8 @@ public class OpenSearchVectorService implements VectorIndexService {
   /**
    * The bulk API reports per-item failures (rejected executions under load, mapping conflicts) as
    * HTTP 200 with {@code errors:true} — exactly the failure class a heavy reindex produces.
-   * Silently accepting them would leave holes that, in a staged generation, become silent chunk
-   * drops at promotion; throwing routes the failure into the callers' poison/log handling.
+   * Silently accepting them would leave holes with no log trail; throwing surfaces the failure to
+   * the callers' catch-and-log so a partially-written entity is at least visible in the logs.
    */
   private void failOnBulkItemErrors(String indexName, String parentId, String response) {
     try {

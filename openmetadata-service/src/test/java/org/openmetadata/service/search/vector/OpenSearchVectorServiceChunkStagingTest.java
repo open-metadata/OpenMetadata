@@ -31,9 +31,8 @@ class OpenSearchVectorServiceChunkStagingTest {
 
   @Test
   void nextChunkGenerationName_isRunUniqueAndParseable() {
-    // Run-unique names: a blocked run's poison marker must never match a later run's generation,
-    // and a superseded run's pending promote must miss (loudly) instead of aliasing another run's
-    // half-built index.
+    // Run-unique names: a superseded run's pending promote must miss (loudly) instead of aliasing
+    // another run's half-built index.
     String name = OpenSearchVectorService.nextChunkGenerationName(BASE);
     assertTrue(name.startsWith(BASE + "_g"));
     assertTrue(OpenSearchVectorService.chunkGenerationNumber(name, BASE) > 0);
