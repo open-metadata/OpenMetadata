@@ -101,11 +101,21 @@ import software.amazon.awssdk.services.s3.model.UploadPartResponse;
  * S3-based implementation of LogStorageInterface for storing pipeline logs.
  * Logs are organized as: bucket/prefix/pipelineFQN/runId/logs.txt
  *
- * appendLogs writes only to in-memory state (SimpleLogBuffer, pendingFlush) and notifies SSE
+ * <p>appendLogs writes only to in-memory state (SimpleLogBuffer, pendingFlush) and notifies SSE
  * listeners. closeStream produces logs.txt by doing a final flush to partial.txt, then a
  * server-side S3 copy from partial.txt to logs.txt, followed by cleanup of partial.txt and
  * in-memory state.
+ *
+ * @deprecated The hot log read/write/SSE path has been extracted into a dedicated Go-based
+ *     log-server sidecar (see {@code ~/Code/log-server}) which owns the S3 multipart write,
+ *     in-memory ring buffer, partial.txt flush, and SSE fan-out. Requests under
+ *     {@code /api/v1/services/ingestionPipelines/logs/{fqn}/...} are now routed by the ALB
+ *     to that service so the OM JVM is no longer in the log data path. This class is retained
+ *     in-tree only for the legacy {@code IngestionPipelineRepository#getLogs} fallback used by
+ *     {@code AppResource} and the by-id {@code /logs/{id}/last} endpoint, and will be removed
+ *     once those callers are migrated. New code MUST NOT depend on this class.
  */
+@Deprecated
 @Slf4j
 public class S3LogStorage implements LogStorageInterface {
 

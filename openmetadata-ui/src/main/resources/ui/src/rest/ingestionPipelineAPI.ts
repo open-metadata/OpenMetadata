@@ -146,6 +146,31 @@ export const getIngestionPipelineLogById = (id: string, after?: string) => {
   );
 };
 
+/**
+ * Open a Server-Sent Events stream of pipeline run logs. Routed by the ALB to
+ * the external log-server sidecar that owns the live tail. Cookies on the
+ * current origin (auth + ALB sticky-session) are sent automatically because
+ * EventSource attaches them when `withCredentials` is true.
+ *
+ * Returns the EventSource so callers can wire `onmessage` / `onerror` and
+ * `close()` on unmount. Returns null when fqn or runId is missing.
+ */
+export const subscribeIngestionPipelineLogs = (
+  fqn?: string,
+  runId?: string
+): EventSource | null => {
+  if (!fqn || !runId) {
+    return null;
+  }
+  // Mirror axios baseURL: `${getBasePath()}/api/v1`.
+  // We don't import the axios client here to avoid coupling to its internals.
+  const path = `/api/v1/services/ingestionPipelines/logs/${encodeURIComponent(
+    fqn
+  )}/stream/${encodeURIComponent(runId)}`;
+
+  return new EventSource(path, { withCredentials: true });
+};
+
 export const postKillIngestionPipelineById = (
   id: string
 ): Promise<AxiosResponse> => {
