@@ -434,7 +434,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     if (!indexExists(physicalIndex)) {
       executeGenericRequest("PUT", "/" + physicalIndex, buildChunkIndexMapping());
     }
-    swapChunkAliases(null, physicalIndex, writeAlias);
+    swapChunkAliases(physicalIndex, writeAlias);
     LOG.info(
         "Provisioned chunk index {} behind aliases {} / {}",
         physicalIndex,
@@ -459,8 +459,10 @@ public class OpenSearchVectorService implements VectorIndexService {
    */
   private boolean recreateChunkIndex(String oldIndex, String desired, String writeAlias) {
     if (oldIndex.equals(desired)) {
-      // Same physical index (stale/absent _meta at the current-version name): reindexing from a
-      // just-deleted self would lose data, so only (re)attach the aliases.
+      // Same physical index at the current-version name: cannot reindex from itself. Re-stamp _meta
+      // so a partial create that set the fields but not the version marker becomes current (the
+      // schema probe then passes), then (re)attach the aliases.
+      executeGenericRequest("PUT", "/" + desired + "/_mapping", chunkMetaMappingBody());
       return ensureChunkAliases(desired, writeAlias);
     }
     if (!indexExists(desired)) {
@@ -476,7 +478,7 @@ public class OpenSearchVectorService implements VectorIndexService {
       deleteIndexQuietly(oldIndex);
       runAliasActions(MAPPER.createArrayNode().add(aliasAction("add", desired, writeAlias, true)));
     } else {
-      swapChunkAliases(oldIndex, desired, writeAlias);
+      swapChunkAliases(desired, writeAlias);
       deleteIndexQuietly(oldIndex);
     }
     LOG.info("Recreated chunk index {} -> {} (aliases swapped)", oldIndex, desired);
@@ -508,25 +510,40 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private boolean ensureChunkAliases(String physicalIndex, String writeAlias) {
-    swapChunkAliases(null, physicalIndex, writeAlias);
+    swapChunkAliases(physicalIndex, writeAlias);
     return true;
   }
 
   /**
-   * Atomically point the chunk read ({@code dataAssetEmbeddings}) and write (base-name) aliases at
-   * {@code newIndex}, removing them from {@code oldIndex} in the same request so a reader never sees
-   * zero or two backing indices. The removes are index-scoped, so the shared read alias stays
-   * attached to the entity indices.
+   * Make {@code newIndex} the sole backing of both the chunk read ({@code dataAssetEmbeddings}) and
+   * write (base-name) aliases: detach them from every other index currently carrying the write alias,
+   * then attach both to {@code newIndex} in one atomic request. The write alias is chunk-only, so
+   * every index it backs is a chunk index — detaching the shared read alias from those never touches
+   * the entity indices. This also cleans up a partial rollover that left extra indices attached.
    */
-  private void swapChunkAliases(String oldIndex, String newIndex, String writeAlias) {
+  private void swapChunkAliases(String newIndex, String writeAlias) {
     var actions = MAPPER.createArrayNode();
-    if (oldIndex != null && !oldIndex.equals(newIndex)) {
-      actions.add(aliasAction("remove", oldIndex, getSearchAlias(), false));
-      actions.add(aliasAction("remove", oldIndex, writeAlias, false));
+    for (String member : currentWriteAliasMembers(writeAlias)) {
+      if (!member.equals(newIndex)) {
+        actions.add(aliasAction("remove", member, getSearchAlias(), false));
+        actions.add(aliasAction("remove", member, writeAlias, false));
+      }
     }
     actions.add(aliasAction("add", newIndex, getSearchAlias(), false));
     actions.add(aliasAction("add", newIndex, writeAlias, true));
     runAliasActions(actions);
+  }
+
+  private List<String> currentWriteAliasMembers(String writeAlias) {
+    List<String> members = new ArrayList<>();
+    String aliasJson = executeGenericRequestQuietly("GET", "/_alias/" + writeAlias);
+    if (aliasJson != null) {
+      JsonNode root = readTreeQuietly(aliasJson);
+      if (root != null) {
+        root.fieldNames().forEachRemaining(members::add);
+      }
+    }
+    return members;
   }
 
   private void runAliasActions(JsonNode actions) {
@@ -545,6 +562,10 @@ public class OpenSearchVectorService implements VectorIndexService {
     if (writeIndex) {
       spec.put("is_write_index", true);
     }
+    if ("remove".equals(op)) {
+      // Tolerate the alias/index already being gone (concurrent rollover, partial state).
+      spec.put("must_exist", false);
+    }
     return (ObjectNode) MAPPER.createObjectNode().set(op, spec);
   }
 
@@ -558,14 +579,38 @@ public class OpenSearchVectorService implements VectorIndexService {
     return exists;
   }
 
+  /**
+   * A {@code GET}/{@code DELETE} probe that never logs at ERROR: an expected non-2xx (e.g. a 404
+   * when probing a missing alias on a fresh cluster) returns {@code null} at DEBUG rather than the
+   * ERROR that {@link #executeGenericRequest} emits. Used by the alias/index resolution probes so
+   * normal startup and rollover stay quiet.
+   */
   private String executeGenericRequestQuietly(String method, String endpoint) {
     String result = null;
     try {
-      result = executeGenericRequest(method, endpoint, null);
+      OpenSearchGenericClient genericClient = client.generic();
+      var request = Requests.builder().endpoint(endpoint).method(method).build();
+      try (var response = genericClient.execute(request)) {
+        if (response.getStatus() < 400) {
+          result = response.getBody().map(this::bodyAsString).orElse(null);
+        } else {
+          LOG.debug("Quiet {} {} -> status {}", method, endpoint, response.getStatus());
+        }
+      }
     } catch (Exception e) {
-      LOG.debug("Quiet request {} {} returned no body: {}", method, endpoint, e.getMessage());
+      LOG.debug("Quiet request {} {} failed: {}", method, endpoint, e.getMessage());
     }
     return result;
+  }
+
+  private String bodyAsString(Body body) {
+    String text = null;
+    try {
+      text = new String(body.bodyAsBytes(), StandardCharsets.UTF_8);
+    } catch (Exception e) {
+      LOG.debug("Failed to read response body: {}", e.getMessage());
+    }
+    return text;
   }
 
   private JsonNode readTreeQuietly(String json) {
@@ -683,6 +728,13 @@ public class OpenSearchVectorService implements VectorIndexService {
     return MAPPER.createObjectNode().put("chunkDocVersion", VectorDocBuilder.CHUNK_DOC_VERSION);
   }
 
+  /** {@code PUT _mapping} body that re-stamps only {@code _meta.chunkDocVersion} (metadata only). */
+  private String chunkMetaMappingBody() {
+    var body = MAPPER.createObjectNode();
+    body.set("_meta", chunkMeta());
+    return body.toString();
+  }
+
   private ObjectNode buildChunkProperties() {
     var method =
         MAPPER
@@ -699,10 +751,13 @@ public class OpenSearchVectorService implements VectorIndexService {
             .set("method", method);
     var properties = MAPPER.createObjectNode();
     properties.set("embedding", embedding);
-    for (String keyword :
-        List.of("parentId", "fingerprint", "entityType", "fullyQualifiedName", "serviceType")) {
+    for (String keyword : List.of("parentId", "fingerprint", "entityType")) {
       properties.set(keyword, MAPPER.createObjectNode().put("type", "keyword"));
     }
+    // fullyQualifiedName/serviceType carry lowercase_normalizer in the entity indices, so term
+    // filters stay case-insensitive and consistent with entity behavior.
+    properties.set("fullyQualifiedName", normalizedKeyword());
+    properties.set("serviceType", normalizedKeyword());
     // name/displayName get the full entity-index treatment: an om_analyzer text root plus .keyword
     // (lowercase_normalizer), .ngram (om_ngram) and .compound (om_compound_analyzer) subfields, so
     // the shard-fair exact/phrase/compound clauses all resolve on chunk docs (Phase-4 parity).
@@ -716,12 +771,11 @@ public class OpenSearchVectorService implements VectorIndexService {
     for (String text : List.of("textToEmbed", "textToLLMContext")) {
       properties.set(text, MAPPER.createObjectNode().put("type", "text"));
     }
-    // description gets om_analyzer parity with the entity indices; fqnParts/synonyms gain a
-    // .keyword
-    // subfield to match. fullyQualifiedName stays a plain keyword (the entity indices map it so
-    // too).
+    // description gets om_analyzer parity with the entity indices. fqnParts holds FQN identifier
+    // tokens, so it stays keyword (matching the entity mapping) to preserve exact/aggregation
+    // behavior; only synonyms is analyzed text with a .keyword subfield.
     properties.set("description", descriptionMapping());
-    properties.set("fqnParts", textWithKeywordSub());
+    properties.set("fqnParts", MAPPER.createObjectNode().put("type", "keyword"));
     properties.set("synonyms", textWithKeywordSub());
     properties.set("deleted", MAPPER.createObjectNode().put("type", "boolean"));
     properties.set("tags", objectKeyword("tagFQN"));
@@ -782,6 +836,14 @@ public class OpenSearchVectorService implements VectorIndexService {
       keyword.put("normalizer", normalizer);
     }
     return keyword;
+  }
+
+  /** A top-level {@code keyword} with {@code lowercase_normalizer} (no {@code ignore_above}). */
+  private ObjectNode normalizedKeyword() {
+    return MAPPER
+        .createObjectNode()
+        .put("type", "keyword")
+        .put("normalizer", "lowercase_normalizer");
   }
 
   private ObjectNode objectKeyword(String field) {

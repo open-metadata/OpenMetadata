@@ -9,6 +9,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.io.IOException;
 import java.lang.reflect.Method;
 import java.util.List;
@@ -548,13 +550,11 @@ class OpenSearchVectorServiceTest {
     Method m = OpenSearchVectorService.class.getDeclaredMethod("buildChunkIndexMapping");
     m.setAccessible(true);
     String body = (String) m.invoke(vectorService);
-    com.fasterxml.jackson.databind.JsonNode root =
-        new com.fasterxml.jackson.databind.ObjectMapper().readTree(body);
+    JsonNode root = new ObjectMapper().readTree(body);
 
     // The om_* analyzers must be defined and max_ngram_diff must permit the 3..20 ngram span,
     // otherwise index creation is rejected.
-    com.fasterxml.jackson.databind.JsonNode analyzers =
-        root.path("settings").path("analysis").path("analyzer");
+    JsonNode analyzers = root.path("settings").path("analysis").path("analyzer");
     assertTrue(analyzers.has("om_analyzer"), "om_analyzer defined");
     assertTrue(analyzers.has("om_ngram"), "om_ngram defined");
     assertTrue(analyzers.has("om_compound_analyzer"), "om_compound_analyzer defined");
@@ -565,8 +565,7 @@ class OpenSearchVectorServiceTest {
 
     // name must carry an om_analyzer text root plus .compound/.ngram/.keyword subfields so the
     // phrase/compound lexical clauses resolve on chunk docs, not only the exact keyword clause.
-    com.fasterxml.jackson.databind.JsonNode name =
-        root.path("mappings").path("properties").path("name");
+    JsonNode name = root.path("mappings").path("properties").path("name");
     assertEquals("om_analyzer", name.path("analyzer").asText(), "name uses om_analyzer");
     assertTrue(name.path("fields").has("compound"), "name.compound subfield present");
     assertTrue(name.path("fields").has("ngram"), "name.ngram subfield present");
@@ -576,16 +575,27 @@ class OpenSearchVectorServiceTest {
         "description uses om_analyzer");
 
     // Denormalized parity fields still mapped (regression guard carried over from the v1 mapping).
-    com.fasterxml.jackson.databind.JsonNode props = root.path("mappings").path("properties");
+    JsonNode props = root.path("mappings").path("properties");
     assertTrue(props.has("owners"), "owners mapped");
     assertTrue(props.has("columns"), "columns mapped");
-    com.fasterxml.jackson.databind.JsonNode schema =
-        props.path("databaseSchema").path("properties");
+    JsonNode schema = props.path("databaseSchema").path("properties");
     assertTrue(
         schema.has("name") && schema.has("displayName"),
         "databaseSchema maps both name and displayName");
     assertTrue(
         root.path("mappings").path("_meta").has("chunkDocVersion"),
         "_meta.chunkDocVersion present");
+
+    // Keyword parity with the entity indices: fullyQualifiedName/serviceType carry the
+    // lowercase_normalizer, and fqnParts stays keyword (identifier tokens, not analyzed text).
+    assertEquals(
+        "lowercase_normalizer",
+        props.path("fullyQualifiedName").path("normalizer").asText(),
+        "fullyQualifiedName uses lowercase_normalizer");
+    assertEquals(
+        "lowercase_normalizer",
+        props.path("serviceType").path("normalizer").asText(),
+        "serviceType uses lowercase_normalizer");
+    assertEquals("keyword", props.path("fqnParts").path("type").asText(), "fqnParts stays keyword");
   }
 }
