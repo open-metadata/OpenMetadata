@@ -14,7 +14,7 @@ import { AxiosError } from 'axios';
 import { round } from 'lodash';
 import { PipelineType } from '../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { useDownloadProgressStore } from '../../hooks/useDownloadProgressStore';
-import { IngestionPipelineLogByIdInterface } from '../../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../../interface/IngestionPipelineLogs.interface';
 import { getApplicationLogs } from '../../rest/applicationAPI';
 import {
   downloadIngestionPipelineLogsById,
