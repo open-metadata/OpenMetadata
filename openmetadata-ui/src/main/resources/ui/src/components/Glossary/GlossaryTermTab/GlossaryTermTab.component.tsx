@@ -13,10 +13,10 @@
 
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { TableCard } from '@openmetadata/ui-core-components';
 import {
   Button as CoreButton,
   EmptyPlaceholder,
+  TableCard,
 } from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
 import {
