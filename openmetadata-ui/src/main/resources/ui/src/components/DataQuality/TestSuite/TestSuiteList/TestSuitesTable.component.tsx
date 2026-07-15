@@ -163,7 +163,9 @@ export const TestSuitesTable = ({
       <Box className="tw:relative tw:min-h-80 tw:w-full">
         <EmptyPlaceholder
           actions={
-            !hasActiveFilters && emptyStateAction
+            !hasActiveFilters &&
+            subTab === DataQualitySubTabs.BUNDLE_SUITES &&
+            emptyStateAction
               ? [emptyStateAction]
               : undefined
           }

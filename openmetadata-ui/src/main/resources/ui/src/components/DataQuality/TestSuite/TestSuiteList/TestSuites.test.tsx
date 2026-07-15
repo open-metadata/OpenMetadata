@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -421,6 +421,10 @@ describe('TestSuites component', () => {
     testSuitePermission.ViewAll = true;
     mockLocation.search = '';
     mockDataQualityContext.createActions = undefined;
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'table-suites',
+    });
   });
 
   it('component should render', async () => {
@@ -599,6 +603,10 @@ describe('TestSuites component', () => {
   });
 
   it('should wire the New Bundle Suite empty-state action from DataQualityContext', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'bundle-suites',
+    });
     mockDataQualityContext.createActions = {
       canCreateBundleSuite: true,
       onAddBundleSuite: mockOnAddBundleSuite,

@@ -361,6 +361,7 @@ describe('TestSuitesTable component', () => {
     renderTable({
       data: [],
       hasActiveFilters: false,
+      subTab: DataQualitySubTabs.BUNDLE_SUITES,
       emptyStateAction,
     });
 
@@ -376,6 +377,25 @@ describe('TestSuitesTable component', () => {
     expect(mockOnPress).toHaveBeenCalledTimes(1);
   });
 
+  it('should NOT render the empty-state CTA on the Table Suites sub-tab', () => {
+    const emptyStateAction = {
+      key: 'new-bundle-suite',
+      label: 'label.new-entity',
+      onPress: jest.fn(),
+    };
+
+    renderTable({
+      data: [],
+      hasActiveFilters: false,
+      subTab: DataQualitySubTabs.TABLE_SUITES,
+      emptyStateAction,
+    });
+
+    expect(
+      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+    ).not.toBeInTheDocument();
+  });
+
   it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
     const emptyStateAction = {
       key: 'new-bundle-suite',
@@ -386,6 +406,7 @@ describe('TestSuitesTable component', () => {
     renderTable({
       data: [],
       hasActiveFilters: true,
+      subTab: DataQualitySubTabs.BUNDLE_SUITES,
       emptyStateAction,
     });
 
