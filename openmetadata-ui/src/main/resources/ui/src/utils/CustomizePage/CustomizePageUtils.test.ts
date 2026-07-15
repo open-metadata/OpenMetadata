@@ -27,10 +27,7 @@ import {
   sortTabs,
 } from './CustomizePageEntityTabUtils';
 import { getTabLabelFromId } from './CustomizePagePureUtils';
-import {
-  getAddWidgetHandler,
-  updateWidgetHeightRecursively,
-} from './CustomizePageWidgetUtils';
+import { updateWidgetHeightRecursively } from './CustomizePageWidgetUtils';
 
 describe('CustomizePageUtils', () => {
   describe('getTabDisplayName', () => {
@@ -352,51 +349,6 @@ describe('CustomizePageUtils', () => {
       expect(
         result.find((widget) => widget.i === 'KnowledgePanel.Tags')?.y
       ).toBe(0);
-    });
-  });
-
-  describe('getAddWidgetHandler', () => {
-    const addTagsWidget = (
-      widgets: WidgetConfig[],
-      placeholderWidgetKey = 'placeholder-widget'
-    ) =>
-      getAddWidgetHandler(
-        {
-          fullyQualifiedName: 'KnowledgePanel.Tags',
-          name: 'Tags',
-          data: { gridSizes: ['small'] },
-        },
-        placeholderWidgetKey,
-        2,
-        PageType.Table
-      )(widgets).at(-1);
-
-    it('should place a new widget below the existing right panel widgets', () => {
-      const widgets = [
-        { i: 'KnowledgePanel.LeftPanel', h: 10, w: 6, x: 0, y: 0 },
-        { i: 'domain', h: 2, w: 2, x: 6, y: 0 },
-        { i: 'data-products', h: 2, w: 2, x: 6, y: 2 },
-        { i: 'pipeline-observability', h: 2, w: 2, x: 6, y: 4 },
-      ] as WidgetConfig[];
-
-      expect(addTagsWidget(widgets)).toMatchObject({
-        x: 6,
-        y: 6,
-      });
-    });
-
-    it('should place a new widget in the same column as the source right panel widget', () => {
-      const widgets = [
-        { i: 'KnowledgePanel.LeftPanel', h: 2, w: 6, x: 0, y: 0 },
-        { i: 'KnowledgePanel.DataProducts', h: 2, w: 2, x: 6, y: 0 },
-      ] as WidgetConfig[];
-
-      expect(
-        addTagsWidget(widgets, 'KnowledgePanel.DataProducts')
-      ).toMatchObject({
-        x: 6,
-        y: 2,
-      });
     });
   });
 

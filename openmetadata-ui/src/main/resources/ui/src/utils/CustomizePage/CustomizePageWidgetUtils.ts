@@ -14,7 +14,6 @@
 import { get, noop, uniqueId } from 'lodash';
 import type { CommonWidgetType } from '../../constants/CustomizeWidgets.constants';
 import { LandingPageWidgetKeys } from '../../enums/CustomizablePage.enum';
-import { DetailPageWidgetKeys } from '../../enums/CustomizeDetailPage.enum';
 import { EntityTabs } from '../../enums/entity.enum';
 import type { Page, Tab } from '../../generated/system/ui/page';
 import { PageType } from '../../generated/system/ui/page';
@@ -24,36 +23,16 @@ import {
   getDefaultWidgetForTab,
   getWidgetHeight,
 } from './CustomizePageDispatchUtils';
-
 const calculateNewPosition = (
   currentLayout: WidgetConfig[],
   newWidget: { w: number; h: number },
-  maxCols = 8,
-  preferredX?: number
+  maxCols = 8
 ) => {
-  if (preferredX !== undefined) {
-    const x = Math.min(
-      Math.max(preferredX, 0),
-      Math.max(maxCols - newWidget.w, 0)
-    );
-    // Detail pages use fixed left and right columns. Appending within the
-    // preferred column keeps a tall left panel from affecting right widgets.
-    const y = currentLayout.reduce((bottom, widget) => {
-      const hasHorizontalOverlap =
-        x < widget.x + widget.w && x + newWidget.w > widget.x;
-
-      return hasHorizontalOverlap
-        ? Math.max(bottom, widget.y + widget.h)
-        : bottom;
-    }, 0);
-
-    return { x, y };
-  }
-
   const sortedLayout = [...currentLayout].sort(
     (a, b) => a.y + a.h - (b.y + b.h)
   );
-  const lastWidget = sortedLayout.at(-1);
+
+  const lastWidget = sortedLayout.at(sortedLayout.length - 1);
 
   if (!lastWidget) {
     return { x: 0, y: 0 };
@@ -63,42 +42,17 @@ const calculateNewPosition = (
   const lastRowWidgets = sortedLayout.filter(
     (widget) => widget.y + widget.h === lastRowY
   );
+
   const lastX = lastRowWidgets.reduce(
-    (rightEdge, widget) => Math.max(rightEdge, widget.x + widget.w),
+    (maxX, widget) => Math.max(maxX, widget.x + widget.w),
     0
   );
 
-  return lastX + newWidget.w <= maxCols
-    ? { x: lastX, y: lastRowY - lastWidget.h }
-    : { x: 0, y: lastRowY };
-};
-
-// The add modal can be opened from a specific widget. Use that widget's x
-// coordinate as the preferred column so right-panel widgets stay together.
-const getPreferredWidgetX = (
-  currentLayout: WidgetConfig[],
-  placeholderWidgetKey: string,
-  widgetWidth: number,
-  maxCols = 8
-) => {
-  const sourceWidget = currentLayout.find(
-    (widget) => widget.i === placeholderWidgetKey
-  );
-
-  if (sourceWidget) {
-    return sourceWidget.x;
+  if (lastX + newWidget.w <= maxCols) {
+    return { x: lastX, y: lastRowY - lastWidget.h };
   }
 
-  // If there is no source widget key, detail pages with a left panel still
-  // have a natural right-panel column immediately after the left panel.
-  const leftPanelWidget = currentLayout.find((widget) =>
-    widget.i.startsWith(DetailPageWidgetKeys.LEFT_PANEL)
-  );
-  const rightPanelX = (leftPanelWidget?.x ?? 0) + (leftPanelWidget?.w ?? 0);
-
-  return leftPanelWidget && widgetWidth <= maxCols - rightPanelX
-    ? rightPanelX
-    : undefined;
+  return { x: 0, y: lastRowY };
 };
 
 export const getAddWidgetHandler =
@@ -135,17 +89,15 @@ export const getAddWidgetHandler =
         },
       ];
     } else {
-      const filteredLayout = currentLayout.filter(
-        (widget) => widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
-      );
       const { x: widgetX, y: widgetY } = calculateNewPosition(
-        filteredLayout,
+        currentLayout.filter(
+          (widget) =>
+            widget.i !== LandingPageWidgetKeys.EMPTY_WIDGET_PLACEHOLDER
+        ),
         {
           w: widgetWidth,
           h: widgetHeight,
-        },
-        undefined,
-        getPreferredWidgetX(filteredLayout, placeholderWidgetKey, widgetWidth)
+        }
       );
 
       return [
