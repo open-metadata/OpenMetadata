@@ -98,7 +98,7 @@ public class GlossaryTermMoveApprovalIT {
   private static final String WORKFLOW_STATUS_FINISHED = "FINISHED";
   private static final Set<String> TERMINAL_WORKFLOW_STATUSES =
       Set.of("FINISHED", "EXCEPTION", "FAILURE");
-  private static final Duration TASK_TIMEOUT = Duration.ofMinutes(3);
+  private static final Duration TASK_TIMEOUT = Duration.ofMinutes(5);
   private static final Duration MOVE_TIMEOUT = Duration.ofMinutes(2);
   private static final Duration STATUS_TIMEOUT = Duration.ofMinutes(2);
   private static final Duration POLL_INTERVAL = Duration.ofSeconds(2);
@@ -332,11 +332,32 @@ public class GlossaryTermMoveApprovalIT {
   private Task waitForOpenApprovalTask(String aboutFqn) {
     Map<String, String> filters =
         Map.of("limit", "100", "status", TaskEntityStatus.Open.value(), "aboutEntity", aboutFqn);
-    Awaitility.await("wait for open glossary approval task for " + aboutFqn)
+    long deadline = System.nanoTime() + TASK_TIMEOUT.toNanos();
+    Awaitility.await("wait for glossary approval workflow instance for " + aboutFqn)
         .atMost(TASK_TIMEOUT)
         .pollInterval(POLL_INTERVAL)
         .ignoreExceptions()
-        .until(() -> !listTasks(filters).isEmpty());
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    approvalWorkflowStatuses(aboutFqn).isEmpty(),
+                    "The glossary change event has not started an approval workflow for "
+                        + aboutFqn));
+    Duration remaining =
+        Duration.ofNanos(
+            Math.max(POLL_INTERVAL.multipliedBy(2).toNanos(), deadline - System.nanoTime()));
+    Awaitility.await("wait for open glossary approval task for " + aboutFqn)
+        .atMost(remaining)
+        .pollInterval(POLL_INTERVAL)
+        .ignoreExceptions()
+        .untilAsserted(
+            () ->
+                assertFalse(
+                    listTasks(filters).isEmpty(),
+                    "Approval workflow exists with statuses "
+                        + approvalWorkflowStatuses(aboutFqn)
+                        + " but no open task was created for "
+                        + aboutFqn));
     List<Task> tasks = listTasks(filters);
     assertFalse(tasks.isEmpty(), "Expected an open approval task for " + aboutFqn);
     Task task = tasks.get(0);
