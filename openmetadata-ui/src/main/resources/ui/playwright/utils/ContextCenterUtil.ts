@@ -256,7 +256,10 @@ export const selectFolderInSidebar = async (
 };
 
 export const openUploadModal = async (page: Page): Promise<void> => {
-  await page.getByTestId('header-shell').getByRole('button', { name: /upload file/i }).click();
+  await page
+    .getByTestId('header-shell')
+    .getByRole('button', { name: /upload file/i })
+    .click();
   await expect(
     page.getByRole('dialog', { name: /upload documents/i })
   ).toBeVisible();
