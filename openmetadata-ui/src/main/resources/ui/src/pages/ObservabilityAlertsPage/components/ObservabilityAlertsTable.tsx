@@ -140,7 +140,11 @@ function ObservabilityAlertsTable({
     );
   };
 
-  const isAlertsEmpty = !loading && alerts.length === 0;
+  // Hold the empty state until the alerts request AND the resource-permission
+  // fetch (tracked by loadingCount) have both settled. Otherwise an empty
+  // alerts response can render the onboarding before alertResourcePermission
+  // resolves, hiding the "New Alert" CTA from an authorized user.
+  const isAlertsEmpty = !loading && loadingCount === 0 && alerts.length === 0;
 
   const emptyStatePlaceholder = (
     <Box className="tw:relative tw:min-h-[28rem] tw:w-full">

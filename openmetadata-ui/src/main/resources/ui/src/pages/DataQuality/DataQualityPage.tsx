@@ -67,6 +67,7 @@ const RegisterDataQualityCreateActions = ({
     onAddBundleSuite,
     canCreateTestCase,
     canCreateBundleSuite,
+    setCreateActions,
   ]);
 
   return null;

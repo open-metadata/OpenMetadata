@@ -227,6 +227,12 @@ describe('ObservabilityAlertsTable component', () => {
     expect(screen.getByText('label.stay-ahead')).toBeInTheDocument();
   });
 
+  it('should hold the empty placeholder while the resource permission is still loading', () => {
+    renderTable({ alerts: [], loading: false, loadingCount: 1 });
+
+    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+  });
+
   it('should render the new-alert action when the user has create permission and invoke onAddAlert on click', () => {
     renderTable({
       alerts: [],
