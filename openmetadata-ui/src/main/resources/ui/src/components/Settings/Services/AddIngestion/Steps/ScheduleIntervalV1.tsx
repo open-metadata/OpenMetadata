@@ -15,6 +15,7 @@ import {
   Button,
   Card,
   Grid,
+  Input,
   Select,
   TimePicker,
   TimePickerValue,
@@ -60,6 +61,7 @@ const FREQUENCY_LABEL_KEYS: Record<string, string> = {
   day: 'label.daily',
   week: 'label.weekly',
   month: 'label.monthly',
+  custom: 'label.custom',
 };
 
 const SELECTED_FREQUENCY_CLASS =
@@ -115,20 +117,27 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
 
   const { cron: cronString, selectedPeriod, dow, dom } = state;
 
-  const { showTimePicker, showMinuteOnly, showWeekSelect, showMonthSelect } =
-    useMemo(() => {
-      const isHourSelected = selectedPeriod === 'hour';
-      const isDaySelected = selectedPeriod === 'day';
-      const isWeekSelected = selectedPeriod === 'week';
-      const isMonthSelected = selectedPeriod === 'month';
+  const {
+    showTimePicker,
+    showMinuteOnly,
+    showWeekSelect,
+    showMonthSelect,
+    showCustomInput,
+  } = useMemo(() => {
+    const isHourSelected = selectedPeriod === 'hour';
+    const isDaySelected = selectedPeriod === 'day';
+    const isWeekSelected = selectedPeriod === 'week';
+    const isMonthSelected = selectedPeriod === 'month';
+    const isCustomSelected = selectedPeriod === PERIOD_CUSTOM;
 
-      return {
-        showTimePicker: isDaySelected || isWeekSelected || isMonthSelected,
-        showMinuteOnly: isHourSelected,
-        showWeekSelect: isWeekSelected,
-        showMonthSelect: isMonthSelected,
-      };
-    }, [selectedPeriod]);
+    return {
+      showTimePicker: isDaySelected || isWeekSelected || isMonthSelected,
+      showMinuteOnly: isHourSelected,
+      showWeekSelect: isWeekSelected,
+      showMonthSelect: isMonthSelected,
+      showCustomInput: isCustomSelected,
+    };
+  }, [selectedPeriod]);
 
   const handleSelectedSchedular = useCallback(
     (schedularValue: SchedularOptions) => {
@@ -165,6 +174,14 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     [state, onChange]
   );
 
+  const handleCustomCronChange = useCallback(
+    (cronValue: string) => {
+      setState((prev) => ({ ...prev, cron: cronValue }));
+      onChange?.(cronValue);
+    },
+    [onChange]
+  );
+
   const frequencyOptions = useMemo(() => {
     const options = includePeriodOptions
       ? PERIOD_OPTIONS.filter((option) =>
@@ -172,12 +189,10 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
         )
       : PERIOD_OPTIONS;
 
-    return options
-      .filter((option) => option.value !== PERIOD_CUSTOM)
-      .map((option) => ({
-        id: option.value,
-        label: t(FREQUENCY_LABEL_KEYS[option.value] ?? option.label),
-      }));
+    return options.map((option) => ({
+      id: option.value,
+      label: t(FREQUENCY_LABEL_KEYS[option.value] ?? option.label),
+    }));
   }, [includePeriodOptions]);
 
   const dayOptions = useMemo(
@@ -416,6 +431,21 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                         </Select.Item>
                       )}
                     </Select>
+                  </Grid.Item>
+                )}
+
+                {showCustomInput && (
+                  <Grid.Item span={24}>
+                    <label>{t('label.cron')}</label>
+                    <Input
+                      aria-label={t('label.cron')}
+                      className="m-t-xs"
+                      data-testid="custom-cron-input"
+                      disabled={disabled}
+                      placeholder="0 0 * * *"
+                      value={cronString ?? ''}
+                      onChange={(e) => handleCustomCronChange(e.target.value)}
+                    />
                   </Grid.Item>
                 )}
               </Grid>
