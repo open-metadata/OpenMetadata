@@ -363,7 +363,8 @@ public class SubjectContextTest {
     // first. team13 is not under team11 but team111 (teamOwner) is — a matching owner that is not
     // the first element must still win.
     //
-    EntityReference team13Owner = new EntityReference().withId(team13.getId()).withType(Entity.TEAM);
+    EntityReference team13Owner =
+        new EntityReference().withId(team13.getId()).withType(Entity.TEAM);
     assertTrue(subjectContext.isTeamAsset("team11", List.of(team13Owner, teamOwner)));
     assertFalse(subjectContext.isTeamAsset("team13", List.of(teamOwner, userOwner)));
 

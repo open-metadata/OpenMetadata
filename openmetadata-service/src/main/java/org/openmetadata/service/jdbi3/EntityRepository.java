@@ -2605,7 +2605,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (limitParam <= 0) {
       // limit == 0 → count-only request. Mirror listAfter and skip the query/cursor math: with
       // limitParam 0 the "extra row" branch below removes the only fetched row and then calls
-      // getFirst() on an empty list, throwing IndexOutOfBounds (HTTP 500) on reverse count requests.
+      // getFirst() on an empty list, throwing IndexOutOfBounds (HTTP 500) on reverse count
+      // requests.
       return getResultList(new ArrayList<>(), null, null, total);
     }
 
