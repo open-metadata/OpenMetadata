@@ -3916,7 +3916,7 @@
     "reacted-with-emoji": "用 {{type}} 表情符號回應",
     "read-setup-docs": "閱讀設定文件",
     "ready-to-test-connection": "準備測試 — 這將解鎖下一個步驟",
-    "recently-viewed-empty-description": "你開啟過的文章和文件會彙整於此,方便快速返回查看。",
+    "recently-viewed-empty-description": "你開啟過的文章會彙整於此,方便快速返回查看。",
     "recognizer-feedback-approval-message": "回饋批准：",
     "redirect-message": "請稍候，正在重新導向。",
     "redirecting-to-home-page": "正在重新導向到首頁",
