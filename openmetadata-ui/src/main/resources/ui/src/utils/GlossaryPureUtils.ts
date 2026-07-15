@@ -22,7 +22,7 @@ import {
   type GlossaryTerm,
 } from '../generated/entity/data/glossaryTerm';
 import type { Domain } from '../generated/entity/domains/domain';
-import type { Task } from '../generated/entity/tasks/task';
+import type { Thread } from '../generated/entity/feed/thread';
 import type { User } from '../generated/entity/teams/user';
 import Fqn from './Fqn';
 import i18n from './i18next/LocalUtil';
@@ -338,27 +338,24 @@ export const getGlossaryEntityLink = (glossaryTermFQN: string) =>
 export const permissionForApproveOrReject = (
   record: ModifiedGlossaryTerm,
   currentUser: User,
-  termTaskThreads: Record<string, Task[]>
+  termTaskThreads: Record<string, Thread[]>
 ) => {
   const entityLink = getGlossaryEntityLink(record.fullyQualifiedName ?? '');
-  const task = termTaskThreads[entityLink]?.[0];
+  const taskThread = termTaskThreads[entityLink]?.find(
+    (thread) => thread.about === entityLink
+  );
   const currentUserId = currentUser?.id;
 
   const isReviewer = record.reviewers?.some(
     (reviewer) => reviewer.id === currentUserId
   );
-  const isTaskAssignee = task?.assignees?.some(
+  const isTaskAssignee = taskThread?.task?.assignees?.some(
     (assignee) => assignee.id === currentUserId
   );
-  const hasTaskAssignees = Boolean(task?.assignees?.length);
-
-  const permission = hasTaskAssignees
-    ? Boolean(isTaskAssignee)
-    : Boolean(task && (isTaskAssignee || isReviewer));
 
   return {
-    permission,
-    taskId: task?.id ?? '',
+    permission: Boolean(taskThread && (isTaskAssignee || isReviewer)),
+    taskId: taskThread?.task?.id ?? '',
   };
 };
 
