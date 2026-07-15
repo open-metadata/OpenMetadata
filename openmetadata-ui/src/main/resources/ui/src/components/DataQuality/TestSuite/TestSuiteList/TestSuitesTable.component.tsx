@@ -11,12 +11,12 @@
  *  limitations under the License.
  */
 import { Box, EmptyPlaceholder, Table } from '@openmetadata/ui-core-components';
-import { Clipboard } from '@untitledui/icons';
 import { Typography } from 'antd';
 import { useMemo } from 'react';
 import type { SortDescriptor } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as EmptyTableSuiteIcon } from '../../../../assets/svg/ic-empty-table-suite.svg';
 import { DQ_CHART_SUCCESS_COLOR } from '../../../../constants/Color.constants';
 import { EntityTabs, EntityType } from '../../../../enums/entity.enum';
 import { TestSuite, TestSummary } from '../../../../generated/tests/testCase';
@@ -156,7 +156,7 @@ export const TestSuitesTable = ({
       <Box className="tw:relative tw:min-h-80 tw:w-full">
         <EmptyPlaceholder
           description={description}
-          icon={Clipboard}
+          icon={<EmptyTableSuiteIcon className="tw:text-fg-brand-primary" />}
           title={title}
           variant="blank"
         />
