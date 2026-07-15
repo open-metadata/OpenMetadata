@@ -18,7 +18,7 @@ import {
   FileIcon,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Copy06, XClose } from '@untitledui/icons';
+import { XClose } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
@@ -97,44 +97,6 @@ const DocumentPreviewPanel: FC<DocumentPreviewPanelProps> = ({
             color="tertiary"
             data-testid="close-preview-btn"
             icon={<XClose height={20} width={20} />}
-            size="xs"
-            tooltip={t('label.close')}
-            onClick={onClose}
-          />
-        </Box>
-      </Box>
-
-      <Box
-        align="center"
-        className="tw:px-4 tw:py-3 tw:border-b tw:border-secondary tw:shrink-0"
-        gap={3}
-        justify="between">
-        <Box align="center" className="tw:max-w-[78%]" gap={2}>
-          <FileIcon
-            className="tw:size-6 tw:shrink-0"
-            theme="light"
-            type={file.fileExtension ?? ''}
-            variant="default"
-          />
-          <div className="tw:min-w-0">
-            <Typography
-              ellipsis
-              className="tw:flex-1"
-              data-testid="preview-file-name"
-              size="text-sm"
-              weight="semibold">
-              {fileName}
-            </Typography>
-          </div>
-        </Box>
-        <Box align="center" gap={2}>
-          <CopyLinkButton className="tw:w-7 tw:h-7" url={url}>
-            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
-          </CopyLinkButton>
-          <ButtonUtility
-            color="tertiary"
-            data-testid="close-preview-btn"
-            icon={XClose}
             size="xs"
             tooltip={t('label.close')}
             onClick={onClose}
