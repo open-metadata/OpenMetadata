@@ -326,13 +326,11 @@ def _db_message(*tokens: str) -> Matcher:
 AIRFLOW_ERRORS = ErrorPack(
     when(_http_status(401)).diagnose(
         "Authentication failed",
-        fix="Airflow rejected the credentials. Check the username and password (or token) are "
-        "correct and not expired.",
+        fix="Airflow rejected the credentials. Check the username and password (or token) are correct and not expired.",
     ),
     when(_http_status(403)).diagnose(
         "Access denied",
-        fix="The credentials are valid but lack access. Grant this user permission to read the "
-        "Airflow REST API.",
+        fix="The credentials are valid but lack access. Grant this user permission to read the Airflow REST API.",
     ),
     when(_http_status(404)).diagnose(
         "Endpoint not found",
@@ -353,8 +351,7 @@ AIRFLOW_ERRORS = ErrorPack(
     ),
     when(Matchers.exception(Timeout)).diagnose(
         "Connection timed out",
-        fix="Airflow did not respond in time. Check the Host and Port and that a firewall allows "
-        "access to it.",
+        fix="Airflow did not respond in time. Check the Host and Port and that a firewall allows access to it.",
     ),
     when(Matchers.exception(RequestsConnectionError)).diagnose(
         "Cannot reach the host",
@@ -366,8 +363,7 @@ AIRFLOW_ERRORS = ErrorPack(
     # mislabeled as a database problem.
     when(_db_message("access denied", "password authentication failed")).diagnose(
         "Database authentication failed",
-        fix="The Airflow metadata database rejected the credentials. Check the database username "
-        "and password.",
+        fix="The Airflow metadata database rejected the credentials. Check the database username and password.",
     ),
 ).including(NETWORK_ERRORS)
 
