@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Explore your table's metrics by running the profiler workflow. You'll see Row Count, Table Updates, Volume Changes, and more. Visit our documentation for setup steps ",
     "no-profiler-title": "Run Profiler to Unlock Table Insights",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "No recent runs found.",
     "no-recently-viewed-data": "You haven't viewed any data assets recently. Explore to find something interesting!",
     "no-reference-available": "No references available.",

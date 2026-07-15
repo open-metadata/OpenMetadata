@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Ontdek de metrieken van uw tabel door de profiler-werkstroom uit te voeren. U zult het aantal rijen, tabelupdates, volumewijzigingen en meer zien. Bezoek onze documentatie voor de installatiestappen ",
     "no-profiler-title": "Voer Profiler uit om tabelinzichten te ontgrendelen",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "Geen recente uitvoeringen gevonden.",
     "no-recently-viewed-data": "Geen recent bekeken data.",
     "no-reference-available": "Geen referenties beschikbaar.",

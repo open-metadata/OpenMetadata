@@ -3665,6 +3665,8 @@
     "no-profiler-message": "با اجرای جریان کاری پروفایلر، معیارهای جدول خود را کاوش کنید. شما تعداد ردیف، به‌روزرسانی‌های جدول، تغییرات حجم و موارد دیگر را خواهید دید. برای مراحل راه‌اندازی به مستندات ما مراجعه کنید ",
     "no-profiler-title": "Uruchom Profiler, aby odblokować wgląd w tabele",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "هیچ اجرای اخیری یافت نشد.",
     "no-recently-viewed-data": "شما اخیراً هیچ دارایی داده‌ای را مشاهده نکرده‌اید. کاوش کنید تا چیزی جالب پیدا کنید!",
     "no-reference-available": "هیچ مرجعی در دسترس نیست.",

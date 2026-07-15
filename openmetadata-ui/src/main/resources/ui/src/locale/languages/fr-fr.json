@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Explorez les métriques de votre table en exécutant le workflow de profilage. Vous verrez: Nombre de lignes, Mises à jour de tables, Changements de volume, et plus encore. Visitez notre documentation pour les étapes de configuration ",
     "no-profiler-title": "Exécuter le Profiler pour déverrouiller les informations de table",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "Aucune exécution récente trouvée.",
     "no-recently-viewed-data": "Aucune donnée récemment consultée.",
     "no-reference-available": "Aucune référence disponible.",

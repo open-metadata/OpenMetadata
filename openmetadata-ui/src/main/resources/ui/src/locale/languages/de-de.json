@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Erkunden Sie die Metriken Ihrer Tabelle, indem Sie den Profiler-Workflow ausführen. Sie werden sehen: Zeilenanzahl, Tabellenaktualisierungen, Volumenänderungen und vieles mehr. Besuchen Sie unsere Dokumentation für Einrichtungsschritte ",
     "no-profiler-title": "Profiler ausführen, um Tabelleneinblicke freizuschalten",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "Keine letzten Ausführungen gefunden.",
     "no-recently-viewed-data": "Keine kürzlich angesehenen Daten.",
     "no-reference-available": "Keine Verweise verfügbar.",

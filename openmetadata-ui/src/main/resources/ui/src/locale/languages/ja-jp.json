@@ -3665,6 +3665,8 @@
     "no-profiler-message": "テーブルのメトリクスを実行するプロファイラーを設定して探索しましょう。行数、更新頻度、ボリュームの変化などを確認できます。開始手順は次の通りです。",
     "no-profiler-title": "プロファイラーを実行してテーブルインサイトをアンロック",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "最近の実行が見つかりません。",
     "no-recently-viewed-data": "最近表示したデータはありません。",
     "no-reference-available": "参照はありません。",

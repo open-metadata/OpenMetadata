@@ -3665,6 +3665,8 @@
     "no-profiler-message": "גלה את מדדי הטבלה שלך על ידי הפעלת פרופילר של טבלה. תראה כמות של שורות, עדכונים של טבלות, שינויים בנפח, ועוד. עיין במדריך ההגדרה <0>כאן</0>",
     "no-profiler-title": "הפעל Profiler לפתיחת תובנות טבלה",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "לא נמצאו ריצות אחרונות.",
     "no-recently-viewed-data": "אין נתונים שנצפו לאחרונה.",
     "no-reference-available": "אין הפניות זמינות.",

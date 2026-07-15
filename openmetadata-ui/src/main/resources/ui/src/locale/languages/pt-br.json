@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Explore as métricas da sua tabela executando o fluxo de trabalho do profiler. Você verá Contagem de Linhas, Atualizações de Tabela, Mudanças de Volume, e mais. Visite nossa documentação para etapas de configuração ",
     "no-profiler-title": "Execute o Profiler para desbloquear insights da tabela",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "Nenhuma execução recente encontrada.",
     "no-recently-viewed-data": "Nenhum dado visualizado recentemente.",
     "no-reference-available": "Nenhuma referência disponível.",

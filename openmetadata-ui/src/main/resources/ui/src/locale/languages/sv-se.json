@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Utforska din tabells mätvärden genom att köra profilerararbetsflödet. Du ser radantal, tabelluppdateringar, volymförändringar och mer. Besök vår dokumentation för installationssteg ",
     "no-profiler-title": "Kör profileraren för att låsa upp tabellinsikter",
     "no-properties-added": "Inga egenskaper har lagts till.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "Inga senaste körningar hittades.",
     "no-recently-viewed-data": "Du har inte visat några datatillgångar nyligen. Utforska för att hitta något intressant!",
     "no-reference-available": "Inga referenser tillgängliga.",

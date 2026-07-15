@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Профайлер данных — это необязательная конфигурация при получении данных. Включите профилировщик данных, следуя документации.",
     "no-profiler-title": "Запустите профайлер, чтобы разблокировать статистику таблицы",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "Недавние выполнения не найдены.",
     "no-recently-viewed-data": "Нет недавно просмотренных данных.",
     "no-reference-available": "Нет доступных ссылок.",

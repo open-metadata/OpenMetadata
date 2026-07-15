@@ -3665,6 +3665,8 @@
     "no-profiler-message": "Profilleyici iş akışını çalıştırarak tablonuzun metriklerini keşfedin. Satır Sayısı, Tablo Güncellemeleri, Hacim Değişiklikleri ve daha fazlasını göreceksiniz. Kurulum adımları için belgelerimizi ziyaret edin ",
     "no-profiler-title": "Tablo İçgörülerinin Kilidini Açmak İçin Profiler'ı Çalıştırın",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "Son çalıştırma bulunamadı.",
     "no-recently-viewed-data": "Son zamanlarda herhangi bir veri varlığı görüntülemediniz. İlginç bir şey bulmak için keşfedin!",
     "no-reference-available": "Kullanılabilir referans yok.",

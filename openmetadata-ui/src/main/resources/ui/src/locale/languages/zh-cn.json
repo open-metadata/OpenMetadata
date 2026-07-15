@@ -3665,6 +3665,8 @@
     "no-profiler-message": "通过运行分析器工作流探索您的表的指标。您将看到行数、表更新、体积变化等。访问我们的文档以获取设置步骤 ",
     "no-profiler-title": "运行分析器以解锁表洞察",
     "no-properties-added": "No properties added.",
+    "no-recent-events": "No recent events",
+    "no-recent-events-description": "This alert hasn't triggered any events yet — they'll show up here when it does.",
     "no-recent-runs": "未找到最近的运行。",
     "no-recently-viewed-data": "无最近查看过的数据",
     "no-reference-available": "无可用参考",
