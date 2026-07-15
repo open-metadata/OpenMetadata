@@ -147,10 +147,10 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   EmptyPlaceholder: jest
     .fn()
     .mockImplementation(
-      ({ actions }: { actions?: Array<{ onPress?: () => void }> }) => (
+      ({ footer }: { footer?: { props?: { onPress?: () => void } } }) => (
         <div
           data-testid="empty-placeholder"
-          onClick={() => actions?.[0]?.onPress?.()}>
+          onClick={() => footer?.props?.onPress?.()}>
           EmptyPlaceholder
         </div>
       )

@@ -13,7 +13,10 @@
 
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import { File02, Plus } from '@untitledui/icons';
 import {
   Button,
@@ -1553,24 +1556,23 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
 
     return (
       <div
-        className="tw:relative"
-        ref={tableContainerRef}
-        style={{ height: 'calc(100vh - 300px)', overflow: 'auto' }}>
+        className="tw:relative tw:flex tw:items-center tw:justify-center glossary-terms-empty-container"
+        ref={tableContainerRef}>
         <EmptyPlaceholder
-          actions={
-            canCreateTerm
-              ? [
-                  {
-                    key: 'add-term',
-                    label: t('label.new-term'),
-                    color: 'primary' as const,
-                    iconLeading: Plus,
-                    onPress: handleAddGlossaryTermClick,
-                  },
-                ]
-              : undefined
-          }
+          data-testid={`create-error-placeholder-${t('label.glossary-term')}`}
           description={t('message.glossary-term-empty-description')}
+          footer={
+            canCreateTerm ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-placeholder-button"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryTermClick}>
+                {t('label.new-term')}
+              </CoreButton>
+            ) : undefined
+          }
           icon={<File02 className="tw:text-fg-warning-primary" />}
           title={t('message.add-the-first-term')}
           variant="blank"

@@ -11,7 +11,10 @@
  *  limitations under the License.
  */
 
-import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+} from '@openmetadata/ui-core-components';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { BookOpen01, Dataflow01, File02, Plus } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -501,21 +504,6 @@ const GlossaryPage = () => {
     return (
       <div className="tw:relative full-height">
         <EmptyPlaceholder
-          actions={
-            createGlossaryPermission
-              ? [
-                  {
-                    key: 'add-glossary',
-                    label: t('label.add-entity', {
-                      entity: t('label.glossary'),
-                    }),
-                    color: 'primary' as const,
-                    iconLeading: Plus,
-                    onPress: handleAddGlossaryClick,
-                  },
-                ]
-              : undefined
-          }
           description={t('message.glossary-empty-description')}
           features={[
             {
@@ -537,6 +525,18 @@ const GlossaryPage = () => {
               description: t('message.link-them-to-data-description'),
             },
           ]}
+          footer={
+            createGlossaryPermission ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-glossary"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryClick}>
+                {t('label.add-entity', { entity: t('label.glossary') })}
+              </CoreButton>
+            ) : undefined
+          }
           title={t('message.build-your-business-dictionary')}
           variant="features"
         />
