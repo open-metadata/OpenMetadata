@@ -56,20 +56,7 @@ class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
         automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
         timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
-        """
-        Test connection to BurstIQ. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-
-        Args:
-            metadata: OpenMetadata client
-            client: BurstIQClient instance
-            service_connection: BurstIQConnection configuration
-            automation_workflow: Optional automation workflow
-            timeout_seconds: Timeout for connection test
-
-        Returns:
-            TestConnectionResult
-        """
+        """Test connection to BurstIQ, as a metadata workflow or an Automation Workflow."""
         client = self.client
         service_connection = self.service_connection
 

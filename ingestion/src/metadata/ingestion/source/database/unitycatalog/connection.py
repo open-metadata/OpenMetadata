@@ -455,8 +455,7 @@ class UnityCatalogChecks:
 
 
 class UnityCatalogSqlConnection(BaseConnection[UnityCatalogConnectionConfig, Engine]):
-    """Owns the SQL-warehouse Engine: a separate lifetime from the workspace client,
-    reached only by the lineage and tag steps and never built without an httpPath."""
+    """Owns the SQL-warehouse Engine: a separate lifetime from the workspace client."""
 
     def _get_client(self) -> Engine:
         engine = get_sqlalchemy_connection(self.service_connection)
