@@ -20,7 +20,7 @@ import re
 import traceback
 from dataclasses import dataclass
 from datetime import datetime, timezone
-from typing import Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from requests.exceptions import HTTPError
 
@@ -71,7 +71,6 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.connections.connection import BaseConnection  # noqa: TC001
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import create_connection
@@ -81,6 +80,10 @@ from metadata.ingestion.source.database.sas.client import SASClient
 from metadata.ingestion.source.database.sas.extension_attr import TABLE_CUSTOM_ATTR
 from metadata.utils import fqn
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
 
 logger = ingestion_logger()
 
@@ -182,7 +185,6 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
         self._connection = create_connection(self.service_connection)
         self.sas_client = cast("BaseConnection", self._connection).client
-        self.connection_obj = self.sas_client
         try:
             self.test_connection()
         except Exception:

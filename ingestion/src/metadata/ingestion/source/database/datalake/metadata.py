@@ -16,7 +16,7 @@ DataLake connector to fetch metadata from a files stored s3, gcs and Hdfs
 import json
 import traceback
 from hashlib import md5
-from typing import Any, Iterable, Optional, Tuple, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -50,7 +50,6 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.generated.schema.type.basic import EntityName, FullyQualifiedEntityName
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
-from metadata.ingestion.connections.connection import BaseConnection  # noqa: TC001
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import create_connection
@@ -71,6 +70,10 @@ from metadata.utils.datalake.datalake_utils import (
 )
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
 
 logger = ingestion_logger()
 
@@ -94,7 +97,6 @@ class DatalakeSource(DatabaseServiceSource):
         self.table_constraints = None
         self.database_source_state = set()
         self.config_source = self.service_connection.configSource
-        self.connection_obj = self.client
         try:
             self.test_connection()
         except Exception:

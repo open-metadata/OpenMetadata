@@ -14,7 +14,7 @@ import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, cast  # noqa: UP035
 
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
@@ -48,9 +48,6 @@ from metadata.ingestion.source.database.column_type_parser import create_sqlalch
 from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
-)
-from metadata.ingestion.source.database.databricks.connection import (
-    DatabricksConnection as DatabricksConnectionHandler,  # noqa: TC001
 )
 from metadata.ingestion.source.database.databricks.models import (
     ColumnDescriptions,
@@ -93,6 +90,12 @@ from metadata.utils.sqlalchemy_utils import (
     get_view_definition_wrapper,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksConnection as DatabricksConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 

@@ -16,7 +16,7 @@ import json
 import traceback
 from functools import partial
 from threading import RLock
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -78,9 +78,6 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
-from metadata.ingestion.source.database.unitycatalog.connection import (
-    UnityCatalogConnection as UnityCatalogConnectionHandler,  # noqa: TC001
-)
 from metadata.ingestion.source.database.unitycatalog.incremental_table_processor import (
     UnityCatalogIncrementalTableProcessor,
 )
@@ -103,6 +100,12 @@ from metadata.utils.filters import filter_by_database, filter_by_schema, filter_
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.unitycatalog.connection import (
+        UnityCatalogConnection as UnityCatalogConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 

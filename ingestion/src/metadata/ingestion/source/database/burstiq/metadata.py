@@ -13,7 +13,7 @@ BurstIQ LifeGraph source module for OpenMetadata
 """
 
 import traceback
-from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -57,13 +57,16 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection, get_connection
-from metadata.ingestion.source.database.burstiq.client import BurstIQClient
+from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.database.burstiq.models import BurstIQDictionary
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_table
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+    from metadata.ingestion.source.database.burstiq.client import BurstIQClient
 
 logger = ingestion_logger()
 
@@ -80,11 +83,10 @@ class Burstiqsource(DatabaseServiceSource):
         self.metadata = metadata
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.service_connection: BurstIQConnection = self.config.serviceConnection.root.config
-        self.client: Optional[BurstIQClient] = None  # noqa: UP045
         self._current_dictionary: Optional[BurstIQDictionary] = None  # noqa: UP045
 
         self._connection = create_connection(self.service_connection)
-        self.connection_obj = self._get_client()
+        self.client: BurstIQClient = cast("BaseConnection", self._connection).client
         try:
             self.test_connection()
         except Exception:
@@ -104,15 +106,6 @@ class Burstiqsource(DatabaseServiceSource):
             raise InvalidSourceException(f"Expected BurstIQConnection, but got {connection}")
         return cls(config, metadata)
 
-    def _get_client(self) -> BurstIQClient:
-        """Get or create BurstIQ client"""
-        if self.client is None:
-            client: BurstIQClient = (
-                self._connection.client if self._connection else get_connection(self.service_connection)
-            )
-            self.client = client
-        return self.client
-
     def _get_current_dictionary(self, table_name: str) -> Optional[BurstIQDictionary]:  # noqa: UP045
         """
         Get the currently cached dictionary for the given table name
@@ -128,7 +121,7 @@ class Burstiqsource(DatabaseServiceSource):
 
         # If not cached or doesn't match, fetch from API
         logger.warning(f"Dictionary for table '{table_name}' not in cache, fetching from API...")
-        client = self._get_client()
+        client = self.client
         return client.get_dictionary_by_name(table_name)
 
     def get_database_names(self) -> Iterable[str]:
@@ -195,8 +188,7 @@ class Burstiqsource(DatabaseServiceSource):
         schema_name = self.context.get().database_schema
         try:
             if self.source_config.includeTables:
-                # Get BurstIQ client
-                client = self._get_client()
+                client = self.client
 
                 # Fetch and iterate dictionaries directly
                 logger.info("Fetching dictionaries from BurstIQ LifeGraph...")
@@ -506,10 +498,5 @@ class Burstiqsource(DatabaseServiceSource):
         return []
 
     def close(self):
-        """
-        Clean up resources
-        """
         self._current_dictionary = None
-        self.client = None
-        if self._connection is not None:
-            self._connection.close()
+        super().close()

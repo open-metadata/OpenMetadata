@@ -14,7 +14,7 @@ Databricks Unity Catalog Lineage Source Module
 
 import traceback
 from collections import defaultdict
-from typing import Iterable, Optional, cast  # noqa: UP035
+from typing import TYPE_CHECKING, Iterable, Optional, cast  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -45,9 +45,6 @@ from metadata.ingestion.source.connections import (
     run_test_connection,
     test_connection_common,
 )
-from metadata.ingestion.source.database.unitycatalog.connection import (
-    UnityCatalogConnection as UnityCatalogConnectionHandler,  # noqa: TC001
-)
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_COLUMN_LINEAGE,
     UNITY_CATALOG_EXTERNAL_TABLES,
@@ -57,6 +54,12 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.unitycatalog.connection import (
+        UnityCatalogConnection as UnityCatalogConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 
