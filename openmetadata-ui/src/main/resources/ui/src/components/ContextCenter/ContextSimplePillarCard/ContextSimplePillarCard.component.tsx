@@ -78,11 +78,10 @@ const ContextSimplePillarCard: FC<ContextSimplePillarCardProps> = ({
                   ]
                 : undefined
             }
-            className="tw:justify-start tw:pt-6"
-            contentClassName="tw:max-w-50"
+            className="tw:justify-start tw:pt-6 tw:[&_:has(>[data-icon='true'])]:!size-12.5 tw:[&_[data-icon='true']]:size-5"
+            width={200}
             description={emptyMessage}
             icon={<Icon className="tw:text-fg-brand-primary" />}
-            iconClassName="tw:size-12.5 tw:*:data-icon:size-5"
             variant="blank"
           />
         ) : (

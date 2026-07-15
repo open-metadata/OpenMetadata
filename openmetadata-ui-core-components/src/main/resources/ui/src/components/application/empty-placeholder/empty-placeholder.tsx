@@ -34,12 +34,8 @@ export interface EmptyPlaceholderProps
   variant?: EmptyPlaceholderVariant;
   /** Icon rendered above the title (only in the 'blank' variant) */
   icon?: EmptyPlaceholderIcon;
-  /** Extra classes for the icon container (only in the 'blank' variant) */
-  iconClassName?: string;
   title?: ReactNode;
   description?: ReactNode;
-  /** Extra classes for the title/description column (only in the 'blank' variant) */
-  contentClassName?: string;
   /** Feature columns rendered in the 'features' variant */
   features?: EmptyPlaceholderFeature[];
 }
@@ -47,10 +43,8 @@ export interface EmptyPlaceholderProps
 export const EmptyPlaceholder = ({
   variant = 'blank',
   icon,
-  iconClassName,
   title,
   description,
-  contentClassName,
   features,
   ...shellProps
 }: EmptyPlaceholderProps) => {
@@ -67,10 +61,8 @@ export const EmptyPlaceholder = ({
   } else {
     node = (
       <BlankEmptyPlaceholder
-        contentClassName={contentClassName}
         description={description}
         icon={icon}
-        iconClassName={iconClassName}
         title={title}
         {...shellProps}
       />
