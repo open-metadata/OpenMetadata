@@ -16,6 +16,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from looker_sdk.error import SDKError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
 from metadata.ingestion.connections.connection import BaseConnection
@@ -52,10 +53,10 @@ def _versions(*supported: str) -> MagicMock:
 
 
 def _checks() -> tuple[LookerChecks, MagicMock]:
-    """A provider whose ``connect`` thunk hands back the returned mock SDK."""
+    """A provider over a borrowed client - the one its connection owns."""
     client = MagicMock()
 
-    return LookerChecks(connect=lambda: client), client
+    return LookerChecks(looker=Borrowed.of(client)), client
 
 
 def test_looker_connection_is_base_connection():
@@ -98,8 +99,8 @@ def test_the_sdk_is_configured_from_this_service_not_the_environment(monkeypatch
 
 
 def test_checks_run_against_the_client_the_connection_owns():
-    # The provider holds no client of its own: every step shares the one the
-    # connection builds, caches, and closes.
+    # The provider borrows the client its connection owns, so every step shares the
+    # one the connection builds, caches, and closes.
     with patch(f"{CONNECTION_MODULE}.looker_sdk") as mock_sdk:
         conn = LookerConnection(MagicMock())
         provider = conn.checks()

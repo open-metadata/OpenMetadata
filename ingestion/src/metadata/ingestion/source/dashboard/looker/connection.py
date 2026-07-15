@@ -46,8 +46,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.utils.constants import THREE_MIN
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
@@ -196,29 +195,29 @@ LOOKER_ERRORS = ErrorPack(
 class LookerChecks:
     """Test-connection checks for Looker.
 
-    ``CheckAccess`` is the gate: the SDK logs in on its first call, so bad
-    credentials and an unreachable host fail there and the rest are skipped.
-
-    ``connect`` is ``BaseConnection.client`` - a thunk, so the client is built
-    inside the first check rather than while the provider is assembled.
+    ``CheckAccess`` is the gate: reading the borrowed client logs in on its first
+    call, so bad credentials and an unreachable host fail there.
     """
 
     errors = LOOKER_ERRORS
 
-    def __init__(self, connect: Callable[[], Looker40SDK]) -> None:
-        self._connect = connect
+    def __init__(self, looker: Borrowed[Looker40SDK]) -> None:
+        self._looker = looker
+
+    def _client(self) -> Looker40SDK:
+        return self._looker.client
 
     @check(DashboardStep.CheckAccess)
     def check_access(self) -> Evidence:
         return verify_access(
-            lambda: self._connect().me(),
+            lambda: self._client().me(),
             command="log in and read the authenticated user",
         )
 
     @check(DashboardStep.ValidateVersion)
     def validate_version(self) -> Evidence:
         command = "list the API versions the instance supports"
-        versions = call_endpoint(lambda: self._connect().versions(), command=command)
+        versions = call_endpoint(lambda: self._client().versions(), command=command)
         supported = [version.version for version in versions.supported_versions or []]
         if SDK_API_VERSION not in supported:
             raise CheckError(
@@ -233,7 +232,7 @@ class LookerChecks:
     @check(DashboardStep.ListDashboards)
     def list_dashboards(self) -> Evidence:
         return fetch_list(
-            lambda: self._connect().all_dashboards(fields="id,title"),
+            lambda: self._client().all_dashboards(fields="id,title"),
             noun="dashboard",
             command="list dashboards",
             empty_caveat=Diagnosis(
@@ -246,7 +245,7 @@ class LookerChecks:
     @check(DashboardStep.ListLookMLModels)
     def list_lookml_models(self) -> Evidence:
         return fetch_list(
-            lambda: self._connect().all_lookml_models(limit=1),
+            lambda: self._client().all_lookml_models(limit=1),
             noun="LookML model",
             command="list LookML models",
             empty_caveat=Diagnosis(
@@ -286,5 +285,4 @@ class LookerConnection(BaseConnection[LookerConnectionConfig, Looker40SDK]):
         return looker_sdk.init40(config_settings=LookerSettings(self.service_connection))
 
     def checks(self) -> ChecksProvider:
-        # A thunk, not self.client: the build then lands inside the gate.
-        return LookerChecks(connect=lambda: self.client)
+        return LookerChecks(looker=self.borrow())
