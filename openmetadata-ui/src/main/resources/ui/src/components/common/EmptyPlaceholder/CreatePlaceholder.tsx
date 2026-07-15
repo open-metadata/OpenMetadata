@@ -45,7 +45,13 @@ const CreatePlaceholder = ({
 
   if (permission === false) {
     return (
-      <PermissionPlaceholder permissionValue={permissionValue} {...props} />
+      <PermissionPlaceholder
+        description={description}
+        icon={icon}
+        permissionValue={permissionValue}
+        title={title}
+        {...props}
+      />
     );
   }
 
