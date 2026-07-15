@@ -190,9 +190,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     children: React.ReactNode;
     className?: string;
   } & Record<string, unknown>) => (
-    <span
-      className={className}
-      data-testid={rest['data-testid'] as string}>
+    <span className={className} data-testid={rest['data-testid'] as string}>
       {children}
     </span>
   ),
