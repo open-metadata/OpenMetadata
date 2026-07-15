@@ -29,7 +29,12 @@ import { ReactComponent as ClockIcon } from '../../../../../assets/svg/calender-
 import { ReactComponent as PlayIcon } from '../../../../../assets/svg/trigger.svg';
 import {
   DAY_IN_MONTH_OPTIONS,
+  DAY_OF_MONTH_PATTERN,
+  DAY_OF_WEEK_PATTERN,
   DAY_OPTIONS,
+  HOUR_PATTERN,
+  MINUTE_PATTERN,
+  MONTH_PATTERN,
   PERIOD_OPTIONS,
 } from '../../../../../constants/Schedular.constants';
 import { SchedularOptions } from '../../../../../enums/Schedular.enum';
@@ -56,16 +61,35 @@ export interface ScheduleIntervalV1Props {
 
 const PERIOD_CUSTOM = 'custom';
 
-const CRON_FIELD_PATTERN =
-  /^(\*|\d{1,2}(-\d{1,2})?(,\d{1,2}(-\d{1,2})?)*)(\/\d{1,2})?$/;
+const CRON_FIELD_PATTERNS = [
+  MINUTE_PATTERN,
+  HOUR_PATTERN,
+  DAY_OF_MONTH_PATTERN,
+  MONTH_PATTERN,
+  DAY_OF_WEEK_PATTERN,
+];
 
-const isValidCron = (cron: string): boolean => {
+const validateCronExpression = (cron: string): string | undefined => {
   const parts = cron.trim().split(/\s+/);
   if (parts.length !== 5) {
-    return false;
+    return 'message.cron-invalid-field-count';
   }
 
-  return parts.every((part) => CRON_FIELD_PATTERN.test(part));
+  const fieldErrorKeys = [
+    'message.cron-invalid-minute-field',
+    'message.cron-invalid-hour-field',
+    'message.cron-invalid-day-of-month-field',
+    'message.cron-invalid-month-field',
+    'message.cron-invalid-day-of-week-field',
+  ];
+
+  for (let i = 0; i < parts.length; i++) {
+    if (!CRON_FIELD_PATTERNS[i].test(parts[i])) {
+      return fieldErrorKeys[i];
+    }
+  }
+
+  return undefined;
 };
 
 const FREQUENCY_LABEL_KEYS: Record<string, string> = {
@@ -191,14 +215,13 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
   const handleCustomCronChange = useCallback(
     (cronValue: string) => {
       setState((prev) => ({ ...prev, cron: cronValue }));
-      if (cronValue && !isValidCron(cronValue)) {
-        setCustomCronError(
-          t('message.cron-invalid-expression')
-        );
-      } else {
-        setCustomCronError('');
+      const errorKey = cronValue
+        ? validateCronExpression(cronValue)
+        : undefined;
+      setCustomCronError(errorKey ? t(errorKey) : '');
+      if (!errorKey) {
+        onChange?.(cronValue);
       }
-      onChange?.(cronValue);
     },
     [onChange, t]
   );
@@ -462,10 +485,10 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                       aria-label={t('label.cron')}
                       className="m-t-xs"
                       data-testid="custom-cron-input"
-                      disabled={disabled}
+                      isDisabled={disabled}
                       placeholder="0 0 * * *"
                       value={cronString ?? ''}
-                      onChange={(e) => handleCustomCronChange(e.target.value)}
+                      onChange={handleCustomCronChange}
                     />
                     {customCronError && (
                       <Typography

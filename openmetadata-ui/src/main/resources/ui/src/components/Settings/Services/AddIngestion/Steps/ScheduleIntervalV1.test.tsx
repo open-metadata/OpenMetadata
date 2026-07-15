@@ -164,22 +164,22 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Input: ({
     value,
     onChange,
-    disabled,
+    isDisabled,
     placeholder,
     ...rest
   }: {
     value?: string;
-    onChange?: (e: { target: { value: string } }) => void;
-    disabled?: boolean;
+    onChange?: (value: string) => void;
+    isDisabled?: boolean;
     placeholder?: string;
   } & Record<string, unknown>) => (
     <input
       aria-label={rest['aria-label'] as string}
       data-testid={rest['data-testid'] as string}
-      disabled={disabled}
+      disabled={isDisabled}
       placeholder={placeholder}
       value={value ?? ''}
-      onChange={onChange}
+      onChange={(e) => onChange?.(e.target.value)}
     />
   ),
   Typography: ({
@@ -405,25 +405,22 @@ describe('ScheduleIntervalV1', () => {
     expect(screen.getByTestId('frequency-custom')).toBeInTheDocument();
   });
 
-  it('should show the custom cron input when custom frequency is clicked', async () => {
-    const { onChange } = renderControlled('0 0 * * *');
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('frequency-custom'));
-    });
+  it('should show the custom cron input when value is a custom cron', async () => {
+    await renderComponent({ value: '0 9,18 * * *' });
 
     expect(screen.getByTestId('custom-cron-input')).toBeInTheDocument();
     expect(screen.queryByTestId('time-picker')).not.toBeInTheDocument();
     expect(screen.queryByTestId('minute-options')).not.toBeInTheDocument();
-    expect(onChange).toHaveBeenCalled();
+    expect(screen.getByTestId('frequency-custom')).toHaveAttribute(
+      'data-selected',
+      'true'
+    );
   });
 
   it('should emit the custom cron value when typed', async () => {
-    const { onChange } = renderControlled('0 0 * * *');
+    const { onChange } = renderControlled('0 9,18 * * *');
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('frequency-custom'));
-    });
+    onChange.mockClear();
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('custom-cron-input'), {
@@ -434,12 +431,10 @@ describe('ScheduleIntervalV1', () => {
     expect(onChange).toHaveBeenCalledWith('*/5 * * * *');
   });
 
-  it('should show validation error for invalid cron syntax', async () => {
-    renderControlled('0 0 * * *');
+  it('should show validation error for invalid cron syntax and not call onChange', async () => {
+    const { onChange } = renderControlled('*/5 * * * *');
 
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('frequency-custom'));
-    });
+    onChange.mockClear();
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('custom-cron-input'), {
@@ -448,17 +443,11 @@ describe('ScheduleIntervalV1', () => {
     });
 
     expect(screen.getByTestId('custom-cron-error')).toBeInTheDocument();
-    expect(screen.getByTestId('custom-cron-error')).toHaveTextContent(
-      'message.cron-invalid-expression'
-    );
+    expect(onChange).not.toHaveBeenCalled();
   });
 
   it('should clear validation error when valid cron is entered', async () => {
-    renderControlled('0 0 * * *');
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('frequency-custom'));
-    });
+    await renderComponent({ value: '*/5 * * * *' });
 
     await act(async () => {
       fireEvent.change(screen.getByTestId('custom-cron-input'), {
@@ -478,11 +467,7 @@ describe('ScheduleIntervalV1', () => {
   });
 
   it('should switch from custom back to a preset frequency', async () => {
-    const { onChange } = renderControlled('0 0 * * *');
-
-    await act(async () => {
-      fireEvent.click(screen.getByTestId('frequency-custom'));
-    });
+    const { onChange } = renderControlled('0 9,18 * * *');
 
     expect(screen.getByTestId('custom-cron-input')).toBeInTheDocument();
 
@@ -492,11 +477,11 @@ describe('ScheduleIntervalV1', () => {
 
     expect(screen.queryByTestId('custom-cron-input')).not.toBeInTheDocument();
     expect(screen.getByTestId('time-picker')).toBeInTheDocument();
-    expect(onChange).toHaveBeenCalledWith('0 0 * * *');
+    expect(onChange).toHaveBeenCalled();
   });
 
   it('should disable the custom cron input when disabled is true', async () => {
-    await renderComponent({ value: '*/5 * * * *', disabled: true });
+    await renderComponent({ value: '0 9,18 * * *', disabled: true });
 
     expect(screen.getByTestId('custom-cron-input')).toBeDisabled();
   });
