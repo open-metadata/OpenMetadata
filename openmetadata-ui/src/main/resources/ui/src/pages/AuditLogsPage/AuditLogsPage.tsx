@@ -56,6 +56,7 @@ import {
   AuditLogListResponse,
 } from '../../types/auditLogs.interface';
 import { buildParamsFromFilters } from '../../utils/AuditLogUtils';
+import { CUSTOM_DATE_RANGE_KEY } from '../../utils/DatePickerMenuUtils';
 import { getSettingPath } from '../../utils/RouterUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import './AuditLogsPage.less';
@@ -398,7 +399,7 @@ const AuditLogsPage = () => {
                             title={filter.value.label}
                             weight="medium">
                             {filter.category === 'time' &&
-                            filter.value.key === 'customRange'
+                            filter.value.key === CUSTOM_DATE_RANGE_KEY
                               ? t('label.custom-range')
                               : filter.value.label}
                           </Typography>

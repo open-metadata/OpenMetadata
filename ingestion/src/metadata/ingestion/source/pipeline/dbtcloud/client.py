@@ -219,6 +219,58 @@ class DBTCloudClient:
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get job info :{exc}")
 
+    def _get_jobs_total_count(
+        self,
+        project_id: Optional[str] = None,  # noqa: UP045
+        environment_id: Optional[str] = None,  # noqa: UP045
+    ) -> int:
+        """Read the paginated ``total_count`` for a single job filter. Returns
+        0 on any failure so a single bad filter never aborts the whole count."""
+        try:
+            filters = []
+            if project_id:
+                filters.append(f"project_id={project_id}")
+            if environment_id:
+                filters.append(f"environment_id={environment_id}")
+            query_string = "?" + "&".join(filters) if filters else ""
+
+            result = self.client.get(
+                f"/accounts/{self.config.accountId}/jobs/{query_string}",
+                data={"offset": 0, "limit": 1},
+            )
+            job_list_response = DBTJobList.model_validate(result)
+            if job_list_response.extra and job_list_response.extra.pagination:
+                return job_list_response.extra.pagination.total_count
+        except Exception as exc:
+            logger.debug(
+                f"Could not fetch job count for project_id: `{project_id}`, environment_id: `{environment_id}` : {exc}"
+            )
+        return 0
+
+    def get_jobs_count(self) -> Optional[int]:  # noqa: UP045
+        """
+        Total number of jobs that will be ingested for the configured filters,
+        mirroring the ``get_jobs`` filter priority, or ``None`` when it cannot
+        be determined.
+        """
+        try:
+            if self.job_ids:
+                return len(self.job_ids)
+
+            if self.project_ids or self.environment_ids:
+                project_list = self.project_ids or [None]
+                env_list = self.environment_ids or [None]
+                total = 0
+                for project_id in project_list:
+                    for environment_id in env_list:
+                        total += self._get_jobs_total_count(project_id=project_id, environment_id=environment_id)
+                return total
+
+            return self._get_jobs_total_count()
+        except Exception as exc:
+            logger.debug(f"Could not fetch job count: {exc}")
+        return None
+
     def get_latest_successful_run_id(self, job_id: int) -> Optional[int]:  # noqa: UP045
         """
         Get the latest successful run ID for a given job.
