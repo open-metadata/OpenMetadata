@@ -4658,19 +4658,40 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(TaskCountSummaryMapper.class)
     @SqlQuery(
-        // 'Approved' double-counts in `completedCount` AND `approvedCount` because the
-        // same status means different things across task types: terminal for
-        // Glossary/DescriptionUpdate (legacy dashboards expect it under "completed") and
-        // non-terminal for Data Access Requests (the dedicated DAR list uses
-        // `approvedCount` / `grantedCount` and the `active` status group instead).
-        // See ListFilter.getTaskStatusCondition for the matching status-group semantics.
+        // Row-aware bucketing so openCount + completedCount = total across mixed task types.
+        // Bucket predicates and status/type literals are shared with ListFilter via
+        // TaskBucketSql — see that class for the invariant + drift-guard test.
         "SELECT "
             + "COUNT(id) AS total, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Open', 'InProgress', 'Pending') THEN 1 ELSE 0 END), 0) AS openCount, "
-            + "COALESCE(SUM(CASE WHEN status IN ('Approved', 'Rejected', 'Completed', 'Cancelled', 'Failed', 'Revoked') THEN 1 ELSE 0 END), 0) AS completedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'InProgress' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Approved' THEN 1 ELSE 0 END), 0) AS approvedCount, "
-            + "COALESCE(SUM(CASE WHEN status = 'Granted' THEN 1 ELSE 0 END), 0) AS grantedCount "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_OPEN_STATUSES
+            + ") THEN 1"
+            + " WHEN type = '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS openCount, "
+            + "COALESCE(SUM(CASE"
+            + " WHEN status IN ("
+            + TaskBucketSql.SHARED_TERMINAL_STATUSES
+            + ") THEN 1"
+            + " WHEN type <> '"
+            + TaskBucketSql.TASK_TYPE_DAR
+            + "' AND status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1"
+            + " ELSE 0 END), 0) AS completedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_IN_PROGRESS
+            + "' THEN 1 ELSE 0 END), 0) AS inProgressCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_APPROVED
+            + "' THEN 1 ELSE 0 END), 0) AS approvedCount, "
+            + "COALESCE(SUM(CASE WHEN status = '"
+            + TaskBucketSql.STATUS_GRANTED
+            + "' THEN 1 ELSE 0 END), 0) AS grantedCount "
             + "FROM task_entity <condition>")
     TaskCountSummary getTaskCountSummary(
         @Define("condition") String condition, @BindMap Map<String, String> params);
@@ -10793,6 +10814,14 @@ public interface CollectionDAO {
     @RegisterRowMapper(SettingsRowMapper.class)
     Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
 
+    @SqlQuery("SELECT json FROM openmetadata_settings WHERE configType = :configType")
+    String getConfigJsonWithKey(@Bind("configType") String configType) throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM openmetadata_settings "
+            + "WHERE configType = 'glossaryTermRelationSettings'")
+    String getGlossaryTermRelationSettingsJson() throws StatementException;
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT into openmetadata_settings (configType, json)"
@@ -10804,6 +10833,39 @@ public interface CollectionDAO {
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = :configType "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = :configType AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateSettingsIfCurrent(
+        @Bind("configType") String configType,
+        @Bind("expectedJson") String expectedJson,
+        @Bind("updatedJson") String updatedJson);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateGlossaryTermRelationSettingsIfCurrent(
+        @Bind("expectedJson") String expectedJson, @Bind("updatedJson") String updatedJson);
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
@@ -13430,6 +13492,32 @@ public interface CollectionDAO {
     List<SearchIndexRetryRecord> findByStatuses(
         @BindList("statuses") List<String> statuses, @Bind("limit") int limit);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+                + "FROM search_index_retry_queue WHERE status = 'PENDING' "
+                + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
+                + "claimedAt <= DATE_SUB(NOW(), INTERVAL :firstRetryBackoffSeconds SECOND))) "
+                + "OR (status = 'PENDING_RETRY_2' AND (claimedAt IS NULL OR "
+                + "claimedAt <= DATE_SUB(NOW(), INTERVAL :secondRetryBackoffSeconds SECOND))) "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+                + "FROM search_index_retry_queue WHERE status = 'PENDING' "
+                + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
+                + "claimedAt <= NOW() - (:firstRetryBackoffSeconds * INTERVAL '1 second'))) "
+                + "OR (status = 'PENDING_RETRY_2' AND (claimedAt IS NULL OR "
+                + "claimedAt <= NOW() - (:secondRetryBackoffSeconds * INTERVAL '1 second'))) "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> findRetryCandidates(
+        @Bind("firstRetryBackoffSeconds") int firstRetryBackoffSeconds,
+        @Bind("secondRetryBackoffSeconds") int secondRetryBackoffSeconds,
+        @Bind("limit") int limit);
+
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :newStatus "
             + "WHERE entityId = :entityId AND entityFqn = :entityFqn AND status = :currentStatus")
@@ -13481,7 +13569,7 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
-            + "retryCount = retryCount + 1, claimedAt = NULL "
+            + "retryCount = retryCount + 1, claimedAt = NOW() "
             + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
     int updateFailureAndRetryCount(
         @Bind("entityId") String entityId,
@@ -13490,10 +13578,15 @@ public interface CollectionDAO {
         @Bind("status") String status);
 
     default List<SearchIndexRetryRecord> claimPending(int batchSize) {
+      return claimPending(batchSize, 0, 0);
+    }
+
+    default List<SearchIndexRetryRecord> claimPending(
+        int batchSize, int firstRetryBackoffSeconds, int secondRetryBackoffSeconds) {
       int fetchSize = Math.max(batchSize * 5, batchSize);
       List<SearchIndexRetryRecord> candidates =
           new ArrayList<>(
-              findByStatuses(List.of("PENDING", "PENDING_RETRY_1", "PENDING_RETRY_2"), fetchSize));
+              findRetryCandidates(firstRetryBackoffSeconds, secondRetryBackoffSeconds, fetchSize));
       // Shuffle so concurrent worker threads attempt different rows first,
       // reducing wasted optimistic-lock failures on the same candidates.
       Collections.shuffle(candidates);

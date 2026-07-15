@@ -19,6 +19,7 @@ import { APP_ROUTER_ROUTES } from '../../constants/router.constants';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { useAppMode } from '../../hooks/useAppMode';
 import { useAppRoutesRegistry } from '../../hooks/useAppRoutesRegistry';
+import { useSyncAppModeFromPersona } from '../../hooks/useSyncAppModeFromPersona';
 import applicationRoutesClass from '../../utils/ApplicationRoutesClassBase';
 import Loader from '../common/Loader/Loader';
 import { withPageSuspenseFallback } from './withSuspenseFallback';
@@ -80,6 +81,8 @@ const AppRouter = () => {
 
   const appMode = useAppMode();
   const ModeRoutes = useAppRoutesRegistry((state) => state.routes[appMode]);
+
+  useSyncAppModeFromPersona();
 
   /**
    * isApplicationLoading is true when the application is loading in AuthProvider
