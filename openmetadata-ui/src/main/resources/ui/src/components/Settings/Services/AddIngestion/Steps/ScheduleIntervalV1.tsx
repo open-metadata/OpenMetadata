@@ -56,6 +56,18 @@ export interface ScheduleIntervalV1Props {
 
 const PERIOD_CUSTOM = 'custom';
 
+const CRON_FIELD_PATTERN =
+  /^(\*|\d{1,2}(-\d{1,2})?(,\d{1,2}(-\d{1,2})?)*)(\/\d{1,2})?$/;
+
+const isValidCron = (cron: string): boolean => {
+  const parts = cron.trim().split(/\s+/);
+  if (parts.length !== 5) {
+    return false;
+  }
+
+  return parts.every((part) => CRON_FIELD_PATTERN.test(part));
+};
+
 const FREQUENCY_LABEL_KEYS: Record<string, string> = {
   hour: 'label.hourly',
   day: 'label.daily',
@@ -174,12 +186,21 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
     [state, onChange]
   );
 
+  const [customCronError, setCustomCronError] = useState<string>('');
+
   const handleCustomCronChange = useCallback(
     (cronValue: string) => {
       setState((prev) => ({ ...prev, cron: cronValue }));
+      if (cronValue && !isValidCron(cronValue)) {
+        setCustomCronError(
+          t('message.cron-invalid-expression')
+        );
+      } else {
+        setCustomCronError('');
+      }
       onChange?.(cronValue);
     },
-    [onChange]
+    [onChange, t]
   );
 
   const frequencyOptions = useMemo(() => {
@@ -446,6 +467,14 @@ const ScheduleIntervalV1: React.FC<ScheduleIntervalV1Props> = ({
                       value={cronString ?? ''}
                       onChange={(e) => handleCustomCronChange(e.target.value)}
                     />
+                    {customCronError && (
+                      <Typography
+                        className="tw:text-fg-error-primary tw:mt-1"
+                        data-testid="custom-cron-error"
+                        size="text-xs">
+                        {customCronError}
+                      </Typography>
+                    )}
                   </Grid.Item>
                 )}
               </Grid>
