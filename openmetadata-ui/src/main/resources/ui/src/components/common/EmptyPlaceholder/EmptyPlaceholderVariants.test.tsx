@@ -143,10 +143,9 @@ describe('SomethingWentWrongPlaceholder', () => {
 });
 
 describe('NoDataPlaceholder', () => {
-  it('should render the default title and description', () => {
+  it('should render the default description', () => {
     render(<NoDataPlaceholder />);
 
-    expect(screen.getByText('label.no-data')).toBeInTheDocument();
     expect(screen.getByText('message.no-data-available')).toBeInTheDocument();
   });
 
@@ -156,17 +155,13 @@ describe('NoDataPlaceholder', () => {
     expect(screen.queryByRole('button')).not.toBeInTheDocument();
   });
 
-  it('should allow overriding the title and description', () => {
-    render(
-      <NoDataPlaceholder
-        description="custom description"
-        title="custom title"
-      />
-    );
+  it('should allow overriding the description', () => {
+    render(<NoDataPlaceholder description="custom description" />);
 
-    expect(screen.getByText('custom title')).toBeInTheDocument();
     expect(screen.getByText('custom description')).toBeInTheDocument();
-    expect(screen.queryByText('label.no-data')).not.toBeInTheDocument();
+    expect(
+      screen.queryByText('message.no-data-available')
+    ).not.toBeInTheDocument();
   });
 });
 
