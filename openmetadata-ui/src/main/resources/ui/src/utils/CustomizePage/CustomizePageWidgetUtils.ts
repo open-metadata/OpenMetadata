@@ -31,56 +31,46 @@ const calculateNewPosition = (
   maxCols = 8,
   preferredX?: number
 ) => {
-  const maxX = Math.max(maxCols - newWidget.w, 0);
-
-  // When a widget is added from an existing right-panel widget, keep the scan
-  // inside that column so the new widget does not jump into the main content.
-  const candidateXPositions =
-    preferredX !== undefined
-      ? [Math.min(Math.max(preferredX, 0), maxX)]
-      : Array.from({ length: maxX + 1 }, (_, index) => index);
-
-  const hasCollision = (position: { x: number; y: number }) =>
-    currentLayout.some(
-      (widget) =>
-        position.x < widget.x + widget.w &&
-        position.x + newWidget.w > widget.x &&
-        position.y < widget.y + widget.h &&
-        position.y + newWidget.h > widget.y
+  if (preferredX !== undefined) {
+    const x = Math.min(
+      Math.max(preferredX, 0),
+      Math.max(maxCols - newWidget.w, 0)
     );
-
-  // If the preferred column has no gap, append below the widgets that actually
-  // overlap that column instead of using the bottom of the whole page layout.
-  const getColumnBottom = (xPosition: number) =>
-    currentLayout.reduce((bottom, widget) => {
+    // Detail pages use fixed left and right columns. Appending within the
+    // preferred column keeps a tall left panel from affecting right widgets.
+    const y = currentLayout.reduce((bottom, widget) => {
       const hasHorizontalOverlap =
-        xPosition < widget.x + widget.w && xPosition + newWidget.w > widget.x;
+        x < widget.x + widget.w && x + newWidget.w > widget.x;
 
       return hasHorizontalOverlap
         ? Math.max(bottom, widget.y + widget.h)
         : bottom;
     }, 0);
 
-  const maxY = currentLayout.reduce(
-    (bottom, widget) => Math.max(bottom, widget.y + widget.h),
+    return { x, y };
+  }
+
+  const sortedLayout = [...currentLayout].sort(
+    (a, b) => a.y + a.h - (b.y + b.h)
+  );
+  const lastWidget = sortedLayout.at(-1);
+
+  if (!lastWidget) {
+    return { x: 0, y: 0 };
+  }
+
+  const lastRowY = lastWidget.y + lastWidget.h;
+  const lastRowWidgets = sortedLayout.filter(
+    (widget) => widget.y + widget.h === lastRowY
+  );
+  const lastX = lastRowWidgets.reduce(
+    (rightEdge, widget) => Math.max(rightEdge, widget.x + widget.w),
     0
   );
 
-  // Scan from top to bottom and left to right, returning the first rectangle
-  // that can fit the new widget without overlapping any existing widget.
-  for (let y = 0; y <= maxY; y++) {
-    for (const x of candidateXPositions) {
-      const position = { x, y };
-
-      if (!hasCollision(position)) {
-        return position;
-      }
-    }
-  }
-
-  const fallbackX = candidateXPositions[0] ?? 0;
-
-  return { x: fallbackX, y: getColumnBottom(fallbackX) };
+  return lastX + newWidget.w <= maxCols
+    ? { x: lastX, y: lastRowY - lastWidget.h }
+    : { x: 0, y: lastRowY };
 };
 
 // The add modal can be opened from a specific widget. Use that widget's x
@@ -198,20 +188,39 @@ export const updateWidgetHeightRecursively = (
   widgetId: string,
   height: number,
   widgets: WidgetConfig[]
-) =>
-  widgets.reduce((acc, widget) => {
-    if (widget.i === widgetId) {
-      acc.push({ ...widget, h: height });
-    } else if (widget.children) {
-      acc.push({
-        ...widget,
-        children: widget.children.map((child) =>
-          child.i === widgetId ? { ...child, h: height } : child
-        ),
-      });
-    } else {
-      acc.push(widget);
-    }
+) => {
+  const resizedWidget = widgets.find((widget) => widget.i === widgetId);
 
-    return acc;
-  }, [] as WidgetConfig[]);
+  if (resizedWidget) {
+    const heightDelta = height - resizedWidget.h;
+    const previousBottom = resizedWidget.y + resizedWidget.h;
+
+    // Top-level widgets are remeasured after rendering. Preserve their layout
+    // by shifting only widgets below them that share horizontal grid columns.
+    return widgets.map((widget) => {
+      if (widget.i === widgetId) {
+        return { ...widget, h: height };
+      }
+
+      const hasHorizontalOverlap =
+        widget.x < resizedWidget.x + resizedWidget.w &&
+        widget.x + widget.w > resizedWidget.x;
+      const isBelowResizedWidget = widget.y >= previousBottom;
+
+      return heightDelta !== 0 && hasHorizontalOverlap && isBelowResizedWidget
+        ? { ...widget, y: widget.y + heightDelta }
+        : widget;
+    });
+  }
+
+  return widgets.map((widget) =>
+    widget.children
+      ? {
+          ...widget,
+          children: widget.children.map((child) =>
+            child.i === widgetId ? { ...child, h: height } : child
+          ),
+        }
+      : widget
+  );
+};
