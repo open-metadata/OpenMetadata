@@ -107,6 +107,89 @@ const renderStatWithBoldNumbers = (stat: string): ReactNode =>
     )
   );
 
+// djb2 hash — gives each section a stable key derived from its content so React
+// keeps section identity across re-renders without relying on array position.
+const hashString = (value: string): string => {
+  let hash = 5381;
+  for (let index = 0; index < value.length; index++) {
+    hash = (hash * 33) ^ value.charCodeAt(index);
+  }
+
+  return (hash >>> 0).toString(36);
+};
+
+// Render each heading section only once it nears the viewport; a 400KB+ document
+// parsed through BlockEditor in one shot blocks the main thread for seconds.
+// Preload generously below the viewport for smooth downward scroll, but only a
+// little above it, so sections above a TOC target don't expand and shove it away.
+const LAZY_SECTION_ROOT_MARGIN = '300px 0px 800px 0px';
+const LAZY_SECTION_MIN_HEIGHT = 120;
+// Render the first few sections up front so the top of the document paints
+// immediately without waiting for an IntersectionObserver callback.
+const EAGER_SECTION_COUNT = 3;
+
+interface LazyMarkdownSectionProps {
+  eager: boolean;
+  index: number;
+  markdown: string;
+  scrollRoot: HTMLElement | null;
+  onRef: (index: number, node: HTMLDivElement | null) => void;
+}
+
+const LazyMarkdownSection = ({
+  eager,
+  index,
+  markdown,
+  scrollRoot,
+  onRef,
+}: LazyMarkdownSectionProps) => {
+  const [isVisible, setIsVisible] = useState(eager);
+  const nodeRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const node = nodeRef.current;
+    if (!node || isVisible || typeof IntersectionObserver === 'undefined') {
+      return undefined;
+    }
+    const observer = new IntersectionObserver(
+      (entries) => {
+        if (entries.some((entry) => entry.isIntersecting)) {
+          setIsVisible(true);
+        }
+      },
+      { root: scrollRoot, rootMargin: LAZY_SECTION_ROOT_MARGIN }
+    );
+    observer.observe(node);
+
+    return () => observer.disconnect();
+  }, [isVisible, scrollRoot]);
+
+  const setRefs = useCallback(
+    (node: HTMLDivElement | null) => {
+      nodeRef.current = node;
+      onRef(index, node);
+    },
+    [index, onRef]
+  );
+
+  return (
+    <div
+      className="tw:min-w-0"
+      ref={setRefs}
+      style={
+        isVisible ? undefined : { minHeight: `${LAZY_SECTION_MIN_HEIGHT}px` }
+      }>
+      {isVisible ? (
+        <RichTextEditorPreviewNew
+          isDescriptionExpanded
+          enableSeeMoreVariant={false}
+          markdown={markdown}
+        />
+      ) : null}
+    </div>
+  );
+};
+
 export const ContextPreviewModal = ({
   open,
   personaDisplayName,
@@ -115,7 +198,8 @@ export const ContextPreviewModal = ({
   onDocumentLoaded,
 }: ContextPreviewModalProps) => {
   const { t, i18n } = useTranslation();
-  const documentPaneRef = useRef<HTMLDivElement>(null);
+  const [scrollRoot, setScrollRoot] = useState<HTMLElement | null>(null);
+  const sectionRefs = useRef<Array<HTMLDivElement | null>>([]);
   const onDocumentLoadedRef = useRef(onDocumentLoaded);
   const previewRequestRef = useRef(0);
   const [loadError, setLoadError] = useState(false);
@@ -229,10 +313,63 @@ export const ContextPreviewModal = ({
     return result;
   }, [bodyMarkdown]);
 
+  // Split the body at each h1/h2 boundary so every heading section can be
+  // rendered lazily and independently. Any pre-heading preamble is folded into
+  // the first section to keep indices aligned 1:1 with `headings`.
+  const sections = useMemo(() => {
+    if (!bodyMarkdown) {
+      return [];
+    }
+    const result: string[] = [];
+    let current: string[] = [];
+    let insideFence = false;
+    for (const line of bodyMarkdown.split('\n')) {
+      if (/^\s*(```|~~~)/.test(line)) {
+        insideFence = !insideFence;
+      }
+      const isHeading = !insideFence && /^#{1,2}\s+/.test(line);
+      if (isHeading && current.length > 0) {
+        result.push(current.join('\n'));
+        current = [];
+      }
+      current.push(line);
+    }
+    if (current.length > 0) {
+      result.push(current.join('\n'));
+    }
+    const startsWithHeading = /^#{1,2}\s+/.test(
+      result[0]?.split('\n')[0] ?? ''
+    );
+    if (!startsWithHeading && result.length > 1) {
+      const [preamble, ...rest] = result;
+      rest[0] = `${preamble}\n${rest[0]}`;
+      result.splice(0, result.length, ...rest);
+    }
+
+    const seen = new Map<string, number>();
+
+    return result.map((sectionMarkdown) => {
+      const base = hashString(sectionMarkdown);
+      const occurrence = seen.get(base) ?? 0;
+      seen.set(base, occurrence + 1);
+
+      return {
+        id: occurrence > 0 ? `${base}-${occurrence}` : base,
+        markdown: sectionMarkdown,
+      };
+    });
+  }, [bodyMarkdown]);
+
+  const handleSectionRef = useCallback(
+    (index: number, node: HTMLDivElement | null) => {
+      sectionRefs.current[index] = node;
+    },
+    []
+  );
+
   const scrollToHeading = useCallback((index: number) => {
     setActiveHeading(index);
-    const heading = documentPaneRef.current?.querySelectorAll('h1, h2')[index];
-    heading?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    sectionRefs.current[index]?.scrollIntoView({ block: 'start' });
   }, []);
 
   const stats = [
@@ -329,16 +466,21 @@ export const ContextPreviewModal = ({
         <Box
           className="tw:min-w-0 tw:overflow-auto tw:px-9 tw:py-7"
           direction="col"
-          ref={documentPaneRef}>
+          ref={setScrollRoot}>
           {frontMatterText && (
             <pre className={FRONT_MATTER_CLASS}>{frontMatterText}</pre>
           )}
           {contentReady ? (
-            <RichTextEditorPreviewNew
-              isDescriptionExpanded
-              enableSeeMoreVariant={false}
-              markdown={bodyMarkdown}
-            />
+            sections.map((section, index) => (
+              <LazyMarkdownSection
+                eager={index < EAGER_SECTION_COUNT}
+                index={index}
+                key={section.id}
+                markdown={section.markdown}
+                scrollRoot={scrollRoot}
+                onRef={handleSectionRef}
+              />
+            ))
           ) : (
             <Box align="center" className="tw:min-h-40" justify="center">
               <Loader />
