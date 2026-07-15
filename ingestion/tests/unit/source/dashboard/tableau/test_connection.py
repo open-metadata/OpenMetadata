@@ -7,6 +7,7 @@ import pytest
 from requests.exceptions import HTTPError, SSLError
 from tableauserverclient.server.endpoint.exceptions import ServerResponseError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
 from metadata.ingestion.connections.connection import BaseConnection
@@ -36,11 +37,10 @@ def _raw_http_error(status_code: int) -> HTTPError:
     return HTTPError("server said no", response=response)
 
 
-def _checks(get_connection) -> tuple[TableauChecks, MagicMock]:
-    """A provider whose lazily-built client is the returned mock."""
+def _checks() -> tuple[TableauChecks, MagicMock]:
+    """A provider over a borrowed client - the one its connection owns."""
     client = MagicMock()
-    get_connection.return_value = client
-    return TableauChecks(connection=MagicMock()), client
+    return TableauChecks(server=Borrowed.of(client)), client
 
 
 def test_tableau_connection_is_base_connection():
@@ -56,6 +56,17 @@ def test_get_client_delegates_to_get_connection():
     mock_get.assert_called_once_with(conn.service_connection)
 
 
+def test_close_signs_out_of_the_server_session():
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        conn = TableauConnection(MagicMock())
+        client = conn.client
+        conn.close()
+
+    # sign_out() releases the server session and clears the SSL temp files.
+    client.sign_out.assert_called_once_with()
+    assert mock_get.call_count == 1
+
+
 def test_checks_does_not_touch_the_network():
     with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
         conn = TableauConnection(MagicMock())
@@ -65,9 +76,24 @@ def test_checks_does_not_touch_the_network():
     mock_get.assert_not_called()
 
 
-def test_collect_checks_maps_every_step():
+def test_checks_reuse_the_connections_client_and_never_sign_in_twice():
+    # A Personal Access Token allows one active session: if the checks signed in
+    # again, they would invalidate the session the ingestion is about to use
+    # (issue #29804). The provider must read the client its connection owns.
     with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, _ = _checks(mock_get)
+        conn = TableauConnection(MagicMock())
+        owned = conn.client
+        provider = conn.checks()
+
+        provider.server_info()
+        provider.get_workbooks()
+
+    assert mock_get.call_count == 1
+    owned.server_info.assert_called_once_with()
+
+
+def test_collect_checks_maps_every_step():
+    provider, _ = _checks()
     collected = collect_checks(provider)
 
     assert set(collected) == {
@@ -81,20 +107,10 @@ def test_collect_checks_maps_every_step():
     }
 
 
-def test_client_is_built_once_and_shared_across_checks():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, _ = _checks(mock_get)
-        provider.server_info()
-        provider.get_workbooks()
-
-    mock_get.assert_called_once_with(provider._connection)
-
-
 def test_server_info_signs_in():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    provider, client = _checks()
 
-        evidence = provider.server_info()
+    evidence = provider.server_info()
 
     client.server_info.assert_called_once_with()
     assert evidence.summary == "authenticated"
@@ -102,98 +118,89 @@ def test_server_info_signs_in():
 
 
 def test_server_info_wraps_sign_in_failure_as_check_error():
-    # Signing in happens inside the gate check, so bad credentials surface as a
-    # classified ServerInfo failure instead of escaping while the provider is built.
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider = TableauChecks(connection=MagicMock())
-        mock_get.side_effect = _server_error("401001")
+    # The client is built on first read, which happens inside the gate check, so
+    # bad credentials surface as a classified ServerInfo failure instead of
+    # escaping while the provider is being assembled.
+    provider = TableauChecks(server=Borrowed(MagicMock(side_effect=_server_error("401001"))))
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.server_info()
+    with pytest.raises(CheckError) as exc_info:
+        provider.server_info()
 
     assert isinstance(exc_info.value.cause, ServerResponseError)
     assert exc_info.value.evidence.command == "sign in and read server info"
 
 
 def test_validate_api_version_reports_the_version():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.server_api_version.return_value = "3.19"
+    provider, client = _checks()
+    client.server_api_version.return_value = "3.19"
 
-        evidence = provider.validate_api_version()
+    evidence = provider.validate_api_version()
 
     assert evidence.summary == "REST API version 3.19"
     assert evidence.command == "read the server REST API version"
 
 
 def test_validate_site_url_passes():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    provider, client = _checks()
 
-        evidence = provider.validate_site_url()
+    evidence = provider.validate_site_url()
 
     client.test_site_url.assert_called_once_with()
     assert evidence.summary == "site name is well formed"
 
 
 def test_validate_site_url_wraps_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.test_site_url.side_effect = ValueError('The site url "https://x" is in incorrect format.')
+    provider, client = _checks()
+    client.test_site_url.side_effect = ValueError('The site url "https://x" is in incorrect format.')
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.validate_site_url()
+    with pytest.raises(CheckError) as exc_info:
+        provider.validate_site_url()
 
     assert exc_info.value.evidence.command == "validate the configured site name"
 
 
 def test_get_workbooks_passes():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    provider, client = _checks()
 
-        evidence = provider.get_workbooks()
+    evidence = provider.get_workbooks()
 
     client.test_get_workbooks.assert_called_once_with()
     assert evidence.summary == "workbooks are readable"
 
 
 def test_get_workbooks_wraps_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.test_get_workbooks.side_effect = TableauWorkBookException("no workbooks")
+    provider, client = _checks()
+    client.test_get_workbooks.side_effect = TableauWorkBookException("no workbooks")
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.get_workbooks()
+    with pytest.raises(CheckError) as exc_info:
+        provider.get_workbooks()
 
     assert exc_info.value.evidence.command == "fetch workbooks"
     assert isinstance(exc_info.value.cause, TableauWorkBookException)
 
 
 def test_get_views_passes():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    provider, client = _checks()
 
-        evidence = provider.get_views()
+    evidence = provider.get_views()
 
     client.test_get_workbook_views.assert_called_once_with()
     assert evidence.summary == "workbook views are readable"
 
 
 def test_get_owners_passes():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    provider, client = _checks()
 
-        evidence = provider.get_owners()
+    evidence = provider.get_owners()
 
     client.test_get_owners.assert_called_once_with()
     assert evidence.summary == "workbook owners are resolvable"
 
 
 def test_get_data_models_passes():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
+    provider, client = _checks()
 
-        evidence = provider.get_data_models()
+    evidence = provider.get_data_models()
 
     client.test_get_datamodels.assert_called_once_with()
     assert evidence.summary == "data sources are readable"
@@ -201,12 +208,11 @@ def test_get_data_models_passes():
 
 
 def test_get_data_models_wraps_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        provider, client = _checks(mock_get)
-        client.test_get_datamodels.side_effect = TableauDataModelsException("metadata api off")
+    provider, client = _checks()
+    client.test_get_datamodels.side_effect = TableauDataModelsException("metadata api off")
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.get_data_models()
+    with pytest.raises(CheckError) as exc_info:
+        provider.get_data_models()
 
     assert isinstance(exc_info.value.cause, TableauDataModelsException)
 
@@ -260,3 +266,17 @@ def test_error_pack_ignores_unrelated_code_attribute():
 
 def test_error_pack_ignores_unknown_error():
     assert TABLEAU_ERRORS.classify(ValueError("something else")) is None
+
+
+def test_a_failing_sign_out_does_not_break_close():
+    # close() unwinds teardowns without catching, so a sign-out that fails must not
+    # replace the error being unwound (or fail an otherwise clean close).
+    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+        conn = TableauConnection(MagicMock())
+        client = conn.client
+        client.sign_out.side_effect = ServerResponseError("401002", "summary", "detail")
+
+        conn.close()
+
+    client.sign_out.assert_called_once_with()
+    assert mock_get.call_count == 1

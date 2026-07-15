@@ -185,14 +185,18 @@ const ContextCenterArchivePage: FC = () => {
       showSuccessToast(
         t('server.entity-deleted-successfully', { entity: itemToDelete.name })
       );
+      setItems((prev) => prev.filter((item) => item.id !== itemToDelete.id));
+      handlePagingChange((prev) => ({
+        ...prev,
+        total: Math.max(0, prev.total - 1),
+      }));
       setItemToDelete(undefined);
-      await fetchArchivedItems();
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
       setIsDeleting(false);
     }
-  }, [itemToDelete, t, fetchArchivedItems]);
+  }, [itemToDelete, t, handlePagingChange]);
 
   return (
     <div

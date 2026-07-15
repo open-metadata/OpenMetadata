@@ -22,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -3749,11 +3752,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table baseState = client.tables().get(table.getId().toString(), "columns,tags");
 
     // Simulate concurrent updates
-    java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
-    java.util.concurrent.CountDownLatch completionLatch =
-        new java.util.concurrent.CountDownLatch(2);
-    java.util.concurrent.atomic.AtomicReference<Exception> errorRef =
-        new java.util.concurrent.atomic.AtomicReference<>();
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch firstUpdateCompleted = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2);
+    AtomicReference<Exception> errorRef = new AtomicReference<>();
 
     // Thread A: Update column description
     Thread threadA =
@@ -3769,6 +3771,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               } catch (Exception e) {
                 errorRef.set(e);
               } finally {
+                firstUpdateCompleted.countDown();
                 completionLatch.countDown();
               }
             });
@@ -3779,7 +3782,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             () -> {
               try {
                 startLatch.await();
-                Thread.sleep(50); // Small delay
+                if (!firstUpdateCompleted.await(30, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("First column update did not complete");
+                }
                 Table tableB = client.tables().get(baseState.getId().toString(), "columns");
                 Column col = tableB.getColumns().get(0);
                 col.setDisplayName("Display Name B");
@@ -3795,11 +3800,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     threadA.start();
     threadB.start();
     startLatch.countDown();
-    completionLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
+    assertTrue(completionLatch.await(45, TimeUnit.SECONDS), "Concurrent updates did not complete");
+    assertNull(errorRef.get(), "Concurrent column update failed");
 
-    // Verify - at least one update should succeed
     Table finalTable = client.tables().get(table.getId().toString(), "columns");
-    assertNotNull(finalTable);
+    Column finalColumn = finalTable.getColumns().get(0);
+    assertEquals("Description A", finalColumn.getDescription());
+    assertEquals("Display Name B", finalColumn.getDisplayName());
   }
 
   // ===================================================================

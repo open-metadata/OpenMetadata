@@ -68,8 +68,8 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
           parentTerm.responseData.displayName
         );
 
-        await expectRadio(page, child1.responseData.name);
-        await expectRadio(page, child2.responseData.name);
+        await expectRadio(page, child1.responseData.fullyQualifiedName);
+        await expectRadio(page, child2.responseData.fullyQualifiedName);
       } finally {
         await glossary.delete(apiContext);
         await domain.delete(apiContext);
@@ -112,8 +112,8 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
           parentTerm.responseData.displayName
         );
 
-        await expectCheckbox(page, child1.responseData.name);
-        await expectCheckbox(page, child2.responseData.name);
+        await expectCheckbox(page, child1.responseData.fullyQualifiedName);
+        await expectCheckbox(page, child2.responseData.fullyQualifiedName);
       } finally {
         await glossary.delete(apiContext);
         await domain.delete(apiContext);
@@ -164,9 +164,9 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
           parentTerm.responseData.displayName
         );
 
-        const id1 = child1.responseData.name;
-        const id2 = child2.responseData.name;
-        const id3 = child3.responseData.name;
+        const id1 = child1.responseData.fullyQualifiedName;
+        const id2 = child2.responseData.fullyQualifiedName;
+        const id3 = child3.responseData.fullyQualifiedName;
 
         await clickTreeNode(page, id1);
         await expectChecked(page, id1);
@@ -227,9 +227,9 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
           parentTerm.responseData.displayName
         );
 
-        const id1 = child1.responseData.name;
-        const id2 = child2.responseData.name;
-        const id3 = child3.responseData.name;
+        const id1 = child1.responseData.fullyQualifiedName;
+        const id2 = child2.responseData.fullyQualifiedName;
+        const id3 = child3.responseData.fullyQualifiedName;
 
         await clickTreeNode(page, id1);
         await expectChecked(page, id1);
@@ -279,7 +279,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
           parentTerm.responseData.displayName
         );
 
-        const id = child1.responseData.name;
+        const id = child1.responseData.fullyQualifiedName;
 
         await clickTreeNode(page, id);
         await expectChecked(page, id);
@@ -324,7 +324,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
           parentTerm.responseData.displayName
         );
 
-        const childId = child.responseData.name;
+        const childId = child.responseData.fullyQualifiedName;
         await clickTreeNode(page, childId);
         await expectChecked(page, childId);
 
@@ -391,8 +391,8 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
           glossary.responseData.displayName
         );
 
-        const id1 = term1.responseData.name;
-        const id2 = term2.responseData.name;
+        const id1 = term1.responseData.fullyQualifiedName;
+        const id2 = term2.responseData.fullyQualifiedName;
 
         await expectRadio(page, id1);
         await expectRadio(page, id2);
