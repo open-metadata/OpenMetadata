@@ -463,7 +463,6 @@ public class SearchRepository {
                   .canonicalIndex(canonicalIndex)
                   .activeIndex(activeIndex)
                   .stagedIndex(stagedIndex)
-                  .stagedChunkIndex(context.getStagedChunkIndex().orElse(null))
                   .canonicalAliases(canonicalAlias)
                   .existingAliases(existingAliases)
                   .parentAliases(parentAliases)

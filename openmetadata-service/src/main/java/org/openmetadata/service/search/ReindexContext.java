@@ -16,30 +16,6 @@ public class ReindexContext {
   private final Map<String, String> canonicalAliasByEntity = new HashMap<>();
   private final Map<String, List<String>> parentAliasesByEntity = new HashMap<>();
 
-  /**
-   * Reserved pseudo-entity key carrying the staged vector-chunk generation through the SAME
-   * staged-mapping wire the entity staged indexes travel (context -> job record -> distributed
-   * participants), so workers on other nodes receive it without any new serialization. Never a
-   * real entity type; filtered out of {@link #getEntities()}.
-   */
-  public static final String STAGED_CHUNK_KEY = "__vectorChunks__";
-
-  /**
-   * Staged vector-chunk generation created by this run's reCreateIndexes, or empty when the run
-   * did not stage one (partial recreates, normal runs).
-   */
-  public Optional<String> getStagedChunkIndex() {
-    return Optional.ofNullable(stagedIndexByEntity.get(STAGED_CHUNK_KEY));
-  }
-
-  public void setStagedChunkIndex(String stagedChunkIndex) {
-    if (stagedChunkIndex == null) {
-      stagedIndexByEntity.remove(STAGED_CHUNK_KEY);
-    } else {
-      stagedIndexByEntity.put(STAGED_CHUNK_KEY, stagedChunkIndex);
-    }
-  }
-
   public void add(
       String entity,
       String canonicalIndex,
@@ -62,9 +38,7 @@ public class ReindexContext {
   }
 
   public Set<String> getEntities() {
-    Set<String> entities = new java.util.HashSet<>(stagedIndexByEntity.keySet());
-    entities.remove(STAGED_CHUNK_KEY);
-    return Collections.unmodifiableSet(entities);
+    return Collections.unmodifiableSet(stagedIndexByEntity.keySet());
   }
 
   public Optional<String> getStagedIndex(String entity) {

@@ -8,17 +8,11 @@ import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Locale;
 import java.util.Map;
 import java.util.Optional;
-import java.util.Set;
-import java.util.concurrent.ConcurrentHashMap;
-import java.util.concurrent.Executors;
-import java.util.concurrent.ScheduledExecutorService;
-import java.util.concurrent.TimeUnit;
 import java.util.function.Supplier;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
@@ -28,7 +22,6 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.SearchUtils;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingUnavailableException;
-import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
@@ -214,53 +207,8 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   @Override
   public void updateEntityEmbeddingChunks(EntityInterface entity) {
-    requireChunkIndexForWrite();
+    ensureChunkIndex();
     updateEntityEmbeddingChunks(entity, getChunkIndexName());
-  }
-
-  /**
-   * Reindex-sink entry point for the reused-embedding backfill. During a staged recreate the write
-   * must go to the staged generation — chunks written to the live target die at promotion,
-   * silently dropping every unchanged entity from vector retrieval. The {@code recreateRun} flag
-   * comes from the sink's own ReindexContext, so writers of normal (non-recreate) runs never
-   * consult generation discovery and can never land in a crashed run's orphan.
-   */
-  public void backfillEntityChunks(EntityInterface entity, String stagedChunkTarget) {
-    if (stagedChunkTarget == null) {
-      updateEntityEmbeddingChunks(entity);
-    } else {
-      backfillChunksToStagedGeneration(entity, stagedChunkTarget);
-    }
-  }
-
-  /**
-   * Staged-recreate variant of the sink backfill: writes the entity's chunk docs into the staged
-   * generation, reusing the live generation's stored vectors when the content fingerprint is
-   * unchanged (the sink only takes this path for unchanged entities), so a full recreate does not
-   * re-embed the whole catalog. Nothing is skipped — the staged generation starts empty, so every
-   * entity passes through exactly once ({@code stagedHeader} short-circuits retries).
-   */
-  private void backfillChunksToStagedGeneration(EntityInterface entity, String staged) {
-    try {
-      String parentId = entity.getId().toString();
-      String fingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      ChunkHeader stagedHeader = getChunkHeader(staged, parentId);
-      boolean alreadyBackfilled =
-          stagedHeader != null
-              && fingerprint.equals(stagedHeader.fingerprint())
-              && !docVersionStale(stagedHeader);
-      if (!alreadyBackfilled) {
-        String live = getChunkIndexName();
-        ChunkHeader liveHeader = getChunkHeader(live, parentId);
-        List<Map<String, Object>> chunkDocs =
-            (liveHeader != null && fingerprint.equals(liveHeader.fingerprint()))
-                ? rebuildChunksReusingEmbeddings(entity, live, parentId, liveHeader)
-                : VectorDocBuilder.fromEntity(entity, embeddingClient);
-        replaceChunks(staged, parentId, chunkDocs, previousCount(stagedHeader));
-      }
-    } catch (Exception e) {
-      recordStagedWriteFailure(staged, entity.getId().toString(), e);
-    }
   }
 
   /**
@@ -278,7 +226,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     try {
       String parentId = entity.getId().toString();
       String currentFingerprint = VectorDocBuilder.computeFingerprintForEntity(entity);
-      requireChunkIndexForWrite();
+      ensureChunkIndex();
       String chunkIndexName = getChunkIndexName();
       boolean entityDocStale =
           !currentFingerprint.equals(getExistingFingerprint(entityIndexName, parentId));
@@ -314,37 +262,11 @@ public class OpenSearchVectorService implements VectorIndexService {
    * second embedding pass.
    */
   public void writeEntityChunks(String parentId, List<Map<String, Object>> chunkDocs) {
-    writeEntityChunks(parentId, chunkDocs, null);
-  }
-
-  /**
-   * Reindex-sink chunk write. {@code stagedChunkTarget} is the staged generation created by the
-   * run's own reCreateIndexes call and carried in its ReindexContext — the same propagation the
-   * staged ENTITY indexes rely on — so writes are scoped to the current run by construction:
-   * partial recreates and normal runs carry no target and write to the live index, and a crashed
-   * run's orphan can never capture anything.
-   */
-  public void writeEntityChunks(
-      String parentId, List<Map<String, Object>> chunkDocs, String stagedChunkTarget) {
     try {
-      String target = stagedChunkTarget;
-      String liveTarget = null;
-      if (target == null) {
-        requireChunkIndexForWrite();
-        target = getChunkIndexName();
-        liveTarget = target;
-      }
-      try {
-        ChunkHeader header = getChunkHeader(target, parentId);
-        replaceChunks(target, parentId, chunkDocs, previousCount(header));
-      } catch (Exception e) {
-        if (liveTarget == null) {
-          // A hole in the staged generation becomes a silent drop at promotion — poison the run.
-          recordStagedWriteFailure(target, parentId, e);
-        } else {
-          throw e;
-        }
-      }
+      ensureChunkIndex();
+      String chunkIndexName = getChunkIndexName();
+      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+      replaceChunks(chunkIndexName, parentId, chunkDocs, previousCount(header));
     } catch (Exception e) {
       LOG.error("Failed to write chunk docs for {}: {}", parentId, e.getMessage(), e);
     }
@@ -368,29 +290,12 @@ public class OpenSearchVectorService implements VectorIndexService {
 
   @Override
   public void deleteEntityChunks(String parentId) {
-    // Always delete from the live index: a staged run can be abandoned, and a delete applied only
-    // to the staged generation would then be lost — the deleted entity's chunks would keep
-    // surfacing until the next full recreate, the exact staleness this feature exists to prevent.
-    deleteChunksFrom(getChunkIndexName(), parentId);
-    // Also delete from an in-flight staged generation so a promoted run does not resurrect them.
-    String staged = resolveChunkSinkTarget();
-    if (staged != null) {
-      try {
-        ChunkHeader header = getChunkHeader(staged, parentId);
-        replaceChunks(staged, parentId, List.of(), previousCount(header));
-      } catch (Exception e) {
-        // A delete missing from the staged generation resurrects the chunks at promotion.
-        recordStagedWriteFailure(staged, parentId, e);
-      }
-    }
-  }
-
-  private void deleteChunksFrom(String indexName, String parentId) {
     try {
-      ChunkHeader header = getChunkHeader(indexName, parentId);
-      replaceChunks(indexName, parentId, List.of(), previousCount(header));
+      String chunkIndexName = getChunkIndexName();
+      ChunkHeader header = getChunkHeader(chunkIndexName, parentId);
+      replaceChunks(chunkIndexName, parentId, List.of(), previousCount(header));
     } catch (Exception e) {
-      LOG.debug("Failed to delete chunks for {} from {}: {}", parentId, indexName, e.getMessage());
+      LOG.debug("Failed to delete chunks for {}: {}", parentId, e.getMessage());
     }
   }
 
@@ -423,531 +328,11 @@ public class OpenSearchVectorService implements VectorIndexService {
     return passages;
   }
 
-  // --- Staged chunk-index recreate: generation indexes promoted behind the read alias ---
-  //
-  // Full-recreate runs must sweep orphaned chunks (entities deleted without events — DB restore,
-  // wipe-and-remigrate), but dropping the live index up front turns any mid-run failure into a
-  // retrieval outage. Instead the run writes into a bare next-generation index
-  // ({chunk_base}_g<N>), invisible to reads, and only when every vector-indexable entity type
-  // finalizes successfully is the generation promoted: one atomic _aliases call points the read
-  // and search aliases at it and removes the previous target. Any failure before promotion leaves
-  // the old chunks fully live; abandoned generations are swept at the next staged recreate.
-
-  private final Object stagedChunkLock = new Object();
-  private volatile String stagedChunkIndex;
-  private volatile Set<String> stagedExpectedTypes = Set.of();
-  private final Set<String> stagedCompletedTypes = ConcurrentHashMap.newKeySet();
-  private volatile boolean stagedChunkRunFailed;
-
   /**
-   * Begins a staged recreate for a full-recreate run: pre-flights the embedding client (a broken
-   * client would make the whole run pointless), sweeps generations orphaned by crashed runs, and
-   * creates the next generation bare — no aliases, so reads keep hitting the old chunks. Throws on
-   * any failure; nothing has been destroyed at that point.
+   * Idempotently creates the dedicated chunk index (dynamic:false mapping with the KNN vector and
+   * the filter fields the vector query uses) and attaches the {@code dataAssetEmbeddings} alias so
+   * reads cover both legacy entity-doc embeddings and the new chunk docs.
    */
-  public String beginStagedChunkRecreate() {
-    preflightEmbedding();
-    synchronized (stagedChunkLock) {
-      String base = getChunkIndexName();
-      String liveTarget = resolveLiveChunkTarget(base);
-      deleteOrphanChunkGenerations(base, liveTarget);
-      String generation = nextChunkGenerationName(base);
-      try {
-        executeGenericRequest("PUT", "/" + generation, buildChunkIndexMapping(false));
-      } catch (Exception e) {
-        throw new RuntimeException("Failed to create staged chunk index " + generation, e);
-      }
-      stagedChunkIndex = generation;
-      stagedExpectedTypes = Set.copyOf(AvailableEntityTypes.SET);
-      stagedCompletedTypes.clear();
-      stagedChunkRunFailed = false;
-      LOG.info(
-          "Staged chunk index {} created; chunks stay live at {} until promotion",
-          generation,
-          liveTarget);
-      return generation;
-    }
-  }
-
-  /**
-   * Clears this JVM's staged-recreate state when the owning run dies before any type finalizes —
-   * without this, a later unrelated run's callbacks could complete and promote the dead
-   * generation. The bare generation index is left for the next staged recreate's sweep.
-   */
-  public void clearStagedChunkState(String generation) {
-    synchronized (stagedChunkLock) {
-      if (generation.equals(stagedChunkIndex)) {
-        stagedChunkIndex = null;
-        stagedCompletedTypes.clear();
-        LOG.warn(
-            "Cleared staged chunk state for {} — its run died before finalization; the "
-                + "generation will be swept by the next staged recreate",
-            generation);
-      }
-    }
-  }
-
-  /**
-   * Records that an entity's chunks were knowingly skipped during a staged recreate (e.g. the
-   * embedding provider's circuit is open) — a hole in the staged generation must block promotion
-   * exactly like a failed write, or it becomes a silent chunk drop at the swap.
-   */
-  public void recordStagedChunkGap(String stagedChunkTarget, String parentId, String reason) {
-    recordStagedWriteFailure(
-        stagedChunkTarget, parentId, new IllegalStateException("chunk write skipped: " + reason));
-  }
-
-  private void preflightEmbedding() {
-    try {
-      embeddingClient.embedQuery("chunk index recreate pre-flight");
-    } catch (Exception e) {
-      throw new RuntimeException(
-          "Refusing to start a staged chunk-index recreate: embedding client pre-flight failed", e);
-    }
-  }
-
-  /**
-   * Records one entity type's reindex outcome for an active staged chunk recreate. A failed type
-   * poisons the run — the old generation stays live and the staged one is swept by the next
-   * recreate. Once every vector-indexable type completes successfully, the staged generation is
-   * promoted atomically. No-op when no staged recreate is active or for non-vector types.
-   */
-  public void markEntityTypeReindexed(String entityType, boolean success, String runGeneration) {
-    String normalized = entityType == null ? null : entityType.toLowerCase(Locale.ROOT);
-    String generation = stagedChunkIndex;
-    if (generation != null && runGeneration != null && !generation.equals(runGeneration)) {
-      // Mark from a different run than the one that staged this generation — never count it.
-      LOG.warn(
-          "Ignoring chunk-type mark for {} bound to run generation {} while {} is staged",
-          entityType,
-          runGeneration,
-          generation);
-      return;
-    }
-    if (generation != null && runGeneration == null && normalized != null) {
-      // A run WITHOUT chunk staging is finalizing types while staged state lingers on this JVM —
-      // stale leftovers of a dead run. Never count these marks toward promotion.
-      LOG.warn(
-          "Ignoring unbound chunk-type mark for {} — staged generation {} belongs to a dead run "
-              + "and will be swept by the next staged recreate",
-          entityType,
-          generation);
-      return;
-    }
-    if (stagedChunkIndex != null
-        && normalized != null
-        && stagedExpectedTypes.contains(normalized)) {
-      if (success) {
-        stagedCompletedTypes.add(normalized);
-        if (!stagedChunkRunFailed && stagedCompletedTypes.containsAll(stagedExpectedTypes)) {
-          promoteStagedChunkIndex();
-        }
-      } else {
-        stagedChunkRunFailed = true;
-        // Poison only — never delete mid-run: writers on other nodes may still be flushing into
-        // the generation, and a write against a deleted index auto-creates a junk index. The
-        // un-promoted generation is swept by the next staged recreate.
-        LOG.warn(
-            "Staged chunk recreate: entity type {} failed to reindex — promotion blocked, old "
-                + "chunks stay live; staged index {} will be swept by the next recreate",
-            entityType,
-            stagedChunkIndex);
-      }
-    }
-  }
-
-  /**
-   * Points the read and search aliases at the staged generation and removes the previous target in
-   * one atomic {@code _aliases} call — no window where reads see neither or both generations.
-   */
-  private void promoteStagedChunkIndex() {
-    synchronized (stagedChunkLock) {
-      String generation = stagedChunkIndex;
-      if (generation != null
-          && (stagedChunkRunFailed || pendingPoisonMarkers.contains(generation))) {
-        // Re-check under the lock: a concurrent live-delete failure may have poisoned the run
-        // between the caller's check and this swap.
-        LOG.warn(
-            "Staged chunk index {} poisoned by a concurrent write failure — promotion blocked",
-            generation);
-        stagedChunkIndex = null;
-        generation = null;
-      }
-      if (generation != null && stagedGenerationPoisoned(generation)) {
-        LOG.warn(
-            "Staged chunk index {} carries a write-failure poison marker — promotion blocked, "
-                + "old chunks stay live; the generation will be swept by the next recreate",
-            generation);
-        stagedChunkIndex = null;
-        generation = null;
-      }
-      if (generation != null) {
-        String base = getChunkIndexName();
-        String oldTarget = resolveLiveChunkTarget(base);
-        try {
-          executeGenericRequest(
-              "POST",
-              "/_aliases",
-              buildChunkPromoteActions(generation, base, getSearchAlias(), oldTarget));
-        } catch (Exception e) {
-          throw new RuntimeException("Failed to promote staged chunk index " + generation, e);
-        }
-        stagedChunkIndex = null;
-        chunkIndexEnsured = true;
-        LOG.info("Promoted staged chunk index {} (previous target: {})", generation, oldTarget);
-      }
-    }
-  }
-
-  private static final String STAGED_POISON_DOC_PREFIX = "__staged_write_failure__";
-  private static final int POISON_SIGNAL_ATTEMPTS = 3;
-
-  private static String poisonDocId(String generation) {
-    return STAGED_POISON_DOC_PREFIX + generation;
-  }
-
-  /**
-   * Records a failed write against the staged generation: sets the local poison flag and writes a
-   * generation-scoped marker document into the LIVE chunk index — deliberately NOT the staged
-   * generation, whose unavailability may be the very reason the write failed. The live index is
-   * the store promotion already depends on (the swap removes it), so a coordinator that can
-   * promote can necessarily observe the marker; and a successful promotion of a later run removes
-   * the old live index and its stale markers with it. The marker carries no embedding or parentId,
-   * so it is invisible to every chunk query.
-   */
-  private void recordStagedWriteFailure(String target, String parentId, Exception e) {
-    stagedChunkRunFailed = true;
-    LOG.error(
-        "Staged chunk write failed for {} in {} — promotion will be blocked so the old chunks "
-            + "stay live: {}",
-        parentId,
-        target,
-        e.getMessage(),
-        e);
-    String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-    // Dual-location signal: the live index first (the store promotion must be able to read
-    // anyway), the staged generation itself as fallback — a transient blip on one store at
-    // failure time must not let a later, recovered promotion read "clean". Fresh installs have
-    // no live index (and nothing to lose at the swap); writing to the bare base name would
-    // auto-create a junk index squatting on the promotion alias name.
-    boolean recorded = liveIndex != null && writePoisonMarker(liveIndex, target);
-    if (!recorded) {
-      recorded = writePoisonMarker(target, target);
-    }
-    if (!recorded) {
-      // Neither store took the signal right now. Throwing here is useless — the sink's broad
-      // embedding catch swallows it — so instead the marker is queued for persistent retry: a
-      // daemon loop re-attempts it every few seconds until one store accepts it. Promotion
-      // happens at run end, long after any transient blip recovers, so the signal arrives late
-      // rather than never.
-      pendingPoisonMarkers.add(target);
-      ensurePoisonRetryLoop();
-      LOG.error(
-          "Staged poison marker for {} could not be recorded anywhere — queued for persistent "
-              + "retry until a store accepts it",
-          target);
-    }
-  }
-
-  private final Set<String> pendingPoisonMarkers = ConcurrentHashMap.newKeySet();
-  private volatile ScheduledExecutorService poisonRetryExecutor;
-
-  private void ensurePoisonRetryLoop() {
-    if (poisonRetryExecutor == null) {
-      synchronized (stagedChunkLock) {
-        if (poisonRetryExecutor == null) {
-          poisonRetryExecutor =
-              Executors.newSingleThreadScheduledExecutor(
-                  runnable -> {
-                    Thread thread = new Thread(runnable, "chunk-poison-marker-retry");
-                    thread.setDaemon(true);
-                    return thread;
-                  });
-          poisonRetryExecutor.scheduleWithFixedDelay(
-              this::retryPendingPoisonMarkers, 5, 15, TimeUnit.SECONDS);
-        }
-      }
-    }
-  }
-
-  private void retryPendingPoisonMarkers() {
-    for (String generation : pendingPoisonMarkers) {
-      if (!indexExists(generation)) {
-        // The generation was swept — its run is dead and can never be promoted, so the signal is
-        // moot. Writing anyway would auto-create a phantom index squatting on the dead name.
-        pendingPoisonMarkers.remove(generation);
-        continue;
-      }
-      String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-      boolean recorded =
-          (liveIndex != null && writePoisonMarker(liveIndex, generation))
-              || writePoisonMarker(generation, generation);
-      if (recorded) {
-        pendingPoisonMarkers.remove(generation);
-        LOG.info("Persistent retry recorded staged poison marker for {}", generation);
-      }
-    }
-    if (pendingPoisonMarkers.isEmpty()) {
-      stopPoisonRetryLoop();
-    }
-  }
-
-  private boolean indexExists(String indexName) {
-    try {
-      return client.indices().exists(x -> x.index(indexName)).value();
-    } catch (Exception e) {
-      // Unknown — keep the marker pending rather than dropping a live signal.
-      return true;
-    }
-  }
-
-  private void stopPoisonRetryLoop() {
-    synchronized (stagedChunkLock) {
-      if (poisonRetryExecutor != null && pendingPoisonMarkers.isEmpty()) {
-        poisonRetryExecutor.shutdown();
-        poisonRetryExecutor = null;
-      }
-    }
-  }
-
-  private boolean writePoisonMarker(String indexName, String generation) {
-    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
-      try {
-        // refresh=true makes the marker search-visible immediately — promotion may check within
-        // the same second, before a periodic refresh would surface it.
-        executeGenericRequest(
-            "PUT",
-            "/" + indexName + "/_doc/" + poisonDocId(generation) + "?refresh=true",
-            "{\"poisoned\":true}");
-        return true;
-      } catch (Exception markerFailure) {
-        LOG.warn(
-            "Staged poison marker write to {} failed (attempt {}/{}): {}",
-            indexName,
-            attempt,
-            POISON_SIGNAL_ATTEMPTS,
-            markerFailure.getMessage());
-      }
-    }
-    return false;
-  }
-
-  /**
-   * True when any node recorded a failed write against this staged generation. The marker lives in
-   * the LIVE chunk index (see {@link #recordStagedWriteFailure}); the check uses search-by-id so
-   * "no marker" is an unambiguous 200 with zero hits (a GET 404 is indistinguishable from a
-   * transport error here). Read errors retry and then FAIL CLOSED: promoting a generation whose
-   * integrity cannot be verified risks the silent chunk drop this whole feature exists to prevent,
-   * while blocking costs only a rerun.
-   */
-  private boolean stagedGenerationPoisoned(String generation) {
-    String liveIndex = resolveLiveChunkTarget(getChunkIndexName());
-    // Check both marker locations: the live index (primary) and the generation itself (the
-    // fallback used when the live index rejected the marker write). Fresh installs have no live
-    // index — and nothing to lose at the swap — so only the generation check runs.
-    boolean poisoned = markerPresent(generation, generation);
-    if (!poisoned && liveIndex != null) {
-      poisoned = markerPresent(liveIndex, generation);
-    }
-    return poisoned;
-  }
-
-  private boolean markerPresent(String indexName, String generation) {
-    String query =
-        "{\"size\":0,\"query\":{\"ids\":{\"values\":[\"" + poisonDocId(generation) + "\"]}}}";
-    for (int attempt = 1; attempt <= POISON_SIGNAL_ATTEMPTS; attempt++) {
-      try {
-        String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
-        long hits = MAPPER.readTree(response).path("hits").path("total").path("value").asLong(0);
-        return hits > 0;
-      } catch (Exception e) {
-        LOG.warn(
-            "Staged poison marker check failed for {} (attempt {}/{}): {}",
-            generation,
-            attempt,
-            POISON_SIGNAL_ATTEMPTS,
-            e.getMessage());
-      }
-    }
-    LOG.error(
-        "Staged poison marker check kept failing for {} — failing closed: promotion blocked, "
-            + "old chunks stay live, generation swept by the next recreate",
-        generation);
-    return true;
-  }
-
-  private static final long SINK_TARGET_CACHE_MS = 15_000;
-  private volatile String cachedSinkTarget;
-  private volatile long cachedSinkTargetAt;
-
-  /**
-   * Additional delete target for live chunk deletes: the coordinator's staged generation when this
-   * JVM began the recreate, else the newest un-promoted generation found in cluster state (short
-   * cache). Sink WRITES no longer use discovery — they receive the run-scoped target explicitly
-   * via ReindexContext — so this only serves deletes, where hitting a crashed run's orphan is
-   * harmless idempotent removal.
-   */
-  private String resolveChunkSinkTarget() {
-    String target = stagedChunkIndex;
-    if (target == null) {
-      long now = System.currentTimeMillis();
-      if (now - cachedSinkTargetAt > SINK_TARGET_CACHE_MS) {
-        cachedSinkTarget = findActiveStagedGeneration();
-        cachedSinkTargetAt = now;
-      }
-      target = cachedSinkTarget;
-    }
-    return target;
-  }
-
-  /** Newest generation index not yet holding the read alias, or null when none exists. */
-  private String findActiveStagedGeneration() {
-    String base = getChunkIndexName();
-    String result = null;
-    long best = 0;
-    try {
-      JsonNode response = MAPPER.readTree(executeGenericRequest("GET", "/" + base + "_g*", null));
-      Iterator<String> names = response.fieldNames();
-      while (names.hasNext()) {
-        String name = names.next();
-        boolean promoted = response.path(name).path("aliases").has(base);
-        long generation = chunkGenerationNumber(name, base);
-        if (!promoted && generation > best) {
-          best = generation;
-          result = name;
-        }
-      }
-    } catch (Exception e) {
-      LOG.debug("Staged chunk generation lookup failed: {}", e.getMessage());
-    }
-    return result;
-  }
-
-  /**
-   * {@code _aliases} actions promoting a generation: attach the read alias and the search alias,
-   * and atomically remove the previous target (the legacy physical index on first promotion, an
-   * older generation afterwards). Null {@code oldTarget} (fresh install) emits no removal.
-   */
-  static String buildChunkPromoteActions(
-      String generation, String readAlias, String searchAlias, String oldTarget) {
-    var actions = MAPPER.createArrayNode();
-    actions.add(
-        MAPPER
-            .createObjectNode()
-            .set(
-                "add", MAPPER.createObjectNode().put("index", generation).put("alias", readAlias)));
-    actions.add(
-        MAPPER
-            .createObjectNode()
-            .set(
-                "add",
-                MAPPER.createObjectNode().put("index", generation).put("alias", searchAlias)));
-    if (oldTarget != null && !oldTarget.equals(generation)) {
-      actions.add(
-          MAPPER
-              .createObjectNode()
-              .set("remove_index", MAPPER.createObjectNode().put("index", oldTarget)));
-    }
-    ObjectNode body = MAPPER.createObjectNode();
-    body.set("actions", actions);
-    return body.toString();
-  }
-
-  /**
-   * The physical index currently serving chunk reads: the alias target when the read name is an
-   * alias (post-promotion layout), the legacy physical index when it exists under the read name,
-   * or null on a fresh install.
-   */
-  private String resolveLiveChunkTarget(String base) {
-    String target = null;
-    try {
-      String response = executeGenericRequest("GET", "/_alias/" + base, null);
-      Iterator<String> names = MAPPER.readTree(response).fieldNames();
-      if (names.hasNext()) {
-        target = names.next();
-      }
-    } catch (Exception e) {
-      LOG.debug("No alias named {} — checking for a legacy physical index", base);
-    }
-    if (target == null) {
-      try {
-        if (client.indices().exists(x -> x.index(base)).value()) {
-          target = base;
-        }
-      } catch (Exception e) {
-        LOG.warn("Could not resolve live chunk target for {}: {}", base, e.getMessage());
-      }
-    }
-    return target;
-  }
-
-  /**
-   * Sweeps generation indexes that are not the live target — leftovers of crashed or never-promoted
-   * staged runs. Runs before creating the next generation, so an orphan can never swallow writes.
-   */
-  private void deleteOrphanChunkGenerations(String base, String liveTarget) {
-    try {
-      String response = executeGenericRequest("GET", "/" + base + "_g*", null);
-      Iterator<String> names = MAPPER.readTree(response).fieldNames();
-      while (names.hasNext()) {
-        String name = names.next();
-        if (!name.equals(liveTarget)) {
-          deleteOrphanGeneration(name);
-        }
-      }
-    } catch (Exception e) {
-      LOG.warn("Orphaned chunk generation sweep failed: {}", e.getMessage());
-    }
-  }
-
-  private void deleteOrphanGeneration(String name) {
-    try {
-      executeGenericRequest("DELETE", "/" + name, null);
-      LOG.info("Deleted orphaned staged chunk index {}", name);
-    } catch (Exception e) {
-      LOG.warn("Failed to delete orphaned staged chunk index {}: {}", name, e.getMessage());
-    }
-  }
-
-  /** Generation stamp of a chunk index name, or 0 for the legacy physical / non-generation name. */
-  static long chunkGenerationNumber(String indexName, String chunkBase) {
-    long number = 0;
-    String prefix = chunkBase + "_g";
-    if (indexName != null && indexName.startsWith(prefix)) {
-      try {
-        number = Long.parseLong(indexName.substring(prefix.length()));
-      } catch (NumberFormatException e) {
-        number = 0;
-      }
-    }
-    return number;
-  }
-
-  /**
-   * Run-unique generation name (epoch-millis stamp). Uniqueness matters twice: a blocked run's
-   * poison marker (keyed by generation name) must never match a later run's generation, and a
-   * pending promote from a superseded run must fail loudly on a missing index rather than
-   * silently aliasing another run's half-built one.
-   */
-  static String nextChunkGenerationName(String chunkBase) {
-    return chunkBase + "_g" + System.currentTimeMillis();
-  }
-
-  /**
-   * Write-path gate: throws when the chunk index could not be ensured. A raw write against a
-   * missing index would auto-create it with dynamic mappings ({@code embedding} as float, not
-   * knn_vector), permanently wedging vector search until manual index surgery — worse than the
-   * skipped write. Read paths stay lenient: reads cannot auto-create an index.
-   */
-  private void requireChunkIndexForWrite() {
-    ensureChunkIndex();
-    if (!chunkIndexEnsured) {
-      throw new IllegalStateException(
-          "Vector chunk index unavailable (create/upgrade failed); refusing chunk write that "
-              + "would auto-create it with a non-knn mapping");
-    }
-  }
-
   private void ensureChunkIndex() {
     if (!chunkIndexEnsured) {
       synchronized (this) {
@@ -961,30 +346,26 @@ public class OpenSearchVectorService implements VectorIndexService {
   }
 
   private boolean createChunkIndexIfAbsent() {
-    String base = getChunkIndexName();
-    boolean ensured = false;
+    String indexName = getChunkIndexName();
     try {
-      // Post-promotion the read name is an alias over the live generation; operate on the
-      // resolved physical target. On a fresh install, create the legacy physical layout —
-      // generations appear at the first staged recreate.
-      String target = resolveLiveChunkTarget(base);
-      if (target == null) {
-        executeGenericRequest("PUT", "/" + base, buildChunkIndexMapping(true));
-        LOG.info("Created dedicated vector chunk index {}", base);
-        ensured = true;
-      } else {
-        // The search alias is normally attached at creation, but an index left over from a partial
-        // or manual setup may miss it — and reads via the alias would then silently skip all chunk
-        // docs. The alias PUT is idempotent. Only report "ensured" once the mapping is at the
-        // current version so a failed upgrade does not latch (and so docs are not stamped with the
-        // new docVersion into a still-stale mapping).
-        executeGenericRequest("PUT", "/" + target + "/_alias/" + getSearchAlias(), "{}");
-        ensured = applyChunkMappingUpgradeIfStale(target);
+      boolean exists = client.indices().exists(e -> e.index(indexName)).value();
+      if (!exists) {
+        executeGenericRequest("PUT", "/" + indexName, buildChunkIndexMapping());
+        LOG.info("Created dedicated vector chunk index {}", indexName);
+        return true;
       }
+      // The alias is normally attached at creation, but an index left over from a partial or manual
+      // setup may miss it — and reads via the alias would then silently skip all chunk docs. The
+      // alias PUT is idempotent. Only report "ensured" once the mapping is at the current version
+      // so
+      // a failed upgrade does not latch (and so docs are not stamped with the new docVersion into a
+      // still-stale mapping).
+      executeGenericRequest("PUT", "/" + indexName + "/_alias/" + getSearchAlias(), "{}");
+      return applyChunkMappingUpgradeIfStale(indexName);
     } catch (Exception e) {
-      LOG.error("Failed to ensure chunk index {}: {}", base, e.getMessage());
+      LOG.error("Failed to ensure chunk index {}: {}", indexName, e.getMessage());
+      return false;
     }
-    return ensured;
   }
 
   /**
@@ -1025,7 +406,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  private String buildChunkIndexMapping(boolean withSearchAlias) {
+  private String buildChunkIndexMapping() {
     var mappings = MAPPER.createObjectNode().put("dynamic", false);
     mappings.set("properties", buildChunkProperties());
     mappings.set("_meta", chunkMeta());
@@ -1034,12 +415,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         "settings",
         MAPPER.createObjectNode().set("index", MAPPER.createObjectNode().put("knn", true)));
     root.set("mappings", mappings);
-    // Staged generations are created bare: attaching the search alias before promotion would make
-    // the half-built generation searchable alongside the live one.
-    if (withSearchAlias) {
-      root.set(
-          "aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
-    }
+    root.set("aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
     return root.toString();
   }
 
@@ -1385,60 +761,8 @@ public class OpenSearchVectorService implements VectorIndexService {
           .append('\n');
     }
     appendChunkDeletes(bulk, indexName, parentId, chunkDocs.size(), previousCount);
-    String response = executeGenericRequest("POST", "/_bulk", bulk.toString());
-    failOnBulkItemErrors(indexName, parentId, response);
+    executeGenericRequest("POST", "/_bulk", bulk.toString());
   }
-
-  /**
-   * The bulk API reports per-item failures (rejected executions under load, mapping conflicts) as
-   * HTTP 200 with {@code errors:true} — exactly the failure class a heavy reindex produces.
-   * Silently accepting them would leave holes that, in a staged generation, become silent chunk
-   * drops at promotion; throwing routes the failure into the callers' poison/log handling.
-   */
-  private void failOnBulkItemErrors(String indexName, String parentId, String response) {
-    try {
-      JsonNode root = MAPPER.readTree(response);
-      if (!root.path("errors").asBoolean(false)) {
-        return;
-      }
-      StringBuilder reasons = new StringBuilder();
-      int reported = 0;
-      for (JsonNode item : root.path("items")) {
-        // replaceChunks emits index AND delete actions (trailing-chunk cleanup); create for
-        // completeness — each item is keyed by whichever action it was.
-        for (String action : BULK_ACTIONS) {
-          JsonNode error = item.path(action).path("error");
-          if (!error.isMissingNode() && reported < 3) {
-            reasons.append(action).append(' ');
-            reasons.append(error.path("type").asText("?")).append(": ");
-            reasons.append(error.path("reason").asText("?")).append("; ");
-            reported++;
-          }
-        }
-      }
-      throw new IllegalStateException(
-          "Bulk chunk write for "
-              + parentId
-              + " into "
-              + indexName
-              + " had item failures: "
-              + reasons);
-    } catch (IllegalStateException e) {
-      throw e;
-    } catch (Exception parseFailure) {
-      // Conservative: an unparseable 200 could be hiding item failures, and in a staged
-      // generation silently accepting it becomes a chunk drop at promotion.
-      throw new IllegalStateException(
-          "Bulk chunk write for "
-              + parentId
-              + " into "
-              + indexName
-              + " returned an unparseable response",
-          parseFailure);
-    }
-  }
-
-  private static final List<String> BULK_ACTIONS = List.of("index", "delete", "create");
 
   /**
    * Belt-and-braces for a missing or corrupt chunk-0 header (e.g. a partial bulk failure).

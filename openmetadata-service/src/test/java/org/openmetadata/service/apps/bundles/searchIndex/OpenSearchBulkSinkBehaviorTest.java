@@ -420,11 +420,10 @@ class OpenSearchBulkSinkBehaviorTest {
               EntityInterface.class,
               String.class,
               Map.class,
-              StageStatsTracker.class,
-              String.class);
+              StageStatsTracker.class);
       enrich.setAccessible(true);
       String result =
-          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker, null);
+          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker);
 
       verify(vectorService, never()).generateEmbeddingFields(any());
       verify(tracker).recordVector(StatsResult.SUCCESS);
@@ -556,13 +555,12 @@ class OpenSearchBulkSinkBehaviorTest {
               EntityInterface.class,
               String.class,
               Map.class,
-              StageStatsTracker.class,
-              String.class);
+              StageStatsTracker.class);
       enrich.setAccessible(true);
       String result =
-          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker, null);
+          (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker);
 
-      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
       verify(tracker).recordVector(StatsResult.SUCCESS);
 
       ObjectMapper mapper = new ObjectMapper();
@@ -607,16 +605,13 @@ class OpenSearchBulkSinkBehaviorTest {
               EntityInterface.class,
               String.class,
               Map.class,
-              StageStatsTracker.class,
-              String.class);
+              StageStatsTracker.class);
       enrich.setAccessible(true);
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker, null);
+          (String) enrich.invoke(sink, entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker);
 
-      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
       verify(tracker).recordVector(StatsResult.SUCCESS);
       assertEquals("fp-new", mapper.readTree(result).get("fingerprint").asText());
     }
@@ -657,16 +652,13 @@ class OpenSearchBulkSinkBehaviorTest {
               EntityInterface.class,
               String.class,
               Map.class,
-              StageStatsTracker.class,
-              String.class);
+              StageStatsTracker.class);
       enrich.setAccessible(true);
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker, null);
+          (String) enrich.invoke(sink, entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker);
 
-      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
       verify(tracker).recordVector(StatsResult.SUCCESS);
       assertEquals("fp-new", mapper.readTree(result).get("fingerprint").asText());
     }
@@ -721,16 +713,13 @@ class OpenSearchBulkSinkBehaviorTest {
               EntityInterface.class,
               String.class,
               Map.class,
-              StageStatsTracker.class,
-              String.class);
+              StageStatsTracker.class);
       enrich.setAccessible(true);
 
       String result =
-          (String)
-              enrich.invoke(
-                  sink, entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker, null);
+          (String) enrich.invoke(sink, entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker);
 
-      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs, null);
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
       verify(tracker).recordVector(StatsResult.SUCCESS);
       JsonNode resultNode = mapper.readTree(result);
       assertEquals("fp-new", resultNode.get("fingerprint").asText());
@@ -769,17 +758,16 @@ class OpenSearchBulkSinkBehaviorTest {
               EntityInterface.class,
               String.class,
               Map.class,
-              StageStatsTracker.class,
-              String.class);
+              StageStatsTracker.class);
       enrich.setAccessible(true);
 
       String result =
           (String)
               enrich.invoke(
-                  sink, entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker, null);
+                  sink, entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker);
 
       docBuilderMock.verify(() -> VectorDocBuilder.fromEntity(any(), any()), never());
-      verify(vectorService, never()).writeEntityChunks(any(), any(), any());
+      verify(vectorService, never()).writeEntityChunks(any(), any());
       verify(tracker).recordVector(StatsResult.SUCCESS);
       JsonNode resultNode = new ObjectMapper().readTree(result);
       assertEquals("my-table", resultNode.get("name").asText());
