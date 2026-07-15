@@ -1752,7 +1752,9 @@ test.describe(
 
         // "Clear All" appears since an asset filter is now active
         await expect(
-          page.getByTestId('empty-placeholder').getByRole('button', { name: 'Clear All' })
+          page
+            .getByTestId('empty-placeholder')
+            .getByRole('button', { name: 'Clear All' })
         ).toBeVisible();
 
         // Reopen the same filter trigger (now showing the selected asset's
@@ -1775,7 +1777,9 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByTestId('empty-placeholder').getByRole('button', { name: 'Clear All' })
+          page
+            .getByTestId('empty-placeholder')
+            .getByRole('button', { name: 'Clear All' })
         ).not.toBeVisible();
       });
     });
