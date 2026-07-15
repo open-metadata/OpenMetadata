@@ -10,6 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+
+export {
+  getTableFieldsFromTableDetails,
+  getUsageData,
+} from './DataAssetSummaryPanelPureUtils';
+export type { ColumnSearchResult } from './DataAssetSummaryPanelPureUtils';
+
 import { isEmpty, isNil, isObject, isUndefined } from 'lodash';
 import { DomainLabel } from '../components/common/DomainLabel/DomainLabel.component';
 import { OwnerLabel } from '../components/common/OwnerLabel/OwnerLabel.component';
@@ -48,7 +55,11 @@ import { Worksheet } from '../generated/entity/data/worksheet';
 
 import { Pipeline } from '../generated/entity/data/pipeline';
 import { EntityReference } from '../generated/entity/type';
-import { UsageDetails } from '../generated/type/usageDetails';
+import {
+  ColumnSearchResult,
+  getTableFieldsFromTableDetails,
+  getUsageData,
+} from './DataAssetSummaryPanelPureUtils';
 import { DRAWER_NAVIGATION_OPTIONS, getEntityName } from './EntityUtils';
 import { BasicEntityOverviewInfo } from './EntityUtils.interface';
 import { getPartialNameFromTableFQN } from './FqnUtils';
@@ -56,36 +67,7 @@ import i18n from './i18next/LocalUtil';
 import { formatNumberWithComma } from './NumberUtils';
 import { getEntityDetailsPath, getServiceDetailsPath } from './RouterUtils';
 import { bytesToSize, stringToHTML } from './StringUtils';
-import { getTierTags, getUsagePercentile } from './TableUtils';
-
-interface ColumnSearchResult {
-  dataType?: string;
-  dataTypeDisplay?: string;
-  constraint?: string;
-  table?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-  };
-  service?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-    type?: string;
-  };
-  database?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-  };
-  databaseSchema?: {
-    name?: string;
-    displayName?: string;
-    fullyQualifiedName?: string;
-  };
-  owners?: EntityReference[];
-  domains?: EntityReference[];
-}
+import { getTierTags } from './TableUtils';
 
 const entityTierRenderer = (tier?: TagLabel) => {
   return tier ? (
@@ -93,52 +75,6 @@ const entityTierRenderer = (tier?: TagLabel) => {
   ) : (
     NO_DATA
   );
-};
-
-const getUsageData = (usageSummary: UsageDetails | undefined) =>
-  isNil(usageSummary?.weeklyStats?.percentileRank)
-    ? NO_DATA
-    : getUsagePercentile(usageSummary?.weeklyStats?.percentileRank ?? 0);
-
-const getTableFieldsFromTableDetails = (tableDetails: Table) => {
-  const {
-    fullyQualifiedName,
-    owners,
-    tags,
-    usageSummary,
-    profile,
-    columns,
-    tableType,
-    service,
-    database,
-    databaseSchema,
-    domains,
-  } = tableDetails;
-  const [serviceName, databaseName, schemaName] = getPartialNameFromTableFQN(
-    fullyQualifiedName ?? '',
-    [FqnPart.Service, FqnPart.Database, FqnPart.Schema],
-    FQN_SEPARATOR_CHAR
-  ).split(FQN_SEPARATOR_CHAR);
-
-  const serviceDisplayName = getEntityName(service) || serviceName;
-  const databaseDisplayName = getEntityName(database) || databaseName;
-  const schemaDisplayName = getEntityName(databaseSchema) || schemaName;
-
-  const tier = getTierTags(tags ?? []);
-
-  return {
-    fullyQualifiedName,
-    owners,
-    service: serviceDisplayName,
-    database: databaseDisplayName,
-    schema: schemaDisplayName,
-    tier,
-    usage: getUsageData(usageSummary),
-    profile,
-    columns,
-    tableType,
-    domains,
-  };
 };
 
 const getCommonOverview = (

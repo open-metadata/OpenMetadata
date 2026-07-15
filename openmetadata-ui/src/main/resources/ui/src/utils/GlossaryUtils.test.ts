@@ -251,6 +251,32 @@ describe('Glossary Utils', () => {
       taskId: 17,
     });
   });
+
+  it('should not allow glossary review actions for reviewers when task has explicit assignees', () => {
+    const result = permissionForApproveOrReject(
+      {
+        fullyQualifiedName: '"Glossary"."Term"',
+        reviewers: [{ id: 'reviewer-1' }],
+      } as ModifiedGlossaryTerm,
+      { id: 'reviewer-1' } as never,
+      {
+        '<#E::glossaryTerm::"Glossary"."Term">': [
+          {
+            about: '<#E::glossaryTerm::"Glossary"."Term">',
+            task: {
+              id: 17,
+              assignees: [{ id: 'assignee-1' }],
+            },
+          },
+        ],
+      } as never
+    );
+
+    expect(result).toEqual({
+      permission: false,
+      taskId: 17,
+    });
+  });
 });
 
 describe('Glossary Utils - findAndUpdateNested', () => {
