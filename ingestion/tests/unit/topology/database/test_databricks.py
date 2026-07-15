@@ -17,6 +17,7 @@ Test databricks using the topology
 from unittest import TestCase
 from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.generated.schema.api.data.createDatabaseSchema import (
     CreateDatabaseSchemaRequest,
 )
@@ -510,7 +511,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
 
             self.assertEqual(wrapper.engine, mock_engine)
             self.assertEqual(wrapper.inspector, mock_inspector)
@@ -530,7 +531,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             schemas = wrapper.get_schemas()
 
             self.assertEqual(schemas, ["information_schema", "test_schema", "performance_schema"])
@@ -552,7 +553,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             schemas = wrapper.get_schemas()
 
             self.assertEqual(schemas, ["information_schema", "performance_schema"])
@@ -568,7 +569,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             schemas = wrapper.get_schemas()
 
             self.assertEqual(schemas, [])
@@ -598,7 +599,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             # Set the first_catalog for the wrapper
             wrapper.first_catalog = "test_catalog"
             # First call to get_schemas to set first_schema
@@ -632,7 +633,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             # Set the first_catalog for the wrapper
             wrapper.first_catalog = "test_catalog"
             # Call get_tables directly without calling get_schemas first
@@ -652,7 +653,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             tables = wrapper.get_tables()
 
             self.assertEqual(tables, [])
@@ -681,7 +682,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             # Set the first_catalog for the wrapper
             wrapper.first_catalog = "test_catalog"
             # First call to get_schemas to set first_schema
@@ -715,7 +716,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             # Set the first_catalog for the wrapper
             wrapper.first_catalog = "test_catalog"
             # Call get_views directly without calling get_schemas first
@@ -735,7 +736,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             views = wrapper.get_views()
 
             self.assertEqual(views, [])
@@ -753,7 +754,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
 
             # Call get_schemas multiple times
             schemas1 = wrapper.get_schemas()
@@ -785,7 +786,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             schemas = wrapper.get_schemas()
 
             # Should return all schemas
@@ -817,7 +818,7 @@ class DatabricksConnectionTest(TestCase):
         with patch("metadata.ingestion.source.database.databricks.connection.inspect") as mock_inspect:
             mock_inspect.return_value = mock_inspector
 
-            wrapper = self.DatabricksEngineWrapper(mock_engine)
+            wrapper = self.DatabricksEngineWrapper(Borrowed.of(mock_engine))
             schemas = wrapper.get_schemas()
 
             # Should return all schemas

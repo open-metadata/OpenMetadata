@@ -14,7 +14,7 @@ import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, Iterable, Optional, Tuple, Union  # noqa: UP035
+from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
 
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
@@ -42,6 +42,7 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.session import create_and_bind_thread_safe_session
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import TotalsDeclarer
 from metadata.ingestion.source.connections import get_connection
 from metadata.ingestion.source.database.column_type_parser import create_sqlalchemy_type
 from metadata.ingestion.source.database.common_db_source import (
@@ -61,6 +62,7 @@ from metadata.ingestion.source.database.databricks.ownership import (
 )
 from metadata.ingestion.source.database.databricks.queries import (
     DATABRICKS_DDL,
+    DATABRICKS_GET_ALL_SCHEMAS,
     DATABRICKS_GET_CATALOGS,
     DATABRICKS_GET_CATALOGS_TAGS,
     DATABRICKS_GET_COLUMN_TAGS,
@@ -1327,3 +1329,60 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
             logger.debug(traceback.format_exc())
             logger.warning(f"Error processing owner for table {table_name}: {exc}")
         return  # noqa: RET502
+
+    def _filtered_database_names_for_totals(self) -> List[str]:  # noqa: UP006
+        """Filtered database names for the progress denominator. Single configured
+        catalog when one is set on the connection, else the filtered result of the
+        catalog enumeration. Emits no status side effects."""
+        configured_db = self.get_configured_database()
+        if configured_db:
+            result = [configured_db]
+        else:
+            result = [db for db in self.get_database_names_raw() if not self._is_database_filtered(db)]
+        return result
+
+    def _schema_names_by_database(self) -> "Optional[Dict[str, List[str]]]":  # noqa: UP006,UP045
+        """``{database: [schema_names]}`` for every visible catalog from a single
+        cross-catalog ``system.information_schema.schemata`` query — one round-trip,
+        no per-catalog reconnect. Returns ``None`` when the view is unavailable
+        (missing permissions or the system schema not enabled) so the caller falls
+        back to reconcile-only."""
+        try:
+            rows = self.connection.execute(text(DATABRICKS_GET_ALL_SCHEMAS)).fetchall()
+        except Exception as exc:  # pylint: disable=broad-except
+            logger.warning(
+                "system.information_schema.schemata unavailable (%s); progress schema total will reconcile during the walk.",
+                exc,
+            )
+            return None
+        by_database: Dict[str, List[str]] = {}  # noqa: UP006
+        for row in rows:
+            database_name = row[0]
+            schema_name = row[1]
+            if database_name is not None and schema_name is not None:
+                by_database.setdefault(str(database_name), []).append(str(schema_name))
+        return by_database
+
+    def declare_progress_totals(self, totals: TotalsDeclarer) -> None:
+        """Seed the run-level ``Database`` and ``DatabaseSchema`` counters upfront.
+        ``Database`` is the filtered DB count; ``DatabaseSchema`` is the post-filter
+        schema count per database from the cross-catalog
+        ``system.information_schema.schemata``. When that view is unavailable the
+        schema counter is marked reconcilable so the walk fills its total instead."""
+        database_names = self._filtered_database_names_for_totals()
+        totals.set_total(Database.__name__, len(database_names))
+        schemas_by_database = self._schema_names_by_database()
+        if schemas_by_database is None:
+            totals.mark_reconcilable(DatabaseSchema.__name__)
+        else:
+            # Catalog identifiers are case-insensitive: the walk's scope key keeps the
+            # configured/SHOW CATALOGS casing while the view returns catalog_name in its
+            # own casing, so match case-insensitively to avoid seeding a spurious 0.
+            schemas_by_lower = {db.lower(): schemas for db, schemas in schemas_by_database.items()}
+            for database_name in database_names:
+                kept = [
+                    schema_name
+                    for schema_name in schemas_by_lower.get(database_name.lower(), [])
+                    if not self._is_schema_filtered(database_name, schema_name)
+                ]
+                totals.seed_scope_total(DatabaseSchema.__name__, database_name, len(kept))
