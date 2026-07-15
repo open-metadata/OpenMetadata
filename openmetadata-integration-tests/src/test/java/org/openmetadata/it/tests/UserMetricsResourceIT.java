@@ -45,6 +45,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -211,9 +212,6 @@ public class UserMetricsResourceIT {
     Map<String, Object> initialMetrics = getUserMetrics();
     LOG.info("Initial metrics: {}", initialMetrics);
 
-    int initialTotalUsers = (Integer) initialMetrics.get("total_users");
-    int initialBotUsers = (Integer) initialMetrics.get("bot_users");
-
     String userName = ns.prefix("metricsuser");
     String email = "metricsuser_" + ns.shortPrefix() + "@test.openmetadata.org";
     CreateUser createUser = new CreateUser().withName(userName).withEmail(email).withIsBot(false);
@@ -230,25 +228,23 @@ public class UserMetricsResourceIT {
           .pollDelay(Duration.ofMillis(500))
           .pollInterval(Duration.ofSeconds(1))
           .ignoreExceptions()
-          .until(
+          .untilAsserted(
               () -> {
+                assertNotNull(usersApi.getByName(newUser.getName()));
                 Map<String, Object> m = getUserMetrics();
                 int total = (Integer) m.get("total_users");
-                return total > initialTotalUsers;
+                assertTrue(
+                    total >= listUserTotal(usersApi),
+                    "Metrics should include every visible user while the created user exists");
               });
 
       Map<String, Object> updatedMetrics = getUserMetrics();
       LOG.info("Updated metrics after activity: {}", updatedMetrics);
 
       int updatedTotalUsers = (Integer) updatedMetrics.get("total_users");
-      // In parallel test execution, other tests may create/delete users, so verify the user exists
       assertTrue(
-          updatedTotalUsers >= initialTotalUsers,
-          "Total users should not decrease: initial="
-              + initialTotalUsers
-              + ", updated="
-              + updatedTotalUsers);
-      // Verify our created user exists by fetching it
+          updatedTotalUsers > 0,
+          "Metrics should report at least one user while the created user exists");
       User fetchedUser = usersApi.getByName(newUser.getName());
       assertNotNull(fetchedUser, "Created user should exist");
 
@@ -273,6 +269,12 @@ public class UserMetricsResourceIT {
       deleteParams.put("hardDelete", "true");
       usersApi.delete(newUser.getId().toString(), deleteParams);
     }
+  }
+
+  private int listUserTotal(UserService usersApi) {
+    ListParams params = new ListParams();
+    params.setLimit(1);
+    return usersApi.list(params).getPaging().getTotal();
   }
 
   @Test
