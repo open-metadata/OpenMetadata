@@ -315,7 +315,7 @@ const mockProps: DataQualityTabProps = {
   onTestUpdate: jest.fn(),
   fetchTestCases: jest.fn(),
 };
-const mockPermissionsData = MOCK_PERMISSIONS;
+let mockPermissionsData = MOCK_PERMISSIONS;
 const mockNavigateDataQualityTab = jest.fn();
 
 jest.mock('react-router-dom', () => {
@@ -352,19 +352,25 @@ jest.mock('../../../common/Loader/Loader', () =>
 );
 
 jest.mock('../../../common/DeleteWidget/DeleteEntityModal', () =>
-  jest.fn().mockImplementation(({ visible, onCancel, afterDeleteAction }) =>
-    visible ? (
-      <div>
-        <p>DeleteEntityModal</p>
-        <button
-          data-testid="confirm-button"
-          onClick={() => afterDeleteAction?.()}>
-          delete
-        </button>
-        <button onClick={onCancel}>cancel</button>
-      </div>
-    ) : null
-  )
+  jest
+    .fn()
+    .mockImplementation(
+      ({ visible, onCancel, afterDeleteAction, allowSoftDelete }) =>
+        visible ? (
+          <div>
+            <p>DeleteEntityModal</p>
+            <span data-testid="allow-soft-delete">
+              {String(Boolean(allowSoftDelete))}
+            </span>
+            <button
+              data-testid="confirm-button"
+              onClick={() => afterDeleteAction?.()}>
+              delete
+            </button>
+            <button onClick={onCancel}>cancel</button>
+          </div>
+        ) : null
+    )
 );
 
 jest.mock(
@@ -403,6 +409,7 @@ jest.mock('../../../Modals/ConfirmationModal/ConfirmationModal', () =>
 describe('DataQualityTab test', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockPermissionsData = MOCK_PERMISSIONS;
   });
 
   it('Component should render', async () => {
@@ -1171,7 +1178,88 @@ describe('DataQualityTab test', () => {
       });
 
       expect(restoreTestCase).toHaveBeenCalledWith(deletedTestCase.id);
+
       await waitFor(() => expect(afterDeleteAction).toHaveBeenCalled());
+    });
+
+    it('should default allowSoftDelete to false when the prop is not passed', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const deleteButton = await screen.findByTestId(
+        `delete-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      expect(await screen.findByTestId('allow-soft-delete')).toHaveTextContent(
+        'false'
+      );
+    });
+
+    it('should pass allowSoftDelete through when explicitly enabled', async () => {
+      const firstRowData = MOCK_TEST_CASE[0];
+      await act(async () => {
+        render(<DataQualityTab allowSoftDelete {...mockProps} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const deleteButton = await screen.findByTestId(
+        `delete-${firstRowData.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(deleteButton);
+      });
+
+      expect(await screen.findByTestId('allow-soft-delete')).toHaveTextContent(
+        'true'
+      );
+    });
+
+    it('should disable Restore when the user has Delete but not EditAll (server authorizes restore on EditAll)', async () => {
+      mockPermissionsData = {
+        ...MOCK_PERMISSIONS,
+        EditAll: false,
+        Delete: true,
+      };
+
+      await act(async () => {
+        render(<DataQualityTab {...mockProps} testCases={[deletedTestCase]} />);
+      });
+
+      const actionDropdown = await screen.findByTestId(
+        `action-dropdown-${deletedTestCase.name}`
+      );
+
+      await act(async () => {
+        fireEvent.click(actionDropdown);
+      });
+
+      const restoreButton = await screen.findByTestId(
+        `restore-${deletedTestCase.name}`
+      );
+
+      expect(restoreButton).toBeDisabled();
     });
   });
 

@@ -76,6 +76,7 @@ export interface DataQualityTabProps {
   removeTableBorder?: boolean;
   enableBulkActions?: boolean;
   editVariant?: 'drawer' | 'modal';
+  allowSoftDelete?: boolean;
 }
 
 export interface TestSummaryProps {

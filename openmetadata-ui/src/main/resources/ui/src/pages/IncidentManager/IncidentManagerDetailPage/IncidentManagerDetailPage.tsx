@@ -72,6 +72,7 @@ const IncidentManagerDetailPage = ({
     isLoading,
     hasViewPermission,
     hasDeletePermission,
+    hasEditPermission,
     editDisplayNamePermission,
     displayName,
     tabs,
@@ -348,6 +349,7 @@ const IncidentManagerDetailPage = ({
                     )
                   }
                   canDelete={hasDeletePermission}
+                  canRestore={hasEditPermission}
                   deleted={testCase.deleted}
                   displayName={testCase.displayName}
                   editDisplayNamePermission={editDisplayNamePermission}

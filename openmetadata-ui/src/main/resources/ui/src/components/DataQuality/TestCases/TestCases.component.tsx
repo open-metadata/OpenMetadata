@@ -271,6 +271,7 @@ export const TestCases = () => {
       </Col>
       <Col span={24}>
         <DataQualityTab
+          allowSoftDelete
           afterDeleteAction={fetchTestCases}
           breadcrumbData={[
             {

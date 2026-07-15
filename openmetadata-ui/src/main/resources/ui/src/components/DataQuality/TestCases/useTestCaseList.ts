@@ -19,6 +19,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
@@ -87,6 +88,7 @@ export const useTestCaseList = ({
   const [sortOptions, setSortOptions] =
     useState<ListTestCaseParamsBySearch>(DEFAULT_SORT_ORDER);
   const [showDeleted, setShowDeleted] = useState<boolean>(false);
+  const latestRequestId = useRef(0);
 
   const fetchTestCases = useCallback(
     async (
@@ -99,6 +101,7 @@ export const useTestCaseList = ({
         activeFilters ?? selectedFilter
       );
 
+      const requestId = ++latestRequestId.current;
       setIsLoading(true);
       try {
         const { data, paging: pagingResponse } = await getListTestCaseBySearch({
@@ -119,12 +122,21 @@ export const useTestCaseList = ({
           offset: (page - 1) * pageSize,
           include: showDeleted ? Include.Deleted : Include.NonDeleted,
         });
+        // Ignore this response if a newer request has since been issued (e.g.
+        // rapidly toggling showDeleted) — applying it would clobber fresher state.
+        if (requestId !== latestRequestId.current) {
+          return;
+        }
         setTestCase(data);
         handlePagingChange(pagingResponse);
       } catch (error) {
-        showErrorToast(error as AxiosError);
+        if (requestId === latestRequestId.current) {
+          showErrorToast(error as AxiosError);
+        }
       } finally {
-        setIsLoading(false);
+        if (requestId === latestRequestId.current) {
+          setIsLoading(false);
+        }
       }
     },
     [

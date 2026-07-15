@@ -13,6 +13,7 @@
 import { renderHook, waitFor } from '@testing-library/react';
 import QueryString from 'qs';
 import { act } from 'react';
+import { INITIAL_PAGING_VALUE } from '../../../constants/constants';
 import {
   TEST_CASE_FILTERS,
   TEST_CASE_FILTERS_LABELS,
@@ -206,6 +207,20 @@ describe('useTestCaseListPage', () => {
         offset: 0,
       })
     );
+  });
+
+  it('should reset the current page when showDeleted is toggled', async () => {
+    const { result } = renderHook(() => useTestCaseListPage());
+
+    await waitFor(() => expect(getListTestCaseBySearch).toHaveBeenCalled());
+
+    mockHandlePageChange.mockClear();
+
+    act(() => {
+      result.current.setShowDeleted(true);
+    });
+
+    expect(mockHandlePageChange).toHaveBeenCalledWith(INITIAL_PAGING_VALUE);
   });
 
   it('should not fetch test cases and should stop loading when the view permission is missing', async () => {

@@ -130,6 +130,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
   removeTableBorder = false,
   enableBulkActions = false,
   editVariant = getDefaultTestCaseFormVariant(),
+  allowSoftDelete = false,
 }: DataQualityTabProps) => {
   const { t } = useTranslation();
   const navigate = useNavigate();
@@ -547,7 +548,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         ? [
             {
               id: 'restore',
-              isDisabled: !testCaseDeletePermission,
+              isDisabled: !testCaseEditPermission,
               label: t('label.restore'),
               onAction: () => handleRestore(record),
               testId: `restore-${record.name}`,
@@ -937,6 +938,7 @@ const DataQualityTab: React.FC<DataQualityTabProps> = ({
         <DeleteEntityModal
           isRecursiveDelete
           afterDeleteAction={() => afterDeleteAction?.()}
+          allowSoftDelete={allowSoftDelete}
           entityId={selectedTestCase?.data.id ?? ''}
           entityName={getEntityName(selectedTestCase?.data)}
           entityType={EntityType.TEST_CASE}
