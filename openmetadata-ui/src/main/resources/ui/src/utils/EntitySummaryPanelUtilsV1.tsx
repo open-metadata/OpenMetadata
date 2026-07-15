@@ -62,7 +62,7 @@ import {
 } from './EntitySummaryPanelPureUtilsV1';
 import type { GenericNestedField } from './EntitySummaryPanelUtilsV1.interface';
 import { t } from './i18next/LocalUtil';
-import { pruneEmptyChildren } from './TableUtils';
+import { pruneEmptyChildren } from './TablePureUtils';
 import { showErrorToast } from './ToastUtils';
 const { Text } = AntTypography;
 
