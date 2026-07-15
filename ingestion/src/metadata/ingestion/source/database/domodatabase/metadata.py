@@ -295,8 +295,3 @@ class DomodatabaseSource(DatabaseServiceSource):
         self, schema: str, table: str
     ) -> str:
         return table
-
-    def close(self) -> None:
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None

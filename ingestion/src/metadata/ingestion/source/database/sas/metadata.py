@@ -930,8 +930,3 @@ class SasSource(DatabaseServiceSource):  # pylint: disable=too-many-instance-att
 
     def yield_stored_procedure(self, stored_procedure: Any) -> Iterable[Either[CreateStoredProcedureRequest]]:
         """Not implemented"""
-
-    def close(self) -> None:
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None

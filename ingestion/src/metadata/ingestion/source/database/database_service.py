@@ -902,3 +902,8 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
             run_test_connection(self.metadata, self._connection)
         else:
             test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+
+    def close(self) -> None:
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None

@@ -36,3 +36,9 @@ OWNED_LEAF_SOURCES = [
 def test_leaf_source_inherits_base_test_connection(source_cls):
     assert source_cls.test_connection is DatabaseServiceSource.test_connection
     assert "test_connection" not in source_cls.__dict__
+
+
+@pytest.mark.parametrize("source_cls", OWNED_LEAF_SOURCES)
+def test_leaf_source_releases_owner_via_base_close(source_cls):
+    assert source_cls.close is DatabaseServiceSource.close
+    assert "close" not in source_cls.__dict__

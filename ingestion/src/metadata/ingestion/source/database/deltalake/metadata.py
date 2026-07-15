@@ -268,8 +268,3 @@ class DeltalakeSource(DatabaseServiceSource):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def close(self):
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None

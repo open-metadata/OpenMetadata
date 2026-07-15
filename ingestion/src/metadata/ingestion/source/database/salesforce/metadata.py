@@ -368,8 +368,3 @@ class SalesforceSource(DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.warning(f"Unable to get source url for {table_name}: {exc}")
         return None
-
-    def close(self):
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None

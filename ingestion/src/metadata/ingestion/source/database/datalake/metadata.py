@@ -356,9 +356,3 @@ class DatalakeSource(DatabaseServiceSource):
             )
             return True
         return False
-
-    def close(self):
-        self.client.close(self.service_connection)
-        if self._connection is not None:
-            self._connection.close()
-            self._connection = None
