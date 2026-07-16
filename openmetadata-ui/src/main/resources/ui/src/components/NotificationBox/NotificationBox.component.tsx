@@ -28,7 +28,7 @@ import { ThreadType } from '../../generated/api/feed/createThread';
 import { Post, Thread } from '../../generated/entity/feed/thread';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
 import { getFeedsWithFilter } from '../../rest/feedsAPI';
-import { getEntityFQN, getEntityType } from '../../utils/FeedUtils';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
 import { getUserPath } from '../../utils/RouterUtils';
 import { showErrorToast } from '../../utils/ToastUtils';
 import Loader from '../common/Loader/Loader';
