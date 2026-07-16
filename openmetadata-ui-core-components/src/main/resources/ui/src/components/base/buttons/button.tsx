@@ -30,6 +30,13 @@ export const styles = sortCx({
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
   sizes: {
+    xxs: {
+      root: [
+        'tw:gap-0.5 tw:rounded-md tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
+        'tw:*:data-icon:size-3',
+      ].join(' '),
+      linkRoot: 'tw:gap-0.5',
+    },
     xs: {
       root: [
         'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',

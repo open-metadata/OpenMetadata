@@ -188,8 +188,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
+jest.mock('../../components/common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
 jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({

@@ -16,18 +16,19 @@ import {
   Button,
   ButtonUtility,
   Grid,
+  Input,
   Table,
   TableCard,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Plus, Trash01 } from '@untitledui/icons';
+import { Plus, SearchLg, Trash01 } from '@untitledui/icons';
+import { debounce } from 'lodash';
 import { DateTime } from 'luxon';
 import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as IconEdit } from '../../assets/svg/edit-new.svg';
 import { ReactComponent as StoryLaneIcon } from '../../assets/svg/ic_storylane.svg';
 import { ReactComponent as VideoIcon } from '../../assets/svg/ic_video.svg';
-import { useSearch } from '../../components/common/atoms/navigation/useSearch';
 import { DeleteModal } from '../../components/common/DeleteModal/DeleteModal';
 import Loader from '../../components/common/Loader/Loader';
 import NextPrevious from '../../components/common/NextPrevious/NextPrevious';
@@ -133,13 +134,18 @@ export const LearningResourcesPage: React.FC = () => {
 
   const [view, setView] = useState<ViewMode>(ViewMode.Table);
 
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search-entity', {
-      entity: t('label.resource'),
-    }),
-    onSearchChange: setSearchText,
-    initialSearchQuery: searchText,
-  });
+  const [searchInputValue, setSearchInputValue] = useState(searchText);
+
+  const debouncedSetSearchText = useMemo(
+    () => debounce(setSearchText, 300),
+    []
+  );
+
+  useEffect(() => {
+    return () => {
+      debouncedSetSearchText.cancel();
+    };
+  }, [debouncedSetSearchText]);
 
   const { quickFilters, filterSelectionDisplay } = useLearningResourceFilters({
     filterState,
@@ -352,7 +358,18 @@ export const LearningResourcesPage: React.FC = () => {
         <TableCard.Root className="tw:mt-2.5 tw:flex tw:min-h-0 tw:flex-1 tw:flex-col">
           <Box className="tw:shrink-0 tw:p-3" direction="col" gap={2}>
             <Box align="center" gap={2}>
-              {search}
+              <Input
+                className="tw:max-w-86"
+                icon={SearchLg}
+                placeholder={t('label.search-entity', {
+                  entity: t('label.resource'),
+                })}
+                value={searchInputValue}
+                onChange={(value) => {
+                  setSearchInputValue(value);
+                  debouncedSetSearchText(value);
+                }}
+              />
               {quickFilters}
               <Box className="tw:flex-1" />
               <ViewToggle value={view} onChange={setView} />
