@@ -54,7 +54,12 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.pipeline.openlineage.models import TableDetails
 from metadata.ingestion.source.pipeline.openlineage.utils import FQNNotFoundException
 from metadata.utils import fqn
@@ -177,11 +182,17 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: PipelineServiceMetadataPipeline = self.config.sourceConfig.config
 
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
         # Flag the connection for the test connection
         self.connection_obj = self.connection
         self.client = self.connection
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            if self._connection is not None:
+                self._connection.close()
+            raise
 
     @property
     def name(self) -> str:
@@ -343,6 +354,8 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
 
     def close(self):
         """Method to implement any required logic after the ingestion process is completed"""
+        if self._connection is not None:
+            self._connection.close()
         self.metadata.compute_percentile(Pipeline, self.today)
 
     def get_services(self) -> Iterable[WorkflowSource]:
@@ -404,7 +417,10 @@ class PipelineServiceSource(TopologyRunnerMixin, Source, ABC):
             )
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def register_record(self, pipeline_request: CreatePipelineRequest) -> None:
         """Mark the pipeline record as scanned and update the pipeline_source_state"""

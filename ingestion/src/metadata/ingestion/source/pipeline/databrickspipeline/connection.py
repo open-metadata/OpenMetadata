@@ -46,28 +46,23 @@ def get_connection_url(connection: DatabricksPipelineConnectionConfig) -> str:
     return url  # noqa: RET504
 
 
-def get_connection(connection: DatabricksPipelineConnectionConfig) -> DatabricksClient:
-    """
-    Create connection
-    """
-
-    if connection.httpPath:
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-        connection.connectionArguments.root["http_path"] = connection.httpPath
-
-    engine = create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
-
-    return DatabricksClient(connection, engine)
-
-
 class DatabricksPipelineConnection(BaseConnection[DatabricksPipelineConnectionConfig, DatabricksClient]):
     def _get_client(self) -> DatabricksClient:
-        return get_connection(self.service_connection)
+        connection = self.service_connection
+        if connection.httpPath:
+            if not connection.connectionArguments:
+                connection.connectionArguments = init_empty_connection_arguments()
+            if connection.connectionArguments.root is None:
+                connection.connectionArguments.root = {}
+            connection.connectionArguments.root["http_path"] = connection.httpPath
+
+        engine = create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=get_connection_url,
+            get_connection_args_fn=get_connection_args_common,
+        )
+
+        return DatabricksClient(connection, engine)
 
     def test_connection(
         self,
