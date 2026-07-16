@@ -146,8 +146,8 @@ class AirflowSource(PipelineServiceSource):
 
         # Status and lineage stages request the same DAG's runs back-to-back;
         # cache the last DAG so we query once per DAG instead of twice.
-        self._status_cache_dag_id: Optional[str] = None  # noqa: UP045
-        self._status_cache_runs: List[DagRun] = []  # noqa: UP006
+        self._status_cache_dag_id = None
+        self._status_cache_runs: list[DagRun] = []
 
         self._execution_date_column = None
         self._is_remote_airflow_3 = None
