@@ -1,4 +1,6 @@
 import logging
+import os
+import shutil
 import time
 from typing import List, Tuple, Type  # noqa: UP035
 
@@ -22,6 +24,51 @@ from metadata.workflow.ingestion import IngestionWorkflow
 def configure_logging():
     logging.getLogger("sqlfluff").setLevel(logging.CRITICAL)
     logging.getLogger("pytds").setLevel(logging.CRITICAL)
+
+
+_last_package: dict = {"name": None}
+
+
+def _package_of(item) -> str | None:
+    """Top-level package under tests/integration, e.g. 'tests/integration/trino'."""
+    parts = item.nodeid.split("/")
+    return "/".join(parts[:3]) if len(parts) > 3 else None
+
+
+def _prune_docker_images() -> None:
+    import docker
+    from docker.errors import DockerException
+
+    try:
+        reclaimed = docker.from_env().images.prune(filters={"dangling": False}).get("SpaceReclaimed", 0)
+    except DockerException:
+        logging.exception("Failed to prune docker images")
+        return
+    logging.info(
+        "Pruned docker images: reclaimed %.1f GiB, %.1f GiB now free",
+        reclaimed / 2**30,
+        shutil.disk_usage("/").free / 2**30,
+    )
+
+
+@pytest.hookimpl(tryfirst=True)
+def pytest_runtest_setup(item):
+    """Reclaim the previous package's images before the next one pulls its own.
+
+    Testcontainers stops containers at fixture teardown but never removes images, so a
+    shard's peak disk grows with the number of packages it runs rather than its heaviest
+    one. Runners in the ubuntu-latest pool ship either a 72G or a 145G root disk, and the
+    unpruned total only fits the latter. Pruning here keeps peak at one package's images.
+
+    CI only: this removes every image not held by a running container, which on a
+    developer machine would wipe their local cache.
+    """
+    if not os.environ.get("CI"):
+        return
+    package = _package_of(item)
+    if _last_package["name"] not in (None, package):
+        _prune_docker_images()
+    _last_package["name"] = package
 
 
 @pytest.fixture(scope="session")

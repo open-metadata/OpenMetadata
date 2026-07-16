@@ -613,7 +613,11 @@ export const AddTestCaseList = ({
     if (!isLoading && isEmpty(source)) {
       return (
         <Col span={24}>
-          <Space align="center" className="w-full" direction="vertical">
+          <Space
+            align="center"
+            className="w-full"
+            direction="vertical"
+            prefixCls="w-full">
             <ErrorPlaceHolder
               className="mt-0-important p-b-sm"
               type={ERROR_PLACEHOLDER_TYPE.FILTER}

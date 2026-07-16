@@ -217,7 +217,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Styling
 
-- **Component Library**: Use components from `openmetadata-ui-core-components` for all new UI work. This is the canonical component library — do not use MUI or introduce new MUI dependencies.
+- **Component Library**: Use components from `openmetadata-ui-core-components` for all new UI work. This is the canonical component library — do not use Ant Design or introduce new UI component library dependencies.
 - **Available Components**: Button, Input, Select, Modal, Table, Tabs, Pagination, Badge, Avatar, Checkbox, Dropdown, Form, Card, Tooltip, Toggle, Slider, Textarea, Tags, and more — all in `openmetadata-ui-core-components/src/main/resources/ui/src/components/`
 - **Tailwind Classes**: All Tailwind utility classes must use the `tw:` prefix (e.g., `tw:flex`, `tw:text-sm`, `tw:bg-blue-500`) to avoid conflicts with existing Ant Design/Less styles
 - **Design Tokens**: Use CSS custom properties defined in `openmetadata-ui-core-components/src/main/resources/ui/src/styles/globals.css`. Never use hardcoded color or spacing values. Semantic tokens include:
@@ -227,7 +227,6 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
   - Shadows: `--shadow-xs` through `--shadow-3xl`
   - Border radius: `--radius-none` through `--radius-full`
 - **Color Usage**: Full token reference, dark mode guide, and anti-pattern cheat sheet: [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md). Always consult this before choosing any color class.
-- **MUI**: Do not use MUI — we are actively removing MUI from the codebase. Do not import from `@mui/*` or `@emotion/*`
 - **Legacy**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)

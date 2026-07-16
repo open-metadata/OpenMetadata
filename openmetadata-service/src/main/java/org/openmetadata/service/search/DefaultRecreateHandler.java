@@ -53,6 +53,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     return this;
   }
 
+  /** The reindex job driving this run, or null for jobless callers (ops CLI createIndexes). */
+  protected EventPublisherJob getJobData() {
+    return jobData;
+  }
+
   @Override
   public ReindexContext reCreateIndexes(Set<String> entities) {
     ReindexContext context = new ReindexContext();
@@ -497,6 +502,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           .filter(alias -> alias != null && !alias.isBlank())
           .forEach(aliases::add);
     }
+
+    // Data Insights aliases (e.g., "di-data-assets-testcaseresolutionstatus") are '-' joined
+    indexMapping.getDataInsightAliases(clusterAlias).stream()
+        .filter(alias -> alias != null && !alias.isBlank())
+        .forEach(aliases::add);
 
     // Add short alias (e.g., "table")
     String shortAlias = indexMapping.getAlias(clusterAlias);

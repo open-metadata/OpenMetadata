@@ -35,8 +35,8 @@ test.use({
 });
 
 test.describe.configure({
-  // 11 minutes max for ingestion tests
-  timeout: 11 * 60 * 1000,
+  // 5 minutes max for ingestion tests
+  timeout: 5 * 60 * 1000,
 });
 
 test.describe('Auto Classification', PLAYWRIGHT_INGESTION_TAG_OBJ, async () => {
