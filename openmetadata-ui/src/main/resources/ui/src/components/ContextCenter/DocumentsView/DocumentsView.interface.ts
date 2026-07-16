@@ -29,6 +29,7 @@ export interface DocumentsViewProps {
   isLoadingMore?: boolean;
   previewFileId?: string;
   selectedIds?: Set<string>;
+  selectedFolderName?: string;
   onDownload?: (file: ContextFile) => void;
   onDeleteFile?: (file: ContextFile) => void;
   onFileMoved?: (file: ContextFile, targetFolderId: string | null) => void;
@@ -38,6 +39,7 @@ export interface DocumentsViewProps {
   onBulkMove?: (folderId: string) => void;
   onBulkDownload?: () => void;
   onScrollEnd?: () => void;
+  onUploadFile?: () => void;
 }
 
 export interface MetaRowProps {
@@ -106,6 +108,7 @@ export interface DocumentFolderViewProps {
   canDelete?: boolean;
   onSelectFolder: (folderId: string | undefined) => void;
   onFoldersChanged: () => void;
+  onUploadToFolder?: (folderId: string) => void;
 }
 
 export interface DocumentFolderViewHandle {

@@ -19,6 +19,7 @@ from unittest.mock import MagicMock, Mock, PropertyMock, patch
 
 import sqlalchemy.types as sqltypes
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
 from metadata.generated.schema.entity.data.table import Table, TableType
@@ -993,7 +994,7 @@ def test_test_connection_wires_access_history_and_query_history():
     )
 
     checks = SnowflakeChecks(
-        client=MagicMock(),
+        db=Borrowed.of(MagicMock()),
         service_connection=SnowflakeConnectionConfig(username="user", account="acc", warehouse="wh"),
     )
     collected = collect_checks(checks)

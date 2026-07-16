@@ -498,6 +498,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
           .forEach(aliases::add);
     }
 
+    // Data Insights aliases (e.g., "di-data-assets-testcaseresolutionstatus") are '-' joined
+    indexMapping.getDataInsightAliases(clusterAlias).stream()
+        .filter(alias -> alias != null && !alias.isBlank())
+        .forEach(aliases::add);
+
     // Add short alias (e.g., "table")
     String shortAlias = indexMapping.getAlias(clusterAlias);
     if (!nullOrEmpty(shortAlias)) {
