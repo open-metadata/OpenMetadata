@@ -11,8 +11,8 @@
           },
           {
             "type": "command",
-            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(from\\s+@mui|import.*@mui|@emotion)'; then echo '{\"decision\": \"block\", \"reason\": \"Do not use MUI or @emotion. Use components from openmetadata-ui-core-components instead. See CLAUDE.md for details.\"}'; exit 2; fi",
-            "description": "Block new MUI/emotion imports"
+            "command": "if echo \"$CLAUDE_TOOL_INPUT\" | grep -qE '(from\\s+@mui|import.*@mui|@emotion)'; then echo '{\"decision\": \"block\", \"reason\": \"Do not use Ant Design or import other UI component libraries. Use components from openmetadata-ui-core-components instead. See CLAUDE.md for details.\"}'; exit 2; fi",
+            "description": "Block Ant Design and other unapproved UI component library imports"
           }
         ]
       }
@@ -63,8 +63,8 @@
           },
           {
             "type": "command",
-            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); CONTENT=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.content // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx)$' && echo \"$CONTENT\" | grep -qE 'import.*from.*@mui|import.*from.*@emotion'; then echo 'Warning: MUI/@emotion import detected. Use components from openmetadata-ui-core-components instead. See CLAUDE.md.'; fi",
-            "description": "Warn about MUI imports in new files"
+            "command": "FILE=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.file_path // empty' 2>/dev/null); CONTENT=$(echo \"$CLAUDE_TOOL_INPUT\" | jq -r '.content // empty' 2>/dev/null); if [ -n \"$FILE\" ] && echo \"$FILE\" | grep -qE '\\.(ts|tsx)$' && echo \"$CONTENT\" | grep -qE 'import.*from.*@mui|import.*from.*@emotion'; then echo 'Warning: unapproved UI component library import detected (use openmetadata-ui-core-components, not Ant Design or other libraries). See CLAUDE.md.'; fi",
+            "description": "Warn about Ant Design or other unapproved UI component library imports in new files"
           },
           {
             "type": "command",
