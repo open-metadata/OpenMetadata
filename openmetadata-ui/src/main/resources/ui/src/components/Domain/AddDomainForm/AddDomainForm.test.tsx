@@ -30,7 +30,6 @@ import {
   TagLabel,
   TagSource,
 } from '../../../generated/type/tagLabel';
-import '../../../test/unit/mocks/mui.mock';
 import { DomainFormType } from '../DomainPage.interface';
 import AddDomainForm, {
   DOMAIN_FORM_DEFAULTS,

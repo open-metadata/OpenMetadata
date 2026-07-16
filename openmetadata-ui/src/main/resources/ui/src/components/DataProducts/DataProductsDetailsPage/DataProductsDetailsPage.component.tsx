@@ -809,7 +809,7 @@ const DataProductsDetailsPage = ({
           }
         />
         <GenericProvider<DataProduct>
-          muiTags
+          newTagsUI
           currentVersionData={dataProduct}
           customizedPage={customizedPage}
           data={dataProduct}

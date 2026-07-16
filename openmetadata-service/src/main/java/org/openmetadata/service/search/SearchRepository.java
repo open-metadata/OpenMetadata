@@ -463,6 +463,7 @@ public class SearchRepository {
                   .canonicalIndex(canonicalIndex)
                   .activeIndex(activeIndex)
                   .stagedIndex(stagedIndex)
+                  .stagedChunkIndex(context.getStagedChunkIndex().orElse(null))
                   .canonicalAliases(canonicalAlias)
                   .existingAliases(existingAliases)
                   .parentAliases(parentAliases)
@@ -486,7 +487,9 @@ public class SearchRepository {
     int created = 0;
     for (Map.Entry<String, IndexMapping> entry : entityIndexMap.entrySet()) {
       try {
-        if (!indexExists(entry.getValue())) {
+        if (indexExists(entry.getValue())) {
+          reconcileAliases(entry.getValue());
+        } else {
           createIndex(entry.getValue());
           created++;
           LOG.info("Created missing index for entity type: {}", entry.getKey());
@@ -502,6 +505,29 @@ public class SearchRepository {
           entityIndexMap.size());
     } else {
       LOG.info("All {} indexes already exist", entityIndexMap.size());
+    }
+  }
+
+  /**
+   * Attaches the Data Insights aliases declared in indexMapping.json to an index that already
+   * exists. Only DI aliases are reconciled here (not parent/short aliases, which the reindex
+   * machinery owns) so startup side effects stay scoped to the newly introduced aliases. Alias
+   * adds are idempotent, so this is a no-op when the index already carries them. Without it, a DI
+   * alias introduced in a newer release would never attach to an upgraded cluster, since
+   * createIndex only creates aliases for indices it creates.
+   */
+  private void reconcileAliases(IndexMapping indexMapping) {
+    List<String> dataInsightAliases = indexMapping.getDataInsightAliases(clusterAlias);
+    if (nullOrEmpty(dataInsightAliases)) {
+      return;
+    }
+    try {
+      searchClient.addIndexAlias(indexMapping, dataInsightAliases.toArray(new String[0]));
+    } catch (Exception e) {
+      LOG.warn(
+          "Failed to reconcile Data Insights aliases for index {}: {}",
+          indexMapping.getIndexName(clusterAlias),
+          e.getMessage());
     }
   }
 

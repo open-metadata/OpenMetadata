@@ -13,7 +13,7 @@ Client to interact with DBT Cloud REST APIs
 """
 
 import traceback
-from typing import Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import Any, Iterable, List, Optional, Tuple  # noqa: UP035
 
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection,
@@ -37,6 +37,21 @@ from metadata.utils.logger import ometa_logger
 
 logger = ometa_logger()
 API_VERSION = "api/v2"
+
+# Bounds the error body kept in the step's error log.
+ERROR_DETAIL_LIMIT = 200
+
+# Between-retry sleep for the test calls; the client default (30s) would blow a step budget.
+TEST_RETRY_WAIT_SECONDS = 2
+
+
+class DBTCloudApiError(Exception):
+    """A dbt Cloud API call answered with a non-success HTTP status."""
+
+    def __init__(self, status_code: int, path: str, detail: str) -> None:
+        super().__init__(f"dbt Cloud API returned HTTP {status_code} for {path}: {detail}")
+        self.status_code = status_code
+        self.path = path
 
 
 class DBTCloudClient:
@@ -125,20 +140,37 @@ class DBTCloudClient:
                 f"environment_id: `{environment_id}` or job_id: `{job_id}` : {exc}"
             )
 
-    def test_get_jobs(self) -> List[DBTJob]:  # noqa: UP006
+    def _test_get(self, path: str, params: dict | None = None) -> Any:
+        """
+        Authenticated GET that raises DBTCloudApiError on a non-success status.
+
+        Uses get_raw: dbt Cloud nests the error `code` under `status`, which get does
+        not recognise, so it would drop the status and return None.
+        """
+        response = self.client.get_raw(path, data=params, retry_wait=TEST_RETRY_WAIT_SECONDS)
+        if not response.ok:
+            raise DBTCloudApiError(response.status_code, path, response.text[:ERROR_DETAIL_LIMIT])
+        return response.json()
+
+    def test_check_access(self) -> None:
+        """
+        Read one job: the smallest authenticated call proving host, token and account id.
+        """
+        self._test_get(f"/accounts/{self.config.accountId}/jobs/", params={"limit": 1, "offset": 0})
+
+    def test_get_jobs(self) -> list[DBTJob]:
         """
         test fetch jobs for an account in dbt cloud
         """
-        job_list = self.client.get(f"/accounts/{self.config.accountId}/jobs/")
+        job_list = self._test_get(f"/accounts/{self.config.accountId}/jobs/")
         return DBTJobList.model_validate(job_list).Jobs
 
-    def test_get_runs(self) -> List[DBTRun]:  # noqa: UP006
+    def test_get_runs(self) -> list[DBTRun]:
         """
         test fetch runs for a job in dbt cloud
         """
-        result = self.client.get(f"/accounts/{self.config.accountId}/runs/")
-        run_list = DBTRunList.model_validate(result).Runs
-        return run_list  # noqa: RET504
+        result = self._test_get(f"/accounts/{self.config.accountId}/runs/")
+        return DBTRunList.model_validate(result).Runs or []
 
     def get_jobs(self) -> Iterable[DBTJob]:
         """

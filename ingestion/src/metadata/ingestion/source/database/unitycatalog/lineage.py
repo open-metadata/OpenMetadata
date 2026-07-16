@@ -14,7 +14,7 @@ Databricks Unity Catalog Lineage Source Module
 
 import traceback
 from collections import defaultdict
-from typing import Iterable, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Iterable, Optional, cast  # noqa: UP035
 
 from sqlalchemy import text
 
@@ -40,10 +40,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.lineage.sql_lineage import get_column_fqn
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import test_connection_common
-from metadata.ingestion.source.database.unitycatalog.connection import (
-    get_connection,
-    get_sqlalchemy_connection,
+from metadata.ingestion.source.connections import (
+    create_connection,
+    run_test_connection,
+    test_connection_common,
 )
 from metadata.ingestion.source.database.unitycatalog.queries import (
     UNITY_CATALOG_COLUMN_LINEAGE,
@@ -54,6 +54,12 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.unitycatalog.connection import (
+        UnityCatalogConnection as UnityCatalogConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 
@@ -74,17 +80,22 @@ class UnitycatalogLineageSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
-        self.connection_obj = get_connection(self.service_connection)
-        self.engine = get_sqlalchemy_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        connection = cast("UnityCatalogConnectionHandler", self._connection)
+        self.connection_obj = connection.client
+        self.engine = connection.sql.client
         self.table_lineage_map: dict[str, set[str]] = defaultdict(set)
         self.column_lineage_map: dict[tuple[str, str], list[tuple[str, str]]] = defaultdict(list)
         self.external_location_map: dict[str, str] = {}
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     def close(self):
-        """
-        By default, there is nothing to close
-        """
+        if self._connection is not None:
+            self._connection.close()
 
     def prepare(self):
         """
@@ -341,4 +352,7 @@ class UnitycatalogLineageSource(Source):
                     yield from self._process_external_location_lineage(table, databricks_table_fqn)
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
