@@ -44,6 +44,13 @@ jest.mock('../../../rest/feedsAPI', () => ({
   postFeedById: jest.fn(),
   updatePost: jest.fn(),
   updateThread: jest.fn(),
+  getMyActivityFeed: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  getEntityActivityByFqn: jest.fn().mockResolvedValue({ data: [], paging: {} }),
+  addActivityReaction: jest.fn().mockResolvedValue({
+    id: 'activity-123',
+    reactions: [{ reactionType: 'thumbsUp', user: { id: 'user-1' } }],
+  }),
+  removeActivityReaction: jest.fn().mockResolvedValue(undefined),
 }));
 
 jest.mock('../../../rest/incidentManagerAPI', () => ({
@@ -62,8 +69,12 @@ jest.mock('../../../utils/ToastUtils', () => ({
   showErrorToast: jest.fn(),
 }));
 
-jest.mock('../../../utils/FeedUtils', () => ({
-  getUpdatedThread: jest.fn(),
+jest.mock('../../../utils/FeedUtilsPure', () => ({
+  getUpdatedThread: jest.fn().mockResolvedValue({
+    id: '123',
+    posts: [],
+    postsCount: 0,
+  }),
 }));
 
 describe('ActivityFeedProvider', () => {

@@ -19,9 +19,7 @@ import { ReactComponent as AnnouncementsEmptyIcon } from '../../../assets/svg/an
 import { ERROR_PLACEHOLDER_TYPE, SIZE } from '../../../enums/common.enum';
 import { Thread } from '../../../generated/entity/feed/thread';
 import { WidgetCommonProps } from '../../../pages/CustomizablePage/CustomizablePage.interface';
-import { getEntityFQN } from '../../../utils/FeedUtils';
-import FeedCardBodyV1 from '../../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBodyV1';
-import FeedCardHeaderV2 from '../../ActivityFeed/ActivityFeedCardV2/FeedCardHeader/FeedCardHeaderV2';
+import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import './announcements-widget.less';

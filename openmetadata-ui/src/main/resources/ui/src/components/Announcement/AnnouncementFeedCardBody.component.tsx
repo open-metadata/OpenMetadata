@@ -17,29 +17,9 @@ import { compare, Operation } from 'fast-json-patch';
 import { isEmpty, isUndefined } from 'lodash';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ArrowBottom } from '../../assets/svg/ic-arrow-down.svg';
-import { ReactionOperation } from '../../enums/reactions.enum';
-import {
-  AnnouncementDetails,
-  ThreadType,
-} from '../../generated/api/feed/createThread';
-import { Post } from '../../generated/entity/feed/thread';
-import { Reaction, ReactionType } from '../../generated/type/reaction';
-import { useApplicationStore } from '../../hooks/useApplicationStore';
-import {
-  getEntityField,
-  getEntityFQN,
-  getEntityType,
-} from '../../utils/FeedUtils';
-import FeedCardBody from '../ActivityFeed/ActivityFeedCard/FeedCardBody/FeedCardBody';
-import FeedCardHeader from '../ActivityFeed/ActivityFeedCard/FeedCardHeader/FeedCardHeader';
-import PopoverContent from '../ActivityFeed/ActivityFeedCard/PopoverContent';
-import UserPopOverCard from '../common/PopOverCard/UserPopOverCard';
-import ProfilePicture from '../common/ProfilePicture/ProfilePicture';
+import { getEntityFQN, getEntityType } from '../../utils/FeedUtilsPure';
 import EditAnnouncementModal from '../Modals/AnnouncementModal/EditAnnouncementModal';
 import { AnnouncementFeedCardBodyProp } from './Announcement.interface';
-import './announcement.less';
-
 const AnnouncementFeedCardBody = ({
   feed,
   entityLink,

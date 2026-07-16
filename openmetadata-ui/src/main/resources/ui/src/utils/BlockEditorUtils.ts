@@ -28,7 +28,11 @@ import { FileType } from '../components/BlockEditor/BlockEditor.interface';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import blockEditorExtensionsClassBase from './BlockEditorExtensionsClassBase';
 import { ENTITY_LINK_SEPARATOR } from './EntityPureUtils';
-import { getEntityDetail, getHashTagList, getMentionList } from './FeedUtils';
+import {
+  getEntityDetail,
+  getHashTagList,
+  getMentionList,
+} from './FeedUtilsPure';
 import { getSanitizeContent } from './sanitize.utils';
 
 export const getSelectedText = (state: EditorState) => {
