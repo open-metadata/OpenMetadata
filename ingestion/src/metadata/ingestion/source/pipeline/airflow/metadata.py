@@ -132,6 +132,8 @@ class AirflowSource(PipelineServiceSource):
     Pipeline metadata from Airflow's metadata db
     """
 
+    _status_cache_dag_id: str | None = None
+
     def __init__(
         self,
         config: WorkflowSource,
