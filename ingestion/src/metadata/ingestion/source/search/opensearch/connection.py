@@ -42,7 +42,6 @@ from metadata.generated.schema.entity.services.connections.testConnectionResult 
 )
 from metadata.generated.schema.security.credentials.awsCredentials import AWSCredentials
 from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
-from metadata.ingestion.connections.builders import init_empty_connection_arguments
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -152,9 +151,6 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
                 session_token=aws_session_token,
             )
 
-        if not connection.connectionArguments:
-            connection.connectionArguments = init_empty_connection_arguments()
-
         # Determine the http_auth based on the available authentication method.
         # AWS IAM takes precedence, followed by Basic Authentication.
         http_auth = aws_auth if aws_auth else basic_auth
@@ -168,7 +164,7 @@ class OpenSearchConnection(BaseConnection[OpenSearchConnectionConfig, OpenSearch
             client_cert=client_cert,
             client_key=private_key,
             connection_class=RequestsHttpConnection,  # Use RequestsHttpConnection for AWS auth support.
-            **(connection.connectionArguments.root or {}),
+            **((connection.connectionArguments and connection.connectionArguments.root) or {}),
         )
 
     def test_connection(
