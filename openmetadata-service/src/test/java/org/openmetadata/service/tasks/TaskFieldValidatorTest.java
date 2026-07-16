@@ -25,7 +25,7 @@ import org.openmetadata.schema.type.DataAccessType;
 import org.openmetadata.schema.type.TaskEntityType;
 
 /**
- * Unit tests for {@link TaskFieldValidator#validateDataAccessRequestDuration}. Every approved Data
+ * Unit tests for {@link TaskFieldValidator#validateDataAccessRequestExpiry}. Every approved Data
  * Access Request reaches an {@code expiryTimer} boundary node. Creation-time validation requires a
  * usable future {@code expirationDate} timestamp, so malformed payloads are rejected up front with
  * a 400 ({@link IllegalArgumentException}).
@@ -56,7 +56,7 @@ class TaskFieldValidatorTest {
   void nonDataAccessRequestTaskIsIgnored() {
     // Only DAR tasks carry an access duration; other task types must not be touched.
     Task task = new Task().withType(TaskEntityType.DescriptionUpdate);
-    assertDoesNotThrow(() -> TaskFieldValidator.validateDataAccessRequestDuration(task));
+    assertDoesNotThrow(() -> TaskFieldValidator.validateDataAccessRequestExpiry(task));
   }
 
   @Test
@@ -64,7 +64,7 @@ class TaskFieldValidatorTest {
     long expiresAt = System.currentTimeMillis() + Duration.ofDays(1).toMillis();
     assertDoesNotThrow(
         () ->
-            TaskFieldValidator.validateDataAccessRequestDuration(
+            TaskFieldValidator.validateDataAccessRequestExpiry(
                 darTaskWithExpirationDate(expiresAt)));
   }
 
@@ -72,15 +72,14 @@ class TaskFieldValidatorTest {
   void missingExpirationDateIsRejected() {
     assertThrows(
         IllegalArgumentException.class,
-        () -> TaskFieldValidator.validateDataAccessRequestDuration(darTaskWithDurationOnly(null)));
+        () -> TaskFieldValidator.validateDataAccessRequestExpiry(darTaskWithDurationOnly(null)));
   }
 
   @Test
   void legacyDurationOnlyPayloadIsRejected() {
     assertThrows(
         IllegalArgumentException.class,
-        () ->
-            TaskFieldValidator.validateDataAccessRequestDuration(darTaskWithDurationOnly("P14D")));
+        () -> TaskFieldValidator.validateDataAccessRequestExpiry(darTaskWithDurationOnly("P14D")));
   }
 
   @Test
@@ -88,7 +87,7 @@ class TaskFieldValidatorTest {
     assertThrows(
         IllegalArgumentException.class,
         () ->
-            TaskFieldValidator.validateDataAccessRequestDuration(
+            TaskFieldValidator.validateDataAccessRequestExpiry(
                 darTaskWithExpirationDate(System.currentTimeMillis() - 1)));
   }
 }

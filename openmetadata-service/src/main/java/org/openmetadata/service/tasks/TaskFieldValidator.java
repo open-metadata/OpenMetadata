@@ -126,7 +126,7 @@ public final class TaskFieldValidator {
    * boundary timer unschedulable and fail the task mid-workflow. Validating at creation turns that
    * latent failure into a clean 400. No-op for non-DAR tasks.
    */
-  public static void validateDataAccessRequestDuration(Task task) {
+  public static void validateDataAccessRequestExpiry(Task task) {
     if (task.getType() != TaskEntityType.DataAccessRequest) {
       return;
     }
