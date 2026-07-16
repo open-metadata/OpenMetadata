@@ -13,7 +13,9 @@ Source connection handler for BurstIQ
 """
 
 import hashlib
-from typing import Dict, Optional  # noqa: UP035
+from typing import Optional
+
+from cachetools import LRUCache
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -33,29 +35,21 @@ from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
 
-_CLIENT_CACHE: Dict[str, BurstIQClient] = {}  # noqa: UP006
+CLIENT_CACHE_SIZE = 100
 
-
-def get_connection(connection: BurstIQConnectionConfig) -> BurstIQClient:
-    """
-    Create or return a cached BurstIQ client connection.
-
-    Caching avoids re-authentication on every table during profiler ingestion,
-    where SamplerInterface.__init__ calls get_ssl_connection once per table.
-    Using id(connection) was unreliable because each table deserialization
-    produces a new object with a different id. A SHA-256 digest of the
-    serialised config is used as the key: collision-resistant but never
-    stores plaintext credentials in the cache keys.
-    """
-    key = hashlib.sha256(connection.model_dump_json().encode()).hexdigest()
-    if key not in _CLIENT_CACHE:
-        _CLIENT_CACHE[key] = BurstIQClient(config=connection)
-    return _CLIENT_CACHE[key]
+_CLIENT_CACHE: "LRUCache[str, BurstIQClient]" = LRUCache(maxsize=CLIENT_CACHE_SIZE)
 
 
 class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
     def _get_client(self) -> BurstIQClient:
-        return get_connection(self.service_connection)
+        """Return a BurstIQ client, cached by a digest of the serialised config."""
+        connection = self.service_connection
+        key = hashlib.sha256(connection.model_dump_json().encode()).hexdigest()
+        client = _CLIENT_CACHE.get(key)
+        if client is None:
+            client = BurstIQClient(config=connection)
+            _CLIENT_CACHE[key] = client
+        return client
 
     def test_connection(
         self,
@@ -63,20 +57,7 @@ class BurstIQConnection(BaseConnection[BurstIQConnectionConfig, BurstIQClient]):
         automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
         timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
     ) -> TestConnectionResult:
-        """
-        Test connection to BurstIQ. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-
-        Args:
-            metadata: OpenMetadata client
-            client: BurstIQClient instance
-            service_connection: BurstIQConnection configuration
-            automation_workflow: Optional automation workflow
-            timeout_seconds: Timeout for connection test
-
-        Returns:
-            TestConnectionResult
-        """
+        """Test connection to BurstIQ, as a metadata workflow or an Automation Workflow."""
         client = self.client
         service_connection = self.service_connection
 

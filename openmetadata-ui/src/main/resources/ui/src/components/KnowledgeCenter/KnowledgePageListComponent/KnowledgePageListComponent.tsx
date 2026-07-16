@@ -11,6 +11,7 @@
  *  limitations under the License.
  */
 import { PlusOutlined } from '@ant-design/icons';
+import { EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
   Button,
   Col,
@@ -36,6 +37,7 @@ import React, {
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { ReactComponent as AddPlaceHolderIcon } from '../../../assets/svg/add-placeholder.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../../components/common/Loader/Loader';
 import { VotingDataProps } from '../../../components/Entity/Voting/voting.interface';
@@ -85,6 +87,8 @@ interface KnowledgePageListComponentProps {
   hideAddButton?: boolean;
   rightPanelSlot?: React.ReactNode;
   searchQuery?: string;
+  onEmptyStateChange?: (isEmpty: boolean) => void;
+  isPermissionsLoading?: boolean;
 }
 
 const KnowledgePageListComponent = forwardRef<
@@ -98,6 +102,8 @@ const KnowledgePageListComponent = forwardRef<
       hideAddButton = false,
       rightPanelSlot,
       searchQuery,
+      onEmptyStateChange,
+      isPermissionsLoading = false,
     },
     ref
   ) => {
@@ -324,13 +330,28 @@ const KnowledgePageListComponent = forwardRef<
     );
 
     useEffect(() => {
+      if (isPermissionsLoading) {
+        return;
+      }
       if (hasViewPermission) {
         setPageOffset(0);
         fetchKnowledgePages(0);
       } else {
         setIsLoading(false);
       }
-    }, [hasViewPermission, searchQuery]);
+    }, [hasViewPermission, searchQuery, isPermissionsLoading]);
+
+    useEffect(() => {
+      if (!isLoading && !isPermissionsLoading && !searchQuery) {
+        onEmptyStateChange?.(isEmpty(knowledgePages));
+      }
+    }, [
+      isLoading,
+      isPermissionsLoading,
+      searchQuery,
+      knowledgePages,
+      onEmptyStateChange,
+    ]);
 
     useEffect(() => {
       const hasMore = knowledgePages.length < paging.total;
@@ -423,7 +444,7 @@ const KnowledgePageListComponent = forwardRef<
         setKnowledgePages((prevPages) => [knowledgePage, ...prevPages]),
     }));
 
-    if (isLoading || isCreatingNewPage) {
+    if (isLoading || isCreatingNewPage || isPermissionsLoading) {
       return (
         <Row data-testid="knowledge-page-listing" gutter={[0, 56]}>
           {Array.from({ length: 4 }).map(() => (
@@ -482,6 +503,19 @@ const KnowledgePageListComponent = forwardRef<
           })}
           type={ERROR_PLACEHOLDER_TYPE.PERMISSION}
         />
+      );
+    }
+
+    if (!isLoading && isEmpty(knowledgePages) && searchQuery) {
+      return (
+        <div className="tw:relative tw:min-h-[320px] tw:py-12">
+          <EmptyPlaceholder
+            description={t('message.check-spelling-or-try-different-term')}
+            icon={<NoSearchResultIcon className="tw:text-quaternary" />}
+            title={t('label.no-matching-results')}
+            variant="blank"
+          />
+        </div>
       );
     }
 

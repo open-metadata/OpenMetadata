@@ -45,6 +45,9 @@ from metadata.core.connections.test_connection.network import (
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection as DatabricksConnectionConfig,
 )
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection as UnityCatalogConnectionConfig,
+)
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
     get_connection_args_common,
@@ -55,6 +58,7 @@ from metadata.ingestion.source.database.databricks.auth import (
     get_auth_config,
     normalize_host_port,
 )
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
@@ -382,17 +386,37 @@ class DatabricksChecks:
         return run_sql(self._db.client, TEST_COLUMN_LINEAGE, lambda _: "column lineage accessible")
 
 
+class DatabricksApiConnection(
+    BaseConnection[DatabricksConnectionConfig | UnityCatalogConnectionConfig, DatabricksClient]
+):
+    """Owns the Databricks REST client (Jobs, query-history, and lineage APIs):
+    a separate lifetime from the SQL engine, shared by the databricks and Unity
+    Catalog sources."""
+
+    def _get_client(self) -> DatabricksClient:
+        # No pooled resource to close: uses the ``requests`` module, not a Session.
+        return DatabricksClient(self.service_connection)
+
+
 class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
     def __init__(self, service_connection: DatabricksConnectionConfig) -> None:
         super().__init__(service_connection)
         # Honor the user-facing connectionTimeout (default 120s) as the per-step
         # budget; a cold serverless warehouse can exceed the 60s framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
+        # A sub-owner, not a client: constructing it opens nothing.
+        self.api = DatabricksApiConnection(service_connection)
 
     def _get_client(self) -> Engine:
         engine = get_connection(self.service_connection)
         self._on_close(engine.dispose)
         return engine
+
+    def close(self) -> None:
+        # Not _on_close: that registry is reset by close(), so a sub-owner
+        # registered once would not be released on a later reuse cycle.
+        self.api.close()
+        super().close()
 
     def checks(self) -> ChecksProvider:
         return DatabricksChecks(
