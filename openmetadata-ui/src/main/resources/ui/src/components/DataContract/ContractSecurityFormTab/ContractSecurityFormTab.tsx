@@ -42,7 +42,7 @@ import {
 } from '../../../generated/entity/data/dataContract';
 import { Table } from '../../../generated/entity/data/table';
 import { filterSelectOptions } from '../../../utils/FilterQueryUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import { getColumnOptionsFromTableColumn } from '../../../utils/TablePureUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import ExpandableCard from '../../common/ExpandableCard/ExpandableCard';

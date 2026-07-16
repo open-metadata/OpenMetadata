@@ -33,7 +33,7 @@ import {
 import { searchQuery } from '../../../../rest/searchAPI';
 import { getBreadcrumbsFromFqn } from '../../../../utils/EntityPureUtils';
 import { translateWithNestedKeys } from '../../../../utils/i18next/LocalUtil';
-import { getServiceNameQueryFilter } from '../../../../utils/ServiceUtils';
+import { getServiceNameQueryFilter } from '../../../../utils/ServicePureUtils';
 import {
   escapeESReservedCharacters,
   getEncodedFqn,
@@ -49,7 +49,6 @@ import {
   TableConstraintForm,
   TableConstraintModalProps,
 } from './TableConstraintsModal.interface';
-
 const TableConstraintsModal = ({
   tableDetails,
   constraint,

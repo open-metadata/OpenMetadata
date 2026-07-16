@@ -29,7 +29,8 @@ import {
   EntityLineageNodeType,
 } from '../../../enums/entity.enum';
 import { PipelineStatus, Task } from '../../../generated/entity/data/pipeline';
-import { getLayoutedElements, onLoad } from '../../../utils/EntityLineageUtils';
+import { getLayoutedElements } from '../../../utils/EntityLineageLayoutUtils';
+import { onLoad } from '../../../utils/EntityLineagePureUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getTaskExecStatus } from '../../../utils/PipelineDetailsUtils';
 import { replaceSpaceWith_ } from '../../../utils/StringUtils';

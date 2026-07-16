@@ -166,7 +166,7 @@ jest.mock('../../../../utils/EntityDisplayUtils', () => ({
     .mockReturnValue(<div data-testid="service-logo">ServiceLogo</div>),
 }));
 
-jest.mock('../../../../utils/EntityLineageUtils', () => ({
+jest.mock('../../../../utils/EntityLineageNodeUtils', () => ({
   getUpstreamDownstreamNodesEdges: jest.fn(),
 }));
 
@@ -262,7 +262,7 @@ const defaultProps = {
 
 describe('LineageTabContent', () => {
   const mockGetUpstreamDownstreamNodesEdges = jest.requireMock(
-    '../../../../utils/EntityLineageUtils'
+    '../../../../utils/EntityLineageNodeUtils'
   ).getUpstreamDownstreamNodesEdges;
 
   beforeEach(() => {

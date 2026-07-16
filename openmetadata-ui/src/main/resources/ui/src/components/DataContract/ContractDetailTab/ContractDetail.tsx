@@ -57,7 +57,7 @@ import {
   validateContractByEntityId,
   validateContractById,
 } from '../../../rest/contractAPI';
-import { isDescriptionContentEmpty } from '../../../utils/BlockEditorUtils';
+import { isDescriptionContentEmpty } from '../../../utils/BlockEditorPureUtils';
 import {
   downloadContractAsODCSYaml,
   downloadContractYamlFile,
@@ -65,7 +65,7 @@ import {
 } from '../../../utils/DataContract/DataContractUtils';
 import { formatDateTime } from '../../../utils/date-time/DateTimeUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getPopupContainer } from '../../../utils/formUtils';
+import { getPopupContainer } from '../../../utils/formPureUtils';
 import { pruneEmptyChildren } from '../../../utils/TablePureUtils';
 import { showErrorToast, showSuccessToast } from '../../../utils/ToastUtils';
 import AlertBar from '../../AlertBar/AlertBar';
@@ -83,7 +83,6 @@ import ContractSLA from '../ContractSLACard/ContractSLA.component';
 import ContractViewSwitchTab from '../ContractViewSwitchTab/ContractViewSwitchTab.component';
 import ContractYaml from '../ContractYaml/ContractYaml.component';
 import './contract-detail.less';
-
 const ContractSecurityCard = withSuspenseFallback(
   lazy(() => import('../ContractSecurity/ContractSecurityCard.component'))
 );
