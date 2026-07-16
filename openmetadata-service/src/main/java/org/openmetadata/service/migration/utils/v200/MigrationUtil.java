@@ -16,9 +16,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -602,6 +605,9 @@ public class MigrationUtil {
 
     LOG.info("Found {} thread-based tasks to migrate", threads.size());
 
+    Map<String, String> umbrellaWorkflowInstanceIds =
+        resolveUmbrellaWorkflowInstanceIdBatch(handle, threads);
+
     long seqVal = getSequenceValue(handle);
     int migrated = 0;
     int skipped = 0;
@@ -729,8 +735,7 @@ public class MigrationUtil {
         taskJson.put("commentCount", 0);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
-        String umbrellaWorkflowInstanceId =
-            lookupLegacyUmbrellaWorkflowInstanceId(handle, threadId);
+        String umbrellaWorkflowInstanceId = umbrellaWorkflowInstanceIds.get(threadId);
         if (umbrellaWorkflowInstanceId != null) {
           taskJson.put("workflowInstanceId", umbrellaWorkflowInstanceId);
         }
@@ -1483,40 +1488,79 @@ public class MigrationUtil {
    * managed lifecycle.
    */
   private static String lookupLegacyUmbrellaWorkflowInstanceId(Handle handle, String threadId) {
-    String resolvedId = null;
-    try {
-      String executionId =
-          handle
-              .createQuery(
-                  "SELECT text_ FROM ACT_HI_VARINST "
-                      + "WHERE name_ = 'workflowInstanceExecutionId' AND proc_inst_id_ IN ("
-                      + "  SELECT proc_inst_id_ FROM ACT_HI_VARINST "
-                      + "  WHERE name_ = 'customTaskId' AND text_ = :threadId"
-                      + ") "
-                      + "ORDER BY id_ ASC LIMIT 1")
-              .bind("threadId", threadId)
-              .mapTo(String.class)
-              .findFirst()
-              .orElse(null);
-      if (executionId != null) {
-        resolvedId =
-            handle
-                .createQuery(
-                    "SELECT workflowInstanceId FROM workflow_instance_state_time_series "
-                        + "WHERE workflowInstanceExecutionId = :executionId "
-                        + "ORDER BY timestamp ASC LIMIT 1")
-                .bind("executionId", executionId)
-                .mapTo(String.class)
-                .findFirst()
-                .orElse(null);
+    Map<String, String> batch = lookupLegacyUmbrellaWorkflowInstanceIds(handle, List.of(threadId));
+    return batch.get(threadId);
+  }
+
+  /**
+   * Extract thread ids from a page of raw {@code thread_entity} rows and batch-resolve the
+   * pre-2.0 umbrella {@code workflowInstanceId} for each. Used by
+   * {@link #migrateThreadTasksToTaskEntity} and the equivalent Task V2 cutover so both migration
+   * paths share one join per page instead of two per row.
+   */
+  private static Map<String, String> resolveUmbrellaWorkflowInstanceIdBatch(
+      Handle handle, List<Map<String, Object>> threadRows) {
+    List<String> threadIds = new ArrayList<>(threadRows.size());
+    for (Map<String, Object> row : threadRows) {
+      try {
+        JsonNode json = JsonUtils.readTree(row.get("json").toString());
+        if (json != null && json.hasNonNull("id")) {
+          threadIds.add(json.get("id").asText());
+        }
+      } catch (Exception e) {
+        LOG.debug("Skipping thread row without parseable id: {}", e.getMessage());
       }
+    }
+    return lookupLegacyUmbrellaWorkflowInstanceIds(handle, threadIds);
+  }
+
+  /**
+   * Batch variant of {@link #lookupLegacyUmbrellaWorkflowInstanceId(Handle, String)} — collapses
+   * the {@code ACT_HI_VARINST -> workflow_instance_state_time_series} join to one SQL per input
+   * page. The v200 migration processes threads and suggestions in 200-item pages; on catalogs
+   * with tens of thousands of pre-2.0 open tasks the per-row variant would issue two full scans
+   * of {@code ACT_HI_VARINST.text_} (unindexed) for every migrated row, holding the CLI JDBI
+   * handle for hours and effectively hanging the upgrade. The batched form scans the join once
+   * per page regardless of page size. Returns a map keyed by thread id; entries are only present
+   * for threads with an active pre-2.0 umbrella process (closed threads / post-2.0 tasks are
+   * absent so callers can fall through to the standard workflow-managed lifecycle).
+   */
+  private static Map<String, String> lookupLegacyUmbrellaWorkflowInstanceIds(
+      Handle handle, Collection<String> threadIds) {
+    Map<String, String> resolved = new HashMap<>();
+    if (threadIds == null || threadIds.isEmpty()) {
+      return resolved;
+    }
+    try {
+      handle
+          .createQuery(
+              "SELECT ct.text_ AS threadId, ws.workflowInstanceId "
+                  + "FROM ACT_HI_VARINST ct "
+                  + "JOIN ACT_HI_VARINST wx "
+                  + "  ON wx.proc_inst_id_ = ct.proc_inst_id_ "
+                  + " AND wx.name_ = 'workflowInstanceExecutionId' "
+                  + "JOIN workflow_instance_state_time_series ws "
+                  + "  ON ws.workflowInstanceExecutionId = wx.text_ "
+                  + "WHERE ct.name_ = 'customTaskId' "
+                  + "  AND ct.text_ IN (<threadIds>)")
+          .bindList("threadIds", List.copyOf(new LinkedHashSet<>(threadIds)))
+          .map(
+              (rs, ctx) -> {
+                String threadId = rs.getString(1);
+                String instanceId = rs.getString(2);
+                if (threadId != null && instanceId != null) {
+                  resolved.putIfAbsent(threadId, instanceId);
+                }
+                return null;
+              })
+          .list();
     } catch (Exception e) {
       LOG.debug(
-          "Could not resolve legacy umbrella workflowInstanceId for thread '{}': {}",
-          threadId,
+          "Could not resolve legacy umbrella workflowInstanceIds for {} threads: {}",
+          threadIds.size(),
           e.getMessage());
     }
-    return resolvedId;
+    return resolved;
   }
 
   private static String lookupUserId(Handle handle, String userName) {
@@ -2010,13 +2054,30 @@ public class MigrationUtil {
           break;
         }
 
+        List<Thread> parsedThreads = new ArrayList<>(threadBatch.size());
         for (String threadJson : threadBatch) {
           try {
-            Thread legacyThread = JsonUtils.readValue(threadJson, Thread.class);
-            migrateLegacyThreadTask(legacyThread, stats);
+            parsedThreads.add(JsonUtils.readValue(threadJson, Thread.class));
           } catch (Exception e) {
             stats.failed++;
-            LOG.warn("Failed to parse/migrate legacy thread task JSON: {}", e.getMessage());
+            LOG.warn("Failed to parse legacy thread task JSON: {}", e.getMessage());
+          }
+        }
+
+        Map<String, String> umbrellaWorkflowInstanceIds =
+            lookupLegacyUmbrellaWorkflowInstanceIds(
+                handle,
+                parsedThreads.stream()
+                    .filter(t -> t != null && t.getId() != null)
+                    .map(t -> t.getId().toString())
+                    .toList());
+
+        for (Thread legacyThread : parsedThreads) {
+          try {
+            migrateLegacyThreadTask(legacyThread, stats, umbrellaWorkflowInstanceIds);
+          } catch (Exception e) {
+            stats.failed++;
+            LOG.warn("Failed to migrate legacy thread task: {}", e.getMessage());
           }
         }
 
@@ -2153,7 +2214,10 @@ public class MigrationUtil {
           .list();
     }
 
-    private void migrateLegacyThreadTask(Thread legacyThread, MigrationStats stats) {
+    private void migrateLegacyThreadTask(
+        Thread legacyThread,
+        MigrationStats stats,
+        Map<String, String> umbrellaWorkflowInstanceIds) {
       if (legacyThread == null || legacyThread.getId() == null || legacyThread.getTask() == null) {
         stats.skipped++;
         return;
@@ -2168,7 +2232,7 @@ public class MigrationUtil {
       }
 
       try {
-        Task migratedTask = buildTaskFromLegacyThread(legacyThread);
+        Task migratedTask = buildTaskFromLegacyThread(legacyThread, umbrellaWorkflowInstanceIds);
         Task createdTask = taskRepository.create(null, migratedTask);
         upsertTaskMigrationMapping(legacyThreadId, createdTask.getId());
         stats.migrated++;
@@ -2186,7 +2250,8 @@ public class MigrationUtil {
       }
     }
 
-    private Task buildTaskFromLegacyThread(Thread legacyThread) {
+    private Task buildTaskFromLegacyThread(
+        Thread legacyThread, Map<String, String> umbrellaWorkflowInstanceIds) {
       TaskDetails legacyTaskDetails = legacyThread.getTask();
       TypeAndCategory typeAndCategory = mapLegacyTaskType(legacyTaskDetails.getType());
 
@@ -2222,10 +2287,9 @@ public class MigrationUtil {
           convertPostsToComments(legacyThread.getPosts(), createdByRef, updatedAt);
       task.withComments(comments).withCommentCount(comments.size());
 
-      UUID runtimeWorkflowInstanceId =
-          resolveLegacyUmbrellaWorkflowInstanceId(legacyThread.getId());
-      if (runtimeWorkflowInstanceId != null) {
-        task.setWorkflowInstanceId(runtimeWorkflowInstanceId);
+      String batchedUmbrellaId = umbrellaWorkflowInstanceIds.get(legacyThread.getId().toString());
+      if (batchedUmbrellaId != null) {
+        task.setWorkflowInstanceId(UUID.fromString(batchedUmbrellaId));
       }
 
       if (status != TaskEntityStatus.Open) {
@@ -2233,50 +2297,6 @@ public class MigrationUtil {
       }
 
       return task;
-    }
-
-    /**
-     * Look up the pre-2.0 umbrella {@code WorkflowInstance} UUID for a legacy Thread task using
-     * only SQL. The Flowable engine is not booted during CLI migration, so
-     * {@link WorkflowHandler#getRuntimeWorkflowInstanceId(UUID)} cannot resolve the mapping. The
-     * umbrella process stores {@code workflowInstanceExecutionId} as a process-scoped Flowable
-     * variable that also lands on every emitted state row; we join via that value.
-     * Returns {@code null} when no active umbrella exists for the thread — closed threads and
-     * post-2.0 tasks fall through and let the standard workflow-managed lifecycle spawn a
-     * task-scoped subprocess.
-     */
-    private UUID resolveLegacyUmbrellaWorkflowInstanceId(UUID legacyThreadId) {
-      UUID resolvedId = null;
-      try {
-        String executionId =
-            handle
-                .createQuery(
-                    "SELECT text_ FROM ACT_HI_VARINST "
-                        + "WHERE name_ = 'workflowInstanceExecutionId' AND proc_inst_id_ IN ("
-                        + "  SELECT proc_inst_id_ FROM ACT_HI_VARINST "
-                        + "  WHERE name_ = 'customTaskId' AND text_ = :threadId"
-                        + ") "
-                        + "ORDER BY id_ ASC LIMIT 1")
-                .bind("threadId", legacyThreadId.toString())
-                .mapTo(String.class)
-                .findFirst()
-                .orElse(null);
-        if (executionId != null) {
-          String instanceId =
-              collectionDAO
-                  .workflowInstanceStateTimeSeriesDAO()
-                  .findWorkflowInstanceIdByExecutionId(executionId);
-          if (instanceId != null) {
-            resolvedId = UUID.fromString(instanceId);
-          }
-        }
-      } catch (Exception e) {
-        LOG.debug(
-            "Could not resolve legacy umbrella workflowInstanceId for thread '{}': {}",
-            legacyThreadId,
-            e.getMessage());
-      }
-      return resolvedId;
     }
 
     private TypeAndCategory mapLegacyTaskType(TaskType legacyTaskType) {

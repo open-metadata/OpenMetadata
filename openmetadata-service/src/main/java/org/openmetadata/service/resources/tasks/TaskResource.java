@@ -112,6 +112,16 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
   public static final String COLLECTION_PATH = "v1/tasks/";
   static final String FIELDS =
       "assignees,reviewers,watchers,about,domains,comments,createdBy,payload";
+
+  /**
+   * Lightweight default for list endpoints — enough for the UI card (assignee, target entity,
+   * author) without pulling {@code comments} / {@code payload} / {@code domains} / {@code watchers}
+   * for every row. These three relationship fields are bulk-hydrated in a single query via
+   * {@code setFieldsInBulk}, so the default stays O(1) queries per page even at the maximum page
+   * size.
+   */
+  static final String LIST_FIELDS = "assignees,about,createdBy";
+
   private static final String COUNT_VIEW_ALL = "all";
   private static final String COUNT_VIEW_VISIBLE = "visible";
   private static final String COUNT_VIEW_ASSIGNED = "assigned";
@@ -177,7 +187,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
-          @DefaultValue(FIELDS)
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -370,7 +380,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
-          @DefaultValue(FIELDS)
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(
               description =
@@ -540,7 +550,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
-          @DefaultValue(FIELDS)
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -600,7 +610,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
-          @DefaultValue(FIELDS)
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -659,7 +669,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
-          @DefaultValue(FIELDS)
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -728,7 +738,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
-          @DefaultValue(FIELDS)
+          @DefaultValue(LIST_FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
