@@ -18,7 +18,6 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
-import org.openmetadata.service.migration.utils.PiiRecognizerMigrationUtil;
 import org.openmetadata.service.resources.feeds.MessageParser.EntityLink;
 
 /**
@@ -285,9 +284,5 @@ public final class MigrationUtil {
 
   private static String asString(Object value) {
     return value == null ? null : value.toString();
-  }
-
-  public static void removeBroadPiiContextKeywords(Handle handle) {
-    PiiRecognizerMigrationUtil.removeBroadPiiContextKeywords(handle, "v11212");
   }
 }
