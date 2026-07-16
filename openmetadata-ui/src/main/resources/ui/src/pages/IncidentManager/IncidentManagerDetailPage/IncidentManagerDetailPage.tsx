@@ -58,9 +58,9 @@ import {
   getTestCaseVersionList,
   updateTestCaseById,
 } from '../../../rest/testAPI';
-import { getFeedCounts } from '../../../utils/CommonUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
-import { getEntityVersionByField } from '../../../utils/EntityVersionUtils';
+import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
+import { getFeedCounts } from '../../../utils/FeedUtilsPure';
 import {
   getTestCaseDetailPagePath,
   getTestCaseDimensionsDetailPagePath,
@@ -72,7 +72,6 @@ import { TestCasePageTabs } from '../IncidentManager.interface';
 import './incident-manager-details.less';
 import testCaseClassBase from './TestCaseClassBase';
 import { useTestCaseStore } from './useTestCase.store';
-
 const IncidentManagerDetailPage = ({
   isVersionPage = false,
 }: {
