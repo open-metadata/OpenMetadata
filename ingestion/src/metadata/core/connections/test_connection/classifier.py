@@ -11,10 +11,9 @@
 """
 Maps a connector exception to an actionable ``Diagnosis``.
 
-Each connector owns an ``ErrorPack`` of ordered, first-match-wins rules built
-with ``when(matcher).diagnose(...)``. Matchers walk the exception's ``__cause__``
-/ ``__context__`` chain, so a driver error wrapped by SQLAlchemy still matches.
-An unmatched exception yields ``None`` - the raw ``errorLog`` is always retained.
+An ``ErrorPack`` is ordered, first-match-wins rules built with
+``when(matcher).diagnose(...)``. Matchers walk the ``__cause__``/``__context__``
+chain, so a wrapped driver error still matches. No match yields ``None``.
 """
 
 from __future__ import annotations
@@ -52,11 +51,10 @@ class Matchers:
 
     @staticmethod
     def errno(*codes: int) -> Matcher:
-        """Match a driver error number.
+        """Match a driver error number at ``args[0]`` (PyMySQL-style), or on ``.orig``.
 
-        DBAPI drivers (PyMySQL, ...) put the numeric code in ``exception.args[0]``;
-        SQLAlchemy preserves the original at ``exception.orig``. We check both,
-        across the cause chain. Codes are the stable signal - message text varies.
+        Only drivers that lead with the code populate it; others need their own
+        accessor.
         """
         wanted = frozenset(codes)
 
@@ -77,12 +75,7 @@ class Matchers:
 
     @staticmethod
     def exception(*types: type[BaseException]) -> Matcher:
-        """Match when the error, or anything in its cause chain, is one of ``types``.
-
-        The signal is the exception type, not its message - the right matcher for
-        driver-agnostic failures (e.g. Python socket errors) whose text varies by
-        platform but whose class does not.
-        """
+        """Match when the error, or anything in its cause chain, is one of ``types``."""
         return lambda error: any(isinstance(current, types) for current in exception_chain(error))
 
 

@@ -9,11 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Shared authentication diagnoses for the AWS-backed connectors (boto3 / botocore).
+Shared authentication diagnoses for the boto3/botocore connectors.
 
-Fold in with ``ErrorPack.including(AWS_ERRORS)``; the connector's own rules still
-match first, and it keeps its authorization diagnosis (an ``AccessDenied`` fix must
-name that service's IAM actions). ``NETWORK_ERRORS`` is already folded in here.
+Fold in with ``ErrorPack.including(AWS_ERRORS)``; the connector keeps its own
+authorization rule, whose fix must name that service's IAM actions.
+``NETWORK_ERRORS`` is already folded in here.
 """
 
 from __future__ import annotations

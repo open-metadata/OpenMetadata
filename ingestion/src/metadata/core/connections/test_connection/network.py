@@ -9,15 +9,8 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-TCP reachability preflight for the test-connection engine.
-
-Before a connector's gate check opens a real (driver, TLS, auth) connection, a
-raw TCP connect to the resolved host:port separates a *network* failure - DNS, a
-firewall, a wrong port - from an *auth/protocol* failure. ``NETWORK_ERRORS`` is
-the diagnosis pack a connector folds into its own with ``ErrorPack.including``,
-so a probe failure reads as an actionable network problem rather than a bare
-socket error. The pack matches by exception *type*, so it is driver- and
-platform-agnostic.
+TCP reachability preflight, and the network diagnosis pack folded in with
+``ErrorPack.including``. Matches by exception type, so it stays driver-agnostic.
 """
 
 from __future__ import annotations
@@ -41,12 +34,9 @@ class NetworkUnreachableError(OSError):
 
 
 def tcp_probe(host: str, port: int, timeout: float = NETWORK_PROBE_TIMEOUT_SECONDS) -> None:
-    """Prove host:port is reachable by opening a TCP connection to it.
+    """Prove host:port is reachable, raising ``NetworkUnreachableError``.
 
-    ``create_connection`` resolves the host and tries each address it returns,
-    IPv4 and IPv6, until one connects: an IPv6-only host is reached and a
-    dual-stack host falls back to IPv4. Raises ``NetworkUnreachableError``,
-    chaining the socket error so the classifier can match its type.
+    Chains the socket error so the classifier can match its type.
     """
     try:
         with socket.create_connection((host, port), timeout=timeout):

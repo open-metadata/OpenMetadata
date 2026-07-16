@@ -9,20 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Storage service step identity and shared check helpers.
+Storage service step identity and check helpers.
 
-Object stores have no SQL: the reported ``command`` is the API operation the
-check exercised (e.g. ``s3:ListBuckets``). Connectors reuse these helpers from
-their ``@check`` methods. On failure the helpers raise ``CheckError`` carrying
-the operation they attempted, so a failed step still reports its ``Evidence``
-to the backend.
-
-The helper *bodies* read boto3 response shapes (``response['Buckets']``,
-``ContinuationToken``, ...) and label their ``command`` with the AWS service
-prefix, so they suit S3 and other boto3-backed AWS object stores. A future
-non-boto3 connector (e.g. GCS via ``google-cloud-storage``) has a different
-client and response shape and should add its own helpers here rather than
-force-fit these; only ``StorageStep`` is truly client-agnostic.
+The reported ``command`` is the API operation exercised (``s3:ListBuckets``).
+The helper bodies read boto3 response shapes; only ``StorageStep`` is
+client-agnostic, so a non-boto3 store should add its own helpers here.
 """
 
 from __future__ import annotations
@@ -39,9 +30,7 @@ if TYPE_CHECKING:
     from botocore.client import BaseClient
 
 
-# A check only needs to prove a listing is reachable, not enumerate the whole
-# account, so every listing probe stops at this many assets and reports whether
-# more exist beyond the cap.
+# Cap on the assets a listing probe reports; it flags when more exist.
 DEFAULT_LIST_LIMIT = 100
 
 
@@ -55,17 +44,9 @@ class StorageStep(StepName):
 def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
     """Enumerate the buckets the identity can see, reporting at most ``limit``.
 
-    The cap is applied to the reported count locally, not pushed to the API: the
-    request stays a parameter-less ``list_buckets()`` so it behaves identically
-    on AWS and on S3-compatible stores (MinIO, Ceph, ...) reached via an
-    ``endPointURL`` that may not understand AWS's newer ``MaxBuckets`` parameter.
-    A bucket list is inherently small (account-bounded), so this never pulls an
-    unbounded payload; the summary flags when more than ``limit`` exist.
-
-    An empty listing never raises - the account may simply hold no buckets -
-    so 'none visible' surfaces as a non-blocking caveat for the user to judge.
-    A missing list permission is a different case: it raises ``AccessDenied``,
-    which fails the step rather than producing a caveat.
+    Empty is a caveat, not a failure - the account may hold no buckets; a missing
+    permission raises ``AccessDenied`` instead. The cap is applied locally so the
+    request stays parameter-less for S3-compatible stores that lack ``MaxBuckets``.
     """
     command = "s3:ListBuckets"
     try:
@@ -87,10 +68,7 @@ def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidenc
 def probe_buckets(client: BaseClient, buckets: Sequence[str]) -> Evidence:
     """Prove each configured bucket exists and its objects can be listed.
 
-    This is an access probe over an explicit, config-bounded set - not an open
-    enumeration - so it caps each bucket's listing at a single key: proving
-    access never needs the contents, and a large bucket must not turn a
-    connection test into an expensive full listing.
+    Caps each listing at one key: proving access never needs the contents.
     """
     for bucket in buckets:
         try:
@@ -106,12 +84,8 @@ def probe_buckets(client: BaseClient, buckets: Sequence[str]) -> Evidence:
 def list_metrics(client: BaseClient, namespace: str, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
     """Enumerate the CloudWatch metrics for ``namespace``, up to ``limit``.
 
-    ``list_metrics`` has no page-size parameter (AWS returns up to 500 per page),
-    so the count is capped to ``limit`` here; a ``NextToken`` (or a page already
-    past the cap) means more exist and the summary says so.
-
-    Metrics feed object-count and size extraction; without them ingestion still
-    works, so an empty listing only reports what was (not) found.
+    ``list_metrics`` has no page-size parameter, so the cap is applied locally.
+    Empty only reports what was found - metrics are optional for ingestion.
     """
     command = f"cloudwatch:ListMetrics (Namespace={namespace})"
     try:
