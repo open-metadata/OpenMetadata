@@ -30,7 +30,6 @@ import java.util.Map;
 import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
-import org.openmetadata.service.Entity;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
@@ -69,7 +68,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
     if (instance != null) {
       LOG.warn("ElasticSearchVectorService already initialized, reinitializing");
     }
-    ElasticSearchVectorService svc = new ElasticSearchVectorService(client, embeddingClient, language);
+    ElasticSearchVectorService svc =
+        new ElasticSearchVectorService(client, embeddingClient, language);
     svc.registerVectorEmbeddingHandler();
     instance = svc;
     LOG.info(
@@ -119,7 +119,8 @@ public class ElasticSearchVectorService implements VectorIndexService {
         String queryJson =
             VectorSearchQueryBuilder.buildNativeESQuery(
                 queryVector, overFetchSize, rawOffset, k, filters);
-        String responseBody = executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
+        String responseBody =
+            executeGenericRequest("POST", "/" + indexName + "/_search", queryJson);
 
         JsonNode root = MAPPER.readTree(responseBody);
         JsonNode hitsNode = root.path("hits").path("hits");
@@ -438,7 +439,6 @@ public class ElasticSearchVectorService implements VectorIndexService {
           e);
     }
   }
-
 
   public void createOrUpdateIndex(int dimension) {
     try {

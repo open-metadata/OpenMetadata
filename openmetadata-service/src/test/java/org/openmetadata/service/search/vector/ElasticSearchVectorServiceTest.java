@@ -9,24 +9,23 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.core.BulkRequest;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
-import java.util.HashMap;
-import java.util.List;
-import org.mockito.ArgumentCaptor;
-
-import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.transport.rest5_client.Rest5ClientTransport;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
 import java.io.ByteArrayInputStream;
 import java.nio.charset.StandardCharsets;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.apache.hc.core5.http.HttpEntity;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 
@@ -74,7 +73,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.5);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.5);
 
     assertNotNull(results);
     assertEquals(2, results.hits.size(), "Should return 2 results (scores 0.9 and 0.7)");
@@ -100,7 +100,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertEquals(1, results.hits.size());
     assertTrue(results.hits.get(0).containsKey("_score"), "Result should contain _score field");
@@ -131,7 +132,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 2, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 2, 0, 100, 0.0);
 
     assertEquals(5, results.hits.size(), "Should return all chunks from first 2 parents (3+2=5)");
     long distinctParents = results.hits.stream().map(r -> r.get("parentId")).distinct().count();
@@ -156,7 +158,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertEquals(3, results.hits.size(), "With threshold 0.0, should return all 3 results");
   }
@@ -179,7 +182,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.9);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.9);
 
     assertEquals(0, results.hits.size(), "With threshold 0.9, all results should be filtered out");
   }
@@ -203,9 +207,11 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
-    assertEquals(3, results.hits.size(), "Orphan chunk should be included, grouped by document _id");
+    assertEquals(
+        3, results.hits.size(), "Orphan chunk should be included, grouped by document _id");
   }
 
   @Test
@@ -234,7 +240,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 3, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 3, 0, 100, 0.0);
 
     assertEquals(3, results.hits.size(), "Should limit to 3 distinct parents");
     long distinctParents = results.hits.stream().map(r -> r.get("parentId")).distinct().count();
@@ -255,7 +262,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertNotNull(results);
     assertTrue(results.hits.isEmpty(), "Empty hits should return empty list");
@@ -282,7 +290,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 2, 1, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 2, 1, 100, 0.0);
 
     assertEquals(2, results.hits.size(), "Should return 2 parents after skipping 1");
     assertEquals("p2", results.hits.get(0).get("parentId"));
@@ -309,7 +318,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 2, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 2, 0, 100, 0.0);
 
     assertEquals(2, results.hits.size());
     assertTrue(results.hasMore, "hasMore should be true when extra parent was fetched");
@@ -333,7 +343,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertEquals(2, results.hits.size());
     assertFalse(results.hasMore, "hasMore should be false when fewer parents than requested");
@@ -357,7 +368,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponse(esResponse);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertEquals(Long.valueOf(3), results.totalHits);
   }
@@ -378,7 +390,8 @@ class ElasticSearchVectorServiceTest {
 
     mockRestClientResponseSequence(esResponse, EMPTY_HITS_RESPONSE);
 
-    DTOs.VectorSearchResponse results = vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
+    DTOs.VectorSearchResponse results =
+        vectorService.search("test query", Map.of(), 10, 0, 100, 0.0);
 
     assertNull(results.totalHits, "totalHits should be null when not present in response");
   }
@@ -400,7 +413,9 @@ class ElasticSearchVectorServiceTest {
 
     BulkRequest captured = captor.getValue();
     assertEquals(1, captured.operations().size());
-    assertEquals("entity-abc-3", captured.operations().get(0).index().id(),
+    assertEquals(
+        "entity-abc-3",
+        captured.operations().get(0).index().id(),
         "Doc ID must be parentId-chunkIndex using camelCase field names from VectorDocBuilder");
   }
 
@@ -499,8 +514,7 @@ class ElasticSearchVectorServiceTest {
     when(mockRestClient.performRequest(any(Request.class))).thenReturn(mockResponse);
     when(mockResponse.getEntity()).thenReturn(mockEntity);
     when(mockEntity.getContent())
-        .thenAnswer(
-            inv -> new ByteArrayInputStream(responseJson.getBytes(StandardCharsets.UTF_8)));
+        .thenAnswer(inv -> new ByteArrayInputStream(responseJson.getBytes(StandardCharsets.UTF_8)));
   }
 
   /** Returns each response in sequence; repeats the last one if more calls are made. */
