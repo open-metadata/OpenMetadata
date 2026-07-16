@@ -71,6 +71,8 @@ public class GlossaryTool implements McpTool {
     String impersonatedBy = ImpersonationContext.getImpersonatedBy();
 
     String userName = securityContext.getUserPrincipal().getName();
+    // createOrUpdate silently overwrites an existing glossary at this name — tools.json
+    // marks this tool destructiveHint:true for that reason.
     RestUtil.PutResponse<Glossary> response =
         glossaryRepository.createOrUpdate(null, glossary, userName, impersonatedBy);
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);
