@@ -408,7 +408,7 @@ test.describe(
 
       await redirectToHomePage(page);
       // Wait for the listIntakeForms response so the table is guaranteed to
-      // have rendered the seeded row before we look for the toggle. The MUI
+      // have rendered the seeded row before we look for the toggle. The
       // table has no generic "loader" testid for waitForAllLoadersToDisappear
       // to latch onto, so we anchor on the API response directly.
       const listResponse = page.waitForResponse(
@@ -560,8 +560,8 @@ test.describe(
       // Dialog should close and the row is still there
       await expect(confirmDialog).not.toBeVisible();
       await expect(page.getByTestId('delete-dataProduct')).toBeVisible();
-      // MUI Switch puts the data-testid on the outer span; the checkbox is an
-      // inner <input>. Target it directly for toBeChecked().
+      // The switch component puts the data-testid on the outer span; the
+      // checkbox is an inner <input>. Target it directly for toBeChecked().
       await expect(
         page.getByTestId('toggle-dataProduct').locator('input')
       ).toBeChecked();
@@ -607,7 +607,7 @@ test.describe(
 
 // The entity-reference E2E test lives in its own describe block so it gets
 // a fresh browser context (unaffected by the serial block above). The
-// MUIUserTeamSelect Autocomplete is `freeSolo` with async options and its
+// user/team select Autocomplete is `freeSolo` with async options and its
 // controlled `open`/`inputValue` state gets wedged by leftover Autocomplete
 // instances from earlier tests in the same context — the listbox never
 // opens there. An isolated page avoids that.
@@ -693,7 +693,7 @@ test.describe(
           .first()
           .fill('Playwright test product with entity reference steward');
 
-        // MUIUserTeamSelect doesn't forward `data-testid` to its TextField,
+        // The user/team select doesn't forward `data-testid` to its TextField,
         // so find the Autocomplete by the visible field label "Steward".
         const stewardInput = page
           .getByRole('combobox', { name: 'Steward' })

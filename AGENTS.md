@@ -129,11 +129,10 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 
 ### Styling
 
-- **MUI Migration**: The project is gradually migrating from Ant Design to Material-UI (MUI) v7.3.1
-- **Preferred Approach**: Use MUI components v7.3.1 and styles wherever possible for new features
-- **Theme and Styles**: MUI theme data and styles are defined in `openmetadata-ui-core-components`
-- **Colors and Design Tokens**: Always reference theme colors and design tokens from the MUI theme, not hardcoded values
-- **Legacy Components**: Ant Design components remain in existing code but should be replaced with MUI equivalents when refactoring
+- **Component Library**: The project is gradually migrating from Ant Design to `openmetadata-ui-core-components` as the canonical component library
+- **Preferred Approach**: Use `openmetadata-ui-core-components` components and styles wherever possible for new features, do not use Ant Design
+- **Colors and Design Tokens**: Always reference design tokens from `openmetadata-ui-core-components`, not hardcoded values. Full token reference, dark mode guide, and anti-pattern cheat sheet: [`openmetadata-ui/src/main/resources/ui/docs/colors.md`](openmetadata-ui/src/main/resources/ui/docs/colors.md). Always consult this before choosing any color class.
+- **Legacy Components**: Ant Design components remain in existing code but should be replaced with `openmetadata-ui-core-components` equivalents when refactoring
 - Do not add unnecessary spacing between logs and code.
 - In Java, avoid wildcards imports (e.g., use `import java.util.List;` instead of `import java.util.*;`)
 - Custom styles in `.less` files with component-specific naming (legacy pattern)

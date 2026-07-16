@@ -2505,10 +2505,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       LOG.info("Dropping data assets data streams...");
       dataInsightsApp.deleteDataAssetsDataStream();
 
-      // Drop data quality indexes
-      LOG.info("Dropping data quality indexes...");
-      dataInsightsApp.deleteDataQualityDataIndex();
-
       LOG.info("Data Insights indexes and data streams dropped successfully.");
     } catch (Exception e) {
       LOG.warn("Failed to drop some Data Insights indexes: {}", e.getMessage());
@@ -2526,10 +2522,6 @@ public class OpenMetadataOperations implements Callable<Integer> {
       // Drop data assets data streams
       LOG.info("Create/Update data assets data streams...");
       dataInsightsApp.createOrUpdateDataAssetsDataStream();
-
-      // Drop data quality indexes
-      LOG.info("Create/Updated data quality indexes...");
-      dataInsightsApp.createDataQualityDataIndex();
 
       LOG.info("Data Insights indexes and data streams created successfully.");
     } catch (Exception e) {
