@@ -22,7 +22,7 @@ import org.junit.jupiter.api.Test;
 class RdfResourceLineageQueryTest {
 
   @Test
-  void lineageQueriesUseStoredPredicatesAndAreBounded() {
+  void lineageQueriesUseStoredPredicatesWithoutTruncation() {
     UUID entityId = UUID.randomUUID();
 
     String upstream =
@@ -35,7 +35,9 @@ class RdfResourceLineageQueryTest {
 
     assertTrue(upstream.contains("(prov:wasDerivedFrom|^om:UPSTREAM)+"));
     assertTrue(downstream.contains("(om:UPSTREAM|^prov:wasDerivedFrom)+"));
-    assertTrue(both.contains("LIMIT 5000"));
+    assertFalse(upstream.contains("LIMIT"));
+    assertFalse(downstream.contains("LIMIT"));
+    assertFalse(both.contains("LIMIT"));
     assertFalse(both.contains("om:upstream"));
     QueryFactory.create(upstream);
     QueryFactory.create(downstream);

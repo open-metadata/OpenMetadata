@@ -289,6 +289,9 @@ public class RdfBatchProcessor {
         if (shouldSkipRelationship(rel)) {
           continue;
         }
+        // Sources included in this run emit the edge from their outgoing pass. This avoids
+        // duplicate writes, but a failed source batch leaves the edge absent until a later run
+        // successfully processes that source.
         if (runContext.entityTypesInRun().contains(rel.getFromEntity())) {
           continue;
         }

@@ -608,7 +608,6 @@ public class RdfResource {
             BIND(1 as ?distance)
           }
           ORDER BY ?distance ?name
-          LIMIT 5000
           """,
           entityUri);
 
@@ -624,7 +623,6 @@ public class RdfResource {
             BIND(1 as ?distance)
           }
           ORDER BY ?distance ?name
-          LIMIT 5000
           """,
           entityUri);
 
@@ -645,7 +643,6 @@ public class RdfResource {
             ?entity a ?type .
           }
           ORDER BY ?relationship ?name
-          LIMIT 5000
           """,
           entityUri, entityUri);
     };

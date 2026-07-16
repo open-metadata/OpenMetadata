@@ -105,4 +105,6 @@ In-process inference is disabled by default. Enabling `RDF_INFERENCE_ENABLED=tru
 
 Use SPARQL 1.1 property paths for transitive lineage, inverse ownership, and domain or glossary inheritance. These execute inside Fuseki without copying the graph into the OpenMetadata process. Deployments that require persistent RDFS or OWL semantics should configure a Fuseki assembler dataset with an appropriate Jena reasoner and size it independently; server-side materialization or reasoning is operationally safer than per-request full-graph inference in OpenMetadata.
 
+The complete-lineage endpoint intentionally does not impose a row limit on its property-path query. Size `RDF_REQUEST_TIMEOUT_MS`, Fuseki resources, and client response handling for the largest lineage graph operators can request. Semantic search is not an exhaustive traversal: each seed expands at most 100 related graph candidates before reranking to the caller's requested result limit. Use the complete-lineage endpoint or direct SPARQL for exhaustive graph traversal.
+
 For local startup and API examples, see [RDF/Apache Jena Local Development Guide](rdf-local-development.md).
