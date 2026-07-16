@@ -2,6 +2,8 @@
 
 This guide documents how to set up RDF/Knowledge Graph support for local development with OpenMetadata and Apache Jena Fuseki.
 
+For production sizing, tuning, compaction, scheduling, and monitoring, see [Setting up Apache Jena Fuseki efficiently](rdf-production-setup.md).
+
 ## Overview
 
 OpenMetadata supports RDF (Resource Description Framework) for knowledge graph capabilities using Apache Jena Fuseki as the triple store. This enables:
@@ -141,9 +143,15 @@ rdf:
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
   remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
+  requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
+  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
+  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-100}
+  bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
+  inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
 ```
 
 ### Environment Variables
@@ -154,9 +162,15 @@ rdf:
 | `RDF_STORAGE_TYPE` | Storage backend type | `FUSEKI` |
 | `RDF_BASE_URI` | Base URI for RDF resources | `https://open-metadata.org/` |
 | `RDF_ENDPOINT` | Fuseki SPARQL endpoint URL | `http://localhost:3030/openmetadata` |
+| `RDF_CONNECT_TIMEOUT_MS` | Fuseki connection timeout | `2000` |
+| `RDF_REQUEST_TIMEOUT_MS` | Per-request timeout | `60000` |
+| `RDF_BULK_ENTITY_BATCH_SIZE` | Entity models per bulk write | `100` |
+| `RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE` | Relationship sources per bulk write | `100` |
+| `RDF_BULK_LINEAGE_EDGE_BATCH_SIZE` | Detailed lineage edges per bulk write | `50` |
 | `RDF_REMOTE_USERNAME` | Fuseki admin username | `admin` |
 | `RDF_REMOTE_PASSWORD` | Fuseki admin password | `admin` |
 | `RDF_DATASET` | Fuseki dataset name | `openmetadata` |
+| `RDF_INFERENCE_ENABLED` | Enable in-process full-graph inference | `false` |
 
 ### Docker Compose Configuration
 
@@ -165,16 +179,19 @@ The Fuseki container (`docker/development/docker-compose-fuseki.yml`):
 ```yaml
 services:
   fuseki:
-    image: stain/jena-fuseki:5.0.0
+    build:
+      context: ../rdf-store
+      dockerfile: Dockerfile
+    image: openmetadata-fuseki:5.6.0
     container_name: openmetadata-fuseki
     ports:
       - "3030:3030"
     environment:
-      - ADMIN_PASSWORD=admin
-      - JVM_ARGS=-Xmx4g -Xms2g
-      - FUSEKI_BASE=/fuseki
+      - FUSEKI_ADMIN_PASSWORD=admin
+      - FUSEKI_OPENMETADATA_PASSWORD=openmetadata-secret
+      - JVM_ARGS=-Xmx1500m -Xms256m
     volumes:
-      - fuseki-data:/fuseki
+      - fuseki-tdb2-data:/fuseki-data
 ```
 
 ## API Endpoints
