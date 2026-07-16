@@ -37,7 +37,7 @@ import {
 import {
   updateContainerColumnDescription,
   updateContainerColumnTags,
-} from './ContainerDetailUtils';
+} from './ContainerDetailPureUtils';
 import {
   findFieldByFQN,
   normalizeTags,

@@ -48,10 +48,8 @@ import {
   getListTestCaseBySearch,
   ListTestCaseParamsBySearch,
 } from '../../../../rest/testAPI';
-import {
-  aggregateTestResultsByEntity,
-  TestCaseCountByStatus,
-} from '../../../../utils/DataQuality/DataQualityPureUtils';
+import type { TestCaseCountByStatus } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { aggregateTestResultsByEntity } from '../../../../utils/DataQuality/DataQualityPureUtils';
 import { formatNumberWithComma } from '../../../../utils/NumberUtils';
 import { bytesToSize } from '../../../../utils/StringUtils';
 import { generateEntityLink } from '../../../../utils/TablePureUtils';
@@ -65,7 +63,6 @@ import {
   TableProfilerContextInterface,
   TableProfilerProviderProps,
 } from './TableProfiler.interface';
-
 const TestCaseFormV1 = withSuspenseFallback(
   lazy(
     () =>
