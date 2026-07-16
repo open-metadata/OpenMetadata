@@ -16,7 +16,7 @@ Google Drive source implementation
 # pylint: disable=too-many-lines
 import traceback
 from datetime import datetime
-from typing import TYPE_CHECKING, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
@@ -44,7 +44,7 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection, get_connection
+from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.drive.drive_service import DriveServiceSource
 from metadata.ingestion.source.drive.googledrive.models import (
     GoogleDriveDirectoryInfo,
@@ -61,6 +61,7 @@ from metadata.utils.filters import (
 from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
     from metadata.ingestion.source.drive.googledrive.connection import GoogleDriveClient
 
 logger = ingestion_logger()
@@ -92,9 +93,7 @@ class GoogleDriveSource(DriveServiceSource):
         self.metadata = metadata
         self.service_connection: GoogleDriveConnection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
-        self.client: GoogleDriveClient = (
-            self._connection.client if self._connection else get_connection(self.service_connection)
-        )
+        self.client: GoogleDriveClient = cast("BaseConnection", self._connection).client
         self.connection_obj = self.client
 
         # Cache for storing directory hierarchy
