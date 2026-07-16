@@ -21,6 +21,7 @@ export type Mode = {
 
 export interface SchemaEditorProps {
   value?: string;
+  autoFormat?: boolean;
   refreshEditor?: boolean;
   className?: string;
   mode?: Mode;

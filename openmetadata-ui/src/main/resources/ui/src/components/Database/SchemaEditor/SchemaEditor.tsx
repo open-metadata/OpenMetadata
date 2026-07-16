@@ -15,6 +15,7 @@ import Icon from '@ant-design/icons';
 import { Button, Tooltip } from 'antd';
 import classNames from 'classnames';
 import { Editor, EditorChange } from 'codemirror';
+import 'codemirror/addon/display/placeholder';
 import 'codemirror/addon/edit/closebrackets.js';
 import 'codemirror/addon/edit/matchbrackets.js';
 import 'codemirror/addon/fold/brace-fold';
@@ -40,6 +41,7 @@ import { SchemaEditorProps } from './SchemaEditor.interface';
 
 const SchemaEditor = ({
   value = '',
+  autoFormat = true,
   className = '',
   mode = {
     name: CSMode.JAVASCRIPT,
@@ -71,7 +73,7 @@ const SchemaEditor = ({
     ...options,
   };
   const [internalValue, setInternalValue] = useState<string>(
-    getSchemaEditorValue(value)
+    getSchemaEditorValue(value, autoFormat)
   );
   const editorInstance = useRef<Editor | null>(null);
   const wasHiddenRef = useRef(false);
@@ -82,7 +84,7 @@ const SchemaEditor = ({
     _data: EditorChange,
     value: string
   ): void => {
-    setInternalValue(getSchemaEditorValue(value));
+    setInternalValue(getSchemaEditorValue(value, autoFormat));
   };
   const handleEditorInputChange = (
     _editor: Editor,
@@ -90,7 +92,7 @@ const SchemaEditor = ({
     value: string
   ): void => {
     if (!isUndefined(onChange)) {
-      onChange(getSchemaEditorValue(value));
+      onChange(getSchemaEditorValue(value, autoFormat));
     }
   };
 
@@ -118,8 +120,8 @@ const SchemaEditor = ({
   }, [editorInstance, wrapperRef]);
 
   useEffect(() => {
-    setInternalValue(getSchemaEditorValue(value));
-  }, [value]);
+    setInternalValue(getSchemaEditorValue(value, autoFormat));
+  }, [value, autoFormat]);
 
   // Auto-detect display:none → visible transitions (e.g. Ant Design tab switches).
   // When a parent sets display:none, boundingClientRect collapses to 0.

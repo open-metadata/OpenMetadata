@@ -502,13 +502,15 @@ const ManifestJsonWidget = ({
     onFocus?.(props.id, props.value);
   }, [onFocus, props.id, props.value]);
 
-  // Display the sample JSON as a placeholder when the field is empty so
-  // users have a ready template. We purposely do NOT write it into form
-  // state on mount — the field may be populated asynchronously after a
-  // saved pipeline config loads, and writing our sample into form data
-  // would overwrite the real value. We also skip when disabled.
-  const hasUserValue = typeof value === 'string' && value.trim().length > 0;
-  const effectiveValue = hasUserValue ? value : SAMPLE_MANIFEST_JSON;
+  // Show the sample JSON only as a greyed CodeMirror placeholder — never as the
+  // field value — so clearing the editor leaves it truly empty and typing is not
+  // reformatted mid-edit (autoFormat is disabled).
+  const editorValue = typeof value === 'string' ? value : '';
+
+  const editorOptions = useMemo(
+    () => ({ placeholder: SAMPLE_MANIFEST_JSON }),
+    []
+  );
 
   const handleChange = useCallback(
     (next: string) => {
@@ -521,19 +523,21 @@ const ManifestJsonWidget = ({
   );
 
   const validation = useMemo(
-    () => validateManifestJson(effectiveValue),
-    [effectiveValue]
+    () => validateManifestJson(editorValue),
+    [editorValue]
   );
 
   return (
     <div className="manifest-json-widget">
       <div className="manifest-json-widget-resize-wrapper">
         <SchemaEditor
+          autoFormat={false} //To prevent cursor reset on every key press
           className="manifest-json-widget-editor"
           mode={JSON_EDITOR_MODE}
+          options={editorOptions}
           readOnly={disabled}
           showCopyButton={false}
-          value={effectiveValue}
+          value={editorValue}
           onChange={handleChange}
           onFocus={onFocusHandler}
         />
