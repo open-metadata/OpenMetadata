@@ -22,23 +22,17 @@ import {
 import { Globe01, SearchLg } from '@untitledui/icons';
 import { debounce, isEmpty } from 'lodash';
 import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
-import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
-import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
-import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import {
   getClassificationTags,
@@ -47,7 +41,6 @@ import {
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
-import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
@@ -60,13 +53,8 @@ import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.compon
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
 import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
-import AddDomainForm, {
-  DOMAIN_FORM_DEFAULTS,
-  transformDomainFormData,
-} from '../Domain/AddDomainForm/AddDomainForm.component';
-import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
-import { DomainFormType } from '../Domain/DomainPage.interface';
 import { DataProductListPageProps } from './DataProductListPage.interface';
+import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
 const DataProductListPage = ({
@@ -77,11 +65,6 @@ const DataProductListPage = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
-  const form = useForm<DomainFormValues>({
-    defaultValues: DOMAIN_FORM_DEFAULTS,
-  });
-  const [isLoading, setIsLoading] = useState(false);
-
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
     parsedFilters: dataProductListing.parsedFilters,
@@ -95,70 +78,12 @@ const DataProductListPage = ({
     onFilterChange: dataProductListing.handleFilterChange,
   });
 
-  const handleDataProductSubmit = useCallback(
-    async (data: DomainFormValues) => {
-      const formData = transformDomainFormData(
-        data,
-        DomainFormType.DATA_PRODUCT
-      ) as CreateDataProduct;
-      setIsLoading(true);
-      try {
-        await createEntityWithCoverImage({
-          formData,
-          entityType: EntityType.DATA_PRODUCT,
-          entityLabel: t('label.data-product'),
-          entityPluralLabel: 'data-products',
-          createEntity: addDataProducts,
-          patchEntity: patchDataProduct,
-          onSuccess: () => {
-            form.reset();
-          },
-          t,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [form, t]
-  );
-
   const refreshDataProducts = useCallback(() => {
     dataProductListing.refetch();
   }, [dataProductListing]);
 
-  const { formDrawer, openDrawer, closeDrawer } =
-    useFormDrawerWithHook<DomainFormValues>({
-      title: t('label.add-entity', { entity: t('label.data-product') }),
-      width: 670,
-      closeOnEscape: false,
-      className: 'tw:z-[20]',
-      hookForm: form,
-      form: (
-        <AddDomainForm
-          isFormInDialog
-          form={form}
-          loading={isLoading}
-          type={DomainFormType.DATA_PRODUCT}
-          onCancel={() => {}}
-          onSubmit={(data: DomainFormValues): Promise<void> =>
-            submitAndClose(
-              data,
-              handleDataProductSubmit,
-              closeDrawer,
-              refreshDataProducts
-            )
-          }
-        />
-      ),
-      onSubmit: (data: DomainFormValues): Promise<void> =>
-        submitAndClose(
-          data,
-          handleDataProductSubmit,
-          closeDrawer,
-          refreshDataProducts
-        ),
-      loading: isLoading,
-    });
+  const { formDrawer, openDrawer } =
+    useDataProductCreateDrawer(refreshDataProducts);
 
   const breadcrumbItems = useMemo(
     () => [
