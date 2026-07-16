@@ -203,7 +203,78 @@ public class SearchRepository {
     }
   }
 
-  public record ScriptedPartialUpdate(String script, Map<String, Object> parameters) {}
+  public record ScriptedPartialUpdate(
+      String script, Map<String, Object> parameters, boolean scriptedUpsert) {
+    public ScriptedPartialUpdate(String script, Map<String, Object> parameters) {
+      this(script, parameters, false);
+    }
+  }
+
+  private record RelationshipRevisionSpec(
+      String relationshipField,
+      String revisionField,
+      String replacementScript,
+      String documentUpdateScript) {}
+
+  private static RelationshipRevisionSpec relationshipRevisionSpec(
+      String relationshipField, String revisionField) {
+    String replacementScript =
+        """
+        if (ctx._source.%2$s == null || params.%2$s >= ctx._source.%2$s) {
+          ctx._source.%1$s = params.%1$s;
+          ctx._source.%2$s = params.%2$s;
+        }
+        """
+            .formatted(relationshipField, revisionField);
+    String documentUpdateScript =
+        """
+        def preserveRelationship = ctx._source.containsKey('%1$s') || ctx._source.containsKey('%2$s');
+        for (k in params.keySet()) {
+          if (k != 'fieldsToRemove' && (!preserveRelationship || (k != '%1$s' && k != '%2$s'))) {
+            ctx._source.put(k, params.get(k));
+          }
+        }
+        if (params.containsKey('fieldsToRemove')) {
+          for (field in params.fieldsToRemove) {
+            if (!preserveRelationship || (field != '%1$s' && field != '%2$s')) {
+              ctx._source.remove(field);
+            }
+          }
+        }
+        """
+            .formatted(relationshipField, revisionField);
+    return new RelationshipRevisionSpec(
+        relationshipField, revisionField, replacementScript, documentUpdateScript);
+  }
+
+  private static RelationshipRevisionSpec relationshipRevisionSpec(EntityInterface entity) {
+    if (entity == null || entity.getEntityReference() == null) {
+      return null;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (Entity.TEST_CASE.equals(entityType)) {
+      return TEST_CASE_RELATIONSHIP_REVISION;
+    }
+    if (Entity.TEST_SUITE.equals(entityType)
+        && entity instanceof TestSuite testSuite
+        && Boolean.FALSE.equals(testSuite.getBasic())) {
+      return TEST_SUITE_RELATIONSHIP_REVISION;
+    }
+    return null;
+  }
+
+  public static void applyRelationshipRevision(
+      EntityInterface entity, Map<String, Object> document, Long relationshipRevision) {
+    if (relationshipRevision == null) {
+      return;
+    }
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null) {
+      throw new IllegalArgumentException(
+          "Relationship revisions can only update test cases and logical test suites");
+    }
+    document.put(revisionSpec.revisionField(), relationshipRevision);
+  }
 
   /**
    * Open a search-write deferral scope on the current thread. While open, the cascade ES mutations
@@ -344,28 +415,15 @@ public class SearchRepository {
           "extension",
           "queryUsedIn",
           "votes",
-          "pipelineStatus",
-          TEST_SUITES);
+          "pipelineStatus");
 
-  private static final Set<String> BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS = Set.of(TEST_SUITES);
-
-  private static final String TEST_SUITES_ADDED_PARAM = "testSuitesAdded";
-  private static final String TEST_SUITE_IDS_DELETED_PARAM = "testSuiteIdsDeleted";
-  private static final String TEST_SUITES_DELTA_SCRIPT =
-      """
-      if (params.testSuiteIdsDeleted != null && ctx._source.testSuites != null) {
-        ctx._source.testSuites.removeIf(suite -> params.testSuiteIdsDeleted.contains(suite.id));
-      }
-      if (params.testSuitesAdded != null) {
-        if (ctx._source.testSuites == null) {
-          ctx._source.testSuites = [];
-        }
-        for (def addedSuite : params.testSuitesAdded) {
-          ctx._source.testSuites.removeIf(suite -> suite.id == addedSuite.id);
-          ctx._source.testSuites.add(addedSuite);
-        }
-      }
-      """;
+  private static final String TESTS = "tests";
+  private static final String TEST_SUITES_REVISION = "testSuitesRevision";
+  private static final String TESTS_REVISION = "testsRevision";
+  private static final RelationshipRevisionSpec TEST_CASE_RELATIONSHIP_REVISION =
+      relationshipRevisionSpec(TEST_SUITES, TEST_SUITES_REVISION);
+  private static final RelationshipRevisionSpec TEST_SUITE_RELATIONSHIP_REVISION =
+      relationshipRevisionSpec(TESTS, TESTS_REVISION);
 
   @Getter private final ElasticSearchConfiguration searchConfiguration;
   @Getter private final int maxDBConnections;
@@ -1506,11 +1564,11 @@ public class SearchRepository {
    * entity to the durable retry outbox. Returns {@code false} (run inline) for every non-flush
    * caller — the post-commit search-index handler, reindex apps, lineage jobs.
    */
-  private boolean deferEntityIndex(EntityInterface entity) {
+  private boolean deferEntityIndex(EntityInterface entity, Long relationshipRevision) {
     EntityReference ref = entity.getEntityReference();
     return deferSearchWrite(
         new DeferredSearchWrite(
-            () -> updateEntityIndex(entity),
+            () -> updateEntityIndex(entity, relationshipRevision),
             "updateEntityIndex",
             entity.getId() != null ? entity.getId().toString() : null,
             entity.getFullyQualifiedName(),
@@ -1522,11 +1580,15 @@ public class SearchRepository {
    * This method is used by SearchIndexHandler.
    */
   public void updateEntityIndex(EntityInterface entity) {
+    updateEntityIndex(entity, null);
+  }
+
+  public void updateEntityIndex(EntityInterface entity, Long relationshipRevision) {
     if (entity == null) {
       LOG.warn("Entity is null, cannot update index.");
       return;
     }
-    if (deferEntityIndex(entity)) {
+    if (deferEntityIndex(entity, relationshipRevision)) {
       return;
     }
 
@@ -1554,29 +1616,50 @@ public class SearchRepository {
 
       ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
 
-      boolean isNonVersionedUpdate =
-          changeDescription != null
-              && entity.getChangeDescription() != null
-              && Objects.equals(
-                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
-      ScriptedPartialUpdate partialUpdate =
-          buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
-      if (partialUpdate != null) {
-        scriptTxt = partialUpdate.script();
-        doc = partialUpdate.parameters();
-      } else {
-        if (isNonVersionedUpdate && changeDescription != null) {
-          LOG.debug(
-              "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
-              entityType,
-              entityId,
-              getChangedFieldNames(changeDescription));
+      if (relationshipRevision != null) {
+        RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+        if (revisionSpec == null) {
+          throw new IllegalArgumentException(
+              "Relationship revisions can only update test cases and logical test suites");
         }
-        SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
-        doc = elasticSearchIndex.buildSearchIndexDoc();
+        SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+        doc = new HashMap<>(searchIndex.buildSearchIndexDoc());
         doc =
             SearchIndexUtils.stripDocMapIfOversized(
                 doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+        applyRelationshipRevision(entity, doc, relationshipRevision);
+        scriptTxt = revisionSpec.replacementScript();
+      } else {
+        boolean isNonVersionedUpdate =
+            changeDescription != null
+                && entity.getChangeDescription() != null
+                && Objects.equals(
+                    entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+        ScriptedPartialUpdate partialUpdate =
+            buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
+        if (partialUpdate != null) {
+          scriptTxt = partialUpdate.script();
+          doc = partialUpdate.parameters();
+        } else {
+          if (isNonVersionedUpdate && changeDescription != null) {
+            LOG.debug(
+                "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
+                entityType,
+                entityId,
+                getChangedFieldNames(changeDescription));
+          }
+          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+          doc = searchIndex.buildSearchIndexDoc();
+          doc =
+              SearchIndexUtils.stripDocMapIfOversized(
+                  doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+          ScriptedPartialUpdate relationshipDocumentUpdate =
+              buildRelationshipDocumentUpdate(entity, doc);
+          if (relationshipDocumentUpdate != null) {
+            scriptTxt = relationshipDocumentUpdate.script();
+            doc = relationshipDocumentUpdate.parameters();
+          }
+        }
       }
 
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
@@ -1759,9 +1842,24 @@ public class SearchRepository {
    * @param entities List of entities to update in the search index
    */
   public void updateEntitiesIndex(List<? extends EntityInterface> entities) {
+    updateEntitiesIndexInternal(entities, Map.of());
+  }
+
+  public void updateEntitiesIndex(
+      List<? extends EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
+    updateEntitiesIndexInternal(entities, relationshipRevisions);
+  }
+
+  private void updateEntitiesIndexInternal(
+      List<? extends EntityInterface> entities, Map<UUID, Long> suppliedRelationshipRevisions) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
+
+    Map<UUID, Long> relationshipRevisions =
+        suppliedRelationshipRevisions == null
+            ? Map.of()
+            : Map.copyOf(suppliedRelationshipRevisions);
 
     // Keep only the latest state per (entityType, entityId) within the same bulk call.
     // This avoids repeated writes/propagation for duplicates in a single request.
@@ -1841,6 +1939,9 @@ public class SearchRepository {
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
         contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
+        if (!relationshipRevisions.isEmpty()) {
+          contextData.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, relationshipRevisions);
+        }
         ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkWriteAttempted = true;
         bulkSink.write(typeEntities, contextData);
@@ -1867,7 +1968,12 @@ public class SearchRepository {
         if (!bulkWriteAttempted) {
           for (EntityInterface entity : typeEntities) {
             try {
-              updateEntityIndex(entity);
+              Long relationshipRevision = relationshipRevisions.get(entity.getId());
+              if (relationshipRevision == null) {
+                updateEntityIndex(entity);
+              } else {
+                updateEntityIndex(entity, relationshipRevision);
+              }
             } catch (Exception ex) {
               LOG.error(
                   "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
@@ -3149,12 +3255,8 @@ public class SearchRepository {
       ChangeDescription changeDescription) {
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
-    List<Map<String, Object>> testSuitesAdded = new ArrayList<>();
-    List<String> testSuiteIdsDeleted = new ArrayList<>();
-    if (!BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS.equals(getChangedFieldNames(changeDescription))) {
-      fieldAddParams.put("updatedAt", entity.getUpdatedAt());
-      scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
-    }
+    fieldAddParams.put("updatedAt", entity.getUpdatedAt());
+    scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
@@ -3179,9 +3281,6 @@ public class SearchRepository {
         fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
         scriptTxt.append("ctx._source.description = params.description;");
       }
-      if (fieldChange.getName().equalsIgnoreCase(TEST_SUITES)) {
-        testSuitesAdded.addAll(getTestSuiteValues(fieldChange.getNewValue()));
-      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
@@ -3196,13 +3295,6 @@ public class SearchRepository {
       }
       if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
         scriptTxt.append("ctx._source.description = null;");
-      }
-      if (fieldChange.getName().equalsIgnoreCase(TEST_SUITES)) {
-        getTestSuiteValues(fieldChange.getOldValue()).stream()
-            .map(testSuite -> testSuite.get(ID))
-            .filter(Objects::nonNull)
-            .map(Object::toString)
-            .forEach(testSuiteIdsDeleted::add);
       }
     }
 
@@ -3246,42 +3338,49 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.extension = params.extension;");
       }
     }
-    if (!testSuitesAdded.isEmpty() || !testSuiteIdsDeleted.isEmpty()) {
-      fieldAddParams.put(TEST_SUITES_ADDED_PARAM, testSuitesAdded);
-      fieldAddParams.put(TEST_SUITE_IDS_DELETED_PARAM, testSuiteIdsDeleted);
-      scriptTxt.append(TEST_SUITES_DELTA_SCRIPT);
-    }
     return scriptTxt.toString();
   }
 
   public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(EntityInterface entity) {
-    if (entity == null) {
+    return buildBulkScriptedPartialUpdate(entity, null);
+  }
+
+  public ScriptedPartialUpdate buildRelationshipDocumentUpdate(
+      EntityInterface entity, Map<String, Object> document) {
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null || document == null) {
+      return null;
+    }
+    return new ScriptedPartialUpdate(
+        revisionSpec.documentUpdateScript(), new HashMap<>(document), true);
+  }
+
+  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(
+      EntityInterface entity, Long relationshipRevision) {
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null || relationshipRevision == null) {
       return null;
     }
     ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
-    if (!BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS.equals(getChangedFieldNames(changeDescription))
-        || hasTestSuiteReplacement(changeDescription)) {
-      return null;
+    if (changeDescription != null) {
+      if (!Set.of(revisionSpec.relationshipField()).equals(getChangedFieldNames(changeDescription))
+          || !hasRelationshipReplacement(changeDescription, revisionSpec.relationshipField())) {
+        return null;
+      }
+      boolean isNonVersionedUpdate =
+          entity.getChangeDescription() != null
+              && Objects.equals(
+                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+      if (!isNonVersionedUpdate) {
+        return null;
+      }
     }
-    boolean isNonVersionedUpdate =
-        entity.getChangeDescription() != null
-            && Objects.equals(
-                entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
-    if (!isNonVersionedUpdate) {
-      return null;
-    }
-    return buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
-  }
-
-  private List<Map<String, Object>> getTestSuiteValues(Object value) {
-    if (value == null) {
-      return List.of();
-    }
-    List<?> values = value instanceof List<?> list ? list : List.of(value);
-    return values.stream()
-        .map(JsonUtils::getMap)
-        .filter(testSuite -> testSuite.get(ID) != null)
-        .toList();
+    Map<String, Object> parameters = new HashMap<>();
+    Object relationships = JsonUtils.getMap(entity).get(revisionSpec.relationshipField());
+    parameters.put(
+        revisionSpec.relationshipField(), relationships == null ? List.of() : relationships);
+    parameters.put(revisionSpec.revisionField(), relationshipRevision);
+    return new ScriptedPartialUpdate(revisionSpec.replacementScript(), parameters);
   }
 
   private ScriptedPartialUpdate buildScriptedPartialUpdate(
@@ -3305,13 +3404,15 @@ public class SearchRepository {
     Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
     return !changedFieldNames.isEmpty()
         && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
-        && !hasTestSuiteReplacement(changeDescription);
+        && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
+        && !hasRelationshipReplacement(changeDescription, TESTS);
   }
 
-  private boolean hasTestSuiteReplacement(ChangeDescription changeDescription) {
+  private boolean hasRelationshipReplacement(
+      ChangeDescription changeDescription, String relationshipField) {
     return changeDescription != null
         && listOrEmpty(changeDescription.getFieldsUpdated()).stream()
-            .anyMatch(fieldChange -> TEST_SUITES.equals(fieldChange.getName()));
+            .anyMatch(fieldChange -> relationshipField.equals(fieldChange.getName()));
   }
 
   private Set<String> getChangedFieldNames(ChangeDescription changeDescription) {

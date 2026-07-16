@@ -24,6 +24,7 @@ import java.util.concurrent.atomic.AtomicInteger;
 import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -31,10 +32,13 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
+import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 import os.org.opensearch.client.opensearch._types.OpenSearchException;
 
@@ -381,6 +385,7 @@ public class SearchIndexRetryWorker implements Managed {
     ArrayDeque<EntityReference> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
     List<EntityInterface> entitiesToIndex = new ArrayList<>();
+    Map<UUID, Long> relationshipRevisions = new HashMap<>();
     queue.add(root);
     int processed = 0;
 
@@ -399,24 +404,33 @@ public class SearchIndexRetryWorker implements Managed {
         continue;
       }
 
-      EntityInterface entity;
+      StableEntitySnapshot snapshot;
       try {
-        String fields = String.join(",", ReindexingUtil.getSearchIndexFields(current.getType()));
-        entity = Entity.getEntity(current, fields, Include.ALL);
+        snapshot = loadStableEntitySnapshot(current);
+      } catch (EntityNotFoundException ex) {
+        continue;
       } catch (Exception ex) {
+        if (isRelationshipRevisionEntityType(current.getType())) {
+          throw ex;
+        }
         continue;
       }
 
+      EntityInterface entity = snapshot.entity();
       if (entity == null) {
         continue;
       }
 
       entitiesToIndex.add(entity);
+      if (snapshot.relationshipRevision() != null) {
+        relationshipRevisions.put(entity.getId(), snapshot.relationshipRevision());
+      }
       processed++;
 
       if (entitiesToIndex.size() >= CASCADE_BATCH_SIZE) {
-        upsertEntitiesInBulk(entitiesToIndex);
+        upsertEntitiesInBulk(entitiesToIndex, relationshipRevisions);
         entitiesToIndex.clear();
+        relationshipRevisions.clear();
       }
 
       addChildrenByRelation(
@@ -443,12 +457,51 @@ public class SearchIndexRetryWorker implements Managed {
     }
 
     if (!entitiesToIndex.isEmpty()) {
-      upsertEntitiesInBulk(entitiesToIndex);
+      upsertEntitiesInBulk(entitiesToIndex, relationshipRevisions);
     }
   }
 
-  private void upsertEntitiesInBulk(List<EntityInterface> entitiesToIndex) throws Exception {
-    if (entitiesToIndex.size() == 1) {
+  private StableEntitySnapshot loadStableEntitySnapshot(EntityReference reference) {
+    String fields = String.join(",", ReindexingUtil.getSearchIndexFields(reference.getType()));
+    if (!isRelationshipRevisionEntityType(reference.getType())) {
+      return new StableEntitySnapshot(Entity.getEntity(reference, fields, Include.ALL), null);
+    }
+
+    for (int attempt = 0; attempt < 3; attempt++) {
+      long revisionBefore = getRelationshipRevision(reference);
+      var cachedReadBundle = CacheBundle.getCachedReadBundle();
+      if (cachedReadBundle != null) {
+        cachedReadBundle.invalidate(reference.getType(), reference.getId());
+      }
+      EntityInterface entity = Entity.getEntity(reference, fields, Include.ALL);
+      if (entity instanceof TestSuite testSuite && !Boolean.FALSE.equals(testSuite.getBasic())) {
+        return new StableEntitySnapshot(entity, null);
+      }
+      long revisionAfter = getRelationshipRevision(reference);
+      if (revisionBefore == revisionAfter) {
+        return new StableEntitySnapshot(entity, revisionAfter);
+      }
+    }
+    throw new IllegalStateException(
+        "Relationships kept changing while preparing search retry for " + reference.getId());
+  }
+
+  private boolean isRelationshipRevisionEntityType(String entityType) {
+    return Entity.TEST_CASE.equals(entityType) || Entity.TEST_SUITE.equals(entityType);
+  }
+
+  private long getRelationshipRevision(EntityReference reference) {
+    Map<UUID, Long> revisions =
+        Entity.TEST_CASE.equals(reference.getType())
+            ? TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(reference.getId()))
+            : TestSuiteRepository.getTestsRelationshipRevisions(List.of(reference.getId()));
+    return revisions.getOrDefault(reference.getId(), 0L);
+  }
+
+  private void upsertEntitiesInBulk(
+      List<EntityInterface> entitiesToIndex, Map<UUID, Long> relationshipRevisions)
+      throws Exception {
+    if (entitiesToIndex.size() == 1 && relationshipRevisions.isEmpty()) {
       upsertEntityDirect(entitiesToIndex.getFirst());
       return;
     }
@@ -486,8 +539,35 @@ public class SearchIndexRetryWorker implements Managed {
       for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
         Map<String, Object> context = new HashMap<>();
         context.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+        Map<UUID, Long> typeRelationshipRevisions =
+            relationshipRevisionsFor(entry.getValue(), relationshipRevisions);
+        if (!typeRelationshipRevisions.isEmpty()) {
+          context.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, typeRelationshipRevisions);
+        }
         ReindexingUtil.populateDocBuildContext(context, entry.getKey(), entry.getValue());
         bulkSink.write(entry.getValue(), context);
+      }
+
+      if (!relationshipRevisions.isEmpty()) {
+        for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
+          List<EntityInterface> relationshipEntities =
+              entry.getValue().stream()
+                  .filter(entity -> relationshipRevisions.containsKey(entity.getId()))
+                  .toList();
+          if (relationshipEntities.isEmpty()) {
+            continue;
+          }
+          Map<UUID, Long> typeRelationshipRevisions =
+              relationshipRevisionsFor(relationshipEntities, relationshipRevisions);
+          Map<String, Object> relationshipContext = new HashMap<>();
+          relationshipContext.put(ReindexingUtil.ENTITY_TYPE_KEY, entry.getKey());
+          relationshipContext.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
+          relationshipContext.put(
+              BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, typeRelationshipRevisions);
+          ReindexingUtil.populateDocBuildContext(
+              relationshipContext, entry.getKey(), relationshipEntities);
+          bulkSink.write(relationshipEntities, relationshipContext);
+        }
       }
 
       boolean flushComplete = bulkSink.flushAndAwait(60);
@@ -510,6 +590,18 @@ public class SearchIndexRetryWorker implements Managed {
               + " entities"
               + (detail != null ? ": " + detail : ""));
     }
+  }
+
+  private Map<UUID, Long> relationshipRevisionsFor(
+      List<EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (EntityInterface entity : entities) {
+      Long revision = relationshipRevisions.get(entity.getId());
+      if (revision != null) {
+        revisions.put(entity.getId(), revision);
+      }
+    }
+    return revisions;
   }
 
   private void upsertEntityDirect(EntityInterface entity) throws Exception {
@@ -564,6 +656,8 @@ public class SearchIndexRetryWorker implements Managed {
       }
     }
   }
+
+  private record StableEntitySnapshot(EntityInterface entity, Long relationshipRevision) {}
 
   // ---------------------------------------------------------------------------
   // Resilience: client availability, backoff, and error classification

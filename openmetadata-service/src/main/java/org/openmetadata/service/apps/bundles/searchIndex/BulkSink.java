@@ -136,6 +136,8 @@ public interface BulkSink {
 
   String SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY = "scriptedPartialUpdates";
 
+  String RELATIONSHIP_REVISIONS_CONTEXT_KEY = "relationshipRevisions";
+
   /**
    * Key for passing a {@code Map<UUID, DocBuildContext>} through context data. Producers (the
    * reindex worker / retry worker / bulk update path) prepare per-entity doc-build context —

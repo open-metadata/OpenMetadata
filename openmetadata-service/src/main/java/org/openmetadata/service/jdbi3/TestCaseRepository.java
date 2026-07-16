@@ -30,12 +30,9 @@ import static org.openmetadata.service.exception.CatalogExceptionMessage.notRevi
 import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.Lists;
-import com.google.common.util.concurrent.Striped;
-import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,9 +44,7 @@ import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
-import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
-import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -103,8 +98,8 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
+import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.lock.DatabaseAdvisoryLock;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
@@ -129,9 +124,10 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
-  private static final String LOGICAL_SUITE_LOCK_PREFIX = "logical-suite:";
-  private static final Duration LOGICAL_SUITE_LOCK_TIMEOUT = Duration.ofSeconds(30);
-  private static final Striped<Lock> LOGICAL_SUITE_PUBLICATION_LOCKS = Striped.lock(4096);
+  public static final String TEST_SUITES_REVISION_EXTENSION =
+      "internal.testCase.testSuitesRevision";
+  public static final String TEST_SUITES_REVISION_FIELD = "testSuitesRevision";
+  private static final String TEST_SUITES_REVISION_SCHEMA = "testSuitesRevision";
   private final ExecutorService asyncExecutor =
       Executors.newFixedThreadPool(
           1, java.lang.Thread.ofPlatform().name("om-test-case-async").factory());
@@ -995,11 +991,29 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  private void updateLogicalTestSuite(UUID testSuiteId) {
-    var testSuiteRepository = (TestSuiteRepository) Entity.getEntityRepository(Entity.TEST_SUITE);
-    TestSuite testSuite = Entity.getEntity(Entity.TEST_SUITE, testSuiteId, "*", ALL);
-    var original = TestSuiteRepository.copyTestSuite(testSuite);
-    testSuiteRepository.postUpdate(original, testSuite);
+  private void updateLogicalTestSuite(LogicalSuiteRelationshipChange relationshipChange) {
+    if (relationshipChange.isEmpty()) {
+      return;
+    }
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      cachedReadBundle.invalidate(TEST_SUITE, relationshipChange.testSuiteId());
+    }
+    TestSuite testSuite = Entity.getEntity(TEST_SUITE, relationshipChange.testSuiteId(), "*", ALL);
+    FieldChange testsChange =
+        new FieldChange().withName("tests").withNewValue(listOrEmpty(testSuite.getTests()));
+    testSuite.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(testSuite.getVersion())
+            .withFieldsUpdated(List.of(testsChange)));
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntitiesUpdated(
+            List.of(testSuite),
+            null,
+            null,
+            new EntityUpdateContext(
+                Map.of(testSuite.getId(), relationshipChange.relationshipRevision())));
+    RdfUpdater.updateEntity(testSuite);
   }
 
   @Transaction
@@ -1108,24 +1122,19 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> testCaseIds) {
-    return withLogicalSuitePublicationLock(
-        testSuite.getId(), () -> addTestCasesToLogicalTestSuiteLocked(testSuite, testCaseIds));
-  }
-
-  private RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuiteLocked(
-      TestSuite testSuite, List<UUID> testCaseIds) {
-    AtomicReference<List<EntityReference>> addedTestCases = new AtomicReference<>(List.of());
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
     flushInOneTransaction(
         () ->
-            addedTestCases.set(
+            relationshipChange.set(
                 addTestCasesToLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
 
-    postLogicalSuiteRelationshipUpdate(addedTestCases.get(), testSuite.getId());
-    updateLogicalTestSuite(testSuite.getId());
+    postLogicalSuiteRelationshipUpdate(relationshipChange.get());
+    updateLogicalTestSuite(relationshipChange.get());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  private List<EntityReference> addTestCasesToLogicalTestSuiteFlush(
+  private LogicalSuiteRelationshipChange addTestCasesToLogicalTestSuiteFlush(
       UUID testSuiteId, List<UUID> testCaseIds) {
     List<EntityReference> originalTestCaseReferences =
         findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
@@ -1135,34 +1144,36 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
     Set<UUID> originalIds =
         originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    return updatedTestCaseReferences.stream()
-        .filter(ref -> !originalIds.contains(ref.getId()))
-        .toList();
+    List<EntityReference> addedTestCases =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
   }
 
   public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> excludedTestCaseIds) {
-    return withLogicalSuitePublicationLock(
-        testSuite.getId(),
-        () -> addAllTestCasesToLogicalTestSuiteLocked(testSuite, excludedTestCaseIds));
-  }
-
-  private RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteLocked(
-      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
-    AtomicReference<List<EntityReference>> addedTestCases = new AtomicReference<>(List.of());
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
     flushInOneTransaction(
         () ->
-            addedTestCases.set(
+            relationshipChange.set(
                 addAllTestCasesToLogicalTestSuiteFlush(testSuite.getId(), excludedTestCaseIds)));
 
-    for (List<EntityReference> batch : Lists.partition(addedTestCases.get(), 100)) {
-      postLogicalSuiteRelationshipUpdate(batch, testSuite.getId());
+    for (List<EntityReference> batch :
+        Lists.partition(relationshipChange.get().testCaseReferences(), 100)) {
+      Map<UUID, Long> batchRevisions = new HashMap<>();
+      for (EntityReference testCase : batch) {
+        batchRevisions.put(
+            testCase.getId(), relationshipChange.get().testCaseRevisions().get(testCase.getId()));
+      }
+      postLogicalSuiteRelationshipUpdate(List.copyOf(batch), batchRevisions);
     }
-    updateLogicalTestSuite(testSuite.getId());
+    updateLogicalTestSuite(relationshipChange.get());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  private List<EntityReference> addAllTestCasesToLogicalTestSuiteFlush(
+  private LogicalSuiteRelationshipChange addAllTestCasesToLogicalTestSuiteFlush(
       UUID testSuiteId, List<UUID> excludedTestCaseIds) {
     List<EntityReference> originalTestCaseReferences =
         findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
@@ -1190,114 +1201,157 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
     Set<UUID> originalIds =
         originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    return updatedTestCaseReferences.stream()
-        .filter(ref -> !originalIds.contains(ref.getId()))
-        .toList();
+    List<EntityReference> addedTestCases =
+        updatedTestCaseReferences.stream()
+            .filter(ref -> !originalIds.contains(ref.getId()))
+            .toList();
+    return prepareLogicalSuiteRelationshipChange(testSuiteId, addedTestCases);
   }
 
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(
       UUID testSuiteId, UUID testCaseId) {
-    return withLogicalSuitePublicationLock(
-        testSuiteId, () -> deleteTestCaseFromLogicalTestSuiteLocked(testSuiteId, testCaseId));
-  }
-
-  private RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuiteLocked(
-      UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
+    AtomicReference<LogicalSuiteRelationshipChange> relationshipChange =
+        new AtomicReference<>(LogicalSuiteRelationshipChange.empty());
     flushInOneTransaction(
-        () ->
-            deleteRelationship(
-                testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS));
+        () -> {
+          deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
+          relationshipChange.set(
+              prepareLogicalSuiteRelationshipChange(
+                  testSuiteId, List.of(testCase.getEntityReference())));
+        });
 
     TestCase updatedTestCase =
-        postLogicalSuiteRelationshipUpdate(List.of(testCase.getEntityReference()), testSuiteId)
-            .getFirst();
-    updateLogicalTestSuite(testSuiteId);
+        postLogicalSuiteRelationshipUpdate(relationshipChange.get()).getFirst();
+    updateLogicalTestSuite(relationshipChange.get());
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
   }
 
-  private <R> R withLogicalSuitePublicationLock(UUID testSuiteId, Supplier<R> operation) {
-    try {
-      return DatabaseAdvisoryLock.withLock(
-          Entity.getJdbi(),
-          LOGICAL_SUITE_LOCK_PREFIX + testSuiteId,
-          LOGICAL_SUITE_LOCK_TIMEOUT,
-          operation);
-    } catch (DatabaseAdvisoryLock.LockUnavailableException exception) {
-      ServiceUnavailableException unavailable =
-          new ServiceUnavailableException(exception.getMessage());
-      unavailable.initCause(exception);
-      throw unavailable;
-    }
-  }
-
-  private List<TestCase> getLogicalSuiteUpdatedTestCase(
-      List<EntityReference> testCaseReferences, UUID testSuiteId) {
+  private List<TestCase> getLogicalSuiteUpdatedTestCase(List<EntityReference> testCaseReferences) {
     List<TestCase> testCases = Entity.getEntities(testCaseReferences, "*", Include.ALL);
     testCases.forEach(
         tc -> {
-          TestSuite currentTestSuite =
-              listOrEmpty(tc.getTestSuites()).stream()
-                  .filter(testSuite -> testSuiteId.equals(testSuite.getId()))
-                  .findFirst()
-                  .orElse(null);
-          FieldChange relationshipChange = new FieldChange().withName(FIELD_TEST_SUITES);
-          ChangeDescription change = new ChangeDescription().withPreviousVersion(tc.getVersion());
-          if (currentTestSuite == null) {
-            relationshipChange.setOldValue(List.of(new TestSuite().withId(testSuiteId)));
-            change.setFieldsDeleted(List.of(relationshipChange));
-          } else {
-            relationshipChange.setNewValue(List.of(currentTestSuite));
-            change.setFieldsAdded(List.of(relationshipChange));
-          }
-          tc.setChangeDescription(change);
+          FieldChange relationshipChange =
+              new FieldChange()
+                  .withName(FIELD_TEST_SUITES)
+                  .withNewValue(listOrEmpty(tc.getTestSuites()));
+          tc.setChangeDescription(
+              new ChangeDescription()
+                  .withPreviousVersion(tc.getVersion())
+                  .withFieldsUpdated(List.of(relationshipChange)));
         });
     return testCases;
+  }
+
+  private LogicalSuiteRelationshipChange prepareLogicalSuiteRelationshipChange(
+      UUID testSuiteId, List<EntityReference> testCaseReferences) {
+    if (nullOrEmpty(testCaseReferences)) {
+      return LogicalSuiteRelationshipChange.empty();
+    }
+
+    List<UUID> testCaseIds =
+        testCaseReferences.stream().map(EntityReference::getId).distinct().sorted().toList();
+    daoCollection
+        .entityExtensionDAO()
+        .incrementRevisions(
+            testCaseIds, TEST_SUITES_REVISION_EXTENSION, TEST_SUITES_REVISION_SCHEMA);
+    daoCollection
+        .entityExtensionDAO()
+        .incrementRevisions(
+            List.of(testSuiteId),
+            TestSuiteRepository.TESTS_REVISION_EXTENSION,
+            TestSuiteRepository.getTestsRevisionSchema());
+    Map<UUID, Long> testCaseRevisions = getTestSuiteRelationshipRevisions(testCaseIds);
+    if (testCaseRevisions.size() != testCaseIds.size()) {
+      throw new IllegalStateException("Failed to persist every test suite relationship revision");
+    }
+    Long relationshipRevision =
+        TestSuiteRepository.getTestsRelationshipRevisions(List.of(testSuiteId)).get(testSuiteId);
+    if (relationshipRevision == null) {
+      throw new IllegalStateException("Failed to persist the test suite tests revision");
+    }
+
+    return new LogicalSuiteRelationshipChange(
+        testSuiteId, testCaseReferences, testCaseRevisions, relationshipRevision);
+  }
+
+  public static Map<UUID, Long> getTestSuiteRelationshipRevisions(List<UUID> testCaseIds) {
+    if (nullOrEmpty(testCaseIds)) {
+      return Map.of();
+    }
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
+      return Map.of();
+    }
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (CollectionDAO.ExtensionRecordWithId record :
+        collectionDAO
+            .entityExtensionDAO()
+            .getExtensionBatch(
+                testCaseIds.stream().map(UUID::toString).toList(),
+                TEST_SUITES_REVISION_EXTENSION)) {
+      TestSuiteRelationshipRevision revision =
+          JsonUtils.readValue(record.extensionJson(), TestSuiteRelationshipRevision.class);
+      revisions.put(record.id(), revision.revision());
+    }
+    return revisions;
   }
 
   /**
    * Publishes logical-suite relationship changes from committed database state. Relationship rows
    * do not modify the stored {@link TestCase} JSON, so publication invalidates the hydrated read
-   * bundle and reloads while holding deterministic per-test-case locks. Logical-suite mutation
-   * entry points also hold a database session advisory lock from before the relationship transaction
-   * through this publication, so requests on different service nodes publish in commit order. The
-   * resulting change description contains an idempotent add/remove delta for search rather than a
-   * replacement {@code testSuites} array.
+   * bundle and reloads the replacement snapshot after the transaction that advances durable
+   * revisions for every affected test case and the logical suite. Higher revisions therefore reload
+   * after every lower revision's relationship commit. Search applies snapshots whose revision is not
+   * older than the indexed one, while ordinary TestCase and logical TestSuite writes preserve these
+   * revision-owned fields, so publications may run concurrently across service nodes without
+   * allowing a late request to overwrite newer relationship state.
    */
   private List<TestCase> postLogicalSuiteRelationshipUpdate(
-      List<EntityReference> testCaseReferences, UUID testSuiteId) {
-    if (nullOrEmpty(testCaseReferences)) {
+      LogicalSuiteRelationshipChange relationshipChange) {
+    return postLogicalSuiteRelationshipUpdate(
+        relationshipChange.testCaseReferences(), relationshipChange.testCaseRevisions());
+  }
+
+  private List<TestCase> postLogicalSuiteRelationshipUpdate(
+      List<EntityReference> testCaseReferences, Map<UUID, Long> testCaseRevisions) {
+    if (testCaseReferences.isEmpty()) {
       return List.of();
     }
 
-    List<Lock> publicationLocks = new ArrayList<>();
-    for (Lock publicationLock :
-        LOGICAL_SUITE_PUBLICATION_LOCKS.bulkGet(
-            testCaseReferences.stream().map(EntityReference::getId).toList())) {
-      if (!publicationLocks.contains(publicationLock)) {
-        publicationLocks.add(publicationLock);
-      }
+    var cachedReadBundle = CacheBundle.getCachedReadBundle();
+    if (cachedReadBundle != null) {
+      testCaseReferences.forEach(
+          reference -> cachedReadBundle.invalidate(entityType, reference.getId()));
     }
-    publicationLocks.forEach(Lock::lock);
-    try {
-      var cachedReadBundle = CacheBundle.getCachedReadBundle();
-      if (cachedReadBundle != null) {
-        for (EntityReference testCaseReference : testCaseReferences) {
-          cachedReadBundle.invalidate(entityType, testCaseReference.getId());
-        }
-      }
+    List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
+    EntityLifecycleEventDispatcher.getInstance()
+        .onEntitiesUpdated(
+            updatedTestCases, null, null, new EntityUpdateContext(testCaseRevisions));
+    updatedTestCases.forEach(RdfUpdater::updateEntity);
+    return updatedTestCases;
+  }
 
-      List<TestCase> updatedTestCases =
-          getLogicalSuiteUpdatedTestCase(testCaseReferences, testSuiteId);
-      EntityLifecycleEventDispatcher.getInstance().onEntitiesUpdated(updatedTestCases, null, null);
-      updatedTestCases.forEach(RdfUpdater::updateEntity);
-      return updatedTestCases;
-    } finally {
-      for (int index = publicationLocks.size() - 1; index >= 0; index--) {
-        publicationLocks.get(index).unlock();
-      }
+  private record TestSuiteRelationshipRevision(long revision) {}
+
+  private record LogicalSuiteRelationshipChange(
+      UUID testSuiteId,
+      List<EntityReference> testCaseReferences,
+      Map<UUID, Long> testCaseRevisions,
+      long relationshipRevision) {
+    private LogicalSuiteRelationshipChange {
+      testCaseReferences = List.copyOf(testCaseReferences);
+      testCaseRevisions = Map.copyOf(testCaseRevisions);
+    }
+
+    private boolean isEmpty() {
+      return testSuiteId == null;
+    }
+
+    private static LogicalSuiteRelationshipChange empty() {
+      return new LogicalSuiteRelationshipChange(null, List.of(), Map.of(), 0L);
     }
   }
 
@@ -1742,14 +1796,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   @Override
   public void postUpdate(TestCase original, TestCase updated) {
-    Lock publicationLock = LOGICAL_SUITE_PUBLICATION_LOCKS.get(updated.getId());
-    publicationLock.lock();
-    try {
-      hydrateTestSuiteFieldsForSearch(updated);
-      super.postUpdate(original, updated);
-    } finally {
-      publicationLock.unlock();
-    }
+    hydrateTestSuiteFieldsForSearch(updated);
+    super.postUpdate(original, updated);
     if (EntityStatus.IN_REVIEW.equals(original.getEntityStatus())) {
       if (EntityStatus.APPROVED.equals(updated.getEntityStatus())) {
         closeApprovalTask(updated, "Approved the test case");

@@ -1,11 +1,13 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY;
 import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceMessage;
 
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
@@ -377,6 +379,10 @@ public class OpenSearchBulkSink implements BulkSink {
         Map<UUID, DocBuildContext> docBuildContexts =
             (Map<UUID, DocBuildContext>)
                 contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
+        Map<UUID, Long> relationshipRevisions =
+            (Map<UUID, Long>)
+                contextData.getOrDefault(
+                    RELATIONSHIP_REVISIONS_CONTEXT_KEY, Collections.emptyMap());
 
         // Add entities to search index in parallel
         Map<String, JsonNode> finalEmbeddingsById = existingEmbeddingsById;
@@ -394,7 +400,8 @@ public class OpenSearchBulkSink implements BulkSink {
                                     embeddingsEnabled,
                                     finalEmbeddingsById,
                                     docBuildContexts,
-                                    scriptedPartialUpdates),
+                                    scriptedPartialUpdates,
+                                    relationshipRevisions),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -449,11 +456,36 @@ public class OpenSearchBulkSink implements BulkSink {
       Map<String, JsonNode> existingEmbeddingsById,
       Map<UUID, DocBuildContext> docBuildContexts,
       boolean scriptedPartialUpdates) {
+    addEntity(
+        entity,
+        indexName,
+        reindexContext,
+        tracker,
+        embeddingsEnabled,
+        existingEmbeddingsById,
+        docBuildContexts,
+        scriptedPartialUpdates,
+        Collections.emptyMap());
+  }
+
+  private void addEntity(
+      EntityInterface entity,
+      String indexName,
+      ReindexContext reindexContext,
+      StageStatsTracker tracker,
+      boolean embeddingsEnabled,
+      Map<String, JsonNode> existingEmbeddingsById,
+      Map<UUID, DocBuildContext> docBuildContexts,
+      boolean scriptedPartialUpdates,
+      Map<UUID, Long> relationshipRevisions) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
       String docId = entity.getId().toString();
       DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
-      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
+      Map<String, Object> searchIndexDoc =
+          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
+      Long relationshipRevision = relationshipRevisions.get(entity.getId());
+      SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
@@ -487,16 +519,32 @@ public class OpenSearchBulkSink implements BulkSink {
 
       if (scriptedPartialUpdates) {
         SearchRepository.ScriptedPartialUpdate partialUpdate =
-            searchRepository.buildBulkScriptedPartialUpdate(entity);
-        if (partialUpdate != null
-            && addScriptedPartialUpdate(
-                indexName, docId, entityType, partialUpdate, finalJson, tracker)) {
+            searchRepository.buildBulkScriptedPartialUpdate(entity, relationshipRevision);
+        if (relationshipRevision != null && partialUpdate == null) {
+          throw new IllegalStateException(
+              "Missing fenced relationship update for " + entityType + " " + docId);
+        }
+        if (partialUpdate != null) {
+          addScriptedPartialUpdate(indexName, docId, entityType, partialUpdate, finalJson, tracker);
           processSuccess.incrementAndGet();
           if (tracker != null) {
             tracker.recordProcess(StatsResult.SUCCESS);
           }
           return;
         }
+      }
+
+      SearchRepository.ScriptedPartialUpdate relationshipDocumentUpdate =
+          searchRepository.buildRelationshipDocumentUpdate(
+              entity, JsonUtils.readValue(finalJson, new TypeReference<Map<String, Object>>() {}));
+      if (relationshipDocumentUpdate != null) {
+        addScriptedPartialUpdate(
+            indexName, docId, entityType, relationshipDocumentUpdate, finalJson, tracker);
+        processSuccess.incrementAndGet();
+        if (tracker != null) {
+          tracker.recordProcess(StatsResult.SUCCESS);
+        }
+        return;
       }
 
       if (estimatedSize > maxPayloadSizeBytes) {
@@ -561,24 +609,21 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
-  private boolean addScriptedPartialUpdate(
+  private void addScriptedPartialUpdate(
       String indexName,
       String docId,
       String entityType,
       SearchRepository.ScriptedPartialUpdate partialUpdate,
       String upsertDocument,
       StageStatsTracker tracker) {
+    String effectiveUpsertDocument = partialUpdate.scriptedUpsert() ? "{}" : upsertDocument;
     long estimatedSize =
-        (long) upsertDocument.getBytes(StandardCharsets.UTF_8).length
+        (long) effectiveUpsertDocument.getBytes(StandardCharsets.UTF_8).length
             + JsonUtils.pojoToJson(partialUpdate.parameters())
                 .getBytes(StandardCharsets.UTF_8)
                 .length
             + partialUpdate.script().getBytes(StandardCharsets.UTF_8).length
             + BULK_OPERATION_METADATA_OVERHEAD;
-    if (estimatedSize > maxPayloadSizeBytes) {
-      return false;
-    }
-
     Map<String, JsonData> params = new HashMap<>();
     partialUpdate
         .parameters()
@@ -597,7 +642,8 @@ public class OpenSearchBulkSink implements BulkSink {
                             .index(indexName)
                             .id(docId)
                             .retryOnConflict(3)
-                            .upsert(OsUtils.toJsonData(upsertDocument))
+                            .scriptedUpsert(partialUpdate.scriptedUpsert())
+                            .upsert(OsUtils.toJsonData(effectiveUpsertDocument))
                             .script(
                                 Script.of(
                                     script ->
@@ -614,7 +660,6 @@ public class OpenSearchBulkSink implements BulkSink {
       tracker.incrementPendingSink();
     }
     bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
-    return true;
   }
 
   private void recordStaleReferenceWarning(

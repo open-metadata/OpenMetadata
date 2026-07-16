@@ -36,6 +36,7 @@ import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -152,11 +153,13 @@ class ElasticSearchBulkSinkBehaviorTest {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
+    when(entity.getEntityReference())
+        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TEST_CASE));
     SearchRepository.ScriptedPartialUpdate partialUpdate =
         new SearchRepository.ScriptedPartialUpdate(
             "ctx._source.testSuites = params.testSuites;",
             Map.of("testSuites", List.of(Map.of("id", "suite-id"))));
-    when(searchRepository.buildBulkScriptedPartialUpdate(entity)).thenReturn(partialUpdate);
+    when(searchRepository.buildBulkScriptedPartialUpdate(entity, 17L)).thenReturn(partialUpdate);
 
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
@@ -165,9 +168,9 @@ class ElasticSearchBulkSinkBehaviorTest {
       ElasticSearchBulkSink.CustomBulkProcessor processor =
           processorConstruction.constructed().getFirst();
       entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
       entityMock
-          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
+          .when(() -> Entity.buildSearchIndex(Entity.TEST_CASE, entity))
           .thenReturn(
               new StubSearchIndex(Map.of("name", "current", "description", "current description")));
 
@@ -175,20 +178,26 @@ class ElasticSearchBulkSinkBehaviorTest {
           sink,
           "addEntity",
           new Class<?>[] {
-            EntityInterface.class, String.class, StageStatsTracker.class, Map.class, boolean.class
+            EntityInterface.class,
+            String.class,
+            StageStatsTracker.class,
+            Map.class,
+            boolean.class,
+            Map.class
           },
           entity,
           "table_index",
           null,
           Collections.emptyMap(),
-          true);
+          true,
+          Map.of(entityId, 17L));
 
       ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
       verify(processor)
           .add(
               operationCaptor.capture(),
               eq(entityId.toString()),
-              eq(ENTITY_TYPE),
+              eq(Entity.TEST_CASE),
               isNull(),
               anyLong());
       BulkOperation operation = operationCaptor.getValue();
@@ -199,8 +208,69 @@ class ElasticSearchBulkSinkBehaviorTest {
           EsUtils.jsonDataToMap((JsonData) operation.update().action().upsert())
               .get("description"));
       assertEquals(
+          17L,
+          ((Number)
+                  EsUtils.jsonDataToMap((JsonData) operation.update().action().upsert())
+                      .get("testSuitesRevision"))
+              .longValue());
+      assertEquals(
           "ctx._source.testSuites = params.testSuites;",
           operation.update().action().script().source().scriptString());
+    }
+  }
+
+  @Test
+  void fullTestCaseDocumentUsesRelationshipPreservingUpdate() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+    SearchRepository.ScriptedPartialUpdate documentUpdate =
+        new SearchRepository.ScriptedPartialUpdate(
+            "preserve-test-suites", Map.of("name", "current"), true);
+    when(searchRepository.buildRelationshipDocumentUpdate(eq(entity), any()))
+        .thenReturn(documentUpdate);
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+      ElasticSearchBulkSink.CustomBulkProcessor processor =
+          processorConstruction.constructed().getFirst();
+      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
+      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
+      entityMock
+          .when(() -> Entity.buildSearchIndex(Entity.TEST_CASE, entity))
+          .thenReturn(new StubSearchIndex(Map.of("name", "current")));
+
+      invokePrivate(
+          sink,
+          "addEntity",
+          new Class<?>[] {
+            EntityInterface.class, String.class, StageStatsTracker.class, Map.class, boolean.class
+          },
+          entity,
+          "test_case_index",
+          null,
+          Collections.emptyMap(),
+          false);
+
+      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
+      verify(processor)
+          .add(
+              operationCaptor.capture(),
+              eq(entityId.toString()),
+              eq(Entity.TEST_CASE),
+              isNull(),
+              anyLong());
+      assertTrue(operationCaptor.getValue().isUpdate());
+      assertTrue(
+          Boolean.TRUE.equals(operationCaptor.getValue().update().action().scriptedUpsert()));
+      assertTrue(
+          EsUtils.jsonDataToMap((JsonData) operationCaptor.getValue().update().action().upsert())
+              .isEmpty());
+      assertEquals(
+          "preserve-test-suites",
+          operationCaptor.getValue().update().action().script().source().scriptString());
     }
   }
 

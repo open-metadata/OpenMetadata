@@ -21,6 +21,7 @@ import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.spy;
 import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -54,6 +55,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
+import org.openmetadata.service.jdbi3.TestSuiteRepository;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
@@ -374,49 +377,14 @@ class SearchRepositoryTest {
   }
 
   @Test
-  void buildBulkScriptedPartialUpdateOnlyAcceptsCompleteTestSuiteRelationshipChanges() {
+  void buildBulkScriptedPartialUpdateFencesCompleteTestSuiteRelationshipSnapshots() {
     MockEntityWithType testCase = new MockEntityWithType(Entity.TEST_CASE, "testCase");
     TestSuite addedTestSuite =
         new TestSuite()
             .withId(UUID.randomUUID())
             .withName("addedLogicalSuite")
             .withFullyQualifiedName("addedLogicalSuite");
-    TestSuite deletedTestSuite =
-        new TestSuite()
-            .withId(UUID.randomUUID())
-            .withName("deletedLogicalSuite")
-            .withFullyQualifiedName("deletedLogicalSuite");
     testCase.setTestSuites(List.of(addedTestSuite));
-    testCase.setChangeDescription(
-        new ChangeDescription()
-            .withPreviousVersion(testCase.getVersion())
-            .withFieldsAdded(
-                List.of(
-                    new FieldChange()
-                        .withName(Entity.FIELD_TEST_SUITES)
-                        .withNewValue(List.of(addedTestSuite))))
-            .withFieldsDeleted(
-                List.of(
-                    new FieldChange()
-                        .withName(Entity.FIELD_TEST_SUITES)
-                        .withOldValue(List.of(deletedTestSuite)))));
-    doCallRealMethod().when(searchRepository).buildBulkScriptedPartialUpdate(any());
-    doCallRealMethod().when(searchRepository).getScriptWithParams(any(), any(), any());
-
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        searchRepository.buildBulkScriptedPartialUpdate(testCase);
-
-    assertNotNull(partialUpdate);
-    assertFalse(partialUpdate.script().contains("ctx._source.testSuites = params.testSuites"));
-    assertTrue(partialUpdate.script().contains("testSuiteIdsDeleted.contains(suite.id)"));
-    assertTrue(partialUpdate.script().contains("ctx._source.testSuites.add(addedSuite)"));
-    List<?> addedValues = (List<?>) partialUpdate.parameters().get("testSuitesAdded");
-    List<?> deletedIds = (List<?>) partialUpdate.parameters().get("testSuiteIdsDeleted");
-    assertEquals(
-        addedTestSuite.getId().toString(),
-        ((Map<?, ?>) addedValues.getFirst()).get("id").toString());
-    assertEquals(List.of(deletedTestSuite.getId().toString()), deletedIds);
-
     testCase.setChangeDescription(
         new ChangeDescription()
             .withPreviousVersion(testCase.getVersion())
@@ -424,8 +392,121 @@ class SearchRepositoryTest {
                 List.of(
                     new FieldChange()
                         .withName(Entity.FIELD_TEST_SUITES)
+                        .withNewValue(List.of(addedTestSuite)))));
+    doCallRealMethod().when(searchRepository).buildBulkScriptedPartialUpdate(any(), any());
+
+    SearchRepository.ScriptedPartialUpdate partialUpdate =
+        searchRepository.buildBulkScriptedPartialUpdate(testCase, 42L);
+
+    assertNotNull(partialUpdate);
+    assertTrue(
+        partialUpdate
+            .script()
+            .contains("params.testSuitesRevision >= ctx._source.testSuitesRevision"));
+    assertTrue(partialUpdate.script().contains("ctx._source.testSuites = params.testSuites"));
+    assertEquals(42L, partialUpdate.parameters().get("testSuitesRevision"));
+    List<?> replacement = (List<?>) partialUpdate.parameters().get(Entity.FIELD_TEST_SUITES);
+    assertEquals(
+        addedTestSuite.getId().toString(),
+        ((Map<?, ?>) replacement.getFirst()).get("id").toString());
+    assertNull(searchRepository.buildBulkScriptedPartialUpdate(testCase, null));
+
+    testCase.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(testCase.getVersion())
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_TEST_SUITES)
                         .withNewValue(testCase.getTestSuites()))));
-    assertNull(searchRepository.buildBulkScriptedPartialUpdate(testCase));
+    assertNull(searchRepository.buildBulkScriptedPartialUpdate(testCase, 43L));
+
+    testCase.setChangeDescription(null);
+    assertNotNull(searchRepository.buildBulkScriptedPartialUpdate(testCase, 44L));
+  }
+
+  @Test
+  void buildRelationshipDocumentUpdatePreservesTestCaseRevisionOwnedFields() {
+    doCallRealMethod().when(searchRepository).buildRelationshipDocumentUpdate(any(), any());
+    MockEntityWithType testCase = new MockEntityWithType(Entity.TEST_CASE, "testCase");
+    Map<String, Object> document =
+        Map.of(
+            "name",
+            "testCase",
+            Entity.FIELD_TEST_SUITES,
+            List.of(Map.of("id", UUID.randomUUID().toString())),
+            TestCaseRepository.TEST_SUITES_REVISION_FIELD,
+            12L);
+
+    SearchRepository.ScriptedPartialUpdate update =
+        searchRepository.buildRelationshipDocumentUpdate(testCase, document);
+
+    assertNotNull(update);
+    assertEquals(document, update.parameters());
+    assertTrue(update.scriptedUpsert());
+    assertTrue(update.script().contains("preserveRelationship"));
+    assertTrue(update.script().contains("k != 'testSuites'"));
+    assertTrue(update.script().contains("k != 'testSuitesRevision'"));
+    assertNull(
+        searchRepository.buildRelationshipDocumentUpdate(
+            new MockEntityWithType(Entity.TABLE, "table"), document));
+  }
+
+  @Test
+  void buildLogicalTestSuiteUpdatesFenceAndPreserveTests() {
+    doCallRealMethod().when(searchRepository).buildBulkScriptedPartialUpdate(any(), any());
+    doCallRealMethod().when(searchRepository).buildRelationshipDocumentUpdate(any(), any());
+    EntityReference testCaseReference =
+        new EntityReference().withId(UUID.randomUUID()).withType(Entity.TEST_CASE).withName("test");
+    TestSuite logicalSuite =
+        spy(
+            new TestSuite()
+                .withId(UUID.randomUUID())
+                .withName("logicalSuite")
+                .withFullyQualifiedName("logicalSuite")
+                .withBasic(false)
+                .withVersion(1.0)
+                .withTests(List.of(testCaseReference)));
+    doReturn(
+            new EntityReference()
+                .withId(logicalSuite.getId())
+                .withType(Entity.TEST_SUITE)
+                .withName(logicalSuite.getName()))
+        .when(logicalSuite)
+        .getEntityReference();
+    logicalSuite.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(logicalSuite.getVersion())
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange().withName("tests").withNewValue(logicalSuite.getTests()))));
+
+    SearchRepository.ScriptedPartialUpdate fenced =
+        searchRepository.buildBulkScriptedPartialUpdate(logicalSuite, 19L);
+
+    assertNotNull(fenced);
+    assertTrue(fenced.script().contains("params.testsRevision >= ctx._source.testsRevision"));
+    assertTrue(fenced.script().contains("ctx._source.tests = params.tests"));
+    assertEquals(19L, fenced.parameters().get(TestSuiteRepository.TESTS_REVISION_FIELD));
+
+    Map<String, Object> logicalSuiteDocument =
+        Map.of(
+            "name",
+            "logicalSuite",
+            "tests",
+            List.of(Map.of("id", testCaseReference.getId().toString())),
+            TestSuiteRepository.TESTS_REVISION_FIELD,
+            19L);
+    SearchRepository.ScriptedPartialUpdate preserving =
+        searchRepository.buildRelationshipDocumentUpdate(logicalSuite, logicalSuiteDocument);
+    assertNotNull(preserving);
+    assertTrue(preserving.script().contains("k != 'tests'"));
+    assertTrue(preserving.script().contains("k != 'testsRevision'"));
+
+    logicalSuite.setBasic(true);
+    assertNull(
+        searchRepository.buildRelationshipDocumentUpdate(logicalSuite, logicalSuiteDocument));
+    assertNull(searchRepository.buildBulkScriptedPartialUpdate(logicalSuite, 20L));
   }
 
   @Test
@@ -513,6 +594,23 @@ class SearchRepositoryTest {
     realSearchRepository.updateEntitiesIndex(List.of(entity));
 
     verify(realSearchRepository).updateEntityIndex(entity);
+  }
+
+  @Test
+  void testRelationshipUpdateRetainsRevisionInPreWriteFallback() {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any(), any());
+    when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
+        .thenThrow(new IllegalStateException("sink creation failed"));
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
+    doNothing().when(realSearchRepository).updateEntityIndex(any(), anyLong());
+
+    EntityInterface entity = new MockEntityWithType(Entity.TEST_CASE, "testCase1");
+    realSearchRepository.updateEntitiesIndex(List.of(entity), Map.of(entity.getId(), 17L));
+
+    verify(realSearchRepository).updateEntityIndex(entity, 17L);
+    verify(realSearchRepository, never()).updateEntityIndex(entity);
   }
 
   @Test

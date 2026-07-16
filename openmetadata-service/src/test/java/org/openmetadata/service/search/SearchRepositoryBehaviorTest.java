@@ -70,6 +70,7 @@ import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLangua
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.DataQualityReport;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeDescription;
@@ -672,6 +673,77 @@ class SearchRepositoryBehaviorTest {
     verify(spyRepository)
         .propagateToRelatedEntities(
             eq(Entity.TAG), eq(changeDescription), eq(TABLE_MAPPING), eq(tag));
+  }
+
+  @Test
+  void updateEntityIndexFencesLogicalSuiteFallbackWithItsRevision() {
+    UUID testCaseId = UUID.randomUUID();
+    TestCase testCase = mock(TestCase.class);
+    EntityReference entityReference =
+        new EntityReference().withId(testCaseId).withType(Entity.TEST_CASE);
+    when(testCase.getEntityReference()).thenReturn(entityReference);
+    when(testCase.getId()).thenReturn(testCaseId);
+    when(testCase.getFullyQualifiedName()).thenReturn("service.testCase");
+    when(searchIndexFactory.buildIndex(Entity.TEST_CASE, testCase))
+        .thenReturn(
+            new MapBackedSearchIndex(
+                testCase,
+                Map.of(
+                    "name",
+                    "testCase",
+                    Entity.FIELD_TEST_SUITES,
+                    List.of(Map.of("id", UUID.randomUUID().toString())))));
+
+    repository.updateEntityIndex(testCase, 17L);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> document = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
+    verify(searchClient)
+        .updateEntity(
+            eq("cluster_test_case_search_index"),
+            eq(testCaseId.toString()),
+            document.capture(),
+            script.capture());
+    assertEquals(17L, document.getValue().get("testSuitesRevision"));
+    assertEquals("testCase", document.getValue().get("name"));
+    assertTrue(script.getValue().contains("params.testSuitesRevision >="));
+  }
+
+  @Test
+  void updateEntityIndexFencesLogicalTestSuiteFallbackWithItsRevision() {
+    UUID testSuiteId = UUID.randomUUID();
+    TestSuite testSuite = mock(TestSuite.class);
+    EntityReference entityReference =
+        new EntityReference().withId(testSuiteId).withType(Entity.TEST_SUITE);
+    when(testSuite.getEntityReference()).thenReturn(entityReference);
+    when(testSuite.getId()).thenReturn(testSuiteId);
+    when(testSuite.getFullyQualifiedName()).thenReturn("logicalSuite");
+    when(testSuite.getBasic()).thenReturn(false);
+    when(searchIndexFactory.buildIndex(Entity.TEST_SUITE, testSuite))
+        .thenReturn(
+            new MapBackedSearchIndex(
+                testSuite,
+                Map.of(
+                    "name",
+                    "logicalSuite",
+                    "tests",
+                    List.of(Map.of("id", UUID.randomUUID().toString())))));
+
+    repository.updateEntityIndex(testSuite, 21L);
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<Map<String, Object>> document = ArgumentCaptor.forClass(Map.class);
+    ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
+    verify(searchClient)
+        .updateEntity(
+            eq("cluster_test_suite_search_index"),
+            eq(testSuiteId.toString()),
+            document.capture(),
+            script.capture());
+    assertEquals(21L, document.getValue().get("testsRevision"));
+    assertEquals("logicalSuite", document.getValue().get("name"));
+    assertTrue(script.getValue().contains("params.testsRevision >="));
   }
 
   @Test
