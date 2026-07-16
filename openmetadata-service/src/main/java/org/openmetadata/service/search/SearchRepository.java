@@ -348,6 +348,24 @@ public class SearchRepository {
 
   private static final Set<String> BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS = Set.of(TEST_SUITES);
 
+  private static final String TEST_SUITES_ADDED_PARAM = "testSuitesAdded";
+  private static final String TEST_SUITE_IDS_DELETED_PARAM = "testSuiteIdsDeleted";
+  private static final String TEST_SUITES_DELTA_SCRIPT =
+      """
+      if (params.testSuiteIdsDeleted != null && ctx._source.testSuites != null) {
+        ctx._source.testSuites.removeIf(suite -> params.testSuiteIdsDeleted.contains(suite.id));
+      }
+      if (params.testSuitesAdded != null) {
+        if (ctx._source.testSuites == null) {
+          ctx._source.testSuites = [];
+        }
+        for (def addedSuite : params.testSuitesAdded) {
+          ctx._source.testSuites.removeIf(suite -> suite.id == addedSuite.id);
+          ctx._source.testSuites.add(addedSuite);
+        }
+      }
+      """;
+
   @Getter private final ElasticSearchConfiguration searchConfiguration;
   @Getter private final int maxDBConnections;
 
@@ -1753,6 +1771,7 @@ public class SearchRepository {
     int batchSize = 100;
     int maxConcurrentRequests = 5;
     long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
+    List<EntityInterface> bulkUpdatedEntities = new ArrayList<>();
 
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
@@ -1770,12 +1789,14 @@ public class SearchRepository {
       }
 
       BulkSink bulkSink = null;
+      boolean bulkWriteAttempted = false;
       try {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
         contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
         ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
+        bulkWriteAttempted = true;
         bulkSink.write(typeEntities, contextData);
         boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
         StepStats sinkStats = bulkSink.getStats();
@@ -1785,14 +1806,14 @@ public class SearchRepository {
           throw new IOException(
               "Bulk entity update did not complete successfully for type " + entityType);
         }
+        bulkUpdatedEntities.addAll(typeEntities);
       } catch (Exception e) {
         LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
-        boolean bulkSinkQuiescent = true;
         if (bulkSink != null) {
-          bulkSinkQuiescent = closeBulkSinkAndCheckQuiescent(bulkSink);
+          closeBulkSink(bulkSink);
           bulkSink = null;
         }
-        if (bulkSinkQuiescent) {
+        if (!bulkWriteAttempted) {
           for (EntityInterface entity : typeEntities) {
             try {
               updateEntityIndex(entity);
@@ -1805,28 +1826,26 @@ public class SearchRepository {
           for (EntityInterface entity : typeEntities) {
             SearchIndexRetryQueue.enqueue(
                 entity,
-                "updateEntitiesBulk: bulk sink still active; skipped overlapping fallback",
+                "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback",
                 e);
           }
         }
       } finally {
         if (bulkSink != null) {
-          closeBulkSinkAndCheckQuiescent(bulkSink);
+          closeBulkSink(bulkSink);
         }
       }
     }
 
     // Run fan-out propagation once after all bulk doc updates are flushed.
-    propagateEntitiesAfterBulkFlush(dedupedEntities.values());
+    propagateEntitiesAfterBulkFlush(bulkUpdatedEntities);
   }
 
-  private boolean closeBulkSinkAndCheckQuiescent(BulkSink bulkSink) {
+  private void closeBulkSink(BulkSink bulkSink) {
     try {
       bulkSink.close();
-      return bulkSink.getActiveBulkRequestCount() == 0;
     } catch (Exception e) {
       LOG.warn("Error closing bulk sink", e);
-      return false;
     }
   }
 
@@ -3029,8 +3048,12 @@ public class SearchRepository {
       ChangeDescription changeDescription) {
     List<FieldChange> fieldsAdded = changeDescription.getFieldsAdded();
     StringBuilder scriptTxt = new StringBuilder();
-    fieldAddParams.put("updatedAt", entity.getUpdatedAt());
-    scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
+    List<Map<String, Object>> testSuitesAdded = new ArrayList<>();
+    List<String> testSuiteIdsDeleted = new ArrayList<>();
+    if (!BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS.equals(getChangedFieldNames(changeDescription))) {
+      fieldAddParams.put("updatedAt", entity.getUpdatedAt());
+      scriptTxt.append("ctx._source.updatedAt=params.updatedAt;");
+    }
     for (FieldChange fieldChange : fieldsAdded) {
       if (fieldChange.getName().equalsIgnoreCase(FIELD_FOLLOWERS)) {
         @SuppressWarnings("unchecked")
@@ -3055,6 +3078,9 @@ public class SearchRepository {
         fieldAddParams.put(FIELD_DESCRIPTION, entity.getDescription());
         scriptTxt.append("ctx._source.description = params.description;");
       }
+      if (fieldChange.getName().equalsIgnoreCase(TEST_SUITES)) {
+        testSuitesAdded.addAll(getTestSuiteValues(fieldChange.getNewValue()));
+      }
     }
 
     for (FieldChange fieldChange : changeDescription.getFieldsDeleted()) {
@@ -3069,6 +3095,13 @@ public class SearchRepository {
       }
       if (fieldChange.getName().equalsIgnoreCase(FIELD_DESCRIPTION)) {
         scriptTxt.append("ctx._source.description = null;");
+      }
+      if (fieldChange.getName().equalsIgnoreCase(TEST_SUITES)) {
+        getTestSuiteValues(fieldChange.getOldValue()).stream()
+            .map(testSuite -> testSuite.get(ID))
+            .filter(Objects::nonNull)
+            .map(Object::toString)
+            .forEach(testSuiteIdsDeleted::add);
       }
     }
 
@@ -3102,11 +3135,6 @@ public class SearchRepository {
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
       }
-      if (fieldChange.getName().equalsIgnoreCase(TEST_SUITES)) {
-        scriptTxt.append("ctx._source.testSuites = params.testSuites;");
-        Map<String, Object> doc = JsonUtils.getMap(entity);
-        fieldAddParams.put(TEST_SUITES, doc.get(TEST_SUITES));
-      }
       if (fieldChange.getName().equalsIgnoreCase("extension")) {
         String entityType = entity.getEntityReference().getType();
         List<Map<String, Object>> customPropertiesTyped =
@@ -3117,6 +3145,11 @@ public class SearchRepository {
         scriptTxt.append("ctx._source.extension = params.extension;");
       }
     }
+    if (!testSuitesAdded.isEmpty() || !testSuiteIdsDeleted.isEmpty()) {
+      fieldAddParams.put(TEST_SUITES_ADDED_PARAM, testSuitesAdded);
+      fieldAddParams.put(TEST_SUITE_IDS_DELETED_PARAM, testSuiteIdsDeleted);
+      scriptTxt.append(TEST_SUITES_DELTA_SCRIPT);
+    }
     return scriptTxt.toString();
   }
 
@@ -3125,7 +3158,8 @@ public class SearchRepository {
       return null;
     }
     ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
-    if (!BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS.equals(getChangedFieldNames(changeDescription))) {
+    if (!BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS.equals(getChangedFieldNames(changeDescription))
+        || hasTestSuiteReplacement(changeDescription)) {
       return null;
     }
     boolean isNonVersionedUpdate =
@@ -3135,21 +3169,18 @@ public class SearchRepository {
     if (!isNonVersionedUpdate) {
       return null;
     }
-    Object testSuites =
-        Stream.of(
-                listOrEmpty(changeDescription.getFieldsAdded()),
-                listOrEmpty(changeDescription.getFieldsUpdated()),
-                listOrEmpty(changeDescription.getFieldsDeleted()))
-            .flatMap(List::stream)
-            .filter(fieldChange -> TEST_SUITES.equals(fieldChange.getName()))
-            .map(FieldChange::getNewValue)
-            .filter(Objects::nonNull)
-            .findFirst()
-            .orElse(null);
-    return testSuites == null
-        ? null
-        : new ScriptedPartialUpdate(
-            "ctx._source.testSuites = params.testSuites;", Map.of(TEST_SUITES, testSuites));
+    return buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
+  }
+
+  private List<Map<String, Object>> getTestSuiteValues(Object value) {
+    if (value == null) {
+      return List.of();
+    }
+    List<?> values = value instanceof List<?> list ? list : List.of(value);
+    return values.stream()
+        .map(JsonUtils::getMap)
+        .filter(testSuite -> testSuite.get(ID) != null)
+        .toList();
   }
 
   private ScriptedPartialUpdate buildScriptedPartialUpdate(
@@ -3172,7 +3203,14 @@ public class SearchRepository {
   private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {
     Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
     return !changedFieldNames.isEmpty()
-        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains);
+        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
+        && !hasTestSuiteReplacement(changeDescription);
+  }
+
+  private boolean hasTestSuiteReplacement(ChangeDescription changeDescription) {
+    return changeDescription != null
+        && listOrEmpty(changeDescription.getFieldsUpdated()).stream()
+            .anyMatch(fieldChange -> TEST_SUITES.equals(fieldChange.getName()));
   }
 
   private Set<String> getChangedFieldNames(ChangeDescription changeDescription) {

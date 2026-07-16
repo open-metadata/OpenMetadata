@@ -17,7 +17,6 @@ import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
-import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -37,7 +36,6 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
-import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -45,6 +43,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -377,12 +376,47 @@ class SearchRepositoryTest {
   @Test
   void buildBulkScriptedPartialUpdateOnlyAcceptsCompleteTestSuiteRelationshipChanges() {
     MockEntityWithType testCase = new MockEntityWithType(Entity.TEST_CASE, "testCase");
-    TestSuite testSuite =
+    TestSuite addedTestSuite =
         new TestSuite()
             .withId(UUID.randomUUID())
-            .withName("logicalSuite")
-            .withFullyQualifiedName("logicalSuite");
-    testCase.setTestSuites(List.of(testSuite));
+            .withName("addedLogicalSuite")
+            .withFullyQualifiedName("addedLogicalSuite");
+    TestSuite deletedTestSuite =
+        new TestSuite()
+            .withId(UUID.randomUUID())
+            .withName("deletedLogicalSuite")
+            .withFullyQualifiedName("deletedLogicalSuite");
+    testCase.setTestSuites(List.of(addedTestSuite));
+    testCase.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(testCase.getVersion())
+            .withFieldsAdded(
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_TEST_SUITES)
+                        .withNewValue(List.of(addedTestSuite))))
+            .withFieldsDeleted(
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_TEST_SUITES)
+                        .withOldValue(List.of(deletedTestSuite)))));
+    doCallRealMethod().when(searchRepository).buildBulkScriptedPartialUpdate(any());
+    doCallRealMethod().when(searchRepository).getScriptWithParams(any(), any(), any());
+
+    SearchRepository.ScriptedPartialUpdate partialUpdate =
+        searchRepository.buildBulkScriptedPartialUpdate(testCase);
+
+    assertNotNull(partialUpdate);
+    assertFalse(partialUpdate.script().contains("ctx._source.testSuites = params.testSuites"));
+    assertTrue(partialUpdate.script().contains("testSuiteIdsDeleted.contains(suite.id)"));
+    assertTrue(partialUpdate.script().contains("ctx._source.testSuites.add(addedSuite)"));
+    List<?> addedValues = (List<?>) partialUpdate.parameters().get("testSuitesAdded");
+    List<?> deletedIds = (List<?>) partialUpdate.parameters().get("testSuiteIdsDeleted");
+    assertEquals(
+        addedTestSuite.getId().toString(),
+        ((Map<?, ?>) addedValues.getFirst()).get("id").toString());
+    assertEquals(List.of(deletedTestSuite.getId().toString()), deletedIds);
+
     testCase.setChangeDescription(
         new ChangeDescription()
             .withPreviousVersion(testCase.getVersion())
@@ -391,19 +425,6 @@ class SearchRepositoryTest {
                     new FieldChange()
                         .withName(Entity.FIELD_TEST_SUITES)
                         .withNewValue(testCase.getTestSuites()))));
-    doCallRealMethod().when(searchRepository).buildBulkScriptedPartialUpdate(any());
-
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        searchRepository.buildBulkScriptedPartialUpdate(testCase);
-
-    assertNotNull(partialUpdate);
-    assertTrue(partialUpdate.script().contains("ctx._source.testSuites = params.testSuites;"));
-    assertNotNull(partialUpdate.parameters().get(Entity.FIELD_TEST_SUITES));
-
-    testCase.setChangeDescription(
-        new ChangeDescription()
-            .withPreviousVersion(0.9)
-            .withFieldsUpdated(List.of(new FieldChange().withName(Entity.FIELD_TEST_SUITES))));
     assertNull(searchRepository.buildBulkScriptedPartialUpdate(testCase));
   }
 
@@ -448,7 +469,7 @@ class SearchRepositoryTest {
   }
 
   @Test
-  void testUpdateEntitiesBulkFallsBackToIndividualUpdatesWhenBulkWriteFails() throws Exception {
+  void testUpdateEntitiesBulkQueuesRetryWhenBulkWriteOutcomeIsUnknown() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesBulk(any());
@@ -457,21 +478,45 @@ class SearchRepositoryTest {
         .thenReturn(mockBulkSink);
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
     when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
-    doThrow(new IOException("bulk failure")).when(mockBulkSink).write(any(), any());
-    doNothing().when(realSearchRepository).updateEntityIndex(any());
+    IOException bulkFailure = new IOException("bulk failure");
+    doThrow(bulkFailure).when(mockBulkSink).write(any(), any());
     doNothing().when(mockBulkSink).close();
 
     List<EntityInterface> entities = List.of(new MockEntityWithType("table", "table1"));
 
-    realSearchRepository.updateEntitiesBulk(entities);
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      realSearchRepository.updateEntitiesBulk(entities);
 
-    verify(realSearchRepository).updateEntityIndex(entities.getFirst());
-    verify(mockBulkSink, never()).flushAndAwait(anyInt());
-    verify(mockBulkSink).close();
+      verify(realSearchRepository, never()).updateEntityIndex(any());
+      verify(mockBulkSink, never()).flushAndAwait(anyInt());
+      verify(mockBulkSink).close();
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  entities.getFirst(),
+                  "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback",
+                  bulkFailure));
+    }
   }
 
   @Test
-  void testUpdateEntitiesBulkClosesTimedOutSinkBeforeIndividualFallback() throws Exception {
+  void testUpdateEntitiesBulkFallsBackBeforeAnyBulkWriteIsAttempted() {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
+    when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
+        .thenThrow(new IllegalStateException("sink creation failed"));
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
+    doNothing().when(realSearchRepository).updateEntityIndex(any());
+
+    EntityInterface entity = new MockEntityWithType("table", "table1");
+    realSearchRepository.updateEntitiesIndex(List.of(entity));
+
+    verify(realSearchRepository).updateEntityIndex(entity);
+  }
+
+  @Test
+  void testUpdateEntitiesBulkDoesNotReplayWritesThatCompleteDuringClose() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
@@ -481,18 +526,16 @@ class SearchRepositoryTest {
     when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
     when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(false);
     when(mockBulkSink.getActiveBulkRequestCount()).thenReturn(0);
-    doNothing().when(realSearchRepository).updateEntityIndex(any());
 
     EntityInterface entity = new MockEntityWithType("table", "table1");
     realSearchRepository.updateEntitiesIndex(List.of(entity));
 
-    InOrder inOrder = inOrder(mockBulkSink, realSearchRepository);
-    inOrder.verify(mockBulkSink).close();
-    inOrder.verify(realSearchRepository).updateEntityIndex(entity);
+    verify(mockBulkSink).close();
+    verify(realSearchRepository, never()).updateEntityIndex(any());
   }
 
   @Test
-  void testUpdateEntitiesBulkDoesNotOverlapFallbackWithActiveTimedOutSink() throws Exception {
+  void testUpdateEntitiesBulkDoesNotReplayPartiallyFailedBulk() throws Exception {
     SearchRepository realSearchRepository = mock(SearchRepository.class);
     BulkSink mockBulkSink = mock(BulkSink.class);
     doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
@@ -500,8 +543,8 @@ class SearchRepositoryTest {
         .thenReturn(mockBulkSink);
     when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
     when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
-    when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(false);
-    when(mockBulkSink.getActiveBulkRequestCount()).thenReturn(1);
+    when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(true);
+    when(mockBulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(1));
 
     EntityInterface entity = new MockEntityWithType("table", "table1");
     realSearchRepository.updateEntitiesIndex(List.of(entity));
