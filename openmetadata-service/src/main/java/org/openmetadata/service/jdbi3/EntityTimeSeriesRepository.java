@@ -393,17 +393,19 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
   }
 
   public void deleteById(UUID id, boolean hardDelete) {
-    if (!hardDelete) {
-      // time series entities by definition cannot be soft deleted (i.e. they do not have a state,
-      // and they should be immutable) thought they can be contained inside entities that can be
-      // soft deleted
-      return;
+    // time series entities by definition cannot be soft deleted
+    if (hardDelete) {
+      T entityRecord = getById(id);
+      if (entityRecord != null) {
+        deleteRelationships(id);
+        timeSeriesDao.deleteById(id);
+        postDelete(entityRecord, hardDelete);
+      }
     }
-    T entityRecord = getById(id);
-    if (entityRecord == null) {
-      return;
-    }
-    timeSeriesDao.deleteById(id);
+  }
+
+  protected void deleteRelationships(UUID id) {
+    daoCollection.relationshipDAO().deleteAll(id, entityType);
   }
 
   private Map<String, List<?>> getEntityList(List<String> jsons, boolean skipErrors) {
