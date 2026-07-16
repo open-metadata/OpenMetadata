@@ -13,9 +13,9 @@
 import { render, screen } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
 import { act } from 'react-test-renderer';
-import { MOCK_KNOWLEDGE_PAGES } from './KnowledgePages.mock';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgePages from './KnowledgePages';
+import { MOCK_KNOWLEDGE_PAGES } from './KnowledgePages.mock';
 
 const mockProps = {
   entityId: '6a7b8c9d0e1f2g3h4i5j6k7l8m9n0o1p2q3r4s5t6u7v8w9x0y1z2',
