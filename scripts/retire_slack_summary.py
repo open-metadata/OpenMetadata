@@ -92,7 +92,9 @@ def collect_libs(data):
                     continue
                 entry["seen"].add(vid)
                 entry["vulns"].append(v)
-    return libs
+    # Drop libraries whose results carried no vulnerabilities — otherwise a
+    # per-library count reports a phantom low-risk finding that isn't real.
+    return {key: info for key, info in libs.items() if info["vulns"]}
 
 
 def lib_top_severity(info):
