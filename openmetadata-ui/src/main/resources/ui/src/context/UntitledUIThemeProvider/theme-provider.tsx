@@ -58,7 +58,7 @@ interface ThemeProviderProps {
  * Utility classes like `tw:bg-brand-solid` reference these `--tw-*` vars at runtime,
  * so we override them directly to update the brand color system-wide.
  *
- * Mapping (matches what generateAllMuiPalettes uses for consistency):
+ * Mapping:
  *   primaryColor  → brand-600 (solid bg, fg-brand-primary, borders)
  *   hoverColor    → brand-100 (light bg tints)
  *   selectedColor → brand-700 (solid hover, selected state)
