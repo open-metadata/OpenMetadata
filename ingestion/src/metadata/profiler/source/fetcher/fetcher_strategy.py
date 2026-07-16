@@ -483,8 +483,9 @@ class MessagingFetcherStrategy(FetcherStrategy):
         metadata: OpenMetadata,
         global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
+        progress: ManualProgress,
     ) -> None:
-        super().__init__(config, metadata, global_profiler_config, status)
+        super().__init__(config, metadata, global_profiler_config, status, progress)
 
     def _get_topic_entities(self) -> Iterable[Topic]:
         """Get topic entities for the service, applying topicFilterPattern and skipping schema-less topics."""

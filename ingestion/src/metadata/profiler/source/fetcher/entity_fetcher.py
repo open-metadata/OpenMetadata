@@ -68,7 +68,9 @@ class EntityFetcher:
             )
 
         if service_type is MessagingService:
-            return MessagingFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
+            return MessagingFetcherStrategy(
+                self.config, self.metadata, self.global_profiler_config, self.status, self.progress
+            )
 
         raise NotImplementedError(f"Fetcher strategy not implemented for service type {service_type}")
 
