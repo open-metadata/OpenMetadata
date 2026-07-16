@@ -10,11 +10,20 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { BadgeColors } from '@openmetadata/ui-core-components';
 import { EntityType } from '../enums/entity.enum';
 import {
+  CacheState,
   ContextSection,
   PersonaContextDefinition,
 } from '../generated/type/personaContextDefinition';
+
+export const CACHE_STATE_BADGE_COLOR: Record<CacheState, BadgeColors> = {
+  [CacheState.Fresh]: 'gray',
+  [CacheState.Stale]: 'gray',
+  [CacheState.Generating]: 'warning',
+  [CacheState.Failed]: 'error',
+};
 
 export const PERSONA_CONTEXT_ASSET_SECTIONS = [
   ContextSection.Description,
@@ -125,6 +134,28 @@ export const PERSONA_CONTEXT_ENTITY_LABEL_KEYS: Record<string, string> = {
   [EntityType.TABLE]: 'label.table',
   [EntityType.TOPIC]: 'label.topic',
 };
+
+export const PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS: Record<string, string> =
+  {
+    [EntityType.API_COLLECTION]: 'label.api-collection-plural',
+    [EntityType.API_ENDPOINT]: 'label.api-endpoint-plural',
+    [EntityType.CHART]: 'label.chart-plural',
+    [EntityType.CONTAINER]: 'label.container-plural',
+    [EntityType.DASHBOARD]: 'label.dashboard-plural',
+    [EntityType.DASHBOARD_DATA_MODEL]: 'label.data-model-plural',
+    [EntityType.DATABASE]: 'label.database-plural',
+    [EntityType.DATABASE_SCHEMA]: 'label.database-schema-plural',
+    [EntityType.DATA_PRODUCT]: 'label.data-product-plural',
+    [EntityType.GLOSSARY_TERM]: 'label.glossary-term-plural',
+    [EntityType.KNOWLEDGE_PAGE]: 'label.article-plural',
+    [EntityType.METRIC]: 'label.metric-plural',
+    [EntityType.MLMODEL]: 'label.ml-model-plural',
+    [EntityType.PIPELINE]: 'label.pipeline-plural',
+    [EntityType.SEARCH_INDEX]: 'label.search-index-plural',
+    [EntityType.STORED_PROCEDURE]: 'label.stored-procedure-plural',
+    [EntityType.TABLE]: 'label.table-plural',
+    [EntityType.TOPIC]: 'label.topic-plural',
+  };
 
 export const PERSONA_CONTEXT_SECTION_LABEL_KEYS: Record<
   ContextSection,

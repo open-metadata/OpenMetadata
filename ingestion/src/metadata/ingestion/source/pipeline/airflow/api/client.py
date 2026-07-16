@@ -172,6 +172,16 @@ class AirflowApiClient:
         response = self.client.get(f"{self._prefix}/dags?limit={limit}&offset={offset}")
         return self._parse_response(response)
 
+    def get_dags_count(self) -> Optional[int]:  # noqa: UP045
+        try:
+            response = self.list_dags(limit=1)
+            total_entries = response.get("total_entries")
+            if isinstance(total_entries, int):
+                return total_entries
+        except Exception as exc:
+            logger.debug(f"Could not fetch DAG count: {exc}")
+        return None
+
     def get_dag_tasks(self, dag_id: str) -> dict:
         if self.mwaa_client:
             return self.mwaa_client.get_dag_tasks(dag_id)

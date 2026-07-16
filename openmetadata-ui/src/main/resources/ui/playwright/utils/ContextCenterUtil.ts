@@ -256,7 +256,10 @@ export const selectFolderInSidebar = async (
 };
 
 export const openUploadModal = async (page: Page): Promise<void> => {
-  await page.getByRole('button', { name: /upload file/i }).click();
+  await page
+    .getByTestId('header-shell')
+    .getByRole('button', { name: /upload file/i })
+    .click();
   await expect(
     page.getByRole('dialog', { name: /upload documents/i })
   ).toBeVisible();
@@ -354,40 +357,30 @@ export const uploadDisposableDocument = async (
   return { id: data.id, name };
 };
 
-export const createDisposableArchivedDocument = async (
-  apiContext: APIRequestContext,
-  namePrefix = 'cc-disposable-archived-doc'
-): Promise<{ id: string; name: string }> => {
-  const { id, name } = await uploadDisposableDocument(apiContext, namePrefix);
-  await apiContext.delete(
-    `/api/v1/contextCenter/drive/files/${id}?hardDelete=false`
-  );
-
-  return { id, name };
-};
-
-export async function waitForDocumentInArchive(
+export async function waitForDocumentInFileList(
   apiContext: APIRequestContext,
   documentId: string,
-  timeout = 180_000,
-  interval = 5_000
+  timeout = 60_000,
+  interval = 2_000
 ) {
   const start = Date.now();
 
   while (Date.now() - start < timeout) {
-    const response = await apiContext.get(
-      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
-    );
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: { orderBy: 'DESC', limit: 100 },
+    });
 
     if (!response.ok()) {
       const body = await response.text();
       throw new Error(
-        `Unexpected response while polling for document ${documentId} in archive: ${response.status()} ${body}`
+        `Unexpected response while polling the file list for document ${documentId}: ${response.status()} ${body}`
       );
     }
 
-    const file = await response.json();
-    if (file.deleted === true) {
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
       return;
     }
 
@@ -395,9 +388,22 @@ export async function waitForDocumentInArchive(
   }
 
   throw new Error(
-    `Document ${documentId} did not appear in archive API within ${timeout}ms`
+    `Document ${documentId} did not appear in the file list after ${timeout}ms`
   );
 }
+
+export const createDisposableArchivedDocument = async (
+  apiContext: APIRequestContext,
+  namePrefix = 'cc-disposable-archived-doc'
+): Promise<{ id: string; name: string }> => {
+  const { id, name } = await uploadDisposableDocument(apiContext, namePrefix);
+  await waitForDocumentInFileList(apiContext, id);
+  await apiContext.delete(
+    `/api/v1/contextCenter/drive/files/${id}?hardDelete=false`
+  );
+
+  return { id, name };
+};
 
 export async function waitForDocumentPermanentlyDeleted(
   apiContext: APIRequestContext,
@@ -430,6 +436,58 @@ export async function waitForDocumentPermanentlyDeleted(
     `Document ${documentId} was still present in the archive API after ${timeout}ms`
   );
 }
+
+interface WaitForDocumentInArchiveOptions {
+  updatedBy?: string;
+  timeout?: number;
+  interval?: number;
+  limit?: number;
+}
+
+export async function waitForDocumentInArchive(
+  apiContext: APIRequestContext,
+  documentId: string,
+  {
+    updatedBy,
+    timeout = 60_000,
+    interval = 2_000,
+    limit = 100,
+  }: WaitForDocumentInArchiveOptions = {}
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: {
+        include: 'deleted',
+        orderBy: 'DESC',
+        limit,
+        ...(updatedBy ? { updatedBy } : {}),
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling the archive list for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in the archive list (limit=${limit}) after ${timeout}ms`
+  );
+}
+
 export const ARTICLE_DESCRIPTION =
   'Playwright article description for card detail check';
 export const QUICK_LINK_URL = 'https://example.com';
@@ -628,6 +686,11 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
       .getAttribute('data-testid');
 
   let previousLastCard = '';
+  // Require 3 consecutive unchanged readings before concluding end-of-list.
+  // A single unchanged reading can be a false positive when the scroll lands
+  // just before the next infinite-scroll fetch threshold.
+  let staleCount = 0;
+
   for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
     // Registered before the scroll so it can observe the fetch the scroll
     // triggers; only awaited below if the card list looks unchanged.
@@ -655,9 +718,17 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
       lastCard = await getLastCard();
 
       if (lastCard === previousLastCard) {
-        break;
+        staleCount += 1;
+        if (staleCount >= 3) {
+          break;
+        }
+      } else {
+        staleCount = 0;
       }
+    } else {
+      staleCount = 0;
     }
+
     previousLastCard = lastCard ?? '';
   }
 

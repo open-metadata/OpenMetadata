@@ -207,17 +207,17 @@ public final class IncidentManagerPage extends PageObject {
 
   /** Open page size dropdown, click the {@code 50 / Page} option, await list with limit=50. */
   public IncidentManagerPage selectPageSize50() {
-    // Scope to the OPEN dropdown panel: Ant Design keeps closed panels in the DOM tagged
-    // .ant-dropdown-hidden, and a page-wide getByRole("50 / page") can resolve a stale/closing one
-    // — the click then burns its full timeout on an element that is "not stable" / "not visible".
     final Locator menu = page.locator(".ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu");
     openMenu(byTestId("page-size-selection-dropdown"), menu);
+    // Click the visible menuitem page-wide (getByRole excludes the hidden/closed panels Ant leaves
+    // in the DOM) and let click() auto-scroll + re-resolve — an explicit scrollIntoViewIfNeeded()
+    // resolves the option once and hangs if a background list re-render collapses the panel.
+    // Mirrors IncidentManager.spec.ts.
     final Locator option =
-        menu.getByRole(
+        page.getByRole(
             AriaRole.MENUITEM,
-            new Locator.GetByRoleOptions()
+            new Page.GetByRoleOptions()
                 .setName(Pattern.compile("50.*page", Pattern.CASE_INSENSITIVE)));
-    option.scrollIntoViewIfNeeded();
     page.waitForResponse(
         r -> r.url().matches(API_LIST_REGEX) && r.url().contains("limit=50"), () -> option.click());
     return this;

@@ -150,7 +150,7 @@ const ContextKnowledgePillarCard: FC<ContextKnowledgePillarCardProps> = ({
   return (
     <Card
       className={classNames(
-        'tw:cursor-pointer tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between',
+        'tw:cursor-pointer tw:px-4 tw:py-3 tw:flex tw:flex-col tw:justify-between tw:min-h-68',
         'tw:transition-[border-color,transform] tw:duration-150 tw:hover:border-utility-blue-200 tw:hover:-translate-y-px'
       )}
       data-testid={dataTestId}
