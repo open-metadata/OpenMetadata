@@ -12,6 +12,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.inOrder;
@@ -35,6 +36,7 @@ import java.util.Map;
 import java.util.Optional;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.atomic.AtomicReference;
 import org.apache.commons.lang3.tuple.Pair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
@@ -66,6 +68,7 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
@@ -78,7 +81,9 @@ import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.search.IndexMappingLoader;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
+import org.openmetadata.service.apps.bundles.searchIndex.IndexingFailureRecorder;
 import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
@@ -2928,7 +2933,7 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
-  void bulkTimeoutPropagatesAfterCloseWithoutReplayingTheDocumentWrite() throws Exception {
+  void bulkTimeoutCompletedDuringClosePropagatesWithoutReplayOrRetry() throws Exception {
     when(searchClient.getSearchType())
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
     EntityInterface service =
@@ -2949,7 +2954,10 @@ class SearchRepositoryBehaviorTest {
         MockedConstruction<ElasticSearchBulkSink> bulkSinks =
             mockConstruction(
                 ElasticSearchBulkSink.class,
-                (bulkSink, context) -> when(bulkSink.flushAndAwait(60)).thenReturn(false))) {
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(false);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+                })) {
       repository.updateEntitiesIndex(List.of(service));
 
       ElasticSearchBulkSink bulkSink = bulkSinks.constructed().getFirst();
@@ -2960,6 +2968,41 @@ class SearchRepositoryBehaviorTest {
           .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
       verify(searchClient, never())
           .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
+      retryQueue.verifyNoInteractions();
+    }
+  }
+
+  @Test
+  void bulkFailureDoesNotPropagateAnUnconfirmedRoot() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    when(service.getChangeDescription())
+        .thenReturn(
+            changeDescription(
+                List.of(),
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_DISPLAY_NAME)
+                        .withOldValue("Old Service")
+                        .withNewValue("New Service")),
+                List.of()));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(true);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(1));
+                })) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      ElasticSearchBulkSink bulkSink = bulkSinks.constructed().getFirst();
+      verify(bulkSink).close();
+      verify(searchClient, never())
+          .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
       retryQueue.verify(
           () ->
               SearchIndexRetryQueue.enqueue(
@@ -2967,6 +3010,74 @@ class SearchRepositoryBehaviorTest {
                   eq(
                       "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback"),
                   any(IOException.class)));
+    }
+  }
+
+  @Test
+  @SuppressWarnings("unchecked")
+  void partiallyFailedBulkPropagatesOnlyConfirmedRoots() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface failedService =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "failed-service");
+    EntityInterface successfulService =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "successful-service");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+    when(failedService.getChangeDescription()).thenReturn(displayNameChange);
+    when(successfulService.getChangeDescription()).thenReturn(displayNameChange);
+    AtomicReference<BulkSink.FailureCallback> failureCallback = new AtomicReference<>();
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  doAnswer(
+                          invocation -> {
+                            failureCallback.set(invocation.getArgument(0));
+                            return null;
+                          })
+                      .when(bulkSink)
+                      .setFailureCallback(any());
+                  doAnswer(
+                          invocation -> {
+                            failureCallback
+                                .get()
+                                .onFailure(
+                                    Entity.DATABASE_SERVICE,
+                                    failedService.getId().toString(),
+                                    failedService.getFullyQualifiedName(),
+                                    "rejected",
+                                    IndexingFailureRecorder.FailureStage.SINK);
+                            return null;
+                          })
+                      .when(bulkSink)
+                      .write(any(), any());
+                  when(bulkSink.flushAndAwait(60)).thenReturn(true);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(1));
+                })) {
+      repository.updateEntitiesIndex(List.of(failedService, successfulService));
+
+      ArgumentCaptor<Pair<String, String>> parentMatch = ArgumentCaptor.forClass(Pair.class);
+      verify(searchClient).updateChildren(any(List.class), parentMatch.capture(), any(Pair.class));
+      assertEquals(successfulService.getId().toString(), parentMatch.getValue().getValue());
+      verify(bulkSinks.constructed().getFirst()).close();
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  failedService.getId().toString(),
+                  failedService.getFullyQualifiedName(),
+                  Entity.DATABASE_SERVICE,
+                  "updateEntitiesBulk SINK: rejected"));
+      retryQueue.verifyNoMoreInteractions();
     }
   }
 

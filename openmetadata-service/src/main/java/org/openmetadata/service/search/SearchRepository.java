@@ -83,6 +83,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -1790,14 +1791,34 @@ public class SearchRepository {
 
       BulkSink bulkSink = null;
       boolean bulkWriteAttempted = false;
+      boolean bulkWriteReturned = false;
+      Set<String> failedEntityIds = ConcurrentHashMap.newKeySet();
+      Set<String> failedEntityFqns = ConcurrentHashMap.newKeySet();
+      AtomicInteger recordedBulkFailures = new AtomicInteger();
       try {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+        bulkSink.setFailureCallback(
+            (failedEntityType, failedEntityId, failedEntityFqn, errorMessage, stage) -> {
+              recordedBulkFailures.incrementAndGet();
+              if (!nullOrEmpty(failedEntityId)) {
+                failedEntityIds.add(failedEntityId);
+              }
+              if (!nullOrEmpty(failedEntityFqn)) {
+                failedEntityFqns.add(failedEntityFqn);
+              }
+              SearchIndexRetryQueue.enqueue(
+                  failedEntityId,
+                  failedEntityFqn,
+                  failedEntityType,
+                  "updateEntitiesBulk " + stage + ": " + errorMessage);
+            });
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
         contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
         ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkWriteAttempted = true;
         bulkSink.write(typeEntities, contextData);
+        bulkWriteReturned = true;
         boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
         StepStats sinkStats = bulkSink.getStats();
         if (!completed
@@ -1809,8 +1830,11 @@ public class SearchRepository {
         propagationCandidates.addAll(typeEntities);
       } catch (Exception e) {
         LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
+        boolean bulkSinkQuiescent = false;
+        StepStats finalSinkStats = null;
         if (bulkSink != null) {
-          closeBulkSink(bulkSink);
+          bulkSinkQuiescent = closeBulkSinkAndCheckQuiescent(bulkSink);
+          finalSinkStats = bulkSink.getStats();
           bulkSink = null;
         }
         if (!bulkWriteAttempted) {
@@ -1823,8 +1847,25 @@ public class SearchRepository {
             }
           }
         } else {
-          propagationCandidates.addAll(typeEntities);
+          Set<String> confirmedEntityIds = new HashSet<>();
+          if (bulkWriteReturned && bulkSinkQuiescent && finalSinkStats != null) {
+            addConfirmedPropagationCandidates(
+                typeEntities,
+                finalSinkStats,
+                recordedBulkFailures.get(),
+                failedEntityIds,
+                failedEntityFqns,
+                propagationCandidates,
+                confirmedEntityIds);
+          }
           for (EntityInterface entity : typeEntities) {
+            String entityId = entity.getId().toString();
+            String entityFqn = entity.getFullyQualifiedName();
+            if (confirmedEntityIds.contains(entityId)
+                || failedEntityIds.contains(entityId)
+                || (entityFqn != null && failedEntityFqns.contains(entityFqn))) {
+              continue;
+            }
             SearchIndexRetryQueue.enqueue(
                 entity,
                 "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback",
@@ -1833,20 +1874,52 @@ public class SearchRepository {
         }
       } finally {
         if (bulkSink != null) {
-          closeBulkSink(bulkSink);
+          closeBulkSinkAndCheckQuiescent(bulkSink);
         }
       }
     }
 
-    // An uncertain bulk outcome still needs its fan-out side effects after the sink is closed.
     propagateEntitiesAfterBulkFlush(propagationCandidates);
   }
 
-  private void closeBulkSink(BulkSink bulkSink) {
+  private boolean closeBulkSinkAndCheckQuiescent(BulkSink bulkSink) {
     try {
       bulkSink.close();
+      return bulkSink.getActiveBulkRequestCount() == 0;
     } catch (Exception e) {
       LOG.warn("Error closing bulk sink", e);
+      return false;
+    }
+  }
+
+  private void addConfirmedPropagationCandidates(
+      List<EntityInterface> entities,
+      StepStats sinkStats,
+      int recordedFailures,
+      Set<String> failedEntityIds,
+      Set<String> failedEntityFqns,
+      List<EntityInterface> propagationCandidates,
+      Set<String> confirmedEntityIds) {
+    int failedRecords = Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0);
+    if (failedRecords == 0) {
+      propagationCandidates.addAll(entities);
+      entities.forEach(entity -> confirmedEntityIds.add(entity.getId().toString()));
+      return;
+    }
+    if (recordedFailures < failedRecords) {
+      LOG.warn(
+          "Skipping bulk propagation because only {} of {} failed records were identified",
+          recordedFailures,
+          failedRecords);
+      return;
+    }
+    for (EntityInterface entity : entities) {
+      if (!failedEntityIds.contains(entity.getId().toString())
+          && (entity.getFullyQualifiedName() == null
+              || !failedEntityFqns.contains(entity.getFullyQualifiedName()))) {
+        propagationCandidates.add(entity);
+        confirmedEntityIds.add(entity.getId().toString());
+      }
     }
   }
 
