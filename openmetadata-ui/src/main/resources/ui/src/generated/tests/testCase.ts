@@ -94,6 +94,11 @@ export interface TestCase {
      */
     incidentId?: string;
     /**
+     * Latest incident resolution status for this test case. Inlined so clients can render the
+     * current incident status without an additional lookup per test case.
+     */
+    incidentStatus?: TestCaseResolutionStatus;
+    /**
      * Change that lead to this version of the entity.
      */
     incrementalChangeDescription?: ChangeDescription;
@@ -242,6 +247,14 @@ export interface FieldChange {
  * example, a table has an attribute called database of type EntityReference that captures
  * the relationship of a table `belongs to a` database.
  *
+ * Test case reference
+ *
+ * User working on failure resolution.
+ *
+ * User who resolved the test case failure.
+ *
+ * User who updated the test case failure status.
+ *
  * Reference to the test case for efficient querying of dimensional time series
  *
  * Test case that this result is for.
@@ -334,6 +347,132 @@ export interface TableData {
      * Data for multiple rows of the table.
      */
     rows?: Array<any[]>;
+}
+
+/**
+ * Latest incident resolution status for this test case. Inlined so clients can render the
+ * current incident status without an additional lookup per test case.
+ *
+ * Schema to capture test case resolution status.
+ */
+export interface TestCaseResolutionStatus {
+    /**
+     * Unique identifier of this failure instance
+     */
+    id?: string;
+    /**
+     * List of metrics associated with the test case resolution.
+     */
+    metrics?: Array<any[] | boolean | number | number | null | MetricObject | string>;
+    /**
+     * Severity failure for the test associated with the resolution.
+     */
+    severity?: Severities;
+    /**
+     * Sequence ID for a failure status. Statuses belonging to the same sequence will have the
+     * same ID. Unique across a failure cycle, i.e. new -> ack -> ... -> resolved.
+     */
+    stateId?: string;
+    /**
+     * Test case reference
+     */
+    testCaseReference?: EntityReference;
+    /**
+     * Details of the test case failure status.
+     */
+    testCaseResolutionStatusDetails?: Assigned;
+    /**
+     * Status of Test Case Acknowledgement.
+     */
+    testCaseResolutionStatusType: TestCaseResolutionStatusTypes;
+    /**
+     * Timestamp on which the failure was created.
+     */
+    timestamp?: number;
+    /**
+     * Time when test case resolution was updated.
+     */
+    updatedAt?: number;
+    /**
+     * User who updated the test case failure status.
+     */
+    updatedBy?: EntityReference;
+}
+
+export interface MetricObject {
+    /**
+     * Name of the metric.
+     */
+    name?: string;
+    /**
+     * Value of the metric.
+     */
+    value?: number;
+    [property: string]: any;
+}
+
+/**
+ * Severity failure for the test associated with the resolution.
+ *
+ * Test case resolution status type.
+ */
+export enum Severities {
+    Severity1 = "Severity1",
+    Severity2 = "Severity2",
+    Severity3 = "Severity3",
+    Severity4 = "Severity4",
+    Severity5 = "Severity5",
+}
+
+/**
+ * Details of the test case failure status.
+ *
+ * test case failure details for assigned failures
+ *
+ * test case failure details for resolved failures
+ */
+export interface Assigned {
+    /**
+     * User working on failure resolution.
+     */
+    assignee?: EntityReference;
+    /**
+     * User who resolved the test case failure.
+     */
+    resolvedBy?: EntityReference;
+    /**
+     * Test case failure resolution comment.
+     */
+    testCaseFailureComment?: string;
+    /**
+     * Reason of Test Case resolution.
+     */
+    testCaseFailureReason?: TestCaseFailureReasonType;
+}
+
+/**
+ * Reason of Test Case resolution.
+ *
+ * Reason of Test Case initial failure.
+ */
+export enum TestCaseFailureReasonType {
+    Duplicates = "Duplicates",
+    FalsePositive = "FalsePositive",
+    MissingData = "MissingData",
+    Other = "Other",
+    OutOfBounds = "OutOfBounds",
+}
+
+/**
+ * Status of Test Case Acknowledgement.
+ *
+ * Test case resolution status type.
+ */
+export enum TestCaseResolutionStatusTypes {
+    ACK = "Ack",
+    Assigned = "Assigned",
+    New = "New",
+    Resolved = "Resolved",
 }
 
 /**
