@@ -33,6 +33,7 @@ import {
   getErrorPlaceHolder,
   getLogViewerStatusFromAgentStatus,
 } from '../../../utils/IngestionUtils';
+import serviceUtilClassBase from '../../../utils/ServiceUtilClassBase';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import LogViewerModal from '../../common/LogViewerModal/LogViewerModal.component';
@@ -82,10 +83,21 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   const [deleteTarget, setDeleteTarget] = useState<Agent | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
+  // The `agents` prop updates live (service progress stream), so read the
+  // current status of the open agent from it rather than the click-time
+  // snapshot — this is what tells polling when the run has finished.
+  const liveLogsAgent = useMemo(
+    () => agents.find((agent) => agent.id === logsFor?.id) ?? logsFor,
+    [agents, logsFor]
+  );
+  const isLogsAgentActive =
+    liveLogsAgent?.status === 'running' || liveLogsAgent?.status === 'queued';
+
   const { rawText, isLoading: isLogsLoading } = useAgentLogs(
     logsFor?.id ?? '',
     logsFor?.pipelineType ?? PipelineType.Metadata,
-    Boolean(logsFor)
+    Boolean(logsFor),
+    isLogsAgentActive
   );
 
   const onLogs = useCallback((agent: Agent) => setLogsFor(agent), []);
@@ -181,6 +193,17 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
     [agents.length, platform, theme]
   );
 
+  const extraMenuItems = useMemo(
+    () =>
+      serviceUtilClassBase.getExtraIngestionMenuItems(
+        serviceCategory,
+        serviceName,
+        navigate,
+        serviceDetails
+      ),
+    [navigate, serviceCategory, serviceDetails, serviceName]
+  );
+
   const addAgentSlot = useMemo(() => {
     if (addAgentSlotProp) {
       return addAgentSlotProp;
@@ -188,6 +211,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 
     return showAddAgent ? (
       <AddIngestionButton
+        extraMenuItems={extraMenuItems}
         ingestionList={ingestionPipelineList}
         serviceCategory={serviceCategory}
         serviceDetails={serviceDetails}
@@ -197,6 +221,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   }, [
     addAgentSlotProp,
     showAddAgent,
+    extraMenuItems,
     ingestionPipelineList,
     serviceCategory,
     serviceDetails,
@@ -238,6 +263,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
           lastRun={logsFor.finishedAt}
           loading={isLogsLoading}
           logs={rawText}
+          mode={isLogsAgentActive ? 'stream' : 'static'}
           runId={getEntityName(logsFor)}
           status={getLogViewerStatusFromAgentStatus(logsFor.status)}
           title={`${logsFor.name} · ${t('label.log-plural')}`}

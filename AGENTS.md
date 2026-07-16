@@ -114,7 +114,7 @@ yarn parse-schema              # Parse JSON schemas for frontend (connection and
 - **Side Effects**: Use `useEffect` with proper dependency arrays
 - **Performance**: Use `useCallback` for event handlers, `useMemo` for expensive computations
 - **Custom Hooks**: Prefix with `use`, place in `src/hooks/`, return typed objects
-- **Internationalization**: Use `useTranslation` hook from react-i18next, access with `t('key')`
+- **Internationalization**: Use `useTranslation` hook from react-i18next, access with `t('key')`. When you add new keys to `src/locale/languages/en-us.json`, run `yarn i18n` to propagate them into every other locale file, then **replace the English placeholders that `yarn i18n` inserts with real translations for each language** (`ar-sa`, `de-de`, `es-es`, `fr-fr`, `gl-es`, `he-he`, `ja-jp`, `ko-kr`, `mr-in`, `nl-nl`, `pr-pr`, `pt-br`, `pt-pt`, `ru-ru`, `sv-se`, `th-th`, `tr-tr`, `zh-cn`, `zh-tw`). Shipping English text under a non-English locale key is a reviewable defect; leave a term in English only when it's an intentional translation decision (a widely-borrowed acronym, a product name).
 - **Component Structure**: Functional components only, no class components
 - **Props**: Define interfaces for all component props, place in `.interface.ts` files
 - **Loading States**: Use object state for multiple loading states: `useState<Record<string, boolean>>({})`

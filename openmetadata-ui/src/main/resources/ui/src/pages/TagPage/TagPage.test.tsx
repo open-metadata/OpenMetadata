@@ -188,8 +188,8 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockImplementation(() => <div>DescriptionV1</div>);
+jest.mock('../../components/common/EntityDescription/Description', () => {
+  return jest.fn().mockImplementation(() => <div>Description</div>);
 });
 
 jest.mock('../../components/common/DomainLabel/DomainLabel.component', () => ({
@@ -234,6 +234,10 @@ jest.mock(
 
 jest.mock('../../components/Modals/StyleModal/StyleModal.component', () => {
   return jest.fn().mockImplementation(() => <div>StyleModal</div>);
+});
+
+jest.mock('../../components/Modals/IconColorModal', () => {
+  return jest.fn().mockImplementation(() => <div>IconColorModal</div>);
 });
 
 jest.mock(
