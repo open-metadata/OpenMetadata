@@ -14,8 +14,14 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { Children, cloneElement, isValidElement, ReactElement } from 'react';
 import QuickFilterDropdown from './QuickFilterDropdown';
 
+const mockUseLocation = jest.fn();
+
 jest.mock('react-i18next', () => ({
   useTranslation: () => ({ t: (key: string) => key }),
+}));
+
+jest.mock('react-router-dom', () => ({
+  useLocation: () => mockUseLocation(),
 }));
 
 jest.mock('../../constants/AdvancedSearch.constants', () => ({
@@ -130,11 +136,15 @@ const renderDropdown = (
   );
 
 describe('QuickFilterDropdown', () => {
+  beforeEach(() => {
+    mockUseLocation.mockReturnValue({ pathname: '/explore' });
+  });
+
   it('should fetch initial options when the dropdown is opened', () => {
     const onGetInitialOptions = jest.fn();
     renderDropdown({ onGetInitialOptions });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
 
     expect(onGetInitialOptions).toHaveBeenCalledWith('entityType');
   });
@@ -143,7 +153,7 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Table' }));
 
     expect(onChange).not.toHaveBeenCalled();
@@ -160,7 +170,7 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange, singleSelect: true });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Table' }));
     fireEvent.click(screen.getByRole('checkbox', { name: 'Topic' }));
     fireEvent.click(screen.getByTestId('update-btn'));
@@ -175,7 +185,7 @@ describe('QuickFilterDropdown', () => {
     const onChange = jest.fn();
     renderDropdown({ onChange, hasNullOption: true });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.click(screen.getByTestId('no-option-checkbox'));
     fireEvent.click(screen.getByTestId('update-btn'));
 
@@ -192,7 +202,7 @@ describe('QuickFilterDropdown', () => {
     const onSearch = jest.fn();
     renderDropdown({ onSearch });
 
-    fireEvent.click(screen.getByTestId('entityType'));
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
     fireEvent.change(screen.getByTestId('search-input'), {
       target: { value: 'tab' },
     });
@@ -202,5 +212,50 @@ describe('QuickFilterDropdown', () => {
     expect(onSearch).toHaveBeenCalledWith('tab', 'entityType');
 
     jest.useRealTimers();
+  });
+
+  it('should close when the route pathname changes', () => {
+    const { rerender } = renderDropdown();
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+
+    mockUseLocation.mockReturnValue({ pathname: '/observability' });
+    rerender(
+      <QuickFilterDropdown
+        label="Entity Type"
+        options={OPTIONS}
+        searchKey="entityType"
+        selectedKeys={[]}
+        onChange={jest.fn()}
+        onGetInitialOptions={jest.fn()}
+        onSearch={jest.fn()}
+      />
+    );
+
+    expect(screen.queryByTestId('drop-down-menu')).not.toBeInTheDocument();
+  });
+
+  it('should stay open when parent rerenders with a new search handler', () => {
+    const { rerender } = renderDropdown({ onSearch: jest.fn() });
+
+    fireEvent.click(screen.getByTestId('search-dropdown-entityType'));
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
+
+    rerender(
+      <QuickFilterDropdown
+        label="Entity Type"
+        options={OPTIONS}
+        searchKey="entityType"
+        selectedKeys={[]}
+        onChange={jest.fn()}
+        onGetInitialOptions={jest.fn()}
+        onSearch={jest.fn()}
+      />
+    );
+
+    expect(screen.getByTestId('drop-down-menu')).toBeInTheDocument();
   });
 });

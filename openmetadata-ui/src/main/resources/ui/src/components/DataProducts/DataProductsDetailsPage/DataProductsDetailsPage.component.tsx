@@ -12,13 +12,12 @@
  */
 import Icon from '@ant-design/icons';
 import { Avatar } from '@openmetadata/ui-core-components';
-import { Button, Dropdown, Space, Tabs, Tag, Tooltip, Typography } from 'antd';
+import { Button, Dropdown, Tabs, Tooltip, Typography } from 'antd';
 import ButtonGroup from 'antd/lib/button/button-group';
 import { ItemType } from 'antd/lib/menu/hooks/useItems';
 import { AxiosError } from 'axios';
 import classNames from 'classnames';
 import { isEmpty, toLower, toString } from 'lodash';
-import { useSnackbar } from 'notistack';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useLocation, useNavigate } from 'react-router-dom';
@@ -79,7 +78,6 @@ import {
 import { getDataContractStatusIcon } from '../../../utils/DataContract/DataContractUtils';
 import dataProductClassBase from '../../../utils/DataProduct/DataProductClassBase';
 import { getQueryFilterToIncludeDomain } from '../../../utils/DomainFilterUtils';
-import { getEntityDeleteMessage } from '../../../utils/EntityDisplayUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
@@ -92,7 +90,6 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -106,6 +103,7 @@ import { getTermQuery } from '../../../utils/SearchPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
 import { CoverImage } from '../../common/CoverImage/CoverImage.component';
+import DeleteModal from '../../common/DeleteModal/DeleteModal';
 import AnnouncementCard from '../../common/EntityPageInfos/AnnouncementCard/AnnouncementCard';
 import AnnouncementDrawer from '../../common/EntityPageInfos/AnnouncementDrawer/AnnouncementDrawer';
 import HeaderBreadcrumb from '../../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -123,7 +121,6 @@ import { EntityDetailsObjectInterface } from '../../Explore/ExplorePage.interfac
 import { AssetsTabRef } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.component';
 import { AssetsOfEntity } from '../../Glossary/GlossaryTerms/tabs/AssetsTabs.interface';
 import { LearningIcon } from '../../Learning/LearningIcon/LearningIcon.component';
-import EntityDeleteModal from '../../Modals/EntityDeleteModal/EntityDeleteModal';
 import EntityNameModal from '../../Modals/EntityNameModal/EntityNameModal.component';
 import StyleModal from '../../Modals/StyleModal/StyleModal.component';
 import { DataProductMetadataModal } from '../DataProductMetadataModal';
@@ -142,7 +139,6 @@ const DataProductsDetailsPage = ({
   onUpdateVote,
 }: DataProductsDetailsPageProps) => {
   const { t } = useTranslation();
-  const { enqueueSnackbar } = useSnackbar();
   const navigate = useNavigate();
   const { isMarketplace, dataProductBasePath } = useMarketplaceStore();
   const location = useLocation();
@@ -230,10 +226,7 @@ const DataProductsDetailsPage = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -382,13 +375,11 @@ const DataProductsDetailsPage = ({
         setAssetCount(res.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
-        showNotistackError(
-          enqueueSnackbar,
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
-          }),
-          { vertical: 'top', horizontal: 'center' }
+          })
         );
       }
     }
@@ -402,12 +393,9 @@ const DataProductsDetailsPage = ({
       );
       setDataProductPermission(response);
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showErrorToast(error as AxiosError);
     }
-  }, [dataProduct, enqueueSnackbar]);
+  }, [dataProduct]);
 
   const fetchPortCounts = useCallback(async () => {
     try {
@@ -423,12 +411,9 @@ const DataProductsDetailsPage = ({
       setInputPortsCount(data.inputPorts.paging.total);
       setOutputPortsCount(data.outputPorts.paging.total);
     } catch (error) {
-      showNotistackError(enqueueSnackbar, error as AxiosError, undefined, {
-        vertical: 'top',
-        horizontal: 'center',
-      });
+      showErrorToast(error as AxiosError);
     }
-  }, [dataProduct.fullyQualifiedName, enqueueSnackbar]);
+  }, [dataProduct.fullyQualifiedName]);
 
   const manageButtonContent: ItemType[] = [
     ...(editAllPermission
@@ -786,27 +771,11 @@ const DataProductsDetailsPage = ({
       'entityStatus' in dataProduct
         ? dataProduct.entityStatus
         : EntityStatus.Unprocessed;
-    const { lifecycleStage } = dataProduct;
 
-    if (!shouldShowStatus && !lifecycleStage) {
-      return null;
-    }
-
-    return (
-      <Space size={8}>
-        {shouldShowStatus && entityStatus && (
-          <EntityStatusBadge showDivider={false} status={entityStatus} />
-        )}
-        {lifecycleStage && (
-          <Tag
-            className="tw:rounded-full tw:font-medium"
-            data-testid="lifecycle-stage-badge">
-            {t('label.lifecycle-stage')}: {lifecycleStage}
-          </Tag>
-        )}
-      </Space>
-    );
-  }, [dataProduct, t]);
+    return shouldShowStatus && entityStatus ? (
+      <EntityStatusBadge showDivider={false} status={entityStatus} />
+    ) : null;
+  }, [dataProduct]);
 
   if (isCustomPageLoading) {
     return <Loader />;
@@ -998,13 +967,14 @@ const DataProductsDetailsPage = ({
         onCancel={() => setIsNameEditing(false)}
         onSave={onNameSave}
       />
-      <EntityDeleteModal
-        bodyText={getEntityDeleteMessage(dataProduct.name, '')}
-        entityName={dataProduct.name}
-        entityType="Glossary"
-        visible={isDelete}
+      <DeleteModal
+        entityTitle={dataProduct.name}
+        message={t('message.delete-entity-message', {
+          entity: dataProduct.name,
+        })}
+        open={isDelete}
         onCancel={() => setIsDelete(false)}
-        onConfirm={onDelete}
+        onDelete={onDelete}
       />
 
       <AssetSelectionDrawer
@@ -1040,7 +1010,6 @@ const DataProductsDetailsPage = ({
       />
 
       <AnnouncementDrawer
-        showToastInSnackbar
         createPermission={editAllPermission}
         entityFQN={dataProduct.fullyQualifiedName ?? ''}
         entityType={EntityType.DATA_PRODUCT}

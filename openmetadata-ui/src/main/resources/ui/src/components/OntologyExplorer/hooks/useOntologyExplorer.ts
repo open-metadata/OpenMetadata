@@ -167,7 +167,8 @@ async function fetchAllGlossariesPaginated(): Promise<{
 
 async function fetchRdfGraphData(
   glossaryId: string,
-  allGlossaries: Glossary[]
+  allGlossaries: Glossary[],
+  glossaryTermId?: string
 ): Promise<{ graph: OntologyGraphData | null; source: 'rdf' | 'database' }> {
   const PAGE_SIZE = 500;
   const uuidRegex =
@@ -187,6 +188,7 @@ async function fetchRdfGraphData(
     while (pages < MAX_SAFE_PAGES) {
       const page = await getGlossaryTermGraph({
         glossaryId,
+        glossaryTermId,
         limit: PAGE_SIZE,
         offset,
         includeIsolated: true,
@@ -845,7 +847,7 @@ export function useOntologyExplorer({
   );
 
   const fetchAllGlossaryData = useCallback(
-    async (glossaryIdParam?: string) => {
+    async (glossaryIdParam?: string, glossaryTermIdParam?: string) => {
       setLoading(true);
       try {
         const [glossaryResult, metricsResponse] = await Promise.all([
@@ -863,7 +865,8 @@ export function useOntologyExplorer({
           if (rdfEnabled) {
             const { graph: rdfGraph, source } = await fetchRdfGraphData(
               glossaryIdParam,
-              allGlossaries
+              allGlossaries,
+              glossaryTermIdParam
             );
             if (rdfGraph && rdfGraph.nodes.length > 0) {
               data = rdfGraph;
@@ -1040,7 +1043,7 @@ export function useOntologyExplorer({
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     } else if (scope === 'term' && entityId) {
-      fetchAllGlossaryData(termGlossaryId);
+      fetchAllGlossaryData(termGlossaryId, entityId);
     } else {
       setLoading(false);
     }
@@ -1300,13 +1303,14 @@ export function useOntologyExplorer({
     } else if (scope === 'glossary' && glossaryId) {
       fetchAllGlossaryData(glossaryId);
     } else if (scope === 'term') {
-      fetchAllGlossaryData(termGlossaryId);
+      fetchAllGlossaryData(termGlossaryId, entityId);
     }
   }, [
     explorationMode,
     scope,
     glossaryId,
     termGlossaryId,
+    entityId,
     fetchAllGlossaryData,
     loadAssetsForDataMode,
   ]);

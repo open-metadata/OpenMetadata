@@ -27,4 +27,23 @@
       height: 16px;
     }
   }
+
+  // Deep levels squeeze the label column — ellipsize on one line instead of
+  // wrapping mid-word, and keep the count pill beside the label.
+  .ant-tree-title {
+    min-width: 0;
+
+    [data-testid^='explore-tree-title-'] {
+      display: block;
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .explore-node-count {
+      flex: none;
+    }
+  }
 }

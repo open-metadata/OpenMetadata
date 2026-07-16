@@ -115,7 +115,11 @@ class ConflictResolver:
             return tags[0]
 
         if strategy == ConflictResolution.highest_confidence:
-            winner = max(tags, key=lambda t: (t.score, t.priority))
+            # Sibling tags often share a generic content recognizer (e.g. DateTime and
+            # BirthDate both use DateRecognizer), so they tie on score. A column-name match
+            # is the distinguishing per-column evidence and breaks the tie ahead of the
+            # static priority prior; priority then disambiguates same-specificity ties.
+            winner = max(tags, key=lambda t: (t.score, t.column_name_matched, t.priority))
             logger.debug(f"Strategy: highest_confidence -> {winner.tag.fullyQualifiedName} (score={winner.score:.3f})")
             return winner
 

@@ -24,7 +24,6 @@ import {
   navigateToOntologyExplorer,
   readCardinalityMap,
   readGraphEdges,
-  removeRelationType,
   waitForGraphLoaded,
 } from '../../utils/ontologyExplorer';
 
@@ -157,10 +156,6 @@ test.describe('Ontology Explorer - Cardinality Labels', () => {
       relDst,
       glossary
     );
-
-    for (const name of Object.values(CUSTOM_RELATION_NAMES)) {
-      await removeRelationType(apiContext, name);
-    }
 
     await disposeApiContext(page, apiContext);
   });

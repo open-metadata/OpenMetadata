@@ -1,3 +1,5 @@
+import { cx, sortCx } from '@/utils/cx';
+import { isReactComponent } from '@/utils/is-react-component';
 import type {
   AnchorHTMLAttributes,
   ButtonHTMLAttributes,
@@ -5,14 +7,12 @@ import type {
   FC,
   ReactNode,
 } from 'react';
-import React, { isValidElement } from 'react';
+import { isValidElement } from 'react';
 import type {
   ButtonProps as AriaButtonProps,
   LinkProps as AriaLinkProps,
 } from 'react-aria-components';
 import { Button as AriaButton, Link as AriaLink } from 'react-aria-components';
-import { cx, sortCx } from '@/utils/cx';
-import { isReactComponent } from '@/utils/is-react-component';
 
 export const styles = sortCx({
   common: {
@@ -30,6 +30,13 @@ export const styles = sortCx({
     icon: 'tw:pointer-events-none tw:size-5 tw:shrink-0 tw:transition-inherit-all',
   },
   sizes: {
+    xxs: {
+      root: [
+        'tw:gap-0.5 tw:rounded-md tw:px-1.5 tw:py-0.5 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1.5',
+        'tw:*:data-icon:size-3',
+      ].join(' '),
+      linkRoot: 'tw:gap-0.5',
+    },
     xs: {
       root: [
         'tw:gap-0.5 tw:rounded-md tw:px-2 tw:py-1 tw:text-xs tw:font-medium tw:before:rounded-[5px] tw:data-icon-only:p-1',
@@ -144,6 +151,30 @@ export const styles = sortCx({
         'tw:*:data-icon:text-fg-error-secondary tw:hover:*:data-icon:text-fg-error-primary',
       ].join(' '),
     },
+    'secondary-success': {
+      root: [
+        'tw:bg-primary tw:text-success-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-success-300 tw:ring-inset',
+        'tw:hover:bg-success-primary tw:hover:text-success-primary tw:data-loading:bg-success-primary',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:*:data-icon:text-success-primary',
+      ].join(' '),
+    },
+    'secondary-warning': {
+      root: [
+        'tw:bg-primary tw:text-warning-primary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-utility-warning-300 tw:ring-inset',
+        'tw:hover:bg-warning-primary tw:hover:text-warning-primary tw:data-loading:bg-warning-primary',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:*:data-icon:text-warning-primary',
+      ].join(' '),
+    },
+    'secondary-brand': {
+      root: [
+        'tw:bg-primary tw:text-brand-secondary tw:shadow-xs-skeuomorphic tw:ring-1 tw:ring-brand tw:ring-inset',
+        'tw:hover:bg-brand-primary tw:hover:text-brand-secondary_hover tw:data-loading:bg-brand-primary',
+        'tw:disabled:bg-primary tw:disabled:shadow-xs tw:disabled:ring-disabled_subtle',
+        'tw:*:data-icon:text-brand-secondary',
+      ].join(' '),
+    },
   },
 });
 
@@ -167,6 +198,8 @@ export interface CommonProps {
   noTextPadding?: boolean;
   /** When true, keeps the text visible during loading state */
   showTextWhileLoading?: boolean;
+  /** Truncates the button text with an ellipsis when it overflows */
+  ellipsis?: boolean;
 }
 
 /**
@@ -190,6 +223,8 @@ export interface ButtonProps
   onPressChange?: AriaButtonProps['onPressChange'];
   /** Handler called when a press is released over the target */
   onPressUp?: AriaButtonProps['onPressUp'];
+  /** Whether to exclude the button from the sequential tab order */
+  excludeFromTabOrder?: AriaButtonProps['excludeFromTabOrder'];
 }
 
 /**
@@ -214,6 +249,7 @@ export const Button = ({
   children,
   className,
   noTextPadding,
+  ellipsis,
   iconLeading: IconLeading,
   iconTrailing: IconTrailing,
   isDisabled: disabled,
@@ -257,6 +293,7 @@ export const Button = ({
         styles.sizes[size].root,
         styles.colors[color].root,
         isLinkType && styles.sizes[size].linkRoot,
+        ellipsis && 'tw:min-w-0',
         (loading || (href && (disabled || loading))) &&
           'tw:pointer-events-none',
         // If in `loading` state, hide everything except the loading icon (and text if `showTextWhileLoading` is true).
@@ -311,7 +348,8 @@ export const Button = ({
           data-text
           className={cx(
             'tw:transition-inherit-all',
-            !noTextPadding && 'tw:px-0.5'
+            !noTextPadding && 'tw:px-0.5',
+            ellipsis && 'tw:truncate tw:min-w-0'
           )}>
           {children}
         </span>

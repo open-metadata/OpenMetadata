@@ -16,7 +16,8 @@
       "name": "None",
       "description": "Non PII",
       "autoClassificationEnabled": false,
-      "autoClassificationPriority": 0
+      "autoClassificationPriority": 0,
+      "recognizers": []
     },
     {
       "name": "NonSensitive",
@@ -103,110 +104,6 @@
           },
           "confidenceThreshold": 0.6,
           "target": "content"
-        },
-        {
-          "displayName": "Date time column name",
-          "name": "date_time",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "date_time_pattern_0",
-                "regex": "^.*(date|time|dob|birthday|dod).*$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "Nrp column name",
-          "name": "nrp",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "nrp_pattern_0",
-                "regex": "^.*(gender|nationality).*$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "Location column name",
-          "name": "location",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "location_pattern_0",
-                "regex": "^.*(address|city|state|county|country|zipcode|zip|postal|zone|borough).*$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "Phone number column name",
-          "name": "phone_number",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "phone_number_pattern_0",
-                "regex": "^.*(phone).*$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
         }
       ]
     },
@@ -373,6 +270,7 @@
               "bank",
               "debit",
               "bank_account",
+              "bank",
               "account_number"
             ]
           },
@@ -816,7 +714,7 @@
         {
           "name": "FiPersonalIdentityCodeRecognizer",
           "displayName": "FI Personal Identity Code Recognizer",
-          "description": "Recognizes and validates Finnish Personal Identity Codes (Henkilötunnus).",
+          "description": "Recognizes and validates Finnish Personal Identity Codes (Henkil\u00f6tunnus).",
           "enabled": true,
           "isSystemDefault": true,
           "recognizerConfig": {
@@ -864,186 +762,6 @@
           },
           "confidenceThreshold": 0.6,
           "target": "content"
-        },
-        {
-          "displayName": "US SSN column name",
-          "name": "us_ssn",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "us_ssn_pattern_0",
-                "regex": "^.*(ssn|social).*$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "Credit card column name",
-          "name": "credit_card",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "credit_card_pattern_0",
-                "regex": "^.*(credit).*(card).*$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "US bank number column name",
-          "name": "us_bank_number",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "us_bank_number_pattern_0",
-                "regex": "\\b(account|acct|acc)[_-]?(number|num|no)\\b",
-                "score": 0.6
-              },
-              {
-                "name": "us_bank_number_pattern_1",
-                "regex": "\\bbank[_-]?(account|number|num|no)?\\b",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            }
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "Iban code column name",
-          "name": "iban_code",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "iban_code_pattern_0",
-                "regex": "\b(account|acct|acc)[_-]?(number|num|no)\b",
-                "score": 0.6
-              },
-              {
-                "name": "iban_code_pattern_1",
-                "regex": "\bbank[_-]?(account|number|num|no)?\b",
-                "score": 0.6
-              },
-              {
-                "name": "iban_code_pattern_2",
-                "regex": "\biban(?:[_]?(number|code))?\b",
-                "score": 0.6
-              },
-              {
-                "name": "iban_code_pattern_3",
-                "regex": "\bbank[_]?iban\b",
-                "score": 0.6
-              },
-              {
-                "name": "iban_code_pattern_4",
-                "regex": "\binternational[_]?(account|bank[_]?number)\b",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "Email address column name",
-          "name": "email_address",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "email_address_pattern_0",
-                "regex": "^(email|e-mail|mail)(.*address)?$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
-        },
-        {
-          "displayName": "Person column name",
-          "name": "person",
-          "description": "A regex recognizer for column names",
-          "enabled": true,
-          "isSystemDefault": true,
-          "recognizerConfig": {
-            "type": "pattern",
-            "supportedLanguage": "en",
-            "patterns": [
-              {
-                "name": "person_pattern_0",
-                "regex": "^.*(user|client|person|first|last|maiden|nick).*(name).*$",
-                "score": 0.6
-              }
-            ],
-            "regexFlags": {
-              "dotAll": true,
-              "multiline": true,
-              "ignoreCase": true
-            },
-            "context": []
-          },
-          "confidenceThreshold": 0.6,
-          "target": "column_name"
         }
       ]
     }

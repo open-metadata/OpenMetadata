@@ -30,7 +30,11 @@ import {
   removeAssetsFromDataProduct,
   selectDataProduct,
 } from '../../utils/domain';
-import { followEntity, waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  followEntity,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { sidebarClick } from '../../utils/sidebar';
 import { selectTagInTagSuggestion } from '../../utils/tag';
 
@@ -114,8 +118,8 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify view toggle buttons', async () => {
-      await expect(page.locator('button[title="table"]')).toBeVisible();
-      await expect(page.locator('button[title="card"]')).toBeVisible();
+      await expect(page.getByTestId('table-view-toggle')).toBeVisible();
+      await expect(page.getByTestId('card-view-toggle')).toBeVisible();
     });
   });
 
@@ -187,13 +191,12 @@ test.describe('Data Products', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await expect(
-        page.getByTestId('modal-header').getByText(dataProduct.data.name)
-      ).toBeVisible();
-
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
+      await expect(page.getByTestId('modal-header')).toContainText(
+        dataProduct.data.name
+      );
 
       const deleteRes = page.waitForResponse('/api/v1/dataProducts/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
     });
@@ -241,7 +244,7 @@ test.describe('Data Products', () => {
       await page.getByRole('main').getByPlaceholder('Search').clear();
       await waitForAllLoadersToDisappear(page);
 
-      await expect(page.getByTestId('pagination')).toBeVisible();
+      await expect(page.getByLabel('Pagination Navigation')).toBeVisible();
     });
 
     await test.step('Cleanup test data products', async () => {
@@ -323,32 +326,32 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Verify pagination controls are visible', async () => {
-      const pagination = page.getByTestId('pagination');
+      const pagination = page.getByLabel('Pagination Navigation');
       await expect(pagination).toBeVisible();
       await expect(
-        pagination.getByRole('button', { name: 'page 1', exact: true })
+        pagination.getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate to page 2', async () => {
-      await page.getByTestId('next').click();
+      await page.getByLabel('Next Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 2', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 2', { exact: true })
       ).toBeVisible();
     });
 
     await test.step('Navigate back to page 1', async () => {
-      await page.getByTestId('previous').click();
+      await page.getByLabel('Previous Page').click();
       await waitForAllLoadersToDisappear(page);
 
       await expect(
         page
-          .getByTestId('pagination')
-          .getByRole('button', { name: 'page 1', exact: true })
+          .getByLabel('Pagination Navigation')
+          .getByLabel('Page 1', { exact: true })
       ).toBeVisible();
     });
 
@@ -516,6 +519,49 @@ test.describe('Data Products', () => {
     });
 
     await test.step('Cleanup', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(
+        page.context().browser()!
+      );
+      await dataProduct.delete(apiContext);
+      await afterAction();
+    });
+  });
+
+  test('Data Product — Data Observability tab', async ({ page }) => {
+    const dataProduct = new DataProduct([domain]);
+
+    await test.step('Create test data product', async () => {
+      const { apiContext, afterAction } = await performAdminLogin(
+        page.context().browser()!
+      );
+      await dataProduct.create(apiContext);
+      await afterAction();
+    });
+
+    await test.step('Navigate to data product details', async () => {
+      await sidebarClick(page, SidebarItem.DATA_PRODUCT);
+      await waitForAllLoadersToDisappear(page);
+      await selectDataProduct(page, dataProduct.data);
+    });
+
+    await test.step('Data Observability tab is visible on data product page', async () => {
+      await expect(
+        page.getByRole('tab', { name: /data observability/i })
+      ).toBeVisible({ timeout: 15000 });
+    });
+
+    await test.step('Clicking Data Observability tab loads DQ dashboard', async () => {
+      const dqReportResponse = page.waitForResponse((r) =>
+        r.url().includes('/api/v1/dataQuality/testSuites/dataQualityReport')
+      );
+      await page.getByRole('tab', { name: /data observability/i }).click();
+      expect((await dqReportResponse).ok()).toBeTruthy();
+      await waitForAllLoadersToDisappear(page);
+
+      await expect(page.getByTestId('dq-dashboard-container')).toBeVisible();
+    });
+
+    await test.step('Cleanup test data product', async () => {
       const { apiContext, afterAction } = await performAdminLogin(
         page.context().browser()!
       );

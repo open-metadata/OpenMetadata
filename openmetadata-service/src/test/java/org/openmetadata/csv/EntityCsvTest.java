@@ -40,15 +40,18 @@ import org.mockito.MockedStatic;
 import org.mockito.Mockito;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
 import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.StoredProcedure;
 import org.openmetadata.schema.entity.data.Table;
+import org.openmetadata.schema.entity.domains.DataProduct;
 import org.openmetadata.schema.entity.domains.Domain;
 import org.openmetadata.schema.entity.teams.AuthenticationMechanism;
 import org.openmetadata.schema.entity.teams.Team;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.exception.JsonParsingException;
+import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.AssetCertification;
 import org.openmetadata.schema.type.ChangeEvent;
@@ -56,6 +59,8 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.EventType;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.SemanticsRule;
 import org.openmetadata.schema.type.StoredProcedureLanguage;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.type.csv.CsvDocumentation;
@@ -68,10 +73,13 @@ import org.openmetadata.service.TypeRegistry;
 import org.openmetadata.service.formatter.util.FormatterUtil;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.DatabaseSchemaRepository;
+import org.openmetadata.service.jdbi3.EntityRelationshipRepository;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.StoredProcedureRepository;
+import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.jdbi3.TableRepository;
 import org.openmetadata.service.jdbi3.UserRepository;
+import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.rules.RuleEngine;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.util.AsyncService;
@@ -1729,7 +1737,7 @@ public class EntityCsvTest {
                   Entity.getEntityByNameWithExcludedFields(
                       Entity.DATABASE_SCHEMA,
                       "service.db.sales",
-                      "owners,tags,domains,extension",
+                      "owners,tags,extension",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(
               org.openmetadata.service.exception.EntityNotFoundException.byName(
@@ -1836,7 +1844,7 @@ public class EntityCsvTest {
                   Entity.getEntityByNameWithExcludedFields(
                       Entity.TABLE,
                       tableFqn,
-                      "owners,tags,domains,extension",
+                      "owners,tags,extension",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(org.openmetadata.service.exception.EntityNotFoundException.byName(tableFqn));
       entity.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
@@ -2049,7 +2057,7 @@ public class EntityCsvTest {
                   Entity.getEntityByName(
                       Entity.STORED_PROCEDURE,
                       storedProcedureFqn,
-                      "name,displayName,fullyQualifiedName",
+                      "name,displayName,fullyQualifiedName,domains",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(
               org.openmetadata.service.exception.EntityNotFoundException.byName(
@@ -2123,7 +2131,7 @@ public class EntityCsvTest {
         .getEntityWithDependencyResolution(
             Entity.STORED_PROCEDURE,
             storedProcedureFqn,
-            "name,displayName,fullyQualifiedName",
+            "name,displayName,fullyQualifiedName,domains",
             org.openmetadata.schema.type.Include.NON_DELETED);
 
     try (MockedStatic<Entity> entity = Mockito.mockStatic(Entity.class);
@@ -2200,7 +2208,7 @@ public class EntityCsvTest {
                   Entity.getEntityByName(
                       Entity.STORED_PROCEDURE,
                       storedProcedureFqn,
-                      "name,displayName,fullyQualifiedName",
+                      "name,displayName,fullyQualifiedName,domains",
                       org.openmetadata.schema.type.Include.NON_DELETED))
           .thenThrow(
               org.openmetadata.service.exception.EntityNotFoundException.byName(
@@ -2673,6 +2681,14 @@ public class EntityCsvTest {
     }
 
     @Override
+    protected EntityReference getEntityReferenceByName(String entityType, String fqn) {
+      EntityInterface entity = entitiesByTypeAndName.get(entityType + ":" + fqn);
+      return entity != null
+          ? entity.getEntityReference()
+          : super.getEntityReferenceByName(entityType, fqn);
+    }
+
+    @Override
     protected void createEntity(CSVPrinter resultsPrinter, List<CSVRecord> records)
         throws IOException {
       CSVRecord csvRecord = getNextRecord(resultsPrinter, records);
@@ -2925,5 +2941,177 @@ public class EntityCsvTest {
       }
       throw new RuntimeException(e.getCause());
     }
+  }
+
+  @Test
+  void test_getDomainsEmptyColumnKeepsOnlyInheritedDomains() {
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    testCsv.addEntity(Entity.DOMAIN, "finance", domain("finance"));
+    EntityReference inheritedDomain = ref(Entity.DOMAIN, "inheritedDomain").withInherited(true);
+    EntityReference directDomain = ref(Entity.DOMAIN, "directDomain");
+    List<EntityReference> existingDomains = List.of(inheritedDomain, directDomain);
+
+    List<EntityReference> keptWhenEmpty =
+        testCsv.getDomains(
+            mock(CSVPrinter.class), singleRecord(testCsv, "", "", ""), 0, existingDomains);
+    assertEquals(
+        List.of(inheritedDomain),
+        keptWhenEmpty,
+        "Empty domain column must keep only inherited domains and clear direct ones");
+
+    List<EntityReference> clearedWhenNoInherited =
+        testCsv.getDomains(
+            mock(CSVPrinter.class), singleRecord(testCsv, "", "", ""), 0, List.of(directDomain));
+    assertNull(
+        clearedWhenNoInherited,
+        "Empty domain column with only direct domains must clear them (pre-existing behavior)");
+
+    List<EntityReference> parsedWhenPresent =
+        testCsv.getDomains(
+            mock(CSVPrinter.class), singleRecord(testCsv, "finance", "", ""), 0, existingDomains);
+    assertEquals(
+        List.of("finance"),
+        parsedWhenPresent.stream().map(EntityReference::getName).toList(),
+        "A provided domain column must override the existing domains");
+
+    TestCsv deadRowCsv = new TestCsv();
+    assertNull(
+        deadRowCsv.getDomains(
+            mock(CSVPrinter.class), singleRecord(testCsv, "", "", ""), 0, existingDomains),
+        "A failed row (processRecord=false) must not carry over any domains");
+  }
+
+  @Test
+  void test_bulkEditInheritedDomainWithMatchingDataProductPassesRule() throws IOException {
+    EntityReference inheritedDomain = ref(Entity.DOMAIN, "finance");
+    DataProductImportScenario scenario =
+        importTableUpdateWithInheritedDomain(inheritedDomain, inheritedDomain);
+
+    assertEquals(0, scenario.testCsv().importResult.getNumberOfRowsFailed());
+    assertEquals(1, scenario.testCsv().importResult.getNumberOfRowsPassed());
+    assertEquals(ENTITY_UPDATED, scenario.testCsv().pendingCsvResults.get(scenario.csvRecord()));
+    assertTrue(
+        scenario.updatedEntity().getDomains() == null
+            || scenario.updatedEntity().getDomains().isEmpty(),
+        "Inherited domain must be dropped before persistence, not materialized as a direct domain");
+  }
+
+  @Test
+  void test_bulkEditInheritedDomainWithMismatchedDataProductFailsRule() throws IOException {
+    EntityReference inheritedDomain = ref(Entity.DOMAIN, "finance");
+    EntityReference unrelatedDomain = ref(Entity.DOMAIN, "marketing");
+    DataProductImportScenario scenario =
+        importTableUpdateWithInheritedDomain(inheritedDomain, unrelatedDomain);
+
+    assertSummary(scenario.testCsv().importResult, ApiStatus.FAILURE, 1, 0, 1);
+    String failureMessage = scenario.testCsv().pendingCsvResults.get(scenario.csvRecord());
+    assertNotNull(failureMessage);
+    assertTrue(
+        failureMessage.contains("Data Product Domain Validation"),
+        "Genuine Data Product / domain mismatch must still fail: " + failureMessage);
+  }
+
+  private record DataProductImportScenario(
+      TestCsv testCsv,
+      CSVRecord csvRecord,
+      EntityRepository<EntityInterface> repository,
+      Table updatedEntity) {}
+
+  /**
+   * Simulates the importer state after the fix: the entity reaching rule evaluation carries the
+   * inherited domain the importer already loaded (an empty CSV domain column no longer discards it).
+   * Validates that the platform rule then passes when the data product matches that domain.
+   */
+  @SuppressWarnings("unchecked")
+  private DataProductImportScenario importTableUpdateWithInheritedDomain(
+      EntityReference inheritedDomain, EntityReference dataProductDomain) throws IOException {
+    EntityReference dataProductRef = ref(Entity.DATA_PRODUCT, "salesDataProduct");
+    DataProduct dataProduct =
+        new DataProduct()
+            .withId(dataProductRef.getId())
+            .withName("salesDataProduct")
+            .withFullyQualifiedName("salesDataProduct")
+            .withDomains(List.of(dataProductDomain));
+    EntityReference resolvedInheritedDomain =
+        new EntityReference()
+            .withId(inheritedDomain.getId())
+            .withType(Entity.DOMAIN)
+            .withName(inheritedDomain.getName())
+            .withFullyQualifiedName(inheritedDomain.getName())
+            .withInherited(true);
+
+    Table originalEntity =
+        new Table().withId(UUID.randomUUID()).withFullyQualifiedName("service.db.schema.orders");
+    Table updatedEntity =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("service.db.schema.orders")
+            .withDataProducts(new ArrayList<>(List.of(dataProductRef)))
+            .withDomains(new ArrayList<>(List.of(resolvedInheritedDomain)));
+
+    TestCsv testCsv = new TestCsv();
+    testCsv.enableProcessing();
+    testCsv.setDryRun(true);
+    CSVRecord csvRecord = singleRecord(testCsv, updatedEntity.getFullyQualifiedName(), "", "");
+
+    EntityRepository<EntityInterface> repository = mock(EntityRepository.class);
+    EntityRulesSettings rulesSettings =
+        new EntityRulesSettings().withEntitySemantics(List.of(dataProductDomainValidationRule()));
+
+    try (MockedStatic<Entity> entityStatic = Mockito.mockStatic(Entity.class);
+        MockedStatic<SettingsCache> settingsCache = Mockito.mockStatic(SettingsCache.class);
+        MockedStatic<ValidatorUtil> validatorUtil = Mockito.mockStatic(ValidatorUtil.class)) {
+      entityStatic.when(() -> Entity.getEntityRepository(Entity.TABLE)).thenReturn(repository);
+      for (String ignoredType : List.of(Entity.USER, Entity.TEAM, Entity.PERSONA, Entity.BOT)) {
+        EntityRepository<EntityInterface> ignoredRepo = mock(EntityRepository.class);
+        Mockito.doReturn(User.class).when(ignoredRepo).getEntityClass();
+        entityStatic.when(() -> Entity.getEntityRepository(ignoredType)).thenReturn(ignoredRepo);
+      }
+      entityStatic.when(Entity::getSystemRepository).thenReturn(mock(SystemRepository.class));
+      CollectionDAO collectionDAO = mock(CollectionDAO.class);
+      CollectionDAO.EntityRelationshipDAO relationshipDAO =
+          mock(CollectionDAO.EntityRelationshipDAO.class);
+      EntityRelationshipRepository relationshipRepository =
+          mock(EntityRelationshipRepository.class);
+      entityStatic.when(Entity::getCollectionDAO).thenReturn(collectionDAO);
+      entityStatic.when(Entity::getEntityRelationshipRepository).thenReturn(relationshipRepository);
+      Mockito.when(collectionDAO.relationshipDAO()).thenReturn(relationshipDAO);
+      Mockito.when(
+              relationshipRepository.getEntityReferences(
+                  Mockito.anyList(), Mockito.eq(Include.NON_DELETED)))
+          .thenReturn(dataProduct.getDomains());
+      settingsCache
+          .when(
+              () ->
+                  SettingsCache.getSetting(
+                      SettingsType.ENTITY_RULES_SETTINGS, EntityRulesSettings.class))
+          .thenReturn(rulesSettings);
+      validatorUtil.when(() -> ValidatorUtil.validate(Mockito.any())).thenReturn(null);
+
+      Mockito.when(repository.findMatchForImport(Mockito.any())).thenReturn(originalEntity);
+
+      testCsv.queueEntity(csvRecord, updatedEntity);
+    }
+    return new DataProductImportScenario(testCsv, csvRecord, repository, updatedEntity);
+  }
+
+  private static SemanticsRule dataProductDomainValidationRule() {
+    return new SemanticsRule()
+        .withName("Data Product Domain Validation")
+        .withDescription("Validates that Data Products assigned to an entity match the domains.")
+        .withRule(
+            "{\"validateDataProductDomainMatch\":[{\"var\":\"dataProducts\"},{\"var\":\"domains\"}]}")
+        .withEnabled(true)
+        .withIgnoredEntities(List.of(Entity.USER, Entity.TEAM, Entity.PERSONA, Entity.BOT));
+  }
+
+  private static EntityReference ref(String type, String name) {
+    return new EntityReference()
+        .withId(UUID.randomUUID())
+        .withType(type)
+        .withName(name)
+        .withFullyQualifiedName(name);
   }
 }

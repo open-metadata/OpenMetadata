@@ -45,11 +45,12 @@ public final class DataQualityListPage extends PageObject {
     return this;
   }
 
-  /** Clear the search bar. */
+  /** Clear the search bar by emptying it (the refactored search Input has no Ant clear icon). */
   public DataQualityListPage clearSearch() {
     page.waitForResponse(
         r -> r.url().contains(API_LIST),
-        () -> page.locator(".ant-input-clear-icon").first().click());
+        () ->
+            page.locator("[data-testid='test-case-container'] [data-testid='searchbar']").fill(""));
     return this;
   }
 

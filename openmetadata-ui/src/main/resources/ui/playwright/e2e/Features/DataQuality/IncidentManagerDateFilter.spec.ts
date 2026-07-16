@@ -89,7 +89,7 @@ test.describe(
     test('Date picker shows placeholder when no date is selected', async ({
       page,
     }) => {
-      const datePicker = page.getByTestId('mui-date-picker-menu');
+      const datePicker = page.getByTestId('date-picker-menu');
       await expect(datePicker).toBeVisible();
       await expect(datePicker).toContainText('Select Date');
 
@@ -100,10 +100,12 @@ test.describe(
     });
 
     test('Select preset date range', async ({ page }) => {
-      const datePicker = page.getByTestId('mui-date-picker-menu');
+      const datePicker = page.getByTestId('date-picker-menu');
       await datePicker.click();
 
-      const last7DaysOption = page.getByTestId('date-range-option-last7days');
+      const last7DaysOption = page.getByRole('menuitem', {
+        name: 'Last 7 days',
+      });
 
       // Wait for API call that happens on selection change.
       // We strictly wait for a request that has searchParams to avoid catching the initial load or others.
@@ -141,7 +143,7 @@ test.describe(
 
     test('Clear selected date range', async ({ page }) => {
       // First select a range to ensure we can clear it
-      const datePicker = page.getByTestId('mui-date-picker-menu');
+      const datePicker = page.getByTestId('date-picker-menu');
       await datePicker.click();
 
       // Wait for request with startTs to ensure selection is applied
@@ -153,7 +155,7 @@ test.describe(
               '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
             ) && response.url().includes('startTs')
       );
-      await page.getByTestId('date-range-option-last7days').click();
+      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
       const afterSelectResponse = await selectionResponse;
       expect(afterSelectResponse.status()).toBe(200);
 
@@ -195,9 +197,9 @@ test.describe(
     });
 
     test('Date filter persists on page reload', async ({ page }) => {
-      const datePicker = page.getByTestId('mui-date-picker-menu');
+      const datePicker = page.getByTestId('date-picker-menu');
       await datePicker.click();
-      await page.getByTestId('date-range-option-last7days').click();
+      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
       await expect(datePicker).toContainText('Last 7 days');
 
       const incidentListResponse = page.waitForResponse((response) =>
@@ -217,7 +219,7 @@ test.describe(
       const response = await incidentListResponse;
       expect(response.status()).toBe(200);
 
-      const datePickerReloaded = page.getByTestId('mui-date-picker-menu');
+      const datePickerReloaded = page.getByTestId('date-picker-menu');
       await expect(datePickerReloaded).toBeVisible({ timeout: 15000 });
       await expect(datePickerReloaded).toContainText('Last 7 days');
 
@@ -380,7 +382,7 @@ test.describe(
     test('Date picker shows placeholder by default on Incident Manager page', async ({
       page,
     }) => {
-      const datePicker = page.getByTestId('mui-date-picker-menu');
+      const datePicker = page.getByTestId('date-picker-menu');
       await expect(datePicker).toBeVisible();
       await expect(datePicker).toContainText('Select Date');
 
@@ -391,7 +393,7 @@ test.describe(
     test('Select and clear date range on Incident Manager page', async ({
       page,
     }) => {
-      const datePicker = page.getByTestId('mui-date-picker-menu');
+      const datePicker = page.getByTestId('date-picker-menu');
       await datePicker.click();
 
       // Select Last 7 days
@@ -403,7 +405,7 @@ test.describe(
               '/api/v1/dataQuality/testCases/testCaseIncidentStatus/search/list'
             ) && response.url().includes('startTs')
       );
-      await page.getByTestId('date-range-option-last7days').click();
+      await page.getByRole('menuitem', { name: 'Last 7 days' }).click();
       await dateFilterRes;
 
       await expect(datePicker).toContainText('Last 7 days');

@@ -34,7 +34,10 @@ import {
 } from '../../../rest/tasksAPI';
 import { getEntityFeedLink } from '../../../utils/EntityPureUtils';
 import { getEntityReferenceListFromEntities } from '../../../utils/EntityReferenceUtils';
-import { fetchOptions, generateOptions } from '../../../utils/TasksUtils';
+import {
+  fetchOptions,
+  generateOptions,
+} from '../../../utils/TaskAssigneeUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 
 import {

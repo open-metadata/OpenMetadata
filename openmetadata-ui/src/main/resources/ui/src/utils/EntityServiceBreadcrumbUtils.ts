@@ -12,6 +12,7 @@
  */
 
 import { startCase } from 'lodash';
+import type { TitleLink } from '../components/common/TitleBreadcrumb/TitleBreadcrumb.interface';
 import type { SourceType } from '../components/SearchedData/SearchedData.interface';
 import { GlobalSettingsMenuCategory } from '../constants/GlobalSettings.constants';
 import { EntityType } from '../enums/entity.enum';
@@ -26,17 +27,21 @@ import {
   getServiceDetailsPath,
   getSettingPath,
 } from './RouterUtils';
-import { getServiceRouteFromServiceType } from './ServicePureUtils';
+import {
+  getEntityTypeFromServiceCategory,
+  getServiceRouteFromServiceType,
+} from './ServicePureUtils';
 
 export const getServiceCategoryBreadcrumb = (
   serviceCategory: ServiceCategory
-) => [
+): TitleLink[] => [
   {
     name: startCase(serviceCategory),
     url: getSettingPath(
       GlobalSettingsMenuCategory.SERVICES,
       getServiceRouteFromServiceType(serviceCategory)
     ),
+    iconType: getEntityTypeFromServiceCategory(serviceCategory),
   },
 ];
 
@@ -51,50 +56,79 @@ export const getBreadcrumbForDatabaseService = (
     items.push({
       name: entityName,
       url: getServiceDetailsPath(fqn, ServiceCategory.DATABASE_SERVICES),
+      isServiceBreadcrumb: true,
     });
   }
 
   return items;
 };
 
-export const getBreadcrumbForDatabase = (entity: Database) => [
-  ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
-  ...getBreadcrumbForEntitiesWithServiceOnly(entity),
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
-    ),
-  },
-];
+export const getBreadcrumbForDatabase = (
+  entity: Database,
+  includeCurrent = false
+) => {
+  const items = [
+    ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
+    ...getBreadcrumbForEntitiesWithServiceOnly(entity),
+  ];
 
-export const getBreadcrumbForDatabaseSchema = (entity: DatabaseSchema) => [
-  ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
-  {
-    name: getEntityName(entity.service),
-    url: entity.service?.name
-      ? getServiceDetailsPath(
-          entity.service?.name ?? '',
-          ServiceCategoryPlural[
-            entity.service?.type as keyof typeof ServiceCategoryPlural
-          ]
-        )
-      : '',
-  },
-  {
-    name: getEntityName(entity.database),
-    url: getEntityDetailsPath(
-      EntityType.DATABASE,
-      entity.database?.fullyQualifiedName ?? ''
-    ),
-  },
-  {
-    name: entity.name,
-    url: getEntityLinkFromType(
-      entity.fullyQualifiedName ?? '',
-      ((entity as unknown as SourceType).entityType as EntityType) ??
-        EntityType.DATABASE_SCHEMA
-    ),
-  },
-];
+  if (includeCurrent) {
+    items.push({
+      name: entity.name,
+      url: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        ((entity as SourceType).entityType as EntityType) ?? EntityType.DATABASE
+      ),
+      iconType:
+        ((entity as SourceType).entityType as EntityType) ??
+        EntityType.DATABASE,
+    });
+  }
+
+  return items;
+};
+
+export const getBreadcrumbForDatabaseSchema = (
+  entity: DatabaseSchema,
+  includeCurrent = false
+) => {
+  const items = [
+    ...getServiceCategoryBreadcrumb(ServiceCategory.DATABASE_SERVICES),
+    {
+      name: getEntityName(entity.service),
+      url: entity.service?.name
+        ? getServiceDetailsPath(
+            entity.service?.name ?? '',
+            ServiceCategoryPlural[
+              entity.service?.type as keyof typeof ServiceCategoryPlural
+            ]
+          )
+        : '',
+      isServiceBreadcrumb: true,
+    },
+    {
+      name: getEntityName(entity.database),
+      url: getEntityDetailsPath(
+        EntityType.DATABASE,
+        entity.database?.fullyQualifiedName ?? ''
+      ),
+      iconType: EntityType.DATABASE,
+    },
+  ];
+
+  if (includeCurrent) {
+    items.push({
+      name: entity.name,
+      url: getEntityLinkFromType(
+        entity.fullyQualifiedName ?? '',
+        ((entity as unknown as SourceType).entityType as EntityType) ??
+          EntityType.DATABASE_SCHEMA
+      ),
+      iconType:
+        ((entity as unknown as SourceType).entityType as EntityType) ??
+        EntityType.DATABASE_SCHEMA,
+    });
+  }
+
+  return items;
+};

@@ -10,22 +10,18 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Page, test as base } from '@playwright/test';
+import { expect, Page, test as base } from '@playwright/test';
 import { Domain } from '../../../support/domain/Domain';
 import { TableClass } from '../../../support/entity/TableClass';
 import { UserClass } from '../../../support/user/UserClass';
 import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
-import {
-  enableDisableSearchRBAC,
-  searchForEntityShouldWork,
-  searchForEntityShouldWorkShowNoResult,
-} from '../../../utils/searchRBAC';
+import { getApiContext } from '../../../utils/common';
 import {
   assignDomainOnlyAccess,
   assignDomainToTable,
   safeDelete,
-} from './domainIsolationUtils';
+} from '../../../utils/domainIsolationUtils';
+import { enableDisableSearchRBAC } from '../../../utils/searchRBAC';
 
 // Issue #24180 — with the global `enableAccessControl` search setting on, a user holding the
 // seeded DomainOnlyAccessRole can only discover (via navbar search / explore) assets in their
@@ -76,8 +72,35 @@ const test = base.extend<{
 const fqnOf = (table: TableClass) =>
   table.entityResponseData?.fullyQualifiedName ?? '';
 
-const displayNameOf = (table: TableClass) =>
-  table.entityResponseData?.displayName ?? '';
+/**
+ * Runs the global `/api/v1/search/query` as the logged-in user and returns the serialized hits.
+ * With search RBAC (`enableAccessControl`) on, the backend restricts hits to the user's accessible
+ * domains plus domainless assets — which is exactly the isolation we assert on. We assert at the
+ * search-API layer (through the user's own session) because the redesigned landing page scopes its
+ * search box to the user's active domain, which a restricted user cannot widen to "All Domains".
+ */
+const searchHitsAsUser = async (
+  page: Page,
+  table: TableClass
+): Promise<string> => {
+  const { apiContext, afterAction } = await getApiContext(page);
+
+  try {
+    const response = await apiContext.get('/api/v1/search/query', {
+      params: {
+        q: table.entityResponseData?.name ?? '',
+        index: 'dataAsset',
+        from: 0,
+        size: 50,
+      },
+    });
+    const json = await response.json();
+
+    return JSON.stringify(json?.hits?.hits ?? []);
+  } finally {
+    await afterAction();
+  }
+};
 
 test.describe('Domain isolation - search and explore @domain-isolation', () => {
   test.slow(true);
@@ -142,59 +165,41 @@ test.describe('Domain isolation - search and explore @domain-isolation', () => {
   test('userA finds tenantA and domainless tables but not tenantB', async ({
     userAPage,
   }) => {
-    await redirectToHomePage(userAPage);
-
-    await searchForEntityShouldWork(
-      fqnOf(tableA),
-      displayNameOf(tableA),
-      userAPage
-    );
-    await searchForEntityShouldWork(
-      fqnOf(tableNoDomain),
-      displayNameOf(tableNoDomain),
-      userAPage
-    );
-    await searchForEntityShouldWorkShowNoResult(
-      fqnOf(tableB),
-      displayNameOf(tableB),
-      userAPage
-    );
+    await expect
+      .poll(() => searchHitsAsUser(userAPage, tableA), { timeout: 30_000 })
+      .toContain(fqnOf(tableA));
+    await expect
+      .poll(() => searchHitsAsUser(userAPage, tableNoDomain), {
+        timeout: 30_000,
+      })
+      .toContain(fqnOf(tableNoDomain));
+    await expect
+      .poll(() => searchHitsAsUser(userAPage, tableB), { timeout: 30_000 })
+      .not.toContain(fqnOf(tableB));
   });
 
   test('userB finds tenantB and domainless tables but not tenantA', async ({
     userBPage,
   }) => {
-    await redirectToHomePage(userBPage);
-
-    await searchForEntityShouldWork(
-      fqnOf(tableB),
-      displayNameOf(tableB),
-      userBPage
-    );
-    await searchForEntityShouldWork(
-      fqnOf(tableNoDomain),
-      displayNameOf(tableNoDomain),
-      userBPage
-    );
-    await searchForEntityShouldWorkShowNoResult(
-      fqnOf(tableA),
-      displayNameOf(tableA),
-      userBPage
-    );
+    await expect
+      .poll(() => searchHitsAsUser(userBPage, tableB), { timeout: 30_000 })
+      .toContain(fqnOf(tableB));
+    await expect
+      .poll(() => searchHitsAsUser(userBPage, tableNoDomain), {
+        timeout: 30_000,
+      })
+      .toContain(fqnOf(tableNoDomain));
+    await expect
+      .poll(() => searchHitsAsUser(userBPage, tableA), { timeout: 30_000 })
+      .not.toContain(fqnOf(tableA));
   });
 
   test('admin finds tables from both tenants', async ({ adminPage }) => {
-    await redirectToHomePage(adminPage);
-
-    await searchForEntityShouldWork(
-      fqnOf(tableA),
-      displayNameOf(tableA),
-      adminPage
-    );
-    await searchForEntityShouldWork(
-      fqnOf(tableB),
-      displayNameOf(tableB),
-      adminPage
-    );
+    await expect
+      .poll(() => searchHitsAsUser(adminPage, tableA), { timeout: 30_000 })
+      .toContain(fqnOf(tableA));
+    await expect
+      .poll(() => searchHitsAsUser(adminPage, tableB), { timeout: 30_000 })
+      .toContain(fqnOf(tableB));
   });
 });

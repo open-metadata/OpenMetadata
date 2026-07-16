@@ -108,10 +108,15 @@ test.describe('search dropdown quick filters - index readiness', () => {
         filter.key
       }*${(filter.value ?? '').replaceAll(' ', '+').toLowerCase()}*`;
 
-      const queryRes = page.waitForResponse(querySearchURL);
-      await page.click('[data-testid="update-btn"]');
-      await queryRes;
-      await page.click('[data-testid="clear-filters"]');
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(querySearchURL);
+        await updateButton.click();
+        await queryRes;
+      } else {
+        await waitForAllLoadersToDisappear(page);
+      }
+      await page.getByTestId('clear-all-chips').click();
     }
   });
 });
@@ -233,9 +238,14 @@ test('Filter by column entity type shows only column results', async ({
   await dataAssetDropdownRequest;
 
   await columnCheckbox.check();
-  await page.getByTestId('update-btn').click();
 
-  await page.getByTestId('search-dropdown-Data Assets').click();
+  const updateButton = page.getByTestId('update-btn');
+  if (await updateButton.isVisible().catch(() => false)) {
+    // Legacy mode: apply, then reopen the dropdown to confirm persistence.
+    await updateButton.click();
+    await page.getByTestId('search-dropdown-Data Assets').click();
+  }
+  // Immediate-apply leaves the dropdown open with the box already checked.
   await expect(page.getByTestId('tablecolumn-checkbox')).toBeChecked();
   await expect(page.getByTestId('search-dropdown-Data Assets')).toContainText(
     '(1)'
@@ -313,11 +323,14 @@ test.describe('Tier filter - aggregation-based options', () => {
     });
 
     await test.step('Apply filter and verify asset is visible in results', async () => {
-      const queryRes = page.waitForResponse(
-        `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          `/api/v1/search/query?*index=dataAsset*query_filter=*tier.tagFQN*`
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
 
       await expect(
@@ -357,11 +370,14 @@ test.describe('Filter persistence after bug fixes', () => {
         { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
         true
       );
-      const queryRes = page.waitForResponse(
-        '/api/v1/search/query?*index=dataAsset*'
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -391,11 +407,14 @@ test.describe('Filter persistence after bug fixes', () => {
         { key: 'tags.tagFQN', label: 'Tag', value: 'PersonalData.Personal' },
         true
       );
-      const queryRes = page.waitForResponse(
-        '/api/v1/search/query?*index=dataAsset*'
-      );
-      await page.getByTestId('update-btn').click();
-      await queryRes;
+      const updateButton = page.getByTestId('update-btn');
+      if (await updateButton.isVisible().catch(() => false)) {
+        const queryRes = page.waitForResponse(
+          '/api/v1/search/query?*index=dataAsset*'
+        );
+        await updateButton.click();
+        await queryRes;
+      }
       await waitForAllLoadersToDisappear(page);
     });
 
@@ -436,7 +455,7 @@ test.describe('Metric search result highlight', () => {
     await afterAction();
   });
 
-  test('breadcrumb should show plain entity name and display name header should have highlighted terms', async ({
+  test('breadcrumb shows the entity category and display name header should have highlighted terms', async ({
     page,
   }) => {
     await test.step('Select Metric search index and search', async () => {
@@ -477,24 +496,23 @@ test.describe('Metric search result highlight', () => {
       await page.getByTestId('search-results').waitFor({ state: 'visible' });
     });
 
-    await test.step('Verify breadcrumb shows Metrics / plain entity name without HTML tags', async () => {
+    await test.step('Verify breadcrumb shows the Metrics category without HTML tags', async () => {
       const entityCard = page.getByTestId(
         `table-data-card_${metric.entity.name}`
       );
       await entityCard.waitFor({ state: 'visible' });
 
-      const breadcrumb = entityCard.getByTestId('breadcrumb');
-
-      const firstLink = breadcrumb
-        .getByTestId('breadcrumb-link')
-        .first()
-        .getByRole('link');
-      await expect(firstLink).toHaveText('Metrics');
-
-      const inactiveLink = breadcrumb.getByTestId('inactive-link');
-      await expect(inactiveLink).toHaveText(metric.entity.name);
-      await expect(inactiveLink).not.toContainText('<span');
-      await expect(inactiveLink).not.toContainText('text-highlighter');
+      // The result-card breadcrumb (core Breadcrumbs) shows only the ancestor
+      // trail — it excludes the current entity, which the card renders as its
+      // title. A Metric's sole ancestor is the "Metrics" category, so it is the
+      // last (plain, non-link) crumb. The entity name lives in the card title
+      // (asserted below), so search-highlight markup can never leak into the
+      // breadcrumb.
+      const breadcrumb = entityCard.getByRole('list', { name: 'Breadcrumb' });
+      await expect(breadcrumb).toBeVisible();
+      await expect(breadcrumb).toContainText('Metrics');
+      await expect(breadcrumb).not.toContainText('<span');
+      await expect(breadcrumb).not.toContainText('text-highlighter');
     });
 
     await test.step('Verify display name header has highlighted search terms', async () => {
