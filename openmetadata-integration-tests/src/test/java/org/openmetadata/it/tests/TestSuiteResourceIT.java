@@ -845,8 +845,9 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
 
     putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS, runId);
     Awaitility.await("redundant terminal write does not re-complete the run")
-        .pollDelay(Duration.ofSeconds(3))
-        .atMost(Duration.ofSeconds(6))
+        .during(Duration.ofSeconds(3))
+        .atMost(Duration.ofSeconds(10))
+        .pollInterval(Duration.ofMillis(500))
         .untilAsserted(() -> assertEquals(versionAfterRun, getEntity(suiteId).getVersion()));
   }
 
