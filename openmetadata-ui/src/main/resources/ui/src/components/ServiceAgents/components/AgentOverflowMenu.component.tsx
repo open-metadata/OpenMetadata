@@ -20,6 +20,7 @@ import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
 import { NO_AGENT_PERMISSIONS } from '../utils/agents.utils';
 
 interface AgentOverflowMenuProps {
+  allowedActions?: string[];
   permissions?: AgentActionPermissions;
   status: AgentStatus;
   onAction: (action: string) => void;
@@ -33,6 +34,7 @@ interface MenuItem {
 }
 
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
+  allowedActions,
   onAction,
   permissions = NO_AGENT_PERMISSIONS,
   status,
@@ -85,7 +87,10 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
     delete: permissions.delete,
   };
 
-  const items = allItems.filter((item) => PERMISSION_BY_ITEM[item.id]);
+  const items = allItems.filter(
+    (item) =>
+      (allowedActions?.includes(item.id) ?? true) && PERMISSION_BY_ITEM[item.id]
+  );
 
   if (items.length === 0) {
     return null;
