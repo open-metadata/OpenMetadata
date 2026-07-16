@@ -67,6 +67,9 @@ from metadata.ingestion.source.database.databricks.auth import (
     get_auth_config,
     normalize_host_port,
 )
+from metadata.ingestion.source.database.databricks.connection import (
+    DatabricksApiConnection,
+)
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
@@ -452,8 +455,7 @@ class UnityCatalogChecks:
 
 
 class UnityCatalogSqlConnection(BaseConnection[UnityCatalogConnectionConfig, Engine]):
-    """Owns the SQL-warehouse Engine: a separate lifetime from the workspace client,
-    reached only by the lineage and tag steps and never built without an httpPath."""
+    """Owns the SQL-warehouse Engine: a separate lifetime from the workspace client."""
 
     def _get_client(self) -> Engine:
         engine = get_sqlalchemy_connection(self.service_connection)
@@ -467,8 +469,9 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
         # Honor the user-facing connectionTimeout as the per-step budget; a cold
         # serverless warehouse can exceed the framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
-        # A sub-owner, not a client: constructing it opens nothing.
+        # Sub-owners, not clients: constructing them opens nothing.
         self.sql = UnityCatalogSqlConnection(service_connection)
+        self.api = DatabricksApiConnection(service_connection)
 
     def _get_client(self) -> WorkspaceClient:
         return get_connection(self.service_connection)
@@ -476,6 +479,7 @@ class UnityCatalogConnection(BaseConnection[UnityCatalogConnectionConfig, Worksp
     def close(self) -> None:
         # Not _on_close: that registry is reset by close(), so a sub-owner
         # registered once would not be released on a later reuse cycle.
+        self.api.close()
         self.sql.close()
         super().close()
 

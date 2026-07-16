@@ -108,19 +108,6 @@
       "additionalProperties": false,
       "required": ["enabled"]
     },
-    "dataQualityConfig": {
-      "type": "object",
-      "properties": {
-        "enabled": {
-          "title": "Enabled",
-          "description": "If Enabled, Data Quality insights will be populated when the App runs.",
-          "type": "boolean",
-          "default": true
-        }
-      },
-      "additionalProperties": false,
-      "required": ["enabled"]
-    },
     "costAnalysisConfig": {
       "type": "object",
       "properties": {
@@ -149,11 +136,6 @@
           "description": "App Analytics Module configuration",
           "$ref": "#/definitions/appAnalyticsConfig"
         },
-        "dataQuality": {
-          "title": "Data Quality Insights Module",
-          "description": "Data Quality Insights Module configuration",
-          "$ref": "#/definitions/dataQualityConfig"
-        },
         "costAnalysis": {
           "title": "Cost Analysis Insights Module",
           "description": "Cost Analysis Insights Module configuration",
@@ -161,7 +143,7 @@
         }
       },
       "additionalProperties": false,
-      "required": ["dataAssets", "appAnalytics", "dataQuality", "costAnalysis"]
+      "required": ["dataAssets", "appAnalytics", "costAnalysis"]
     }
   },
   "properties": {

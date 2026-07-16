@@ -62,7 +62,7 @@ from metadata.ingestion.connections.session import create_and_bind_thread_safe_s
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import create_connection, get_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
@@ -119,15 +119,21 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         if self.ssl_manager:
             self.service_connection = self.ssl_manager.setup_ssl(self.service_connection)
 
-        self.engine: Engine = get_connection(self.service_connection)
+        self._connection_map = {}  # Lazy init as well
+        self._inspector_map = {}
+
+        self._connection = create_connection(self.service_connection)
+        self.engine: Engine = self._connection.client if self._connection else get_connection(self.service_connection)
         self.session = create_and_bind_thread_safe_session(self.engine)
 
         # Flag the connection for the test connection
         self.connection_obj = self.engine
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
-        self._connection_map = {}  # Lazy init as well
-        self._inspector_map = {}
         self.table_constraints = None
         self.database_source_state = set()
         self.context.get_global().table_constrains = []
@@ -147,7 +153,8 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
 
         new_service_connection = deepcopy(self.service_connection)
         new_service_connection.database = database_name
-        self.engine = get_connection(new_service_connection)
+        self._connection = create_connection(new_service_connection)
+        self.engine = self._connection.client if self._connection else get_connection(new_service_connection)
         self.session = create_and_bind_thread_safe_session(self.engine)
         self.connection_obj = self.engine
 
@@ -178,6 +185,9 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             logger.error(f"Failed to dispose engine: {exc}")
         self.engine = None
         self.connection_obj = None
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
 
     def get_database_names(self) -> Iterable[str]:
         """
