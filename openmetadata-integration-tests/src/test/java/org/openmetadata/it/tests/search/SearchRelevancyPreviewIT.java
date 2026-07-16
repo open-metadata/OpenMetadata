@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import java.time.Duration;
+import java.util.ArrayList;
 import java.util.List;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.BeforeAll;
@@ -140,8 +141,10 @@ class SearchRelevancyPreviewIT {
   void maxResultHitsClampsTheReturnedHits(final TestNamespace ns) {
     final String marker = ns.uniqueShortId();
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
+    final List<String> seededIds = new ArrayList<>();
     for (int i = 0; i < 4; i++) {
-      RelevancyFixtures.createTable(schema, marker + i, marker, null);
+      seededIds.add(
+          RelevancyFixtures.createTable(schema, marker + i, marker, null).getId().toString());
     }
     awaitIndexed(marker, 4);
 
@@ -153,11 +156,15 @@ class SearchRelevancyPreviewIT {
         .as("maxResultHits=2 must cap the hit list at 2 even when size=10")
         .hasSize(2);
 
+    // The marker is a fuzzy query (name.ngram), so on the shared cluster a concurrent run's
+    // ngram-colliding table can appear as an extra hit. Assert the whole seeded cohort is present
+    // rather than an exact size, which such a foreign hit would inflate. Clamp above is size-exact
+    // because maxResultHits=2 caps the total regardless of how many tables match.
     final SearchSettings wide = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setMaxResultHits(wide, 50);
     assertThat(SearchSettingsTestHelper.previewIds(server, marker, TABLE_INDEX, wide, 10))
         .as("a wide maxResultHits must return the whole seeded cohort")
-        .hasSize(4);
+        .containsAll(seededIds);
   }
 
   @Test
