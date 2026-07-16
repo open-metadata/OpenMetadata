@@ -870,4 +870,49 @@ class CreateTaskTest {
     assertTrue(
         CreateTask.isSupersedablePriorApprovalTask(prior, workflowDefinitionId, UUID.randomUUID()));
   }
+
+  // ---- mergeManualGrantReason ----
+
+  @Test
+  void testMergeManualGrantReasonAttachesReasonToJsonStringPayload() {
+    // Flowable serializes task variables as raw JSON Strings; strict convertValue would throw
+    // here — the tolerant reader must parse the String and return a typed payload.
+    Object result =
+        CreateTask.mergeManualGrantReason(
+            "{\"accessType\":\"FullAccess\",\"duration\":\"P14D\"}", "policy override");
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    DataAccessRequestPayload dar = (DataAccessRequestPayload) result;
+    assertEquals("policy override", dar.getManualGrantReason());
+    assertEquals("FullAccess", dar.getAccessType().value());
+    assertEquals("P14D", dar.getDuration());
+  }
+
+  @Test
+  void testMergeManualGrantReasonAttachesReasonToMapPayload() {
+    Object result =
+        CreateTask.mergeManualGrantReason(
+            Map.of("accessType", "Masked", "duration", "P7D"), "auditor request");
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    DataAccessRequestPayload dar = (DataAccessRequestPayload) result;
+    assertEquals("auditor request", dar.getManualGrantReason());
+    assertEquals("Masked", dar.getAccessType().value());
+  }
+
+  @Test
+  void testMergeManualGrantReasonReturnsSameRefWhenReasonBlank() {
+    Map<String, Object> payload = Map.of("duration", "P14D");
+    assertSame(payload, CreateTask.mergeManualGrantReason(payload, null));
+    assertSame(payload, CreateTask.mergeManualGrantReason(payload, ""));
+    assertSame(payload, CreateTask.mergeManualGrantReason(payload, "   "));
+  }
+
+  @Test
+  void testMergeManualGrantReasonBuildsFreshPayloadWhenInputNull() {
+    Object result = CreateTask.mergeManualGrantReason(null, "policy override");
+
+    assertTrue(result instanceof DataAccessRequestPayload);
+    assertEquals("policy override", ((DataAccessRequestPayload) result).getManualGrantReason());
+  }
 }
