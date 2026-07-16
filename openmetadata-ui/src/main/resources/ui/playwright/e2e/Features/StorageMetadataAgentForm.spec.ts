@@ -210,5 +210,29 @@ test.describe(
         await expect(manifestWidget.locator('.CodeMirror-line')).toHaveCount(1);
       });
     });
+
+    test('auto-close keeps the caret between the inserted pair', async ({
+      page,
+    }) => {
+      test.slow();
+      await openMetadataAgentEditForm(page);
+
+      const editor = page.locator('.manifest-json-widget .CodeMirror');
+      await editor.click();
+      await page.keyboard.press('ControlOrMeta+A');
+      await page.keyboard.press('Delete');
+
+      // Typing `{` auto-inserts `}` with the caret between them; the next char
+      // must land inside. Before the fix the caret jumped to the end (`{}x`).
+      await page.keyboard.type('{');
+      await page.keyboard.type('x');
+
+      const value = await editor.evaluate((el) =>
+        (
+          el as unknown as { CodeMirror: { getValue(): string } }
+        ).CodeMirror.getValue()
+      );
+      expect(value).toBe('{x}');
+    });
   }
 );
