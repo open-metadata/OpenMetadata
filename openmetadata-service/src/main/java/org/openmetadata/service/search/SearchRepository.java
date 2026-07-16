@@ -1771,7 +1771,7 @@ public class SearchRepository {
     int batchSize = 100;
     int maxConcurrentRequests = 5;
     long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
-    List<EntityInterface> bulkUpdatedEntities = new ArrayList<>();
+    List<EntityInterface> propagationCandidates = new ArrayList<>();
 
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
@@ -1806,7 +1806,7 @@ public class SearchRepository {
           throw new IOException(
               "Bulk entity update did not complete successfully for type " + entityType);
         }
-        bulkUpdatedEntities.addAll(typeEntities);
+        propagationCandidates.addAll(typeEntities);
       } catch (Exception e) {
         LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
         if (bulkSink != null) {
@@ -1823,6 +1823,7 @@ public class SearchRepository {
             }
           }
         } else {
+          propagationCandidates.addAll(typeEntities);
           for (EntityInterface entity : typeEntities) {
             SearchIndexRetryQueue.enqueue(
                 entity,
@@ -1837,8 +1838,8 @@ public class SearchRepository {
       }
     }
 
-    // Run fan-out propagation once after all bulk doc updates are flushed.
-    propagateEntitiesAfterBulkFlush(bulkUpdatedEntities);
+    // An uncertain bulk outcome still needs its fan-out side effects after the sink is closed.
+    propagateEntitiesAfterBulkFlush(propagationCandidates);
   }
 
   private void closeBulkSink(BulkSink bulkSink) {

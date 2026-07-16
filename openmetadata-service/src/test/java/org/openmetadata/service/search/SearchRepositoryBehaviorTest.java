@@ -14,6 +14,7 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.ArgumentMatchers.nullable;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -39,7 +40,9 @@ import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.MockedConstruction;
+import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.entityRelationship.SearchEntityRelationshipRequest;
@@ -2921,6 +2924,49 @@ class SearchRepositoryBehaviorTest {
     try (MockedConstruction<ElasticSearchBulkSink> ignored =
         mockConstruction(ElasticSearchBulkSink.class)) {
       assertNotNull(repository.createBulkSink(10, 2, 1024L));
+    }
+  }
+
+  @Test
+  void bulkTimeoutPropagatesAfterCloseWithoutReplayingTheDocumentWrite() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    String serviceId = service.getId().toString();
+    when(service.getChangeDescription())
+        .thenReturn(
+            changeDescription(
+                List.of(),
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_DISPLAY_NAME)
+                        .withOldValue("Old Service")
+                        .withNewValue("New Service")),
+                List.of()));
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> when(bulkSink.flushAndAwait(60)).thenReturn(false))) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      ElasticSearchBulkSink bulkSink = bulkSinks.constructed().getFirst();
+      InOrder propagationOrder = inOrder(bulkSink, searchClient);
+      propagationOrder.verify(bulkSink).close();
+      propagationOrder
+          .verify(searchClient)
+          .updateChildren(eq(List.of("cluster_database")), any(Pair.class), any(Pair.class));
+      verify(searchClient, never())
+          .updateEntity(any(String.class), eq(serviceId), any(), any(String.class));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  eq(service),
+                  eq(
+                      "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback"),
+                  any(IOException.class)));
     }
   }
 
