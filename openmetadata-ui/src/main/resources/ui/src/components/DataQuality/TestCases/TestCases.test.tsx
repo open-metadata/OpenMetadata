@@ -360,7 +360,12 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(mockGetListTestCase).toHaveBeenCalledWith(
           expect.objectContaining({
-            fields: ['testCaseResult', 'testSuite', 'incidentId'],
+            fields: [
+              'testCaseResult',
+              'testSuite',
+              'incidentId',
+              'incidentStatus',
+            ],
             includeAllTests: true,
             limit: 15,
             offset: 0,
