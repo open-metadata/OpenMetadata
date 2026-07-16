@@ -81,6 +81,14 @@ const SubDomainsTable = withSuspenseFallback(
   )
 );
 
+const DomainMembersTab = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../components/Domain/DomainMembersTab/DomainMembersTab.component'
+    ).then((module) => ({ default: module.DomainMembersTab }))
+  )
+);
+
 const AssetsTabs = withSuspenseFallback(
   lazy(
     () =>
@@ -109,14 +117,6 @@ const DomainTypeWidget = withSuspenseFallback(
   lazy(() =>
     import('../components/Domain/DomainTypeWidget/DomainTypeWidget').then(
       (module) => ({ default: module.DomainTypeWidget })
-    )
-  )
-);
-
-const DomainMembersWidget = withSuspenseFallback(
-  lazy(() =>
-    import('../components/Domain/DomainMembersWidget/DomainMembersWidget').then(
-      (module) => ({ default: module.DomainMembersWidget })
     )
   )
 );
@@ -332,6 +332,26 @@ export const getDomainDetailTabs = ({
           {
             label: (
               <TabsLabel
+                id={EntityTabs.MEMBERS}
+                isActive={activeTab === EntityTabs.MEMBERS}
+                name={get(
+                  labelMap,
+                  EntityTabs.MEMBERS,
+                  t('label.user-and-team-plural')
+                )}
+              />
+            ),
+            key: EntityTabs.MEMBERS,
+            children: (
+              <DomainMembersTab
+                domainFqn={domain.fullyQualifiedName ?? ''}
+                permissions={domainPermission}
+              />
+            ),
+          },
+          {
+            label: (
+              <TabsLabel
                 count={feedCount?.totalCount ?? 0}
                 id={EntityTabs.ACTIVITY_FEED}
                 isActive={activeTab === EntityTabs.ACTIVITY_FEED}
@@ -442,8 +462,6 @@ export const getDomainDetailTabs = ({
 export const getDomainWidgetsFromKey = (widgetConfig: WidgetConfig) => {
   if (widgetConfig.i.startsWith(DetailPageWidgetKeys.EXPERTS)) {
     return <DomainExpertWidget />;
-  } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_MEMBERS)) {
-    return <DomainMembersWidget />;
   } else if (widgetConfig.i.startsWith(DetailPageWidgetKeys.DOMAIN_TYPE)) {
     return <DomainTypeWidget />;
   }

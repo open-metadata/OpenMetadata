@@ -10,7 +10,13 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { OperationPermission } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { EntityReference } from '../../../generated/entity/domains/domain';
+
+export interface DomainMembersTabProps {
+  domainFqn: string;
+  permissions: OperationPermission;
+}
 
 export interface DomainMember {
   reference: EntityReference;

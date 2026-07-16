@@ -38,7 +38,6 @@ import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
 import '../../domain.less';
 import { DomainExpertWidget } from '../../DomainExpertsWidget/DomainExpertWidget';
-import { DomainMembersWidget } from '../../DomainMembersWidget/DomainMembersWidget';
 import { DomainTypeWidget } from '../../DomainTypeWidget/DomainTypeWidget';
 import {
   DocumentationEntity,
@@ -198,8 +197,6 @@ const DocumentationTab = ({
             <DomainExpertWidget />
 
             {type === DocumentationEntity.DOMAIN && <DomainTypeWidget />}
-
-            {type === DocumentationEntity.DOMAIN && <DomainMembersWidget />}
 
             {domain && type === DocumentationEntity.DATA_PRODUCT && (
               <CustomPropertyTable<EntityType.DATA_PRODUCT>

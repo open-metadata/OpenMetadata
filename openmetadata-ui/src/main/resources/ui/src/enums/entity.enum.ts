@@ -259,6 +259,7 @@ export enum EntityTabs {
   DOCUMENTATION = 'documentation',
   DATA_PRODUCTS = 'data_products',
   SUBDOMAINS = 'subdomains',
+  MEMBERS = 'members',
   CONTRACT = 'contract',
   DIRECTORIES = 'directories',
   WORKSHEETS = 'worksheets',

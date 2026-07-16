@@ -72,7 +72,6 @@ type DomainWidgetKeys =
   | DetailPageWidgetKeys.GLOSSARY_TERMS
   | DetailPageWidgetKeys.EXPERTS
   | DetailPageWidgetKeys.DOMAIN_TYPE
-  | DetailPageWidgetKeys.DOMAIN_MEMBERS
   | DetailPageWidgetKeys.CUSTOM_PROPERTIES
   | DetailPageWidgetKeys.KNOWLEDGE_ARTICLE;
 
@@ -89,7 +88,6 @@ class DomainClassBase {
       [DetailPageWidgetKeys.GLOSSARY_TERMS]: 2,
       [DetailPageWidgetKeys.EXPERTS]: 2,
       [DetailPageWidgetKeys.DOMAIN_TYPE]: 2,
-      [DetailPageWidgetKeys.DOMAIN_MEMBERS]: 2,
       [DetailPageWidgetKeys.CUSTOM_PROPERTIES]: 4,
       [DetailPageWidgetKeys.KNOWLEDGE_ARTICLE]: 2,
     };
@@ -127,6 +125,7 @@ class DomainClassBase {
       EntityTabs.DOCUMENTATION,
       EntityTabs.SUBDOMAINS,
       EntityTabs.DATA_PRODUCTS,
+      EntityTabs.MEMBERS,
       EntityTabs.ACTIVITY_FEED,
       EntityTabs.ASSETS,
       EntityTabs.CUSTOM_PROPERTIES,
@@ -221,19 +220,11 @@ class DomainClassBase {
         static: false,
       },
       {
-        h: this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_MEMBERS],
-        i: DetailPageWidgetKeys.DOMAIN_MEMBERS,
-        w: 2,
-        x: 6,
-        y: 7,
-        static: false,
-      },
-      {
         h: this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES],
         i: DetailPageWidgetKeys.CUSTOM_PROPERTIES,
         w: 2,
         x: 6,
-        y: 8,
+        y: 7,
         static: false,
       },
     ];
@@ -263,13 +254,6 @@ class DomainClassBase {
       {
         fullyQualifiedName: DetailPageWidgetKeys.DOMAIN_TYPE,
         name: i18n.t('label.domain-type'),
-        data: {
-          gridSizes: ['large'] as GridSizes[],
-        },
-      },
-      {
-        fullyQualifiedName: DetailPageWidgetKeys.DOMAIN_MEMBERS,
-        name: i18n.t('label.user-and-team-plural'),
         data: {
           gridSizes: ['large'] as GridSizes[],
         },
@@ -304,8 +288,6 @@ class DomainClassBase {
         return this.defaultWidgetHeight[DetailPageWidgetKeys.EXPERTS];
       case DetailPageWidgetKeys.DOMAIN_TYPE:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_TYPE];
-      case DetailPageWidgetKeys.DOMAIN_MEMBERS:
-        return this.defaultWidgetHeight[DetailPageWidgetKeys.DOMAIN_MEMBERS];
       case DetailPageWidgetKeys.CUSTOM_PROPERTIES:
         return this.defaultWidgetHeight[DetailPageWidgetKeys.CUSTOM_PROPERTIES];
       default:

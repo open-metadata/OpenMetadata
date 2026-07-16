@@ -43,7 +43,6 @@ export enum DetailPageWidgetKeys {
   OWNERS = 'KnowledgePanel.Owners',
   EXPERTS = 'KnowledgePanel.Experts',
   DOMAIN_TYPE = 'KnowledgePanel.DomainType',
-  DOMAIN_MEMBERS = 'KnowledgePanel.DomainMembers',
   TABLES = 'KnowledgePanel.Tables',
   API_ENDPOINTS = 'KnowledgePanel.APIEndpoints',
   API_SCHEMA = 'KnowledgePanel.APISchema',

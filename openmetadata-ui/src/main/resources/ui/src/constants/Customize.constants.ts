@@ -34,6 +34,7 @@ export const TAB_LABEL_MAP = {
   [EntityTabs.DETAILS]: 'label.detail-plural',
   [EntityTabs.SUBDOMAINS]: 'label.sub-domain-plural',
   [EntityTabs.DATA_PRODUCTS]: 'label.data-product-plural',
+  [EntityTabs.MEMBERS]: 'label.user-and-team-plural',
   [EntityTabs.DOCUMENTATION]: 'label.documentation',
   [EntityTabs.MODEL]: 'label.model',
   [EntityTabs.FEATURES]: 'label.feature-plural',
