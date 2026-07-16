@@ -37,6 +37,7 @@ jest.mock('@openmetadata/ui-core-components', () => ({
   Badge: jest
     .fn()
     .mockImplementation(({ children }) => <span>{children}</span>),
+  Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
   Button: jest
     .fn()
     .mockImplementation(
@@ -58,6 +59,11 @@ jest.mock('@openmetadata/ui-core-components', () => ({
         </button>
       )
     ),
+  EmptyPlaceholder: jest
+    .fn()
+    .mockImplementation(({ title }: { title?: string }) => (
+      <div data-testid="metric-empty-placeholder">{title}</div>
+    )),
   FeaturedIcon: jest.fn().mockImplementation(({ icon }) => <span>{icon}</span>),
   Input: jest
     .fn()
@@ -246,11 +252,28 @@ describe('MetricListPage', () => {
   });
 
   it('renders the docs link with correct URL when empty state is shown', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    // First call (init): return one metric so the toolbar is visible
+    // Second call (after Draft filter click): return empty so the table shows locale.emptyText
+    searchQuery
+      .mockResolvedValueOnce(
+        buildSearchResponse([{ id: 'p', name: 'p_metric' }])
+      )
+      .mockResolvedValueOnce(buildSearchResponse([]));
+
     render(
       <MemoryRouter>
         <MetricListPage />
       </MemoryRouter>
     );
+
+    // Wait for the initial metric to load and the toolbar (with status filter) to appear
+    await screen.findByText('p_metric');
+
+    // Apply a status filter: this sets statusFilter !== undefined so isMetricListEmpty stays
+    // false even after the filtered fetch returns empty, causing the table to render
+    // locale.emptyText (ErrorPlaceHolder with the docs link).
+    fireEvent.click(screen.getByTestId(`status-option-${EntityStatus.Draft}`));
 
     const link = await screen.findByText('docs');
 
@@ -261,6 +284,12 @@ describe('MetricListPage', () => {
   });
 
   it('passes filtered metric scope when bulk edit is clicked without selection', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    // Return one metric on init so isMetricListEmpty = false and the toolbar is visible
+    searchQuery.mockResolvedValueOnce(
+      buildSearchResponse([{ id: 'p', name: 'p_metric' }])
+    );
+
     render(
       <MemoryRouter>
         <MetricListPage />
@@ -393,7 +422,12 @@ describe('MetricListPage', () => {
 
   it('cancels a pending debounced search when the status filter changes mid-typing', async () => {
     const { searchQuery } = require('../../../rest/searchAPI');
-    searchQuery.mockResolvedValue(buildSearchResponse([]));
+    // First call (init): one metric so the toolbar is visible; subsequent calls return empty
+    searchQuery
+      .mockResolvedValueOnce(
+        buildSearchResponse([{ id: 'p', name: 'p_metric' }])
+      )
+      .mockResolvedValue(buildSearchResponse([]));
 
     render(
       <MemoryRouter>

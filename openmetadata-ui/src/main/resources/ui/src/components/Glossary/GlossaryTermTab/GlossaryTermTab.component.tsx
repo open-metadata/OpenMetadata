@@ -13,7 +13,12 @@
 
 import { DownOutlined, WarningOutlined } from '@ant-design/icons';
 import Icon from '@ant-design/icons/lib/components/Icon';
-import { TableCard } from '@openmetadata/ui-core-components';
+import {
+  Button as CoreButton,
+  EmptyPlaceholder,
+  TableCard,
+} from '@openmetadata/ui-core-components';
+import { File02, Plus } from '@untitledui/icons';
 import {
   Button,
   Checkbox,
@@ -57,7 +62,6 @@ import {
   PAGE_SIZE_LARGE,
   TEXT_BODY_COLOR,
 } from '../../../constants/constants';
-import { GLOSSARIES_DOCS } from '../../../constants/docs.constants';
 import {
   DEFAULT_VISIBLE_COLUMNS,
   GLOSSARY_TERM_STATUS_OPTIONS,
@@ -1747,23 +1751,34 @@ const GlossaryTermTab = ({ isGlossary, className }: GlossaryTermTabProps) => {
     totalTermsCount === 0 &&
     !isTableLoading
   ) {
+    // A top-level glossary always allows adding terms; for a glossary term,
+    // sub-terms can only be added once the parent term is approved.
+    const canCreateTerm =
+      permissions.Create &&
+      (isGlossary || glossaryTermStatus === EntityStatus.Approved);
+
     return (
-      <div className="h-full" ref={tableContainerRef}>
-        <ErrorPlaceHolder
-          className="p-md p-b-lg border-none"
-          doc={GLOSSARIES_DOCS}
-          heading={t('label.glossary-term')}
-          permission={permissions.Create}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.glossary-term'),
-          })}
-          placeholderText={t('message.no-glossary-term')}
-          type={
-            permissions.Create && glossaryTermStatus === EntityStatus.Approved
-              ? ERROR_PLACEHOLDER_TYPE.CREATE
-              : ERROR_PLACEHOLDER_TYPE.NO_DATA
+      <div
+        className="tw:relative tw:flex tw:items-center tw:justify-center glossary-terms-empty-container"
+        ref={tableContainerRef}>
+        <EmptyPlaceholder
+          data-testid={`create-error-placeholder-${t('label.glossary-term')}`}
+          description={t('message.glossary-term-empty-description')}
+          footer={
+            canCreateTerm ? (
+              <CoreButton
+                color="primary"
+                data-testid="add-placeholder-button"
+                iconLeading={Plus}
+                size="sm"
+                onPress={handleAddGlossaryTermClick}>
+                {t('label.new-term')}
+              </CoreButton>
+            ) : undefined
           }
-          onClick={handleAddGlossaryTermClick}
+          icon={<File02 className="tw:text-fg-warning-primary" />}
+          title={t('message.add-the-first-term')}
+          variant="blank"
         />
       </div>
     );
