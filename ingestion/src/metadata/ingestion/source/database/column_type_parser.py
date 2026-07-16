@@ -406,18 +406,23 @@ class ColumnTypeParser:
         columns = []
         for part in parts:
             name_and_type = ColumnTypeParser._ignore_brackets_split(part, ":")
-            if len(name_and_type) != 2:
+            if len(name_and_type) < 2:
                 raise ValueError(
                     "expected format is: 'field_name:field_type', " + f"but got: {part}"
                 )
-            field_name = name_and_type[0].strip()
+            # A field type never contains a top-level ':' (colons only appear inside
+            # bracketed types, which the split above protects), so the last segment is
+            # the type and everything before it is the field name. Delta column-mapped
+            # struct fields carry ':' in the name itself, so rejoin the leading segments.
+            field_type_string = name_and_type[-1]
+            field_name = ":".join(name_and_type[:-1]).strip()
             if field_name.startswith("`"):
                 if field_name[-1] != "`":
                     raise ValueError(
                         f"'`' should be the last char, but got: {stuct_type}"
                     )
                 field_name = field_name[1:-1]
-            field_type = ColumnTypeParser._parse_datatype_string(name_and_type[1])
+            field_type = ColumnTypeParser._parse_datatype_string(field_type_string)
             field_type["name"] = field_name
             columns.append(field_type)
 
