@@ -283,6 +283,26 @@ class EntityUtilTest {
   }
 
   @Test
+  void testUserIdentityRelationFieldsForceNonDeletedUnderIncludeAll() {
+    // Under include=all, soft-deleted users must not leak into owners/followers/experts/reviewers,
+    // otherwise the client's include=all PATCH base desyncs from the server's NON_DELETED patch
+    // load and owner edits fail with "array item index out of range".
+    EntityUtil.RelationIncludes includeAll = EntityUtil.RelationIncludes.fromInclude(Include.ALL);
+    assertEquals(Include.NON_DELETED, includeAll.getIncludeFor("owners"));
+    assertEquals(Include.NON_DELETED, includeAll.getIncludeFor("followers"));
+    assertEquals(Include.NON_DELETED, includeAll.getIncludeFor("experts"));
+    assertEquals(Include.NON_DELETED, includeAll.getIncludeFor("reviewers"));
+    // Non-user relationship fields still honor the requested include.
+    assertEquals(Include.ALL, includeAll.getIncludeFor("domains"));
+    assertEquals(Include.ALL, includeAll.getIncludeFor("dataProducts"));
+    assertEquals(Include.ALL, includeAll.getIncludeFor("unknown"));
+    // An explicit per-field override remains authoritative.
+    EntityUtil.RelationIncludes explicitOwners =
+        new EntityUtil.RelationIncludes(Include.ALL, "owners:all");
+    assertEquals(Include.ALL, explicitOwners.getIncludeFor("owners"));
+  }
+
+  @Test
   void testVersionAndFieldNameHelpers() {
     Column column = new Column().withName("amount");
     Topic topic = new Topic().withFullyQualifiedName("service.topic");

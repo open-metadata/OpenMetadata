@@ -17,6 +17,10 @@ import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.schema.type.Include.ALL;
 import static org.openmetadata.schema.type.Include.NON_DELETED;
+import static org.openmetadata.service.Entity.FIELD_EXPERTS;
+import static org.openmetadata.service.Entity.FIELD_FOLLOWERS;
+import static org.openmetadata.service.Entity.FIELD_OWNERS;
+import static org.openmetadata.service.Entity.FIELD_REVIEWERS;
 import static org.openmetadata.service.jdbi3.ListFilter.NULL_PARAM;
 import static org.openmetadata.service.jdbi3.RoleRepository.DOMAIN_ONLY_ACCESS_ROLE;
 import static org.openmetadata.service.security.DefaultAuthorizer.getSubjectContext;
@@ -630,6 +634,12 @@ public final class EntityUtil {
    */
   @Getter
   public static class RelationIncludes {
+    // Soft-deleted users must never surface as owners/followers/experts/reviewers, even under
+    // include=all: returning them desyncs the client's PATCH base (fetched with include=all) from
+    // the server's NON_DELETED patch load, causing "array item index out of range" on owner edits.
+    private static final Set<String> USER_IDENTITY_RELATION_FIELDS =
+        Set.of(FIELD_OWNERS, FIELD_FOLLOWERS, FIELD_EXPERTS, FIELD_REVIEWERS);
+
     private final Include defaultInclude;
     private final Map<String, Include> fieldIncludes;
 
@@ -649,7 +659,14 @@ public final class EntityUtil {
     }
 
     public Include getIncludeFor(String fieldName) {
-      return fieldIncludes.getOrDefault(fieldName, defaultInclude);
+      Include explicitInclude = fieldIncludes.get(fieldName);
+      if (explicitInclude != null) {
+        return explicitInclude;
+      }
+      if (USER_IDENTITY_RELATION_FIELDS.contains(fieldName)) {
+        return NON_DELETED;
+      }
+      return defaultInclude;
     }
 
     public boolean hasFieldSpecificInclude(String fieldName) {
