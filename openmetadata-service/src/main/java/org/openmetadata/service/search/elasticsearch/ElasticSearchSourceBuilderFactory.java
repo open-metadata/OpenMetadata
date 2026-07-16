@@ -577,6 +577,7 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   private Query buildSimpleQueryV2(String query, AssetTypeConfiguration assetConfig) {
+    query = SearchRankingHelper.unescapePlainTextQuery(query);
     RankingConfiguration ranking = SearchRankingHelper.resolveRanking(searchSettings, assetConfig);
     if (ranking != null) {
       return buildRankedSimpleQueryV2(query, assetConfig, ranking);
@@ -1158,6 +1159,7 @@ public class ElasticSearchSourceBuilderFactory
   }
 
   private Query buildSimpleQueryWithTypesV2(String query, AssetTypeConfiguration assetConfig) {
+    query = SearchRankingHelper.unescapePlainTextQuery(query);
     RankingConfiguration ranking = SearchRankingHelper.resolveRanking(searchSettings, assetConfig);
     if (ranking != null) {
       return buildRankedSimpleQueryV2(query, assetConfig, ranking);

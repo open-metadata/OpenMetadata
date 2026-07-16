@@ -1298,9 +1298,6 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await waitForMetricsPage(page);
     const { metric: selectedMetric, row } =
       await getFirstVisibleFixtureMetricRow(page);
-    const unselectedMetric =
-      fixtures.metrics.find((metric) => metric.name !== selectedMetric.name) ??
-      fixtures.metrics[0];
 
     // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
     await row.getByRole('checkbox').check({ force: true });
@@ -1310,10 +1307,9 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await waitForMetricBulkEditGrid(page, selectedMetric.name);
 
     await expect.poll(() => exportRequestCount).toBe(0);
-    await expect(
-      page.getByText(selectedMetric.name, { exact: true })
-    ).toBeVisible();
-    await expect(page.getByText(unselectedMetric.name)).not.toBeVisible();
+    await expect(page.locator('.bulk-edit-name-value')).toHaveText([
+      selectedMetric.name,
+    ]);
   });
 
   test('Cancel from metric bulk edit returns to the metrics listing', async ({

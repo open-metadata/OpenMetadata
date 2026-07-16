@@ -32,6 +32,7 @@ public final class SearchRankingHelper {
   // edge-n-gram
   // pattern): the query stays one token and still matches the indexed n-grams.
   private static final String NGRAM_SEARCH_ANALYZER = "standard";
+  private static final String ESCAPED_QUERY_CHARACTERS = "+-=&|><!(){}[]^\"~*?:\\/";
 
   private SearchRankingHelper() {}
 
@@ -149,6 +150,25 @@ public final class SearchRankingHelper {
         .splitAsStream(query.trim())
         .filter(token -> !token.isBlank())
         .toList();
+  }
+
+  public static String unescapePlainTextQuery(String query) {
+    if (query == null || query.indexOf('\\') < 0) {
+      return query;
+    }
+
+    StringBuilder unescaped = new StringBuilder(query.length());
+    for (int index = 0; index < query.length(); index++) {
+      char current = query.charAt(index);
+      if (current == '\\'
+          && index + 1 < query.length()
+          && ESCAPED_QUERY_CHARACTERS.indexOf(query.charAt(index + 1)) >= 0) {
+        unescaped.append(query.charAt(++index));
+      } else {
+        unescaped.append(current);
+      }
+    }
+    return unescaped.toString();
   }
 
   public static String stageSearchAnalyzer(RankingStage stage) {

@@ -239,6 +239,47 @@ public class SearchSourceBuilderFactoryTest {
             "[a TO " + " ".repeat(5000),
             "a".repeat(5000))
         .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
+
+    List.of(
+            "customer\\-orders",
+            "name\\:test",
+            "\\\"customer orders\\\"",
+            "orders\\(daily\\)",
+            "\\[a TO z\\]")
+        .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
+  }
+
+  @Test
+  public void testRankedQueriesUseUnescapedPlainText() {
+    defaultConfig.setRanking(
+        new RankingConfiguration()
+            .withEnabled(true)
+            .withStages(
+                List.of(
+                    new RankingStage()
+                        .withName("exactName")
+                        .withFields(List.of("fullyQualifiedName"))
+                        .withMatchType(RankingStage.MatchType.EXACT)
+                        .withWeight(32.0))));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+    String escapedFqn = "pw\\-ml\\-model\\-service.pw\\-mlmodel";
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false));
+    String esQuery =
+        esFactory
+            .buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false)
+            .query()
+            .toString();
+
+    assertTrue(osQuery.contains("pw-ml-model-service.pw-mlmodel"), osQuery);
+    assertTrue(esQuery.contains("pw-ml-model-service.pw-mlmodel"), esQuery);
+    assertFalse(osQuery.contains("\\\\-"), osQuery);
+    assertFalse(esQuery.contains("\\\\-"), esQuery);
   }
 
   @Test

@@ -144,6 +144,18 @@ class SearchRankingHelperTest {
   }
 
   @Test
+  void unescapePlainTextQueryRemovesUiEscapes() {
+    assertEquals(
+        "pw-ml-model-service.pw-mlmodel",
+        SearchRankingHelper.unescapePlainTextQuery("pw\\-ml\\-model\\-service.pw\\-mlmodel"));
+    assertEquals(
+        "customer:orders (daily)",
+        SearchRankingHelper.unescapePlainTextQuery("customer\\:orders \\(daily\\)"));
+    assertEquals("path\\name", SearchRankingHelper.unescapePlainTextQuery("path\\\\name"));
+    assertNull(SearchRankingHelper.unescapePlainTextQuery(null));
+  }
+
+  @Test
   void resolveRankingHandlesDefaultRankingWithoutStages() {
     SearchSettings settings =
         new SearchSettings()

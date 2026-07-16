@@ -196,9 +196,10 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     }
     boolean pureQuotedQuery = isPureQuotedQuery(query);
     for (int i = 0; i < query.length(); i++) {
-      if (isSingleCharacterSyntax(query, i, pureQuotedQuery)
-          || isFieldQuerySeparator(query, i)
-          || isBooleanOperatorAt(query, i)) {
+      if (!isEscaped(query, i)
+          && (isSingleCharacterSyntax(query, i, pureQuotedQuery)
+              || isFieldQuerySeparator(query, i)
+              || isBooleanOperatorAt(query, i))) {
         return true;
       }
     }
@@ -230,6 +231,14 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
 
   private static boolean isTokenLeadingSyntax(String query, int index) {
     return index == 0 || Character.isWhitespace(query.charAt(index - 1));
+  }
+
+  private static boolean isEscaped(String query, int index) {
+    int precedingBackslashes = 0;
+    for (int i = index - 1; i >= 0 && query.charAt(i) == '\\'; i--) {
+      precedingBackslashes++;
+    }
+    return precedingBackslashes % 2 == 1;
   }
 
   private static boolean isFieldQuerySeparator(String query, int index) {
@@ -285,7 +294,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
     for (int i = 0; i < query.length(); i++) {
       char current = query.charAt(i);
       if (openIndex < 0) {
-        if (current == '[') {
+        if (current == '[' && !isEscaped(query, i)) {
           openIndex = i;
           hasValueBeforeTo = false;
           sawTo = false;
@@ -293,7 +302,7 @@ public interface SearchSourceBuilderFactory<S, Q, H, F> {
         }
         continue;
       }
-      if (current == ']') {
+      if (current == ']' && !isEscaped(query, i)) {
         if (sawTo && hasValueBeforeTo && hasValueAfterTo) {
           return true;
         }
