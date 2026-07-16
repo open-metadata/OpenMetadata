@@ -20,7 +20,7 @@ const DATA_ASSET_VERSION_HEADER = 'DataAssetVersionHeader';
 const CUSTOM_PROPERTY_TABLE = 'CustomPropertyTable';
 const DATA_PRODUCT_CONTAINER = 'DataProductsContainer';
 const ENTITY_VERSION_TIMELINE = 'EntityVersionTimeLine';
-const DESCRIPTION_V1 = 'DescriptionV1';
+const DESCRIPTION_V1 = 'Description';
 const DATABASE_SCHEMA_TABLE = 'DatabaseSchemaTable';
 const TAGS_CONTAINER_V2 = 'TagsContainerV2';
 const CUSTOM_PROPERTY_TAB_NAME = 'label.custom-property-plural';
@@ -45,7 +45,7 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/Description', () =>
   jest.fn().mockImplementation(() => <div>{DESCRIPTION_V1}</div>)
 );
 

@@ -21,21 +21,28 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import org.junit.jupiter.api.AfterEach;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.condition.EnabledIf;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
+import org.junit.jupiter.api.parallel.ResourceAccessMode;
+import org.junit.jupiter.api.parallel.ResourceLock;
 import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
+import org.openmetadata.it.util.NamespaceCleanup;
 import org.openmetadata.it.util.RdfTestUtils;
 import org.openmetadata.it.util.SdkClients;
+import org.openmetadata.it.util.SharedResourceLocks;
 import org.openmetadata.it.util.TestNamespace;
 import org.openmetadata.it.util.TestNamespaceExtension;
 import org.openmetadata.schema.api.data.ConceptMapping;
@@ -54,11 +61,15 @@ import org.openmetadata.schema.type.RelationProvenance;
  */
 @Execution(ExecutionMode.CONCURRENT)
 @ExtendWith(TestNamespaceExtension.class)
+@ResourceLock(
+    value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
+    mode = ResourceAccessMode.READ_WRITE)
 public class GlossaryRdfImportIT {
 
   private static final HttpClient HTTP_CLIENT =
       HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
+  private ObjectNode originalRelationSettings;
 
   private static final String ONTOLOGY =
       """
@@ -90,6 +101,34 @@ public class GlossaryRdfImportIT {
           rdfs:domain hcp:HealthcareProvider ;
           rdfs:range xsd:string .
       """;
+
+  @BeforeEach
+  void captureRelationSettings() throws Exception {
+    HttpResponse<String> response =
+        get(SdkClients.getServerUrl() + "/v1/system/settings/glossaryTermRelationSettings");
+    assertEquals(200, response.statusCode(), response.body());
+    originalRelationSettings =
+        (ObjectNode) OBJECT_MAPPER.readTree(response.body()).path("config_value").deepCopy();
+  }
+
+  @AfterEach
+  void restoreRelationSettings(TestNamespace ns) throws Exception {
+    NamespaceCleanup.deleteRoots(ns.drainTrackedRoots());
+
+    ObjectNode payload = OBJECT_MAPPER.createObjectNode();
+    payload.put("config_type", "glossaryTermRelationSettings");
+    payload.set("config_value", originalRelationSettings);
+    HttpRequest request =
+        HttpRequest.newBuilder()
+            .uri(URI.create(SdkClients.getServerUrl() + "/v1/system/settings"))
+            .header("Authorization", "Bearer " + SdkClients.getAdminToken())
+            .header("Content-Type", "application/json")
+            .timeout(Duration.ofSeconds(30))
+            .PUT(HttpRequest.BodyPublishers.ofString(OBJECT_MAPPER.writeValueAsString(payload)))
+            .build();
+    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
+    assertEquals(200, response.statusCode(), response.body());
+  }
 
   @Test
   void importsOwlOntologyIntoGlossary(TestNamespace ns) throws Exception {

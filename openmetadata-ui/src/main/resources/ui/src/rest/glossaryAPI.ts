@@ -50,9 +50,13 @@ export type SearchGlossaryTermsParams = ListParamsWithOffset & {
 
 const BASE_URL = '/glossaries';
 
-export const getGlossariesList = async (params?: ListParams) => {
+export const getGlossariesList = async (
+  params?: ListParams,
+  signal?: AbortSignal
+) => {
   const response = await APIClient.get<PagingResponse<Glossary[]>>(BASE_URL, {
     params,
+    signal,
   });
 
   return response.data;
@@ -108,7 +112,10 @@ export const getGlossaryTerms = async (params: ListGlossaryTermsParams) => {
   return response.data;
 };
 
-export const queryGlossaryTerms = async (glossaryName: string) => {
+export const queryGlossaryTerms = async (
+  glossaryName: string,
+  signal?: AbortSignal
+) => {
   const apiUrl = `/search/query`;
 
   const { data } = await APIClient.get(apiUrl, {
@@ -134,6 +141,7 @@ export const queryGlossaryTerms = async (glossaryName: string) => {
       }),
       getHierarchy: true,
     },
+    signal,
   });
 
   return data;
@@ -356,7 +364,11 @@ export const getGlossaryTermsAssetCounts = async (
   return response.data;
 };
 
-export const searchGlossaryTerms = async (search: string, page = 1) => {
+export const searchGlossaryTerms = async (
+  search: string,
+  page = 1,
+  signal?: AbortSignal
+) => {
   const apiUrl = `/search/query?q=${search ?? ''}`;
 
   const { data } = await APIClient.get(apiUrl, {
@@ -368,6 +380,7 @@ export const searchGlossaryTerms = async (search: string, page = 1) => {
       track_total_hits: true,
       getHierarchy: true,
     },
+    signal,
   });
 
   return data;

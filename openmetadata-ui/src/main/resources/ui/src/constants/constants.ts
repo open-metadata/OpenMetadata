@@ -120,8 +120,6 @@ export const PLACEHOLDER_USER_BOT = ':bot';
 export const PLACEHOLDER_WEBHOOK_TYPE = ':webhookType';
 export const PLACEHOLDER_RULE_NAME = ':ruleName';
 export const PLACEHOLDER_DASHBOARD_TYPE = ':dashboardType';
-export const LOG_ENTITY_TYPE = ':logEntityType';
-export const LOG_ENTITY_NAME = ':logEntityName';
 export const PLACEHOLDER_ACTION = ':action';
 export const PLACEHOLDER_ROUTE_DIMENSION_KEY = ':dimensionKey';
 
@@ -183,8 +181,6 @@ export const ROUTES = {
   COLUMN_BULK_OPERATIONS: `/column-bulk-operations`,
   STORE: '/store',
   FEEDS: '/feeds',
-  MCP_CHAT: '/mcp-chat',
-  MCP_CHAT_WITH_ID: `/mcp-chat/${PLACEHOLDER_ROUTE_ID}`,
   DUMMY: '/dummy',
   SERVICE: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}`,
   SERVICE_VERSION: `/service/${PLACEHOLDER_ROUTE_SERVICE_CAT}/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}`,
@@ -303,9 +299,6 @@ export const ROUTES = {
   TEST_CASE_DETAILS_WITH_TAB_VERSION: `/test-case/${PLACEHOLDER_ROUTE_FQN}/versions/${PLACEHOLDER_ROUTE_VERSION}/${PLACEHOLDER_ROUTE_TAB}`,
   TEST_CASE_DIMENSIONS: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}`,
   TEST_CASE_DIMENSIONS_WITH_TAB: `/test-case/${PLACEHOLDER_ROUTE_FQN}/dimensions/${PLACEHOLDER_ROUTE_DIMENSION_KEY}/${PLACEHOLDER_ROUTE_TAB}`,
-
-  // logs viewer
-  LOGS: `/${LOG_ENTITY_TYPE}/${PLACEHOLDER_ROUTE_FQN}/logs`,
 
   DATA_INSIGHT: `/data-insights`,
   DATA_INSIGHT_WITH_TAB: `/data-insights/${PLACEHOLDER_ROUTE_TAB}`,

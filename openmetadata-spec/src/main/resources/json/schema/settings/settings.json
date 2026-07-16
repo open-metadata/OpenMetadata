@@ -43,7 +43,6 @@
         "mcpConfiguration",
         "glossaryTermRelationSettings",
         "sparqlQuerySettings",
-        "aiSettings",
         "searchIndexMappings"
       ]
     }
@@ -123,9 +122,6 @@
         },
         {
           "$ref": "../configuration/sparqlQuerySettings.json"
-        },
-        {
-          "$ref": "../configuration/aiSettings.json"
         },
         {
           "$ref": "../configuration/searchIndexMappings.json"

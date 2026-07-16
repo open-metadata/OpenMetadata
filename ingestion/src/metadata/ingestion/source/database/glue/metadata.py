@@ -13,7 +13,7 @@ Glue source methods.
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -52,7 +52,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.database.column_helpers import truncate_column_name
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
@@ -70,6 +70,10 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
 
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
+
 logger = ingestion_logger()
 
 
@@ -85,12 +89,16 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
         self.source_config: DatabaseServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.glue = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.glue = cast("BaseConnection", self._connection).client
 
-        self.connection_obj = self.glue
         self.schema_description_map = {}
         self.external_location_map = {}
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -485,6 +493,3 @@ class GlueSource(ExternalTableLineageMixin, DatabaseServiceSource):
             logger.debug(traceback.format_exc())
             logger.error(f"Unable to get source url: {exc}")
         return None
-
-    def close(self):
-        """Nothing to close"""

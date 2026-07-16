@@ -28,7 +28,6 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
-    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
@@ -113,9 +112,6 @@ export enum SettingType {
  * relations between glossary terms.
  *
  * Administrator-managed SPARQL query templates available across the installation.
- *
- * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
- * system prompts.
  *
  * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
  * by language and entity type. The stored mapping is the effective mapping used when an
@@ -563,6 +559,11 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+     * grants into a single ingestion run per pipeline.
+     */
+    policyAgentConfiguration?: PolicyAgentConfiguration;
+    /**
      * Used to set up the History CleanUp Settings.
      */
     runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
@@ -653,11 +654,7 @@ export interface PipelineServiceClientConfiguration {
     /**
      * Installation query templates visible to SPARQL console users.
      */
-    queryTemplates?:   SavedSparqlQuery[];
-    mcpChat?:          MCPChat;
-    memoryAgent?:      MemoryAgent;
-    memoryExtraction?: MemoryExtraction;
-    prompts?:          Prompts;
+    queryTemplates?: SavedSparqlQuery[];
     /**
      * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
      * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
@@ -2204,33 +2201,6 @@ export enum LogStorageConfigurationType {
 }
 
 /**
- * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
- * via llmConfiguration; this only governs chat enablement and behavior.
- */
-export interface MCPChat {
-    enabled?:      boolean;
-    systemPrompt?: string;
-}
-
-export interface MemoryAgent {
-    deletionPolicy?:      DeletionPolicy;
-    deriveGlossaryTerms?: boolean;
-    deriveMetrics?:       boolean;
-    enabled?:             boolean;
-}
-
-export enum DeletionPolicy {
-    Cascade = "cascade",
-    Deprecate = "deprecate",
-    Orphan = "orphan",
-}
-
-export interface MemoryExtraction {
-    fromFiles?: boolean;
-    fromPages?: boolean;
-}
-
-/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -2625,13 +2595,37 @@ export enum PipelineViewMode {
     Node = "Node",
 }
 
-export interface Prompts {
-    memoryAgent?:      PromptConfig;
-    memoryExtraction?: PromptConfig;
-}
-
-export interface PromptConfig {
-    systemPrompt?: string;
+/**
+ * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+ * grants into a single ingestion run per pipeline.
+ */
+export interface PolicyAgentConfiguration {
+    /**
+     * Maximum number of policies clubbed into a single Policy Agent ingestion run. Pending
+     * requests beyond this are picked up by the next window.
+     */
+    batchMaxSize?: number;
+    /**
+     * The batch window: how often (in seconds) the scheduler triggers the Policy Agent
+     * coordinator to drain accumulated grant requests and fire one clubbed ingestion run per
+     * pipeline. Typically 60-300 (1-5 minutes). All Data Access Requests that arrive within a
+     * window are clubbed into the next run. Lower = lower latency but more Argo runs; higher =
+     * fewer runs, more clubbing.
+     */
+    batchWindowSeconds?: number;
+    /**
+     * Size of the worker pool that runs clubbed Policy Agent batches. Each in-flight batch (one
+     * per distinct pipeline) holds one worker while it polls its run to completion, so this
+     * bounds how many distinct services can provision concurrently. Raise it for deployments
+     * with many services receiving Data Access Requests at once.
+     */
+    batchWorkerThreads?: number;
+    /**
+     * Interval (seconds) at which the batch coordinator polls a Policy Agent ingestion run for
+     * completion. The Data Access Request workflow node itself does not poll — it is signalled
+     * (pushed) when the run finishes, with a safety timer as the fallback.
+     */
+    pollingIntervalSeconds?: number;
 }
 
 /**
