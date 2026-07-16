@@ -45,6 +45,7 @@ import org.jdbi.v3.sqlobject.transaction.Transaction;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
+import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatus;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineStatusType;
 import org.openmetadata.schema.entity.services.ingestionPipelines.PipelineType;
 import org.openmetadata.schema.tests.DataQualityReport;
@@ -96,6 +97,12 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
   private static final int MAX_CONCURRENT_REPORT_QUERIES = 10;
+  private static final String FIELD_PIPELINE_STATUS = "pipelineStatus";
+  private static final Set<PipelineStatusType> TERMINAL_PIPELINE_STATES =
+      Set.of(
+          PipelineStatusType.SUCCESS,
+          PipelineStatusType.FAILED,
+          PipelineStatusType.PARTIAL_SUCCESS);
 
   private static final String ENTITY_EXECUTION_SUMMARY_FILTER =
       """
@@ -974,28 +981,49 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
         summary != null ? summary.getTotal() : 0);
   }
 
+  private static boolean isFreshTerminalTransition(ChangeDescription changeDescription) {
+    boolean freshTerminal = false;
+    FieldChange statusChange = pipelineStatusFieldChange(changeDescription);
+    if (statusChange != null) {
+      PipelineStatus incoming =
+          JsonUtils.readOrConvertValue(statusChange.getNewValue(), PipelineStatus.class);
+      PipelineStatus previous =
+          statusChange.getOldValue() == null
+              ? null
+              : JsonUtils.readOrConvertValue(statusChange.getOldValue(), PipelineStatus.class);
+      freshTerminal = isTerminal(incoming) && !isTerminal(previous);
+    }
+    return freshTerminal;
+  }
+
+  private static FieldChange pipelineStatusFieldChange(ChangeDescription changeDescription) {
+    FieldChange result = null;
+    if (changeDescription != null) {
+      result =
+          changeDescription.getFieldsUpdated().stream()
+              .filter(fieldChange -> FIELD_PIPELINE_STATUS.equals(fieldChange.getName()))
+              .findFirst()
+              .orElse(null);
+    }
+    return result;
+  }
+
+  private static boolean isTerminal(PipelineStatus status) {
+    return status != null && TERMINAL_PIPELINE_STATES.contains(status.getPipelineState());
+  }
+
   private class TestSuitePipelineStatusHandler implements EntityLifecycleEventHandler {
     @Override
     public void onEntityUpdated(
         EntityInterface entity,
         ChangeDescription changeDescription,
         SubjectContext subjectContext) {
-      if (!(entity instanceof IngestionPipeline pipeline)) {
-        return;
+      // Only on a non-terminal -> terminal transition, so same-run re-writes don't re-alert.
+      if (entity instanceof IngestionPipeline pipeline
+          && pipeline.getPipelineType() == PipelineType.TEST_SUITE
+          && isFreshTerminalTransition(changeDescription)) {
+        onTestSuiteExecutionComplete(pipeline);
       }
-
-      Optional.of(pipeline)
-          .filter(p -> p.getPipelineType() == PipelineType.TEST_SUITE)
-          .filter(p -> !nullOrEmpty(p.getPipelineStatuses()))
-          .filter(
-              p -> {
-                PipelineStatusType state =
-                    IngestionPipelineRepository.latestPipelineStatus(p).getPipelineState();
-                return state == PipelineStatusType.SUCCESS
-                    || state == PipelineStatusType.FAILED
-                    || state == PipelineStatusType.PARTIAL_SUCCESS;
-              })
-          .ifPresent(TestSuiteRepository.this::onTestSuiteExecutionComplete);
     }
 
     @Override
