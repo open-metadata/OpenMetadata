@@ -22,6 +22,8 @@ TDB2 is a single-writer store. More OpenMetadata indexing threads can prepare an
 
 An RDF indexing run with `recreateIndex: true` clears the graph first and then uses insert-only writes. It does not perform per-entity or per-relationship reconciliation against the empty graph. Entity, relationship, and lineage data are grouped into bounded updates. Incremental runs continue to reconcile existing values.
 
+RDF indexing hydrates every field supported by each entity repository because the RDF mapper preserves fields even when they have no explicit JSON-LD context mapping. It omits only `changeDescription`, `votes`, and the embedded `testCaseResult`, which the mapper intentionally does not emit as triples.
+
 Start with the defaults and tune one setting at a time:
 
 | Environment variable | Default | Purpose |
@@ -74,6 +76,7 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_BASE_URI` | `https://open-metadata.org/` |
 | `RDF_STORAGE_TYPE` | `FUSEKI` |
 | `RDF_ENDPOINT` | `http://localhost:3030/openmetadata` |
+| `RDF_REMOTE_ENDPOINT` | unset (deprecated fallback) |
 | `RDF_CONNECT_TIMEOUT_MS` | `2000` |
 | `RDF_REQUEST_TIMEOUT_MS` | `60000` |
 | `RDF_WRITE_MAX_RETRIES` | `2` |
@@ -87,7 +90,7 @@ The OpenMetadata server reads the following settings from `conf/openmetadata.yam
 | `RDF_DATASET` | `openmetadata` |
 | `RDF_INFERENCE_ENABLED` | `false` |
 
-Use `RDF_ENDPOINT`, not the deprecated `RDF_REMOTE_ENDPOINT`, for the OpenMetadata server. Override the development credentials in every production deployment.
+Use `RDF_ENDPOINT` for new deployments. `RDF_REMOTE_ENDPOINT` remains a deprecated fallback for backward compatibility, and `RDF_ENDPOINT` takes precedence when both are set. Override the development credentials in every production deployment.
 
 ## Monitoring and failure diagnosis
 

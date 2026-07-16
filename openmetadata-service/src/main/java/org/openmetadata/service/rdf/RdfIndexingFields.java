@@ -12,22 +12,25 @@
  */
 package org.openmetadata.service.rdf;
 
-import java.util.ArrayList;
 import java.util.List;
+import java.util.Set;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
+import org.openmetadata.service.rdf.translator.RdfPropertyMapper;
 
 public final class RdfIndexingFields {
 
   private RdfIndexingFields() {}
 
   public static List<String> forEntityType(String entityType) {
-    List<String> fields = ReindexingUtil.getSearchIndexFields(entityType);
-    if (fields.contains("*")) {
-      return fields;
-    }
-    List<String> rdfFields = new ArrayList<>(fields);
-    rdfFields.remove(Entity.FIELD_VOTES);
-    return rdfFields;
+    return forSupportedFields(Entity.getEntityRepository(entityType).getAllowedFieldsCopy());
+  }
+
+  static List<String> forSupportedFields(Set<String> supportedFields) {
+    // The RDF mapper emits even fields absent from its JSON-LD contexts, so a search-index field
+    // subset can silently remove triples. Start from the repository's complete field contract.
+    return supportedFields.stream()
+        .filter(field -> !RdfPropertyMapper.isIgnoredEntityField(field))
+        .sorted()
+        .toList();
   }
 }

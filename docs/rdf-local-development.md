@@ -142,7 +142,7 @@ rdf:
   enabled: ${RDF_ENABLED:-false}
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
-  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  remoteEndpoint: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-"http://localhost:3030/openmetadata"}}
   connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
   requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
   bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
@@ -162,6 +162,7 @@ rdf:
 | `RDF_STORAGE_TYPE` | Storage backend type | `FUSEKI` |
 | `RDF_BASE_URI` | Base URI for RDF resources | `https://open-metadata.org/` |
 | `RDF_ENDPOINT` | Fuseki SPARQL endpoint URL | `http://localhost:3030/openmetadata` |
+| `RDF_REMOTE_ENDPOINT` | Deprecated fallback when `RDF_ENDPOINT` is unset | unset |
 | `RDF_CONNECT_TIMEOUT_MS` | Fuseki connection timeout | `2000` |
 | `RDF_REQUEST_TIMEOUT_MS` | Per-request timeout | `60000` |
 | `RDF_BULK_ENTITY_BATCH_SIZE` | Entity models per bulk write | `100` |

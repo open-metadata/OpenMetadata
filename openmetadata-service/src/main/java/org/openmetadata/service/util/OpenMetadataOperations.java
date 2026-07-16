@@ -3222,7 +3222,8 @@ public class OpenMetadataOperations implements Callable<Integer> {
     config =
         factory.build(
             new SubstitutingSourceProvider(
-                new FileConfigurationSourceProvider(), new EnvironmentVariableSubstitutor(false)),
+                new FileConfigurationSourceProvider(),
+                new EnvironmentVariableSubstitutor(false, true)),
             configFilePath);
     IndexMappingLoader.init(config.getElasticSearchConfiguration());
     Fernet.getInstance().setFernetKey(config);

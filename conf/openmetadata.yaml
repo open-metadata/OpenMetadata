@@ -838,7 +838,7 @@ rdf:
   enabled: ${RDF_ENABLED:-false}
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
-  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  remoteEndpoint: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-"http://localhost:3030/openmetadata"}}
   connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
   requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
   writeMaxRetries: ${RDF_WRITE_MAX_RETRIES:-2}

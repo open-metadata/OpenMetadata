@@ -190,7 +190,7 @@ services:
       # RDF Configuration
       RDF_ENABLED: ${RDF_ENABLED:-true}
       RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-FUSEKI}
-      RDF_ENDPOINT: ${RDF_ENDPOINT:-http://fuseki:3030/openmetadata}
+      RDF_ENDPOINT: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-http://fuseki:3030/openmetadata}}
       RDF_REMOTE_USERNAME: ${RDF_REMOTE_USERNAME:-admin}
       RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-${FUSEKI_ADMIN_PASSWORD:-admin}}
       RDF_BASE_URI: ${RDF_BASE_URI:-https://open-metadata.org/}
@@ -360,7 +360,7 @@ services:
       # RDF Configuration
       RDF_ENABLED: ${RDF_ENABLED:-true}
       RDF_STORAGE_TYPE: ${RDF_STORAGE_TYPE:-FUSEKI}
-      RDF_ENDPOINT: ${RDF_ENDPOINT:-http://fuseki:3030/openmetadata}
+      RDF_ENDPOINT: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-http://fuseki:3030/openmetadata}}
       RDF_REMOTE_USERNAME: ${RDF_REMOTE_USERNAME:-admin}
       RDF_REMOTE_PASSWORD: ${RDF_REMOTE_PASSWORD:-${FUSEKI_ADMIN_PASSWORD:-admin}}
       RDF_BASE_URI: ${RDF_BASE_URI:-https://open-metadata.org/}

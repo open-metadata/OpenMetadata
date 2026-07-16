@@ -15,33 +15,26 @@ package org.openmetadata.service.rdf;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import java.util.List;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
-import org.mockito.MockedStatic;
-import org.mockito.Mockito;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 class RdfIndexingFieldsTest {
 
   @Test
-  void removesVotesFromSelectiveSearchFields() {
-    try (MockedStatic<ReindexingUtil> reindexingUtil = Mockito.mockStatic(ReindexingUtil.class)) {
-      reindexingUtil
-          .when(() -> ReindexingUtil.getSearchIndexFields("table"))
-          .thenReturn(List.of("owners", Entity.FIELD_VOTES, "tags"));
+  void usesAllSupportedFieldsExceptPropertiesIgnoredByTheMapper() {
+    Set<String> supportedFields =
+        Set.of(
+            "columns",
+            "domains",
+            "followers",
+            "owners",
+            "changeDescription",
+            "testCaseResult",
+            Entity.FIELD_VOTES);
 
-      assertEquals(List.of("owners", "tags"), RdfIndexingFields.forEntityType("table"));
-    }
-  }
-
-  @Test
-  void preservesWildcardFallback() {
-    try (MockedStatic<ReindexingUtil> reindexingUtil = Mockito.mockStatic(ReindexingUtil.class)) {
-      reindexingUtil
-          .when(() -> ReindexingUtil.getSearchIndexFields("table"))
-          .thenReturn(List.of("*"));
-
-      assertEquals(List.of("*"), RdfIndexingFields.forEntityType("table"));
-    }
+    assertEquals(
+        List.of("columns", "domains", "followers", "owners"),
+        RdfIndexingFields.forSupportedFields(supportedFields));
   }
 }
