@@ -15,11 +15,6 @@ import { fireEvent, render, screen } from '@testing-library/react';
 import { ContextFile } from '../../../generated/entity/data/contextFile';
 import DocumentsView from './DocumentsView.component';
 
-jest.mock(
-  '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder',
-  () => jest.fn(() => <div data-testid="error-placeholder" />)
-);
-
 jest.mock('react-aria-components', () => ({
   Menu: jest.fn(({ children }: { children: React.ReactNode }) => (
     <div>{children}</div>
@@ -140,6 +135,9 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     ),
   },
   Dot: jest.fn(() => <span>·</span>),
+  EmptyPlaceholder: jest.fn(({ title }: { title?: React.ReactNode }) => (
+    <div data-testid="empty-placeholder">{title}</div>
+  )),
   Checkbox: jest.fn(
     ({
       onChange,
@@ -222,10 +220,25 @@ describe('DocumentsView', () => {
     expect(screen.getByTestId('file-icon-csv')).toBeInTheDocument();
   });
 
-  it('renders the error placeholder when data is empty and not loading', () => {
-    render(<DocumentsView data={[]} isLoading={false} />);
+  it('renders the empty placeholder when data is empty and not loading', () => {
+    render(<DocumentsView data={[]} isLoading={false} totalFileCount={0} />);
 
-    expect(screen.getByTestId('error-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('label.no-matching-results')).toBeInTheDocument();
+  });
+
+  it('renders the folder-empty placeholder when a folder is selected and has no files', () => {
+    render(
+      <DocumentsView
+        data={[]}
+        isLoading={false}
+        selectedFolderName="Reports"
+        totalFileCount={0}
+      />
+    );
+
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('label.folder-name-is-empty')).toBeInTheDocument();
   });
 
   it('renders skeletons when isLoading is true', () => {

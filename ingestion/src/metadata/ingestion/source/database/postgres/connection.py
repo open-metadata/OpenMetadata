@@ -54,6 +54,7 @@ from metadata.ingestion.source.database.postgres.utils import (
 if TYPE_CHECKING:
     from collections.abc import Sequence
 
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.core.connections.test_connection.records import Evidence
@@ -153,17 +154,17 @@ class PostgresChecks:
     # System schemas - skipped when auto-selecting a schema to probe.
     SYSTEM_SCHEMAS = frozenset({"information_schema", "pg_catalog", "pg_toast"})
 
-    def __init__(self, client: Engine, query_statement_source: str | None) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine], query_statement_source: str | None) -> None:
+        self._db = db
         self.query_statement_source = query_statement_source
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        return ping(self.client)
+        return ping(self._db.client)
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, POSTGRES_GET_DATABASE, self._summarize_databases)
+        return run_sql(self._db.client, POSTGRES_GET_DATABASE, self._summarize_databases)
 
     @staticmethod
     def _summarize_databases(rows: Sequence[object]) -> str:
@@ -175,41 +176,43 @@ class PostgresChecks:
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        return list_schemas(self._db.client)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self.client, None, self.SYSTEM_SCHEMAS)
+        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self.client, None, self.SYSTEM_SCHEMAS)
+        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:
-        return run_sql(self.client, POSTGRES_TEST_GET_TAGS, lambda _: "policy tags accessible")
+        return run_sql(self._db.client, POSTGRES_TEST_GET_TAGS, lambda _: "policy tags accessible")
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
         # Built here, not at construction, so the version-probe query runs only
         # after CheckAccess has confirmed reachability - never ahead of the gate.
         statement = POSTGRES_TEST_GET_QUERIES.format(
-            time_column_name=get_postgres_time_column_name(engine=self.client),
+            time_column_name=get_postgres_time_column_name(engine=self._db.client),
             query_statement_source=self.query_statement_source or "pg_stat_statements",
         )
-        return run_sql(self.client, statement, lambda _: "query history accessible")
+        return run_sql(self._db.client, statement, lambda _: "query history accessible")
 
     @check(DatabaseStep.GetColumnMetadata)
     def get_column_metadata(self) -> Evidence:
-        return run_sql(self.client, TEST_COLUMN_METADATA, lambda _: "column metadata accessible")
+        return run_sql(self._db.client, TEST_COLUMN_METADATA, lambda _: "column metadata accessible")
 
     @check(DatabaseStep.GetTableComments)
     def get_table_comments(self) -> Evidence:
-        return run_sql(self.client, TEST_TABLE_COMMENTS, lambda _: "table comments accessible")
+        return run_sql(self._db.client, TEST_TABLE_COMMENTS, lambda _: "table comments accessible")
 
     @check(DatabaseStep.GetInformationSchemaColumns)
     def get_information_schema_columns(self) -> Evidence:
-        return run_sql(self.client, TEST_INFORMATION_SCHEMA_COLUMNS, lambda _: "information_schema.columns accessible")
+        return run_sql(
+            self._db.client, TEST_INFORMATION_SCHEMA_COLUMNS, lambda _: "information_schema.columns accessible"
+        )
 
 
 class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
@@ -224,6 +227,6 @@ class PostgresConnection(BaseConnection[PostgresConnectionConfig, Engine]):
 
     def checks(self) -> ChecksProvider:
         return PostgresChecks(
-            client=self.client,
+            db=self.borrow(),
             query_statement_source=self.service_connection.queryStatementSource,
         )

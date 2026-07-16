@@ -25,15 +25,16 @@ import { EntityType } from '../../../../enums/entity.enum';
 import { TagSource } from '../../../../generated/api/domains/createDataProduct';
 import { ChangeDescription } from '../../../../generated/tests/testCase';
 import { TestCaseTabProps } from '../../../../pages/IncidentManager/IncidentManagerDetailPage/TestCaseClassBase';
+import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getParameterValueDiffDisplay } from '../../../../utils/EntityVersionUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import TestSummary from '../../../Database/Profiler/TestSummary/TestSummary';
 import DataProductsContainer from '../../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import TagsContainerV2 from '../../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../../Tag/TagsViewer/TagsViewer.interface';
-import EditTestCaseModal from '../../AddDataQualityTest/EditTestCaseModal';
+import TestCaseFormDrawer from '../../AddDataQualityTest/components/TestCaseFormDrawer';
 import '../incident-manager.style.less';
 import './test-case-result-tab.style.less';
 import {
@@ -62,7 +63,10 @@ function ParameterTooltipText({
   );
 }
 
-const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
+const TestCaseResultTab = ({
+  showSidePanel,
+  editVariant = getDefaultTestCaseFormVariant(),
+}: TestCaseTabProps) => {
   const { t } = useTranslation();
   const {
     testCase: testCaseData,
@@ -213,7 +217,7 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
         }`}>
         <div className="tw:flex tw:w-full tw:flex-col tw:gap-2.5">
           <div className="tw:w-full">
-            <DescriptionV1
+            <Description
               wrapInCard
               changeSummaryEntry={descriptionChangeSummaryEntry}
               description={description}
@@ -317,11 +321,13 @@ const TestCaseResultTab = ({ showSidePanel }: TestCaseTabProps) => {
             ))}
 
           {testCaseData && isParameterEdit && (
-            <EditTestCaseModal
+            <TestCaseFormDrawer
               showOnlyParameter
+              open={isParameterEdit}
+              showDocPanel={false}
               testCase={testCaseData}
-              visible={isParameterEdit}
-              onCancel={handleCancelParameter}
+              variant={editVariant}
+              onClose={handleCancelParameter}
               onUpdate={setTestCase}
             />
           )}

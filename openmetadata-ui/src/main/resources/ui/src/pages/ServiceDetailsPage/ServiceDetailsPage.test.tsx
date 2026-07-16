@@ -340,6 +340,7 @@ jest.mock(
       onFollowClick,
       onDisplayNameUpdate,
       onRestoreDataAsset,
+      onStyleUpdate,
       disableRunAgentsButton,
       disableRunAgentsButtonMessage,
     }: DataAssetsHeaderProps) => (
@@ -356,6 +357,13 @@ jest.mock(
         </button>
         <button data-testid="restore-button" onClick={onRestoreDataAsset}>
           Restore
+        </button>
+        <button
+          data-testid="clear-style-button"
+          onClick={() => {
+            void onStyleUpdate?.(null);
+          }}>
+          Clear Style
         </button>
         <button
           data-testid="run-agents"
@@ -377,6 +385,13 @@ jest.mock(
         <div data-testid="ingestion-component">Ingestion</div>
       ))
 );
+
+// The hook owns the SSE connection; mock it so jsdom never opens a stream.
+jest.mock('../../components/ServiceAgents/hooks/useMetadataAgents', () => ({
+  useMetadataAgents: jest
+    .fn()
+    .mockReturnValue({ agents: [], discoveredCount: 0 }),
+}));
 
 jest.mock(
   '../../components/Settings/Services/ServiceConnectionDetails/ServiceConnectionDetails.component',
@@ -715,6 +730,41 @@ describe('ServiceDetailsPage', () => {
           ServiceCategory.DATABASE_SERVICES,
           'test-service-id',
           expect.any(Array)
+        );
+      });
+    });
+
+    it('should clear service style with null patch value', async () => {
+      (getServiceByFQN as jest.Mock).mockImplementationOnce(() =>
+        Promise.resolve({
+          ...mockServiceDetails,
+          serviceType: 'CustomDatabase',
+          style: {
+            color: '#123456',
+            iconURL: 'https://example.com/icon.svg',
+          },
+        })
+      );
+
+      await renderComponent();
+
+      await waitFor(() => {
+        expect(screen.getByTestId('service-page')).toBeInTheDocument();
+      });
+
+      fireEvent.click(screen.getByTestId('clear-style-button'));
+
+      await waitFor(() => {
+        expect(patchService).toHaveBeenCalledWith(
+          ServiceCategory.DATABASE_SERVICES,
+          'test-service-id',
+          expect.arrayContaining([
+            expect.objectContaining({
+              op: 'replace',
+              path: '/style',
+              value: null,
+            }),
+          ])
         );
       });
     });

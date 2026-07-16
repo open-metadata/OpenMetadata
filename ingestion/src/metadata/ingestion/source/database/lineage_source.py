@@ -335,6 +335,13 @@ class LineageSource(QueryParserSource, ABC):
                         logger.debug(traceback.format_exc())
                         logger.warning(f"Error processing query_dict {query_dict}: {exc}")
                 logger.info(f"Processed {row_count} query log entries for lineage")
+                result_limit = getattr(self.source_config, "resultLimit", None)
+                if isinstance(result_limit, int) and row_count >= result_limit:
+                    logger.debug(
+                        f"Reached the configured resultLimit of {result_limit} query log entries; "
+                        f"if more queries exist they were truncated and lineage may be incomplete. "
+                        f"Consider increasing resultLimit."
+                    )
 
     def get_table_query(self) -> Iterator[TableQuery]:
         """
@@ -367,14 +374,14 @@ class LineageSource(QueryParserSource, ABC):
 
         result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
         if result_limit is not None:
-            self.progress.seed_scope_total("Queries", "run", result_limit)
+            self.progress_tracking.manual.seed_scope_total("Queries", "run", result_limit)
         produced = 0
 
         def producer_fn():
             nonlocal produced
             for table_query in self.query_lineage_producer():
                 produced += 1
-                self.progress.track("Queries")
+                self.progress_tracking.manual.track("Queries")
                 yield table_query
 
         processor_fn = query_lineage_processor
@@ -394,7 +401,7 @@ class LineageSource(QueryParserSource, ABC):
             args,
             max_threads=self.source_config.threads,  # pyright: ignore[reportAttributeAccessIssue]
         )
-        self.progress.reconcile_scope_total("Queries", "run", produced)
+        self.progress_tracking.manual.reconcile_scope_total("Queries", "run", produced)
 
     def view_lineage_producer(self) -> Iterable[TableView]:
         """

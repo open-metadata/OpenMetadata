@@ -90,7 +90,6 @@ import {
   getFeedCounts,
 } from '../../../utils/FeedUtilsPure';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
-import { showNotistackError } from '../../../utils/NotistackUtils';
 import {
   DEFAULT_ENTITY_PERMISSION,
   getPrioritizedEditPermission,
@@ -227,7 +226,7 @@ const DataProductsDetailsPage = ({
         setActiveAnnouncement(announcements.data[0]);
       }
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   };
 
@@ -376,7 +375,7 @@ const DataProductsDetailsPage = ({
         setAssetCount(res.hits.total.value ?? 0);
       } catch (error) {
         setAssetCount(0);
-        showNotistackError(
+        showErrorToast(
           error as AxiosError,
           t('server.entity-fetch-error', {
             entity: t('label.asset-plural-lowercase'),
@@ -394,7 +393,7 @@ const DataProductsDetailsPage = ({
       );
       setDataProductPermission(response);
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   }, [dataProduct]);
 
@@ -412,7 +411,7 @@ const DataProductsDetailsPage = ({
       setInputPortsCount(data.inputPorts.paging.total);
       setOutputPortsCount(data.outputPorts.paging.total);
     } catch (error) {
-      showNotistackError(error as AxiosError);
+      showErrorToast(error as AxiosError);
     }
   }, [dataProduct.fullyQualifiedName]);
 
@@ -810,7 +809,7 @@ const DataProductsDetailsPage = ({
           }
         />
         <GenericProvider<DataProduct>
-          muiTags
+          newTagsUI
           currentVersionData={dataProduct}
           customizedPage={customizedPage}
           data={dataProduct}

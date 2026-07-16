@@ -4,8 +4,6 @@ import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_CONFIG_KEY;
 import static org.openmetadata.service.apps.scheduler.AppScheduler.APP_NAME;
 
-import java.util.HashMap;
-import java.util.Map;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.apache.commons.lang3.exception.ExceptionUtils;
@@ -15,6 +13,7 @@ import org.openmetadata.schema.entity.app.AppRunRecord;
 import org.openmetadata.schema.entity.app.FailureContext;
 import org.openmetadata.schema.entity.app.SuccessContext;
 import org.openmetadata.schema.entity.applications.configuration.ApplicationConfig;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -225,10 +224,11 @@ public class OmAppJobListener implements JobListener {
           context = runRecord.getFailureContext();
         }
         if (jobException != null) {
-          Map<String, Object> failure = new HashMap<>();
-          failure.put("message", jobException.getMessage());
-          failure.put("jobStackTrace", ExceptionUtils.getStackTrace(jobException));
-          context.withAdditionalProperty("failure", failure);
+          context.withFailure(
+              new IndexingError()
+                  .withErrorSource(IndexingError.ErrorSource.JOB)
+                  .withMessage(jobException.getMessage())
+                  .withStackTrace(ExceptionUtils.getStackTrace(jobException)));
         }
 
         runRecord.setFailureContext(context);

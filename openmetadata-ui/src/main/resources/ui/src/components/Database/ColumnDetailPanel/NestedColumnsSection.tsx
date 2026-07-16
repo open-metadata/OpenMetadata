@@ -14,7 +14,7 @@ import { Badge } from '@openmetadata/ui-core-components';
 import { Typography } from 'antd';
 import React from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as ColumnIcon } from '../../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../../assets/svg/entity/column.svg';
 import { Column } from '../../../generated/entity/data/table';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getNestedSectionTitle } from '../../../utils/TablePureUtils';
