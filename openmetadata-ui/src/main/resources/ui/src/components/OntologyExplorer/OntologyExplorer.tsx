@@ -295,7 +295,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       }
 
       const hasActiveFilter =
-        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0;
+        withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
+        filters.searchQuery.trim().length > 0;
 
       if (hasActiveFilter) {
         return (
@@ -427,7 +428,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     graphDataToShow !== null &&
     graphDataToShow.nodes.length === 0 &&
     withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
-    withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0;
+    withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
+    !filters.searchQuery.trim();
 
   return (
     <div
