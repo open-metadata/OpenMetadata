@@ -53,6 +53,11 @@ public class DefaultRecreateHandler implements RecreateIndexHandler {
     return this;
   }
 
+  /** The reindex job driving this run, or null for jobless callers (ops CLI createIndexes). */
+  protected EventPublisherJob getJobData() {
+    return jobData;
+  }
+
   @Override
   public ReindexContext reCreateIndexes(Set<String> entities) {
     ReindexContext context = new ReindexContext();
