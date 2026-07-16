@@ -392,10 +392,7 @@ public abstract class EntityTimeSeriesRepository<T extends EntityTimeSeriesInter
     return timeSeriesDao.existsById(id);
   }
 
-  public boolean existsById(UUID id) {
-    return timeSeriesDao.existsById(id);
-  }
-
+  @Transaction
   public void deleteById(UUID id, boolean hardDelete) {
     // time series entities by definition cannot be soft deleted
     if (hardDelete) {
