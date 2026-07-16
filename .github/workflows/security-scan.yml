@@ -366,7 +366,7 @@ jobs:
         if: env.SEND_SLACK_NOTIFICATION == 'true'
         uses: slackapi/slack-github-action@v1.27.1
         with:
-          channel-id: C0B6Q6KDMJN
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload-file-path: header.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
@@ -421,7 +421,7 @@ jobs:
         if: always() && env.SEND_SLACK_NOTIFICATION == 'true' && steps.send-header.outputs.ts != '' && steps.build-thread.outcome == 'success'
         uses: slackapi/slack-github-action@v1.27.1
         with:
-          channel-id: C0B6Q6KDMJN
+          channel-id: ${{ secrets.SLACK_CHANNEL_IDS }}
           payload-file-path: thread.json
         env:
           SLACK_BOT_TOKEN: ${{ secrets.SLACK_BOT_TOKEN }}
