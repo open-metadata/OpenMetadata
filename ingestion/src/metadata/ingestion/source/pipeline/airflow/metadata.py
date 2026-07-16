@@ -713,7 +713,7 @@ class AirflowSource(PipelineServiceSource):
         :return: List of tasks
         """
         return [
-            Task(
+            Task(  # pyright: ignore[reportCallIssue]
                 name=task.task_id,
                 description=next(
                     (doc for doc in (task.doc_md, task.doc, task.doc_json, task.doc_yaml, task.doc_rst) if doc),
