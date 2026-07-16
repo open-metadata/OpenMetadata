@@ -3056,13 +3056,13 @@ class SearchRepositoryBehaviorTest {
                                     failedService.getId().toString(),
                                     failedService.getFullyQualifiedName(),
                                     "rejected",
-                                    IndexingFailureRecorder.FailureStage.SINK);
+                                    IndexingFailureRecorder.FailureStage.PROCESS);
                             return null;
                           })
                       .when(bulkSink)
                       .write(any(), any());
                   when(bulkSink.flushAndAwait(60)).thenReturn(true);
-                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(1));
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
                 })) {
       repository.updateEntitiesIndex(List.of(failedService, successfulService));
 
@@ -3076,7 +3076,7 @@ class SearchRepositoryBehaviorTest {
                   failedService.getId().toString(),
                   failedService.getFullyQualifiedName(),
                   Entity.DATABASE_SERVICE,
-                  "updateEntitiesBulk SINK: rejected"));
+                  "updateEntitiesBulk PROCESS: rejected"));
       retryQueue.verifyNoMoreInteractions();
     }
   }

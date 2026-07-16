@@ -1822,6 +1822,7 @@ public class SearchRepository {
         boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
         StepStats sinkStats = bulkSink.getStats();
         if (!completed
+            || recordedBulkFailures.get() > 0
             || (sinkStats != null
                 && Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0) > 0)) {
           throw new IOException(
@@ -1901,7 +1902,7 @@ public class SearchRepository {
       List<EntityInterface> propagationCandidates,
       Set<String> confirmedEntityIds) {
     int failedRecords = Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0);
-    if (failedRecords == 0) {
+    if (failedRecords == 0 && recordedFailures == 0) {
       propagationCandidates.addAll(entities);
       entities.forEach(entity -> confirmedEntityIds.add(entity.getId().toString()));
       return;
