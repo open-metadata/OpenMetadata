@@ -1,6 +1,7 @@
 package org.openmetadata.service.drive;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -26,6 +27,7 @@ import java.util.concurrent.RejectedExecutionException;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -245,6 +247,45 @@ class ContextFileExtractionServiceTest {
     assertEquals(
         ProcessingStatus.Processed,
         updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+  }
+
+  @Test
+  void processYieldsAndRequeuesAfterSustainedConflicts() throws Exception {
+    AtomicBoolean conflict = new AtomicBoolean(true);
+    AtomicInteger fileWriteAttempts = new AtomicInteger();
+    AtomicReference<Runnable> requeued = new AtomicReference<>();
+    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
+        .thenAnswer(
+            invocation -> {
+              fileWriteAttempts.incrementAndGet();
+              if (conflict.get()) {
+                throw new PreconditionFailedException("Concurrent file update");
+              }
+              return null;
+            });
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    service(requeued::set, () -> assetService).process(fileId, contentId);
+
+    assertEquals(10, fileWriteAttempts.get());
+    Runnable retry = requeued.getAndSet(null);
+    assertNotNull(retry);
+
+    conflict.set(false);
+    retry.run();
+
+    assertNull(requeued.get());
+    assertEquals(12, fileWriteAttempts.get());
+    verify(contentRepository, times(2))
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedContentCaptor.getAllValues().getLast().getProcessingStatus());
   }
 
   @Test

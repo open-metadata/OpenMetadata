@@ -30,6 +30,7 @@ import org.openmetadata.service.util.RequestEntityCache;
 
 @Slf4j
 public class ContextFileExtractionService {
+  private static final int MAX_CONDITIONAL_UPDATE_ATTEMPTS = 10;
   private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
   private final ContextFileRepository repository;
   private final Supplier<AssetService> assetServiceSupplier;
@@ -103,7 +104,11 @@ public class ContextFileExtractionService {
     } catch (RejectedExecutionException e) {
       LOG.warn(
           "Skipping text extraction for file {} because the async executor rejected it", fileId, e);
-      applyFailure(fileId, contentId, "Text extraction queue is full. Please retry later.");
+      try {
+        applyFailure(fileId, contentId, "Text extraction queue is full. Please retry later.");
+      } catch (ConditionalUpdateExhaustedException exhausted) {
+        LOG.warn("Unable to mark rejected text extraction failed for file {}", fileId);
+      }
     }
   }
 
@@ -111,8 +116,25 @@ public class ContextFileExtractionService {
     RequestEntityCache.clear();
     try {
       processInternal(fileId, contentId);
+    } catch (ConditionalUpdateExhaustedException e) {
+      requeueAfterConditionalUpdateContention(fileId, contentId);
     } finally {
       RequestEntityCache.clear();
+    }
+  }
+
+  private void requeueAfterConditionalUpdateContention(UUID fileId, UUID contentId) {
+    try {
+      executor.execute(() -> process(fileId, contentId));
+      LOG.debug("Requeued text extraction for file {} after concurrent updates", fileId);
+    } catch (RejectedExecutionException e) {
+      LOG.warn("Unable to requeue text extraction for file {} after concurrent updates", fileId, e);
+      try {
+        applyFailure(
+            fileId, contentId, "Concurrent updates prevented text extraction. Please retry later.");
+      } catch (ConditionalUpdateExhaustedException exhausted) {
+        LOG.warn("Unable to mark contended text extraction failed for file {}", fileId);
+      }
     }
   }
 
@@ -180,6 +202,9 @@ public class ContextFileExtractionService {
         applyResult(fileId, contentId, result);
       }
     } catch (Throwable t) {
+      if (t instanceof ConditionalUpdateExhaustedException exhausted) {
+        throw exhausted;
+      }
       if (t instanceof VirtualMachineError vmError) {
         throw vmError;
       }
@@ -264,7 +289,7 @@ public class ContextFileExtractionService {
   }
 
   private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
-    while (true) {
+    for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
       ContextFile current = getFile(fileId);
       if (current == null) {
         return false;
@@ -279,16 +304,18 @@ public class ContextFileExtractionService {
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
         RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, current.getFullyQualifiedName());
-        if (!waitForConditionalUpdateRetry(CONTEXT_FILE_ENTITY, fileId)) {
+        if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
+            && !waitForConditionalUpdateRetry(CONTEXT_FILE_ENTITY, fileId)) {
           return false;
         }
       }
     }
+    throw new ConditionalUpdateExhaustedException(CONTEXT_FILE_ENTITY, fileId);
   }
 
   private boolean updateContent(
       UUID contentId, Function<ContextFileContent, ContextFileContent> updater) {
-    while (true) {
+    for (int attempt = 1; attempt <= MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
       ContextFileContent current = getContent(contentId);
       if (current == null) {
         return false;
@@ -304,11 +331,13 @@ public class ContextFileExtractionService {
         LOG.debug("Context file content {} changed during extraction update", contentId);
         RequestEntityCache.invalidate(
             CONTEXT_FILE_CONTENT_ENTITY, contentId, current.getFullyQualifiedName());
-        if (!waitForConditionalUpdateRetry(CONTEXT_FILE_CONTENT_ENTITY, contentId)) {
+        if (attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS
+            && !waitForConditionalUpdateRetry(CONTEXT_FILE_CONTENT_ENTITY, contentId)) {
           return false;
         }
       }
     }
+    throw new ConditionalUpdateExhaustedException(CONTEXT_FILE_CONTENT_ENTITY, contentId);
   }
 
   private boolean waitForConditionalUpdateRetry(String entityType, UUID entityId) {
@@ -319,6 +348,12 @@ public class ContextFileExtractionService {
       Thread.currentThread().interrupt();
       LOG.warn("Interrupted while retrying {} {} extraction update", entityType, entityId);
       return false;
+    }
+  }
+
+  private static class ConditionalUpdateExhaustedException extends RuntimeException {
+    private ConditionalUpdateExhaustedException(String entityType, UUID entityId) {
+      super("Repeated concurrent updates for " + entityType + " " + entityId);
     }
   }
 }
