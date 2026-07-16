@@ -16,7 +16,7 @@ Google Drive source implementation
 # pylint: disable=too-many-lines
 import traceback
 from datetime import datetime
-from typing import Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Dict, Iterable, List, Optional  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDirectory import CreateDirectoryRequest
 from metadata.generated.schema.api.data.createFile import CreateFileRequest
@@ -44,11 +44,8 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import create_connection, get_connection
 from metadata.ingestion.source.drive.drive_service import DriveServiceSource
-from metadata.ingestion.source.drive.googledrive.connection import (
-    GoogleDriveClient,
-    get_connection,
-)
 from metadata.ingestion.source.drive.googledrive.models import (
     GoogleDriveDirectoryInfo,
     GoogleDriveFile,
@@ -62,6 +59,9 @@ from metadata.utils.filters import (
     filter_by_worksheet,
 )
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.drive.googledrive.connection import GoogleDriveClient
 
 logger = ingestion_logger()
 
@@ -91,7 +91,10 @@ class GoogleDriveSource(DriveServiceSource):
         self.source_config: DriveServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection: GoogleDriveConnection = self.config.serviceConnection.root.config
-        self.client: GoogleDriveClient = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client: GoogleDriveClient = (
+            self._connection.client if self._connection else get_connection(self.service_connection)
+        )
         self.connection_obj = self.client
 
         # Cache for storing directory hierarchy
@@ -107,7 +110,11 @@ class GoogleDriveSource(DriveServiceSource):
         # Flag to track if root files have been processed
         self._root_files_processed: bool = False
 
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(
@@ -919,6 +926,9 @@ class GoogleDriveSource(DriveServiceSource):
             # Close the client connection if it has a close method
             if hasattr(self.client, "close"):
                 self.client.close()
+
+            if self._connection is not None:
+                self._connection.close()
 
         except Exception as e:
             logger.error(f"Error closing Google Drive source: {e}")

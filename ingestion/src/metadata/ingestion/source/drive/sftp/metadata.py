@@ -16,7 +16,7 @@ import io
 import mimetypes
 import stat
 import traceback
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional  # noqa: UP035
 
 import pandas as pd
 
@@ -45,12 +45,15 @@ from metadata.generated.schema.metadataIngestion.workflow import (
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.connections import create_connection, get_connection
 from metadata.ingestion.source.drive.drive_service import DriveServiceSource
-from metadata.ingestion.source.drive.sftp.connection import SftpClient, get_connection
 from metadata.ingestion.source.drive.sftp.models import SftpDirectoryInfo, SftpFileInfo
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_directory, filter_by_file
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.drive.sftp.connection import SftpClient
 
 logger = ingestion_logger()
 
@@ -81,7 +84,10 @@ class SftpSource(DriveServiceSource):
         self.source_config: DriveServiceMetadataPipeline = self.config.sourceConfig.config
         self.metadata = metadata
         self.service_connection: SftpConnection = self.config.serviceConnection.root.config
-        self.client: SftpClient = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client: SftpClient = (
+            self._connection.client if self._connection else get_connection(self.service_connection)
+        )
         self.connection_obj = self.client
 
         self._directories_cache: Dict[str, SftpDirectoryInfo] = {}  # noqa: UP006
@@ -91,7 +97,11 @@ class SftpSource(DriveServiceSource):
         self._root_files_processed: bool = False
         self._root_directory_prefixes: List[str] = []  # noqa: UP006
 
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(
@@ -648,6 +658,9 @@ class SftpSource(DriveServiceSource):
 
             if self.client:
                 self.client.close()
+
+            if self._connection is not None:
+                self._connection.close()
 
         except Exception as e:
             logger.error(f"Error closing SFTP source: {e}")
