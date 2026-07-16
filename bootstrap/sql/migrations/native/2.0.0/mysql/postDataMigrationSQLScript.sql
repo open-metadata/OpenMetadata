@@ -239,3 +239,19 @@ SET json = JSON_REMOVE(json, '$.openMetadataServerConnection', '$.privateConfigu
 WHERE extension LIKE 'app.version.%'
   AND (JSON_EXTRACT(json, '$.openMetadataServerConnection') IS NOT NULL
        OR JSON_EXTRACT(json, '$.privateConfiguration') IS NOT NULL);
+
+-- Add Topic permissions to AutoClassificationBotPolicy for messaging auto-classification support
+UPDATE policy_entity
+SET json = JSON_ARRAY_APPEND(
+    json,
+    '$.rules',
+    JSON_OBJECT(
+        'name', 'AutoClassificationBotRule-Allow-Topic',
+        'description', 'Allow adding tags and sample data to the topics',
+        'resources', JSON_ARRAY('Topic'),
+        'operations', JSON_ARRAY('EditAll', 'ViewAll'),
+        'effect', 'allow'
+    )
+)
+WHERE JSON_UNQUOTE(JSON_EXTRACT(json, '$.name')) = 'AutoClassificationBotPolicy'
+  AND NOT JSON_CONTAINS(json, JSON_OBJECT('name', 'AutoClassificationBotRule-Allow-Topic'), '$.rules');
