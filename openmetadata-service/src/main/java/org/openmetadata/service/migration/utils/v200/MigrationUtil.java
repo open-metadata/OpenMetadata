@@ -726,6 +726,12 @@ public class MigrationUtil {
         taskJson.put("commentCount", 0);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
+        String umbrellaWorkflowInstanceId =
+            lookupLegacyUmbrellaWorkflowInstanceId(handle, threadId);
+        if (umbrellaWorkflowInstanceId != null) {
+          taskJson.put("workflowInstanceId", umbrellaWorkflowInstanceId);
+        }
+
         // Set resolution details for closed tasks
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
@@ -1421,6 +1427,53 @@ public class MigrationUtil {
             ? "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json::jsonb, :fqnHash)"
             : "INSERT INTO task_entity (id, json, fqnHash) VALUES (:id, :json, :fqnHash)";
     handle.createUpdate(sql).bind("id", id).bind("json", json).bind("fqnHash", fqnHash).execute();
+  }
+
+  /**
+   * Resolve the pre-2.0 umbrella {@code WorkflowInstance} UUID for a legacy Thread task by
+   * joining Flowable's process-scoped {@code workflowInstanceExecutionId} variable against
+   * {@code workflow_instance_state_time_series}. Setting this on the migrated Task closes the
+   * {@code shouldCreateWorkflowManagedTask} gate so {@code postCreate} does not spawn a
+   * duplicate task-scoped subprocess, leaving a single Flowable userTask for the resolve
+   * endpoint to complete against the existing umbrella. Returns {@code null} for closed threads
+   * (umbrella already ended) and post-2.0 tasks — those fall through the standard workflow-
+   * managed lifecycle.
+   */
+  private static String lookupLegacyUmbrellaWorkflowInstanceId(Handle handle, String threadId) {
+    String resolvedId = null;
+    try {
+      String executionId =
+          handle
+              .createQuery(
+                  "SELECT text_ FROM ACT_HI_VARINST "
+                      + "WHERE name_ = 'workflowInstanceExecutionId' AND proc_inst_id_ IN ("
+                      + "  SELECT proc_inst_id_ FROM ACT_HI_VARINST "
+                      + "  WHERE name_ = 'customTaskId' AND text_ = :threadId"
+                      + ") "
+                      + "ORDER BY id_ ASC LIMIT 1")
+              .bind("threadId", threadId)
+              .mapTo(String.class)
+              .findFirst()
+              .orElse(null);
+      if (executionId != null) {
+        resolvedId =
+            handle
+                .createQuery(
+                    "SELECT workflowInstanceId FROM workflow_instance_state_time_series "
+                        + "WHERE workflowInstanceExecutionId = :executionId "
+                        + "ORDER BY timestamp ASC LIMIT 1")
+                .bind("executionId", executionId)
+                .mapTo(String.class)
+                .findFirst()
+                .orElse(null);
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve legacy umbrella workflowInstanceId for thread '{}': {}",
+          threadId,
+          e.getMessage());
+    }
+    return resolvedId;
   }
 
   private static String lookupUserId(Handle handle, String userName) {
@@ -2127,7 +2180,7 @@ public class MigrationUtil {
       task.withComments(comments).withCommentCount(comments.size());
 
       UUID runtimeWorkflowInstanceId =
-          workflowHandler.getRuntimeWorkflowInstanceId(legacyThread.getId());
+          resolveLegacyUmbrellaWorkflowInstanceId(legacyThread.getId());
       if (runtimeWorkflowInstanceId != null) {
         task.setWorkflowInstanceId(runtimeWorkflowInstanceId);
       }
@@ -2137,6 +2190,50 @@ public class MigrationUtil {
       }
 
       return task;
+    }
+
+    /**
+     * Look up the pre-2.0 umbrella {@code WorkflowInstance} UUID for a legacy Thread task using
+     * only SQL. The Flowable engine is not booted during CLI migration, so
+     * {@link WorkflowHandler#getRuntimeWorkflowInstanceId(UUID)} cannot resolve the mapping. The
+     * umbrella process stores {@code workflowInstanceExecutionId} as a process-scoped Flowable
+     * variable that also lands on every emitted state row; we join via that value.
+     * Returns {@code null} when no active umbrella exists for the thread — closed threads and
+     * post-2.0 tasks fall through and let the standard workflow-managed lifecycle spawn a
+     * task-scoped subprocess.
+     */
+    private UUID resolveLegacyUmbrellaWorkflowInstanceId(UUID legacyThreadId) {
+      UUID resolvedId = null;
+      try {
+        String executionId =
+            handle
+                .createQuery(
+                    "SELECT text_ FROM ACT_HI_VARINST "
+                        + "WHERE name_ = 'workflowInstanceExecutionId' AND proc_inst_id_ IN ("
+                        + "  SELECT proc_inst_id_ FROM ACT_HI_VARINST "
+                        + "  WHERE name_ = 'customTaskId' AND text_ = :threadId"
+                        + ") "
+                        + "ORDER BY id_ ASC LIMIT 1")
+                .bind("threadId", legacyThreadId.toString())
+                .mapTo(String.class)
+                .findFirst()
+                .orElse(null);
+        if (executionId != null) {
+          String instanceId =
+              collectionDAO
+                  .workflowInstanceStateTimeSeriesDAO()
+                  .findWorkflowInstanceIdByExecutionId(executionId);
+          if (instanceId != null) {
+            resolvedId = UUID.fromString(instanceId);
+          }
+        }
+      } catch (Exception e) {
+        LOG.debug(
+            "Could not resolve legacy umbrella workflowInstanceId for thread '{}': {}",
+            legacyThreadId,
+            e.getMessage());
+      }
+      return resolvedId;
     }
 
     private TypeAndCategory mapLegacyTaskType(TaskType legacyTaskType) {
