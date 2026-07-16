@@ -61,6 +61,7 @@ jobs:
               - 'docker/development/docker-compose.yml'
               - 'docker/development/docker-compose-postgres.yml'
               - '.github/actions/setup-openmetadata-test-environment/**'
+              - '.github/scripts/configure_docker_storage.sh'
               - '.github/scripts/classify_test_outcome.py'
               - '.github/workflows/py-tests.yml'
               - 'pom.xml'
@@ -214,6 +215,10 @@ jobs:
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
 
+      - name: Use runner data disk for Docker
+        if: matrix.shard.name == 'shard-2'
+        run: bash .github/scripts/configure_docker_storage.sh
+
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
         with:
@@ -296,6 +301,7 @@ jobs:
           mkdir -p "$diagnostics"
           df -h > "$diagnostics/disk-usage.txt" 2>&1 || true
           free -h > "$diagnostics/memory-usage.txt" 2>&1 || true
+          docker info > "$diagnostics/docker-info.txt" 2>&1 || true
           docker system df > "$diagnostics/docker-disk-usage.txt" 2>&1 || true
           docker ps --all --no-trunc > "$diagnostics/docker-containers.txt" 2>&1 || true
           if [ -d docker/development ]; then
