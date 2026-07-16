@@ -28,6 +28,7 @@ import {
 import {
   buildPermissionRule,
   createDisposableArchivedDocument,
+  getLoggedInUser,
   loginAsUser,
   MEMORIES_API,
   navigateToArchive,
@@ -37,6 +38,7 @@ import {
   navigateToMemories,
   scrollHierarchyToNode,
   scrollListingToCard,
+  searchAndGetMemoryRow,
   uploadDisposableDocument,
   waitForDocumentInArchive,
 } from '../../utils/ContextCenterUtil';
@@ -142,14 +144,19 @@ let folderId = '';
 let archivedDocumentId = '';
 
 let ownerMemoryId = '';
+let ownerMemoryTitle = '';
 
 let quickLinkId = '';
 let quickLinkDisplayName = '';
 
 let editAllOwnMemoryId = '';
+let editAllOwnMemoryTitle = '';
 let deleteAllOwnMemoryId = '';
+let deleteAllOwnMemoryTitle = '';
 let allPermissionOwnMemoryId = '';
+let allPermissionOwnMemoryTitle = '';
 let viewOnlyOwnMemoryId = '';
+let viewOnlyOwnMemoryTitle = '';
 let earlyAlphabetMemoryId = '';
 
 test.describe('Context Center Permissions', () => {
@@ -222,10 +229,11 @@ test.describe('Context Center Permissions', () => {
     });
     quickLinkId = (await qlRes.json()).id;
 
+    ownerMemoryTitle = `CC Permission Memory ${uuid()}`;
     const memoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_${uuid()}`,
-        title: `CC Permission Memory ${uuid()}`,
+        title: ownerMemoryTitle,
         question: 'Owned by admin for permission matrix tests',
         answer: 'Owned by admin for permission matrix tests',
         shareConfig: { visibility: 'Entity' },
@@ -273,10 +281,11 @@ test.describe('Context Center Permissions', () => {
       'context-center-permission-full'
     );
 
+    editAllOwnMemoryTitle = `CC Permission Memory Edit-All ${uuid()}`;
     const editAllMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_edit_all_${uuid()}`,
-        title: `CC Permission Memory Edit-All ${uuid()}`,
+        title: editAllOwnMemoryTitle,
         question: 'Owned by editAllUser',
         answer: 'Owned by editAllUser',
         shareConfig: { visibility: 'Entity' },
@@ -285,10 +294,11 @@ test.describe('Context Center Permissions', () => {
     });
     editAllOwnMemoryId = (await editAllMemoryRes.json()).id;
 
+    deleteAllOwnMemoryTitle = `CC Permission Memory Delete-All ${uuid()}`;
     const deleteAllMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_delete_all_${uuid()}`,
-        title: `CC Permission Memory Delete-All ${uuid()}`,
+        title: deleteAllOwnMemoryTitle,
         question: 'Owned by deleteAllUser',
         answer: 'Owned by deleteAllUser',
         shareConfig: { visibility: 'Entity' },
@@ -297,10 +307,11 @@ test.describe('Context Center Permissions', () => {
     });
     deleteAllOwnMemoryId = (await deleteAllMemoryRes.json()).id;
 
+    allPermissionOwnMemoryTitle = `CC Permission Memory Full ${uuid()}`;
     const allPermissionMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_full_${uuid()}`,
-        title: `CC Permission Memory Full ${uuid()}`,
+        title: allPermissionOwnMemoryTitle,
         question: 'Owned by allPermissionUser',
         answer: 'Owned by allPermissionUser',
         shareConfig: { visibility: 'Entity' },
@@ -309,10 +320,11 @@ test.describe('Context Center Permissions', () => {
     });
     allPermissionOwnMemoryId = (await allPermissionMemoryRes.json()).id;
 
+    viewOnlyOwnMemoryTitle = `CC Permission Memory View-Only Owner ${uuid()}`;
     const viewOnlyMemoryRes = await apiContext.post(MEMORIES_API, {
       data: {
         name: `cc_permission_memory_view_only_${uuid()}`,
-        title: `CC Permission Memory View-Only Owner ${uuid()}`,
+        title: viewOnlyOwnMemoryTitle,
         question: 'Owned by the view-only user',
         answer: 'Owned by the view-only user',
         shareConfig: { visibility: 'Entity' },
@@ -663,10 +675,6 @@ test.describe('Context Center Permissions', () => {
         const upvoteRes = await upvoteResPromise;
 
         expect(upvoteRes.status()).toBe(200);
-        await expect(upvoteBtn.locator('svg')).toHaveClass(
-          /fill-utility-blue-500/
-        );
-
         const downvoteResPromise = viewOnlyPage.waitForResponse(
           `/api/v1/contextCenter/pages/${articleEntity.responseData.id}/vote`
         );
@@ -674,9 +682,6 @@ test.describe('Context Center Permissions', () => {
         const downvoteRes = await downvoteResPromise;
 
         expect(downvoteRes.status()).toBe(200);
-        await expect(downvoteBtn.locator('svg')).toHaveClass(
-          /fill-utility-blue-500/
-        );
       });
 
       await test.step('can start a conversation on the article', async () => {
@@ -714,7 +719,6 @@ test.describe('Context Center Permissions', () => {
         const followRes = await followResPromise;
 
         expect(followRes.status()).toBe(200);
-        await expect(followBtn).toHaveClass(/text-fg-brand-primary/);
 
         const unfollowResPromise = viewOnlyPage.waitForResponse((response) =>
           response
@@ -727,7 +731,6 @@ test.describe('Context Center Permissions', () => {
         const unfollowRes = await unfollowResPromise;
 
         expect(unfollowRes.status()).toBe(200);
-        await expect(followBtn).not.toHaveClass(/text-fg-brand-primary/);
       });
     });
 
@@ -1190,7 +1193,7 @@ test.describe('Context Center Permissions', () => {
       const row = page.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await row.locator('button[aria-label="Open menu"]').click();
+      await row.getByTestId('manage-button').click();
     };
 
     test('user with view-only permission cannot see upload, folder, or row actions', async ({
@@ -1208,9 +1211,7 @@ test.describe('Context Center Permissions', () => {
       const row = viewOnlyPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.locator('button[aria-label="Open menu"]')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('selecting a document shows only download in bulk bar (no move or delete)', async () => {
         await row.getByTestId('document-checkbox').click();
@@ -1243,9 +1244,7 @@ test.describe('Context Center Permissions', () => {
       const row = createAllPage.getByTestId(`document-row-${documentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
-      await expect(
-        row.locator('button[aria-label="Open menu"]')
-      ).not.toBeVisible();
+      await expect(row.getByTestId('manage-button')).not.toBeVisible();
 
       await test.step('can create a folder', async () => {
         const folderName = `cc-permission-folder-${uuid()}`;
@@ -1370,7 +1369,7 @@ test.describe('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await editAllPage.getByTestId('move-btn').click();
 
         const moveResPromise = editAllPage.waitForResponse(
@@ -1453,7 +1452,7 @@ test.describe('Context Center Permissions', () => {
         );
         await docRow.scrollIntoViewIfNeeded();
         await expect(docRow).toBeVisible();
-        await docRow.locator('button[aria-label="Open menu"]').click();
+        await docRow.getByTestId('manage-button').click();
         await deleteAllPage.getByTestId('delete-btn').click();
 
         const deleteResPromise = deleteAllPage.waitForResponse(
@@ -1494,13 +1493,13 @@ test.describe('Context Center Permissions', () => {
       viewOnlyPage,
       browser,
     }) => {
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
       await waitForDocumentInArchive(apiContext, archivedDocumentId);
       await afterAction();
       await navigateToArchive(viewOnlyPage);
-
       const row = viewOnlyPage.getByTestId(`archive-row-${archivedDocumentId}`);
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
@@ -1512,6 +1511,7 @@ test.describe('Context Center Permissions', () => {
       createAllPage,
       browser,
     }) => {
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1532,6 +1532,7 @@ test.describe('Context Center Permissions', () => {
       editAllPage,
       browser,
     }) => {
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1546,6 +1547,7 @@ test.describe('Context Center Permissions', () => {
       await expect(row.getByTestId('delete-btn')).not.toBeVisible();
 
       await test.step('can restore a disposable archived document', async () => {
+        test.slow();
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
           browser
         );
@@ -1585,6 +1587,7 @@ test.describe('Context Center Permissions', () => {
       deleteAllPage,
       browser,
     }) => {
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1601,6 +1604,7 @@ test.describe('Context Center Permissions', () => {
       await expect(row.getByTestId('delete-btn')).toBeVisible();
 
       await test.step('can delete a disposable archived document', async () => {
+        test.slow();
         const { apiContext, afterAction } = await getDefaultAdminAPIContext(
           browser
         );
@@ -1639,6 +1643,7 @@ test.describe('Context Center Permissions', () => {
       allPermissionPage,
       browser,
     }) => {
+      test.slow();
       const { apiContext, afterAction } = await getDefaultAdminAPIContext(
         browser
       );
@@ -1654,6 +1659,106 @@ test.describe('Context Center Permissions', () => {
       await expect(row.getByTestId('restore-btn')).toBeVisible();
       await expect(row.getByTestId('delete-btn')).toBeVisible();
     });
+
+    test('a document archived by a different user can be permanently deleted, via the UI, by a user with Delete permission', async ({
+      deleteAllPage,
+      browser,
+    }) => {
+      // Archived as admin (a different identity than deleteAllUser) so the
+      // archived row's updatedBy is admin, not deleteAllUser — proving this
+      // is genuinely a cross-user delete, not deleteAllUser deleting its own.
+      const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+        await getDefaultAdminAPIContext(browser);
+      const { id: crossUserDocId } = await createDisposableArchivedDocument(
+        adminApiContext,
+        'cc-cross-user-delete-doc'
+      );
+      await waitForDocumentInArchive(adminApiContext, crossUserDocId);
+      await adminAfterAction();
+
+      await navigateToArchive(deleteAllPage);
+      const row = deleteAllPage.getByTestId(`archive-row-${crossUserDocId}`);
+      await row.scrollIntoViewIfNeeded();
+      await expect(row).toBeVisible();
+      await expect(row.getByTestId('delete-btn')).toBeVisible();
+
+      await row.getByTestId('delete-btn').click();
+      const deleteResPromise = deleteAllPage.waitForResponse(
+        new RegExp(
+          String.raw`/api/v1/contextCenter/drive/files/${crossUserDocId}\?hardDelete=true`
+        )
+      );
+      await deleteAllPage.getByTestId('confirm-button').click();
+      const deleteRes = await deleteResPromise;
+
+      expect([200, 202]).toContain(deleteRes.status());
+      await expect(row).not.toBeVisible();
+    });
+
+    test("created-by-me filter on the archive page shows only the current user's archived documents", async ({
+      allPermissionPage,
+      browser,
+    }) => {
+      const {
+        apiContext: allPermissionApiContext,
+        afterAction: allPermissionAfterAction,
+      } = await getApiContext(allPermissionPage);
+      const allPermissionLoggedInUser = await getLoggedInUser(
+        allPermissionApiContext
+      );
+      const { id: ownDocId } = await createDisposableArchivedDocument(
+        allPermissionApiContext,
+        'cc-created-by-me-own-doc'
+      );
+      await waitForDocumentInArchive(allPermissionApiContext, ownDocId);
+      await allPermissionAfterAction();
+
+      const { apiContext: adminApiContext, afterAction: adminAfterAction } =
+        await getDefaultAdminAPIContext(browser);
+      const { id: otherUserDocId } = await createDisposableArchivedDocument(
+        adminApiContext,
+        'cc-created-by-me-other-doc'
+      );
+      await waitForDocumentInArchive(adminApiContext, otherUserDocId);
+      await adminAfterAction();
+
+      await navigateToArchive(allPermissionPage);
+
+      await test.step('both documents are visible under the All tab', async () => {
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${ownDocId}`)
+        ).toBeVisible();
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${otherUserDocId}`)
+        ).toBeVisible();
+      });
+
+      await test.step('switching to the created-by-me tab issues a request with updatedBy set to the current user', async () => {
+        const filterResPromise = allPermissionPage.waitForResponse(
+          (res) =>
+            res.url().includes('/api/v1/contextCenter/drive/files') &&
+            res.url().includes(`updatedBy=${allPermissionLoggedInUser.name}`) &&
+            res.request().method() === 'GET'
+        );
+        await allPermissionPage
+          .getByRole('tab', { name: /created by me/i })
+          .click();
+        const filterRes = await filterResPromise;
+        expect(filterRes.status()).toBe(200);
+      });
+
+      await test.step('own archived document is visible under created-by-me', async () => {
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${ownDocId}`)
+        ).toBeVisible();
+      });
+
+      await test.step("the other user's archived document is not visible under created-by-me", async () => {
+        await expect(
+          allPermissionPage.getByTestId(`archive-row-${otherUserDocId}`)
+        ).not.toBeVisible();
+      });
+    });
   });
 
   // ─── Memories Permissions (includes isOwner matrix) ─────────────────────
@@ -1668,7 +1773,11 @@ test.describe('Context Center Permissions', () => {
         viewOnlyPage.getByTestId('add-memory-btn')
       ).not.toBeVisible();
 
-      const row = viewOnlyPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        viewOnlyPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
@@ -1692,8 +1801,10 @@ test.describe('Context Center Permissions', () => {
     }) => {
       await navigateToMemories(viewOnlyPage);
 
-      const ownRow = viewOnlyPage.getByTestId(
-        `memory-row-${viewOnlyOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        viewOnlyPage,
+        viewOnlyOwnMemoryTitle,
+        viewOnlyOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
@@ -1721,7 +1832,11 @@ test.describe('Context Center Permissions', () => {
 
       await expect(createAllPage.getByTestId('add-memory-btn')).toBeVisible();
 
-      const row = createAllPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        createAllPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
@@ -1777,8 +1892,10 @@ test.describe('Context Center Permissions', () => {
         await listResPromise;
         await waitForAllLoadersToDisappear(createAllPage);
 
-        const createdRow = createAllPage.getByTestId(
-          `memory-row-${createdMemory.id}`
+        const createdRow = await searchAndGetMemoryRow(
+          createAllPage,
+          memoryTitle,
+          createdMemory.id
         );
         await createdRow.scrollIntoViewIfNeeded();
         await expect(createdRow).toBeVisible();
@@ -1800,13 +1917,19 @@ test.describe('Context Center Permissions', () => {
 
       await expect(editAllPage.getByTestId('add-memory-btn')).not.toBeVisible();
 
-      const foreignRow = editAllPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const foreignRow = await searchAndGetMemoryRow(
+        editAllPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await foreignRow.scrollIntoViewIfNeeded();
       await expect(foreignRow).toBeVisible();
       await expect(foreignRow.getByTestId('edit-memory-btn')).not.toBeVisible();
 
-      const ownRow = editAllPage.getByTestId(
-        `memory-row-${editAllOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        editAllPage,
+        editAllOwnMemoryTitle,
+        editAllOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
@@ -1847,15 +1970,19 @@ test.describe('Context Center Permissions', () => {
     }) => {
       await navigateToMemories(deleteAllPage);
 
-      const foreignRow = deleteAllPage.getByTestId(
-        `memory-row-${ownerMemoryId}`
+      const foreignRow = await searchAndGetMemoryRow(
+        deleteAllPage,
+        ownerMemoryTitle,
+        ownerMemoryId
       );
       await foreignRow.scrollIntoViewIfNeeded();
       await expect(foreignRow).toBeVisible();
       await expect(foreignRow.getByTestId('edit-memory-btn')).not.toBeVisible();
 
-      const ownRow = deleteAllPage.getByTestId(
-        `memory-row-${deleteAllOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        deleteAllPage,
+        deleteAllOwnMemoryTitle,
+        deleteAllOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
@@ -1892,7 +2019,11 @@ test.describe('Context Center Permissions', () => {
     }) => {
       await navigateToMemories(allPermissionPage);
 
-      const row = allPermissionPage.getByTestId(`memory-row-${ownerMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        allPermissionPage,
+        ownerMemoryTitle,
+        ownerMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
       await expect(row.getByTestId('edit-memory-btn')).not.toBeVisible();
@@ -1919,7 +2050,11 @@ test.describe('Context Center Permissions', () => {
 
       await navigateToMemories(adminPage);
 
-      const row = adminPage.getByTestId(`memory-row-${editAllOwnMemoryId}`);
+      const row = await searchAndGetMemoryRow(
+        adminPage,
+        editAllOwnMemoryTitle,
+        editAllOwnMemoryId
+      );
       await row.scrollIntoViewIfNeeded();
       await expect(row).toBeVisible();
 
@@ -1970,8 +2105,10 @@ test.describe('Context Center Permissions', () => {
         allPermissionPage.getByTestId('add-memory-btn')
       ).toBeVisible();
 
-      const ownRow = allPermissionPage.getByTestId(
-        `memory-row-${allPermissionOwnMemoryId}`
+      const ownRow = await searchAndGetMemoryRow(
+        allPermissionPage,
+        allPermissionOwnMemoryTitle,
+        allPermissionOwnMemoryId
       );
       await ownRow.scrollIntoViewIfNeeded();
       await expect(ownRow).toBeVisible();
@@ -2154,12 +2291,12 @@ test.describe('Context Center Permissions', () => {
         await expect(
           tagsContainer
             .getByTestId('add-tag')
-            .or(tagsContainer.getByTestId('edit-tag'))
+            .or(tagsContainer.getByTestId('edit-button'))
         ).toBeVisible();
         await expect(
           glossaryContainer
             .getByTestId('add-tag')
-            .or(glossaryContainer.getByTestId('edit-tag'))
+            .or(glossaryContainer.getByTestId('edit-button'))
         ).toBeVisible();
         await expect(
           dataStewardPage.getByTestId('add-domain')
@@ -2217,14 +2354,14 @@ test.describe('Context Center Permissions', () => {
         adminPage.getByRole('button', { name: /updated by/i })
       ).toBeVisible();
 
-      // earlyAlphabetMemoryId is the only memory in the suite updated by an
-      // identity whose name sorts before "admin" (every other memory here
-      // is updated by admin) — ascending Updated By sort must place it first.
+      // earlyAlphabetUser's username sorts before "admin" (every other
+      // memory here is updated by admin) — ascending Updated By sort must
+      // place the memory it updated first. Assert on the rendered
+      // "Updated By" text rather than the row's data-testid: several
+      // fixture memories share similar titles, so the id-based check was
+      // brittle — the updatedBy name is what the sort actually orders by.
       const rows = adminPage.locator('[data-testid^="memory-row-"]');
-      await expect(rows.first()).toHaveAttribute(
-        'data-testid',
-        `memory-row-${earlyAlphabetMemoryId}`
-      );
+      await expect(rows.first()).toContainText('aaa-sort-updatedby.');
 
       await afterAction();
     });

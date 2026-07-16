@@ -8,68 +8,159 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-
 """
-Source connection handler
+Source connection handler for the AWS Glue Data Catalog.
+
+Glue has no SQL engine and no host:port: a check's reported ``command`` is the
+boto3 API operation it exercised, and failures arrive as botocore ``ClientError``s.
 """
 
-from typing import Any, Optional
+from __future__ import annotations
+
+from typing import TYPE_CHECKING, Any
 
 from metadata.clients.aws_client import AWSClient
-from metadata.generated.schema.entity.automations.workflow import (
-    Workflow as AutomationWorkflow,
-)
+from metadata.core.connections.test_connection import ErrorPack, check, when
+from metadata.core.connections.test_connection.aws import AWS_ERRORS, aws_code
+from metadata.core.connections.test_connection.check import CheckError
+from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection as GlueConnectionConfig,
 )
-from metadata.generated.schema.entity.services.connections.testConnectionResult import (
-    TestConnectionResult,
-)
 from metadata.ingestion.connections.connection import BaseConnection
-from metadata.ingestion.connections.test_connections import test_connection_steps
-from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.utils.constants import THREE_MIN
+
+if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
+    from metadata.core.connections.test_connection import ChecksProvider
+
+
+# A check only needs to prove the catalog can be listed, not enumerate all of it.
+DEFAULT_LIST_LIMIT = 100
+
+# Catalogs commonly lead with an empty 'default' database, so the table probe keeps
+# looking past it - bounded, since each database costs a GetTables call.
+MAX_DATABASES_TO_PROBE = 10
+
+
+# Only what is specific to Glue: its IAM actions and its not-found code.
+# Authentication, region, endpoint and network failures come from AWS_ERRORS.
+GLUE_ERRORS = ErrorPack(
+    when(aws_code("AccessDenied", "AccessDeniedException")).diagnose(
+        "Not authorized",
+        fix="Grant glue:GetDatabases and glue:GetTables to the identity used, and check any "
+        "Lake Formation permissions on the catalog.",
+    ),
+    # Only from GetTables; a GetDatabases listing returns an empty list instead.
+    when(aws_code("EntityNotFoundException")).diagnose(
+        "Glue database not found",
+        fix="The database disappeared from the catalog while the connection was being tested; re-run the test.",
+    ),
+).including(AWS_ERRORS)
+
+
+def _count(n: int, noun: str) -> str:
+    """``3 tables`` / ``1 table`` - pluralize the noun to match the count."""
+    return f"{n} {noun if n == 1 else noun + 's'}"
+
+
+def _more_suffix(shown: int, more: bool) -> str:
+    """Mark a summary as capped when the catalog holds more assets beyond ``shown``."""
+    return f" (showing first {shown}; more exist)" if more else ""
+
+
+def _paginate(client: Any, operation: str, key: str, limit: int, **kwargs: Any) -> list[Any]:
+    """Return at most ``limit + 1`` items - one past the cap, so the caller can
+    report "more exist" without crawling the whole catalog."""
+    paginator = client.get_paginator(operation)
+    pages = paginator.paginate(PaginationConfig={"MaxItems": limit + 1}, **kwargs)
+    return [item for page in pages for item in page.get(key, [])]
+
+
+def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
+    """Enumerate the Glue databases the identity can see, reporting at most ``limit``.
+
+    Lake Formation filters the response instead of raising, so zero grants read
+    exactly like an empty catalog: both surface as a caveat, never a failure."""
+    command = "glue:GetDatabases"
+    try:
+        databases = _paginate(client, "get_databases", "DatabaseList", limit)
+    except Exception as cause:
+        raise CheckError(cause, Evidence(command=command)) from cause
+    caveat = None
+    if not databases:
+        caveat = Diagnosis(
+            title="No databases visible",
+            remediation="The catalog in awsRegion may be empty, or Lake Formation may be filtering "
+            "it out: grant the identity DESCRIBE on the databases it should read. Ingestion would "
+            "collect nothing as configured.",
+        )
+    shown = min(len(databases), limit)
+    summary = f"{_count(shown, 'database')} enumerated" + _more_suffix(shown, len(databases) > limit)
+    return Evidence(summary=summary, command=command, caveat=caveat)
+
+
+def list_tables(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
+    """Prove tables can be listed, probing databases until one exposes a table.
+
+    Stopping at the first database would report zero tables for a healthy catalog
+    that merely leads with an empty one. Nothing here fails the step: an empty
+    catalog is already flagged by ``list_databases``, and Lake Formation returns an
+    empty list rather than an error when grants are missing."""
+    command = "glue:GetDatabases"
+    try:
+        databases = _paginate(client, "get_databases", "DatabaseList", MAX_DATABASES_TO_PROBE)
+        if not databases:
+            return Evidence(summary="no databases available to probe", command=command, caveat=_no_tables_caveat())
+        for database in databases[:MAX_DATABASES_TO_PROBE]:
+            name = database["Name"]
+            command = f"glue:GetTables (DatabaseName={name})"
+            tables = _paginate(client, "get_tables", "TableList", limit, DatabaseName=name)
+            if tables:
+                shown = min(len(tables), limit)
+                summary = f"{_count(shown, 'table')} in database '{name}'" + _more_suffix(shown, len(tables) > limit)
+                return Evidence(summary=summary, command=command)
+    except Exception as cause:
+        raise CheckError(cause, Evidence(command=command)) from cause
+    probed = min(len(databases), MAX_DATABASES_TO_PROBE)
+    return Evidence(
+        summary=f"no tables in the first {_count(probed, 'database')}",
+        command=command,
+        caveat=_no_tables_caveat(),
+    )
+
+
+def _no_tables_caveat() -> Diagnosis:
+    return Diagnosis(
+        title="No tables visible",
+        remediation="No database exposed a table. Verify the identity's Glue permissions and any "
+        "Lake Formation DESCRIBE grants; ingestion would collect nothing as configured.",
+    )
+
+
+class GlueChecks:
+    """Test-connection checks for the Glue Data Catalog.
+
+    Reading the borrowed client is what builds it, so an assume-role config's STS
+    handshake stays behind the gate."""
+
+    errors = GLUE_ERRORS
+
+    def __init__(self, catalog: Borrowed[Any]) -> None:
+        self._catalog = catalog
+
+    @check(DatabaseStep.GetDatabases)
+    def get_databases(self) -> Evidence:
+        return list_databases(self._catalog.client)
+
+    @check(DatabaseStep.GetTables)
+    def get_tables(self) -> Evidence:
+        return list_tables(self._catalog.client)
 
 
 class GlueConnection(BaseConnection[GlueConnectionConfig, Any]):
     def _get_client(self) -> Any:
         return AWSClient(self.service_connection.awsConfig).get_glue_client()
 
-    def test_connection(
-        self,
-        metadata: OpenMetadata,
-        automation_workflow: Optional[AutomationWorkflow] = None,  # noqa: UP045
-        timeout_seconds: Optional[int] = THREE_MIN,  # noqa: UP045
-    ) -> TestConnectionResult:
-        """
-        Test connection. This can be executed either as part
-        of a metadata workflow or during an Automation Workflow
-        """
-        client = self.client
-
-        def custom_executor_for_database():
-            paginator = client.get_paginator("get_databases")
-            list(paginator.paginate())
-
-        def custom_executor_for_table():
-            paginator = client.get_paginator("get_databases")
-            for page in paginator.paginate():
-                for schema in page["DatabaseList"]:
-                    database_name = schema["Name"]
-                    paginator = client.get_paginator("get_tables")
-                    tables = paginator.paginate(DatabaseName=database_name)
-                    return list(tables)
-            return None
-
-        test_fn = {
-            "GetDatabases": custom_executor_for_database,
-            "GetTables": custom_executor_for_table,
-        }
-
-        return test_connection_steps(
-            metadata=metadata,
-            test_fn=test_fn,
-            service_type=self.service_connection.type.value,  # pyright: ignore[reportOptionalMemberAccess]
-            automation_workflow=automation_workflow,
-            timeout_seconds=timeout_seconds,
-        )
+    def checks(self) -> ChecksProvider:
+        return GlueChecks(catalog=self.borrow())

@@ -69,8 +69,7 @@ from metadata.utils.credentials import (
 from metadata.utils.logger import ingestion_logger
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
 
 logger = ingestion_logger()
@@ -283,44 +282,35 @@ class BigQueryChecks:
     happens a layer up (``BigquerySource._test_connection`` clones the connection
     per project and drives this provider once per clone).
 
-    The engine is built lazily on first use inside ``CheckAccess`` (never at
-    construction), so credential parsing - which happens while building the engine
-    (e.g. a malformed private key) - fails *inside the gate step* and is classified
-    by the error pack, instead of escaping before the runner starts.
+    Reading the borrowed engine is what builds it, so credential parsing (e.g. a
+    malformed private key) fails inside the gate step and is classified.
     """
 
     errors = BIGQUERY_ERRORS
 
     def __init__(
         self,
-        get_client: Callable[[], Engine],
+        db: Borrowed[Engine],
         service_connection: BigQueryConnectionConfig,
     ) -> None:
-        self._get_client = get_client
-        self._client: Engine | None = None
+        self._db = db
         self.service_connection = service_connection
-
-    @property
-    def client(self) -> Engine:
-        if self._client is None:
-            self._client = self._get_client()
-        return self._client
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        return ping(self.client)
+        return ping(self._db.client)
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        return list_schemas(self._db.client)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return probe_table_view_enumeration(self.client)
+        return probe_table_view_enumeration(self._db.client)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return probe_table_view_enumeration(self.client)
+        return probe_table_view_enumeration(self._db.client)
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence | None:
@@ -332,12 +322,12 @@ class BigQueryChecks:
             region=self.service_connection.usageLocation,
             creation_date=datetime.now().strftime("%Y-%m-%d"),
         )
-        return run_sql(self.client, statement, lambda _: "query history accessible")
+        return run_sql(self._db.client, statement, lambda _: "query history accessible")
 
     def _taxonomy_project_ids(self) -> list[str]:
         project_ids: list[str] = []
-        if self.client.url.host:
-            project_ids.append(self.client.url.host)
+        if self._db.client.url.host:
+            project_ids.append(self._db.client.url.host)
         if self.service_connection.taxonomyProjectID:
             project_ids.extend(self.service_connection.taxonomyProjectID)
         return project_ids
@@ -389,6 +379,6 @@ class BigQueryConnection(BaseConnection[BigQueryConnectionConfig, Engine]):
 
     def checks(self) -> ChecksProvider:
         return BigQueryChecks(
-            get_client=lambda: self.client,
+            db=self.borrow(),
             service_connection=self.service_connection,
         )

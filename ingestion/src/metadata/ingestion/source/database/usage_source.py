@@ -150,6 +150,13 @@ class UsageSource(QueryParserSource, ABC):
                                 logger.debug(traceback.format_exc())
                                 logger.warning(f"Unexpected exception processing row [{row}]: {exc}")
                     logger.info(f"Processed {row_count} query log entries for usage")
+                    result_limit = getattr(self.source_config, "resultLimit", None)
+                    if isinstance(result_limit, int) and row_count >= result_limit:
+                        logger.debug(
+                            f"Reached the configured resultLimit of {result_limit} query log entries; "
+                            f"if more queries exist they were truncated and usage may be incomplete. "
+                            f"Consider increasing resultLimit."
+                        )
                     yield TableQueries(queries=queries)
             except Exception as exc:
                 if query:
@@ -166,12 +173,12 @@ class UsageSource(QueryParserSource, ABC):
         days = max(1, (self.end - self.start).days)
         result_limit = self.source_config.resultLimit  # pyright: ignore[reportOptionalMemberAccess, reportAttributeAccessIssue]
         if result_limit is not None:
-            self.progress.seed_scope_total("Queries", "run", result_limit * days)
+            self.progress_tracking.manual.seed_scope_total("Queries", "run", result_limit * days)
         processed = 0
         for table_queries in self.get_table_query():
             if table_queries:
                 count = len(table_queries.queries)  # pyright: ignore[reportAttributeAccessIssue]
-                self.progress.track("Queries", count)
+                self.progress_tracking.manual.track("Queries", count)
                 processed += count
                 yield Either(right=table_queries)
-        self.progress.reconcile_scope_total("Queries", "run", processed)
+        self.progress_tracking.manual.reconcile_scope_total("Queries", "run", processed)

@@ -28,7 +28,6 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
-    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
@@ -110,9 +109,6 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
- *
- * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
- * system prompts.
  *
  * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
  * by language and entity type. The stored mapping is the effective mapping used when an
@@ -560,6 +556,11 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+     * grants into a single ingestion run per pipeline.
+     */
+    policyAgentConfiguration?: PolicyAgentConfiguration;
+    /**
      * Used to set up the History CleanUp Settings.
      */
     runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
@@ -646,11 +647,7 @@ export interface PipelineServiceClientConfiguration {
     /**
      * List of configured glossary term relation types.
      */
-    relationTypes?:    GlossaryTermRelationType[];
-    mcpChat?:          MCPChat;
-    memoryAgent?:      MemoryAgent;
-    memoryExtraction?: MemoryExtraction;
-    prompts?:          Prompts;
+    relationTypes?: GlossaryTermRelationType[];
     /**
      * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
      * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
@@ -730,6 +727,11 @@ export interface AssetTypeConfiguration {
      */
     matchTypeBoostMultipliers?: MatchTypeBoostMultipliers;
     /**
+     * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+     * bounded metadata signals.
+     */
+    ranking?: RankingConfiguration;
+    /**
      * How to combine function scores if multiple boosts are applied.
      */
     scoreMode?: ScoreMode;
@@ -784,6 +786,8 @@ export enum AggregationType {
 
 /**
  * How the function score is combined with the main query score.
+ *
+ * How metadata signals combine with the lexical score.
  */
 export enum BoostMode {
     Avg = "avg",
@@ -866,6 +870,75 @@ export interface MatchTypeBoostMultipliers {
 }
 
 /**
+ * High-level ranking algorithm for this asset. Defines lexical ranking stages first, then
+ * bounded metadata signals.
+ */
+export interface RankingConfiguration {
+    /**
+     * Human-readable ranking algorithm identifier.
+     */
+    algorithm?: string;
+    /**
+     * DisMax tie breaker used between ranking stages. Keep low so broad context matches do not
+     * overpower stronger name stages.
+     */
+    disMaxTieBreaker?: number;
+    /**
+     * Whether to use staged ranking for this asset. When disabled, legacy searchFields scoring
+     * is used.
+     */
+    enabled?: boolean;
+    /**
+     * Bounded metadata signals used after lexical relevance.
+     */
+    signals?: RankingSignals;
+    /**
+     * Ordered lexical ranking stages. Earlier stages should represent stronger relevance
+     * signals.
+     */
+    stages?: RankingStage[];
+    /**
+     * Language-neutral query words ignored by token-coverage ranking stages. These are unioned
+     * with stopWordsByLanguage.
+     */
+    stopWords?: string[];
+    /**
+     * Language-keyed query words ignored by token-coverage ranking stages. Keys should match
+     * search index mapping languages such as en, ru, zh, jp, or ja. Values are whole query
+     * tokens only; language analyzers still perform the actual index/query tokenization.
+     */
+    stopWordsByLanguage?: { [key: string]: string[] };
+}
+
+/**
+ * Bounded metadata signals used after lexical relevance.
+ */
+export interface RankingSignals {
+    /**
+     * How metadata signals combine with the lexical score.
+     */
+    boostMode?: BoostMode;
+    /**
+     * Metadata fields expected to contribute to signal scoring.
+     */
+    fields?: string[];
+    /**
+     * Maximum signal score added to lexical relevance. Keeps Tier and Usage as tie-breakers.
+     */
+    maxBoost?: number;
+    /**
+     * Human-readable explanation of how metadata signals should affect ranking.
+     */
+    purpose?: string;
+    /**
+     * How to combine metadata signal functions.
+     */
+    scoreMode?: ScoreMode;
+}
+
+/**
+ * How to combine metadata signal functions.
+ *
  * How to combine function scores if multiple boosts are applied.
  */
 export enum ScoreMode {
@@ -875,6 +948,45 @@ export enum ScoreMode {
     Min = "min",
     Multiply = "multiply",
     Sum = "sum",
+}
+
+export interface RankingStage {
+    /**
+     * Fields queried by this stage.
+     */
+    fields: string[];
+    /**
+     * Query strategy for this ranking stage.
+     */
+    matchType?: StageMatchType;
+    /**
+     * Minimum significant-token coverage for tokenCoverage or fuzzy stages.
+     */
+    minimumShouldMatch?: string;
+    /**
+     * Stable stage name used in ranking debug output.
+     */
+    name: string;
+    /**
+     * Human-readable explanation of what this ranking stage is intended to do.
+     */
+    purpose?: string;
+    /**
+     * Stage-level score band. Higher stages should use materially higher weights than later
+     * stages.
+     */
+    weight?: number;
+}
+
+/**
+ * Query strategy for this ranking stage.
+ */
+export enum StageMatchType {
+    Exact = "exact",
+    Fuzzy = "fuzzy",
+    Phrase = "phrase",
+    Standard = "standard",
+    TokenCoverage = "tokenCoverage",
 }
 
 export interface FieldBoost {
@@ -891,7 +1003,7 @@ export interface FieldBoost {
      * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
      * behavior.
      */
-    matchType?: MatchType;
+    matchType?: SearchFieldMatchType;
 }
 
 /**
@@ -899,7 +1011,7 @@ export interface FieldBoost {
  * 'phrase' uses match_phrase, 'fuzzy' allows fuzzy matching, 'standard' uses the default
  * behavior.
  */
-export enum MatchType {
+export enum SearchFieldMatchType {
     Exact = "exact",
     Fuzzy = "fuzzy",
     Phrase = "phrase",
@@ -2082,33 +2194,6 @@ export enum LogStorageConfigurationType {
 }
 
 /**
- * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
- * via llmConfiguration; this only governs chat enablement and behavior.
- */
-export interface MCPChat {
-    enabled?:      boolean;
-    systemPrompt?: string;
-}
-
-export interface MemoryAgent {
-    deletionPolicy?:      DeletionPolicy;
-    deriveGlossaryTerms?: boolean;
-    deriveMetrics?:       boolean;
-    enabled?:             boolean;
-}
-
-export enum DeletionPolicy {
-    Cascade = "cascade",
-    Deprecate = "deprecate",
-    Orphan = "orphan",
-}
-
-export interface MemoryExtraction {
-    fromFiles?: boolean;
-    fromPages?: boolean;
-}
-
-/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -2509,13 +2594,37 @@ export enum PipelineViewMode {
     Node = "Node",
 }
 
-export interface Prompts {
-    memoryAgent?:      PromptConfig;
-    memoryExtraction?: PromptConfig;
-}
-
-export interface PromptConfig {
-    systemPrompt?: string;
+/**
+ * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+ * grants into a single ingestion run per pipeline.
+ */
+export interface PolicyAgentConfiguration {
+    /**
+     * Maximum number of policies clubbed into a single Policy Agent ingestion run. Pending
+     * requests beyond this are picked up by the next window.
+     */
+    batchMaxSize?: number;
+    /**
+     * The batch window: how often (in seconds) the scheduler triggers the Policy Agent
+     * coordinator to drain accumulated grant requests and fire one clubbed ingestion run per
+     * pipeline. Typically 60-300 (1-5 minutes). All Data Access Requests that arrive within a
+     * window are clubbed into the next run. Lower = lower latency but more Argo runs; higher =
+     * fewer runs, more clubbing.
+     */
+    batchWindowSeconds?: number;
+    /**
+     * Size of the worker pool that runs clubbed Policy Agent batches. Each in-flight batch (one
+     * per distinct pipeline) holds one worker while it polls its run to completion, so this
+     * bounds how many distinct services can provision concurrently. Raise it for deployments
+     * with many services receiving Data Access Requests at once.
+     */
+    batchWorkerThreads?: number;
+    /**
+     * Interval (seconds) at which the batch coordinator polls a Policy Agent ingestion run for
+     * completion. The Data Access Request workflow node itself does not poll — it is signalled
+     * (pushed) when the run finishes, with a safety timer as the fallback.
+     */
+    pollingIntervalSeconds?: number;
 }
 
 /**

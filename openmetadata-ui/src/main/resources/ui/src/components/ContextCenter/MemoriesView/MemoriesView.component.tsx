@@ -16,15 +16,21 @@ import {
   ButtonUtility,
   Dot,
   Dropdown,
+  EmptyPlaceholder,
   Skeleton,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Copy06, Trash01 } from '@untitledui/icons';
 import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
+import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
@@ -46,11 +52,13 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
 
   return (
     <Dropdown.Root>
-      <Tooltip title={t('label.manage-entity', { entity: t('label.memory') })}>
-        <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1" />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="manage-button"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.memory') })}
+      />
       <Dropdown.Popover className="tw:w-36">
         <Dropdown.Menu
           onAction={(key) => {
@@ -60,9 +68,11 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <Trash01
+              <TrashIcon
                 aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
+                className="tw:shrink-0 tw:text-error-primary"
+                height={20}
+                width={20}
               />
               <Typography
                 ellipsis
@@ -256,10 +266,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
           {(memory.usageCount !== undefined ||
             memory.lastUsedAt !== undefined) && (
             <Box align="center" className="tw:mt-1" gap={1}>
-              <Clock
-                className="tw:text-utility-gray-500"
-                size={12}
-                strokeWidth={1.5}
+              <ClockIcon
+                className="tw:text-quaternary"
+                height={16}
+                width={16}
               />
               <Typography
                 className="tw:text-quaternary tw:whitespace-nowrap"
@@ -279,8 +289,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
         {/* Actions — always visible */}
         <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-          <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
-            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+          <CopyLinkButton url={memoryUrl}>
+            <CopyIcon aria-hidden="true" height={20} width={20} />
           </CopyLinkButton>
           {canActOnMemory && canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
@@ -288,7 +298,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid="edit-memory-btn"
-                  icon={<EditNewIcon height={16} width={16} />}
+                  icon={<EditIcon height={20} width={20} />}
                   size="sm"
                   onClick={() => onEditMemory(memory)}
                 />
@@ -316,6 +326,9 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   isPinningMemoryId,
   onTogglePin,
   onViewMemory,
+  isSearching,
+  isFiltered,
+  onClearFilters,
 }) => {
   const { t } = useTranslation();
   if (isLoading) {
@@ -328,26 +341,42 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     );
   }
 
-  if (data.length === 0) {
+  if (data.length === 0 && (isSearching || isFiltered)) {
     return (
-      <Box
-        align="center"
-        className="tw:py-12 tw:text-center"
-        direction="col"
-        gap={1}
-        justify="center">
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.no-entity-available', {
-            entity: t('label.memory-plural'),
-          })}
-        </Typography>
-        <Typography className="tw:text-quaternary" size="text-sm">
-          {t('message.try-a-different-filter-or-search')}
-        </Typography>
-      </Box>
+      <div className="tw:relative tw:min-h-[320px] tw:py-12">
+        <EmptyPlaceholder
+          actions={
+            !isSearching && onClearFilters
+              ? [
+                  {
+                    key: 'clear-filters',
+                    label: t('label.clear-entity', { entity: t('label.all') }),
+                    color: 'primary',
+                    onClick: onClearFilters,
+                  },
+                ]
+              : undefined
+          }
+          description={
+            isSearching
+              ? t('message.check-spelling-or-try-different-term')
+              : t('message.no-results-for-filters-description')
+          }
+          icon={
+            isSearching ? (
+              <NoSearchResultIcon className="tw:text-quaternary" />
+            ) : (
+              <NoFilterResultsIcon className="tw:text-quaternary" />
+            )
+          }
+          title={
+            isSearching
+              ? t('label.no-matching-results')
+              : t('label.no-results-for-filters')
+          }
+          variant="blank"
+        />
+      </div>
     );
   }
 

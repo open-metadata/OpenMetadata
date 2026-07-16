@@ -1203,6 +1203,11 @@ public class ElasticSearchBulkSink implements BulkSink {
         if (!buffer.isEmpty() && !closed) {
           flushInternal();
         }
+      } catch (Exception e) {
+        // An exception escaping here would cancel the scheduled task permanently
+        // (ScheduledExecutorService contract), silently disabling periodic flushing so trailing
+        // buffers only ship on an explicit flush/close. Log and continue to the next interval.
+        LOG.error("Scheduled flush failed; will retry on the next interval", e);
       } finally {
         lock.unlock();
       }
@@ -1273,8 +1278,23 @@ public class ElasticSearchBulkSink implements BulkSink {
       long bulkStartNanos = System.nanoTime();
       Set<StageStatsTracker> participatingTrackers = collectTrackers(operations);
 
-      CompletableFuture<BulkResponse> future =
-          asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+      CompletableFuture<BulkResponse> future;
+      try {
+        future = asyncClient.bulk(b -> b.operations(operations).refresh(Refresh.False));
+      } catch (Exception e) {
+        // A synchronous throw here (e.g., dead transport) means the completion handler below
+        // never runs. Without this catch the semaphore permit and activeBulkRequests slot leak,
+        // eventually starving the pipeline and hanging close(). Mirror OpenSearchBulkSink so both
+        // backends clean up identically.
+        circuitBreaker.recordFailure();
+        boolean retryScheduled =
+            handleBulkFailure(operations, executionId, numberOfActions, attemptNumber, e);
+        if (!retryScheduled) {
+          activeBulkRequests.decrementAndGet();
+          concurrentRequestSemaphore.release();
+        }
+        return;
+      }
 
       future.whenComplete(
           (response, error) -> {
