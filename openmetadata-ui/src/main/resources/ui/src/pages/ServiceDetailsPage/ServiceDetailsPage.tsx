@@ -162,7 +162,7 @@ import {
   escapeESReservedCharacters,
   getEncodedFqn,
 } from '../../utils/StringUtils';
-import { updateTierTag } from '../../utils/TagsUtils';
+import { updateTierTag } from '../../utils/TagsPureUtils';
 import { showErrorToast, showSuccessToast } from '../../utils/ToastUtils';
 import { useRequiredParams } from '../../utils/useRequiredParams';
 import './service-details-page.less';

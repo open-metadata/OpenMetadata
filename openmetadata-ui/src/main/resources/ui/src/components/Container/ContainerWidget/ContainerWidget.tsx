@@ -14,7 +14,7 @@ import { isEmpty } from 'lodash';
 import { useMemo } from 'react';
 import { Container } from '../../../generated/entity/data/container';
 import { useFqn } from '../../../hooks/useFqn';
-import { useGenericContext } from '../../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../../Customization/GenericProvider/GenericContext';
 import ContainerChildren from '../ContainerChildren/ContainerChildren';
 import ContainerDataModel from '../ContainerDataModel/ContainerDataModel';
 

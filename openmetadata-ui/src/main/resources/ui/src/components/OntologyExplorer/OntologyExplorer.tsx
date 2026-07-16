@@ -23,7 +23,7 @@ import React, { useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
 import { useTranslation } from 'react-i18next';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
-import { useGenericContext } from '../Customization/GenericProvider/GenericProvider';
+import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
 import FilterToolbar from './FilterToolbar';

@@ -176,7 +176,7 @@ const mockContext = {
   permissions: DEFAULT_ENTITY_PERMISSION,
 };
 
-jest.mock('../../Customization/GenericProvider/GenericProvider', () => ({
+jest.mock('../../Customization/GenericProvider/GenericContext', () => ({
   useGenericContext: jest.fn().mockImplementation(() => mockContext),
 }));
 

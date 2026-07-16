@@ -33,7 +33,7 @@ import { DataProduct } from '../../../../generated/entity/domains/dataProduct';
 import { useFqn } from '../../../../hooks/useFqn';
 import { searchQuery } from '../../../../rest/searchAPI';
 import { formatDataProductResponse } from '../../../../utils/APIUtils';
-import { getQueryFilterForDataProducts } from '../../../../utils/DomainUtils';
+import { getQueryFilterForDataProducts } from '../../../../utils/DomainFilterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
 import withSuspenseFallback from '../../../AppRouter/withSuspenseFallback';
 import ErrorPlaceHolder from '../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
