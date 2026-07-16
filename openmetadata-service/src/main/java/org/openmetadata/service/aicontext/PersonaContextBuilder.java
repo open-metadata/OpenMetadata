@@ -611,7 +611,7 @@ public class PersonaContextBuilder {
     return ruleByEntity;
   }
 
-  private static Map<String, List<UUID>> groupRelatedIds(
+  static Map<String, List<UUID>> groupRelatedIds(
       List<CollectionDAO.EntityRelationshipObject> records, boolean assetIsFrom) {
     Map<String, List<UUID>> grouped = new HashMap<>();
     for (CollectionDAO.EntityRelationshipObject record : listOrEmpty(records)) {
@@ -628,11 +628,11 @@ public class PersonaContextBuilder {
     return grouped;
   }
 
-  private static List<UUID> flatten(Collection<List<UUID>> values) {
+  static List<UUID> flatten(Collection<List<UUID>> values) {
     return values.stream().flatMap(Collection::stream).distinct().toList();
   }
 
-  private static <T extends EntityInterface> Map<UUID, T> entitiesById(
+  static <T extends EntityInterface> Map<UUID, T> entitiesById(
       String entityType, List<UUID> ids, Class<T> entityClass) {
     Map<UUID, T> entitiesById = new HashMap<>();
     if (ids.isEmpty()) {
@@ -649,7 +649,7 @@ public class PersonaContextBuilder {
     return entitiesById;
   }
 
-  private static KnowledgeItem loadGlossaryTerm(String fqn) {
+  static KnowledgeItem loadGlossaryTerm(String fqn) {
     try {
       GlossaryTerm term =
           Entity.getEntityByName(Entity.GLOSSARY_TERM, fqn, "", Include.NON_DELETED);
@@ -660,7 +660,7 @@ public class PersonaContextBuilder {
     }
   }
 
-  private static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface entity) {
+  static KnowledgeItem fullKnowledgeItem(String entityType, EntityInterface entity) {
     if (entity instanceof GlossaryTerm term && term.getEntityStatus() != EntityStatus.APPROVED) {
       return null;
     }

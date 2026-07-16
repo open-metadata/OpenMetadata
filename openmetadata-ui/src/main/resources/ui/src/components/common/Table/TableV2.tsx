@@ -544,7 +544,8 @@ const TableV2 = <T extends object>(
         className={classNames('p-x-md', {
           'p-y-md':
             searchProps || rest.extraTableFilters || isCustomizeColumnEnable,
-        })}>
+        })}
+        data-testid="table-toolbar">
         <div className="tw:flex tw:items-center">
           {searchProps && (
             <div style={{ flex: 1 }}>
@@ -581,11 +582,13 @@ const TableV2 = <T extends object>(
                       <Dropdown.SectionHeader className="tw:px-3 tw:py-1.5  tw:flex tw:justify-between tw:items-center">
                         <Typography
                           className="tw:text-tertiary"
+                          data-testid="column-dropdown-title"
                           weight="medium">
                           {t('label.column')}
                         </Typography>
                         <Button
                           color="link-color"
+                          data-testid="column-dropdown-action-button"
                           size="xs"
                           onClick={handleBulkColumnAction}>
                           {dropdownColumnList.length ===
@@ -746,7 +749,7 @@ const TableV2 = <T extends object>(
                         <ColumnResizer
                           className="tw:absolute tw:right-0 tw:top-1/4 tw:h-1/2 tw:w-2 tw:cursor-col-resize 
                         tw:touch-none tw:after:absolute tw:after:left-1/2 tw:after:h-full tw:after:w-px tw:after:-translate-x-1/2 tw:after:content-[''] 
-                        tw:after:bg-[--color-border-secondary] tw:data-[resizing]:after:w-0.5 tw:data-[resizing]:after:bg-[--color-border-brand]"
+                        tw:after:bg-border-secondary tw:data-[resizing]:after:w-0.5 tw:data-[resizing]:after:bg-border-brand"
                         />
                       )}
                     </UntitledTable.Head>
