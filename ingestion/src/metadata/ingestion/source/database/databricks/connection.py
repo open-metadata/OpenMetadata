@@ -33,9 +33,9 @@ from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
-    enumerated,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,

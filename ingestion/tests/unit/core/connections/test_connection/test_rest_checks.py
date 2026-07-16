@@ -67,7 +67,7 @@ def test_fetch_list_reports_a_floor_at_the_cap():
 
 def test_fetch_list_passes_without_a_caveat_when_none_is_offered():
     evidence = fetch_list(list, noun="job", command="GET /jobs")
-    assert evidence.summary == "0 jobs enumerated"
+    assert evidence.summary == "no jobs enumerated"
     assert evidence.caveat is None
 
 
@@ -79,7 +79,7 @@ def test_fetch_list_raises_the_caveat_only_when_empty():
 
 def test_fetch_list_treats_a_none_result_as_empty():
     evidence = fetch_list(lambda: None, noun="job", command="GET /jobs")
-    assert evidence.summary == "0 jobs enumerated"
+    assert evidence.summary == "no jobs enumerated"
 
 
 def test_fetch_list_carries_the_command_on_failure():

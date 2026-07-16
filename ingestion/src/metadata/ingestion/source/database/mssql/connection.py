@@ -23,13 +23,13 @@ from metadata.core.connections.test_connection import ErrorPack, Matchers, check
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
-    enumerated,
     list_schemas,
     list_tables,
     list_views,
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,

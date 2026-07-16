@@ -22,7 +22,7 @@ from typing import TYPE_CHECKING
 from sqlalchemy import event, inspect
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
-from metadata.core.connections.test_connection.checks.summary import count
+from metadata.core.connections.test_connection.checks.summary import count, enumerated
 from metadata.core.connections.test_connection.network import probe_or_fail
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
@@ -166,13 +166,6 @@ def _resolve_schema(
         if candidate.lower() not in avoid:
             return candidate, True
     return None, False
-
-
-def enumerated(number: int, noun: str, cap: int | None = None) -> str:
-    """``3 tables enumerated`` / ``no tables enumerated``; ``<cap>+`` at ``cap``."""
-    if not number:
-        return f"no {noun}s enumerated"
-    return f"{count(number, noun, cap)} enumerated"
 
 
 def _in_schema(kind: str, number: int, schema: str | None, auto_selected: bool) -> str:

@@ -180,6 +180,28 @@ def _fake_run_sql(returned_rows):
     return fake
 
 
+@pytest.mark.parametrize(
+    ("step", "noun"),
+    [
+        (DatabaseStep.GetDatabases, "database"),
+        (DatabaseStep.GetSchemas, "schema"),
+        (DatabaseStep.GetTables, "table"),
+        (DatabaseStep.GetViews, "view"),
+        (DatabaseStep.GetStreams, "stream"),
+    ],
+)
+def test_each_listing_step_reports_its_own_noun(step, noun):
+    # Each check hardcodes its noun, so bind them through the check itself: the
+    # shared summarizer's own tests cannot catch a transposed one.
+    checks = SnowflakeChecks(db=Borrowed.of(MagicMock()), service_connection=_config(database="MYDB"))
+    with patch(
+        "metadata.ingestion.source.database.snowflake.connection.run_sql",
+        side_effect=_fake_run_sql([object()] * 3),
+    ):
+        evidence = collect_checks(checks)[step]()
+    assert evidence.summary == f"3 {noun}s enumerated"
+
+
 def test_get_tables_warns_when_no_user_tables():
     # Empty probe (INFORMATION_SCHEMA filtered out) -> passing step with a caveat,
     # which the runner records as a Warning.

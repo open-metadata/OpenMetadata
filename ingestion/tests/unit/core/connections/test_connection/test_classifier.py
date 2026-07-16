@@ -144,7 +144,7 @@ def test_response_status_reads_a_top_level_status_code():
     assert response_status(error) == 401
 
 
-def test_response_status_falls_back_to_the_response(monkeypatch):
+def test_response_status_falls_back_to_the_response():
     response = requests.Response()
     response.status_code = 403
     assert response_status(requests.HTTPError("403", response=response)) == 403

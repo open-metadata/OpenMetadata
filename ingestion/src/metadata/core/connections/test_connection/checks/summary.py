@@ -27,3 +27,10 @@ def count(number: int, noun: str, cap: int | None = None) -> str:
 def more_suffix(shown: int, more: bool) -> str:
     """`` (showing first N; more exist)`` when the listing was capped, else ``""``."""
     return f" (showing first {shown}; more exist)" if more else ""
+
+
+def enumerated(number: int, noun: str, cap: int | None = None) -> str:
+    """``3 tables enumerated`` / ``no tables enumerated``; ``<cap>+`` at ``cap``."""
+    if not number:
+        return f"no {noun}s enumerated"
+    return f"{count(number, noun, cap)} enumerated"

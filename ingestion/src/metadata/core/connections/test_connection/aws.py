@@ -74,7 +74,7 @@ def _clock_skew(error: BaseException) -> bool:
     is told apart only by message."""
     if aws_error_code(error) not in _BAD_SIGNATURE:
         return False
-    text = " ".join(str(current) for current in exception_chain(error)).lower()
+    text = Matchers.text(error)
     return any(message in text for message in _SKEW_MESSAGES)
 
 

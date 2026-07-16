@@ -13,7 +13,7 @@
 This module provides authentication utilities for Databricks and Unity Catalog connections.
 """
 
-from typing import Optional, Union  # noqa: I001
+from typing import Union  # noqa: I001
 from urllib.parse import quote_plus
 
 from databricks.sdk.core import Config, azure_service_principal, oauth_service_principal
@@ -64,11 +64,7 @@ def probe_target(host_port: str, default_port: int = DEFAULT_WORKSPACE_PORT) -> 
     return normalized, default_port
 
 
-def catalog_url(
-    scheme: Optional[Scheme],  # noqa: UP045
-    host_port: str,
-    catalog: Optional[str],  # noqa: UP045
-) -> str:
+def catalog_url(scheme: Scheme | None, host_port: str, catalog: str | None) -> str:
     """The SQLAlchemy URL for a workspace, scoped to ``catalog`` when configured.
 
     ``scheme`` is optional on both connection schemas, defaulting to the same value.

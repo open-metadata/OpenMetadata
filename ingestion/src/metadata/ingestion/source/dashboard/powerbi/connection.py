@@ -30,7 +30,7 @@ from metadata.core.connections.test_connection.checks.rest import (
     fetch_list,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain, http_status
+from metadata.core.connections.test_connection.classifier import http_status
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection as PowerBIConnectionConfig,
@@ -58,7 +58,7 @@ def _contains_any(*tokens: str) -> Matcher:
     lowered = tuple(token.lower() for token in tokens)
 
     def match(error: BaseException) -> bool:
-        chain = " ".join(str(current) for current in exception_chain(error)).lower()
+        chain = Matchers.text(error)
         return any(token in chain for token in lowered)
 
     return match

@@ -34,11 +34,11 @@ from metadata.core.connections.test_connection import (
 )
 from metadata.core.connections.test_connection.checks.database import (
     DatabaseStep,
-    enumerated,
     list_schemas,
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection as BigQueryConnectionConfig,

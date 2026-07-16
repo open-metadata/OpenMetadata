@@ -127,7 +127,7 @@ def _transport_text(*tokens: str) -> Matcher:
     def match(error: BaseException) -> bool:
         if _has_error_doc(error):
             return False
-        chain = " ".join(str(current) for current in exception_chain(error)).lower()
+        chain = Matchers.text(error)
         return any(token in chain for token in lowered)
 
     return match

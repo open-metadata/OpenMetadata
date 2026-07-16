@@ -36,10 +36,10 @@ from metadata.core.connections.test_connection import (
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
-    enumerated,
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,

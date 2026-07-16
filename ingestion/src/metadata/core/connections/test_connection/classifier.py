@@ -133,4 +133,3 @@ def http_status(*codes: int, extract: Callable[[BaseException], int | None] = re
 # not enumerate every one, so ``fetch_list`` counts at most this many and renders
 # ``<cap>+`` when the count meets or exceeds it, keeping the summary bounded on
 # huge tenants and accounts.
-DEFAULT_LIST_CAP = 100
