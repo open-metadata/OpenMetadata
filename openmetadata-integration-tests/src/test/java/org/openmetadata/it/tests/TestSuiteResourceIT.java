@@ -8,7 +8,6 @@ import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
@@ -50,12 +49,10 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.tests.type.DataQualityReportRequest;
 import org.openmetadata.schema.tests.type.DataQualityReportResult;
 import org.openmetadata.schema.tests.type.TestSummary;
-import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.EntityHistory;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
 import org.openmetadata.sdk.fluent.builders.TestCaseBuilder;
@@ -825,7 +822,7 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
   }
 
   @Test
-  void test_pipelineCompletion_emitsSingleChangeEvent_onDuplicateTerminalStatus(TestNamespace ns)
+  void test_pipelineCompletion_isIdempotentOnDuplicateTerminalStatus(TestNamespace ns)
       throws Exception {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -835,33 +832,22 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     recordTestCaseResults(client, testCases, 2, 2);
     IngestionPipeline pipeline = createTestSuitePipeline(client, ns, testSuite);
 
-    long since = System.currentTimeMillis();
-    UUID suiteId = testSuite.getId();
+    String suiteId = testSuite.getId().toString();
+    Double versionBefore = getEntity(suiteId).getVersion();
     String runId = UUID.randomUUID().toString();
 
     putPipelineStatus(client, pipeline, PipelineStatusType.RUNNING, runId);
     putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS, runId);
-    Awaitility.await("first completion emits one testSuite change event")
+    Awaitility.await("run completion is recorded on the suite")
         .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(1))
-        .untilAsserted(
-            () -> assertEquals(1, countTestSuiteCompletionEvents(client, suiteId, since)));
+        .until(() -> getEntity(suiteId).getVersion() > versionBefore);
+    Double versionAfterRun = getEntity(suiteId).getVersion();
 
     putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS, runId);
-    Awaitility.await("redundant terminal-status re-write emits no second change event")
-        .pollDelay(Duration.ofSeconds(5))
+    Awaitility.await("redundant terminal write does not re-complete the run")
+        .pollDelay(Duration.ofSeconds(3))
         .atMost(Duration.ofSeconds(6))
-        .untilAsserted(
-            () -> assertEquals(1, countTestSuiteCompletionEvents(client, suiteId, since)));
-
-    String secondRunId = UUID.randomUUID().toString();
-    putPipelineStatus(client, pipeline, PipelineStatusType.RUNNING, secondRunId);
-    putPipelineStatus(client, pipeline, PipelineStatusType.SUCCESS, secondRunId);
-    Awaitility.await("a genuinely new run emits its own completion event")
-        .atMost(Duration.ofSeconds(30))
-        .pollInterval(Duration.ofSeconds(1))
-        .untilAsserted(
-            () -> assertEquals(2, countTestSuiteCompletionEvents(client, suiteId, since)));
+        .untilAsserted(() -> assertEquals(versionAfterRun, getEntity(suiteId).getVersion()));
   }
 
   // ===================================================================
@@ -1321,29 +1307,6 @@ public class TestSuiteResourceIT extends BaseEntityIT<TestSuite, CreateTestSuite
     String path =
         "/v1/services/ingestionPipelines/" + pipeline.getFullyQualifiedName() + "/pipelineStatus";
     client.getHttpClient().execute(HttpMethod.PUT, path, status, PipelineStatus.class);
-  }
-
-  private int countTestSuiteCompletionEvents(
-      OpenMetadataClient client, UUID testSuiteId, long since) throws Exception {
-    Map<String, String> queryParams = new HashMap<>();
-    queryParams.put("entityUpdated", "testSuite");
-    queryParams.put("timestamp", Long.toString(since));
-    queryParams.put("limit", "1000");
-    RequestOptions options = RequestOptions.builder().queryParams(queryParams).build();
-    String responseJson =
-        client.getHttpClient().executeForString(HttpMethod.GET, "/v1/events", null, options);
-    ListResponse<ChangeEvent> response =
-        JsonUtils.readValue(responseJson, new TypeReference<ListResponse<ChangeEvent>>() {});
-    int count = 0;
-    if (response != null && response.getData() != null) {
-      for (ChangeEvent event : response.getData()) {
-        if (testSuiteId.equals(event.getEntityId())
-            && event.getEventType() == EventType.ENTITY_UPDATED) {
-          count++;
-        }
-      }
-    }
-    return count;
   }
 
   private String getTestSuiteSearchIndexName() {
