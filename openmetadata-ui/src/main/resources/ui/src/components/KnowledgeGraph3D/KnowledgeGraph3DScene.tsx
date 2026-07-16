@@ -25,14 +25,17 @@ import ForceGraph3D, {
   LinkObject,
   NodeObject,
 } from 'react-force-graph-3d';
+import type { Object3D } from 'three';
 import {
   CAMERA_FOCUS_DISTANCE,
   CAMERA_FOCUS_DURATION_MS,
   CHARGE_STRENGTH,
   COVERAGE_DIMMED_OPACITY,
   DIMMED_NODE_OPACITY,
-  LABEL_NODE_LIMIT,
+  LABEL_RENDER_LIMIT,
+  LINK_DISTANCE,
   LINK_ONTOLOGY_COLOR,
+  LINK_STRENGTH,
   LINK_TECHNICAL_COLOR,
   MIN_CAMERA_DISTANCE,
   ONTOLOGY_PARTICLE_COLOR,
@@ -46,17 +49,23 @@ import { KnowledgeGraph3DSceneProps } from './KnowledgeGraph3D.interface';
 import {
   computeHighlight,
   computeLinkHighlight,
+  expandGraphLayout,
+  getVisibleLabelIds,
   HighlightSet,
 } from './KnowledgeGraph3D.utils';
 import { hexRgba, sizeFor } from './nodeCanvas';
-import { buildNodeObject, disposeTextureCaches } from './nodeRendering';
+import {
+  buildNodeObject,
+  disposeTextureCaches,
+  NODE_LABEL_OBJECT_NAME,
+} from './nodeRendering';
 import { GraphLink3D, GraphNode3D } from './types';
 
 type SceneNode = NodeObject<GraphNode3D>;
 type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
-const FRAME_DELAY_MS = 500;
+const FRAME_DELAY_MS = 600;
 const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
 
 const nodeOpacityFor = (
@@ -122,6 +131,7 @@ const linkParticlesFor = (
 
 const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   data,
+  focusNodeId,
   level,
   gaps,
   selectedNodeId,
@@ -138,7 +148,11 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const didMountRef = useRef(false);
   const refitPendingRef = useRef(false);
+  const settledFitPendingRef = useRef(true);
+  const layoutExpandedRef = useRef(false);
+  const cameraGuardTimerRef = useRef(0);
   const [size, setSize] = useState({ width: 0, height: 0 });
+  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const reducedMotion = useMemo(
     () =>
@@ -158,22 +172,31 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return result;
   }, [data.links, selectedNodeId, selectedLinkKey]);
 
+  const visibleLabelIds = useMemo(
+    () => getVisibleLabelIds(data, focusNodeId, selectedNodeId, hoveredNodeId),
+    [data, focusNodeId, selectedNodeId, hoveredNodeId]
+  );
+
   const resetView = useCallback(() => {
     const fg = fgRef.current;
     if (!fg) {
       return;
     }
     fg.zoomToFit(ZOOM_TO_FIT_DURATION_MS, ZOOM_TO_FIT_PADDING);
-    window.setTimeout(() => {
+    window.clearTimeout(cameraGuardTimerRef.current);
+    cameraGuardTimerRef.current = window.setTimeout(() => {
       const { x, y, z } = fg.camera().position;
       const distance = Math.hypot(x, y, z);
-      if (distance > 0 && distance < MIN_CAMERA_DISTANCE) {
-        const ratio = MIN_CAMERA_DISTANCE / distance;
-        fg.cameraPosition(
-          { x: x * ratio, y: y * ratio, z: z * ratio },
-          undefined,
-          400
-        );
+      if (distance < MIN_CAMERA_DISTANCE) {
+        const position =
+          distance === 0
+            ? { x: 0, y: 0, z: MIN_CAMERA_DISTANCE }
+            : {
+                x: x * (MIN_CAMERA_DISTANCE / distance),
+                y: y * (MIN_CAMERA_DISTANCE / distance),
+                z: z * (MIN_CAMERA_DISTANCE / distance),
+              };
+        fg.cameraPosition(position, undefined, 300);
       }
     }, ZOOM_TO_FIT_DURATION_MS + 60);
   }, []);
@@ -193,24 +216,26 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return result;
   }, []);
 
-  const showLabels = data.nodes.length <= LABEL_NODE_LIMIT;
+  const renderLabels = data.nodes.length <= LABEL_RENDER_LIMIT;
   const nodeThreeObject = useCallback(
     (node: SceneNode) =>
       buildNodeObject(node as GraphNode3D, {
         level,
         gaps,
-        showLabel: showLabels,
+        showLabel: renderLabels,
       }),
-    [level, gaps, showLabels]
+    [level, gaps, renderLabels]
   );
 
-  const applyNodeOpacity = useCallback(() => {
+  const applyNodePresentation = useCallback(() => {
     data.nodes.forEach((node) => {
-      const object = (node as SceneNode).__threeObj as
-        | { traverse: (cb: (child: unknown) => void) => void }
-        | undefined;
+      const object = (node as SceneNode).__threeObj as Object3D | undefined;
       if (!object) {
         return;
+      }
+      const label = object.getObjectByName(NODE_LABEL_OBJECT_NAME);
+      if (label) {
+        label.visible = visibleLabelIds.has(node.id);
       }
       const opacity = nodeOpacityFor(node, gaps, highlight);
       object.traverse((child) => {
@@ -223,14 +248,20 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
         }
       });
     });
-  }, [data.nodes, gaps, highlight]);
+  }, [data.nodes, gaps, highlight, visibleLabelIds]);
 
   useEffect(() => {
     registerResetView?.(resetView);
     registerExportImage?.(exportImage);
   }, [registerResetView, registerExportImage, resetView, exportImage]);
 
-  useEffect(() => () => disposeTextureCaches(), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(cameraGuardTimerRef.current);
+      disposeTextureCaches();
+    },
+    []
+  );
 
   useLayoutEffect(() => {
     const element = containerRef.current;
@@ -271,18 +302,36 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   }, [size.width, size.height, resetView]);
 
   useEffect(() => {
-    const charge = fgRef.current?.d3Force('charge');
+    const graph = fgRef.current;
+    settledFitPendingRef.current = true;
+    layoutExpandedRef.current = false;
+    const charge = graph?.d3Force('charge');
+    const link = graph?.d3Force('link');
     charge?.strength(CHARGE_STRENGTH);
+    link?.distance(LINK_DISTANCE).strength(LINK_STRENGTH);
+    graph?.d3ReheatSimulation();
     const frame = setTimeout(resetView, FRAME_DELAY_MS);
 
     return () => clearTimeout(frame);
   }, [data, resetView]);
 
+  const handleEngineStop = useCallback(() => {
+    if (settledFitPendingRef.current) {
+      settledFitPendingRef.current = false;
+      if (!layoutExpandedRef.current) {
+        layoutExpandedRef.current = true;
+        expandGraphLayout(data.nodes, size.width, size.height);
+        fgRef.current?.refresh();
+      }
+      resetView();
+    }
+  }, [data.nodes, resetView, size.height, size.width]);
+
   useEffect(() => {
     let frame = 0;
     let raf = 0;
     const tick = (): void => {
-      applyNodeOpacity();
+      applyNodePresentation();
       frame += 1;
       if (frame < OPACITY_APPLY_FRAMES) {
         raf = window.requestAnimationFrame(tick);
@@ -291,7 +340,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     raf = window.requestAnimationFrame(tick);
 
     return () => window.cancelAnimationFrame(raf);
-  }, [applyNodeOpacity, level]);
+  }, [applyNodePresentation, level]);
 
   useEffect(() => {
     if (!selectedNodeId) {
@@ -363,8 +412,12 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
         showNavInfo={false}
         width={size.width}
         onBackgroundClick={() => onSelectNode(null)}
+        onEngineStop={handleEngineStop}
         onLinkClick={(link: SceneLink) => onSelectLink(link as GraphLink3D)}
         onNodeClick={(node: SceneNode) => onSelectNode(node as GraphNode3D)}
+        onNodeHover={(node: SceneNode | null) =>
+          setHoveredNodeId(node?.id ? String(node.id) : null)
+        }
       />
     </div>
   );
