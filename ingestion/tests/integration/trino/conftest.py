@@ -7,7 +7,7 @@ import docker
 import pandas as pd
 import pytest
 import testcontainers.core.network
-from sqlalchemy import create_engine, insert, text
+from sqlalchemy import create_engine, text
 from sqlalchemy.engine import Engine, make_url
 from sqlalchemy.exc import OperationalError
 from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
@@ -278,11 +278,28 @@ def wait_for_table_data(engine: Engine, table_name: str, expected_rows: int | No
 
 
 def custom_insert(self, conn, keys: list[str], data_iter):
-    data = [dict(zip(keys, row)) for row in data_iter]  # noqa: B905
-    if data:
-        stmt = insert(self.table).values(data)
-        conn.execute(stmt)
-    return len(data)
+    """Drain Trino DML results before SQLAlchemy can cancel the Hive write."""
+    rows = list(data_iter)
+    if not rows:
+        return 0
+
+    identifier_preparer = conn.dialect.identifier_preparer
+    table_name = identifier_preparer.format_table(self.table)
+    column_names = ", ".join(identifier_preparer.quote(key) for key in keys)
+    row_placeholders = f"({', '.join('?' for _ in keys)})"
+    values_clause = ", ".join(row_placeholders for _ in rows)
+    statement = f"INSERT INTO {table_name} ({column_names}) VALUES {values_clause}"
+    parameters = tuple(value for row in rows for value in row)
+    with conn.connection.driver_connection.cursor() as cursor:
+        cursor.execute(statement, parameters)
+        cursor.fetchall()
+        inserted_rows = cursor.rowcount
+
+    if inserted_rows != len(rows):
+        raise RuntimeError(
+            f"Trino inserted [{inserted_rows}] rows into [{self.schema}.{self.name}]; expected [{len(rows)}]"
+        )
+    return inserted_rows
 
 
 @pytest.fixture(scope="module")
