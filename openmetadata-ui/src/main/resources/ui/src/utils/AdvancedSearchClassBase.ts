@@ -52,7 +52,7 @@ import { buildTermQuery } from './elasticsearchQueryBuilder';
 import { getEntityName } from './EntityNameUtils';
 import { t } from './i18next/LocalUtil';
 import { renderQueryBuilderFilterButtons } from './QueryBuilderUtils';
-import { parseBucketsData } from './SearchUtils';
+import { parseBucketsData } from './SearchPureUtils';
 const ENUM_ASYNC_FETCH_PAGE_SIZE = 100;
 
 type OMField = Field & { __omPropertyType: CustomPropertySummary['type'] };
