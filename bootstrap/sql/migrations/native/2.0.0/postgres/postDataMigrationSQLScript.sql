@@ -226,3 +226,33 @@ SET json = (json::jsonb - 'openMetadataServerConnection' - 'privateConfiguration
 WHERE extension LIKE 'app.version.%'
   AND (jsonb_exists(json::jsonb, 'openMetadataServerConnection')
        OR jsonb_exists(json::jsonb, 'privateConfiguration'));
+
+-- Data Insights no longer runs a Data Quality workflow: testCaseResult and
+-- testCaseResolutionStatus are read straight from their live search indexes via the
+-- di-data-assets-* aliases, which search indexing now owns. moduleConfiguration is
+-- additionalProperties:false, so the retired dataQuality key must be stripped from every
+-- persisted config or DataInsightsApp fails to deserialize it on startup.
+UPDATE installed_apps
+SET json = jsonb_set(
+    json::jsonb,
+    '{appConfiguration,moduleConfiguration}',
+    (json::jsonb #> '{appConfiguration,moduleConfiguration}') - 'dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND jsonb_exists(json::jsonb #> '{appConfiguration,moduleConfiguration}', 'dataQuality');
+
+UPDATE apps_marketplace
+SET json = jsonb_set(
+    json::jsonb,
+    '{appConfiguration,moduleConfiguration}',
+    (json::jsonb #> '{appConfiguration,moduleConfiguration}') - 'dataQuality')
+WHERE name = 'DataInsightsApplication'
+  AND jsonb_exists(json::jsonb #> '{appConfiguration,moduleConfiguration}', 'dataQuality');
+
+UPDATE entity_extension
+SET json = jsonb_set(
+    json::jsonb,
+    '{appConfiguration,moduleConfiguration}',
+    (json::jsonb #> '{appConfiguration,moduleConfiguration}') - 'dataQuality')
+WHERE extension LIKE 'app.version.%'
+  AND json::jsonb ->> 'name' = 'DataInsightsApplication'
+  AND jsonb_exists(json::jsonb #> '{appConfiguration,moduleConfiguration}', 'dataQuality');

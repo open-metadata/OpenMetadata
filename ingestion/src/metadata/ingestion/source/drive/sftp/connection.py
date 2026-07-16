@@ -63,50 +63,6 @@ class SftpClient:
             logger.warning(f"Error closing SFTP connection: {exc}")
 
 
-def get_connection(connection: SftpConnectionConfig) -> SftpClient:
-    """
-    Create connection to SFTP server
-    """
-    transport = None
-    try:
-        transport = Transport((connection.host, connection.port or 22))
-
-        auth_type = connection.authType
-
-        if isinstance(auth_type, BasicAuth):
-            password = auth_type.password.get_secret_value() if auth_type.password else None
-            transport.connect(
-                username=auth_type.username,
-                password=password,
-            )
-        elif isinstance(auth_type, KeyAuth):
-            private_key_str = auth_type.privateKey.get_secret_value()
-            passphrase = auth_type.privateKeyPassphrase.get_secret_value() if auth_type.privateKeyPassphrase else None
-
-            pkey = _parse_private_key(private_key_str, passphrase)
-            if pkey is None:
-                raise ValueError(  # noqa: TRY301
-                    "Unable to parse private key. Ensure it is in PEM format (RSA, Ed25519, ECDSA, or DSS)."
-                )
-
-            transport.connect(username=auth_type.username, pkey=pkey)
-        else:
-            raise ValueError(f"Unsupported authentication type: {type(auth_type)}")  # noqa: TRY004, TRY301
-
-        sftp_client = SFTPClient.from_transport(transport)
-
-        return SftpClient(sftp=sftp_client, transport=transport)
-
-    except Exception as exc:
-        if transport:
-            try:  # noqa: SIM105
-                transport.close()
-            except Exception:
-                pass
-        logger.debug(traceback.format_exc())
-        raise SourceConnectionException(f"Failed to connect to SFTP server: {exc}")  # noqa: B904
-
-
 def _parse_private_key(private_key_str: str, passphrase: Optional[str] = None) -> Optional[paramiko.PKey]:  # noqa: UP045
     """
     Parse a private key string in PEM format.
@@ -132,7 +88,52 @@ def _parse_private_key(private_key_str: str, passphrase: Optional[str] = None) -
 
 class SftpConnection(BaseConnection[SftpConnectionConfig, SftpClient]):
     def _get_client(self) -> SftpClient:
-        return get_connection(self.service_connection)
+        """
+        Create connection to SFTP server
+        """
+        connection = self.service_connection
+        transport = None
+        try:
+            transport = Transport((connection.host, connection.port or 22))
+
+            auth_type = connection.authType
+
+            if isinstance(auth_type, BasicAuth):
+                password = auth_type.password.get_secret_value() if auth_type.password else None
+                transport.connect(
+                    username=auth_type.username,
+                    password=password,
+                )
+            elif isinstance(auth_type, KeyAuth):
+                private_key_str = auth_type.privateKey.get_secret_value()
+                passphrase = (
+                    auth_type.privateKeyPassphrase.get_secret_value() if auth_type.privateKeyPassphrase else None
+                )
+
+                pkey = _parse_private_key(private_key_str, passphrase)
+                if pkey is None:
+                    raise ValueError(  # noqa: TRY301
+                        "Unable to parse private key. Ensure it is in PEM format (RSA, Ed25519, ECDSA, or DSS)."
+                    )
+
+                transport.connect(username=auth_type.username, pkey=pkey)
+            else:
+                raise ValueError(f"Unsupported authentication type: {type(auth_type)}")  # noqa: TRY004, TRY301
+
+            sftp_client = SFTPClient.from_transport(transport)
+            if sftp_client is None:
+                raise SourceConnectionException("Failed to open an SFTP channel over the transport")  # noqa: TRY301
+
+            return SftpClient(sftp=sftp_client, transport=transport)
+
+        except Exception as exc:
+            if transport:
+                try:  # noqa: SIM105
+                    transport.close()
+                except Exception:
+                    pass
+            logger.debug(traceback.format_exc())
+            raise SourceConnectionException(f"Failed to connect to SFTP server: {exc}")  # noqa: B904
 
     def test_connection(
         self,
