@@ -31,9 +31,11 @@ import static org.openmetadata.service.security.mask.PIIMasker.maskSampleData;
 
 import com.google.common.collect.Lists;
 import com.google.common.util.concurrent.Striped;
+import jakarta.ws.rs.ServiceUnavailableException;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
+import java.time.Duration;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -47,6 +49,7 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicReference;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Function;
+import java.util.function.Supplier;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
 import lombok.extern.slf4j.Slf4j;
@@ -101,6 +104,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.cache.CacheBundle;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.lock.DatabaseAdvisoryLock;
 import org.openmetadata.service.rdf.RdfUpdater;
 import org.openmetadata.service.resources.dqtests.TestCaseResource;
 import org.openmetadata.service.resources.dqtests.TestSuiteMapper;
@@ -125,6 +129,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
+  private static final String LOGICAL_SUITE_LOCK_PREFIX = "logical-suite:";
+  private static final Duration LOGICAL_SUITE_LOCK_TIMEOUT = Duration.ofSeconds(30);
   private static final Striped<Lock> LOGICAL_SUITE_PUBLICATION_LOCKS = Striped.lock(4096);
   private final ExecutorService asyncExecutor =
       Executors.newFixedThreadPool(
@@ -1102,6 +1108,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> testCaseIds) {
+    return withLogicalSuitePublicationLock(
+        testSuite.getId(), () -> addTestCasesToLogicalTestSuiteLocked(testSuite, testCaseIds));
+  }
+
+  private RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuiteLocked(
+      TestSuite testSuite, List<UUID> testCaseIds) {
     AtomicReference<List<EntityReference>> addedTestCases = new AtomicReference<>(List.of());
     flushInOneTransaction(
         () ->
@@ -1129,6 +1141,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+    return withLogicalSuitePublicationLock(
+        testSuite.getId(),
+        () -> addAllTestCasesToLogicalTestSuiteLocked(testSuite, excludedTestCaseIds));
+  }
+
+  private RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteLocked(
       TestSuite testSuite, List<UUID> excludedTestCaseIds) {
     AtomicReference<List<EntityReference>> addedTestCases = new AtomicReference<>(List.of());
     flushInOneTransaction(
@@ -1178,6 +1197,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(
       UUID testSuiteId, UUID testCaseId) {
+    return withLogicalSuitePublicationLock(
+        testSuiteId, () -> deleteTestCaseFromLogicalTestSuiteLocked(testSuiteId, testCaseId));
+  }
+
+  private RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuiteLocked(
+      UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
     flushInOneTransaction(
         () ->
@@ -1191,6 +1216,21 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     testCase.setTestSuite(updatedTestCase.getTestSuite());
     testCase.setTestSuites(updatedTestCase.getTestSuites());
     return new RestUtil.DeleteResponse<>(testCase, ENTITY_DELETED);
+  }
+
+  private <R> R withLogicalSuitePublicationLock(UUID testSuiteId, Supplier<R> operation) {
+    try {
+      return DatabaseAdvisoryLock.withLock(
+          Entity.getJdbi(),
+          LOGICAL_SUITE_LOCK_PREFIX + testSuiteId,
+          LOGICAL_SUITE_LOCK_TIMEOUT,
+          operation);
+    } catch (DatabaseAdvisoryLock.LockUnavailableException exception) {
+      ServiceUnavailableException unavailable =
+          new ServiceUnavailableException(exception.getMessage());
+      unavailable.initCause(exception);
+      throw unavailable;
+    }
   }
 
   private List<TestCase> getLogicalSuiteUpdatedTestCase(
@@ -1220,10 +1260,11 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   /**
    * Publishes logical-suite relationship changes from committed database state. Relationship rows
    * do not modify the stored {@link TestCase} JSON, so publication invalidates the hydrated read
-   * bundle and reloads while holding deterministic per-test-case locks. Concurrent add/delete
-   * requests therefore publish in lock order, and a late request observes the current relationship
-   * state instead of replaying its pre-commit snapshot. The resulting change description contains
-   * an idempotent add/remove delta for search rather than a replacement {@code testSuites} array.
+   * bundle and reloads while holding deterministic per-test-case locks. Logical-suite mutation
+   * entry points also hold a database session advisory lock from before the relationship transaction
+   * through this publication, so requests on different service nodes publish in commit order. The
+   * resulting change description contains an idempotent add/remove delta for search rather than a
+   * replacement {@code testSuites} array.
    */
   private List<TestCase> postLogicalSuiteRelationshipUpdate(
       List<EntityReference> testCaseReferences, UUID testSuiteId) {
