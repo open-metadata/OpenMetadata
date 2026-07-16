@@ -255,6 +255,49 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void oversizedScriptedUpdateIsSentDirectlyInsteadOfPoisoningTheBulkBatch() throws Exception {
+    os.org.opensearch.client.opensearch.OpenSearchClient rawClient =
+        mock(os.org.opensearch.client.opensearch.OpenSearchClient.class);
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    when(searchClient.getNewClient()).thenReturn(rawClient);
+    SearchRepository.ScriptedPartialUpdate partialUpdate =
+        new SearchRepository.ScriptedPartialUpdate(
+            "ctx._source.tests = params.tests;", Map.of("tests", "x".repeat(2048)));
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 128L);
+
+      invokePrivate(
+          sink,
+          "addScriptedPartialUpdate",
+          new Class<?>[] {
+            String.class,
+            String.class,
+            String.class,
+            SearchRepository.ScriptedPartialUpdate.class,
+            String.class,
+            StageStatsTracker.class
+          },
+          "test_suite_index",
+          "suite-id",
+          Entity.TEST_SUITE,
+          partialUpdate,
+          "{\"name\":\"suite\"}",
+          tracker);
+
+      verify(processorConstruction.constructed().getFirst(), never())
+          .add(any(), any(), any(), any(), anyLong());
+      verify(rawClient).update(any(java.util.function.Function.class), eq(Map.class));
+      verify(tracker).incrementPendingSink();
+      verify(tracker).recordSink(StatsResult.SUCCESS);
+      assertEquals(1, sink.getStats().getTotalRecords());
+      assertEquals(1, sink.getStats().getSuccessRecords());
+    }
+  }
+
+  @Test
   void fullTestCaseDocumentUsesRelationshipPreservingUpdate() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     UUID entityId = UUID.randomUUID();

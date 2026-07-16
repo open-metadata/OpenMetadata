@@ -36,7 +36,9 @@ import org.mockito.ArgumentCaptor;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -162,5 +164,38 @@ class SearchIndexRetryWorkerTest {
         relationshipContext.get(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY));
     verify(bulkSink).flushAndAwait(60);
     verify(bulkSink).close();
+  }
+
+  @Test
+  void successfulRetryReplaysDurablePropagationContext() throws Exception {
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchIndexRetryWorker retryWorker =
+        new SearchIndexRetryWorker(mock(CollectionDAO.class), searchRepository);
+    EntityInterface entity = mock(EntityInterface.class);
+    ChangeDescription changeDescription =
+        new ChangeDescription()
+            .withPreviousVersion(1.0)
+            .withFieldsAdded(List.of())
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_DISPLAY_NAME)
+                        .withOldValue("Old Service")
+                        .withNewValue("New Service")))
+            .withFieldsDeleted(List.of());
+    String failureReason =
+        SearchIndexRetryQueue.withPropagationContext("bulk flush timed out", changeDescription);
+
+    retryWorker.propagateAfterRetry(entity, failureReason);
+
+    ArgumentCaptor<ChangeDescription> changeCaptor =
+        ArgumentCaptor.forClass(ChangeDescription.class);
+    verify(searchRepository).propagateEntityAfterRetry(eq(entity), changeCaptor.capture());
+    assertEquals(
+        Entity.FIELD_DISPLAY_NAME, changeCaptor.getValue().getFieldsUpdated().getFirst().getName());
+    assertEquals(
+        "Old Service", changeCaptor.getValue().getFieldsUpdated().getFirst().getOldValue());
+    assertEquals(
+        "New Service", changeCaptor.getValue().getFieldsUpdated().getFirst().getNewValue());
   }
 }

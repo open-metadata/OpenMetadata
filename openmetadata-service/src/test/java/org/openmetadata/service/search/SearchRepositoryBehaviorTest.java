@@ -89,6 +89,8 @@ import org.openmetadata.service.apps.bundles.searchIndex.OpenSearchBulkSink;
 import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.indexes.DocBuildContext;
+import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
@@ -684,18 +686,21 @@ class SearchRepositoryBehaviorTest {
     when(testCase.getEntityReference()).thenReturn(entityReference);
     when(testCase.getId()).thenReturn(testCaseId);
     when(testCase.getFullyQualifiedName()).thenReturn("service.testCase");
-    when(searchIndexFactory.buildIndex(Entity.TEST_CASE, testCase))
+    SearchIndex searchIndex = mock(SearchIndex.class);
+    when(searchIndex.buildSearchIndexDoc(any(DocBuildContext.class)))
         .thenReturn(
-            new MapBackedSearchIndex(
-                testCase,
-                Map.of(
-                    "name",
-                    "testCase",
-                    Entity.FIELD_TEST_SUITES,
-                    List.of(Map.of("id", UUID.randomUUID().toString())))));
+            Map.of(
+                "name",
+                "testCase",
+                Entity.FIELD_TEST_SUITES,
+                List.of(Map.of("id", UUID.randomUUID().toString()))));
+    when(searchIndexFactory.buildIndex(Entity.TEST_CASE, testCase)).thenReturn(searchIndex);
 
     repository.updateEntityIndex(testCase, 17L);
 
+    ArgumentCaptor<DocBuildContext> buildContext = ArgumentCaptor.forClass(DocBuildContext.class);
+    verify(searchIndex).buildSearchIndexDoc(buildContext.capture());
+    assertEquals(17L, buildContext.getValue().relationshipRevision());
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Map<String, Object>> document = ArgumentCaptor.forClass(Map.class);
     ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
@@ -720,18 +725,21 @@ class SearchRepositoryBehaviorTest {
     when(testSuite.getId()).thenReturn(testSuiteId);
     when(testSuite.getFullyQualifiedName()).thenReturn("logicalSuite");
     when(testSuite.getBasic()).thenReturn(false);
-    when(searchIndexFactory.buildIndex(Entity.TEST_SUITE, testSuite))
+    SearchIndex searchIndex = mock(SearchIndex.class);
+    when(searchIndex.buildSearchIndexDoc(any(DocBuildContext.class)))
         .thenReturn(
-            new MapBackedSearchIndex(
-                testSuite,
-                Map.of(
-                    "name",
-                    "logicalSuite",
-                    "tests",
-                    List.of(Map.of("id", UUID.randomUUID().toString())))));
+            Map.of(
+                "name",
+                "logicalSuite",
+                "tests",
+                List.of(Map.of("id", UUID.randomUUID().toString()))));
+    when(searchIndexFactory.buildIndex(Entity.TEST_SUITE, testSuite)).thenReturn(searchIndex);
 
     repository.updateEntityIndex(testSuite, 21L);
 
+    ArgumentCaptor<DocBuildContext> buildContext = ArgumentCaptor.forClass(DocBuildContext.class);
+    verify(searchIndex).buildSearchIndexDoc(buildContext.capture());
+    assertEquals(21L, buildContext.getValue().relationshipRevision());
     @SuppressWarnings("unchecked")
     ArgumentCaptor<Map<String, Object>> document = ArgumentCaptor.forClass(Map.class);
     ArgumentCaptor<String> script = ArgumentCaptor.forClass(String.class);
@@ -3050,16 +3058,16 @@ class SearchRepositoryBehaviorTest {
         .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
     EntityInterface service =
         mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
-    when(service.getChangeDescription())
-        .thenReturn(
-            changeDescription(
-                List.of(),
-                List.of(
-                    new FieldChange()
-                        .withName(Entity.FIELD_DISPLAY_NAME)
-                        .withOldValue("Old Service")
-                        .withNewValue("New Service")),
-                List.of()));
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+    when(service.getChangeDescription()).thenReturn(displayNameChange);
 
     try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
         MockedConstruction<ElasticSearchBulkSink> bulkSinks =
@@ -3077,8 +3085,50 @@ class SearchRepositoryBehaviorTest {
           .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
       retryQueue.verify(
           () ->
-              SearchIndexRetryQueue.enqueue(
+              SearchIndexRetryQueue.enqueueWithPropagation(
                   eq(service),
+                  eq(displayNameChange),
+                  eq(
+                      "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback"),
+                  any(IOException.class)));
+    }
+  }
+
+  @Test
+  void nonQuiescentBulkDefersPropagationUntilRetryCompletes() throws Exception {
+    when(searchClient.getSearchType())
+        .thenReturn(ElasticSearchConfiguration.SearchType.ELASTICSEARCH);
+    EntityInterface service =
+        mockEntity(Entity.DATABASE_SERVICE, UUID.randomUUID(), "database-service");
+    ChangeDescription displayNameChange =
+        changeDescription(
+            List.of(),
+            List.of(
+                new FieldChange()
+                    .withName(Entity.FIELD_DISPLAY_NAME)
+                    .withOldValue("Old Service")
+                    .withNewValue("New Service")),
+            List.of());
+    when(service.getChangeDescription()).thenReturn(displayNameChange);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class);
+        MockedConstruction<ElasticSearchBulkSink> bulkSinks =
+            mockConstruction(
+                ElasticSearchBulkSink.class,
+                (bulkSink, context) -> {
+                  when(bulkSink.flushAndAwait(60)).thenReturn(false);
+                  when(bulkSink.getActiveBulkRequestCount()).thenReturn(1);
+                  when(bulkSink.getStats()).thenReturn(new StepStats().withFailedRecords(0));
+                })) {
+      repository.updateEntitiesIndex(List.of(service));
+
+      verify(searchClient, never())
+          .updateChildren(any(List.class), any(Pair.class), any(Pair.class));
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  eq(service),
+                  eq(displayNameChange),
                   eq(
                       "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback"),
                   any(IOException.class)));
@@ -3144,11 +3194,8 @@ class SearchRepositoryBehaviorTest {
       verify(bulkSinks.constructed().getFirst()).close();
       retryQueue.verify(
           () ->
-              SearchIndexRetryQueue.enqueue(
-                  failedService.getId().toString(),
-                  failedService.getFullyQualifiedName(),
-                  Entity.DATABASE_SERVICE,
-                  "updateEntitiesBulk PROCESS: rejected"));
+              SearchIndexRetryQueue.enqueueWithPropagation(
+                  failedService, displayNameChange, "updateEntitiesBulk PROCESS: rejected"));
       retryQueue.verifyNoMoreInteractions();
     }
   }

@@ -63,6 +63,10 @@ public record DocBuildContext(
     return new DocBuildContext(upstreamLineage, ServiceStylePrefetch.notPrefetched(), null);
   }
 
+  public static DocBuildContext withRelationshipRevision(long relationshipRevision) {
+    return new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), relationshipRevision);
+  }
+
   public static DocBuildContext of(
       List<EsLineageData> upstreamLineage, ServiceStylePrefetch serviceStylePrefetch) {
     return new DocBuildContext(upstreamLineage, serviceStylePrefetch, null);

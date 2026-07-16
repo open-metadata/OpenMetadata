@@ -147,6 +147,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
@@ -1623,7 +1624,10 @@ public class SearchRepository {
               "Relationship revisions can only update test cases and logical test suites");
         }
         SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
-        doc = new HashMap<>(searchIndex.buildSearchIndexDoc());
+        doc =
+            new HashMap<>(
+                searchIndex.buildSearchIndexDoc(
+                    DocBuildContext.withRelationshipRevision(relationshipRevision)));
         doc =
             SearchIndexUtils.stripDocMapIfOversized(
                 doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
@@ -1682,12 +1686,7 @@ public class SearchRepository {
       if (requiresPropagation(changeDescription, entityType, entity)) {
         // Time propagation operations
         startTime = System.currentTimeMillis();
-        propagateInheritedFieldsToChildren(
-            entityType, entityId, changeDescription, indexMapping, entity);
-        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-        propagateCertificationTags(entityType, entity, changeDescription);
-        propagateServiceStyle(entityType, entity, changeDescription);
-        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+        propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
         propagateTime = System.currentTimeMillis() - startTime;
 
         LOG.info(
@@ -1718,10 +1717,7 @@ public class SearchRepository {
         Metrics.counter("search.index.propagation.skipped", tags).increment();
       }
     } catch (Exception ie) {
-      SearchIndexRetryQueue.enqueue(
-          entityId,
-          entity.getFullyQualifiedName(),
-          SearchIndexRetryQueue.failureReason("updateEntityIndex", ie));
+      enqueueEntityRetry(entity, "updateEntityIndex", ie);
       LOG.error(
           "Issue updating the search document for entity [{}] and entityType [{}]",
           entityId,
@@ -1902,13 +1898,23 @@ public class SearchRepository {
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
       List<EntityInterface> typeEntities = entry.getValue();
+      Map<String, EntityInterface> typeEntitiesById =
+          typeEntities.stream()
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      entity -> entity.getId().toString(), Function.identity()));
+      Map<String, EntityInterface> typeEntitiesByFqn =
+          typeEntities.stream()
+              .filter(entity -> !nullOrEmpty(entity.getFullyQualifiedName()))
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      EntityInterface::getFullyQualifiedName,
+                      Function.identity(),
+                      (first, ignored) -> first));
 
       if (!getSearchClient().isClientAvailable()) {
         for (EntityInterface entity : typeEntities) {
-          SearchIndexRetryQueue.enqueue(
-              entity.getId() != null ? entity.getId().toString() : null,
-              entity.getFullyQualifiedName(),
-              "updateEntitiesBulk: Search client unavailable");
+          enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
         continue;
       }
@@ -1930,11 +1936,18 @@ public class SearchRepository {
               if (!nullOrEmpty(failedEntityFqn)) {
                 failedEntityFqns.add(failedEntityFqn);
               }
-              SearchIndexRetryQueue.enqueue(
-                  failedEntityId,
-                  failedEntityFqn,
-                  failedEntityType,
-                  "updateEntitiesBulk " + stage + ": " + errorMessage);
+              EntityInterface failedEntity =
+                  !nullOrEmpty(failedEntityId) ? typeEntitiesById.get(failedEntityId) : null;
+              if (failedEntity == null && !nullOrEmpty(failedEntityFqn)) {
+                failedEntity = typeEntitiesByFqn.get(failedEntityFqn);
+              }
+              String failureReason = "updateEntitiesBulk " + stage + ": " + errorMessage;
+              if (failedEntity != null) {
+                enqueueEntityRetry(failedEntity, failureReason);
+              } else {
+                SearchIndexRetryQueue.enqueue(
+                    failedEntityId, failedEntityFqn, failedEntityType, failureReason);
+              }
             });
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
@@ -1999,7 +2012,7 @@ public class SearchRepository {
                 || (entityFqn != null && failedEntityFqns.contains(entityFqn))) {
               continue;
             }
-            SearchIndexRetryQueue.enqueue(
+            enqueueEntityRetry(
                 entity,
                 "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback",
                 e);
@@ -2083,12 +2096,7 @@ public class SearchRepository {
       candidates++;
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        propagateInheritedFieldsToChildren(
-            entityType, entity.getId().toString(), changeDescription, indexMapping, entity);
-        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-        propagateCertificationTags(entityType, entity, changeDescription);
-        propagateServiceStyle(entityType, entity, changeDescription);
-        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+        propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
         propagated++;
       } catch (Exception e) {
         LOG.error(
@@ -2106,6 +2114,64 @@ public class SearchRepository {
           propagated,
           System.currentTimeMillis() - startTime);
     }
+  }
+
+  void propagateEntityAfterRetry(
+      EntityInterface entity, ChangeDescription propagationChangeDescription) throws IOException {
+    if (entity == null || entity.getId() == null || entity.getEntityReference() == null) {
+      return;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (!checkIfIndexingIsSupported(entityType)
+        || !requiresPropagation(propagationChangeDescription, entityType, entity)) {
+      return;
+    }
+    propagateEntitySearchChanges(
+        entity, entityType, propagationChangeDescription, entityIndexMap.get(entityType));
+  }
+
+  private void propagateEntitySearchChanges(
+      EntityInterface entity,
+      String entityType,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping)
+      throws IOException {
+    propagateInheritedFieldsToChildren(
+        entityType, entity.getId().toString(), changeDescription, indexMapping, entity);
+    propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
+    propagateCertificationTags(entityType, entity, changeDescription);
+    propagateServiceStyle(entityType, entity, changeDescription);
+    propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+  }
+
+  private void enqueueEntityRetry(EntityInterface entity, String failureReason) {
+    if (entity == null) {
+      return;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (!isNullOrEmptyChangeDescription(changeDescription)) {
+      SearchIndexRetryQueue.enqueueWithPropagation(entity, changeDescription, failureReason);
+      return;
+    }
+    String entityType =
+        entity.getEntityReference() != null ? entity.getEntityReference().getType() : "";
+    SearchIndexRetryQueue.enqueue(
+        entity.getId() != null ? entity.getId().toString() : null,
+        entity.getFullyQualifiedName(),
+        entityType,
+        failureReason);
+  }
+
+  private void enqueueEntityRetry(EntityInterface entity, String operation, Throwable failure) {
+    if (entity == null) {
+      return;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (!isNullOrEmptyChangeDescription(changeDescription)) {
+      SearchIndexRetryQueue.enqueueWithPropagation(entity, changeDescription, operation, failure);
+      return;
+    }
+    SearchIndexRetryQueue.enqueue(entity, operation, failure);
   }
 
   public void updateEntitiesBulk(List<? extends EntityInterface> entities) {

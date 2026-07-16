@@ -76,4 +76,13 @@ class DocBuildContextTest {
 
     assertEquals(42L, ctx.relationshipRevision());
   }
+
+  @Test
+  void relationshipRevisionFactorySkipsOtherPrefetches() {
+    DocBuildContext ctx = DocBuildContext.withRelationshipRevision(43L);
+
+    assertEquals(43L, ctx.relationshipRevision());
+    assertNull(ctx.prefetchedUpstreamLineage());
+    assertFalse(ctx.serviceStylePrefetch().prefetched());
+  }
 }

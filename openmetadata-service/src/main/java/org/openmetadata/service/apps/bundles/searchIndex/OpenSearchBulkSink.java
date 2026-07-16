@@ -633,6 +633,27 @@ public class OpenSearchBulkSink implements BulkSink {
                 params.put(key, JsonData.of(value, JACKSON_JSONP_MAPPER));
               }
             });
+    if (estimatedSize > maxPayloadSizeBytes) {
+      LOG.warn(
+          "Scripted update {} of type {} is too large for bulk ({} bytes), sending directly",
+          docId,
+          entityType,
+          estimatedSize);
+      totalSubmitted.incrementAndGet();
+      if (tracker != null) {
+        tracker.incrementPendingSink();
+      }
+      updateScriptedDocumentDirectly(
+          indexName,
+          docId,
+          entityType,
+          partialUpdate,
+          effectiveUpsertDocument,
+          params,
+          tracker,
+          estimatedSize);
+      return;
+    }
     BulkOperation operation =
         BulkOperation.of(
             op ->
@@ -660,6 +681,70 @@ public class OpenSearchBulkSink implements BulkSink {
       tracker.incrementPendingSink();
     }
     bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
+  }
+
+  private void updateScriptedDocumentDirectly(
+      String indexName,
+      String docId,
+      String entityType,
+      SearchRepository.ScriptedPartialUpdate partialUpdate,
+      String upsertDocument,
+      Map<String, JsonData> params,
+      StageStatsTracker tracker,
+      long estimatedSize) {
+    try {
+      Map<String, Object> upsert =
+          JsonUtils.readValue(upsertDocument, new TypeReference<Map<String, Object>>() {});
+      searchClient
+          .getNewClient()
+          .update(
+              update ->
+                  update
+                      .index(indexName)
+                      .id(docId)
+                      .refresh(Refresh.False)
+                      .retryOnConflict(3)
+                      .scriptedUpsert(partialUpdate.scriptedUpsert())
+                      .upsert(upsert)
+                      .script(
+                          script ->
+                              script.inline(
+                                  inline ->
+                                      inline
+                                          .lang(
+                                              language ->
+                                                  language.builtin(BuiltinScriptLanguage.Painless))
+                                          .source(partialUpdate.script())
+                                          .params(params))),
+              Map.class);
+      totalSuccess.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.SUCCESS);
+      }
+    } catch (Exception e) {
+      LOG.error(
+          "Direct scripted update failed for document {} of type {}: {}",
+          docId,
+          entityType,
+          e.getMessage(),
+          e);
+      totalFailed.incrementAndGet();
+      updateStats();
+      if (tracker != null) {
+        tracker.recordSink(StatsResult.FAILED);
+      }
+      if (failureCallback != null) {
+        failureCallback.onFailure(
+            entityType,
+            docId,
+            null,
+            String.format(
+                "Scripted update too large for bulk (%d bytes); direct update failed: %s",
+                estimatedSize, e.getMessage()),
+            IndexingFailureRecorder.FailureStage.SINK);
+      }
+    }
   }
 
   private void recordStaleReferenceWarning(

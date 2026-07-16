@@ -25,6 +25,7 @@ import java.util.concurrent.atomic.AtomicReference;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.tests.TestSuite;
+import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.Relationship;
@@ -179,7 +180,8 @@ public class SearchIndexRetryWorker implements Managed {
     try {
       EntityReference root = resolveEntityReference(record);
       if (root != null) {
-        reindexEntityCascade(root);
+        EntityInterface rootEntity = reindexEntityCascade(root);
+        propagateAfterRetry(rootEntity, record.getFailureReason());
         collectionDAO
             .searchIndexRetryQueueDAO()
             .deleteByEntity(record.getEntityId(), record.getEntityFqn());
@@ -240,9 +242,12 @@ public class SearchIndexRetryWorker implements Managed {
   }
 
   private void recordRetryFailure(SearchIndexRetryRecord record, String reason, String status) {
+    String retainedReason =
+        SearchIndexRetryQueue.preservePropagationContext(record.getFailureReason(), reason);
     collectionDAO
         .searchIndexRetryQueueDAO()
-        .updateFailureAndRetryCount(record.getEntityId(), record.getEntityFqn(), reason, status);
+        .updateFailureAndRetryCount(
+            record.getEntityId(), record.getEntityFqn(), retainedReason, status);
     Metrics.counter("search.retry.processed", "result", "failure").increment();
   }
 
@@ -381,13 +386,14 @@ public class SearchIndexRetryWorker implements Managed {
   // Reindexing
   // ---------------------------------------------------------------------------
 
-  private void reindexEntityCascade(EntityReference root) throws Exception {
+  private EntityInterface reindexEntityCascade(EntityReference root) throws Exception {
     ArrayDeque<EntityReference> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
     List<EntityInterface> entitiesToIndex = new ArrayList<>();
     Map<UUID, Long> relationshipRevisions = new HashMap<>();
     queue.add(root);
     int processed = 0;
+    EntityInterface rootEntity = null;
 
     while (!queue.isEmpty() && processed < MAX_CASCADE_REINDEX) {
       EntityReference current = queue.poll();
@@ -419,6 +425,9 @@ public class SearchIndexRetryWorker implements Managed {
       EntityInterface entity = snapshot.entity();
       if (entity == null) {
         continue;
+      }
+      if (root.getId().equals(current.getId()) && root.getType().equals(current.getType())) {
+        rootEntity = entity;
       }
 
       entitiesToIndex.add(entity);
@@ -458,6 +467,15 @@ public class SearchIndexRetryWorker implements Managed {
 
     if (!entitiesToIndex.isEmpty()) {
       upsertEntitiesInBulk(entitiesToIndex, relationshipRevisions);
+    }
+    return rootEntity;
+  }
+
+  void propagateAfterRetry(EntityInterface rootEntity, String failureReason) throws IOException {
+    ChangeDescription propagationChangeDescription =
+        SearchIndexRetryQueue.getPropagationContext(failureReason);
+    if (rootEntity != null && propagationChangeDescription != null) {
+      searchRepository.propagateEntityAfterRetry(rootEntity, propagationChangeDescription);
     }
   }
 

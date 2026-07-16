@@ -18,6 +18,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.json.JsonData;
 import java.lang.reflect.Field;
@@ -216,6 +217,48 @@ class ElasticSearchBulkSinkBehaviorTest {
       assertEquals(
           "ctx._source.testSuites = params.testSuites;",
           operation.update().action().script().source().scriptString());
+    }
+  }
+
+  @Test
+  @SuppressWarnings({"rawtypes", "unchecked"})
+  void oversizedScriptedUpdateIsSentDirectlyInsteadOfPoisoningTheBulkBatch() throws Exception {
+    ElasticsearchClient rawClient = mock(ElasticsearchClient.class);
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    when(searchClient.getNewClient()).thenReturn(rawClient);
+    SearchRepository.ScriptedPartialUpdate partialUpdate =
+        new SearchRepository.ScriptedPartialUpdate(
+            "ctx._source.tests = params.tests;", Map.of("tests", "x".repeat(2048)));
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 128L);
+
+      invokePrivate(
+          sink,
+          "addScriptedPartialUpdate",
+          new Class<?>[] {
+            String.class,
+            String.class,
+            String.class,
+            SearchRepository.ScriptedPartialUpdate.class,
+            String.class,
+            StageStatsTracker.class
+          },
+          "test_suite_index",
+          "suite-id",
+          Entity.TEST_SUITE,
+          partialUpdate,
+          "{\"name\":\"suite\"}",
+          tracker);
+
+      verify(processorConstruction.constructed().getFirst(), never())
+          .add(any(), any(), any(), any(), anyLong());
+      verify(rawClient).update(any(java.util.function.Function.class), eq(Map.class));
+      verify(tracker).incrementPendingSink();
+      verify(tracker).recordSink(StatsResult.SUCCESS);
+      assertEquals(1, sink.getStats().getTotalRecords());
+      assertEquals(1, sink.getStats().getSuccessRecords());
     }
   }
 
