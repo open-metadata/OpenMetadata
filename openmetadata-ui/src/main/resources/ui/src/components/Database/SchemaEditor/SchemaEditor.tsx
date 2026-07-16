@@ -89,6 +89,11 @@ const SchemaEditor = ({
   const initialValueRef = useRef<string>(
     getSchemaEditorValue(value, autoFormat)
   );
+  // Latest external value; used to flush a pending update on blur when the
+  // sync effect had to skip it because the editor was focused.
+  const latestValueRef = useRef<string>(
+    getSchemaEditorValue(value, autoFormat)
+  );
 
   const handleEditorInputBeforeChange = (
     _editor: Editor,
@@ -143,14 +148,36 @@ const SchemaEditor = ({
   // config) ourselves, but only while the editor is blurred so we never disturb
   // the caret or an in-progress edit.
   useEffect(() => {
+    const nextValue = getSchemaEditorValue(value, autoFormat);
+    latestValueRef.current = nextValue;
     const editor = editorInstance.current;
-    if (uncontrolled && editor) {
-      const nextValue = getSchemaEditorValue(value, autoFormat);
-      if (!editor.hasFocus() && editor.getValue() !== nextValue) {
-        editor.setValue(nextValue);
-      }
+    if (
+      uncontrolled &&
+      editor &&
+      !editor.hasFocus() &&
+      editor.getValue() !== nextValue
+    ) {
+      editor.setValue(nextValue);
     }
   }, [value, autoFormat, uncontrolled]);
+
+  // A value that arrived while the editor was focused is skipped above; apply
+  // any such pending change once the editor loses focus.
+  useEffect(() => {
+    const editor = editorInstance.current;
+    let detach = () => undefined as void;
+    if (uncontrolled && editor) {
+      const flushOnBlur = () => {
+        if (editor.getValue() !== latestValueRef.current) {
+          editor.setValue(latestValueRef.current);
+        }
+      };
+      editor.on('blur', flushOnBlur);
+      detach = () => editor.off('blur', flushOnBlur);
+    }
+
+    return detach;
+  }, [uncontrolled]);
 
   // Auto-detect display:none → visible transitions (e.g. Ant Design tab switches).
   // When a parent sets display:none, boundingClientRect collapses to 0.
