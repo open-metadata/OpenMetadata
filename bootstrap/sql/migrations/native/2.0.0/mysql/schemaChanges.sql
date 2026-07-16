@@ -485,6 +485,21 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 -- Index the executionId column on the workflow instance state series so both the v200
 -- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
 -- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
--- on active clusters).
-CREATE INDEX IF NOT EXISTS idx_wf_instance_state_execution_id
-    ON workflow_instance_state_time_series (workflowInstanceExecutionId);
+-- on active clusters). MySQL has no `CREATE INDEX IF NOT EXISTS`, so guard via
+-- information_schema (mirrors the approvedById guard earlier in this file).
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'workflow_instance_state_time_series'
+        AND index_name = 'idx_wf_instance_state_execution_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_wf_instance_state_execution_id ON workflow_instance_state_time_series (workflowInstanceExecutionId)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
