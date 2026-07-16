@@ -213,6 +213,41 @@ class ContextFileExtractionServiceTest {
   }
 
   @Test
+  void processKeepsRetryingTerminalUpdateAfterRepeatedConflicts() throws Exception {
+    AtomicInteger contentWriteAttempts = new AtomicInteger();
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    when(contentRepository.updateIfCurrent(
+            isNull(), same(content), any(ContextFileContent.class), anyString()))
+        .thenAnswer(
+            invocation -> {
+              int attempt = contentWriteAttempts.incrementAndGet();
+              if (attempt >= 2 && attempt <= 4) {
+                throw new PreconditionFailedException("Concurrent content update");
+              }
+              return null;
+            });
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    assertEquals(5, contentWriteAttempts.get());
+    verify(contentRepository, times(5))
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedContentCaptor.getAllValues().getLast().getProcessingStatus());
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedFileCaptor.getAllValues().getLast().getProcessingStatus());
+  }
+
+  @Test
   void processRethrowsVirtualMachineErrors() throws Exception {
     when(assetService.read(asset))
         .thenReturn(

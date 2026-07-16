@@ -1,6 +1,8 @@
 package org.openmetadata.service.drive;
 
 import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
+import static org.openmetadata.service.jdbi3.ContextFileContentRepository.CONTEXT_FILE_CONTENT_ENTITY;
+import static org.openmetadata.service.jdbi3.ContextFileRepository.CONTEXT_FILE_ENTITY;
 
 import java.io.InputStream;
 import java.util.UUID;
@@ -24,10 +26,11 @@ import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
 import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
+import org.openmetadata.service.util.RequestEntityCache;
 
 @Slf4j
 public class ContextFileExtractionService {
-  private static final int MAX_CONDITIONAL_UPDATE_ATTEMPTS = 3;
+  private static final long CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS = 10;
   private final ContextFileRepository repository;
   private final Supplier<AssetService> assetServiceSupplier;
   private final Executor executor;
@@ -105,6 +108,15 @@ public class ContextFileExtractionService {
   }
 
   void process(UUID fileId, UUID contentId) {
+    RequestEntityCache.clear();
+    try {
+      processInternal(fileId, contentId);
+    } finally {
+      RequestEntityCache.clear();
+    }
+  }
+
+  private void processInternal(UUID fileId, UUID contentId) {
     ContextFile file = getFile(fileId);
     if (file == null || !contentId.toString().equals(file.getHeadContentId())) {
       return;
@@ -252,7 +264,7 @@ public class ContextFileExtractionService {
   }
 
   private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
-    for (int attempt = 0; attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
+    while (true) {
       ContextFile current = getFile(fileId);
       if (current == null) {
         return false;
@@ -266,14 +278,17 @@ public class ContextFileExtractionService {
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file {} changed during extraction update", fileId);
+        RequestEntityCache.invalidate(CONTEXT_FILE_ENTITY, fileId, current.getFullyQualifiedName());
+        if (!waitForConditionalUpdateRetry(CONTEXT_FILE_ENTITY, fileId)) {
+          return false;
+        }
       }
     }
-    return false;
   }
 
   private boolean updateContent(
       UUID contentId, Function<ContextFileContent, ContextFileContent> updater) {
-    for (int attempt = 0; attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
+    while (true) {
       ContextFileContent current = getContent(contentId);
       if (current == null) {
         return false;
@@ -287,8 +302,23 @@ public class ContextFileExtractionService {
         return true;
       } catch (PreconditionFailedException e) {
         LOG.debug("Context file content {} changed during extraction update", contentId);
+        RequestEntityCache.invalidate(
+            CONTEXT_FILE_CONTENT_ENTITY, contentId, current.getFullyQualifiedName());
+        if (!waitForConditionalUpdateRetry(CONTEXT_FILE_CONTENT_ENTITY, contentId)) {
+          return false;
+        }
       }
     }
-    return false;
+  }
+
+  private boolean waitForConditionalUpdateRetry(String entityType, UUID entityId) {
+    try {
+      TimeUnit.MILLISECONDS.sleep(CONDITIONAL_UPDATE_RETRY_DELAY_MILLIS);
+      return true;
+    } catch (InterruptedException e) {
+      Thread.currentThread().interrupt();
+      LOG.warn("Interrupted while retrying {} {} extraction update", entityType, entityId);
+      return false;
+    }
   }
 }
