@@ -11,9 +11,13 @@
  *  limitations under the License.
  */
 import { WidgetProps } from '@rjsf/utils';
-import { useCallback } from 'react';
-import SchemaEditor from '../../../../../Database/SchemaEditor/SchemaEditor';
+import { lazy, useCallback } from 'react';
+import withSuspenseFallback from '../../../../../AppRouter/withSuspenseFallback';
 import './code-widget.less';
+
+const SchemaEditor = withSuspenseFallback(
+  lazy(() => import('../../../../../Database/SchemaEditor/SchemaEditor'))
+);
 
 const CodeWidget = ({
   value,

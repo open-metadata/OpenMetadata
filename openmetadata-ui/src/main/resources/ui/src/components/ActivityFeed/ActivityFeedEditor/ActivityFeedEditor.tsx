@@ -16,16 +16,25 @@ import { noop } from 'lodash';
 import {
   forwardRef,
   HTMLAttributes,
+  lazy,
   LegacyRef,
   useImperativeHandle,
   useRef,
   useState,
 } from 'react';
+import withSuspenseFallback from '../../../components/AppRouter/withSuspenseFallback';
 import { getBackendFormat, HTMLToMarkdown } from '../../../utils/FeedUtils';
 import { EditorContentRef } from '../../common/RichTextEditor/RichTextEditor.interface';
-import { FeedEditor } from '../FeedEditor/FeedEditor';
 import { KeyHelp } from './KeyHelp';
 import { SendButton } from './SendButton';
+
+const FeedEditor = withSuspenseFallback(
+  lazy(() =>
+    import('../FeedEditor/FeedEditor').then((m) => ({
+      default: m.FeedEditor,
+    }))
+  )
+);
 
 interface ActivityFeedEditorProp extends HTMLAttributes<HTMLDivElement> {
   placeHolder?: string;

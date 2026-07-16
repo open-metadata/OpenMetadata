@@ -16,6 +16,7 @@ import { isUndefined } from 'lodash';
 import {
   FC,
   HTMLAttributes,
+  lazy,
   ReactNode,
   useCallback,
   useEffect,
@@ -28,10 +29,14 @@ import { Table } from '../../../generated/entity/data/table';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
-import ExploreSearchCard from '../../ExploreV1/ExploreSearchCard/ExploreSearchCard';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import { SearchedDataProps } from '../../SearchedData/SearchedData.interface';
 import Loader from '../Loader/Loader';
 import './popover-card.less';
+
+const ExploreSearchCard = withSuspenseFallback(
+  lazy(() => import('../../ExploreV1/ExploreSearchCard/ExploreSearchCard'))
+);
 
 interface Props extends HTMLAttributes<HTMLDivElement> {
   entityType: string;

@@ -12,7 +12,7 @@
  */
 import { isEmpty, noop } from 'lodash';
 import { EntityTags } from 'Models';
-import { useCallback, useMemo, useState } from 'react';
+import { lazy, useCallback, useMemo, useState } from 'react';
 import { ENTITY_PAGE_TYPE_MAP } from '../../../constants/Customize.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import {
@@ -51,6 +51,7 @@ import { VersionEntityTypes } from '../../../utils/EntityVersionUtils.interface'
 import { getPrioritizedViewPermission } from '../../../utils/PermissionsUtils';
 import { getTagsWithoutTier, getTierTags } from '../../../utils/TablePureUtils';
 import { createTagObject } from '../../../utils/TagsUtils';
+import withSuspenseFallback from '../../AppRouter/withSuspenseFallback';
 import CertificationWidget from '../../common/CertificationWidget/CertificationWidget';
 import { CustomPropertyTable } from '../../common/CustomPropertyTable/CustomPropertyTable';
 import DescriptionV1 from '../../common/EntityDescription/DescriptionV1';
@@ -59,12 +60,19 @@ import { useGenericContext } from '../../Customization/GenericProvider/GenericPr
 import { LeftPanelContainer } from '../../Customization/GenericTab/LeftPanelContainer';
 import DataProductsContainer from '../../DataProducts/DataProductsContainer/DataProductsContainer.component';
 import { DomainExpertWidget } from '../../Domain/DomainExpertsWidget/DomainExpertWidget';
-import { GlossaryUpdateConfirmationModal } from '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal';
 import TagsContainerV2 from '../../Tag/TagsContainerV2/TagsContainerV2';
 import { DisplayType } from '../../Tag/TagsViewer/TagsViewer.interface';
 import { DomainLabelV2 } from '../DomainLabelV2/DomainLabelV2';
 import { OwnerLabelV2 } from '../OwnerLabelV2/OwnerLabelV2';
 import { ReviewerLabelV2 } from '../ReviewerLabelV2/ReviewerLabelV2';
+
+const GlossaryUpdateConfirmationModal = withSuspenseFallback(
+  lazy(() =>
+    import(
+      '../../Glossary/GlossaryUpdateConfirmationModal/GlossaryUpdateConfirmationModal'
+    ).then((m) => ({ default: m.GlossaryUpdateConfirmationModal }))
+  )
+);
 
 interface GenericEntity
   extends Exclude<EntityReference, 'type'>,

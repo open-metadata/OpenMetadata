@@ -244,11 +244,7 @@ const MyDataPage = () => {
   // call the hook to set the direction of the grid layout
   useGridLayoutDirection(isLoading);
 
-  if (isLoading) {
-    return <Loader fullScreen />;
-  }
-
-  if (showWelcomeScreen) {
+  if (!isLoading && showWelcomeScreen) {
     return (
       <PageLayoutV1 pageTitle={t('label.my-data')}>
         <WelcomeScreen onClose={() => updateWelcomeScreen(false)} />
@@ -264,7 +260,7 @@ const MyDataPage = () => {
         pageTitle={t('label.my-data')}>
         {/* Explicitly set the direction to ltr to avoid issues with react-grid-layout in rtl mode */}
         {/*
-            ReactGridLayout has known issues with RTL layouts, 
+            ReactGridLayout has known issues with RTL layouts,
             setting dir="ltr" on the container ensures correct behavior
             without affecting the overall RTL layout of the page
         */}
@@ -277,19 +273,23 @@ const MyDataPage = () => {
             onHomePage
             onBackgroundColorUpdate={handleBackgroundColorUpdate}
           />
-          <ReactGridLayout
-            className="grid-container p-x-box"
-            cols={customizePageClassBase.landingPageMaxGridSize}
-            containerPadding={[0, 0]}
-            isDraggable={false}
-            isResizable={false}
-            margin={[
-              customizePageClassBase.landingPageWidgetMargin,
-              customizePageClassBase.landingPageWidgetMargin,
-            ]}
-            rowHeight={customizePageClassBase.landingPageRowHeight}>
-            {widgets}
-          </ReactGridLayout>
+          {isLoading ? (
+            <Loader />
+          ) : (
+            <ReactGridLayout
+              className="grid-container p-x-box"
+              cols={customizePageClassBase.landingPageMaxGridSize}
+              containerPadding={[0, 0]}
+              isDraggable={false}
+              isResizable={false}
+              margin={[
+                customizePageClassBase.landingPageWidgetMargin,
+                customizePageClassBase.landingPageWidgetMargin,
+              ]}
+              rowHeight={customizePageClassBase.landingPageRowHeight}>
+              {widgets}
+            </ReactGridLayout>
+          )}
         </div>
         <LimitWrapper resource="dataAssets">
           <br />
