@@ -85,8 +85,6 @@ logger = ingestion_logger()
 
 suppress_user_agent_entry_deprecation_log()
 
-DEFAULT_SCHEME = "databricks"
-
 DEFAULT_CATALOG = "main"
 
 SYSTEM_SCHEMAS = frozenset({"information_schema", "performance_schema", "sys"})
@@ -232,8 +230,7 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnectionConfig) -> str:
-    scheme = connection.scheme.value if connection.scheme else DEFAULT_SCHEME
-    return catalog_url(scheme, connection.hostPort, connection.catalog)
+    return catalog_url(connection.scheme, connection.hostPort, connection.catalog)
 
 
 def get_connection(connection: DatabricksConnectionConfig) -> Engine:

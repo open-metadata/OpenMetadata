@@ -286,7 +286,7 @@ def read_lineage_tables(engine: Engine) -> None:
 
 
 def get_connection_url(connection: UnityCatalogConnectionConfig) -> str:
-    return catalog_url(connection.scheme.value, connection.hostPort, connection.catalog)
+    return catalog_url(connection.scheme, connection.hostPort, connection.catalog)
 
 
 def get_connection(connection: UnityCatalogConnectionConfig) -> WorkspaceClient:
