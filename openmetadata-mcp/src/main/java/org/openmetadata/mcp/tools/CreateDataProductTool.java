@@ -74,6 +74,8 @@ public class CreateDataProductTool implements McpTool<Map<String, Object>> {
     repo.prepareInternal(entity, false);
 
     final String userName = CommonUtils.principal(securityContext);
+    // createOrUpdate silently overwrites an existing data product with this name —
+    // tools.json marks this tool destructiveHint:true for that reason.
     final RestUtil.PutResponse<DataProduct> response =
         repo.createOrUpdate(null, entity, userName, ImpersonationContext.getImpersonatedBy());
     McpChangeEventUtil.publishChangeEvent(response.getEntity(), response.getChangeType(), userName);

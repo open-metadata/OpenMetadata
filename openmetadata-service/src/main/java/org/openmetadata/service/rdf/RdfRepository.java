@@ -69,10 +69,11 @@ public class RdfRepository {
   private static final String KNOWLEDGE_GRAPH = "https://open-metadata.org/graph/knowledge";
 
   // Graph nodes only render label/name/FQN/description (core columns, populated
-  // regardless of the fields set) plus tags. Keep this minimal — "*" forced
-  // every relationship/derived-field branch (owners, columns, lineage, votes,
-  // ...) to load per entity, none of which the graph view reads.
-  private static final String GRAPH_NODE_FIELDS = "tags";
+  // regardless of the fields set) plus tags where the entity supports them.
+  // Keep this minimal — "*" forced every relationship/derived-field branch
+  // (owners, columns, lineage, votes, ...) to load per entity, none of which
+  // the graph view reads.
+  private static final String GRAPH_NODE_TAG_FIELDS = Entity.FIELD_TAGS;
 
   // Per-level row cap for the BFS traversal SPARQL. We query one row beyond it
   // (LIMIT cap+1) so a level that hits the cap can be detected and surfaced to
@@ -2610,8 +2611,10 @@ public class RdfRepository {
 
   private void fetchEntityBatch(
       String entityType, List<EntityReference> refs, Map<String, EntityInterface> target) {
+    String fields = "";
     try {
-      List<EntityInterface> entities = Entity.getEntities(refs, GRAPH_NODE_FIELDS, Include.ALL);
+      fields = graphNodeFields(entityType);
+      List<EntityInterface> entities = Entity.getEntities(refs, fields, Include.ALL);
       for (EntityInterface entity : entities) {
         target.put(entity.getId().toString(), entity);
       }
@@ -2626,16 +2629,18 @@ public class RdfRepository {
           refs.size(),
           entityType,
           e.getMessage());
-      fetchEntitiesIndividually(entityType, refs, target);
+      fetchEntitiesIndividually(entityType, refs, target, fields);
     }
   }
 
   private void fetchEntitiesIndividually(
-      String entityType, List<EntityReference> refs, Map<String, EntityInterface> target) {
+      String entityType,
+      List<EntityReference> refs,
+      Map<String, EntityInterface> target,
+      String fields) {
     for (EntityReference ref : refs) {
       try {
-        EntityInterface entity =
-            Entity.getEntity(entityType, ref.getId(), GRAPH_NODE_FIELDS, Include.ALL);
+        EntityInterface entity = Entity.getEntity(entityType, ref.getId(), fields, Include.ALL);
         target.put(entity.getId().toString(), entity);
       } catch (RuntimeException e) {
         LOG.warn(
@@ -2645,6 +2650,10 @@ public class RdfRepository {
             e.getMessage());
       }
     }
+  }
+
+  private String graphNodeFields(String entityType) {
+    return Entity.entityHasField(entityType, GRAPH_NODE_TAG_FIELDS) ? GRAPH_NODE_TAG_FIELDS : "";
   }
 
   private void populateNodeFromEntity(

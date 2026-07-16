@@ -2,6 +2,12 @@
   "tools": [
     {
       "name": "search_company_context",
+      "title": "Search Company Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Semantic search over Company Context knowledge pills extracted from Context Center files. Returns each pill's title, question, answer, summary, and source file in one call. Use this to answer questions from company documents, runbooks, FAQs, and policies.",
       "parameters": {
         "description": "Provide a natural-language 'query'. Returns the most semantically relevant knowledge pills.",
@@ -33,6 +39,12 @@
     },
     {
       "name": "get_company_context",
+      "title": "Get Company Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Fetch a single Company Context knowledge pill, returning its full title, question, answer, summary, and source file. Pass the 'fullyQualifiedName' (or 'name') from a search_company_context result, exactly as returned.",
       "parameters": {
         "description": "Provide the 'fqn' of the knowledge pill to fetch.",
@@ -50,6 +62,12 @@
     },
     {
       "name": "search_metadata",
+      "title": "Search Metadata",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Keyword-based search for data assets and data quality entities in OpenMetadata. Best when you know specific names, owners, tags, tiers, services, or column names. Use this for exact lookups (e.g., 'find table X', 'tables owned by team Y'), filtering by metadata properties, counting assets, and aggregations. Also searches data quality test cases and test suites when entityType is 'testCase' or 'testSuite' — these are NOT part of the default search scope, so always set entityType explicitly for data quality questions. Supports pagination and advanced OpenSearch DSL queries. Choose this over semantic_search when the query targets known identifiers or structured attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' for keyword search or 'queryFilter' for advanced OpenSearch DSL. Best for exact matches and filtering by metadata properties.",
@@ -173,6 +191,12 @@
     },
     {
       "name": "semantic_search",
+      "title": "Semantic Search",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Meaning-based discovery of data assets using vector embeddings. Best for exploratory or vague queries where you don't know exact names — it finds conceptually related assets even when no keywords match. Use this when the user describes what data they need in plain language (e.g., 'tables about customer spending behavior', 'anything related to revenue forecasting'). Returns entity summaries with name, columns, description, and metadata. Choose this over search_metadata when the query is about meaning or concepts rather than specific identifiers or attributes. Results include 'fullyQualifiedName' and 'entityType' — pass these directly to get_entity_details for full entity information.",
       "parameters": {
         "description": "Use 'query' to describe what you're looking for in plain language. The system finds conceptually similar assets using vector similarity. Optionally filter by entity type, service, or tags.",
@@ -251,6 +275,12 @@
     },
     {
       "name": "get_entity_details",
+      "title": "Get Entity Details",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Get detailed information about a specific entity by its fully qualified name, including its custom properties (returned under the 'extension' field). IMPORTANT: Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results — do not construct the FQN manually. Response is optimized for LLM context: verbose index/noise metadata fields are excluded. Descriptions (entity-level and per-column) are returned in FULL and are never truncated — total response size is bounded by column pagination instead. Only the raw schema DDL and dbt model SQL carry a large safety cap (~30000 characters, flagged with 'schemaDefinitionTruncated' or 'sqlTruncated' inside 'dataModel') to keep the response retrievable; realistic DDL/SQL is well under this. For wide entities (many columns), the 'columns' array is paginated: when it is capped the response sets 'columnsTruncated' with 'totalColumns', 'returnedColumns', 'columnOffset' and 'hasMoreColumns'. When 'hasMoreColumns' is true, fetch the next page by calling again with 'columnOffset' set to the previous 'columnOffset' + 'returnedColumns'; when it is false there are no further columns to retrieve.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
@@ -281,6 +311,12 @@
     },
     {
       "name": "get_asset_context",
+      "title": "Get Asset Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Get the full AI Context (Context Profile) for a single data asset in one call: the business knowledge attached to it (approved glossary term definitions, Context Center articles) plus the type-specific structural context. For tables this includes the column schema, primary key, foreign keys (with the referenced columns and cardinality), and the columns most frequently joined with other tables — the strong, deterministic signals needed for SQL generation. Returns a compact, LLM-friendly markdown document by default. Prefer this over get_entity_details when you have already selected the asset(s) and need their business rules and join keys. Use the 'fullyQualifiedName' and 'entityType' values directly from search_metadata or semantic_search results.",
       "parameters": {
         "description": "Use 'fullyQualifiedName' and 'entityType' from search results directly.",
@@ -316,6 +352,12 @@
     },
     {
       "name": "get_persona_context",
+      "title": "Get Persona Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Get the shared AI context document curated for a persona. With no personaName, uses the caller's active persona. The document can contain many assets and is returned in deterministic parts; call again with part=2, part=3, and so on while hasMore is true. Access is limited to persona members, admins, and bots.",
       "parameters": {
         "type": "object",
@@ -345,6 +387,12 @@
     },
     {
       "name": "find_context",
+      "title": "Find Context",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "For a business question when no specific asset has been chosen yet: semantically searches the company-knowledge layer (glossary term definitions, metric definitions, Context Center articles) and returns the relevant definitions PLUS the candidate data assets each concept points to (glossary terms → the tables tagged with them, metrics → the assets they apply to, articles → the assets they are about). Use this to bootstrap a data question from business concepts into candidate tables, then call get_asset_context on those candidate fullyQualifiedNames. Returns LLM-friendly markdown by default.",
       "parameters": {
         "description": "Provide a natural-language 'query' using the business terms or concepts from the user's request.",
@@ -376,6 +424,12 @@
     },
     {
       "name": "get_knowledge_content",
+      "title": "Get Knowledge Content",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Progressive disclosure for attached knowledge. get_asset_context and find_context return bounded EXCERPTS of long glossary definitions, metric definitions, and Context Center articles (each marked contentTruncated) so a bundle never overwhelms the context window. When you need the full detail of one specific item, call this with that item's type and fullyQualifiedName. Without a 'query' it returns the full body; with a 'query' it returns only the passages of a long article most relevant to that query. Returns LLM-friendly markdown by default.",
       "parameters": {
         "description": "Provide the knowledge item's 'entityType' and 'fqn' (as given in the get_asset_context/find_context result). Optionally pass a 'query' to retrieve only the relevant passages of a long article.",
@@ -422,6 +476,12 @@
     },
     {
       "name": "create_glossary_term",
+      "title": "Create Glossary Term",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a new Glossary Term. Note that a glossary term must be part of a Glossary, so the glossary must be specified in the parameters. If you can't find the right glossary to use, respond back to the user to create a new Glossary first. Note that you can help the user to create the Glossary as well. If you don't find any Glossary that could be related, please list to the user the available Glossaries so users can choose if they want to create or reuse something. Also, note that glossary terms can be hierarchical: for example, a glossary term 'Accounts' can have a child term 'Credit Account', 'Savings Account', etc. So if you find any terms that can be related, it might make sense to create a new term as a child of an existing term.",
       "parameters": {
         "type": "object",
@@ -466,6 +526,12 @@
     },
     {
       "name": "create_glossary",
+      "title": "Create Glossary",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a new Glossary. A Glossary is a collection of terms that are used to define the business vocabulary of an organization. Typically, similar terms are grouped together in a Glossary. For example, a Glossary names 'Marketing' could contain terms like 'Campaign', 'Lead', 'Opportunity', etc.",
       "parameters": {
         "type": "object",
@@ -507,6 +573,12 @@
     },
     {
       "name": "patch_entity",
+      "title": "Patch Entity",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Patches an Entity based on a JSONPatch. Beforehand the Entity should be validated by finding it and creating a proper patch. IMPORTANT field naming rules: all array/list fields use PLURAL names in the JSON body — use 'domains' (not 'domain'), 'owners' (not 'owner'), 'tags' (not 'tag'), 'reviewers' (not 'reviewer'). Domain values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"domain\"}. Owner values must be entity reference objects: {\"id\": \"<uuid>\", \"type\": \"user\" or \"team\"}. To add a domain: [{\"op\": \"add\", \"path\": \"/domains/0\", \"value\": {\"id\": \"<domain-id>\", \"type\": \"domain\", \"name\": \"<domain-name>\"}}]. To replace description: [{\"op\": \"add\", \"path\": \"/description\", \"value\": \"new description\"}]. Always look up entity UUIDs using search or get tools before patching.",
       "parameters": {
         "type": "object",
@@ -533,6 +605,12 @@
     },
     {
       "name": "get_entity_lineage",
+      "title": "Get Entity Lineage",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Get a compact lineage graph (upstream/downstream dependencies) of a specific entity. Use this for root cause (upstream entities) or impact (downstream entities) analysis and explaining dependencies between entities. By default the response is table-level and optimized for size: each edge carries the connected assets' names, FQNs, types and relationship info (pipeline or sql), with long SQL truncated. Set includeColumnLineage=true only when the user explicitly asks about column-level lineage.",
       "parameters": {
         "description": "Fqn is the fully qualified name of the entity. Entity type could be table, topic etc.",
@@ -570,6 +648,12 @@
     },
     {
       "name": "create_lineage",
+      "title": "Create Lineage",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "This tool can be used to create lineage between two assets. It takes the source and target asset details and creates a lineage relationship between them.",
       "parameters": {
         "description": "Required to create lineage between two assets.",
@@ -620,6 +704,12 @@
     },
     {
       "name": "get_test_definitions",
+      "title": "Get Test Definitions",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "This tool can be used to get all the test definitions in the OpenMetadata. It returns a list of test definitions. These test definition can be used to create a test case for a table or a table's column. While creating column test for entity, column data type should be in supportedDataTypes of parameterDefinition.",
       "parameters": {
         "description": "These test definition are required to create a test case for table or a table's column.",
@@ -653,6 +743,12 @@
     },
     {
       "name": "create_test_case",
+      "title": "Create Test Case",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "This tool can be used to create a test case for a table or a table's column. It needs test definitions. These test definition can be found using the get_test_definitions tool. If this fails do not do other operations.",
       "parameters": {
         "description": "This tool can be used to create a test case for a table or a table's column. It requires the test definition and the entity (table or column) to be tested.",
@@ -715,6 +811,12 @@
     },
     {
       "name": "create_metric",
+      "title": "Create Metric",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a new Metric entity in OpenMetadata. A Metric represents a measurable business or technical KPI (e.g. daily revenue, error rate). Use this to register new metrics with optional expression, type, granularity, and unit of measurement. Metric can be expressed in SQL, Python, Java, or JavaScript.",
       "parameters": {
         "type": "object",
@@ -842,6 +944,12 @@
     },
     {
       "name": "create_classification",
+      "title": "Create Classification",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a new Classification in OpenMetadata. A Classification is a top-level container that groups related Tags (e.g. 'PII', 'Tier'). The 'name' becomes the root segment of every tag FQN under it. The 'mutuallyExclusive' flag is immutable once the classification exists: if you set it on an existing classification it is ignored and a '_warning' is returned. Owner and reviewer names must already exist in OpenMetadata. Any domain FQNs must already exist.",
       "parameters": {
         "type": "object",
@@ -892,6 +1000,12 @@
     },
     {
       "name": "create_tag",
+      "title": "Create Tag",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a new Tag inside a Classification in OpenMetadata. The tag FQN is 'Classification.TagName' (e.g. 'PII.Sensitive'). At least one of 'classification' or 'parent' MUST be provided. Provide 'classification' (the root classification name, which must already exist), and optionally 'parent' for a nested tag (the parent tag FQN, e.g. 'PII.PersonalData', which must already exist). If only 'parent' is given, the classification is derived from its root segment. If both are given, 'classification' must equal the root segment of 'parent'. Owner and reviewer names must already exist.",
       "parameters": {
         "type": "object",
@@ -950,6 +1064,12 @@
     },
     {
       "name": "create_domain",
+      "title": "Create Domain",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a new Domain in OpenMetadata. A Domain is a top-level governance grouping of data assets. To create a child domain, set 'parent' to the FQN of an existing parent domain (it must already exist). 'domainType' must be one of Source-aligned, Consumer-aligned, or Aggregate; it defaults to 'Aggregate' if omitted. 'experts' are OpenMetadata login names that must already exist. Owner names must also already exist.",
       "parameters": {
         "type": "object",
@@ -1009,6 +1129,12 @@
     },
     {
       "name": "create_data_product",
+      "title": "Create Data Product",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a new Data Product in OpenMetadata. A Data Product groups data assets that deliver business value and must belong to at least one Domain. Provide 'domains' as a list of existing domain FQNs (required, at least one; each must already exist). 'experts' are OpenMetadata login names that must already exist. Owner and reviewer names must also already exist.",
       "parameters": {
         "type": "object",
@@ -1070,6 +1196,12 @@
     },
     {
       "name": "root_cause_analysis",
+      "title": "Root Cause Analysis",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Performs comprehensive root cause analysis via data quality lineage. First identifies upstream failures that may be causing issues for the specified asset. If failures are found, automatically analyzes downstream impact to show which assets may be affected. Returns both upstream root causes and downstream impact analysis. In the response 'status' indicates whether upstream failures were found. If 'status' is 'failed', the 'upstreamAnalysis' can be used to identify the nodes and edges leading to failures and downstreamAnalysis can tell what all nodes in downstream are impacted. If 'status' is 'success', it means no upstream failures were found, and downstream impact analysis was not performed. Responses are compact and table-level by default: node and edge details are trimmed and SQL queries truncated to keep the payload within LLM context limits. Set 'includeColumnLineage' to true only when column-level lineage is needed.",
       "parameters": {
         "type": "object",
@@ -1115,6 +1247,12 @@
     },
     {
       "name": "sparql_query",
+      "title": "Run SPARQL Query",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Run a read-only SPARQL query (SELECT, ASK, DESCRIBE, CONSTRUCT) against the OpenMetadata knowledge graph. Use this when the question is graph-shaped — e.g. 'all tables with FK references into customers.id', 'all upstream tables of dashboard X', 'columns tagged PII whose null count > 0'. UPDATE / INSERT / DELETE / DROP / LOAD / CLEAR / CREATE are rejected; use the admin REST endpoint for writes. SERVICE clauses against external endpoints are rejected unless on the federation allowlist. Returns the result body in the chosen format (default 'json' for SELECT/ASK; 'turtle' is recommended for DESCRIBE/CONSTRUCT). Body is capped at maxBytes (default 1 MiB).",
       "parameters": {
         "type": "object",
@@ -1144,6 +1282,12 @@
     },
     {
       "name": "entity_neighborhood",
+      "title": "Get Entity Neighborhood",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Return the n-hop neighborhood of an OpenMetadata entity in the knowledge graph. Use this when you have a specific entity (UUID + type) and want to see what else is connected to it: hasColumn, belongsToSchema, hasTag, owners, lineage, etc. The full 1..depth-hop subgraph (depth bounded 1-3) is returned as Turtle 'triples'. The 'edges' array is a flat, DIRECT (1-hop) adjacency summary of the start entity only (direction, predicate, neighbor URI, neighbor label) — for 2nd/3rd-hop traversal parse 'triples', not 'edges'.",
       "parameters": {
         "type": "object",
@@ -1172,6 +1316,12 @@
     },
     {
       "name": "find_by_tag",
+      "title": "Find by Tag",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Find all entities tagged with a given classification tag or glossary term FQN. Walks om:hasTag and om:hasGlossaryTerm. Use this for 'show me everything classified PII.Sensitive' or 'all assets associated with the BusinessTerms.Customer glossary term'. Optionally filter by entity type. Paginated.",
       "parameters": {
         "type": "object",
@@ -1200,6 +1350,12 @@
     },
     {
       "name": "shacl_validate",
+      "title": "Validate with SHACL",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Run SHACL validation against either a single entity's subgraph (scoped via entityId+entityType or entityUri) or the entire dataset. Returns conforms (boolean), violationCount, and the SHACL ValidationReport in the requested RDF format. Read-only; never blocks writes. Use this to debug data-quality issues before mutating the graph.",
       "parameters": {
         "type": "object",
@@ -1231,6 +1387,12 @@
     },
     {
       "name": "ontology_describe",
+      "title": "Describe Ontology",
+      "annotations": {
+        "readOnlyHint": true,
+        "destructiveHint": false,
+        "openWorldHint": false
+      },
       "description": "Return the OpenMetadata ontology — either the full canonical ontology (when 'resource' is omitted) or a SPARQL DESCRIBE for a single class or property URI. Use this to discover available classes, properties, ranges, and domains the agent can query. Format: turtle (default), jsonld, ntriples, rdfxml.",
       "parameters": {
         "type": "object",
@@ -1249,6 +1411,12 @@
     },
     {
       "name": "create_context_memory",
+      "title": "Create Context Memory",
+      "annotations": {
+        "readOnlyHint": false,
+        "destructiveHint": true,
+        "openWorldHint": false
+      },
       "description": "Creates a reusable Context Center memory in OpenMetadata — a piece of knowledge the assistant should retain across conversations (e.g. a team preference, a recurring instruction, a runbook step, or an answer to a frequently asked question). Memories created here are recorded as an explicit 'remember this' request and, when the Memory Agent is enabled, may be used to derive glossary terms and metrics. Use this when the user explicitly asks you to remember, note, or store something for later reuse.",
       "parameters": {
         "type": "object",
