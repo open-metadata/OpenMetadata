@@ -105,12 +105,14 @@ def lib_top_severity(info):
 
 
 def count_severities(libs):
+    """Count each vulnerable library once at its highest severity, mirroring
+    snyk_summary's per-library counting — not per-CVE, which over-counts a
+    library that bundles several advisories."""
     counts = {"critical": 0, "high": 0, "medium": 0, "low": 0}
     for info in libs.values():
-        for v in info["vulns"]:
-            sev = (v.get("severity") or "low").lower()
-            if sev in counts:
-                counts[sev] += 1
+        sev = lib_top_severity(info).lower()
+        if sev in counts:
+            counts[sev] += 1
     return counts
 
 
