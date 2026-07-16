@@ -916,12 +916,12 @@ public class MigrationUtil {
       String entityFQN = entityLink.getEntityFQN();
 
       ObjectNode aboutRef = JsonUtils.getObjectNode();
-      if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
-        aboutRef.put("id", sourceJson.get("entityId").asText());
-      } else if (sourceJson.has("entityRef")
-          && sourceJson.get("entityRef").has("id")
-          && !sourceJson.get("entityRef").get("id").isNull()) {
-        aboutRef.put("id", sourceJson.get("entityRef").get("id").asText());
+      String entityId = extractEntityIdFromSource(sourceJson);
+      if (entityId == null) {
+        entityId = lookupEntityIdByFqn(entityType, entityFQN);
+      }
+      if (entityId != null) {
+        aboutRef.put("id", entityId);
       }
       aboutRef.put("type", entityType);
       aboutRef.put("fullyQualifiedName", entityFQN);
@@ -932,6 +932,46 @@ public class MigrationUtil {
     } catch (Exception e) {
       LOG.debug("Could not parse entityLink '{}': {}", entityLinkStr, e.getMessage());
     }
+  }
+
+  private static String extractEntityIdFromSource(JsonNode sourceJson) {
+    String resolvedId = null;
+    if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
+      resolvedId = sourceJson.get("entityId").asText();
+    } else if (sourceJson.has("entityRef")
+        && sourceJson.get("entityRef").has("id")
+        && !sourceJson.get("entityRef").get("id").isNull()) {
+      resolvedId = sourceJson.get("entityRef").get("id").asText();
+    }
+    return resolvedId;
+  }
+
+  /**
+   * Resolve the target entity's UUID from its fully-qualified name by delegating to the entity's
+   * repository. Suggestion rows and legacy activity threads only carry {@code entityLink} — no
+   * {@code entityId} or {@code entityRef} — so the migration needs to fetch the id here or the
+   * downstream Task V2 resolve endpoint has no anchor to patch. Repositories are available at
+   * migration time because {@code Entity.initializeRepositories()} runs before the v200 data
+   * migration. Returns {@code null} when the entity is missing (deleted upstream, unknown type)
+   * — the caller falls through to a partial {@code about} block with type + FQN only.
+   */
+  private static String lookupEntityIdByFqn(String entityType, String entityFQN) {
+    String resolvedId = null;
+    try {
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      Object entity =
+          repo.getByName(null, entityFQN, repo.getFields(""), Include.NON_DELETED, true);
+      if (entity instanceof EntityInterface ei && ei.getId() != null) {
+        resolvedId = ei.getId().toString();
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve entity id for '{}' of type '{}': {}",
+          entityFQN,
+          entityType,
+          e.getMessage());
+    }
+    return resolvedId;
   }
 
   private static String extractFieldPathFromEntityLink(String entityLinkStr) {
