@@ -177,6 +177,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -369,6 +370,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(
               description =
@@ -538,6 +540,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -597,6 +600,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -655,6 +659,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -723,6 +728,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Context SecurityContext securityContext,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Filter by task status") @QueryParam("status")
           TaskEntityStatus status,
@@ -784,6 +790,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Task Id", schema = @Schema(type = "UUID")) @PathParam("id") UUID id,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Include deleted task")
           @QueryParam("include")
@@ -814,6 +821,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
       @Parameter(description = "Task ID (e.g., TASK-00001)") @PathParam("taskId") String taskId,
       @Parameter(description = "Fields to include in response", schema = @Schema(type = "string"))
           @QueryParam("fields")
+          @DefaultValue(FIELDS)
           String fieldsParam,
       @Parameter(description = "Include deleted task")
           @QueryParam("include")

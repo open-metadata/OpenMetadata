@@ -671,11 +671,15 @@ public class TaskWorkflowHandler {
   }
 
   private String resolveTagTargetFqn(EntityInterface entity, String fieldPath) {
-    if (fieldPath == null || fieldPath.isEmpty()) {
+    if (fieldPath == null || fieldPath.isEmpty() || "tags".equals(fieldPath)) {
       return entity.getFullyQualifiedName();
     }
 
     String normalizedFieldPath = fieldPath.replace("\"", "");
+    if (normalizedFieldPath.endsWith(".tags")) {
+      normalizedFieldPath =
+          normalizedFieldPath.substring(0, normalizedFieldPath.length() - ".tags".length());
+    }
 
     if (normalizedFieldPath.startsWith("requestSchema.schemaFields.")) {
       return entity.getFullyQualifiedName()

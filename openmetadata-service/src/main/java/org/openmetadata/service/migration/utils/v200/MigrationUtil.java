@@ -509,7 +509,10 @@ public class MigrationUtil {
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
 
-        String fieldPath = extractFieldPathFromEntityLink(entityLink);
+        String fieldPath =
+            "Tag".equals(mappedSuggestionType)
+                ? Entity.FIELD_TAGS
+                : extractFieldPathFromEntityLink(entityLink);
         payload.put("fieldPath", fieldPath);
 
         if ("Tag".equals(mappedSuggestionType)) {
