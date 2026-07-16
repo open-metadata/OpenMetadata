@@ -31,7 +31,6 @@ import com.google.common.collect.Lists;
 import jakarta.ws.rs.core.Response;
 import jakarta.ws.rs.core.UriInfo;
 import java.io.IOException;
-import java.sql.SQLException;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.HashSet;
@@ -42,6 +41,7 @@ import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -1095,133 +1095,96 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
   }
 
-  @Transaction
   public RestUtil.PutResponse<TestSuite> addTestCasesToLogicalTestSuite(
       TestSuite testSuite, List<UUID> testCaseIds) {
-    List<EntityReference> originalTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-    bulkAddToRelationship(
-        testSuite.getId(), testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
+    AtomicReference<List<EntityReference>> addedTestCases = new AtomicReference<>(List.of());
+    flushInOneTransaction(
+        () ->
+            addedTestCases.set(
+                addTestCasesToLogicalTestSuiteFlush(testSuite.getId(), testCaseIds)));
 
-    List<EntityReference> updatedTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-    Set<UUID> originalIds =
-        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    List<EntityReference> testCaseReferences =
-        updatedTestCaseReferences.stream()
-            .filter(ref -> !originalIds.contains(ref.getId()))
-            .toList();
-
-    List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(testCaseReferences);
+    List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(addedTestCases.get());
     postLogicalSuiteRelationshipUpdate(updatedTestCases);
     updateLogicalTestSuite(testSuite.getId());
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
-      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
-    // The bulk INSERT IGNORE runs a full scan against test_case and takes gap locks that collide
-    // with concurrent test-case creation. MySQL raises "Deadlock found when trying to get lock"
-    // intermittently under IT parallel load. Wrap the retry *outside* the @Transaction boundary
-    // so each attempt runs in a fresh transaction instead of replaying on a rolled-back handle.
-    return DeadlockRetry.execute(
-        () -> addAllTestCasesToLogicalTestSuiteTxn(testSuite, excludedTestCaseIds));
-  }
-
-  @Transaction
-  RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuiteTxn(
-      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+  private List<EntityReference> addTestCasesToLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> testCaseIds) {
     List<EntityReference> originalTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-
-    String tableName = daoCollection.testCaseDAO().getTableName();
-    if (nullOrEmpty(excludedTestCaseIds)) {
-      executeWithDeadlockRetry(
-          () ->
-              daoCollection
-                  .relationshipDAO()
-                  .bulkInsertAllToRelationship(
-                      testSuite.getId(),
-                      TEST_SUITE,
-                      TEST_CASE,
-                      Relationship.CONTAINS.ordinal(),
-                      tableName));
-    } else {
-      executeWithDeadlockRetry(
-          () ->
-              daoCollection
-                  .relationshipDAO()
-                  .bulkInsertAllToRelationshipWithExclusions(
-                      excludedTestCaseIds.stream().map(UUID::toString).toList(),
-                      testSuite.getId(),
-                      TEST_SUITE,
-                      TEST_CASE,
-                      Relationship.CONTAINS.ordinal(),
-                      tableName));
-    }
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+    bulkAddToRelationship(testSuiteId, testCaseIds, TEST_SUITE, TEST_CASE, Relationship.CONTAINS);
 
     List<EntityReference> updatedTestCaseReferences =
-        findTo(testSuite.getId(), TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
-
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
     Set<UUID> originalIds =
         originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
-    List<EntityReference> newTestCaseReferences =
-        updatedTestCaseReferences.stream()
-            .filter(ref -> !originalIds.contains(ref.getId()))
-            .toList();
+    return updatedTestCaseReferences.stream()
+        .filter(ref -> !originalIds.contains(ref.getId()))
+        .toList();
+  }
 
-    int batchSize = 100;
-    for (List<EntityReference> batch : Lists.partition(newTestCaseReferences, batchSize)) {
+  public RestUtil.PutResponse<TestSuite> addAllTestCasesToLogicalTestSuite(
+      TestSuite testSuite, List<UUID> excludedTestCaseIds) {
+    AtomicReference<List<EntityReference>> addedTestCases = new AtomicReference<>(List.of());
+    flushInOneTransaction(
+        () ->
+            addedTestCases.set(
+                addAllTestCasesToLogicalTestSuiteFlush(testSuite.getId(), excludedTestCaseIds)));
+
+    for (List<EntityReference> batch : Lists.partition(addedTestCases.get(), 100)) {
       List<TestCase> updatedTestCases = getLogicalSuiteUpdatedTestCase(batch);
       postLogicalSuiteRelationshipUpdate(updatedTestCases);
     }
     updateLogicalTestSuite(testSuite.getId());
-
     return new RestUtil.PutResponse<>(Response.Status.OK, testSuite, LOGICAL_TEST_CASE_ADDED);
   }
 
-  private void executeWithDeadlockRetry(Runnable operation) {
-    int maxAttempts = 3;
-    for (int attempt = 1; attempt <= maxAttempts; attempt++) {
-      try {
-        operation.run();
-        return;
-      } catch (RuntimeException ex) {
-        if (!isTransientDeadlock(ex) || attempt == maxAttempts) {
-          throw ex;
-        }
-        LOG.debug(
-            "Retrying logical test suite bulk insert after transient deadlock (attempt {}/{})",
-            attempt + 1,
-            maxAttempts);
-      }
+  private List<EntityReference> addAllTestCasesToLogicalTestSuiteFlush(
+      UUID testSuiteId, List<UUID> excludedTestCaseIds) {
+    List<EntityReference> originalTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    String tableName = daoCollection.testCaseDAO().getTableName();
+    if (nullOrEmpty(excludedTestCaseIds)) {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationship(
+              testSuiteId, TEST_SUITE, TEST_CASE, Relationship.CONTAINS.ordinal(), tableName);
+    } else {
+      daoCollection
+          .relationshipDAO()
+          .bulkInsertAllToRelationshipWithExclusions(
+              excludedTestCaseIds.stream().map(UUID::toString).toList(),
+              testSuiteId,
+              TEST_SUITE,
+              TEST_CASE,
+              Relationship.CONTAINS.ordinal(),
+              tableName);
     }
+
+    List<EntityReference> updatedTestCaseReferences =
+        findTo(testSuiteId, TEST_SUITE, Relationship.CONTAINS, TEST_CASE);
+
+    Set<UUID> originalIds =
+        originalTestCaseReferences.stream().map(EntityReference::getId).collect(Collectors.toSet());
+    return updatedTestCaseReferences.stream()
+        .filter(ref -> !originalIds.contains(ref.getId()))
+        .toList();
   }
 
-  private boolean isTransientDeadlock(Throwable throwable) {
-    for (Throwable current = throwable; current != null; current = current.getCause()) {
-      if (current instanceof SQLException sqlException) {
-        int errorCode = sqlException.getErrorCode();
-        String sqlState = sqlException.getSQLState();
-        if (errorCode == 1213
-            || errorCode == 1205
-            || "40001".equals(sqlState)
-            || "40P01".equals(sqlState)) {
-          return true;
-        }
-      }
-    }
-    return false;
-  }
-
-  @Transaction
   public RestUtil.DeleteResponse<TestCase> deleteTestCaseFromLogicalTestSuite(
       UUID testSuiteId, UUID testCaseId) {
     TestCase testCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, null, null);
-    deleteRelationship(testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS);
+    flushInOneTransaction(
+        () ->
+            deleteRelationship(
+                testSuiteId, TEST_SUITE, testCaseId, TEST_CASE, Relationship.CONTAINS));
+
     TestCase updatedTestCase = Entity.getEntity(Entity.TEST_CASE, testCaseId, "*", Include.ALL);
     ChangeDescription change =
         new ChangeDescription()
+            .withPreviousVersion(updatedTestCase.getVersion())
             .withFieldsUpdated(
                 List.of(
                     new FieldChange()
@@ -1242,6 +1205,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
         tc -> {
           ChangeDescription change =
               new ChangeDescription()
+                  .withPreviousVersion(tc.getVersion())
                   .withFieldsUpdated(
                       List.of(
                           new FieldChange()

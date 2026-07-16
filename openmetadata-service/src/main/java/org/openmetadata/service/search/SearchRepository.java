@@ -118,6 +118,7 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
@@ -200,6 +201,8 @@ public class SearchRepository {
       esWrite.run();
     }
   }
+
+  public record ScriptedPartialUpdate(String script, Map<String, Object> parameters) {}
 
   /**
    * Open a search-write deferral scope on the current thread. While open, the cascade ES mutations
@@ -342,6 +345,8 @@ public class SearchRepository {
           "votes",
           "pipelineStatus",
           TEST_SUITES);
+
+  private static final Set<String> BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS = Set.of(TEST_SUITES);
 
   @Getter private final ElasticSearchConfiguration searchConfiguration;
   @Getter private final int maxDBConnections;
@@ -1502,22 +1507,18 @@ public class SearchRepository {
       String scriptTxt = DEFAULT_UPDATE_SCRIPT;
       Map<String, Object> doc = new HashMap<>();
 
-      ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
-      ChangeDescription changeDescription;
-
-      if (!isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
-        changeDescription = incrementalChangeDescription;
-      } else {
-        changeDescription = entity.getChangeDescription();
-      }
+      ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
 
       boolean isNonVersionedUpdate =
           changeDescription != null
               && entity.getChangeDescription() != null
               && Objects.equals(
                   entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
-      if (isNonVersionedUpdate && canUseScriptedPartialUpdate(changeDescription)) {
-        scriptTxt = getScriptWithParams(entity, doc, changeDescription);
+      ScriptedPartialUpdate partialUpdate =
+          buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
+      if (partialUpdate != null) {
+        scriptTxt = partialUpdate.script();
+        doc = partialUpdate.parameters();
       } else {
         if (isNonVersionedUpdate && changeDescription != null) {
           LOG.debug(
@@ -1773,32 +1774,60 @@ public class SearchRepository {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
         ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
         bulkSink.write(typeEntities, contextData);
-        bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+        boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+        StepStats sinkStats = bulkSink.getStats();
+        if (!completed
+            || (sinkStats != null
+                && Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0) > 0)) {
+          throw new IOException(
+              "Bulk entity update did not complete successfully for type " + entityType);
+        }
       } catch (Exception e) {
         LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
-        for (EntityInterface entity : typeEntities) {
-          try {
-            updateEntityIndex(entity);
-          } catch (Exception ex) {
-            LOG.error(
-                "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+        boolean bulkSinkQuiescent = true;
+        if (bulkSink != null) {
+          bulkSinkQuiescent = closeBulkSinkAndCheckQuiescent(bulkSink);
+          bulkSink = null;
+        }
+        if (bulkSinkQuiescent) {
+          for (EntityInterface entity : typeEntities) {
+            try {
+              updateEntityIndex(entity);
+            } catch (Exception ex) {
+              LOG.error(
+                  "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+            }
+          }
+        } else {
+          for (EntityInterface entity : typeEntities) {
+            SearchIndexRetryQueue.enqueue(
+                entity,
+                "updateEntitiesBulk: bulk sink still active; skipped overlapping fallback",
+                e);
           }
         }
       } finally {
         if (bulkSink != null) {
-          try {
-            bulkSink.close();
-          } catch (Exception e) {
-            LOG.warn("Error closing bulk sink", e);
-          }
+          closeBulkSinkAndCheckQuiescent(bulkSink);
         }
       }
     }
 
     // Run fan-out propagation once after all bulk doc updates are flushed.
     propagateEntitiesAfterBulkFlush(dedupedEntities.values());
+  }
+
+  private boolean closeBulkSinkAndCheckQuiescent(BulkSink bulkSink) {
+    try {
+      bulkSink.close();
+      return bulkSink.getActiveBulkRequestCount() == 0;
+    } catch (Exception e) {
+      LOG.warn("Error closing bulk sink", e);
+      return false;
+    }
   }
 
   private void propagateEntitiesAfterBulkFlush(Iterable<EntityInterface> entities) {
@@ -3089,6 +3118,55 @@ public class SearchRepository {
       }
     }
     return scriptTxt.toString();
+  }
+
+  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(EntityInterface entity) {
+    if (entity == null) {
+      return null;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (!BULK_PARTIAL_SCRIPT_SUPPORTED_FIELDS.equals(getChangedFieldNames(changeDescription))) {
+      return null;
+    }
+    boolean isNonVersionedUpdate =
+        entity.getChangeDescription() != null
+            && Objects.equals(
+                entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+    if (!isNonVersionedUpdate) {
+      return null;
+    }
+    Object testSuites =
+        Stream.of(
+                listOrEmpty(changeDescription.getFieldsAdded()),
+                listOrEmpty(changeDescription.getFieldsUpdated()),
+                listOrEmpty(changeDescription.getFieldsDeleted()))
+            .flatMap(List::stream)
+            .filter(fieldChange -> TEST_SUITES.equals(fieldChange.getName()))
+            .map(FieldChange::getNewValue)
+            .filter(Objects::nonNull)
+            .findFirst()
+            .orElse(null);
+    return testSuites == null
+        ? null
+        : new ScriptedPartialUpdate(
+            "ctx._source.testSuites = params.testSuites;", Map.of(TEST_SUITES, testSuites));
+  }
+
+  private ScriptedPartialUpdate buildScriptedPartialUpdate(
+      EntityInterface entity, ChangeDescription changeDescription, boolean isNonVersionedUpdate) {
+    if (!isNonVersionedUpdate || !canUseScriptedPartialUpdate(changeDescription)) {
+      return null;
+    }
+    Map<String, Object> parameters = new HashMap<>();
+    String script = getScriptWithParams(entity, parameters, changeDescription);
+    return new ScriptedPartialUpdate(script, parameters);
+  }
+
+  private ChangeDescription getEffectiveChangeDescription(EntityInterface entity) {
+    ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
+    return !isNullOrEmptyChangeDescription(incrementalChangeDescription)
+        ? incrementalChangeDescription
+        : entity.getChangeDescription();
   }
 
   private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {

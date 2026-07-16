@@ -134,6 +134,8 @@ public interface BulkSink {
   /** Key for passing StageStatsTracker through context data to the sink. */
   String STATS_TRACKER_CONTEXT_KEY = "stageStatsTracker";
 
+  String SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY = "scriptedPartialUpdates";
+
   /**
    * Key for passing a {@code Map<UUID, DocBuildContext>} through context data. Producers (the
    * reindex worker / retry worker / bulk update path) prepare per-entity doc-build context —

@@ -4,6 +4,8 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyInt;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -15,6 +17,7 @@ import static org.mockito.Mockito.doCallRealMethod;
 import static org.mockito.Mockito.doNothing;
 import static org.mockito.Mockito.doReturn;
 import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -34,6 +37,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
+import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.MockedStatic;
 import org.mockito.junit.jupiter.MockitoExtension;
@@ -41,8 +45,10 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
+import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.FieldChange;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.apps.bundles.searchIndex.ElasticSearchBulkSink;
@@ -363,7 +369,42 @@ class SearchRepositoryTest {
     // Verify correct entityType
     String entityType = (String) contextCaptor.getValue().get(ReindexingUtil.ENTITY_TYPE_KEY);
     assertEquals("table", entityType);
+    assertEquals(
+        Boolean.TRUE, contextCaptor.getValue().get(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
     assertEquals(3, entitiesCaptor.getValue().size());
+  }
+
+  @Test
+  void buildBulkScriptedPartialUpdateOnlyAcceptsCompleteTestSuiteRelationshipChanges() {
+    MockEntityWithType testCase = new MockEntityWithType(Entity.TEST_CASE, "testCase");
+    TestSuite testSuite =
+        new TestSuite()
+            .withId(UUID.randomUUID())
+            .withName("logicalSuite")
+            .withFullyQualifiedName("logicalSuite");
+    testCase.setTestSuites(List.of(testSuite));
+    testCase.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(testCase.getVersion())
+            .withFieldsUpdated(
+                List.of(
+                    new FieldChange()
+                        .withName(Entity.FIELD_TEST_SUITES)
+                        .withNewValue(testCase.getTestSuites()))));
+    doCallRealMethod().when(searchRepository).buildBulkScriptedPartialUpdate(any());
+
+    SearchRepository.ScriptedPartialUpdate partialUpdate =
+        searchRepository.buildBulkScriptedPartialUpdate(testCase);
+
+    assertNotNull(partialUpdate);
+    assertTrue(partialUpdate.script().contains("ctx._source.testSuites = params.testSuites;"));
+    assertNotNull(partialUpdate.parameters().get(Entity.FIELD_TEST_SUITES));
+
+    testCase.setChangeDescription(
+        new ChangeDescription()
+            .withPreviousVersion(0.9)
+            .withFieldsUpdated(List.of(new FieldChange().withName(Entity.FIELD_TEST_SUITES))));
+    assertNull(searchRepository.buildBulkScriptedPartialUpdate(testCase));
   }
 
   @Test
@@ -429,12 +470,54 @@ class SearchRepositoryTest {
     verify(mockBulkSink).close();
   }
 
+  @Test
+  void testUpdateEntitiesBulkClosesTimedOutSinkBeforeIndividualFallback() throws Exception {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    BulkSink mockBulkSink = mock(BulkSink.class);
+    doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
+    when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
+        .thenReturn(mockBulkSink);
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
+    when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(false);
+    when(mockBulkSink.getActiveBulkRequestCount()).thenReturn(0);
+    doNothing().when(realSearchRepository).updateEntityIndex(any());
+
+    EntityInterface entity = new MockEntityWithType("table", "table1");
+    realSearchRepository.updateEntitiesIndex(List.of(entity));
+
+    InOrder inOrder = inOrder(mockBulkSink, realSearchRepository);
+    inOrder.verify(mockBulkSink).close();
+    inOrder.verify(realSearchRepository).updateEntityIndex(entity);
+  }
+
+  @Test
+  void testUpdateEntitiesBulkDoesNotOverlapFallbackWithActiveTimedOutSink() throws Exception {
+    SearchRepository realSearchRepository = mock(SearchRepository.class);
+    BulkSink mockBulkSink = mock(BulkSink.class);
+    doCallRealMethod().when(realSearchRepository).updateEntitiesIndex(any());
+    when(realSearchRepository.createBulkSink(anyInt(), anyInt(), anyLong()))
+        .thenReturn(mockBulkSink);
+    when(realSearchRepository.getSearchClient()).thenReturn(elasticSearchClient);
+    when(realSearchRepository.checkIfIndexingIsSupported(any())).thenReturn(true);
+    when(mockBulkSink.flushAndAwait(anyInt())).thenReturn(false);
+    when(mockBulkSink.getActiveBulkRequestCount()).thenReturn(1);
+
+    EntityInterface entity = new MockEntityWithType("table", "table1");
+    realSearchRepository.updateEntitiesIndex(List.of(entity));
+
+    verify(mockBulkSink).close();
+    verify(realSearchRepository, never()).updateEntityIndex(any());
+  }
+
   /** Mock entity that allows setting a specific entity type for testing */
   static class MockEntityWithType implements EntityInterface {
     private final UUID id = UUID.randomUUID();
     private final String entityType;
     private final String name;
     private final String fqn;
+    private ChangeDescription changeDescription;
+    private List<TestSuite> testSuites;
 
     MockEntityWithType(String entityType, String name) {
       this.entityType = entityType;
@@ -489,7 +572,7 @@ class SearchRepositoryTest {
 
     @Override
     public ChangeDescription getChangeDescription() {
-      return null;
+      return changeDescription;
     }
 
     @Override
@@ -518,7 +601,17 @@ class SearchRepositoryTest {
     public void setVersion(Double newVersion) {}
 
     @Override
-    public void setChangeDescription(ChangeDescription changeDescription) {}
+    public void setChangeDescription(ChangeDescription changeDescription) {
+      this.changeDescription = changeDescription;
+    }
+
+    public List<TestSuite> getTestSuites() {
+      return testSuites;
+    }
+
+    public void setTestSuites(List<TestSuite> testSuites) {
+      this.testSuites = testSuites;
+    }
 
     @Override
     public void setIncrementalChangeDescription(ChangeDescription incrementalChangeDescription) {}

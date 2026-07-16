@@ -13,6 +13,7 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
@@ -31,6 +32,7 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
+import org.apache.commons.lang3.tuple.ImmutablePair;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -218,8 +220,7 @@ class EntityRepositoryRestoreTest {
 
     // bulkRestoreSubtree loads with Include.ALL — guard that neither the DELETED nor ALL
     // shape is invoked when the input list is empty/null.
-    verify(pipelineDAO, never())
-        .findEntitiesByIds(anyList(), eq(org.openmetadata.schema.type.Include.DELETED));
+    verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.DELETED));
     verify(pipelineDAO, never()).findEntitiesByIds(anyList(), eq(Include.ALL));
     assertEquals(0, repo.restoreAdditionalChildrenCalls);
   }
@@ -255,6 +256,27 @@ class EntityRepositoryRestoreTest {
               CacheBundle.invalidateEntity(
                   Entity.PIPELINE, pipeline.getId(), pipeline.getFullyQualifiedName()));
     }
+  }
+
+  @Test
+  void remoteInvalidationEvictsLocalEntriesAndAdvancesLoaderEpochs() {
+    UUID id = UUID.randomUUID();
+    String fqn = "service.pipeline";
+    long idEpoch = EntityRepository.writeEpochById(Entity.PIPELINE, id);
+    long nameEpoch = EntityRepository.writeEpochByName(Entity.PIPELINE, fqn);
+    EntityRepository.CACHE_WITH_ID.put(new ImmutablePair<>(Entity.PIPELINE, id), "stale");
+    EntityRepository.CACHE_WITH_NAME.put(
+        EntityRepository.cacheNameKey(Entity.PIPELINE, fqn), "stale");
+
+    EntityRepository.onRemoteCacheInvalidate(Entity.PIPELINE, id, fqn);
+
+    assertNull(
+        EntityRepository.CACHE_WITH_ID.getIfPresent(new ImmutablePair<>(Entity.PIPELINE, id)));
+    assertNull(
+        EntityRepository.CACHE_WITH_NAME.getIfPresent(
+            EntityRepository.cacheNameKey(Entity.PIPELINE, fqn)));
+    assertTrue(EntityRepository.writeEpochById(Entity.PIPELINE, id) > idEpoch);
+    assertTrue(EntityRepository.writeEpochByName(Entity.PIPELINE, fqn) > nameEpoch);
   }
 
   @Test

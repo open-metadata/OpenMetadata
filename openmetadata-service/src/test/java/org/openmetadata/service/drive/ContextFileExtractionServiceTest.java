@@ -3,6 +3,7 @@ package org.openmetadata.service.drive;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
@@ -19,8 +20,12 @@ import java.io.InputStream;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.Executor;
 import java.util.concurrent.RejectedExecutionException;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicBoolean;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -36,6 +41,7 @@ import org.openmetadata.schema.entity.data.ContextFileType;
 import org.openmetadata.schema.entity.data.ProcessingStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.service.attachments.AssetService;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.AssetRepository;
 import org.openmetadata.service.jdbi3.ContextFileContentRepository;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
@@ -85,7 +91,8 @@ class ContextFileExtractionServiceTest {
 
     lenient().when(repository.getContentRepository()).thenReturn(contentRepository);
     lenient().when(repository.getAssetRepository()).thenReturn(assetRepository);
-    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+    lenient()
+        .when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(file);
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
@@ -103,9 +110,9 @@ class ContextFileExtractionServiceTest {
     service(Runnable::run, () -> assetService).process(fileId, contentId);
 
     verify(repository, times(2))
-        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
     verify(contentRepository, times(2))
-        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
 
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
@@ -155,9 +162,54 @@ class ContextFileExtractionServiceTest {
 
     service(Runnable::run, () -> assetService).process(fileId, contentId);
 
-    verify(repository, never()).update(any(), any(), any(), anyString());
-    verify(contentRepository, never()).update(any(), any(), any(), anyString());
+    verify(repository, never()).updateIfCurrent(any(), any(), any(), anyString());
+    verify(contentRepository, never()).updateIfCurrent(any(), any(), any(), anyString());
     verify(assetService, never()).read(any());
+  }
+
+  @Test
+  void processDoesNotPublishResultWhenDeleteWinsConditionalWriteRace() throws Exception {
+    AtomicBoolean deleted = new AtomicBoolean();
+    AtomicInteger fileWriteAttempts = new AtomicInteger();
+    CountDownLatch finalWriteStarted = new CountDownLatch(1);
+    CountDownLatch deleteCommitted = new CountDownLatch(1);
+
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
+        .thenAnswer(ignored -> deleted.get() ? null : file);
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+    when(repository.updateIfCurrent(isNull(), same(file), any(ContextFile.class), anyString()))
+        .thenAnswer(
+            invocation -> {
+              if (fileWriteAttempts.incrementAndGet() == 2) {
+                finalWriteStarted.countDown();
+                if (!deleteCommitted.await(5, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("Timed out waiting for simulated hard delete");
+                }
+                throw new PreconditionFailedException("Context file was deleted");
+              }
+              return null;
+            });
+
+    CompletableFuture<Void> processing =
+        CompletableFuture.runAsync(
+            () -> service(Runnable::run, () -> assetService).process(fileId, contentId));
+
+    assertTrue(finalWriteStarted.await(5, TimeUnit.SECONDS));
+    deleted.set(true);
+    deleteCommitted.countDown();
+    processing.get(5, TimeUnit.SECONDS);
+
+    assertEquals(2, fileWriteAttempts.get());
+    verify(repository, times(2))
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(
+        List.of(ProcessingStatus.Analyzing, ProcessingStatus.Processed),
+        updatedFileCaptor.getAllValues().stream().map(ContextFile::getProcessingStatus).toList());
   }
 
   @Test
@@ -175,9 +227,9 @@ class ContextFileExtractionServiceTest {
 
   private void verifyFailedWith(String expectedReason) {
     verify(repository, times(2))
-        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
     verify(contentRepository, times(2))
-        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
 
     List<ContextFile> fileUpdates = updatedFileCaptor.getAllValues();
     assertEquals(ProcessingStatus.Analyzing, fileUpdates.get(0).getProcessingStatus());
@@ -193,9 +245,10 @@ class ContextFileExtractionServiceTest {
   }
 
   private void verifyImmediateFailureWith(String expectedReason) {
-    verify(repository).update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    verify(repository)
+        .updateIfCurrent(isNull(), same(file), updatedFileCaptor.capture(), anyString());
     verify(contentRepository)
-        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+        .updateIfCurrent(isNull(), same(content), updatedContentCaptor.capture(), anyString());
 
     ContextFile fileUpdate = updatedFileCaptor.getValue();
     assertEquals(ProcessingStatus.Failed, fileUpdate.getProcessingStatus());

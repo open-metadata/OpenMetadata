@@ -1,5 +1,6 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
+import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
@@ -58,9 +59,12 @@ import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.utils.AvailableEntityTypes;
+import os.org.opensearch.client.json.JsonData;
 import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 import os.org.opensearch.client.opensearch.OpenSearchAsyncClient;
+import os.org.opensearch.client.opensearch._types.BuiltinScriptLanguage;
 import os.org.opensearch.client.opensearch._types.Refresh;
+import os.org.opensearch.client.opensearch._types.Script;
 import os.org.opensearch.client.opensearch.core.BulkResponse;
 import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 import os.org.opensearch.client.opensearch.core.bulk.BulkResponseItem;
@@ -293,6 +297,8 @@ public class OpenSearchBulkSink implements BulkSink {
 
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
+    boolean scriptedPartialUpdates =
+        Boolean.TRUE.equals(contextData.get(SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
 
     // Check if embeddings are enabled for this specific entity type
     boolean embeddingsEnabled = isVectorEmbeddingEnabledForEntity(entityType);
@@ -387,7 +393,8 @@ public class OpenSearchBulkSink implements BulkSink {
                                     tracker,
                                     embeddingsEnabled,
                                     finalEmbeddingsById,
-                                    docBuildContexts),
+                                    docBuildContexts,
+                                    scriptedPartialUpdates),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -440,9 +447,11 @@ public class OpenSearchBulkSink implements BulkSink {
       StageStatsTracker tracker,
       boolean embeddingsEnabled,
       Map<String, JsonNode> existingEmbeddingsById,
-      Map<UUID, DocBuildContext> docBuildContexts) {
+      Map<UUID, DocBuildContext> docBuildContexts,
+      boolean scriptedPartialUpdates) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
+      String docId = entity.getId().toString();
       DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
       Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
@@ -452,7 +461,6 @@ public class OpenSearchBulkSink implements BulkSink {
       }
 
       String finalJson = json;
-      String docId = entity.getId().toString();
       long rawDocSize = (long) finalJson.getBytes(StandardCharsets.UTF_8).length;
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
@@ -469,6 +477,20 @@ public class OpenSearchBulkSink implements BulkSink {
         finalJson = SearchIndexUtils.stripLineageForSize(finalJson, sizeLimit, docId, entityType);
         rawDocSize = finalJson.getBytes(StandardCharsets.UTF_8).length;
         estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
+      }
+
+      if (scriptedPartialUpdates) {
+        SearchRepository.ScriptedPartialUpdate partialUpdate =
+            searchRepository.buildBulkScriptedPartialUpdate(entity);
+        if (partialUpdate != null
+            && addScriptedPartialUpdate(
+                indexName, docId, entityType, partialUpdate, finalJson, tracker)) {
+          processSuccess.incrementAndGet();
+          if (tracker != null) {
+            tracker.recordProcess(StatsResult.SUCCESS);
+          }
+          return;
+        }
       }
 
       if (estimatedSize > maxPayloadSizeBytes) {
@@ -531,6 +553,62 @@ public class OpenSearchBulkSink implements BulkSink {
             IndexingFailureRecorder.FailureStage.PROCESS);
       }
     }
+  }
+
+  private boolean addScriptedPartialUpdate(
+      String indexName,
+      String docId,
+      String entityType,
+      SearchRepository.ScriptedPartialUpdate partialUpdate,
+      String upsertDocument,
+      StageStatsTracker tracker) {
+    long estimatedSize =
+        (long) upsertDocument.getBytes(StandardCharsets.UTF_8).length
+            + JsonUtils.pojoToJson(partialUpdate.parameters())
+                .getBytes(StandardCharsets.UTF_8)
+                .length
+            + partialUpdate.script().getBytes(StandardCharsets.UTF_8).length
+            + BULK_OPERATION_METADATA_OVERHEAD;
+    if (estimatedSize > maxPayloadSizeBytes) {
+      return false;
+    }
+
+    Map<String, JsonData> params = new HashMap<>();
+    partialUpdate
+        .parameters()
+        .forEach(
+            (key, value) -> {
+              if (value != null) {
+                params.put(key, JsonData.of(value, JACKSON_JSONP_MAPPER));
+              }
+            });
+    BulkOperation operation =
+        BulkOperation.of(
+            op ->
+                op.update(
+                    update ->
+                        update
+                            .index(indexName)
+                            .id(docId)
+                            .retryOnConflict(3)
+                            .upsert(OsUtils.toJsonData(upsertDocument))
+                            .script(
+                                Script.of(
+                                    script ->
+                                        script.inline(
+                                            inline ->
+                                                inline
+                                                    .lang(
+                                                        language ->
+                                                            language.builtin(
+                                                                BuiltinScriptLanguage.Painless))
+                                                    .source(partialUpdate.script())
+                                                    .params(params))))));
+    if (tracker != null) {
+      tracker.incrementPendingSink();
+    }
+    bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
+    return true;
   }
 
   private void recordStaleReferenceWarning(

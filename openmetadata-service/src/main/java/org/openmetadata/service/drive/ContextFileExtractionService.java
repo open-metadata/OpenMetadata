@@ -11,6 +11,7 @@ import java.util.concurrent.ThreadFactory;
 import java.util.concurrent.ThreadPoolExecutor;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicInteger;
+import java.util.function.Function;
 import java.util.function.Supplier;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.attachments.Asset;
@@ -21,10 +22,12 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.attachments.AssetService;
 import org.openmetadata.service.attachments.AssetServiceFactory;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.jdbi3.ContextFileRepository;
 
 @Slf4j
 public class ContextFileExtractionService {
+  private static final int MAX_CONDITIONAL_UPDATE_ATTEMPTS = 3;
   private final ContextFileRepository repository;
   private final Supplier<AssetService> assetServiceSupplier;
   private final Executor executor;
@@ -107,7 +110,7 @@ public class ContextFileExtractionService {
       return;
     }
 
-    updateFile(
+    if (!updateFile(
         fileId,
         current -> {
           if (!contentId.toString().equals(current.getHeadContentId())) {
@@ -116,8 +119,10 @@ public class ContextFileExtractionService {
           ContextFile updated = JsonUtils.deepCopy(current, ContextFile.class);
           updated.setProcessingStatus(ProcessingStatus.Analyzing);
           return updated;
-        });
-    updateContent(
+        })) {
+      return;
+    }
+    if (!updateContent(
         contentId,
         current -> {
           // Re-read the file inside the content updater so we don't mark an
@@ -133,7 +138,9 @@ public class ContextFileExtractionService {
           updated.setProcessingStatus(ProcessingStatus.Analyzing);
           updated.setProcessingError(null);
           return updated;
-        });
+        })) {
+      return;
+    }
 
     try {
       ContextFile currentFile = getFile(fileId);
@@ -175,7 +182,7 @@ public class ContextFileExtractionService {
 
   private void applyResult(
       UUID fileId, UUID contentId, ContextFileTextExtractor.ExtractionResult result) {
-    updateContent(
+    if (!updateContent(
         contentId,
         current -> {
           ContextFileContent updated = JsonUtils.deepCopy(current, ContextFileContent.class);
@@ -183,7 +190,9 @@ public class ContextFileExtractionService {
           updated.setProcessingError(result.processingError());
           updated.setExtractedText(result.extractedText());
           return updated;
-        });
+        })) {
+      return;
+    }
 
     updateFile(
         fileId,
@@ -200,7 +209,7 @@ public class ContextFileExtractionService {
   }
 
   private void applyFailure(UUID fileId, UUID contentId, String reason) {
-    updateContent(
+    if (!updateContent(
         contentId,
         current -> {
           ContextFileContent updated = JsonUtils.deepCopy(current, ContextFileContent.class);
@@ -208,7 +217,9 @@ public class ContextFileExtractionService {
           updated.setProcessingError(reason);
           updated.setExtractedText(null);
           return updated;
-        });
+        })) {
+      return;
+    }
 
     updateFile(
         fileId,
@@ -240,29 +251,44 @@ public class ContextFileExtractionService {
     }
   }
 
-  private void updateFile(
-      UUID fileId, java.util.function.Function<ContextFile, ContextFile> updater) {
-    ContextFile current = getFile(fileId);
-    if (current == null) {
-      return;
+  private boolean updateFile(UUID fileId, Function<ContextFile, ContextFile> updater) {
+    for (int attempt = 0; attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
+      ContextFile current = getFile(fileId);
+      if (current == null) {
+        return false;
+      }
+      ContextFile updated = updater.apply(current);
+      if (updated == null) {
+        return false;
+      }
+      try {
+        repository.updateIfCurrent(null, current, updated, ADMIN_USER_NAME);
+        return true;
+      } catch (PreconditionFailedException e) {
+        LOG.debug("Context file {} changed during extraction update", fileId);
+      }
     }
-    ContextFile updated = updater.apply(current);
-    if (updated == null) {
-      return;
-    }
-    repository.update(null, current, updated, ADMIN_USER_NAME);
+    return false;
   }
 
-  private void updateContent(
-      UUID contentId, java.util.function.Function<ContextFileContent, ContextFileContent> updater) {
-    ContextFileContent current = getContent(contentId);
-    if (current == null) {
-      return;
+  private boolean updateContent(
+      UUID contentId, Function<ContextFileContent, ContextFileContent> updater) {
+    for (int attempt = 0; attempt < MAX_CONDITIONAL_UPDATE_ATTEMPTS; attempt++) {
+      ContextFileContent current = getContent(contentId);
+      if (current == null) {
+        return false;
+      }
+      ContextFileContent updated = updater.apply(current);
+      if (updated == null) {
+        return false;
+      }
+      try {
+        repository.getContentRepository().updateIfCurrent(null, current, updated, ADMIN_USER_NAME);
+        return true;
+      } catch (PreconditionFailedException e) {
+        LOG.debug("Context file content {} changed during extraction update", contentId);
+      }
     }
-    ContextFileContent updated = updater.apply(current);
-    if (updated == null) {
-      return;
-    }
-    repository.getContentRepository().update(null, current, updated, ADMIN_USER_NAME);
+    return false;
   }
 }
