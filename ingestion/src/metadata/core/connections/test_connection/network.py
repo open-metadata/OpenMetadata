@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import socket
 
+from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matchers,
@@ -32,6 +33,7 @@ from metadata.core.connections.test_connection.classifier import (
 from metadata.core.connections.test_connection.constants import (
     NETWORK_PROBE_TIMEOUT_SECONDS,
 )
+from metadata.core.connections.test_connection.records import Evidence
 
 
 class NetworkUnreachableError(OSError):
@@ -51,6 +53,19 @@ def tcp_probe(host: str, port: int, timeout: float = NETWORK_PROBE_TIMEOUT_SECON
             pass
     except OSError as cause:
         raise NetworkUnreachableError(f"{host}:{port} is not reachable: {cause}") from cause
+
+
+def probe_or_fail(host: str, port: int) -> None:
+    """TCP-probe host:port from inside a check, reporting the attempt as ``Evidence``.
+
+    ``tcp_probe`` proves reachability; this wraps it for the one caller shape every
+    gate check shares - on failure the step must still report the probe it ran, so
+    the reachability error is re-raised as ``CheckError`` carrying that command.
+    """
+    try:
+        tcp_probe(host, port)
+    except NetworkUnreachableError as error:
+        raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
 
 
 # Ordered specific-first. The catch-all matches our own ``NetworkUnreachableError``

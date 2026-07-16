@@ -31,10 +31,11 @@ from metadata.core.connections.test_connection import (
     when,
 )
 from metadata.core.connections.test_connection.check import CheckError
-from metadata.core.connections.test_connection.checks.dashboard import (
-    DashboardStep,
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
     call_endpoint,
     fetch_list,
+    http_status,
     verify_access,
 )
 from metadata.core.connections.test_connection.classifier import exception_chain
@@ -80,11 +81,19 @@ def _error_doc(error: BaseException) -> re.Match[str] | None:
 
 
 def _http_status(*codes: int) -> Matcher:
-    """Match a Looker REST error by the HTTP status of the call that failed."""
+    """Match a Looker REST error by the HTTP status of the call that failed.
+
+    The SDK flattens every error into text, so the status is only recoverable from
+    the error-document URL it embeds - hence a bespoke extractor, not the shared
+    ``requests`` default.
+    """
     wanted = frozenset(str(code) for code in codes)
-    return lambda error: any(
-        (match := _error_doc(current)) is not None and match["status"] in wanted for current in exception_chain(error)
-    )
+
+    def status_of(error: BaseException) -> int | None:
+        match = _error_doc(error)
+        return int(match["status"]) if match is not None and match["status"] in wanted else None
+
+    return http_status(*codes, extract=status_of)
 
 
 def _login_rejected(error: BaseException) -> bool:

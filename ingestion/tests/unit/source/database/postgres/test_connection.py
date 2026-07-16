@@ -23,6 +23,7 @@ from metadata.core.connections.test_connection.check import CheckError, collect_
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
+    enumerated,
 )
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
@@ -230,7 +231,7 @@ def test_check_access_reports_unreachable_host_as_network_failure():
     probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
     with (
         patch(
-            "metadata.core.connections.test_connection.checks.database.tcp_probe",
+            "metadata.core.connections.test_connection.network.tcp_probe",
             side_effect=probe_error,
         ) as mock_probe,
         pytest.raises(CheckError) as exc,
@@ -258,8 +259,5 @@ def test_query_statement_is_built_lazily_not_at_construction():
 def test_get_databases_summary_marks_the_sample_cap():
     # run_sql fetches at most DEFAULT_SAMPLE_ROWS; below the cap the count is exact,
     # at the cap it is a lower bound and must be reported as "N+".
-    assert PostgresChecks._summarize_databases([1, 2, 3]) == "3 databases enumerated"
-    assert (
-        PostgresChecks._summarize_databases(list(range(DEFAULT_SAMPLE_ROWS)))
-        == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
-    )
+    assert enumerated([1, 2, 3], "database") == "3 databases enumerated"
+    assert enumerated(list(range(DEFAULT_SAMPLE_ROWS)), "database") == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"

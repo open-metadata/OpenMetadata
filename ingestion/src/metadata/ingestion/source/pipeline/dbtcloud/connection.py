@@ -28,12 +28,12 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
-from metadata.core.connections.test_connection.checks.pipeline import (
-    PipelineStep,
+from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.core.connections.test_connection.checks.rest import (
     fetch_list,
+    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection as DBTCloudConnectionConfig,
@@ -58,17 +58,19 @@ ACCOUNT_ID_FIX = (
 )
 
 
+def _dbt_status(error: BaseException) -> int | None:
+    """The status of a dbt Cloud API error only.
+
+    Narrower than the shared default on purpose: the client raises
+    ``DBTCloudApiError`` for every non-2xx, so anything else carrying a
+    ``status_code`` is not a dbt Cloud API answer and must not be diagnosed as one.
+    """
+    return error.status_code if isinstance(error, DBTCloudApiError) else None
+
+
 def _http_status(*codes: int) -> Matcher:
     """Match a dbt Cloud API error by HTTP status, across the cause chain."""
-    wanted = frozenset(codes)
-
-    def match(error: BaseException) -> bool:
-        return any(
-            isinstance(current, DBTCloudApiError) and current.status_code in wanted
-            for current in exception_chain(error)
-        )
-
-    return match
+    return http_status(*codes, extract=_dbt_status)
 
 
 NO_JOBS_CAVEAT = Diagnosis(

@@ -30,6 +30,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
+from metadata.core.connections.test_connection.checks.summary import count, more_suffix
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
@@ -49,16 +50,6 @@ class StorageStep(StepName):
 
     ListBuckets = "ListBuckets"
     GetMetrics = "GetMetrics"
-
-
-def _count(n: int, noun: str) -> str:
-    """``3 buckets`` / ``1 bucket`` - pluralize the noun to match the count."""
-    return f"{n} {noun if n == 1 else noun + 's'}"
-
-
-def _more_suffix(shown: int, more: bool) -> str:
-    """Mark a summary as capped when the listing has more assets beyond ``shown``."""
-    return f" (showing first {shown}; more exist)" if more else ""
 
 
 def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
@@ -89,7 +80,7 @@ def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidenc
             remediation="Verify the identity can list buckets, or configure bucketNames explicitly.",
         )
     shown = min(len(buckets), limit)
-    summary = f"{_count(shown, 'bucket')} enumerated" + _more_suffix(shown, len(buckets) > limit)
+    summary = f"{count(shown, 'bucket')} enumerated" + more_suffix(shown, len(buckets) > limit)
     return Evidence(summary=summary, command=command, caveat=caveat)
 
 
@@ -107,7 +98,7 @@ def probe_buckets(client: BaseClient, buckets: Sequence[str]) -> Evidence:
         except Exception as cause:
             raise CheckError(cause, Evidence(command=f"s3:ListBucket ({bucket})")) from cause
     return Evidence(
-        summary=f"{_count(len(buckets), 'configured bucket')} accessible",
+        summary=f"{count(len(buckets), 'configured bucket')} accessible",
         command="s3:ListBucket",
     )
 
@@ -130,5 +121,5 @@ def list_metrics(client: BaseClient, namespace: str, limit: int = DEFAULT_LIST_L
     metrics = response.get("Metrics", [])
     more = bool(response.get("NextToken")) or len(metrics) > limit
     shown = min(len(metrics), limit)
-    summary = f"{_count(shown, 'metric')} visible in namespace '{namespace}'" + _more_suffix(shown, more)
+    summary = f"{count(shown, 'metric')} visible in namespace '{namespace}'" + more_suffix(shown, more)
     return Evidence(summary=summary, command=command)

@@ -26,10 +26,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import event, inspect
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
-from metadata.core.connections.test_connection.network import (
-    NetworkUnreachableError,
-    tcp_probe,
-)
+from metadata.core.connections.test_connection.checks.summary import count
+from metadata.core.connections.test_connection.network import probe_or_fail
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
@@ -163,10 +161,7 @@ def ping(client: Engine) -> Evidence:
 def _preflight(client: Engine) -> None:
     host, port = client.url.host, client.url.port
     if host and port:
-        try:
-            tcp_probe(host, port)
-        except NetworkUnreachableError as error:
-            raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
+        probe_or_fail(host, port)
 
 
 def _reflect(client: Engine, operation: Callable[[], list[str]]) -> tuple[list[str], str | None]:
@@ -200,13 +195,20 @@ def _resolve_schema(
     return None, False
 
 
-def _count(n: int, noun: str) -> str:
-    """``3 tables`` / ``1 table`` - pluralize the noun to match the count."""
-    return f"{n} {noun if n == 1 else noun + 's'}"
+def enumerated(rows: Sequence[object], noun: str) -> str:
+    """``N <noun>s enumerated`` (``N+`` at the cap), or ``no <noun>s enumerated``.
+
+    The summarizer for a ``run_sql`` probe that counts rows. ``run_sql`` fetches at
+    most ``DEFAULT_SAMPLE_ROWS``, so at the cap the exact total is unknown and the
+    figure is reported as a floor rather than implying a full enumeration.
+    """
+    if not rows:
+        return f"no {noun}s enumerated"
+    return f"{count(len(rows), noun, DEFAULT_SAMPLE_ROWS)} enumerated"
 
 
-def _enumerated(kind: str, count: int, schema: str | None, auto_selected: bool) -> str:
-    counted = _count(count, kind)
+def _enumerated(kind: str, number: int, schema: str | None, auto_selected: bool) -> str:
+    counted = count(number, kind)
     if schema is None:
         return f"{counted} enumerated"
     if auto_selected:
@@ -231,7 +233,7 @@ def _empty_caveat(kind: str, scope: str) -> Diagnosis:
 def list_schemas(client: Engine) -> Evidence:
     names, command = _reflect(client, lambda: inspect(client).get_schema_names())
     return Evidence(
-        summary=f"{_count(len(names), 'schema')} enumerated",
+        summary=f"{count(len(names), 'schema')} enumerated",
         command=command,
         caveat=None if names else _empty_caveat("schema", "the database"),
     )

@@ -41,6 +41,16 @@ class Matchers:
     """Predicates over an exception (and its cause chain)."""
 
     @staticmethod
+    def text(error: BaseException) -> str:
+        """The lower-cased text of the error and its cause chain, joined.
+
+        The raw material a connector's own matcher reads when it needs more than
+        a single token - two tokens that must co-occur, or a token qualified by a
+        configured value. ``contains`` is the one-token case of the same idea.
+        """
+        return " ".join(str(current) for current in exception_chain(error)).lower()
+
+    @staticmethod
     def contains(text: str) -> Matcher:
         needle = text.lower()
         return lambda error: any(needle in str(e).lower() for e in exception_chain(error))
@@ -64,6 +74,17 @@ class Matchers:
             return False
 
         return match
+
+    @staticmethod
+    def any_of(*matchers: Matcher) -> Matcher:
+        """Match when any of ``matchers`` does - one diagnosis, several signals.
+
+        A condition a driver reports more than one way (a numeric code on one path,
+        a message token on another) is still one thing to tell the user. Binding
+        those signals to a single rule keeps the diagnosis written once, so the
+        fix text cannot drift between copies.
+        """
+        return lambda error: any(matcher(error) for matcher in matchers)
 
     @staticmethod
     def exception(*types: type[BaseException]) -> Matcher:

@@ -33,18 +33,16 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
-from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import (
-    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
+    enumerated,
     ping,
     run_sql,
 )
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection as SnowflakeConnectionConfig,
@@ -164,11 +162,6 @@ def _sf_errno(*codes: int) -> Matcher:
     return match
 
 
-def _message(error: BaseException) -> str:
-    """The lower-cased text of the error and its cause chain."""
-    return " ".join(str(current) for current in exception_chain(error)).lower()
-
-
 def _account_usage_denied(account_usage_schema: str | None) -> Matcher:
     """Match a privilege/visibility failure on the ACCOUNT_USAGE share
     (query_history, access_history, tag_references) rather than a generic missing
@@ -180,7 +173,7 @@ def _account_usage_denied(account_usage_schema: str | None) -> Matcher:
     token = (account_usage_schema or DEFAULT_ACCOUNT_USAGE_SCHEMA).lower()
 
     def match(error: BaseException) -> bool:
-        text_chain = _message(error)
+        text_chain = Matchers.text(error)
         return token in text_chain and ("not authorized" in text_chain or "does not exist" in text_chain)
 
     return match
@@ -216,11 +209,12 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
             fix="Grant the configured role to the user, or set a role the user already has "
             "(e.g. PUBLIC), so the connection can assume it.",
         ),
-        when(_sf_errno(250001)).diagnose(
-            "Authentication failed",
-            fix="Check the username and password (or private key) and that the user is allowed to connect.",
-        ),
-        when(Matchers.contains("incorrect username or password")).diagnose(
+        when(
+            Matchers.any_of(
+                _sf_errno(250001),
+                Matchers.contains("incorrect username or password"),
+            )
+        ).diagnose(
             "Authentication failed",
             fix="Check the username and password (or private key) and that the user is allowed to connect.",
         ),
@@ -230,27 +224,23 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
             "snowflake.account_usage views) so query history, tags, and lineage can be read; "
             "otherwise usage and lineage won't be collected.",
         ),
-        when(Matchers.contains("insufficient privileges")).diagnose(
+        when(
+            Matchers.any_of(
+                Matchers.contains("insufficient privileges"),
+                _sf_errno(3001),
+            )
+        ).diagnose(
             "Insufficient privileges",
             fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
             "and SELECT on its objects).",
         ),
-        when(_sf_errno(3001)).diagnose(
-            "Insufficient privileges",
-            fix="Grant the role the privileges the failing step needs (USAGE on the database/schema "
-            "and SELECT on its objects).",
-        ),
-        when(_sf_errno(2003, 2043)).diagnose(
-            "Object not found",
-            fix="Verify the configured database, schema, warehouse, and role exist and the role is "
-            "authorized to use them.",
-        ),
-        when(Matchers.contains("object does not exist")).diagnose(
-            "Object not found",
-            fix="Verify the configured database, schema, warehouse, and role exist and the role is "
-            "authorized to use them.",
-        ),
-        when(Matchers.contains("does not exist or not authorized")).diagnose(
+        when(
+            Matchers.any_of(
+                _sf_errno(2003, 2043),
+                Matchers.contains("object does not exist"),
+                Matchers.contains("does not exist or not authorized"),
+            )
+        ).diagnose(
             "Object not found",
             fix="Verify the configured database, schema, warehouse, and role exist and the role is "
             "authorized to use them.",
@@ -267,22 +257,6 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
 # Default pack, keyed on the default ACCOUNT_USAGE schema. Each connection builds
 # its own from the configured ``accountUsageSchema`` (see ``SnowflakeChecks``).
 SNOWFLAKE_ERRORS = _snowflake_errors(DEFAULT_ACCOUNT_USAGE_SCHEMA)
-
-
-def _count_summary(rows: Sequence[Row], noun: str) -> str:
-    """``N <noun>s enumerated`` (``N+`` at the row cap), or ``no <noun>s enumerated``
-    when the probe returns none.
-
-    The ``+`` marks a capped sample so the figure is not read as an exact total.
-    The table/view probes exclude INFORMATION_SCHEMA (its objects are always
-    present regardless of grants), so their empty result is a real signal - the
-    connection works but there is nothing to ingest."""
-    if not rows:
-        return f"no {noun}s enumerated"
-    count = len(rows)
-    suffix = "+" if count >= DEFAULT_SAMPLE_ROWS else ""
-    plural = noun if count == 1 else f"{noun}s"
-    return f"{count}{suffix} {plural} enumerated"
 
 
 def _no_tables_caveat(database: str | None) -> Diagnosis:
@@ -360,21 +334,17 @@ class SnowflakeChecks:
     def check_access(self) -> Evidence:
         target = self._probe_target()
         if target:
-            host, port = target
-            try:
-                tcp_probe(host, port)
-            except NetworkUnreachableError as error:
-                raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
+            probe_or_fail(*target)
         return ping(self._db.client)
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self._db.client, SNOWFLAKE_GET_DATABASES, lambda rows: _count_summary(rows, "database"))
+        return run_sql(self._db.client, SNOWFLAKE_GET_DATABASES, lambda rows: enumerated(rows, "database"))
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_SCHEMAS.format(database_name=self._database())
-        return run_sql(self._db.client, statement, lambda rows: _count_summary(rows, "schema"))
+        return run_sql(self._db.client, statement, lambda rows: enumerated(rows, "schema"))
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
@@ -384,7 +354,7 @@ class SnowflakeChecks:
 
         def summarize(rows: Sequence[Row]) -> str:
             counts.append(len(rows))
-            return _count_summary(rows, "table")
+            return enumerated(rows, "table")
 
         evidence = run_sql(self._db.client, statement, summarize)
         if not counts[0]:
@@ -394,12 +364,12 @@ class SnowflakeChecks:
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_VIEWS.format(database_name=self._database())
-        return run_sql(self._db.client, statement, lambda rows: _count_summary(rows, "view"))
+        return run_sql(self._db.client, statement, lambda rows: enumerated(rows, "view"))
 
     @check(DatabaseStep.GetStreams)
     def get_streams(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_STREAMS.format(database_name=self._database())
-        return run_sql(self._db.client, statement, lambda rows: _count_summary(rows, "stream"))
+        return run_sql(self._db.client, statement, lambda rows: enumerated(rows, "stream"))
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:

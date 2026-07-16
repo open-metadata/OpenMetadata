@@ -24,7 +24,9 @@ from metadata.core.connections.test_connection.check import (
 )
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
+    Matcher,
     Matchers,
+    exception_chain,
     when,
 )
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
@@ -35,10 +37,12 @@ __all__ = [
     "Diagnosis",
     "ErrorPack",
     "Evidence",
+    "Matcher",
     "Matchers",
     "StepName",
     "TestConnectionRunner",
     "check",
     "collect_checks",
+    "exception_chain",
     "when",
 ]

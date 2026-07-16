@@ -21,8 +21,8 @@ from sqlalchemy.engine import Engine
 
 from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
 from metadata.core.connections.test_connection.checks.database import (
-    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
+    enumerated,
     list_schemas,
     list_tables,
     list_views,
@@ -52,8 +52,6 @@ from metadata.ingestion.source.database.postgres.utils import (
 )
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
@@ -85,17 +83,12 @@ def _sqlstate(*codes: str) -> Matcher:
     return lambda error: _pgcode(error) in wanted
 
 
-def _message(error: BaseException) -> str:
-    """The lower-cased text of the error and its cause chain."""
-    return " ".join(str(current) for current in exception_chain(error)).lower()
-
-
 def _database_not_found(error: BaseException) -> bool:
     """psycopg2 reports a missing database at connect time as
     ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
     ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
     a missing relation) is not misread as a missing database."""
-    text = _message(error)
+    text = Matchers.text(error)
     return 'database "' in text and "does not exist" in text
 
 
@@ -105,7 +98,7 @@ def _role_not_found(error: BaseException) -> bool:
     password auth returns "password authentication failed" instead, to avoid role
     enumeration). Match the quoted token ``role "`` so it is not confused with the
     ``database "`` case, which shares the ``does not exist`` suffix."""
-    text = _message(error)
+    text = Matchers.text(error)
     return 'role "' in text and "does not exist" in text
 
 
@@ -164,15 +157,7 @@ class PostgresChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self._db.client, POSTGRES_GET_DATABASE, self._summarize_databases)
-
-    @staticmethod
-    def _summarize_databases(rows: Sequence[object]) -> str:
-        # run_sql fetches at most DEFAULT_SAMPLE_ROWS; at the cap the exact total is
-        # unknown, so report "N+" rather than implying a complete enumeration.
-        count = len(rows)
-        label = f"{count}+" if count >= DEFAULT_SAMPLE_ROWS else str(count)
-        return f"{label} databases enumerated"
+        return run_sql(self._db.client, POSTGRES_GET_DATABASE, lambda rows: enumerated(rows, "database"))
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:

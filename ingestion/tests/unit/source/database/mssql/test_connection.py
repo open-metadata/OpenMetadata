@@ -19,7 +19,7 @@ from unittest.mock import MagicMock, patch
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
-from metadata.core.connections.test_connection.checks.database import DEFAULT_SAMPLE_ROWS, DatabaseStep
+from metadata.core.connections.test_connection.checks.database import DEFAULT_SAMPLE_ROWS, DatabaseStep, enumerated
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
 )
@@ -31,7 +31,6 @@ from metadata.ingestion.source.database.mssql.connection import (
     MSSQL_ERRORS,
     MssqlChecks,
     MssqlConnection,
-    _databases_enumerated,
     get_connection_url,
 )
 from metadata.ingestion.source.database.mssql.queries import (
@@ -191,8 +190,8 @@ def test_unknown_error_is_not_classified():
 
 
 def test_databases_summary_reports_exact_count_below_cap():
-    assert _databases_enumerated([object()] * 3) == "3 databases enumerated"
+    assert enumerated([object()] * 3, "database") == "3 databases enumerated"
 
 
 def test_databases_summary_reports_floor_when_capped():
-    assert _databases_enumerated([object()] * DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+    assert enumerated([object()] * DEFAULT_SAMPLE_ROWS, "database") == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"

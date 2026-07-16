@@ -31,12 +31,12 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
-from metadata.core.connections.test_connection.checks.dashboard import (
-    DashboardStep,
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
     call_endpoint,
+    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection as TableauConnectionConfig,
@@ -94,11 +94,11 @@ def _status_of(error: BaseException) -> int | None:
 def _http_status(*codes: int) -> Matcher:
     """Match a Tableau REST error by HTTP status, across the cause chain.
 
-    The status is the stable signal - the summary and detail of a Tableau error
-    vary by endpoint and server version.
+    Tableau encodes the status in the first three digits of its own error code
+    (401001, 403004, ...), so it needs its own extractor rather than the shared
+    ``requests`` default.
     """
-    wanted = frozenset(codes)
-    return lambda error: any(_status_of(current) in wanted for current in exception_chain(error))
+    return http_status(*codes, extract=_status_of)
 
 
 TABLEAU_ERRORS = ErrorPack(
