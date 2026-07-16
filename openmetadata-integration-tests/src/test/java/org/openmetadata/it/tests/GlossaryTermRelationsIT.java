@@ -18,15 +18,9 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.core.type.TypeReference;
-import com.fasterxml.jackson.databind.ObjectMapper;
-import java.net.URI;
-import java.net.http.HttpClient;
-import java.net.http.HttpRequest;
-import java.net.http.HttpResponse;
-import java.time.Duration;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
@@ -52,9 +46,6 @@ import org.slf4j.LoggerFactory;
 public class GlossaryTermRelationsIT {
 
   private static final Logger LOG = LoggerFactory.getLogger(GlossaryTermRelationsIT.class);
-  private static final HttpClient HTTP_CLIENT =
-      HttpClient.newBuilder().connectTimeout(Duration.ofSeconds(10)).build();
-  private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   @Test
   void testAddTermRelationWithSynonymType(TestNamespace ns) throws Exception {
@@ -255,128 +246,26 @@ public class GlossaryTermRelationsIT {
     LOG.debug("Filtered graph has {} edges of type synonym", edges.size());
   }
 
-  private GlossaryTerm addTermRelation(String fromTermId, String toTermId, String relationType)
-      throws Exception {
-    String baseUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
-
-    String url = String.format("%s/v1/glossaryTerms/%s/relations", baseUrl, fromTermId);
-
-    String jsonBody =
-        String.format(
-            "{\"term\":{\"id\":\"%s\",\"type\":\"glossaryTerm\"},\"relationType\":\"%s\"}",
-            toTermId, relationType);
-
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Bearer " + token)
-            .header("Content-Type", "application/json")
-            .timeout(Duration.ofSeconds(30))
-            .POST(HttpRequest.BodyPublishers.ofString(jsonBody))
-            .build();
-
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      LOG.warn(
-          "Failed to add term relation: status={}, body={}",
-          response.statusCode(),
-          response.body());
-      return null;
-    }
-
-    return OBJECT_MAPPER.readValue(response.body(), GlossaryTerm.class);
+  private GlossaryTerm addTermRelation(String fromTermId, String toTermId, String relationType) {
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .addRelation(UUID.fromString(fromTermId), UUID.fromString(toTermId), relationType);
   }
 
-  private GlossaryTerm removeTermRelation(String fromTermId, String toTermId, String relationType)
-      throws Exception {
-    String baseUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
-
-    String url =
-        String.format(
-            "%s/v1/glossaryTerms/%s/relations/%s?relationType=%s",
-            baseUrl, fromTermId, toTermId, relationType);
-
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Bearer " + token)
-            .timeout(Duration.ofSeconds(30))
-            .DELETE()
-            .build();
-
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      LOG.warn(
-          "Failed to remove term relation: status={}, body={}",
-          response.statusCode(),
-          response.body());
-      return null;
-    }
-
-    return OBJECT_MAPPER.readValue(response.body(), GlossaryTerm.class);
+  private GlossaryTerm removeTermRelation(String fromTermId, String toTermId, String relationType) {
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .removeRelation(UUID.fromString(fromTermId), UUID.fromString(toTermId), relationType);
   }
 
-  private Map<String, Integer> getRelationTypeUsageCounts() throws Exception {
-    String baseUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
-
-    String url = String.format("%s/v1/glossaryTerms/relationTypes/usage", baseUrl);
-
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Bearer " + token)
-            .header("Accept", "application/json")
-            .timeout(Duration.ofSeconds(30))
-            .GET()
-            .build();
-
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      LOG.warn(
-          "Failed to get relation type usage counts: status={}, body={}",
-          response.statusCode(),
-          response.body());
-      return Map.of();
-    }
-
-    return OBJECT_MAPPER.readValue(response.body(), new TypeReference<Map<String, Integer>>() {});
+  private Map<String, Integer> getRelationTypeUsageCounts() {
+    return SdkClients.adminClient().glossaryTerms().relationTypeUsage();
   }
 
-  private Map<String, Object> getTermRelationGraph(String termId, int depth, String relationTypes)
-      throws Exception {
-    String baseUrl = SdkClients.getServerUrl();
-    String token = SdkClients.getAdminToken();
-
-    String url =
-        String.format(
-            "%s/v1/glossaryTerms/%s/relationsGraph?depth=%d%s",
-            baseUrl, termId, depth, relationTypes != null ? "&relationTypes=" + relationTypes : "");
-
-    HttpRequest request =
-        HttpRequest.newBuilder()
-            .uri(URI.create(url))
-            .header("Authorization", "Bearer " + token)
-            .header("Accept", "application/json")
-            .timeout(Duration.ofSeconds(30))
-            .GET()
-            .build();
-
-    HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-
-    if (response.statusCode() != 200) {
-      LOG.warn(
-          "Failed to get term relation graph: status={}, body={}",
-          response.statusCode(),
-          response.body());
-      return Map.of();
-    }
-
-    return OBJECT_MAPPER.readValue(response.body(), new TypeReference<Map<String, Object>>() {});
+  private Map<String, Object> getTermRelationGraph(String termId, int depth, String relationTypes) {
+    List<String> types = relationTypes != null ? List.of(relationTypes.split(",")) : null;
+    return SdkClients.adminClient()
+        .glossaryTerms()
+        .relationGraph(UUID.fromString(termId), depth, types);
   }
 }

@@ -23,6 +23,7 @@ from metadata.generated.schema.settings.settings import Settings
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.status import Status
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.progress.modes import ManualProgress
 from metadata.profiler.source.fetcher.fetcher_strategy import (
     DatabaseFetcherStrategy,
     FetcherStrategy,
@@ -41,11 +42,13 @@ class EntityFetcher:
         metadata: OpenMetadata,
         global_profiler_config: Optional[Settings],  # noqa: UP045
         status: Status,
+        progress: ManualProgress,
     ):
         self.config = config
         self.metadata = metadata
         self.global_profiler_config = global_profiler_config
         self.status = status
+        self.progress = progress
         self.strategy = self._get_strategy()
 
     def _get_strategy(self) -> FetcherStrategy:
@@ -53,10 +56,14 @@ class EntityFetcher:
         service_type = service_class(self.config.source.type)
 
         if service_type is DatabaseService:
-            return DatabaseFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
+            return DatabaseFetcherStrategy(
+                self.config, self.metadata, self.global_profiler_config, self.status, self.progress
+            )
 
         if service_type is StorageService:
-            return StorageFetcherStrategy(self.config, self.metadata, self.global_profiler_config, self.status)
+            return StorageFetcherStrategy(
+                self.config, self.metadata, self.global_profiler_config, self.status, self.progress
+            )
 
         raise NotImplementedError(f"Fetcher strategy not implemented for service type {service_type}")
 

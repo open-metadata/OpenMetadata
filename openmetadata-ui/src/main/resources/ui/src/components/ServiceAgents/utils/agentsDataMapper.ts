@@ -19,7 +19,7 @@ import {
   PipelineType,
   StepSummary,
 } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
-import { IngestionPipelineLogByIdInterface } from '../../../pages/LogsViewerPage/LogsViewerPage.interfaces';
+import { IngestionPipelineLogByIdInterface } from '../../../interface/IngestionPipelineLogs.interface';
 import { getAgentStatusLabelFromStatus } from '../../../utils/AgentsStatusWidgetPureUtils';
 import {
   customFormatDateTime,
@@ -285,6 +285,7 @@ export const mapPipelineToAgent = (pipeline: IngestionPipeline): Agent => {
     errors,
     warnings,
     failStep,
+    schedule: pipeline.airflowConfig?.scheduleInterval,
     recentRuns: buildRecentRuns(pipeline.pipelineStatuses ?? []),
     ...progressFields,
   };

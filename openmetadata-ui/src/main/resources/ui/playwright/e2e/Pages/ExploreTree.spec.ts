@@ -32,6 +32,7 @@ import {
   validateBucketsForIndex,
   verifyDatabaseAndSchemaInExploreTree,
 } from '../../utils/explore';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 
 // use the admin user to login
@@ -305,7 +306,9 @@ test.describe('Explore Tree scenarios', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
       await table1.visitEntityPage(page);
 
       const schemaRes = page.waitForResponse('/api/v1/databaseSchemas/name/*');
-      await page.getByRole('link', { name: schemaName }).click();
+      // The schema crumb may auto-collapse into the breadcrumb overflow menu on
+      // narrow viewports, so navigate through the overflow-aware helper.
+      await clickBreadcrumbAncestor(page, schemaName);
       // Rename Schema Page
       await schemaRes;
       await waitForAllLoadersToDisappear(page);

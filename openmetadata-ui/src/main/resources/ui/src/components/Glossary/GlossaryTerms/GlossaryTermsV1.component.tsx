@@ -13,8 +13,7 @@
 import { Col, Row, Tabs } from 'antd';
 import { lazy, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
-import { Link, useNavigate } from 'react-router-dom';
-import { ROUTES } from '../../../constants/constants';
+import { useNavigate } from 'react-router-dom';
 import { FEED_COUNT_INITIAL_DATA } from '../../../constants/entity.constants';
 import { EntityField } from '../../../constants/Feeds.constants';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
@@ -39,7 +38,6 @@ import {
   getDetailsTabWithNewLabel,
   getTabLabelMapFromTabs,
 } from '../../../utils/CustomizePage/CustomizePageEntityTabUtils';
-import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityVersionByField } from '../../../utils/EntityVersionUtilsPure';
 import {
   fetchEntityActivityCountInto,
@@ -304,23 +302,6 @@ const GlossaryTermsV1 = ({
             onDelete={handleGlossaryTermDelete}
           />
         </Col>
-
-        {glossaryTerm.derivedFrom && (
-          <Col data-testid="derived-from-link" span={24}>
-            <span className="tw:text-xs tw:text-tertiary">
-              {`${t('label.derived-from-memory')}: `}
-            </span>
-            <Link
-              className="tw:text-xs tw:text-brand-secondary hover:tw:underline"
-              to={`${
-                ROUTES.CONTEXT_CENTER_MEMORIES
-              }?memory=${encodeURIComponent(
-                glossaryTerm.derivedFrom.name ?? ''
-              )}`}>
-              {getEntityName(glossaryTerm.derivedFrom)}
-            </Link>
-          </Col>
-        )}
 
         <Col className="glossary-term-page-tabs" span={24}>
           <Tabs

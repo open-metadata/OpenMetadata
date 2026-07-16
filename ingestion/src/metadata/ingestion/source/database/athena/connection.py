@@ -52,8 +52,7 @@ from metadata.ingestion.connections.connection import BaseConnection
 from metadata.utils.filters import filter_by_schema
 
 if TYPE_CHECKING:
-    from collections.abc import Callable
-
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.generated.schema.type.filterPattern import FilterPattern
@@ -139,26 +138,14 @@ class AthenaChecks:
 
     def __init__(
         self,
-        client_factory: Callable[[], Engine],
+        db: Borrowed[Engine],
         schema_filter_pattern: FilterPattern | None = None,
         catalog_id: str | None = None,
     ) -> None:
-        self._client_factory = client_factory
-        self._client: Engine | None = None
+        self._db = db
         self.schema_filter_pattern = schema_filter_pattern
         self.catalog_id = catalog_id
         self._targeted: list[str] | None = None
-
-    @property
-    def client(self) -> Engine:
-        """The Athena engine, built on first use - which is inside CheckAccess, the
-        gate. Building it runs the STS assume-role handshake (when an assumeRoleArn
-        is configured), so a bad credential or assume-role denial fails the gate and
-        is classified like any other access error, instead of raising eagerly at
-        provider construction - before the runner - and bypassing the gate."""
-        if self._client is None:
-            self._client = self._client_factory()
-        return self._client
 
     @property
     def _catalog_label(self) -> str:
@@ -178,7 +165,7 @@ class AthenaChecks:
         MAX_SCHEMAS_TO_PROBE so a catalog with very many databases cannot exhaust
         the test-connection timeout."""
         if self._targeted is None:
-            inspector = inspect(self.client)
+            inspector = inspect(self._db.client)
             targeted: list[str] = []
             for schema in inspector.get_schema_names() or []:
                 if filter_by_schema(self.schema_filter_pattern, schema):
@@ -194,12 +181,12 @@ class AthenaChecks:
         # run_sql, not ping: the URL carries the AWS endpoint host:port but the
         # transport is HTTPS over botocore, so a raw TCP preflight to it would be
         # meaningless. A real reachability failure still surfaces via NETWORK_ERRORS.
-        return run_sql(self.client, "SELECT 1", lambda _: "connection established")
+        return run_sql(self._db.client, "SELECT 1", lambda _: "connection established")
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
         command = f"{LIST_DATABASES} (CatalogName={self._catalog_name})"
-        return replace(list_schemas(self.client), command=command)
+        return replace(list_schemas(self._db.client), command=command)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
@@ -221,7 +208,7 @@ class AthenaChecks:
                     "catalog and schemaFilterPattern are not excluding everything.",
                 ),
             )
-        inspector = inspect(self.client)
+        inspector = inspect(self._db.client)
         command = f"{LIST_TABLE_METADATA} (CatalogName={self._catalog_name})"
         readable = any(inspector.get_table_names(schema) for schema in targeted)
         result = Evidence(
@@ -247,7 +234,7 @@ class AthenaChecks:
         # Views are frequently absent and GetViews is non-mandatory, so we probe
         # for visibility but never raise on an empty result.
         targeted = self._targeted_schemas()
-        inspector = inspect(self.client)
+        inspector = inspect(self._db.client)
         visible = any(inspector.get_view_names(schema) for schema in targeted)
         summary = "views visible" if visible else "no views visible (not required)"
         return Evidence(
@@ -301,10 +288,9 @@ class AthenaConnection(BaseConnection[AthenaConnectionConfig, Engine]):
         return engine
 
     def checks(self) -> ChecksProvider:
-        # Pass a thunk, not self.client: deferring the build keeps the STS
-        # assume-role handshake out of provider construction and inside the gate.
+        # The borrow defers the build, keeping the STS handshake behind the gate.
         return AthenaChecks(
-            client_factory=lambda: self.client,
+            db=self.borrow(),
             schema_filter_pattern=self.service_connection.schemaFilterPattern,
             catalog_id=self.service_connection.catalogId,
         )

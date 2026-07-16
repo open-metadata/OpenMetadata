@@ -203,7 +203,7 @@ export const listAssetsByFqn = async (
   assetType: AssetType = AssetType.External,
   params?: ListParams
 ) => {
-  const response = await APIClient.get<PagingResponse<Asset[]>>(
+  const response = await APIClient.get<Asset[]>(
     `/attachments/fqn/${encodeURIComponent(fqn)}/${assetType}`,
     { params }
   );
@@ -259,7 +259,7 @@ export const restoreDriveFile = async (id: string): Promise<ContextFile> => {
 export const downloadDriveFile = async (id: string): Promise<Blob> => {
   const response = await APIClient.get<Blob>(
     `/contextCenter/drive/files/${id}/download`,
-    { params: { redirect: true, expiry: 300 }, responseType: 'blob' }
+    { params: { redirect: true }, responseType: 'blob' }
   );
 
   return response.data;

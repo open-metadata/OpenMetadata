@@ -29,7 +29,10 @@ import {
   patchMemory,
   searchAndGetMemoryRow,
 } from '../../utils/ContextCenterUtil';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  copyAndGetClipboardText,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import { waitForSearchIndexed } from '../../utils/polling';
 import { test as base } from '../fixtures/pages';
 
@@ -871,7 +874,7 @@ test.describe(
         await searchResPromise;
         await waitForAllLoadersToDisappear(page);
 
-        await expect(page.getByText('No Memories are available')).toBeVisible();
+        await expect(page.getByText('No matching results')).toBeVisible();
       });
     });
 
@@ -911,6 +914,7 @@ test.describe(
         // persist, carrying usageCount along with it.
         await patchMemory(apiContext, entityMemoryId, [
           { op: 'add', path: '/usageCount', value: 999999 },
+          { op: 'add', path: '/lastUsedAt', value: Date.now() },
           { op: 'add', path: '/pinned', value: true },
         ]);
         await afterAction();
@@ -937,6 +941,13 @@ test.describe(
           'data-testid',
           `memory-row-${entityMemoryId}`
         );
+
+        // lastUsedAt is rendered next to the usage count as
+        // "Cited N times · Last {relative-time}" — assert the "Last" label
+        // is present rather than a specific relative-time string, since the
+        // exact rendered value depends on wall-clock time between the patch
+        // above and this assertion.
+        await expect(rows.first()).toContainText(/Last/);
       });
     });
 
@@ -950,7 +961,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          sharedMemoryName,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
@@ -983,7 +998,11 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          sharedMemoryName,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await row.click();
 
@@ -1006,15 +1025,16 @@ test.describe(
 
         await navigateToMemories(page);
 
-        const row = page.getByTestId(`memory-row-${sharedMemoryId}`);
+        const row = await searchAndGetMemoryRow(
+          page,
+          sharedMemoryName,
+          sharedMemoryId
+        );
         await row.scrollIntoViewIfNeeded();
         await expect(row).toBeVisible();
 
-        await row.getByTestId('copy-link-btn').click();
-
-        const clipboard = await page.evaluate(() =>
-          navigator.clipboard.readText()
-        );
+        const copyBtn = row.getByTestId('copy-link-btn');
+        const clipboard = await copyAndGetClipboardText(page, copyBtn);
         expect(clipboard).toContain(`memory=${sharedMemoryName}`);
       });
     });
@@ -1744,7 +1764,9 @@ test.describe(
 
         // "Clear All" appears since an asset filter is now active
         await expect(
-          page.getByRole('button', { name: /clear all/i })
+          page
+            .getByTestId('empty-placeholder')
+            .getByRole('button', { name: 'Clear All' })
         ).toBeVisible();
 
         // Reopen the same filter trigger (now showing the selected asset's
@@ -1767,7 +1789,9 @@ test.describe(
         await waitForAllLoadersToDisappear(page);
 
         await expect(
-          page.getByRole('button', { name: /clear all/i })
+          page
+            .getByTestId('empty-placeholder')
+            .getByRole('button', { name: 'Clear All' })
         ).not.toBeVisible();
       });
     });

@@ -849,12 +849,10 @@ test.describe.fixme('Domains', () => {
         const countText = await assetCountElement.textContent();
         const displayedCount = Number.parseInt(countText ?? '0', 10);
         const totalCount = domainAssets.length + subDomainAssets.length;
-        const assetCards = await page
-          .locator('[data-testid*="table-data-card_"]')
-          .count();
+        const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
         expect(displayedCount).toBe(totalCount);
-        expect(assetCards).toBe(totalCount);
+        await expect(assetCards).toHaveCount(totalCount);
       });
 
       await test.step('Verify subdomain asset count matches displayed cards', async () => {
@@ -889,12 +887,10 @@ test.describe.fixme('Domains', () => {
         const countText = await assetCountElement.textContent();
         const displayedCount = Number.parseInt(countText ?? '0', 10);
 
-        const assetCards = await page
-          .locator('[data-testid*="table-data-card_"]')
-          .count();
+        const assetCards = page.locator('[data-testid*="table-data-card_"]');
 
         expect(displayedCount).toBe(subDomainAssets.length);
-        expect(assetCards).toBe(subDomainAssets.length);
+        await expect(assetCards).toHaveCount(subDomainAssets.length);
       });
     } finally {
       await subDomain?.delete(apiContext);
@@ -3171,7 +3167,7 @@ test.describe.fixme('Domain Tree View Functionality', () => {
 
     await expect(
       page
-        .getByRole('treeitem', {
+        .getByRole('row', {
           name: domainDisplayName,
         })
         .locator('div')
@@ -3179,14 +3175,14 @@ test.describe.fixme('Domain Tree View Functionality', () => {
     ).toBeVisible();
 
     await page
-      .getByRole('treeitem', { name: domainDisplayName })
+      .getByRole('row', { name: domainDisplayName })
       .locator('div')
       .nth(2)
       .click();
 
     await expect(
       page
-        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .getByRole('row', { name: subDomain.data.displayName })
         .locator('div')
         .nth(2)
     ).toBeVisible();

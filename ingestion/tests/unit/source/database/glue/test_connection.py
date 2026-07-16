@@ -17,6 +17,7 @@ from unittest.mock import MagicMock, patch
 import pytest
 from botocore.exceptions import ClientError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection as GlueConnectionConfig,
@@ -58,7 +59,7 @@ def _paginator(pages: list[dict]) -> MagicMock:
 
 
 def _checks(client=None) -> GlueChecks:
-    return GlueChecks(connect=lambda: client)
+    return GlueChecks(catalog=Borrowed.of(client))
 
 
 def _check_names() -> set[str]:

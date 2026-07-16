@@ -422,6 +422,53 @@ public abstract class EntityCsv<T extends EntityInterface> {
     return refs;
   }
 
+  /**
+   * An empty domain column clears direct domains (unchanged behavior) but must not wipe the
+   * entity's inherited domains: they are never exported to the CSV, and rules such as "Data Product
+   * Domain Validation" need them to evaluate the entity's effective domain. So on an empty column
+   * only the inherited references from the already-loaded entity are carried over; they are dropped
+   * again after rule evaluation (see {@link #dropInheritedDomains}), so they are never persisted as
+   * a direct domain.
+   */
+  public List<EntityReference> getDomains(
+      CSVPrinter printer,
+      CSVRecord csvRecord,
+      int fieldNumber,
+      List<EntityReference> existingDomains) {
+    List<EntityReference> result = null;
+    if (processRecord) {
+      List<EntityReference> parsedFromCsv = getDomains(printer, csvRecord, fieldNumber);
+      result = parsedFromCsv;
+      if (parsedFromCsv == null) {
+        List<EntityReference> inheritedDomains =
+            listOrEmpty(existingDomains).stream()
+                .filter(domain -> Boolean.TRUE.equals(domain.getInherited()))
+                .toList();
+        result = inheritedDomains.isEmpty() ? null : inheritedDomains;
+      }
+    }
+    return result;
+  }
+
+  /**
+   * Inherited domains are supplied to an updated entity only so platform rules evaluate against its
+   * effective domain. The import persistence path stores whatever domains the entity carries as
+   * direct relationships, so the inherited ones must be removed once the rules have run; the entity
+   * keeps re-inheriting from its parent on read.
+   */
+  private void dropInheritedDomains(EntityInterface entity) {
+    List<EntityReference> domains = entity.getDomains();
+    if (!nullOrEmpty(domains)) {
+      List<EntityReference> directDomains = new ArrayList<>();
+      for (EntityReference domain : domains) {
+        if (!Boolean.TRUE.equals(domain.getInherited())) {
+          directDomains.add(domain);
+        }
+      }
+      entity.setDomains(directDomains.isEmpty() ? null : directDomains);
+    }
+  }
+
   /** Owner field is in entityName format */
   public EntityReference getOwnerAsUser(CSVPrinter printer, CSVRecord csvRecord, int fieldNumber) {
     if (!processRecord) {
@@ -1079,6 +1126,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) { // If not dry run, create the entity
         if (isUpdate) {
@@ -1172,6 +1220,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       } else {
         RuleEngine.getInstance().evaluate(entity);
       }
+      dropInheritedDomains(entity);
 
       if (Boolean.FALSE.equals(importResult.getDryRun())) {
         if (isUpdate) {
@@ -1583,7 +1632,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
     try {
       schema =
           Entity.getEntityByNameWithExcludedFields(
-              DATABASE_SCHEMA, schemaFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+              DATABASE_SCHEMA, schemaFqn, "owners,tags,extension", Include.NON_DELETED);
     } catch (Exception ex) {
       LOG.warn("Database Schema not found: {}, it will be created with Import.", schemaFqn);
       schema =
@@ -1615,7 +1664,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, schema.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1677,7 +1726,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
       try {
         table =
             Entity.getEntityByNameWithExcludedFields(
-                TABLE, tableFqn, "owners,tags,domains,extension", Include.NON_DELETED);
+                TABLE, tableFqn, "owners,tags,extension", Include.NON_DELETED);
       } catch (EntityNotFoundException ex) {
         // Simulate a table for validation without persisting it
         table =
@@ -1731,7 +1780,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withCertification(certification)
         .withRetentionPeriod(csvRecord.get(8))
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, table.getDomains()))
         .withExtension(getExtension(printer, csvRecord, 11))
         .withUpdatedAt(System.currentTimeMillis())
         .withUpdatedBy(importedBy);
@@ -1798,7 +1847,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             Entity.getEntityByName(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         // Simulate a stored procedure for validation without persisting it
@@ -1817,7 +1866,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
             getEntityWithDependencyResolution(
                 STORED_PROCEDURE,
                 entityFQN,
-                "name,displayName,fullyQualifiedName",
+                "name,displayName,fullyQualifiedName,domains",
                 Include.NON_DELETED);
       } catch (Exception ex) {
         LOG.warn("Stored procedure not found: {}, it will be created with Import.", entityFQN);
@@ -1859,7 +1908,7 @@ public abstract class EntityCsv<T extends EntityInterface> {
         .withTags(tagLabels)
         .withCertification(certification)
         .withSourceUrl(csvRecord.get(9))
-        .withDomains(getDomains(printer, csvRecord, 10))
+        .withDomains(getDomains(printer, csvRecord, 10, sp.getDomains()))
         .withStoredProcedureCode(storedProcedureCode)
         .withExtension(getExtension(printer, csvRecord, 11));
 

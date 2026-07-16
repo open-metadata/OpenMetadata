@@ -15,28 +15,24 @@ import {
   Avatar,
   Box,
   Card,
+  Input,
+  PaginationCardDefault,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Globe01 } from '@untitledui/icons';
-import { isEmpty } from 'lodash';
-import { ReactNode, useCallback, useMemo, useState } from 'react';
-import { useForm } from 'react-hook-form';
+import { Globe01, SearchLg } from '@untitledui/icons';
+import { debounce, isEmpty } from 'lodash';
+import { ReactNode, useCallback, useEffect, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as FolderEmptyIcon } from '../../assets/svg/folder-empty.svg';
 import { NO_DATA, ROUTES } from '../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../constants/Learning.constants';
 import { usePermissionProvider } from '../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../enums/common.enum';
-import { EntityType } from '../../enums/entity.enum';
-import { CreateDataProduct } from '../../generated/api/domains/createDataProduct';
 import { DataProduct } from '../../generated/entity/domains/dataProduct';
 import { withPageLayout } from '../../hoc/withPageLayout';
 import { useIsAiMode } from '../../hooks/useAppMode';
 import { useMarketplaceStore } from '../../hooks/useMarketplaceStore';
-import { addDataProducts, patchDataProduct } from '../../rest/dataProductAPI';
-import { createEntityWithCoverImage } from '../../utils/CoverImageUploadUtils';
 import { getEntityName } from '../../utils/EntityNameUtils';
-import { submitAndClose } from '../../utils/FormDrawerUtils';
 import { getEntityAvatarProps } from '../../utils/IconUtils';
 import {
   getClassificationTags,
@@ -45,13 +41,9 @@ import {
 import { useDelete } from '../common/atoms/actions/useDelete';
 import { useDataProductFilters } from '../common/atoms/domain/ui/useDataProductFilters';
 import { useDomainCardTemplates } from '../common/atoms/domain/ui/useDomainCardTemplates';
-import { useFormDrawerWithHook } from '../common/atoms/drawer';
 import { useFilterSelection } from '../common/atoms/filters/useFilterSelection';
 import { usePageHeader } from '../common/atoms/navigation/usePageHeader';
-import { useSearch } from '../common/atoms/navigation/useSearch';
 import { useTitleAndCount } from '../common/atoms/navigation/useTitleAndCount';
-import { useViewToggle } from '../common/atoms/navigation/useViewToggle';
-import { usePaginationControls } from '../common/atoms/pagination/usePaginationControls';
 import { hasActiveSearchOrFilter } from '../common/atoms/shared/utils/hasActiveSearchOrFilter';
 import EntityCardView from '../common/EntityCardView/EntityCardView.component';
 import EntityListingTable from '../common/EntityListingTable/EntityListingTable.component';
@@ -60,13 +52,9 @@ import ErrorPlaceHolder from '../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../common/HeaderBreadcrumb/HeaderBreadcrumb.component';
 import { OwnerLabel } from '../common/OwnerLabel/OwnerLabel.component';
 import TagBadgeList from '../common/TagBadgeList/TagBadgeList.component';
-import AddDomainForm, {
-  DOMAIN_FORM_DEFAULTS,
-  transformDomainFormData,
-} from '../Domain/AddDomainForm/AddDomainForm.component';
-import { DomainFormValues } from '../Domain/AddDomainForm/AddDomainForm.interface';
-import { DomainFormType } from '../Domain/DomainPage.interface';
+import ViewToggle, { ViewMode } from '../common/ViewToggle/ViewToggle';
 import { DataProductListPageProps } from './DataProductListPage.interface';
+import { useDataProductCreateDrawer } from './hooks/useDataProductCreateDrawer';
 import { useDataProductListingData } from './hooks/useDataProductListingData';
 
 const DataProductListPage = ({
@@ -77,11 +65,6 @@ const DataProductListPage = ({
   const { t } = useTranslation();
   const isAiMode = useIsAiMode();
   const { permissions } = usePermissionProvider();
-  const form = useForm<DomainFormValues>({
-    defaultValues: DOMAIN_FORM_DEFAULTS,
-  });
-  const [isLoading, setIsLoading] = useState(false);
-
   const { quickFilters, defaultFilters } = useDataProductFilters({
     aggregations: dataProductListing.aggregations || undefined,
     parsedFilters: dataProductListing.parsedFilters,
@@ -95,70 +78,12 @@ const DataProductListPage = ({
     onFilterChange: dataProductListing.handleFilterChange,
   });
 
-  const handleDataProductSubmit = useCallback(
-    async (data: DomainFormValues) => {
-      const formData = transformDomainFormData(
-        data,
-        DomainFormType.DATA_PRODUCT
-      ) as CreateDataProduct;
-      setIsLoading(true);
-      try {
-        await createEntityWithCoverImage({
-          formData,
-          entityType: EntityType.DATA_PRODUCT,
-          entityLabel: t('label.data-product'),
-          entityPluralLabel: 'data-products',
-          createEntity: addDataProducts,
-          patchEntity: patchDataProduct,
-          onSuccess: () => {
-            form.reset();
-          },
-          t,
-        });
-      } finally {
-        setIsLoading(false);
-      }
-    },
-    [form, t]
-  );
-
   const refreshDataProducts = useCallback(() => {
     dataProductListing.refetch();
   }, [dataProductListing]);
 
-  const { formDrawer, openDrawer, closeDrawer } =
-    useFormDrawerWithHook<DomainFormValues>({
-      title: t('label.add-entity', { entity: t('label.data-product') }),
-      width: 670,
-      closeOnEscape: false,
-      className: 'tw:z-[20]',
-      hookForm: form,
-      form: (
-        <AddDomainForm
-          isFormInDialog
-          form={form}
-          loading={isLoading}
-          type={DomainFormType.DATA_PRODUCT}
-          onCancel={() => {}}
-          onSubmit={(data: DomainFormValues): Promise<void> =>
-            submitAndClose(
-              data,
-              handleDataProductSubmit,
-              closeDrawer,
-              refreshDataProducts
-            )
-          }
-        />
-      ),
-      onSubmit: (data: DomainFormValues): Promise<void> =>
-        submitAndClose(
-          data,
-          handleDataProductSubmit,
-          closeDrawer,
-          refreshDataProducts
-        ),
-      loading: isLoading,
-    });
+  const { formDrawer, openDrawer } =
+    useDataProductCreateDrawer(refreshDataProducts);
 
   const breadcrumbItems = useMemo(
     () => [
@@ -199,13 +124,27 @@ const DataProductListPage = ({
     loading: dataProductListing.loading,
   });
 
-  const { search } = useSearch({
-    searchPlaceholder: t('label.search'),
-    onSearchChange: dataProductListing.handleSearchChange,
-    initialSearchQuery: dataProductListing.urlState.searchQuery,
-  });
+  const [searchInputValue, setSearchInputValue] = useState(
+    dataProductListing.urlState.searchQuery ?? ''
+  );
 
-  const { view, viewToggle } = useViewToggle();
+  const debouncedSearch = useMemo(
+    () => debounce(dataProductListing.handleSearchChange, 300),
+    [dataProductListing.handleSearchChange]
+  );
+
+  useEffect(() => {
+    debouncedSearch.cancel();
+    setSearchInputValue(dataProductListing.urlState.searchQuery ?? '');
+  }, [dataProductListing.urlState.searchQuery, debouncedSearch]);
+
+  useEffect(() => {
+    return () => {
+      debouncedSearch.cancel();
+    };
+  }, [debouncedSearch]);
+
+  const [view, setView] = useState<ViewMode>(ViewMode.Table);
   const { renderDataProductCard } = useDomainCardTemplates();
 
   const dataProductColumns: ColumnDef[] = useMemo(
@@ -291,15 +230,6 @@ const DataProductListPage = ({
     []
   );
 
-  const { paginationControls } = usePaginationControls({
-    currentPage: dataProductListing.currentPage,
-    totalPages: dataProductListing.totalPages,
-    totalEntities: dataProductListing.totalEntities,
-    pageSize: dataProductListing.pageSize,
-    onPageChange: dataProductListing.handlePageChange,
-    loading: dataProductListing.loading,
-  });
-
   const selectedDataProductEntities = useMemo(
     () =>
       dataProductListing.entities.filter((entity) =>
@@ -352,7 +282,7 @@ const DataProductListPage = ({
       );
     }
 
-    if (view === 'table') {
+    if (view === ViewMode.Table) {
       return (
         <>
           <EntityListingTable
@@ -366,7 +296,11 @@ const DataProductListPage = ({
             onSelect={dataProductListing.handleSelect}
             onSelectAll={dataProductListing.handleSelectAll}
           />
-          {paginationControls}
+          <PaginationCardDefault
+            page={dataProductListing.currentPage}
+            total={dataProductListing.totalPages}
+            onPageChange={dataProductListing.handlePageChange}
+          />
         </>
       );
     }
@@ -379,7 +313,11 @@ const DataProductListPage = ({
           renderCard={renderDataProductCard}
           onEntityClick={dataProductListing.actionHandlers.onEntityClick}
         />
-        {paginationControls}
+        <PaginationCardDefault
+          page={dataProductListing.currentPage}
+          total={dataProductListing.totalPages}
+          onPageChange={dataProductListing.handlePageChange}
+        />
       </>
     );
   }, [
@@ -387,11 +325,13 @@ const DataProductListPage = ({
     dataProductListing.entities,
     dataProductListing.selectedEntities,
     dataProductListing.actionHandlers,
+    dataProductListing.currentPage,
+    dataProductListing.totalPages,
+    dataProductListing.handlePageChange,
     isSearchOrFilterActive,
     view,
     renderDataProductCell,
     renderDataProductCard,
-    paginationControls,
     openDrawer,
     t,
     permissions.dataProduct?.Create,
@@ -418,10 +358,19 @@ const DataProductListPage = ({
           gap={4}>
           <Box align="center" direction="row" gap={5}>
             {titleAndCount}
-            {search}
+            <Input
+              className="tw:max-w-86"
+              icon={SearchLg}
+              placeholder={t('label.search')}
+              value={searchInputValue}
+              onChange={(value) => {
+                setSearchInputValue(value);
+                debouncedSearch(value);
+              }}
+            />
             {quickFilters}
             <Box className="tw:ml-auto" />
-            {viewToggle}
+            <ViewToggle value={view} onChange={setView} />
             {deleteIconButton}
           </Box>
           {filterSelectionDisplay}

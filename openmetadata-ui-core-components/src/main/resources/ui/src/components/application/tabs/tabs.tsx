@@ -216,7 +216,7 @@ export const Tab = (props: TabComponentProps) => {
       {(state) => (
         <Fragment>
           {typeof children === 'function' ? children(state) : children || label}
-          {badge && (
+          {(badge || badge === 0) && (
             <Badge
               className={cx(
                 'tw:hidden tw:transition-inherit-all tw:md:flex',
