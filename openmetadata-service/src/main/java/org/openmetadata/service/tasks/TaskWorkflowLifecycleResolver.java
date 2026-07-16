@@ -552,7 +552,6 @@ public final class TaskWorkflowLifecycleResolver {
               schemaWithProperties(
                   Map.of(
                       "requestedAccess", stringProperty(),
-                      "duration", stringProperty(),
                       "reason", stringProperty(),
                       "assets", Map.of("type", "array", "items", objectProperty()),
                       "ticketId", stringProperty(),

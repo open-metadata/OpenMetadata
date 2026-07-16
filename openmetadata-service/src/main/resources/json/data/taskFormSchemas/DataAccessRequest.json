@@ -29,10 +29,6 @@
         "enum": ["Read", "Write", "Admin"],
         "default": "Read"
       },
-      "duration": {
-        "type": "string",
-        "title": "Duration"
-      },
       "expirationDate": {
         "type": "number",
         "title": "Expiration Date"
@@ -68,9 +64,6 @@
     },
     "requestedAccess": {
       "ui:widget": "select"
-    },
-    "duration": {
-      "ui:widget": "durationSelector"
     },
     "expirationDate": {
       "ui:widget": "dateTimePicker"

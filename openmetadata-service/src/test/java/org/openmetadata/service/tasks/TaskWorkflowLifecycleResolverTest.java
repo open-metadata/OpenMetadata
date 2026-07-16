@@ -358,6 +358,7 @@ class TaskWorkflowLifecycleResolverTest {
       Map<?, ?> expirationDate = assertInstanceOf(Map.class, properties.get("expirationDate"));
 
       assertEquals("number", expirationDate.get("type"));
+      assertFalse(properties.containsKey("duration"));
     }
   }
 
