@@ -195,22 +195,21 @@ def _resolve_schema(
     return None, False
 
 
-def enumerated(rows: Sequence[object], noun: str) -> str:
-    """``N <noun>s enumerated`` (``N+`` at the cap), or ``no <noun>s enumerated``.
-
-    The summarizer for a ``run_sql`` probe that counts rows. ``run_sql`` fetches at
-    most ``DEFAULT_SAMPLE_ROWS``, so at the cap the exact total is unknown and the
-    figure is reported as a floor rather than implying a full enumeration.
-    """
-    if not rows:
+def enumerated(number: int, noun: str, cap: int | None = None) -> str:
+    """``3 tables enumerated`` / ``no tables enumerated``; ``<cap>+`` at ``cap``."""
+    if not number:
         return f"no {noun}s enumerated"
-    return f"{count(len(rows), noun, DEFAULT_SAMPLE_ROWS)} enumerated"
+    return f"{count(number, noun, cap)} enumerated"
 
 
-def _enumerated(kind: str, number: int, schema: str | None, auto_selected: bool) -> str:
-    counted = count(number, kind)
+def _in_schema(kind: str, number: int, schema: str | None, auto_selected: bool) -> str:
+    """``3 tables in schema 'sales'``; falls back to ``enumerated`` with no schema.
+
+    Reflection returns every name, so the count carries no cap.
+    """
     if schema is None:
-        return f"{counted} enumerated"
+        return enumerated(number, kind)
+    counted = count(number, kind)
     if auto_selected:
         return f"{counted} in schema '{schema}', auto-selected because no databaseSchema was configured"
     return f"{counted} in schema '{schema}'"
@@ -233,7 +232,7 @@ def _empty_caveat(kind: str, scope: str) -> Diagnosis:
 def list_schemas(client: Engine) -> Evidence:
     names, command = _reflect(client, lambda: inspect(client).get_schema_names())
     return Evidence(
-        summary=f"{count(len(names), 'schema')} enumerated",
+        summary=enumerated(len(names), "schema"),
         command=command,
         caveat=None if names else _empty_caveat("schema", "the database"),
     )
@@ -245,7 +244,7 @@ def list_tables(client: Engine, schema: str | None, system_schemas: frozenset[st
     names, command = _reflect(client, lambda: inspector.get_table_names(target))
     scope = f"schema '{target}'" if target else "the database"
     return Evidence(
-        summary=_enumerated("table", len(names), target, auto_selected),
+        summary=_in_schema("table", len(names), target, auto_selected),
         command=command,
         caveat=None if names else _empty_caveat("table", scope),
     )
@@ -256,6 +255,6 @@ def list_views(client: Engine, schema: str | None, system_schemas: frozenset[str
     target, auto_selected = _resolve_schema(inspector, schema, system_schemas)
     names, command = _reflect(client, lambda: inspector.get_view_names(target))
     return Evidence(
-        summary=_enumerated("view", len(names), target, auto_selected),
+        summary=_in_schema("view", len(names), target, auto_selected),
         command=command,
     )

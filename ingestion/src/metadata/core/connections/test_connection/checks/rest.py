@@ -9,19 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Shared check helpers for connectors that reach their source over a REST API.
+Check helpers for the REST-backed verticals (dashboard, pipeline).
 
-Dashboard and pipeline connectors authenticate with OAuth or a token and read
-list endpoints; neither has a SQLAlchemy engine, so their checks reduce to the
-same two shapes: run a connector-supplied callable, and summarize what it
-returned. These helpers stay protocol-generic - they never touch a client, a
-status code, or a response body - so the runner and the rest of the package stay
-engine- and protocol-agnostic.
-
-On failure every helper re-raises as ``CheckError`` carrying the label of the
-call it attempted, so a failed step still reports its ``Evidence`` to the
-backend. A connector imports these directly and takes its step identity from the
-matching vertical module (``checks.dashboard`` / ``checks.pipeline``).
+Each runs a connector-supplied callable and summarizes what it returned, raising
+``CheckError`` with the attempted command on failure. Step identity comes from
+the matching vertical module; matchers live in ``classifier``.
 """
 
 from __future__ import annotations
@@ -30,46 +22,14 @@ from typing import TYPE_CHECKING, TypeVar
 
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.summary import count
-from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sized
 
-    from metadata.core.connections.test_connection.classifier import Matcher
-
 _T = TypeVar("_T")
 
-
-def response_status(error: BaseException) -> int | None:
-    """The HTTP status of a REST error, from the two shapes ``requests`` produces.
-
-    An SDK error usually exposes the status directly on ``.status_code``; a raw
-    ``requests.HTTPError`` carries it one level down at ``.response.status_code``.
-    A connector whose SDK reports the status somewhere else (in an error document,
-    or encoded in a vendor code) passes its own extractor to ``http_status``.
-    """
-    code = getattr(error, "status_code", None)
-    if not isinstance(code, int):
-        code = getattr(getattr(error, "response", None), "status_code", None)
-    return code if isinstance(code, int) else None
-
-
-def http_status(*codes: int, extract: Callable[[BaseException], int | None] = response_status) -> Matcher:
-    """Match a REST error by HTTP status, across the cause chain.
-
-    The status is the stable signal - an error's message and detail vary by
-    endpoint, tenant, and server version. ``extract`` says where this connector's
-    SDK keeps it; the default covers the plain ``requests`` shapes.
-    """
-    wanted = frozenset(codes)
-    return lambda error: any(extract(current) in wanted for current in exception_chain(error))
-
-
-# A check only needs to prove the list endpoint is reachable and returns items,
-# not enumerate every one, so ``fetch_list`` counts at most this many and renders
-# ``<cap>+`` when the count meets or exceeds it, keeping the summary bounded on
-# huge tenants and accounts.
+# Cap on the items ``fetch_list`` counts, so a huge tenant stays bounded.
 DEFAULT_LIST_CAP = 100
 
 

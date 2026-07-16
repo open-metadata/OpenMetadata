@@ -31,9 +31,9 @@ from metadata.core.connections.test_connection import (
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
 from metadata.core.connections.test_connection.checks.rest import (
     fetch_list,
-    http_status,
     verify_access,
 )
+from metadata.core.connections.test_connection.classifier import http_status
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection as DBTCloudConnectionConfig,
@@ -47,7 +47,6 @@ from metadata.ingestion.source.pipeline.dbtcloud.client import (
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
-    from metadata.core.connections.test_connection.classifier import Matcher
 
 TOKENS_DOC = "https://docs.getdbt.com/docs/dbt-apis/authentication"
 RATE_LIMITS_DOC = "https://docs.getdbt.com/docs/dbt-apis/rate-limits"
@@ -68,11 +67,6 @@ def _dbt_status(error: BaseException) -> int | None:
     return error.status_code if isinstance(error, DBTCloudApiError) else None
 
 
-def _http_status(*codes: int) -> Matcher:
-    """Match a dbt Cloud API error by HTTP status, across the cause chain."""
-    return http_status(*codes, extract=_dbt_status)
-
-
 NO_JOBS_CAVEAT = Diagnosis(
     title="No jobs visible",
     remediation="The account is readable but has no job. Ingestion reads pipelines from dbt Cloud "
@@ -86,23 +80,23 @@ DBTCLOUD_ERRORS = ErrorPack(
         fix=ACCOUNT_ID_FIX,
         doc=TOKENS_DOC,
     ),
-    when(_http_status(401)).diagnose(
+    when(http_status(401, extract=_dbt_status)).diagnose(
         "Authentication failed",
         fix="dbt Cloud rejected the token. Check the Token is a valid, unexpired service token or "
         "personal access token.",
         doc=TOKENS_DOC,
     ),
-    when(_http_status(403)).diagnose(
+    when(http_status(403, extract=_dbt_status)).diagnose(
         "Access denied",
         fix=f"dbt Cloud refused the request. {ACCOUNT_ID_FIX} If both are right, check the token's "
         "permission set covers the projects to ingest.",
         doc=TOKENS_DOC,
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404, extract=_dbt_status)).diagnose(
         "Endpoint not found",
         fix=f"Host and Account Id build the path the API answered 404 for. {ACCOUNT_ID_FIX}",
     ),
-    when(_http_status(429)).diagnose(
+    when(http_status(429, extract=_dbt_status)).diagnose(
         "Rate limited",
         fix="dbt Cloud rate limits the API at 5,000 requests per minute per account and then "
         "enforces a five-minute cooldown. Retry in five minutes.",

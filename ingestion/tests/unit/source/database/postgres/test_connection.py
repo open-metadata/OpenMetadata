@@ -18,12 +18,12 @@ from azure.identity import ClientSecretCredential
 from sqlalchemy import create_engine
 from sqlalchemy.pool import StaticPool
 
+import metadata.ingestion.source.database.postgres.connection as connection_module
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import (
     DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
-    enumerated,
 )
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
@@ -256,8 +256,23 @@ def test_query_statement_is_built_lazily_not_at_construction():
         assert calls == []
 
 
-def test_get_databases_summary_marks_the_sample_cap():
-    # run_sql fetches at most DEFAULT_SAMPLE_ROWS; below the cap the count is exact,
-    # at the cap it is a lower bound and must be reported as "N+".
-    assert enumerated([1, 2, 3], "database") == "3 databases enumerated"
-    assert enumerated(list(range(DEFAULT_SAMPLE_ROWS)), "database") == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+def _databases_summary(rows: int) -> str:
+    """Drive GetDatabases against a real engine whose probe returns ``rows`` rows."""
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    with engine.connect() as connection:
+        connection.exec_driver_sql("CREATE TABLE probe (name TEXT)")
+        for index in range(rows):
+            connection.exec_driver_sql(f"INSERT INTO probe VALUES ('db{index}')")
+        connection.commit()
+    checks = PostgresChecks(db=Borrowed.of(engine), query_statement_source="pg_stat_statements")
+    with patch.object(connection_module, "POSTGRES_GET_DATABASE", "SELECT name FROM probe"):
+        return collect_checks(checks)[DatabaseStep.GetDatabases]().summary
+
+
+def test_get_databases_counts_the_databases_it_found():
+    assert _databases_summary(3) == "3 databases enumerated"
+
+
+def test_get_databases_reports_a_floor_when_the_sample_is_capped():
+    # run_sql fetches at most DEFAULT_SAMPLE_ROWS; at the cap the count is a floor.
+    assert _databases_summary(DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"

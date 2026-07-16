@@ -21,6 +21,7 @@ from sqlalchemy.engine import Engine
 
 from metadata.core.connections.test_connection import ErrorPack, Matchers, check, when
 from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
     enumerated,
     list_schemas,
@@ -149,7 +150,11 @@ class MssqlChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self._db.client, self.get_databases_statement, lambda rows: enumerated(rows, "database"))
+        return run_sql(
+            self._db.client,
+            self.get_databases_statement,
+            lambda rows: enumerated(len(rows), "database", DEFAULT_SAMPLE_ROWS),
+        )
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:

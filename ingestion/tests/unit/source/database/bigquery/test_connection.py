@@ -24,7 +24,7 @@ from google.auth.exceptions import DefaultCredentialsError, RefreshError
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
 from metadata.core.connections.test_connection.check import collect_checks
-from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.checks.database import DatabaseStep, enumerated
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection as BigQueryConnectionConfig,
@@ -32,7 +32,6 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.ingestion.source.database.bigquery.connection import (
     BIGQUERY_ERRORS,
     BigQueryChecks,
-    _enumerated,
     probe_table_view_enumeration,
 )
 from metadata.utils.credentials import InvalidPrivateKeyException
@@ -240,6 +239,6 @@ def test_probe_table_view_enumeration_tolerates_deleted_dataset():
 
 
 def test_enumerated_pluralizes_by_count():
-    assert _enumerated(1, "dataset") == "1 dataset enumerated"
-    assert _enumerated(3, "dataset") == "3 datasets enumerated"
-    assert _enumerated(1, "policy tag") == "1 policy tag enumerated"
+    assert enumerated(1, "dataset") == "1 dataset enumerated"
+    assert enumerated(3, "dataset") == "3 datasets enumerated"
+    assert enumerated(1, "policy tag") == "1 policy tag enumerated"

@@ -56,12 +56,7 @@ def tcp_probe(host: str, port: int, timeout: float = NETWORK_PROBE_TIMEOUT_SECON
 
 
 def probe_or_fail(host: str, port: int) -> None:
-    """TCP-probe host:port from inside a check, reporting the attempt as ``Evidence``.
-
-    ``tcp_probe`` proves reachability; this wraps it for the one caller shape every
-    gate check shares - on failure the step must still report the probe it ran, so
-    the reachability error is re-raised as ``CheckError`` carrying that command.
-    """
+    """TCP-probe host:port, raising ``CheckError`` with the attempted command."""
     try:
         tcp_probe(host, port)
     except NetworkUnreachableError as error:

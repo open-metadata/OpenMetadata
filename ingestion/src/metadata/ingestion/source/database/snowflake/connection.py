@@ -34,6 +34,7 @@ from metadata.core.connections.test_connection import (
     when,
 )
 from metadata.core.connections.test_connection.checks.database import (
+    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
     enumerated,
     ping,
@@ -339,12 +340,16 @@ class SnowflakeChecks:
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self._db.client, SNOWFLAKE_GET_DATABASES, lambda rows: enumerated(rows, "database"))
+        return run_sql(
+            self._db.client,
+            SNOWFLAKE_GET_DATABASES,
+            lambda rows: enumerated(len(rows), "database", DEFAULT_SAMPLE_ROWS),
+        )
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_SCHEMAS.format(database_name=self._database())
-        return run_sql(self._db.client, statement, lambda rows: enumerated(rows, "schema"))
+        return run_sql(self._db.client, statement, lambda rows: enumerated(len(rows), "schema", DEFAULT_SAMPLE_ROWS))
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
@@ -354,7 +359,7 @@ class SnowflakeChecks:
 
         def summarize(rows: Sequence[Row]) -> str:
             counts.append(len(rows))
-            return enumerated(rows, "table")
+            return enumerated(len(rows), "table", DEFAULT_SAMPLE_ROWS)
 
         evidence = run_sql(self._db.client, statement, summarize)
         if not counts[0]:
@@ -364,12 +369,12 @@ class SnowflakeChecks:
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_VIEWS.format(database_name=self._database())
-        return run_sql(self._db.client, statement, lambda rows: enumerated(rows, "view"))
+        return run_sql(self._db.client, statement, lambda rows: enumerated(len(rows), "view", DEFAULT_SAMPLE_ROWS))
 
     @check(DatabaseStep.GetStreams)
     def get_streams(self) -> Evidence:
         statement = SNOWFLAKE_TEST_GET_STREAMS.format(database_name=self._database())
-        return run_sql(self._db.client, statement, lambda rows: enumerated(rows, "stream"))
+        return run_sql(self._db.client, statement, lambda rows: enumerated(len(rows), "stream", DEFAULT_SAMPLE_ROWS))
 
     @check(DatabaseStep.GetTags)
     def get_tags(self) -> Evidence:

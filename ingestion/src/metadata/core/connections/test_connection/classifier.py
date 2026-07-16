@@ -42,12 +42,7 @@ class Matchers:
 
     @staticmethod
     def text(error: BaseException) -> str:
-        """The lower-cased text of the error and its cause chain, joined.
-
-        The raw material a connector's own matcher reads when it needs more than
-        a single token - two tokens that must co-occur, or a token qualified by a
-        configured value. ``contains`` is the one-token case of the same idea.
-        """
+        """The lower-cased text of the error and its cause chain, joined."""
         return " ".join(str(current) for current in exception_chain(error)).lower()
 
     @staticmethod
@@ -77,13 +72,7 @@ class Matchers:
 
     @staticmethod
     def any_of(*matchers: Matcher) -> Matcher:
-        """Match when any of ``matchers`` does - one diagnosis, several signals.
-
-        A condition a driver reports more than one way (a numeric code on one path,
-        a message token on another) is still one thing to tell the user. Binding
-        those signals to a single rule keeps the diagnosis written once, so the
-        fix text cannot drift between copies.
-        """
+        """Match when any of ``matchers`` does - one diagnosis, several signals."""
         return lambda error: any(matcher(error) for matcher in matchers)
 
     @staticmethod
@@ -131,3 +120,24 @@ class ErrorPack:
             if rule.matcher(error):
                 return rule.diagnosis
         return None
+
+
+def response_status(error: BaseException) -> int | None:
+    """The HTTP status a ``requests``-shaped error carries, or ``None``."""
+    code = getattr(error, "status_code", None)
+    if not isinstance(code, int):
+        code = getattr(getattr(error, "response", None), "status_code", None)
+    return code if isinstance(code, int) else None
+
+
+def http_status(*codes: int, extract: Callable[[BaseException], int | None] = response_status) -> Matcher:
+    """Match a REST error by HTTP status. ``extract`` says where the SDK keeps it."""
+    wanted = frozenset(codes)
+    return lambda error: any(extract(current) in wanted for current in exception_chain(error))
+
+
+# A check only needs to prove the list endpoint is reachable and returns items,
+# not enumerate every one, so ``fetch_list`` counts at most this many and renders
+# ``<cap>+`` when the count meets or exceeds it, keeping the summary bounded on
+# huge tenants and accounts.
+DEFAULT_LIST_CAP = 100

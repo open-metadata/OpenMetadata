@@ -35,10 +35,9 @@ from metadata.core.connections.test_connection.checks.dashboard import Dashboard
 from metadata.core.connections.test_connection.checks.rest import (
     call_endpoint,
     fetch_list,
-    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.classifier import exception_chain, http_status
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.lookerConnection import (
     LookerConnection as LookerConnectionConfig,
@@ -80,20 +79,13 @@ def _error_doc(error: BaseException) -> re.Match[str] | None:
     return _ERROR_DOC_URL.search(f"{error} {doc_url}")
 
 
-def _http_status(*codes: int) -> Matcher:
-    """Match a Looker REST error by the HTTP status of the call that failed.
+def _looker_status(error: BaseException) -> int | None:
+    """The HTTP status from Looker's error-document URL, or ``None``.
 
-    The SDK flattens every error into text, so the status is only recoverable from
-    the error-document URL it embeds - hence a bespoke extractor, not the shared
-    ``requests`` default.
+    The SDK flattens every error to text, so the URL is the only place it survives.
     """
-    wanted = frozenset(str(code) for code in codes)
-
-    def status_of(error: BaseException) -> int | None:
-        match = _error_doc(error)
-        return int(match["status"]) if match is not None and match["status"] in wanted else None
-
-    return http_status(*codes, extract=status_of)
+    match = _error_doc(error)
+    return int(match["status"]) if match is not None else None
 
 
 def _login_rejected(error: BaseException) -> bool:
@@ -155,11 +147,11 @@ LOOKER_ERRORS = ErrorPack(
         fix="Provide both the Client ID and the Client Secret.",
         doc=API_SDK_DOC,
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404, extract=_looker_status)).diagnose(
         "Resource not found",
         fix="Looker could not find the requested resource. Check that Host Port is the instance URL.",
     ),
-    when(_http_status(429)).diagnose(
+    when(http_status(429, extract=_looker_status)).diagnose(
         "Rate limited by Looker",
         fix="Looker is throttling the requests. Retry once the instance is under less load.",
     ),

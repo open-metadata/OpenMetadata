@@ -8,25 +8,16 @@
 #  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
-"""
-Phrasing for what a check found.
-
-Every check reports a count of something it enumerated, and every listing probe
-is bounded, so the count is a sample rather than a total. These helpers render
-both facts the same way whatever the client is - SQL, boto3, or REST - so the
-summaries read consistently across connectors.
-"""
+"""Count phrasing shared by the check helpers."""
 
 from __future__ import annotations
 
 
 def count(number: int, noun: str, cap: int | None = None) -> str:
-    """``3 tables`` / ``1 table`` - pluralize the noun to match the count.
+    """``3 tables`` / ``1 table``; ``<cap>+`` once ``number`` reaches ``cap``.
 
-    When ``cap`` is given and the count meets or exceeds it, the figure is
-    rendered ``<cap>+`` so a capped sample is not read as an exact total. The
-    caller caps ``number`` at ``cap`` first, so this only ever renders ``<cap>+``
-    at the boundary, never a larger bare number.
+    ``cap`` is the largest number the caller could have counted; ``None`` means
+    the count is complete.
     """
     plural = noun if number == 1 else noun + "s"
     shown = f"{cap}+" if cap is not None and number >= cap else str(number)
@@ -34,5 +25,5 @@ def count(number: int, noun: str, cap: int | None = None) -> str:
 
 
 def more_suffix(shown: int, more: bool) -> str:
-    """Mark a summary as capped when the listing has more assets beyond ``shown``."""
+    """`` (showing first N; more exist)`` when the listing was capped, else ``""``."""
     return f" (showing first {shown}; more exist)" if more else ""

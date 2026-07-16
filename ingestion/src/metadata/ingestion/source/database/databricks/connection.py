@@ -292,7 +292,7 @@ class DatabricksChecks:
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
         rows = list(rows) if rows is not None else []
-        return Evidence(summary=enumerated(rows, noun), command=command)
+        return Evidence(summary=enumerated(len(rows), noun, DEFAULT_SAMPLE_ROWS), command=command)
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:

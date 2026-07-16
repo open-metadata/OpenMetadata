@@ -23,9 +23,7 @@ from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.database import (
-    DEFAULT_SAMPLE_ROWS,
     DatabaseStep,
-    enumerated,
 )
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
@@ -173,16 +171,6 @@ def test_network_errors_classify_through_including():
     error = NetworkUnreachableError("acc.snowflakecomputing.com:443 is not reachable")
     error.__cause__ = TimeoutError("timed out")
     assert SNOWFLAKE_ERRORS.classify(error).title == "Connection timed out"
-
-
-def test_count_summary_marks_empty_count_and_cap():
-    assert enumerated([], "table") == "no tables enumerated"
-    assert enumerated([object()] * 3, "database") == "3 databases enumerated"
-    assert enumerated([object()] * 3, "view") == "3 views enumerated"
-    assert enumerated([object()] * 1, "stream") == "1 stream enumerated"
-    assert enumerated([object()] * 1, "table") == "1 table enumerated"
-    capped = enumerated([object()] * DEFAULT_SAMPLE_ROWS, "table")
-    assert capped == f"{DEFAULT_SAMPLE_ROWS}+ tables enumerated"
 
 
 def _fake_run_sql(returned_rows):
