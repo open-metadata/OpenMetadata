@@ -42,7 +42,6 @@ import WorkflowArrayFieldTemplate from '../../../../common/Form/JSONSchema/JSONS
 import CodeWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/CodeWidget/CodeWidget';
 import ManifestJsonWidget from '../../../../common/Form/JSONSchema/JsonSchemaWidgets/ManifestJsonWidget/ManifestJsonWidget';
 import ProfileSampleConfigField from './ProfileSampleConfigField';
-
 const IngestionWorkflowForm: FC<IngestionWorkflowFormProps> = ({
   pipeLineType,
   className,

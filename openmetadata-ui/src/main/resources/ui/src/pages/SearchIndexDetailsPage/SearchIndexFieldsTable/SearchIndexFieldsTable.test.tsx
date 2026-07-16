@@ -50,6 +50,9 @@ jest.mock(
 jest.mock(
   '../../../components/Customization/GenericProvider/GenericContext',
   () => ({
+    ...jest.requireActual(
+      '../../../components/Customization/GenericProvider/GenericProvider'
+    ),
     useGenericContext: jest.fn().mockReturnValue({
       type: 'searchIndex',
       setDisplayedColumns: jest.fn(),
@@ -108,27 +111,31 @@ jest.mock(
   })
 );
 
-jest.mock('../../../utils/TableUtils', () => {
-  const actual = jest.requireActual('../../../utils/TableUtils');
+jest.mock('../../../utils/TablePureUtils', () => {
+  const actual = jest.requireActual('../../../utils/TablePureUtils');
 
   return {
     ...actual,
     searchInFields: jest.fn().mockReturnValue(MOCK_SEARCH_INDEX_FIELDS),
     updateFieldDescription: jest.fn(),
     updateFieldTags: jest.fn(),
-    getTableExpandableConfig: jest.fn().mockReturnValue({}),
-    getTableColumnConfigSelections: jest
-      .fn()
-      .mockReturnValue([
-        'name',
-        'description',
-        'dataTypeDisplay',
-        'tags',
-        'glossary',
-      ]),
-    handleUpdateTableColumnSelections: jest.fn(),
   };
 });
+
+jest.mock('../../../utils/TableUtils', () => ({
+  ...jest.requireActual('../../../utils/TableUtils'),
+  getTableExpandableConfig: jest.fn().mockReturnValue({}),
+  getTableColumnConfigSelections: jest
+    .fn()
+    .mockReturnValue([
+      'name',
+      'description',
+      'dataTypeDisplay',
+      'tags',
+      'glossary',
+    ]),
+  handleUpdateTableColumnSelections: jest.fn(),
+}));
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getEntityDetailsPath: jest

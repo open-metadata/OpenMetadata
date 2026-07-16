@@ -10,12 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-export {
-  getSearchNameEsQuery,
-  prepareColumnLevelNodesFromEdges,
-  prepareDownstreamColumnLevelNodesFromDownstreamEdges,
-  prepareUpstreamColumnLevelNodesFromUpstreamEdges,
-} from './LineagePureUtils';
 
 import { ArrowLeftOutlined, ArrowRightOutlined } from '@ant-design/icons';
 import { ChevronRight } from '@untitledui/icons';

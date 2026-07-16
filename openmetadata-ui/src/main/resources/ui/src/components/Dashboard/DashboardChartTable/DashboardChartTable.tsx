@@ -53,7 +53,6 @@ import { ColumnFilter } from '../../Database/ColumnFilter/ColumnFilter.component
 import TableDescription from '../../Database/TableDescription/TableDescription.component';
 import TableTags from '../../Database/TableTags/TableTags.component';
 import { ChartsPermissions } from '../DashboardDetails/DashboardDetails.interface';
-
 const ModalWithMarkdownEditor = withSuspenseFallback(
   lazy(() =>
     import('../../Modals/ModalWithMarkdownEditor/ModalWithMarkdownEditor').then(

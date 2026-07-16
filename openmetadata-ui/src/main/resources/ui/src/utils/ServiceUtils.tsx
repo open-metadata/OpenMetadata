@@ -40,25 +40,6 @@ import {
   getServiceRouteFromServiceType,
 } from './ServicePureUtils';
 
-export {
-  getActiveFieldNameForAppDocs,
-  getCountLabel,
-  getEntityTypeFromServiceCategory,
-  getIngestionName,
-  getReadableCountString,
-  getResourceEntityFromServiceCategory,
-  getSearchIndexForService,
-  getSearchIndexFromService,
-  getServiceCategoryFromEntityType,
-  getServiceDisplayNameQueryFilter,
-  getServiceNameQueryFilter,
-  getServiceRouteFromServiceType,
-  getServiceType,
-  getServiceTypesFromServiceCategory,
-  getTestConnectionName,
-  shouldTestConnection,
-} from './ServicePureUtils';
-
 export const getOptionalFields = (
   service: ServicesType,
   serviceName: ServiceCategory

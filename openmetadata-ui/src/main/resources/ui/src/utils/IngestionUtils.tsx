@@ -25,31 +25,6 @@ import { FormSubmitType } from '../enums/form.enum';
 import { PipelineType } from '../generated/api/services/ingestionPipelines/createIngestionPipeline';
 import { UIThemePreference } from '../generated/configuration/uiThemePreference';
 import i18n, { Transi18next } from './i18next/LocalUtil';
-import {
-  getBreadCrumbsArray,
-  getDefaultFilterPropertyFieldsFromSchema,
-  getDefaultFilterPropertyValues,
-  getDefaultIngestionSchedule,
-  getIngestionHeadingName,
-  getIngestionStatusCountData,
-  getIngestionTypes,
-  getSettingsPathFromPipelineType,
-  getSupportedPipelineTypes,
-  getTypeAndStatusMenuItems,
-} from './IngestionConfigUtils';
-
-export {
-  getBreadCrumbsArray,
-  getDefaultFilterPropertyFieldsFromSchema,
-  getDefaultFilterPropertyValues,
-  getDefaultIngestionSchedule,
-  getIngestionHeadingName,
-  getIngestionStatusCountData,
-  getIngestionTypes,
-  getSettingsPathFromPipelineType,
-  getSupportedPipelineTypes,
-  getTypeAndStatusMenuItems,
-};
 
 const { t } = i18n;
 
