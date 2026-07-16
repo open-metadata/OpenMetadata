@@ -14,7 +14,7 @@ import json
 import re
 import traceback
 from copy import deepcopy
-from typing import Any, Dict, Iterable, List, Optional, Tuple, Union  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, Tuple, Union, cast  # noqa: UP035
 
 from sqlalchemy import exc, text, types, util
 from sqlalchemy.engine import Connection, reflection
@@ -49,7 +49,6 @@ from metadata.ingestion.source.database.common_db_source import (
     CommonDbSourceService,
     TableNameAndType,
 )
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.models import (
     ColumnDescriptions,
     DescribeJsonPayload,
@@ -91,6 +90,12 @@ from metadata.utils.sqlalchemy_utils import (
     get_view_definition_wrapper,
 )
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.databricks.connection import (
+        DatabricksConnection as DatabricksConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 
@@ -848,7 +853,7 @@ class DatabricksSource(ExternalTableLineageMixin, CommonDbSourceService, MultiDB
         self.table_tags = {}
         self.external_location_map = {}
         self.column_tags = {}
-        self.api_client = DatabricksClient(self.service_connection)
+        self.api_client = cast("DatabricksConnectionHandler", self._connection).api.client
         self.owner_resolver = DatabricksOwnerResolver(
             api_client=self.api_client,
             metadata=self.metadata,

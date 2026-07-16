@@ -59,6 +59,7 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -68,7 +69,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.connections import test_connection_common
+from metadata.ingestion.source.connections import run_test_connection, test_connection_common
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
@@ -215,6 +216,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     # When processing the database, the source will update the inspector if needed
     inspector: Inspector
+
+    # Set by sources that own their connection lifecycle; `None` keeps the
+    # legacy `connection_obj` test path for non-migrated sources.
+    _connection: Optional[BaseConnection] = None  # noqa: UP045
 
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
@@ -893,4 +898,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+
+    def close(self) -> None:
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None
