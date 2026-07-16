@@ -531,7 +531,7 @@ const ManifestJsonWidget = ({
     <div className="manifest-json-widget">
       <div className="manifest-json-widget-resize-wrapper">
         <SchemaEditor
-          autoFormat={false} //To prevent cursor reset on every key press
+          autoFormat={false} // To prevent cursor reset on every key press
           className="manifest-json-widget-editor"
           mode={JSON_EDITOR_MODE}
           options={editorOptions}
