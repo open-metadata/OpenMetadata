@@ -14,7 +14,6 @@
 package org.openmetadata.service.jdbi3;
 
 import static org.openmetadata.schema.type.Include.NON_DELETED;
-import static org.openmetadata.service.Entity.ADMIN_USER_NAME;
 import static org.openmetadata.service.Entity.TASK_FORM_SCHEMA;
 
 import java.io.IOException;
@@ -26,7 +25,6 @@ import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Jdbi;
-import org.openmetadata.schema.entity.feed.FormSchema;
 import org.openmetadata.schema.entity.feed.TaskFormSchema;
 import org.openmetadata.schema.type.SuggestionPayload;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -41,7 +39,6 @@ import org.openmetadata.service.util.FullyQualifiedName;
 public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
 
   public static final String COLLECTION_PATH = "/v1/taskFormSchemas";
-  private static final String DATA_ACCESS_REQUEST_SCHEMA_NAME = "DataAccessRequest";
   private final ConcurrentMap<String, Optional<TaskFormSchema>> schemaCache =
       new ConcurrentHashMap<>();
 
@@ -74,67 +71,9 @@ public class TaskFormSchemaRepository extends EntityRepository<TaskFormSchema> {
     return getEntitiesFromSeedData(".*json/data/taskFormSchemas/.*\\.json$");
   }
 
-  public void initSeedDataAndRefreshBuiltIns() throws IOException {
-    initSeedDataFromResources();
-    refreshDataAccessRequestSeedSchema();
-  }
-
   @Override
   public void setFullyQualifiedName(TaskFormSchema schema) {
     schema.setFullyQualifiedName(FullyQualifiedName.quoteName(schema.getName()));
-  }
-
-  private void refreshDataAccessRequestSeedSchema() throws IOException {
-    TaskFormSchema seed = findDataAccessRequestSeedSchema();
-    if (seed == null) {
-      LOG.warn("DataAccessRequest task form seed not found; skipping built-in schema refresh");
-      return;
-    }
-
-    TaskFormSchema existing = findByNameOrNull(seed.getFullyQualifiedName(), NON_DELETED);
-    if (!isLegacyDataAccessRequestSchema(existing)) {
-      return;
-    }
-
-    seed.setId(existing.getId());
-    seed.setVersion(existing.getVersion());
-    seed.setUpdatedBy(ADMIN_USER_NAME);
-    seed.setUpdatedAt(System.currentTimeMillis());
-    createOrUpdate(null, seed, ADMIN_USER_NAME);
-    schemaCache.clear();
-    LOG.info("Refreshed DataAccessRequest task form schema from seed data");
-  }
-
-  private TaskFormSchema findDataAccessRequestSeedSchema() throws IOException {
-    for (TaskFormSchema seed : getEntitiesFromSeedData()) {
-      if (DATA_ACCESS_REQUEST_SCHEMA_NAME.equals(seed.getName())) {
-        return seed;
-      }
-    }
-    return null;
-  }
-
-  static boolean isLegacyDataAccessRequestSchema(TaskFormSchema schema) {
-    if (schema == null || !DATA_ACCESS_REQUEST_SCHEMA_NAME.equals(schema.getName())) {
-      return false;
-    }
-    FormSchema formSchema = schema.getFormSchema();
-    return formSchema != null
-        && hasLegacyDataAccessRequestSchema(formSchema.getAdditionalProperties());
-  }
-
-  private static boolean hasLegacyDataAccessRequestSchema(Map<?, ?> formSchema) {
-    if (formSchema == null) {
-      return false;
-    }
-
-    Object required = formSchema.get("required");
-    if (required instanceof List<?> requiredFields && requiredFields.contains("duration")) {
-      return true;
-    }
-
-    Object properties = formSchema.get("properties");
-    return properties instanceof Map<?, ?> propertyMap && propertyMap.containsKey("duration");
   }
 
   @Override

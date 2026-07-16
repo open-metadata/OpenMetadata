@@ -75,7 +75,7 @@ public class TaskFormSchemaResource
 
   @Override
   public void initialize(OpenMetadataApplicationConfig config) throws IOException {
-    repository.initSeedDataAndRefreshBuiltIns();
+    repository.initSeedDataFromResources();
   }
 
   public static class TaskFormSchemaList extends ResultList<TaskFormSchema> {
