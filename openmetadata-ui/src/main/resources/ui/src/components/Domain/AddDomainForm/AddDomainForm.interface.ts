@@ -12,7 +12,6 @@
  */
 import { FormSelectItem } from '@openmetadata/ui-core-components';
 import { UseFormReturn } from 'react-hook-form';
-import { CoverImageFileValue } from '../../../components/common/CoverImageUpload/CoverImageUpload.interface';
 import {
   DataProductType,
   PortfolioPriority,
@@ -22,6 +21,7 @@ import { DomainType } from '../../../generated/api/domains/createDomain';
 import { Domain } from '../../../generated/entity/domains/domain';
 import { EntityReference } from '../../../generated/entity/type';
 import { TagLabel } from '../../../generated/type/tagLabel';
+import { CoverImageFileValue } from '../../../utils/CoverImageUploadUtils';
 import { DomainFormType } from '../DomainPage.interface';
 
 export interface DomainFormSelectItem extends FormSelectItem {

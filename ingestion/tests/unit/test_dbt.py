@@ -3462,8 +3462,7 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
 
     def test_real_pass_result_is_ingested(self):
         """
-        Real test pass: status=pass, message="Pass".
-        Must call add_test_case_results exactly once.
+        Real test pass: status=pass. Ingested, but result stays None (#29645).
         """
         from metadata.ingestion.source.database.dbt.constants import DbtCommonEnum
 
@@ -3483,6 +3482,8 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             source.add_dbt_test_result(dbt_test)
 
         source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        self.assertIsNone(test_case_result.result)
 
     def test_real_failure_result_is_ingested(self):
         """
@@ -3511,6 +3512,8 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             source.add_dbt_test_result(dbt_test)
 
         source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        self.assertEqual(test_case_result.result, "Got 3 results, configured to fail if != 0")
 
     def test_real_warn_result_is_ingested(self):
         """
@@ -3539,6 +3542,8 @@ class TestAddDbtTestResultSkipsCompiledOnly(TestCase):
             source.add_dbt_test_result(dbt_test)
 
         source.metadata.add_test_case_results.assert_called_once()
+        test_case_result = source.metadata.add_test_case_results.call_args.kwargs["test_results"]
+        self.assertEqual(test_case_result.result, "Got 1 result, configured to warn if != 0")
 
 
 class TestRemoveManifestNonRequiredKeys(TestCase):

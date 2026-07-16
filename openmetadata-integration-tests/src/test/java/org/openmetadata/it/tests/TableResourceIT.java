@@ -13,6 +13,8 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import es.co.elastic.clients.transport.rest5_client.low_level.Request;
 import es.co.elastic.clients.transport.rest5_client.low_level.Response;
 import es.co.elastic.clients.transport.rest5_client.low_level.Rest5Client;
+import java.net.URLEncoder;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,6 +22,9 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.TimeUnit;
+import java.util.concurrent.atomic.AtomicReference;
 import java.util.stream.Collectors;
 import java.util.stream.StreamSupport;
 import org.awaitility.Awaitility;
@@ -40,6 +45,8 @@ import org.openmetadata.schema.api.classification.CreateClassification;
 import org.openmetadata.schema.api.classification.CreateTag;
 import org.openmetadata.schema.api.data.CreateDatabase;
 import org.openmetadata.schema.api.data.CreateDatabaseSchema;
+import org.openmetadata.schema.api.data.CreateGlossary;
+import org.openmetadata.schema.api.data.CreateGlossaryTerm;
 import org.openmetadata.schema.api.data.CreatePipeline;
 import org.openmetadata.schema.api.data.CreateQuery;
 import org.openmetadata.schema.api.data.CreateTable;
@@ -54,6 +61,8 @@ import org.openmetadata.schema.entity.classification.Classification;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Database;
 import org.openmetadata.schema.entity.data.DatabaseSchema;
+import org.openmetadata.schema.entity.data.Glossary;
+import org.openmetadata.schema.entity.data.GlossaryTerm;
 import org.openmetadata.schema.entity.data.Pipeline;
 import org.openmetadata.schema.entity.data.Query;
 import org.openmetadata.schema.entity.data.Table;
@@ -89,6 +98,7 @@ import org.openmetadata.schema.type.TableProfile;
 import org.openmetadata.schema.type.TableProfilerConfig;
 import org.openmetadata.schema.type.TableType;
 import org.openmetadata.schema.type.TagLabel;
+import org.openmetadata.schema.type.TagLabel.TagSource;
 import org.openmetadata.schema.type.api.BulkOperationResult;
 import org.openmetadata.schema.type.csv.CsvImportResult;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -100,6 +110,7 @@ import org.openmetadata.sdk.fluent.builders.ColumnBuilder;
 import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.models.ListResponse;
 import org.openmetadata.sdk.models.TableColumnList;
+import org.openmetadata.sdk.network.HttpMethod;
 
 /**
  * Integration tests for Table entity operations.
@@ -769,6 +780,361 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   }
 
   @Test
+  void searchColumns_tagFilterReturnsMatchesAcrossPages(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("ColTagFilter");
+    String tagFqn = createClassificationWithTag(client, classificationName, "Sensitive");
+    TagLabel sensitiveLabel =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    int totalColumns = 60;
+    int taggedColumnIndex = 58;
+    List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < totalColumns; i++) {
+      Column column =
+          new Column()
+              .withName(String.format("col_%02d", i))
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(100);
+      if (i == taggedColumnIndex) {
+        column.withTags(List.of(sensitiveLabel));
+      }
+      columns.add(column);
+    }
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_tag_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(columns);
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String taggedColumnName = String.format("col_%02d", taggedColumnIndex);
+
+    TableColumnList firstPage = searchColumns(client, encodedFqn, "limit=50&offset=0");
+    assertEquals(totalColumns, firstPage.getPaging().getTotal());
+    assertFalse(
+        firstPage.getData().stream().anyMatch(c -> taggedColumnName.equals(c.getName())),
+        "Tagged column should fall on a later page without a filter");
+
+    String encodedTag = URLEncoder.encode(tagFqn, StandardCharsets.UTF_8);
+    TableColumnList filtered =
+        searchColumns(client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        1,
+        filtered.getPaging().getTotal(),
+        "Tag filter total should count all matches, not a page");
+    assertEquals(1, filtered.getData().size());
+    assertEquals(taggedColumnName, filtered.getData().get(0).getName());
+
+    TableColumnList filteredById =
+        searchColumnsById(
+            client, table.getId().toString(), "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        1, filteredById.getPaging().getTotal(), "By-id endpoint should honour the same tag filter");
+    assertEquals(taggedColumnName, filteredById.getData().get(0).getName());
+  }
+
+  @Test
+  void searchColumns_glossaryTermAndDerivedTagFilter(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("DerivedTagFilter");
+    String classificationTagFqn = createClassificationWithTag(client, classificationName, "Pii");
+
+    String glossaryName = ns.prefix("ColFilterGlossary");
+    String termName = "CustomerData";
+    String glossaryTermFqn =
+        createGlossaryTermWithTag(client, glossaryName, termName, classificationTagFqn);
+
+    TagLabel glossaryLabel =
+        new TagLabel()
+            .withTagFQN(glossaryTermFqn)
+            .withSource(TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    int totalColumns = 60;
+    int taggedColumnIndex = 58;
+    List<Column> columns = new ArrayList<>();
+    for (int i = 0; i < totalColumns; i++) {
+      Column column =
+          new Column()
+              .withName(String.format("col_%02d", i))
+              .withDataType(ColumnDataType.VARCHAR)
+              .withDataLength(100);
+      if (i == taggedColumnIndex) {
+        column.withTags(List.of(glossaryLabel));
+      }
+      columns.add(column);
+    }
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_glossary_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(columns);
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String taggedColumnName = String.format("col_%02d", taggedColumnIndex);
+
+    String encodedTerm = URLEncoder.encode(glossaryTermFqn, StandardCharsets.UTF_8);
+    TableColumnList byGlossaryTerm =
+        searchColumns(
+            client, encodedFqn, "limit=50&offset=0&fields=tags&glossaryTerms=" + encodedTerm);
+    assertEquals(
+        1,
+        byGlossaryTerm.getPaging().getTotal(),
+        "glossaryTerms filter should match the column tagged with the term across pages");
+    assertEquals(taggedColumnName, byGlossaryTerm.getData().get(0).getName());
+
+    String encodedDerivedTag = URLEncoder.encode(classificationTagFqn, StandardCharsets.UTF_8);
+    TableColumnList byDerivedTag =
+        searchColumns(
+            client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedDerivedTag);
+    assertEquals(
+        1,
+        byDerivedTag.getPaging().getTotal(),
+        "tags filter should match the classification tag derived from the applied glossary term");
+    assertEquals(taggedColumnName, byDerivedTag.getData().get(0).getName());
+  }
+
+  @Test
+  void searchColumns_tagsAndGlossaryTermsCombineWithAnd(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("AndFilter");
+    String tagFqn = createClassificationWithTag(client, classificationName, "Pii");
+    String glossaryTermFqn =
+        createGlossaryTermWithTag(client, ns.prefix("AndGlossary"), "CustomerData", null);
+
+    TagLabel classificationLabel =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+    TagLabel glossaryLabel =
+        new TagLabel()
+            .withTagFQN(glossaryTermFqn)
+            .withSource(TagSource.GLOSSARY)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Column tagOnly =
+        new Column()
+            .withName("col_tag_only")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(classificationLabel));
+    Column glossaryOnly =
+        new Column()
+            .withName("col_glossary_only")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(glossaryLabel));
+    Column both =
+        new Column()
+            .withName("col_both")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(classificationLabel, glossaryLabel));
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_and_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(List.of(tagOnly, glossaryOnly, both));
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String encodedTag = URLEncoder.encode(tagFqn, StandardCharsets.UTF_8);
+    String encodedTerm = URLEncoder.encode(glossaryTermFqn, StandardCharsets.UTF_8);
+
+    TableColumnList byTag =
+        searchColumns(client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+    assertEquals(
+        2, byTag.getPaging().getTotal(), "tags filter alone should match both tagged cols");
+
+    TableColumnList byTerm =
+        searchColumns(
+            client, encodedFqn, "limit=50&offset=0&fields=tags&glossaryTerms=" + encodedTerm);
+    assertEquals(
+        2, byTerm.getPaging().getTotal(), "glossaryTerms filter alone should match both term cols");
+
+    TableColumnList byBoth =
+        searchColumns(
+            client,
+            encodedFqn,
+            "limit=50&offset=0&fields=tags&tags=" + encodedTag + "&glossaryTerms=" + encodedTerm);
+    assertEquals(
+        1,
+        byBoth.getPaging().getTotal(),
+        "tags + glossaryTerms together should AND, matching only the column with both");
+    assertEquals("col_both", byBoth.getData().get(0).getName());
+  }
+
+  @Test
+  void searchColumns_nestedTagMatchKeepsAncestorAndCountsRoots(TestNamespace ns) throws Exception {
+    OpenMetadataClient client = SdkClients.adminClient();
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+
+    String classificationName = ns.prefix("NestedTagFilter");
+    String tagFqn = createClassificationWithTag(client, classificationName, "Sensitive");
+    TagLabel sensitiveLabel =
+        new TagLabel()
+            .withTagFQN(tagFqn)
+            .withSource(TagSource.CLASSIFICATION)
+            .withLabelType(TagLabel.LabelType.MANUAL)
+            .withState(TagLabel.State.CONFIRMED);
+
+    Column matchedChildOne =
+        new Column()
+            .withName("child_match_1")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(sensitiveLabel));
+    Column matchedChildTwo =
+        new Column()
+            .withName("child_match_2")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100)
+            .withTags(List.of(sensitiveLabel));
+    Column unmatchedChild =
+        new Column()
+            .withName("child_plain")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100);
+    Column structParent =
+        new Column()
+            .withName("struct_parent")
+            .withDataType(ColumnDataType.STRUCT)
+            .withChildren(List.of(matchedChildOne, unmatchedChild, matchedChildTwo));
+    Column siblingFlat =
+        new Column()
+            .withName("flat_plain")
+            .withDataType(ColumnDataType.VARCHAR)
+            .withDataLength(100);
+
+    CreateTable request = new CreateTable();
+    request.setName(ns.prefix("col_nested_filter"));
+    request.setDatabaseSchema(schema.getFullyQualifiedName());
+    request.setColumns(List.of(structParent, siblingFlat));
+    Table table = createEntity(request);
+
+    String encodedFqn = URLEncoder.encode(table.getFullyQualifiedName(), StandardCharsets.UTF_8);
+    String encodedTag = URLEncoder.encode(tagFqn, StandardCharsets.UTF_8);
+
+    TableColumnList filtered =
+        searchColumns(client, encodedFqn, "limit=50&offset=0&fields=tags&tags=" + encodedTag);
+
+    assertEquals(
+        1,
+        filtered.getPaging().getTotal(),
+        "Total should count top-level columns containing a match, not flattened matches");
+    assertEquals(1, filtered.getData().size());
+
+    Column returnedParent = filtered.getData().get(0);
+    assertEquals("struct_parent", returnedParent.getName());
+    assertNotNull(returnedParent.getChildren());
+    assertEquals(
+        2,
+        returnedParent.getChildren().size(),
+        "Matched children stay nested under their ancestor; the unmatched child is pruned");
+    List<String> childNames =
+        returnedParent.getChildren().stream().map(Column::getName).collect(Collectors.toList());
+    assertTrue(childNames.contains("child_match_1"));
+    assertTrue(childNames.contains("child_match_2"));
+    assertFalse(childNames.contains("child_plain"));
+    assertFalse(
+        filtered.getData().stream().anyMatch(c -> "flat_plain".equals(c.getName())),
+        "Non-matching top-level column should not appear");
+  }
+
+  private String createGlossaryTermWithTag(
+      OpenMetadataClient client, String glossaryName, String termName, String tagFqn) {
+    CreateGlossary createGlossary =
+        new CreateGlossary()
+            .withName(glossaryName)
+            .withDescription("Glossary for column tag filter test");
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/glossaries", createGlossary, Glossary.class);
+
+    CreateGlossaryTerm createTerm =
+        new CreateGlossaryTerm()
+            .withName(termName)
+            .withGlossary(glossaryName)
+            .withDescription("Term for column tag filter test");
+    if (tagFqn != null) {
+      TagLabel classificationTag =
+          new TagLabel()
+              .withTagFQN(tagFqn)
+              .withSource(TagSource.CLASSIFICATION)
+              .withLabelType(TagLabel.LabelType.MANUAL)
+              .withState(TagLabel.State.CONFIRMED);
+      createTerm.withTags(List.of(classificationTag));
+    }
+    GlossaryTerm term =
+        client
+            .getHttpClient()
+            .execute(HttpMethod.PUT, "/v1/glossaryTerms", createTerm, GlossaryTerm.class);
+    return term.getFullyQualifiedName();
+  }
+
+  private String createClassificationWithTag(
+      OpenMetadataClient client, String classificationName, String tagName) {
+    CreateClassification createClassification =
+        new CreateClassification()
+            .withName(classificationName)
+            .withDescription("Classification for column tag filter test");
+    client
+        .getHttpClient()
+        .execute(HttpMethod.PUT, "/v1/classifications", createClassification, Classification.class);
+
+    CreateTag createTag =
+        new CreateTag()
+            .withName(tagName)
+            .withDescription("Tag for column tag filter test")
+            .withClassification(classificationName);
+    client.getHttpClient().execute(HttpMethod.PUT, "/v1/tags", createTag, Tag.class);
+    return classificationName + "." + tagName;
+  }
+
+  private TableColumnList searchColumns(
+      OpenMetadataClient client, String encodedFqn, String queryParams) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET,
+                "/v1/tables/name/" + encodedFqn + "/columns/search?" + queryParams,
+                null);
+    return JsonUtils.readValue(response, TableColumnList.class);
+  }
+
+  private TableColumnList searchColumnsById(
+      OpenMetadataClient client, String tableId, String queryParams) {
+    String response =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/tables/" + tableId + "/columns/search?" + queryParams, null);
+    return JsonUtils.readValue(response, TableColumnList.class);
+  }
+
+  @Test
   void patch_tableColumns_200_ok(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
@@ -1198,7 +1564,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   // TODO: Migrate put_tableJoinsInvalidColumnName_4xx - Requires SDK table joins validation
   // TODO: Migrate put_tableSampleData_200 - Requires SDK sample data support
   // TODO: Migrate put_tableInvalidSampleData_4xx - Requires SDK sample data validation
-  // TODO: Migrate put_schemaDefinition_200 - Requires SDK schema definition support
   // TODO: Migrate put_profileConfig_200 - Requires SDK profiler config support
   // TODO: Migrate put_tableProfile_200 - Requires SDK table profile support
   // TODO: Migrate create_profilerWrongTimestamp - Requires SDK profile timestamp validation
@@ -2009,7 +2374,6 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
   void put_schemaDefinition_200(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
 
-    // Create a view table with schema definition
     String query =
         """
         sales_vw
@@ -2021,16 +2385,29 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         """;
 
     CreateTable createRequest = createRequest(ns.prefix("view_table"), ns);
-    createRequest.setTableType(org.openmetadata.schema.type.TableType.View);
+    createRequest.setTableType(TableType.View);
     createRequest.setSchemaDefinition(query);
 
     Table table = createEntity(createRequest);
     assertNotNull(table);
-    assertEquals(org.openmetadata.schema.type.TableType.View, table.getTableType());
+    assertEquals(TableType.View, table.getTableType());
 
-    // Fetch with schemaDefinition field
+    // Verify schemaDefinition persisted on create
     Table fetched = client.tables().get(table.getId().toString(), "schemaDefinition");
     assertEquals(query, fetched.getSchemaDefinition());
+
+    // Verify schemaDefinition is updated via PUT
+    String updatedQuery =
+        """
+        sales_vw
+        create view sales_vw as
+        select * from public.sales;
+        """;
+    createRequest.setSchemaDefinition(updatedQuery);
+    client.tables().createOrUpdate(createRequest);
+
+    Table fetchedAfterUpdate = client.tables().get(table.getId().toString(), "schemaDefinition");
+    assertEquals(updatedQuery, fetchedAfterUpdate.getSchemaDefinition());
   }
 
   // ===================================================================
@@ -3375,11 +3752,10 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     Table baseState = client.tables().get(table.getId().toString(), "columns,tags");
 
     // Simulate concurrent updates
-    java.util.concurrent.CountDownLatch startLatch = new java.util.concurrent.CountDownLatch(1);
-    java.util.concurrent.CountDownLatch completionLatch =
-        new java.util.concurrent.CountDownLatch(2);
-    java.util.concurrent.atomic.AtomicReference<Exception> errorRef =
-        new java.util.concurrent.atomic.AtomicReference<>();
+    CountDownLatch startLatch = new CountDownLatch(1);
+    CountDownLatch firstUpdateCompleted = new CountDownLatch(1);
+    CountDownLatch completionLatch = new CountDownLatch(2);
+    AtomicReference<Exception> errorRef = new AtomicReference<>();
 
     // Thread A: Update column description
     Thread threadA =
@@ -3395,6 +3771,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
               } catch (Exception e) {
                 errorRef.set(e);
               } finally {
+                firstUpdateCompleted.countDown();
                 completionLatch.countDown();
               }
             });
@@ -3405,7 +3782,9 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             () -> {
               try {
                 startLatch.await();
-                Thread.sleep(50); // Small delay
+                if (!firstUpdateCompleted.await(30, TimeUnit.SECONDS)) {
+                  throw new IllegalStateException("First column update did not complete");
+                }
                 Table tableB = client.tables().get(baseState.getId().toString(), "columns");
                 Column col = tableB.getColumns().get(0);
                 col.setDisplayName("Display Name B");
@@ -3421,11 +3800,13 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
     threadA.start();
     threadB.start();
     startLatch.countDown();
-    completionLatch.await(10, java.util.concurrent.TimeUnit.SECONDS);
+    assertTrue(completionLatch.await(45, TimeUnit.SECONDS), "Concurrent updates did not complete");
+    assertNull(errorRef.get(), "Concurrent column update failed");
 
-    // Verify - at least one update should succeed
     Table finalTable = client.tables().get(table.getId().toString(), "columns");
-    assertNotNull(finalTable);
+    Column finalColumn = finalTable.getColumns().get(0);
+    assertEquals("Description A", finalColumn.getDescription());
+    assertEquals("Display Name B", finalColumn.getDisplayName());
   }
 
   // ===================================================================

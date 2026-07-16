@@ -19,13 +19,12 @@ import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
 import { TeamClass } from '../../../support/team/TeamClass';
 import { UserClass } from '../../../support/user/UserClass';
 import {
-  assignSingleSelectDomain,
   clickOutside,
   descriptionBox,
   getApiContext,
   redirectToHomePage,
-  removeSingleSelectDomain,
 } from '../../../utils/common';
+import { assignDomainWidget, removeDomainWidget } from '../../../utils/domain';
 import {
   addMultiOwner,
   waitForAllLoadersToDisappear,
@@ -338,8 +337,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      await assignSingleSelectDomain(page, domain.responseData);
-      await removeSingleSelectDomain(page, domain.responseData, false);
+      await assignDomainWidget(page, domain.responseData);
+      await removeDomainWidget(page, domain.responseData);
     } finally {
       await glossary.delete(apiContext);
       await domain.delete(apiContext);
@@ -362,78 +361,8 @@ test.describe('Glossary Advanced Operations', () => {
       await sidebarClick(page, SidebarItem.GLOSSARY);
       await selectActiveGlossary(page, glossary.data.displayName);
 
-      // Add initial domain via UI first
-      await page.getByTestId('add-domain').click();
-      await waitForAllLoadersToDisappear(page);
-
-      const searchDomain1 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain1.responseData.name))
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain1.responseData.name);
-      await searchDomain1;
-
-      const domain1Tag = page.getByTestId(
-        `tag-${domain1.responseData.fullyQualifiedName}`
-      );
-
-      await expect(domain1Tag).toBeVisible();
-
-      const addPatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      await domain1Tag.click();
-      await addPatchReq;
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify initial domain is visible
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain1.data.displayName
-      );
-
-      // Click on domain to change it
-      await page.getByTestId('add-domain').click();
-      await waitForAllLoadersToDisappear(page);
-
-      // Search for new domain
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .clear();
-
-      const searchDomain2 = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/search/query') &&
-          response.url().includes(encodeURIComponent(domain2.responseData.name))
-      );
-      await page
-        .getByTestId('domain-selectable-tree')
-        .getByTestId('searchbar')
-        .fill(domain2.responseData.name);
-      await searchDomain2;
-
-      // Click on the new domain option
-      const domain2Tag = page.getByTestId(
-        `tag-${domain2.responseData.fullyQualifiedName}`
-      );
-
-      await expect(domain2Tag).toBeVisible();
-
-      const changePatchReq = page.waitForResponse(
-        (req) => req.request().method() === 'PATCH'
-      );
-      await domain2Tag.click();
-      await changePatchReq;
-      await waitForAllLoadersToDisappear(page);
-
-      // Verify new domain is visible
-      await expect(page.getByTestId('domain-link')).toContainText(
-        domain2.data.displayName
-      );
+      await assignDomainWidget(page, domain1.responseData);
+      await assignDomainWidget(page, domain2.responseData);
     } finally {
       await glossary.delete(apiContext);
       await domain1.delete(apiContext);

@@ -31,11 +31,15 @@ import { removeOuterEscapes } from '../StringUtils';
 
 export const COLUMNS_WIDTH: Record<string, number> = {
   description: 300,
-  tags: 280,
-  glossaryTerms: 280,
+  expressionCode: 420,
+  operation: 160,
+  tags: 200,
+  glossaryTerms: 220,
   'entityType*': 230,
   arrayDataType: 210,
   dataTypeDisplay: 220,
+  domains: 200,
+  dataProducts: 200,
   fullyQualifiedName: 300,
   tiers: 120,
   status: 70,
@@ -44,6 +48,7 @@ export const COLUMNS_WIDTH: Record<string, number> = {
 
 export const CSV_DISABLED_COLUMNS = [
   'name*',
+  'operation',
   'testDefinition*',
   'entityFQN*',
   'testSuite',

@@ -309,6 +309,7 @@ public class ClassificationRepository extends EntityRepository<Classification> {
     public void entitySpecificUpdate(boolean consolidatingChanges) {
       // Mutually exclusive cannot be updated
       updated.setMutuallyExclusive(original.getMutuallyExclusive());
+      preserveAutoClassificationConfigOnPut();
       compareAndUpdate(
           "disabled",
           () -> recordChange("disabled", original.getDisabled(), updated.getDisabled()));
@@ -321,6 +322,12 @@ public class ClassificationRepository extends EntityRepository<Classification> {
                   updated.getAutoClassificationConfig(),
                   true));
       compareAndUpdate("name", () -> updateName(updated));
+    }
+
+    private void preserveAutoClassificationConfigOnPut() {
+      if (operation == Operation.PUT && updated.getAutoClassificationConfig() == null) {
+        updated.setAutoClassificationConfig(original.getAutoClassificationConfig());
+      }
     }
 
     public void updateName(Classification updated) {

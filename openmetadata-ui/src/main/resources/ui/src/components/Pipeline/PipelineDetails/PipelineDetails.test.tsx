@@ -135,8 +135,8 @@ jest.mock('../../../context/PermissionProvider/PermissionProvider', () => ({
   }),
 }));
 
-jest.mock('../../common/EntityDescription/DescriptionV1', () => {
-  return jest.fn().mockReturnValue(<p>DescriptionV1</p>);
+jest.mock('../../common/EntityDescription/Description', () => {
+  return jest.fn().mockReturnValue(<p>Description</p>);
 });
 
 jest.mock('react-router-dom', () => ({
@@ -164,7 +164,7 @@ jest.mock('../../PageLayoutV1/PageLayoutV1', () => {
 
 jest.mock('../../../utils/TableTags/TableTags.utils', () => ({
   getAllTags: jest.fn().mockReturnValue([]),
-  searchTagInData: jest.fn().mockReturnValue([]),
+  getFilteredTagsData: jest.fn((data) => data),
   getFilterTags: jest.fn().mockReturnValue([]),
 }));
 

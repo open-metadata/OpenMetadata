@@ -110,7 +110,7 @@ export const ApplicationsProvider = ({ children }: { children: ReactNode }) => {
 
   return (
     <ApplicationsContext.Provider value={appContext}>
-      {loading ? <Loader /> : children}
+      {loading ? <Loader fullScreen /> : children}
     </ApplicationsContext.Provider>
   );
 };

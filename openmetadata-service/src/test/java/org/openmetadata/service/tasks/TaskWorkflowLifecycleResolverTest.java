@@ -229,9 +229,13 @@ class TaskWorkflowLifecycleResolverTest {
         TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(
             TaskEntityType.IncidentResolution));
     assertEquals(
-        "RecognizerFeedbackReviewWorkflow",
+        "DataQualityReviewTaskWorkflow",
         TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(
             TaskEntityType.DataQualityReview));
+    assertEquals(
+        "RecognizerFeedbackReviewWorkflow",
+        TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(
+            TaskEntityType.RecognizerFeedbackApproval));
     assertEquals(
         "CustomTaskWorkflow",
         TaskWorkflowLifecycleResolver.defaultWorkflowDefinitionRef(TaskEntityType.CustomTask));
@@ -255,6 +259,18 @@ class TaskWorkflowLifecycleResolverTest {
         TaskCategory.Approval,
         TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(
             "GlossaryApprovalTaskWorkflow"));
+    assertEquals(
+        TaskEntityType.RecognizerFeedbackApproval,
+        TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef(
+            "RecognizerFeedbackReviewWorkflow"));
+    assertEquals(
+        TaskEntityType.DataQualityReview,
+        TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef(
+            "DataQualityReviewTaskWorkflow"));
+    assertEquals(
+        TaskCategory.Review,
+        TaskWorkflowLifecycleResolver.defaultTaskCategoryForWorkflowDefinitionRef(
+            "RecognizerFeedbackReviewWorkflow"));
     assertEquals(
         TaskEntityType.CustomTask,
         TaskWorkflowLifecycleResolver.defaultTaskTypeForWorkflowDefinitionRef("UnknownWorkflow"));

@@ -12,9 +12,8 @@
  */
 
 import { expect, test as base, type Page } from '@playwright/test';
-import { SidebarItem } from '../../../constant/sidebar';
 import { performAdminLogin } from '../../../utils/admin';
-import { clickOutside, redirectToHomePage, uuid } from '../../../utils/common';
+import { redirectToHomePage, uuid } from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 const WORKFLOW_CREATION_DATA = (name: string) => ({
@@ -85,25 +84,11 @@ const test = base.extend<{ page: Page; workflowName: string }>({
 });
 
 async function navigateToWorkflowDetailPage(page: Page, name: string) {
-  await page.hover('[data-testid="left-sidebar"]');
-  await page.click(`[data-testid="${SidebarItem.GOVERNANCE}"]`);
-
-  const listResponse = page.waitForResponse(
-    (response) =>
-      response.url().includes('/api/v1/governance/workflowDefinitions') &&
-      response.request().method() === 'GET'
-  );
-
-  await page.click('[data-testid="app-bar-item-workflows"]');
-  await listResponse;
-  await waitForAllLoadersToDisappear(page);
-  await clickOutside(page);
-
   const detailResponse = page.waitForResponse(
     '/api/v1/governance/workflowDefinitions/name/*'
   );
 
-  await page.click(`[data-testid="${name}"]`);
+  await page.goto(`/workflows/${encodeURIComponent(name)}/workflow`);
   await detailResponse;
   await waitForAllLoadersToDisappear(page);
 }

@@ -11,19 +11,21 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Chip, Typography, useTheme } from '@mui/material';
-import { SimpleTreeView, TreeItem, treeItemClasses } from '@mui/x-tree-view';
-import { Avatar } from '@openmetadata/ui-core-components';
-import { Plus } from '@untitledui/icons';
+import type { Key, Selection } from '@openmetadata/ui-core-components';
+import {
+  Avatar,
+  Badge,
+  Box,
+  Tree,
+  Typography,
+} from '@openmetadata/ui-core-components';
 import { AxiosError } from 'axios';
 import { compare, Operation as JsonPathOperation } from 'fast-json-patch';
 import { isEmpty } from 'lodash';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
-import { ReactComponent as ArrowCircleDown } from '../../../assets/svg/arrow-circle-down.svg';
 import { ReactComponent as FolderEmptyIcon } from '../../../assets/svg/folder-empty.svg';
-import { BORDER_COLOR } from '../../../constants/constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
@@ -32,6 +34,7 @@ import { Domain } from '../../../generated/entity/domains/domain';
 import { Operation } from '../../../generated/entity/policies/policy';
 import { EntityReference } from '../../../generated/type/entityReference';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
+import { useDomainStore } from '../../../hooks/useDomainStore';
 import {
   addFollower,
   getDomainByName,
@@ -40,6 +43,7 @@ import {
   removeFollower,
   searchDomains,
 } from '../../../rest/domainAPI';
+import { filterDomainsToAllowed } from '../../../utils/DomainRestrictionUtils';
 import { convertDomainsToTreeOptions } from '../../../utils/DomainUtils';
 import { getEntityName } from '../../../utils/EntityNameUtils';
 import { getEntityAvatarProps } from '../../../utils/IconUtils';
@@ -64,6 +68,7 @@ interface DomainTreeViewProps {
 
 const INITIAL_PAGE_SIZE = 15;
 const SCROLL_TRIGGER_THRESHOLD = 200;
+const LOAD_MORE_ITEM_SUFFIX = '__load_more';
 
 const DomainTreeView = ({
   searchQuery,
@@ -71,14 +76,10 @@ const DomainTreeView = ({
   refreshToken = 0,
   openAddDomainDrawer,
 }: DomainTreeViewProps) => {
-  const theme = useTheme();
-  const outlineColor =
-    theme.palette.allShades?.gray?.[200] ?? theme.palette.grey[300];
-  const childIndent = theme.spacing(2);
-  const connectorOffset = theme.spacing(1.5);
   const navigate = useNavigate();
   const { t } = useTranslation();
   const { currentUser } = useApplicationStore();
+  const { userDomains, isDomainRestricted } = useDomainStore();
   const { permissions } = usePermissionProvider();
 
   const [hierarchy, setHierarchy] = useState<Domain[]>([]);
@@ -215,7 +216,12 @@ const DomainTreeView = ({
           // queryFilter
         );
 
-        const updatedTreeData = convertDomainsToTreeOptions(results);
+        const filteredResults =
+          isDomainRestricted && userDomains.length
+            ? filterDomainsToAllowed(results, userDomains)
+            : results;
+
+        const updatedTreeData = convertDomainsToTreeOptions(filteredResults);
         setHierarchy(updatedTreeData as Domain[]);
         selectDomain(updatedTreeData as Domain[]);
       } catch (error) {
@@ -229,7 +235,7 @@ const DomainTreeView = ({
         setIsHierarchyLoading(false);
       }
     },
-    [t]
+    [t, isDomainRestricted, userDomains]
   );
 
   const fetchDomainDetails = useCallback(
@@ -302,7 +308,11 @@ const DomainTreeView = ({
         currentOffset
       );
 
-      const domains = response.data ?? [];
+      const rawDomains = response.data ?? [];
+      const domains =
+        isDomainRestricted && userDomains.length
+          ? filterDomainsToAllowed(rawDomains, userDomains)
+          : rawDomains;
       const total = response.paging.total;
 
       setHierarchy((prev) => (isLoadMore ? [...prev, ...domains] : domains));
@@ -490,9 +500,18 @@ const DomainTreeView = ({
   }, [selectedFqn]);
 
   const handleSelectionChange = useCallback(
-    (value: string | string[] | null) => {
-      const nextFqn = Array.isArray(value) ? value[0] : value;
-      if (!nextFqn || nextFqn === selectedFqnRef.current) {
+    (keys: Selection) => {
+      if (keys === 'all') {
+        return;
+      }
+
+      const nextFqn = Array.from(keys).map(String)[0] ?? null;
+
+      if (
+        !nextFqn ||
+        nextFqn.endsWith(LOAD_MORE_ITEM_SUFFIX) ||
+        nextFqn === selectedFqnRef.current
+      ) {
         return;
       }
 
@@ -503,11 +522,17 @@ const DomainTreeView = ({
   );
 
   const handleExpandedChange = useCallback(
-    (_: unknown, ids: string[]) => {
+    (keys: Selection) => {
+      if (keys === 'all') {
+        return;
+      }
+
+      const ids = Array.from(keys).map(String);
       const newlyExpandedIds = ids.filter((id) => !expandedItems.includes(id));
 
       for (const fqn of newlyExpandedIds) {
         const domain = domainMapper[fqn];
+
         if (!domain) {
           continue;
         }
@@ -523,35 +548,6 @@ const DomainTreeView = ({
       setExpandedItems(ids);
     },
     [expandedItems, domainMapper, loadDomains, loadingChildren]
-  );
-
-  const handleScroll = useCallback(
-    (event: React.UIEvent<HTMLDivElement>) => {
-      if (
-        !hasMore ||
-        isLoadingMore ||
-        isHierarchyLoading ||
-        searchQuery ||
-        hasActiveFilters
-      ) {
-        return;
-      }
-
-      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
-      const distanceFromBottom = scrollHeight - scrollTop - clientHeight;
-
-      if (distanceFromBottom < SCROLL_TRIGGER_THRESHOLD) {
-        loadDomains(undefined, true);
-      }
-    },
-    [
-      hasMore,
-      isLoadingMore,
-      isHierarchyLoading,
-      searchQuery,
-      hasActiveFilters,
-      loadDomains,
-    ]
   );
 
   const refreshAll = useCallback(async () => {
@@ -746,127 +742,117 @@ const DomainTreeView = ({
     [fetchDomainDetails, navigate, updateExpansionForFqn]
   );
 
-  const handleLoadMoreChildren = useCallback(
-    (parentFqn: string, event: React.MouseEvent) => {
-      event.stopPropagation();
-      loadDomains(parentFqn, true);
+  const handleAction = useCallback(
+    (key: Key) => {
+      const keyStr = String(key);
+
+      if (keyStr.endsWith(LOAD_MORE_ITEM_SUFFIX)) {
+        const parentFqn = keyStr.slice(0, -LOAD_MORE_ITEM_SUFFIX.length);
+        loadDomains(parentFqn, true);
+      }
     },
     [loadDomains]
   );
 
+  const handleScroll = useCallback(
+    (event: React.UIEvent<HTMLDivElement>) => {
+      if (
+        !hasMore ||
+        isLoadingMore ||
+        isHierarchyLoading ||
+        searchQuery ||
+        hasActiveFilters
+      ) {
+        return;
+      }
+
+      const { scrollTop, scrollHeight, clientHeight } = event.currentTarget;
+
+      if (scrollHeight - scrollTop - clientHeight < SCROLL_TRIGGER_THRESHOLD) {
+        loadDomains(undefined, true);
+      }
+    },
+    [
+      hasMore,
+      isLoadingMore,
+      isHierarchyLoading,
+      searchQuery,
+      hasActiveFilters,
+      loadDomains,
+    ]
+  );
+
   const renderTreeItems = useCallback(
-    (nodes: Domain[], parentFqn?: string) => {
-      const items = nodes.map((node) => {
-        const identifier = node.fullyQualifiedName || node.name || node.id;
+    (nodes: Domain[]) => {
+      return nodes.map((node) => {
+        const identifier = node?.fullyQualifiedName || node?.name || node?.id;
 
         if (!identifier) {
           return null;
         }
 
-        const childDomains = (node.children as unknown as Domain[]) ?? [];
-        const childrenCount = node.childrenCount || childDomains.length || 0;
-        const hasChildren = childDomains.length > 0 || childrenCount > 0;
-        const isLoading = loadingChildren[identifier] ?? false;
+        const childDomains = (node?.children as unknown as Domain[]) ?? [];
+        const childrenCount = node?.childrenCount || childDomains?.length || 0;
+        const hasChildren = childDomains?.length > 0 || childrenCount > 0;
+        const isLoading = loadingChildren?.[identifier] ?? false;
+        const paging = childPaging?.[identifier];
+        const hasMoreChildren =
+          paging != null && paging?.offset + paging?.limit < paging?.total;
 
         return (
-          <TreeItem
-            itemId={identifier}
+          <Tree.Item
+            id={identifier}
             key={identifier}
-            label={
-              <Box
-                sx={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 2,
-                }}>
+            textValue={getEntityName(node)}>
+            <Tree.ItemContent showGuideLines hasChildItems={hasChildren}>
+              <Box align="center" direction="row" gap={2}>
                 <Avatar size="xs" {...getEntityAvatarProps(node)} />
                 <Typography
-                  sx={{
-                    color: theme.palette.allShades?.gray?.[800],
-                  }}
-                  variant="body2">
+                  className="tw:text-primary"
+                  size="text-sm"
+                  weight="regular">
                   {getEntityName(node)}
                 </Typography>
                 {hasChildren && (
-                  <Chip
-                    label={childrenCount}
-                    size="small"
-                    sx={{
-                      height: 20,
-                      border: 'none',
-                      color: theme.palette.allShades?.gray?.[800],
-                      fontWeight: theme.typography.fontWeightRegular,
-                      backgroundColor: theme.palette.allShades?.blueGray?.[100],
-                    }}
-                  />
+                  <Badge
+                    className="tw:px-3"
+                    color="gray"
+                    size="xs"
+                    type="pill-color">
+                    {childrenCount}
+                  </Badge>
                 )}
                 {isLoading && <Loader size="small" />}
               </Box>
-            }>
-            {childDomains.length > 0
-              ? renderTreeItems(childDomains, identifier)
-              : hasChildren && <div />}
-          </TreeItem>
+            </Tree.ItemContent>
+            {childDomains.length > 0 && renderTreeItems(childDomains)}
+            {hasMoreChildren && (
+              <Tree.Item
+                id={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+                key={`${identifier}${LOAD_MORE_ITEM_SUFFIX}`}
+                textValue={t('label.load-more')}>
+                <Tree.ItemContent showExpandIcon={false}>
+                  <button
+                    className="tw:flex tw:items-center tw:gap-2 tw:cursor-pointer tw:text-brand-primary tw:text-sm"
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      loadDomains(identifier, true);
+                    }}>
+                    {loadingChildren[identifier] ? (
+                      <Loader size="small" />
+                    ) : (
+                      t('label.load-more')
+                    )}
+                  </button>
+                </Tree.ItemContent>
+              </Tree.Item>
+            )}
+          </Tree.Item>
         );
       });
-
-      if (parentFqn) {
-        const paging = childPaging[parentFqn];
-        if (paging) {
-          const hasMoreChildren = paging.offset + paging.limit < paging.total;
-          const isLoadingMore = loadingChildren[parentFqn] ?? false;
-
-          if (hasMoreChildren) {
-            items.push(
-              <Box
-                key={`${parentFqn}-load-more`}
-                sx={{
-                  ml: 1,
-                  mb: 1.5,
-                }}>
-                <Button
-                  startIcon={isLoadingMore ? null : <Plus />}
-                  sx={{
-                    p: 0,
-                    cursor: 'pointer',
-                    fontSize: '14px',
-                    color: theme.palette.primary.main,
-                    fontWeight: theme.typography.fontWeightMedium,
-                    '&:hover': {
-                      color: theme.palette.primary.dark,
-                      backgroundColor: 'transparent',
-                    },
-                  }}
-                  variant="text"
-                  onClick={(e) => handleLoadMoreChildren(parentFqn, e)}>
-                  {isLoadingMore ? (
-                    <Loader size="small" />
-                  ) : (
-                    <div>{t('label.load-more')}</div>
-                  )}
-                </Button>
-              </Box>
-            );
-          }
-        }
-      }
-
-      return items;
     },
-    [
-      childIndent,
-      connectorOffset,
-      outlineColor,
-      theme.palette.allShades?.gray,
-      theme.palette.primary.main,
-      theme.typography.fontWeightMedium,
-      theme.typography.fontWeightRegular,
-      loadingChildren,
-      childPaging,
-      handleLoadMoreChildren,
-      t,
-      hierarchy,
-    ]
+    [loadingChildren, childPaging, loadDomains, t]
   );
 
   const domainSection = useMemo(() => {
@@ -893,7 +879,7 @@ const DomainTreeView = ({
     }
 
     return (
-      <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
+      <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
         {t('label.no-entity-selected', {
           entity: t('label.domain'),
         })}
@@ -920,7 +906,7 @@ const DomainTreeView = ({
 
     if (hierarchy.length === 0) {
       return (
-        <Typography sx={{ color: 'text.secondary', mt: 2 }} variant="body2">
+        <Typography className="tw:text-secondary tw:mt-2" size="text-sm">
           {t('label.no-entity-available', {
             entity: t('label.domain-plural'),
           })}
@@ -930,133 +916,21 @@ const DomainTreeView = ({
 
     return (
       <>
-        <SimpleTreeView
-          expandedItems={expandedItems}
-          selectedItems={selectedFqn}
-          slots={{
-            expandIcon: ArrowCircleDown,
-            collapseIcon: ArrowCircleDown,
-          }}
-          sx={{
-            '--tree-item-center': '22px',
-            '& .MuiTreeItem-content': {
-              borderRadius: 1,
-              gap: 2,
-              p: 0,
-              mb: 2,
-              display: 'flex',
-              alignItems: 'center',
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                left: '-24px',
-                top: '50%',
-                transform: 'translateY(-50%)',
-                width: '16px',
-                height: '1px',
-                background: theme.palette.allShades?.gray?.[200],
-                zIndex: 0,
-              },
-            },
-
-            '& .MuiTreeItem-label': { p: 1 },
-            '& .MuiChip-root': { px: 3 },
-            '& .MuiChip-label': { fontSize: '10px' },
-
-            '& .MuiTreeItem-iconContainer': {
-              transition: 'transform 0.2s ease-in-out',
-              '& svg': {
-                transform: 'rotate(-90deg)',
-              },
-            },
-
-            '& .Mui-expanded > .MuiTreeItem-iconContainer svg': {
-              transform: 'rotate(0deg)',
-            },
-
-            '& .MuiTreeItem-iconContainer:empty': { display: 'none' },
-
-            [`& .${treeItemClasses.groupTransition}`]: {
-              ml: 3,
-              pl: 5,
-              position: 'relative',
-              '&::before': {
-                content: '""',
-                position: 'absolute',
-                left: '-4.5px',
-                top: '-24px',
-                bottom: '24px',
-                width: '1px',
-                background: theme.palette.allShades?.gray?.[200],
-                zIndex: 0,
-              },
-            },
-
-            '& .MuiTreeItem-root:last-of-type, & .MuiTreeItem-group > .MuiTreeItem-root:last-of-type':
-              {
-                mb: 0,
-              },
-
-            '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:empty)': {
-              '&:hover': {
-                backgroundColor: theme.palette.action.hover,
-              },
-              '&.Mui-selected': {
-                backgroundColor: theme.palette.allShades?.blue?.[50],
-              },
-            },
-
-            '& .MuiTreeItem-content:has(.MuiTreeItem-iconContainer:not(:empty))':
-              {
-                '&:hover, &.Mui-selected': {
-                  backgroundColor: 'transparent !important',
-                },
-                '&:hover .MuiTreeItem-label': {
-                  backgroundColor: theme.palette.action.hover,
-                  borderRadius: '8px',
-                },
-                '&.Mui-selected .MuiTreeItem-label': {
-                  backgroundColor: theme.palette.allShades?.blue?.[50],
-                  borderRadius: '8px',
-                },
-              },
-            'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg))':
-              {
-                pl: '32px !important',
-              },
-            'ul.MuiSimpleTreeView-itemGroupTransition:not(:has(.MuiTreeItem-iconContainer > svg)) li .MuiTreeItem-content::before':
-              {
-                left: '-36px',
-                width: '32px',
-              },
-            'li[style*="--TreeView-itemDepth:"] .MuiTreeItem-content::before': {
-              borderBottom: `1px solid ${BORDER_COLOR}`,
-              backgroundColor: 'transparent',
-            },
-            'li[style*="--TreeView-itemDepth:"] .MuiCollapse-vertical::before':
-              {
-                borderLeft: `1px solid ${BORDER_COLOR}`,
-                backgroundColor: 'transparent',
-              },
-            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]):not([style*="--TreeView-itemDepth: 1"]) .MuiTreeItem-content::before':
-              {
-                borderBottom: `1px dashed ${BORDER_COLOR}`,
-                backgroundColor: 'transparent',
-              },
-            'li[style*="--TreeView-itemDepth:"]:not([style*="--TreeView-itemDepth: 0"]) .MuiCollapse-vertical::before':
-              {
-                borderLeft: `1px dashed ${BORDER_COLOR}`,
-                backgroundColor: 'transparent',
-                bottom: '24px',
-              },
-          }}
-          onExpandedItemsChange={handleExpandedChange}
-          onSelectedItemsChange={(_, value) => handleSelectionChange(value)}>
+        <Tree
+          aria-label={t('label.domain-plural')}
+          className="domain-tree-view"
+          expandedKeys={new Set(expandedItems)}
+          selectedKeys={
+            selectedFqn ? new Set([selectedFqn]) : new Set<string>()
+          }
+          selectionMode="single"
+          onAction={handleAction}
+          onExpandedChange={handleExpandedChange}
+          onSelectionChange={handleSelectionChange}>
           {renderTreeItems(hierarchy)}
-        </SimpleTreeView>
+        </Tree>
         {isLoadingMore && (
-          <Box sx={{ display: 'flex', justifyContent: 'center', py: 2 }}>
+          <Box className="tw:py-2" justify="center">
             <Loader size="small" />
           </Box>
         )}
@@ -1067,12 +941,10 @@ const DomainTreeView = ({
     hierarchy,
     expandedItems,
     selectedFqn,
-    theme.palette.allShades?.gray,
-    theme.palette.allShades?.blue,
+    isLoadingMore,
     handleExpandedChange,
     handleSelectionChange,
     renderTreeItems,
-    isLoadingMore,
     t,
   ]);
   if (!isHierarchyLoading && isEmpty(hierarchy)) {
@@ -1103,17 +975,12 @@ const DomainTreeView = ({
         flex: 0.25,
         title: t('label.domain-plural'),
         children: (
-          <Box
+          <div
+            className="tw:pt-4.5 tw:pr-3 tw:overflow-y-auto tw:max-h-[calc(80vh-220px)]"
             ref={scrollContainerRef}
-            sx={{
-              pt: 4.5,
-              pr: 3,
-              overflowY: 'auto',
-              maxHeight: 'calc(80vh - 160px)',
-            }}
             onScroll={handleScroll}>
             {hierarchySection}
-          </Box>
+          </div>
         ),
       }}
       learningPageId={LEARNING_PAGE_IDS.DOMAIN}
@@ -1123,14 +990,9 @@ const DomainTreeView = ({
         minWidth: 600,
         flex: 0.75,
         children: (
-          <Box
-            sx={{
-              pt: 3,
-              overflowY: 'auto',
-              maxHeight: 'calc(80vh - 160px)',
-            }}>
+          <div className="tw:pt-3 tw:overflow-y-auto tw:max-h-[calc(80vh-160px)]">
             {domainSection}
-          </Box>
+          </div>
         ),
       }}
     />

@@ -15,6 +15,7 @@ import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -22,6 +23,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -45,6 +47,8 @@ import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorDocBuilder;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class OpenSearchBulkSinkBehaviorTest {
 
@@ -154,7 +158,7 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void addEntityRecordsEntityNotFoundFailuresAndInvokesCallback() throws Exception {
+  void addEntityRecordsEntityNotFoundWarningsWithoutCallback() throws Exception {
     EntityInterface entity = mock(EntityInterface.class);
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     BulkSink.FailureCallback failureCallback = mock(BulkSink.FailureCallback.class);
@@ -194,16 +198,12 @@ class OpenSearchBulkSinkBehaviorTest {
           Collections.emptyMap());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
-      verify(tracker).recordProcess(StatsResult.FAILED);
-      verify(failureCallback)
-          .onFailure(
-              ENTITY_TYPE,
-              entityId.toString(),
-              "table.fqn",
-              "Entity with id [" + entityId + "] not found.",
-              IndexingFailureRecorder.FailureStage.PROCESS);
-      assertEquals(1, sink.getStats().getFailedRecords());
-      assertEquals(1, sink.getProcessStats().getFailedRecords());
+      verify(tracker).recordProcess(StatsResult.WARNING);
+      verifyNoInteractions(failureCallback);
+      assertEquals(0, sink.getStats().getFailedRecords());
+      assertEquals(1, sink.getStats().getWarningRecords());
+      assertEquals(0, sink.getProcessStats().getFailedRecords());
+      assertEquals(1, sink.getProcessStats().getWarningRecords());
     }
   }
 
@@ -479,6 +479,43 @@ class OpenSearchBulkSinkBehaviorTest {
     }
   }
 
+  /**
+   * Stubs the recompute (non-cached) embedding path introduced with multi-chunk indexing: the sink
+   * builds chunk docs once via {@link VectorDocBuilder#fromEntity}, splices chunk 0's legacy
+   * embedding fields into the staged doc, and writes the chunks. Returns the chunk-doc list so the
+   * caller can verify {@code writeEntityChunks} received it.
+   */
+  private static List<Map<String, Object>> stubRecompute(
+      MockedStatic<VectorDocBuilder> docBuilderMock,
+      MockedStatic<OpenSearchVectorService> vectorServiceMock,
+      EntityInterface entity,
+      String fingerprint,
+      List<Double> embedding,
+      String textToEmbed) {
+    Map<String, Object> chunk0 = new HashMap<>();
+    chunk0.put("fingerprint", fingerprint);
+    chunk0.put("embedding", embedding);
+    chunk0.put("textToEmbed", textToEmbed);
+    chunk0.put("chunkIndex", 0);
+    chunk0.put("chunkCount", 1);
+    List<Map<String, Object>> chunkDocs = List.of(chunk0);
+    Map<String, Object> legacyFields = new HashMap<>();
+    legacyFields.put("fingerprint", fingerprint);
+    legacyFields.put("embedding", embedding);
+    legacyFields.put("textToEmbed", textToEmbed);
+    docBuilderMock.when(() -> VectorDocBuilder.fromEntity(eq(entity), any())).thenReturn(chunkDocs);
+    vectorServiceMock
+        .when(() -> OpenSearchVectorService.legacyEmbeddingFields(chunk0))
+        .thenReturn(legacyFields);
+    return chunkDocs;
+  }
+
+  private static EmbeddingClient availableClient() {
+    EmbeddingClient client = mock(EmbeddingClient.class);
+    when(client.isAvailable()).thenReturn(true);
+    return client;
+  }
+
   @Test
   void enrichWithEmbeddingRecomputesWhenNoCachedEntryAvailable() throws Exception {
     // When the service-layer fetch returns nothing for this entity (cache miss or fingerprint
@@ -489,12 +526,8 @@ class OpenSearchBulkSinkBehaviorTest {
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    when(vectorService.generateEmbeddingFields(entity))
-        .thenReturn(
-            Map.of(
-                "fingerprint", "fp-new",
-                "embedding", List.of(0.9, 0.8, 0.7),
-                "textToEmbed", "fresh-text"));
+    EmbeddingClient embeddingClient = availableClient();
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
 
     Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
     String entityJson = "{\"name\":\"my-table\"}";
@@ -502,8 +535,17 @@ class OpenSearchBulkSinkBehaviorTest {
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
-            mockStatic(OpenSearchVectorService.class)) {
+            mockStatic(OpenSearchVectorService.class);
+        MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      List<Map<String, Object>> chunkDocs =
+          stubRecompute(
+              docBuilderMock,
+              vectorServiceMock,
+              entity,
+              "fp-new",
+              List.of(0.9, 0.8, 0.7),
+              "fresh-text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
 
@@ -518,7 +560,7 @@ class OpenSearchBulkSinkBehaviorTest {
       String result =
           (String) enrich.invoke(sink, entity, entityJson, existingEmbeddingsById, tracker);
 
-      verify(vectorService).generateEmbeddingFields(entity);
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
       verify(tracker).recordVector(StatsResult.SUCCESS);
 
       ObjectMapper mapper = new ObjectMapper();
@@ -538,8 +580,8 @@ class OpenSearchBulkSinkBehaviorTest {
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    when(vectorService.generateEmbeddingFields(entity))
-        .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.1, 0.2, 0.3)));
+    EmbeddingClient embeddingClient = availableClient();
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
 
     ObjectMapper mapper = new ObjectMapper();
     JsonNode cachedWithoutEmbedding = mapper.readTree("{\"fingerprint\":\"fp-old\"}");
@@ -549,8 +591,12 @@ class OpenSearchBulkSinkBehaviorTest {
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
-            mockStatic(OpenSearchVectorService.class)) {
+            mockStatic(OpenSearchVectorService.class);
+        MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      List<Map<String, Object>> chunkDocs =
+          stubRecompute(
+              docBuilderMock, vectorServiceMock, entity, "fp-new", List.of(0.1, 0.2, 0.3), "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
       Method enrich =
@@ -565,7 +611,7 @@ class OpenSearchBulkSinkBehaviorTest {
       String result =
           (String) enrich.invoke(sink, entity, "{\"name\":\"x\"}", existingEmbeddingsById, tracker);
 
-      verify(vectorService).generateEmbeddingFields(entity);
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
       verify(tracker).recordVector(StatsResult.SUCCESS);
       assertEquals("fp-new", mapper.readTree(result).get("fingerprint").asText());
     }
@@ -581,8 +627,8 @@ class OpenSearchBulkSinkBehaviorTest {
 
     StageStatsTracker tracker = mock(StageStatsTracker.class);
     OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    when(vectorService.generateEmbeddingFields(entity))
-        .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.4, 0.5, 0.6)));
+    EmbeddingClient embeddingClient = availableClient();
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
 
     ObjectMapper mapper = new ObjectMapper();
     JsonNode arrayInsteadOfObject = mapper.readTree("[1,2,3]");
@@ -592,8 +638,12 @@ class OpenSearchBulkSinkBehaviorTest {
     try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
             mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
         MockedStatic<OpenSearchVectorService> vectorServiceMock =
-            mockStatic(OpenSearchVectorService.class)) {
+            mockStatic(OpenSearchVectorService.class);
+        MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
       vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      List<Map<String, Object>> chunkDocs =
+          stubRecompute(
+              docBuilderMock, vectorServiceMock, entity, "fp-new", List.of(0.4, 0.5, 0.6), "text");
 
       OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
       Method enrich =
@@ -608,9 +658,120 @@ class OpenSearchBulkSinkBehaviorTest {
       String result =
           (String) enrich.invoke(sink, entity, "{\"name\":\"y\"}", existingEmbeddingsById, tracker);
 
-      verify(vectorService).generateEmbeddingFields(entity);
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
       verify(tracker).recordVector(StatsResult.SUCCESS);
       assertEquals("fp-new", mapper.readTree(result).get("fingerprint").asText());
+    }
+  }
+
+  @Test
+  void enrichWithEmbeddingRecomputesWhenCachedDimensionMismatchesClient() throws Exception {
+    // Reuse is keyed only on entity content (fingerprint / updatedAt), which does NOT change when
+    // the embedding model/dimension changes. A cached vector whose length no longer matches the
+    // active client's dimension must be regenerated — otherwise an old-dimension vector would be
+    // spliced into a staged index built for the new dimension and silently rejected by the knn
+    // field. This is the recreate-after-model-change dimension mismatch.
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    EmbeddingClient embeddingClient = availableClient();
+    when(embeddingClient.getDimension()).thenReturn(4);
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
+
+    ObjectMapper mapper = new ObjectMapper();
+    // Cached embedding has 3 dims; the active client now reports 4 -> must NOT be reused.
+    JsonNode staleDimensionCached =
+        mapper.readTree(
+            "{\"fingerprint\":\"fp-unchanged\",\"embedding\":[0.1,0.2,0.3],\"parentId\":\""
+                + entityId
+                + "\"}");
+    Map<String, JsonNode> existingEmbeddingsById =
+        Map.of(entityId.toString(), staleDimensionCached);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<OpenSearchVectorService> vectorServiceMock =
+            mockStatic(OpenSearchVectorService.class);
+        MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
+      vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+      List<Map<String, Object>> chunkDocs =
+          stubRecompute(
+              docBuilderMock,
+              vectorServiceMock,
+              entity,
+              "fp-new",
+              List.of(0.1, 0.2, 0.3, 0.4),
+              "text");
+
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      Method enrich =
+          OpenSearchBulkSink.class.getDeclaredMethod(
+              "enrichWithEmbedding",
+              EntityInterface.class,
+              String.class,
+              Map.class,
+              StageStatsTracker.class);
+      enrich.setAccessible(true);
+
+      String result =
+          (String) enrich.invoke(sink, entity, "{\"name\":\"z\"}", existingEmbeddingsById, tracker);
+
+      verify(vectorService).writeEntityChunks(entityId.toString(), chunkDocs);
+      verify(tracker).recordVector(StatsResult.SUCCESS);
+      JsonNode resultNode = mapper.readTree(result);
+      assertEquals("fp-new", resultNode.get("fingerprint").asText());
+      assertEquals(4, resultNode.get("embedding").size());
+    }
+  }
+
+  @Test
+  void enrichWithEmbeddingSkipsGenerationWhenProviderUnavailable() throws Exception {
+    // Circuit open (provider unavailable): index the entity without embeddings and count it a
+    // success, never calling the provider or writing chunks — a transient outage must not fail
+    // every entity in the reindex. The embedding self-heals on the next run.
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
+    EmbeddingClient unavailableClient = mock(EmbeddingClient.class);
+    when(unavailableClient.isAvailable()).thenReturn(false);
+    when(vectorService.getEmbeddingClient()).thenReturn(unavailableClient);
+
+    Map<String, JsonNode> existingEmbeddingsById = Collections.emptyMap();
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
+            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<OpenSearchVectorService> vectorServiceMock =
+            mockStatic(OpenSearchVectorService.class);
+        MockedStatic<VectorDocBuilder> docBuilderMock = mockStatic(VectorDocBuilder.class)) {
+      vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
+
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+      Method enrich =
+          OpenSearchBulkSink.class.getDeclaredMethod(
+              "enrichWithEmbedding",
+              EntityInterface.class,
+              String.class,
+              Map.class,
+              StageStatsTracker.class);
+      enrich.setAccessible(true);
+
+      String result =
+          (String)
+              enrich.invoke(
+                  sink, entity, "{\"name\":\"my-table\"}", existingEmbeddingsById, tracker);
+
+      docBuilderMock.verify(() -> VectorDocBuilder.fromEntity(any(), any()), never());
+      verify(vectorService, never()).writeEntityChunks(any(), any());
+      verify(tracker).recordVector(StatsResult.SUCCESS);
+      JsonNode resultNode = new ObjectMapper().readTree(result);
+      assertEquals("my-table", resultNode.get("name").asText());
+      assertFalse(resultNode.has("embedding"));
     }
   }
 

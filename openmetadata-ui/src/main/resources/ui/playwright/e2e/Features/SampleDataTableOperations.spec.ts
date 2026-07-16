@@ -14,7 +14,10 @@
 import { expect } from '@playwright/test';
 import { TableClass } from '../../support/entity/TableClass';
 import { performAdminLogin } from '../../utils/admin';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   addSampleDataViaApi,
   navigateToSampleDataTab,
@@ -178,9 +181,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
   });
 
-  test('should open delete confirmation modal and require DELETE confirmation', async ({
-    page,
-  }) => {
+  test('should open delete confirmation modal', async ({ page }) => {
     test.slow();
 
     await test.step('Navigate to sample data tab', async () => {
@@ -195,21 +196,14 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
       await expect(page.getByTestId('modal-header')).toBeVisible();
     });
 
-    await test.step('Verify confirm button is disabled without typing DELETE', async () => {
+    await test.step('Verify confirm button is enabled', async () => {
       const confirmButton = page.getByTestId('confirm-button');
       await expect(confirmButton).toBeVisible();
-      await expect(confirmButton).toBeDisabled();
-    });
-
-    await test.step('Type DELETE to enable confirm button', async () => {
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
-      const confirmButton = page.getByTestId('confirm-button');
       await expect(confirmButton).toBeEnabled();
     });
 
     await test.step('Close modal by clicking cancel', async () => {
-      await page.getByTestId('discard-button').click();
+      await page.getByTestId('cancel-button').click();
       await expect(page.getByTestId('modal-header')).not.toBeVisible();
       await expect(page.getByTestId('sample-data')).toBeVisible();
     });
@@ -234,8 +228,6 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
     });
 
     await test.step('Type DELETE and confirm deletion', async () => {
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteResponse = page.waitForResponse(
         (response) =>
           response
@@ -258,6 +250,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
           response.status() === 200
       );
 
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteResponse;
       await refetchResponse;
@@ -285,7 +278,7 @@ test.describe('Sample Data Tab - Download and Delete Functionality', () => {
 
       await expect(page.getByTestId('modal-header')).toBeVisible();
 
-      await page.getByTestId('discard-button').click();
+      await page.getByTestId('cancel-button').click();
 
       await expect(page.getByTestId('modal-header')).not.toBeVisible();
     });

@@ -309,7 +309,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                         className="tw:mb-1 tw:flex tw:items-center tw:justify-between"
                         key={item.name}>
                         <span
-                          className="tw:text-[13px] tw:text-secondary"
+                          className="tw:text-sm tw:text-secondary"
                           style={{
                             borderLeft: `4px solid ${item.color}`,
                             paddingLeft: '8px',
@@ -317,7 +317,7 @@ const SingleColumnProfile: FC<SingleColumnProfileProps> = ({
                           }}>
                           {item.name}
                         </span>
-                        <span className="tw:text-[13px] tw:font-medium tw:text-primary">
+                        <span className="tw:text-sm tw:font-medium tw:text-primary">
                           {formatNumberWithComma(item.value)}
                         </span>
                       </div>

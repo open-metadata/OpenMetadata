@@ -1,3 +1,5 @@
+import { CloseButton } from '@/components/base/buttons/close-button';
+import { cx } from '@/utils/cx';
 import {
   type ComponentPropsWithRef,
   type ReactNode,
@@ -14,8 +16,6 @@ import {
   Modal as AriaModal,
   ModalOverlay as AriaModalOverlay,
 } from 'react-aria-components';
-import { CloseButton } from '@/components/base/buttons/close-button';
-import { cx } from '@/utils/cx';
 
 interface ModalOverlayProps
   extends AriaModalOverlayProps,
@@ -147,12 +147,12 @@ const Header = ({
     <header
       {...props}
       className={cx(
-        'tw:relative tw:z-1 tw:w-full tw:px-4 tw:pt-6 tw:md:px-6',
+        'tw:relative tw:z-1 tw:w-full tw:px-4 tw:pt-6 tw:md:px-6 tw:pr-8',
         className
       )}>
       {children}
       <CloseButton
-        className="tw:absolute tw:top-3 tw:right-3 tw:shrink-0"
+        className="tw:absolute tw:top-1/2 tw:right-3 tw:shrink-0 tw:-translate-y-1/2"
         size="md"
         onClick={onClose}
       />

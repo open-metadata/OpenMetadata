@@ -28,6 +28,17 @@ export type ProgressStepsOrientation = 'horizontal' | 'vertical';
 
 export type ProgressStepsSize = 'sm' | 'md' | 'lg';
 
+/**
+ * Where the step label sits relative to the indicator on horizontal layouts.
+ *
+ * - `bottom` (default): label is rendered below the indicator and centered —
+ *   the standard Untitled UI horizontal stepper.
+ * - `attach`: label sits inline to the right of the indicator. Incomplete
+ *   steps render in a disabled style, and connectors collapse to short
+ *   horizontal lines between adjacent step groups.
+ */
+export type ProgressStepsLabelPlacement = 'bottom' | 'attach';
+
 export interface ProgressStepItem {
   /**
    * Stable identifier for the step. Used as the React key so that reordering,
@@ -68,6 +79,15 @@ export interface ProgressStepsProps
   size?: ProgressStepsSize;
   /** Render the connecting lines between steps. */
   showConnector?: boolean;
+  /**
+   * Where the step label sits relative to the indicator on horizontal
+   * layouts. Defaults to `'bottom'`. Use `'attach'` to render the indicator
+   * and label side-by-side with a disabled treatment for incomplete steps.
+   * Only applies when `orientation === 'horizontal'` and `type` is `'number'`
+   * or `'icon'`; other combinations fall back to the standard horizontal
+   * layout to keep the indicator and label palettes consistent.
+   */
+  labelPlacement?: ProgressStepsLabelPlacement;
   className?: string;
 }
 
@@ -118,6 +138,18 @@ const titleStatusStyles = sortCx({
   incomplete: 'tw:text-secondary',
 });
 
+const attachCircleStatusStyles = sortCx({
+  complete: 'tw:bg-success-solid tw:text-fg-white',
+  current: 'tw:bg-brand-solid tw:text-fg-white',
+  incomplete: 'tw:bg-disabled tw:text-disabled',
+});
+
+const attachTitleStatusStyles = sortCx({
+  complete: 'tw:text-fg-success-primary',
+  current: 'tw:text-primary',
+  incomplete: 'tw:text-disabled',
+});
+
 const resolveStatus = (
   step: ProgressStepItem,
   index: number,
@@ -156,6 +188,12 @@ interface StepIndicatorProps {
   size: ProgressStepsSize;
   index: number;
   icon?: FC<{ className?: string }>;
+  /**
+   * Render the indicator with the attached-variant treatment (solid brand fill
+   * for the current step, disabled fill for incomplete steps). Defaults to
+   * `false` so the standard Untitled UI palette is used.
+   */
+  attached?: boolean;
 }
 
 const FeaturedStepIcon = ({
@@ -211,6 +249,7 @@ const CircleStepIcon = ({
   size,
   index,
   icon: Icon,
+  attached,
 }: StepIndicatorProps) => {
   const isComplete = status === 'complete';
   let content: ReactNode;
@@ -231,12 +270,16 @@ const CircleStepIcon = ({
     );
   }
 
+  const statusStyles = attached
+    ? attachCircleStatusStyles[status]
+    : circleStatusStyles[status];
+
   return (
     <span
       className={cx(
         'tw:flex tw:shrink-0 tw:items-center tw:justify-center tw:rounded-full tw:transition-colors',
         sizes[size].circle,
-        circleStatusStyles[status]
+        statusStyles
       )}>
       {content}
     </span>
@@ -286,10 +329,19 @@ interface StepTextProps {
   status: ProgressStepStatus;
   size: ProgressStepsSize;
   align: 'center' | 'left';
+  /**
+   * Apply the attached-variant title palette (primary text for the active
+   * step, disabled text for incomplete steps). Defaults to `false`.
+   */
+  attached?: boolean;
 }
 
-const StepText = ({ step, status, size, align }: StepTextProps) => {
+const StepText = ({ step, status, size, align, attached }: StepTextProps) => {
   let text: ReactNode = null;
+
+  const titleColor = attached
+    ? attachTitleStatusStyles[status]
+    : titleStatusStyles[status];
 
   if (step.title || step.description) {
     text = (
@@ -299,7 +351,7 @@ const StepText = ({ step, status, size, align }: StepTextProps) => {
           align === 'center' ? 'tw:items-center tw:text-center' : 'tw:text-left'
         )}>
         {step.title && (
-          <span className={cx(sizes[size].title, titleStatusStyles[status])}>
+          <span className={cx(sizes[size].title, titleColor)}>
             {step.title}
           </span>
         )}
@@ -322,6 +374,52 @@ interface RenderArgs {
   size: ProgressStepsSize;
   showConnector: boolean;
 }
+
+const AttachedHorizontalSteps = ({
+  steps,
+  statuses,
+  type,
+  size,
+  showConnector,
+}: RenderArgs) =>
+  steps.map((step, index) => {
+    const status = statuses[index];
+    const isLast = index === steps.length - 1;
+
+    return (
+      <li
+        aria-current={status === 'current' ? 'step' : undefined}
+        className="tw:flex tw:items-center"
+        key={getStepKey(step, index)}>
+        <div className="tw:flex tw:items-center tw:gap-2">
+          <StepIndicator
+            attached
+            icon={step.icon}
+            index={index}
+            size={size}
+            status={status}
+            type={type as Exclude<ProgressStepType, 'line'>}
+          />
+          <StepText
+            attached
+            align="left"
+            size={size}
+            status={status}
+            step={step}
+          />
+        </div>
+        {showConnector && !isLast && (
+          <span
+            aria-hidden="true"
+            className={cx(
+              'tw:mx-3 tw:h-px tw:w-8 tw:shrink-0',
+              status === 'complete' ? 'tw:bg-success-solid' : 'tw:bg-quaternary'
+            )}
+          />
+        )}
+      </li>
+    );
+  });
 
 const HorizontalSteps = ({
   steps,
@@ -384,7 +482,11 @@ const VerticalSteps = ({
         aria-current={status === 'current' ? 'step' : undefined}
         className="tw:flex tw:gap-3"
         key={getStepKey(step, index)}>
-        <div className="tw:flex tw:flex-col tw:items-center tw:gap-1">
+        <div
+          className={cx(
+            'tw:flex tw:flex-col tw:items-center tw:gap-2',
+            !isLast && 'tw:pb-2'
+          )}>
           <StepIndicator
             icon={step.icon}
             index={index}
@@ -451,6 +553,7 @@ export const ProgressSteps = ({
   orientation = 'horizontal',
   size = 'md',
   showConnector = true,
+  labelPlacement = 'bottom',
   className,
   ...props
 }: ProgressStepsProps) => {
@@ -464,6 +567,10 @@ export const ProgressSteps = ({
   );
 
   const renderArgs: RenderArgs = { steps, statuses, type, size, showConnector };
+  const isAttached =
+    labelPlacement === 'attach' &&
+    orientation === 'horizontal' &&
+    (type === 'number' || type === 'icon');
 
   let content: ReactNode;
   let listClassName: string;
@@ -474,6 +581,9 @@ export const ProgressSteps = ({
   } else if (orientation === 'vertical') {
     content = <VerticalSteps {...renderArgs} />;
     listClassName = 'tw:flex tw:flex-col';
+  } else if (isAttached) {
+    content = <AttachedHorizontalSteps {...renderArgs} />;
+    listClassName = 'tw:flex tw:items-center';
   } else {
     content = <HorizontalSteps {...renderArgs} />;
     listClassName = 'tw:flex tw:w-full';

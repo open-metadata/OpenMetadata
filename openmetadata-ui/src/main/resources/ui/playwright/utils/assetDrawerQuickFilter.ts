@@ -30,8 +30,8 @@ export interface DrawerQuickFilterContext {
   untieredTable: DrawerAsset;
   topic: DrawerAsset;
   dashboard: DrawerAsset;
-  entityTypeLabel?: string;
-  tierLabel?: string;
+  entityTypeKey?: string;
+  tierKey?: string;
 }
 
 export const toDrawerAsset = (entity: object): DrawerAsset => ({
@@ -44,8 +44,8 @@ const popover = (page: Page): Locator => page.locator(POPOVER);
 const optionByValue = (page: Page, value: string): Locator =>
   popover(page).getByTestId(`${value}-checkbox`);
 
-export const openQuickFilter = async (page: Page, label: string) => {
-  await page.getByTestId(`search-dropdown-${label}`).click();
+export const openQuickFilter = async (page: Page, searchKey: string) => {
+  await page.getByTestId(`search-dropdown-${searchKey}`).click();
   await expect(popover(page)).toBeVisible();
 };
 
@@ -79,9 +79,9 @@ export const expectAssetHidden = async (page: Page, fqn: string) => {
 
 const assertPopoverInteractiveAndFiltersOptions = async (
   page: Page,
-  entityTypeLabel: string
+  entityTypeKey: string
 ) => {
-  await openQuickFilter(page, entityTypeLabel);
+  await openQuickFilter(page, entityTypeKey);
 
   await expect(optionByValue(page, 'table')).toBeVisible();
   await expect(optionByValue(page, 'topic')).toBeVisible();
@@ -100,28 +100,28 @@ const assertPopoverInteractiveAndFiltersOptions = async (
 
 const assertCloseDiscardsSelection = async (
   page: Page,
-  entityTypeLabel: string
+  entityTypeKey: string
 ) => {
-  await openQuickFilter(page, entityTypeLabel);
+  await openQuickFilter(page, entityTypeKey);
   await optionByValue(page, 'dashboard').click();
   await closeQuickFilterPopover(page);
 
   await expect(
-    page.getByTestId(`search-dropdown-${entityTypeLabel}`)
+    page.getByTestId(`search-dropdown-${entityTypeKey}`)
   ).not.toContainText('dashboard');
 };
 
 const assertApplyNarrowsList = async (
   page: Page,
   ctx: DrawerQuickFilterContext,
-  entityTypeLabel: string
+  entityTypeKey: string
 ) => {
-  await openQuickFilter(page, entityTypeLabel);
+  await openQuickFilter(page, entityTypeKey);
   await optionByValue(page, 'table').click();
   await applyQuickFilter(page);
 
   await expect(
-    page.getByTestId(`search-dropdown-${entityTypeLabel}`)
+    page.getByTestId(`search-dropdown-${entityTypeKey}`)
   ).toContainText('table');
 
   await scopeDrawerSearch(page, ctx.topic.name);
@@ -133,9 +133,9 @@ const assertApplyNarrowsList = async (
 const assertCombineFilters = async (
   page: Page,
   ctx: DrawerQuickFilterContext,
-  tierLabel: string
+  tierKey: string
 ) => {
-  await openQuickFilter(page, tierLabel);
+  await openQuickFilter(page, tierKey);
   await popover(page)
     .getByTestId(/tier1-checkbox$/i)
     .click();
@@ -153,25 +153,25 @@ export const runDrawerQuickFilterMatrix = async (
   page: Page,
   ctx: DrawerQuickFilterContext
 ) => {
-  const entityTypeLabel = ctx.entityTypeLabel ?? 'Entity Type';
-  const tierLabel = ctx.tierLabel ?? 'Tier';
+  const entityTypeKey = ctx.entityTypeKey ?? 'entityType';
+  const tierKey = ctx.tierKey ?? 'tier.tagFQN';
 
   await ctx.openDrawer();
 
   await test.step(`[${ctx.surface}] popover is interactive and filters its options`, async () => {
-    await assertPopoverInteractiveAndFiltersOptions(page, entityTypeLabel);
+    await assertPopoverInteractiveAndFiltersOptions(page, entityTypeKey);
   });
 
   await test.step(`[${ctx.surface}] Close discards the staged selection`, async () => {
-    await assertCloseDiscardsSelection(page, entityTypeLabel);
+    await assertCloseDiscardsSelection(page, entityTypeKey);
   });
 
   await test.step(`[${ctx.surface}] selecting + Update narrows the asset list`, async () => {
-    await assertApplyNarrowsList(page, ctx, entityTypeLabel);
+    await assertApplyNarrowsList(page, ctx, entityTypeKey);
   });
 
   await test.step(`[${ctx.surface}] combining filters intersects the results`, async () => {
-    await assertCombineFilters(page, ctx, tierLabel);
+    await assertCombineFilters(page, ctx, tierKey);
   });
 
   await ctx.closeDrawer();

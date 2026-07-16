@@ -29,12 +29,78 @@ export const DATA_ASSETS_COVERAGE_PIE_CHART_TEST_ID =
   'data-assets-coverage-pie-chart';
 
 /**
+ * Selects a test type from the "Select Test Type" field. The field is a
+ * searchable autocomplete, so we type the label to filter the list before
+ * picking the option — relying on the option being present in the full
+ * (scrollable, height-capped) list is brittle and regresses whenever the
+ * field's rendering changes. `label` is the test type's display name, which is
+ * also what the option is matched by.
+ */
+export const selectTestType = async (page: Page, label: string) => {
+  await page.click('[id="root\\/testType"]');
+  await page.fill('[id="root\\/testType"]', label);
+  await page.getByRole('option').filter({ hasText: label }).first().click();
+};
+
+/**
+ * Dismiss an open tag/glossary suggestion dropdown by moving focus to the form
+ * heading. This is a deterministic outside-click that closes the react-aria
+ * combobox popover without the ambiguity of a page-level Escape — which, when
+ * the menu happens to already be closed, would bubble up and dismiss the whole
+ * drawer.
+ */
+export const dismissTagSuggestions = async (page: Page) => {
+  await page.getByTestId('form-heading').click();
+  await expect(page.locator('[role="listbox"]')).toBeHidden();
+};
+
+/**
+ * Matches the batched `dataQualityReport` POST the dashboard now fires instead
+ * of one GET per widget. The per-aggregation filter (`q`, `index`, ...) lives in
+ * the POST body, so pass `bodyToken` (a raw, non-URL-encoded substring) to assert
+ * a specific filter reached the API.
+ */
+export function isDashboardReportBatchResponse(
+  res: Response,
+  bodyToken?: string
+): boolean {
+  const request = res.request();
+  const isBatch =
+    request.url().includes('/dataQuality/testSuites/dataQualityReport/batch') &&
+    request.method() === 'POST';
+  let matches = isBatch && !bodyToken;
+
+  if (isBatch && bodyToken) {
+    const body = request.postData() ?? '';
+    matches = body.includes(bodyToken);
+    if (!matches) {
+      // Dotted FQNs are quoted (e.g. `"x.y"`); their quotes are JSON-escaped in
+      // the raw body, so fall back to matching parsed request field values.
+      try {
+        const parsed = JSON.parse(body) as {
+          requests?: Array<{ q?: string; domain?: string }>;
+        };
+        matches = (parsed.requests ?? []).some(
+          (item) =>
+            (item.q ?? '').includes(bodyToken) ||
+            (item.domain ?? '').includes(bodyToken)
+        );
+      } catch {
+        matches = false;
+      }
+    }
+  }
+
+  return matches;
+}
+
+/**
  * Navigate to the Data Quality dashboard (Dashboard sub-tab under Data Quality).
  */
 export async function goToDataQualityDashboard(page: Page): Promise<void> {
   await redirectToHomePage(page);
-  const dataQualityReportResponse = page.waitForResponse(
-    '/api/v1/dataQuality/testSuites/dataQualityReport?q=*'
+  const dataQualityReportResponse = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res)
   );
   await sidebarClick(page, SidebarItem.DATA_QUALITY);
   await page.getByTestId('dashboard').click();
@@ -69,7 +135,7 @@ export const clickUpdateButton = async (page: Page) => {
       response.url().includes('/api/v1/dataQuality/testCases') &&
       response.request().method() === 'PATCH'
   );
-  await page.getByTestId('update-btn').click();
+  await page.getByTestId('create-btn').click();
   const response = await updateTestCaseResponse;
 
   expect(response.status()).toBe(200);
@@ -297,14 +363,14 @@ export const openCreateNewBundleSuiteForm = async (page: Page) => {
   );
   await page.getByTestId('create-new-bundle-suite').click();
   await listResponse;
-  await page.locator('form.bundle-suite-form').waitFor();
+  await page.locator('.bundle-suite-form').waitFor();
 };
 
 export const fillAndSubmitBundleSuiteForm = async (
   page: Page,
   name: string
 ) => {
-  await page.getByTestId('test-suite-name').fill(name);
+  await page.getByTestId('test-suite-name').locator('input').fill(name);
   const createResponse = page.waitForResponse('/api/v1/dataQuality/testSuites');
   await page.getByTestId('submit-button').click();
   await createResponse;
@@ -333,6 +399,10 @@ export const selectExistingBundleSuite = async (
   await dropdownInput.click();
   await dropdownInput.fill(suiteName);
 
+  // AddToBundleSuiteModal still renders an antd Select (not migrated to the
+  // react-aria stack), so scope to the visible antd dropdown and its option
+  // rows. A generic `[role="listbox"]` matches multiple listboxes on the page
+  // (e.g. the header asset search) and resolves ambiguously.
   const dropdown = page.locator('.ant-select-dropdown:visible');
   const option = dropdown.locator('.ant-select-item-option', {
     hasText: suiteName,
@@ -402,6 +472,29 @@ export function captureReports(page: Page): CapturedReport[] {
     if (!url.includes('/dataQualityReport')) {
       return;
     }
+
+    // The dashboard batches every aggregation into one POST body; flatten each
+    // item back into a CapturedReport so callers keep asserting on q/index.
+    if (url.includes('/dataQualityReport/batch')) {
+      const body = req.postData();
+      if (!body) {
+        return;
+      }
+      let parsed: { requests?: Array<{ q?: string; index?: string }> };
+      try {
+        parsed = JSON.parse(body) as {
+          requests?: Array<{ q?: string; index?: string }>;
+        };
+      } catch {
+        return;
+      }
+      for (const item of parsed.requests ?? []) {
+        captured.push({ url, q: item.q ?? '', index: item.index ?? '' });
+      }
+
+      return;
+    }
+
     const u = new URL(url);
     captured.push({
       url,
@@ -409,6 +502,7 @@ export function captureReports(page: Page): CapturedReport[] {
       index: u.searchParams.get('index') ?? '',
     });
   });
+
   return captured;
 }
 
@@ -440,10 +534,8 @@ async function applyDashboardTagBasedFilter(
 
   await page.getByTestId(optionFqn).click();
 
-  const reportRes = page.waitForResponse(
-    (res) =>
-      res.url().includes('/dataQualityReport') &&
-      res.url().includes(encodeURIComponent(optionFqn))
+  const reportRes = page.waitForResponse((res) =>
+    isDashboardReportBatchResponse(res, optionFqn)
   );
   await page.getByTestId('update-btn').click();
   await reportRes;

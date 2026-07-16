@@ -156,6 +156,7 @@ jobs:
           AUTHENTICATION_AUTHORITY: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:9090' || 'https://accounts.google.com' }}
           AUTHENTICATION_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
           AUTHENTICATION_CALLBACK_URL: ${{ matrix.provider == 'mock-oidc' && 'http://localhost:8585/callback' || '' }}
+          AUTHENTICATION_JWT_PRINCIPAL_CLAIMS_MAPPING: ${{ matrix.provider == 'mock-oidc' && '[username:sub,email:email]' || '' }}
           OIDC_CLIENT_ID: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test' || '' }}
           OIDC_TYPE: ${{ matrix.provider == 'mock-oidc' && 'custom-oidc' || '' }}
           OIDC_CLIENT_SECRET: ${{ matrix.provider == 'mock-oidc' && 'openmetadata-test-secret' || '' }}

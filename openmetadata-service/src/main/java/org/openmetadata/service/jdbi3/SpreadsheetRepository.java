@@ -71,6 +71,11 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
         "",
         "");
     supportsSearch = true;
+    // Covered by the parent service delete cascade: search docs by service.id
+    // (SearchRepository.deleteOrUpdateChildren) and field_relationship / tag_usage by
+    // the root cleanup() FQN prefix (FQNs are service-nested). See
+    // EntityRepository#descendantsCoveredByAncestorCascade.
+    descendantsCoveredByAncestorCascade = true;
   }
 
   @Override
@@ -420,7 +425,7 @@ public class SpreadsheetRepository extends EntityRepository<Spreadsheet> {
                   List.of(
                       Pair.of(9, TagLabel.TagSource.CLASSIFICATION),
                       Pair.of(10, TagLabel.TagSource.GLOSSARY))))
-          .withDomains(getDomains(printer, csvRecord, 11))
+          .withDomains(getDomains(printer, csvRecord, 11, newSpreadsheet.getDomains()))
           .withDataProducts(getDataProducts(printer, csvRecord, 12))
           .withCreatedTime(
               nullOrEmpty(csvRecord.get(15)) ? null : Long.parseLong(csvRecord.get(15)))
