@@ -157,7 +157,7 @@ export const COVERAGE_DIMMED_OPACITY = 0.26;
 /** Labels are rendered up to this cap, then progressively disclosed by priority. */
 export const LABEL_RENDER_LIMIT = 140;
 export const ALWAYS_VISIBLE_LABEL_LIMIT = 18;
-export const PRIORITY_LABEL_LIMIT = 12;
+export const PRIORITY_LABEL_LIMIT = 18;
 
 /** Dense layouts are widened to use a landscape stage and compressed in depth. */
 export const DENSE_GRAPH_NODE_THRESHOLD = 24;

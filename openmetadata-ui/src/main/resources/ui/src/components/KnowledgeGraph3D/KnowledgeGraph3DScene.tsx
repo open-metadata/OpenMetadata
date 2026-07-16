@@ -68,6 +68,20 @@ type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 const FRAME_DELAY_MS = 600;
 const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
 
+const sceneNodeId = (node: SceneNode | null): string | null =>
+  node?.id ? String(node.id) : null;
+
+const setNodeLabelVisibility = (
+  node: SceneNode | null,
+  visible: boolean
+): void => {
+  const object = node?.__threeObj as Object3D | undefined;
+  const label = object?.getObjectByName(NODE_LABEL_OBJECT_NAME);
+  if (label) {
+    label.visible = visible;
+  }
+};
+
 const nodeOpacityFor = (
   node: GraphNode3D,
   gaps: boolean,
@@ -151,8 +165,10 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const settledFitPendingRef = useRef(true);
   const layoutExpandedRef = useRef(false);
   const cameraGuardTimerRef = useRef(0);
+  const hoveredNodeRef = useRef<SceneNode | null>(null);
+  const pendingHoveredNodeRef = useRef<SceneNode | null>(null);
+  const hoverFrameRef = useRef(0);
   const [size, setSize] = useState({ width: 0, height: 0 });
-  const [hoveredNodeId, setHoveredNodeId] = useState<string | null>(null);
 
   const reducedMotion = useMemo(
     () =>
@@ -173,8 +189,8 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   }, [data.links, selectedNodeId, selectedLinkKey]);
 
   const visibleLabelIds = useMemo(
-    () => getVisibleLabelIds(data, focusNodeId, selectedNodeId, hoveredNodeId),
-    [data, focusNodeId, selectedNodeId, hoveredNodeId]
+    () => getVisibleLabelIds(data, focusNodeId, selectedNodeId),
+    [data, focusNodeId, selectedNodeId]
   );
 
   const resetView = useCallback(() => {
@@ -227,7 +243,49 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     [level, gaps, renderLabels]
   );
 
+  const handleNodeHover = useCallback(
+    (node: SceneNode | null) => {
+      if (!renderLabels) {
+        return;
+      }
+
+      const queuedNode = hoverFrameRef.current
+        ? pendingHoveredNodeRef.current
+        : hoveredNodeRef.current;
+      if (sceneNodeId(queuedNode) === sceneNodeId(node)) {
+        return;
+      }
+
+      pendingHoveredNodeRef.current = node;
+      window.cancelAnimationFrame(hoverFrameRef.current);
+      hoverFrameRef.current = window.requestAnimationFrame(() => {
+        const previousNode = hoveredNodeRef.current;
+        const nextNode = pendingHoveredNodeRef.current;
+        const previousNodeId = sceneNodeId(previousNode);
+        const nextNodeId = sceneNodeId(nextNode);
+
+        if (
+          previousNodeId &&
+          previousNodeId !== nextNodeId &&
+          !visibleLabelIds.has(previousNodeId)
+        ) {
+          setNodeLabelVisibility(previousNode, false);
+        }
+        if (nextNodeId) {
+          setNodeLabelVisibility(nextNode, true);
+        }
+
+        hoveredNodeRef.current = nextNode;
+        pendingHoveredNodeRef.current = null;
+        hoverFrameRef.current = 0;
+        fgRef.current?.refresh();
+      });
+    },
+    [renderLabels, visibleLabelIds]
+  );
+
   const applyNodePresentation = useCallback(() => {
+    const hoveredNodeId = sceneNodeId(hoveredNodeRef.current);
     data.nodes.forEach((node) => {
       const object = (node as SceneNode).__threeObj as Object3D | undefined;
       if (!object) {
@@ -235,7 +293,8 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
       }
       const label = object.getObjectByName(NODE_LABEL_OBJECT_NAME);
       if (label) {
-        label.visible = visibleLabelIds.has(node.id);
+        label.visible =
+          visibleLabelIds.has(node.id) || hoveredNodeId === node.id;
       }
       const opacity = nodeOpacityFor(node, gaps, highlight);
       object.traverse((child) => {
@@ -258,10 +317,18 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   useEffect(
     () => () => {
       window.clearTimeout(cameraGuardTimerRef.current);
+      window.cancelAnimationFrame(hoverFrameRef.current);
       disposeTextureCaches();
     },
     []
   );
+
+  useEffect(() => {
+    window.cancelAnimationFrame(hoverFrameRef.current);
+    hoveredNodeRef.current = null;
+    pendingHoveredNodeRef.current = null;
+    hoverFrameRef.current = 0;
+  }, [data]);
 
   useLayoutEffect(() => {
     const element = containerRef.current;
@@ -415,9 +482,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
         onEngineStop={handleEngineStop}
         onLinkClick={(link: SceneLink) => onSelectLink(link as GraphLink3D)}
         onNodeClick={(node: SceneNode) => onSelectNode(node as GraphNode3D)}
-        onNodeHover={(node: SceneNode | null) =>
-          setHoveredNodeId(node?.id ? String(node.id) : null)
-        }
+        onNodeHover={handleNodeHover}
       />
     </div>
   );

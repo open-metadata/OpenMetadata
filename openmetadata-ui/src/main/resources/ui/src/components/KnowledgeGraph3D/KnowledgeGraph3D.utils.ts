@@ -15,6 +15,7 @@ import {
   ALWAYS_VISIBLE_LABEL_LIMIT,
   DENSE_GRAPH_DEPTH_SCALE,
   DENSE_GRAPH_NODE_THRESHOLD,
+  LABEL_RENDER_LIMIT,
   MAX_HORIZONTAL_LAYOUT_SCALE,
   PRIORITY_LABEL_LIMIT,
   TARGET_LAYOUT_VIEWPORT_RATIO,
@@ -133,15 +134,19 @@ const degreesOf = (graph: Graph3DData): Map<string, number> => {
 
 /**
  * Keeps dense-graph labels useful without painting every name at once. The
- * focus, selection and hover labels win first, followed by selected neighbors
- * and then the most connected nodes.
+ * focus and selection labels win first, followed by selected neighbors and
+ * then the most connected nodes. Hover labels are handled imperatively by the
+ * scene so pointer movement does not repeat this ranking work.
  */
 export const getVisibleLabelIds = (
   graph: Graph3DData,
   focusNodeId: string | undefined,
-  selectedNodeId: string | null,
-  hoveredNodeId: string | null
+  selectedNodeId: string | null
 ): Set<string> => {
+  if (graph.nodes.length > LABEL_RENDER_LIMIT) {
+    return new Set();
+  }
+
   if (graph.nodes.length <= ALWAYS_VISIBLE_LABEL_LIMIT) {
     return new Set(graph.nodes.map((node) => node.id));
   }
@@ -155,7 +160,6 @@ export const getVisibleLabelIds = (
   };
 
   addVisible(selectedNodeId);
-  addVisible(hoveredNodeId);
   addVisible(focusNodeId);
 
   const degrees = degreesOf(graph);
