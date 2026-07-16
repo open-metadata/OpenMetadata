@@ -34,6 +34,18 @@ def test_get_client_builds_client():
     mock_client.assert_called_once_with(conn.service_connection, mock_engine.return_value)
 
 
+def test_close_disposes_the_engine():
+    with (
+        patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_engine,
+        patch(f"{CONNECTION_MODULE}.DatabricksClient"),
+    ):
+        conn = DatabricksPipelineConnection(MagicMock())
+        _ = conn.client
+        conn.close()
+
+    mock_engine.return_value.dispose.assert_called_once()
+
+
 def test_test_connection_runs_steps():
     conn = DatabricksPipelineConnection(MagicMock())
     conn._client = MagicMock()

@@ -61,6 +61,7 @@ class DatabricksPipelineConnection(BaseConnection[DatabricksPipelineConnectionCo
             get_connection_url_fn=get_connection_url,
             get_connection_args_fn=get_connection_args_common,
         )
+        self._on_close(engine.dispose)
 
         return DatabricksClient(connection, engine)
 

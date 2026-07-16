@@ -13,14 +13,33 @@
 from unittest.mock import MagicMock, patch
 
 import pytest
-from tests.unit.topology.pipeline.test_flink import mock_flink_config
 
-from metadata.generated.schema.metadataIngestion.workflow import (
-    OpenMetadataWorkflowConfig,
-)
-from metadata.ingestion.source.pipeline.flink.metadata import FlinkSource
+from metadata.ingestion.source.pipeline.pipeline_service import PipelineServiceSource
 
 PIPELINE_SERVICE_MODULE = "metadata.ingestion.source.pipeline.pipeline_service"
+
+
+class PipelineSourceForTest(PipelineServiceSource):
+    """Minimal concrete source: the base's connection lifecycle is under test."""
+
+    @classmethod
+    def create(cls, config_dict, metadata, pipeline_name=None):
+        """Not exercised"""
+
+    def yield_pipeline(self, pipeline_details):
+        """Not exercised"""
+
+    def yield_pipeline_lineage_details(self, pipeline_details):
+        """Not exercised"""
+
+    def get_pipelines_list(self):
+        """Not exercised"""
+
+    def get_pipeline_name(self, pipeline_details):
+        """Not exercised"""
+
+    def yield_pipeline_status(self, pipeline_details):
+        """Not exercised"""
 
 
 @patch(f"{PIPELINE_SERVICE_MODULE}.run_test_connection")
@@ -30,10 +49,21 @@ def test_owned_connection_closed_when_test_connection_fails(mock_create_connecti
     re-raises the original error without running the source's ``close()`` (whose
     subclass overrides touch attributes the source ``__init__`` never set)."""
     mock_run_test_connection.side_effect = RuntimeError("cannot connect")
-    config = OpenMetadataWorkflowConfig.model_validate(mock_flink_config)
 
-    with patch.object(FlinkSource, "close") as mock_close, pytest.raises(RuntimeError):
-        FlinkSource(config.source, MagicMock())
+    with patch.object(PipelineSourceForTest, "close") as mock_close, pytest.raises(RuntimeError):
+        PipelineSourceForTest(MagicMock(), MagicMock())
 
     mock_create_connection.return_value.close.assert_called_once()
     mock_close.assert_not_called()
+
+
+@patch(f"{PIPELINE_SERVICE_MODULE}.run_test_connection")
+@patch(f"{PIPELINE_SERVICE_MODULE}.create_connection")
+def test_owned_connection_is_reused_for_the_test_step(mock_create_connection, mock_run_test_connection):
+    """The source tests through the connection it owns instead of building a second one."""
+    source = PipelineSourceForTest(MagicMock(), MagicMock())
+
+    mock_run_test_connection.assert_called_once_with(source.metadata, mock_create_connection.return_value)
+    assert source.connection is mock_create_connection.return_value.client
+    assert source.connection_obj is source.connection
+    assert source.client is source.connection
