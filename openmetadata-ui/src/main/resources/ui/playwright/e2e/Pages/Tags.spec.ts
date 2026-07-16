@@ -29,6 +29,7 @@ import {
   removeOwner,
   waitForAllLoadersToDisappear,
 } from '../../utils/entity';
+import { clickBreadcrumbAncestor } from '../../utils/headerBreadcrumbUtils';
 import { sidebarClick } from '../../utils/sidebar';
 import {
   addTagToTableColumn,
@@ -363,10 +364,9 @@ test('Classification Page', async ({ page }) => {
     const permissions = page.waitForResponse(
       'api/v1/permissions/databaseSchema/name/*'
     );
-    await page
-      .getByTestId('breadcrumb')
-      .getByRole('link', { name: entity.name })
-      .click();
+    // The schema crumb may auto-collapse into the breadcrumb overflow menu on
+    // narrow viewports, so navigate through the overflow-aware helper.
+    await clickBreadcrumbAncestor(page, entity.name);
 
     await databaseSchemaPage;
     await permissions;

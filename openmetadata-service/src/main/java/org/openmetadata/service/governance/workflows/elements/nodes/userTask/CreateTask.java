@@ -25,8 +25,6 @@ import com.fasterxml.jackson.annotation.JsonInclude;
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
-import java.time.Duration;
-import java.time.Period;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
@@ -78,6 +76,7 @@ import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver.WorkflowStartVariables;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -378,6 +377,7 @@ public class CreateTask implements TaskListener {
     String taskDescription =
         WorkflowVariableResolver.stringVariable(
             delegateTask, WorkflowStartVariables.TASK_DESCRIPTION);
+    String manualGrantReason = resolveManualGrantReason(delegateTask);
     TaskPriority requestedPriority = resolveTaskPriority(delegateTask);
     Object requestedPayload =
         WorkflowVariableResolver.workflowObjectVariable(
@@ -535,6 +535,7 @@ public class CreateTask implements TaskListener {
       }
       updatedTask.setPayload(
           withGrantExpirationDate(stageStatus, taskType, updatedTask.getPayload()));
+      updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
       updatedTask.setPayload(
           applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
       if (requestedExternalReference != null) {
@@ -604,6 +605,7 @@ public class CreateTask implements TaskListener {
       task.setDueDate(effectiveDueDate);
     }
     task.setPayload(withGrantExpirationDate(stageStatus, taskType, task.getPayload()));
+    task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
     task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
     if (requestedExternalReference != null) {
       task.setExternalReference(
@@ -979,23 +981,19 @@ public class CreateTask implements TaskListener {
   }
 
   static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
-    // Duration.parse handles PT...H/M/S (time-based); Period covers PnD/M/Y (calendar-based).
+    Long millis = fallback;
     try {
-      return System.currentTimeMillis() + Duration.parse(duration).toMillis();
-    } catch (DateTimeParseException notDuration) {
-      // fall through to Period
-    }
-    try {
-      return ZonedDateTime.now(ZoneOffset.UTC)
-          .plus(Period.parse(duration))
-          .toInstant()
-          .toEpochMilli();
-    } catch (DateTimeParseException notPeriod) {
+      millis =
+          ZonedDateTime.now(ZoneOffset.UTC)
+              .plus(DurationUtil.parseIso8601(duration))
+              .toInstant()
+              .toEpochMilli();
+    } catch (DateTimeParseException invalid) {
       LOG.warn(
           "[CreateTask] Could not parse ISO-8601 duration '{}'; falling back to caller default",
           duration);
-      return fallback;
     }
+    return millis;
   }
 
   private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
@@ -1009,6 +1007,47 @@ public class CreateTask implements TaskListener {
 
   private String buildTaskDescription(EntityInterface entity, TaskEntityType taskType) {
     return String.format("Approval required for %s", entity.getName());
+  }
+
+  /**
+   * Optional, workflow-supplied reason (only the Policy Agent DAR path sets it). Wrapped so a
+   * problem reading or typing it can never break task creation for the generic approval workflows
+   * (Glossary, etc.) that never set it — for those it returns null and {@link #mergeManualGrantReason}
+   * is a no-op.
+   */
+  private static String resolveManualGrantReason(DelegateTask delegateTask) {
+    try {
+      Object reason =
+          new WorkflowVariableHandler(delegateTask)
+              .getNamespacedVariable(GLOBAL_NAMESPACE, "manualGrantReason");
+      // Flowable process variables are untyped Object; the DAR path sets this as a String. Any
+      // other
+      // shape (or an unset variable → null) means "no reason", so mergeManualGrantReason no-ops.
+      return reason instanceof String s ? s : null;
+    } catch (Exception e) {
+      // Missing variable already returns null above; only a real lookup error reaches here.
+      LOG.debug("[CreateTask] Could not resolve manualGrantReason: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Attach a workflow-supplied reason (only the Policy Agent DAR path sets it) to the task payload
+   * as {@code manualGrantReason} — its own structured field, so the UI renders it separately from
+   * the description. Returns the payload unchanged for tasks/workflows that don't set one.
+   */
+  static Object mergeManualGrantReason(Object payload, String reason) {
+    Object result = payload;
+    if (reason != null && !reason.isBlank()) {
+      // manualGrantReason is only ever set on the DAR path, so the payload is a
+      // DataAccessRequestPayload — bind the typed POJO and set the field instead of hand-merging a
+      // raw Map. JsonUtils ignores unknown properties, so the round-trip preserves every field. A
+      // null payload (convertValue returns null) yields a fresh payload carrying only the reason.
+      DataAccessRequestPayload dar =
+          JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+      result = (dar != null ? dar : new DataAccessRequestPayload()).withManualGrantReason(reason);
+    }
+    return result;
   }
 
   private EntityReference resolveCreatedByReference(

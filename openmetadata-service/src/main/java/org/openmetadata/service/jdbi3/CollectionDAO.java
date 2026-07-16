@@ -84,7 +84,6 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
-import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -203,12 +202,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public interface CollectionDAO {
-  @CreateSqlObject
-  McpConversationDAO mcpConversationDAO();
-
-  @CreateSqlObject
-  McpMessageDAO mcpMessageDAO();
-
   @CreateSqlObject
   DatabaseDAO databaseDAO();
 
@@ -10814,6 +10807,14 @@ public interface CollectionDAO {
     @RegisterRowMapper(SettingsRowMapper.class)
     Settings getConfigWithKey(@Bind("configType") String configType) throws StatementException;
 
+    @SqlQuery("SELECT json FROM openmetadata_settings WHERE configType = :configType")
+    String getConfigJsonWithKey(@Bind("configType") String configType) throws StatementException;
+
+    @SqlQuery(
+        "SELECT json FROM openmetadata_settings "
+            + "WHERE configType = 'glossaryTermRelationSettings'")
+    String getGlossaryTermRelationSettingsJson() throws StatementException;
+
     @ConnectionAwareSqlUpdate(
         value =
             "INSERT into openmetadata_settings (configType, json)"
@@ -10825,6 +10826,39 @@ public interface CollectionDAO {
                 + "VALUES (:configType, :json :: jsonb) ON CONFLICT (configType) DO UPDATE SET json = EXCLUDED.json",
         connectionType = POSTGRES)
     void insertSettings(@Bind("configType") String configType, @Bind("json") String json);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = :configType "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = :configType AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateSettingsIfCurrent(
+        @Bind("configType") String configType,
+        @Bind("expectedJson") String expectedJson,
+        @Bind("updatedJson") String updatedJson);
+
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = :updatedJson "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND SHA2(CAST(json AS CHAR), 256) = "
+                + "SHA2(CAST(CAST(:expectedJson AS JSON) AS CHAR), 256)",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlUpdate(
+        value =
+            "UPDATE openmetadata_settings SET json = (:updatedJson :: jsonb) "
+                + "WHERE configType = 'glossaryTermRelationSettings' "
+                + "AND json = (:expectedJson :: jsonb)",
+        connectionType = POSTGRES)
+    int updateGlossaryTermRelationSettingsIfCurrent(
+        @Bind("expectedJson") String expectedJson, @Bind("updatedJson") String updatedJson);
 
     @SqlUpdate(value = "DELETE from openmetadata_settings WHERE configType = :configType")
     void delete(@Bind("configType") String configType);
@@ -10889,7 +10923,6 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
-            case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
           };
@@ -13451,6 +13484,32 @@ public interface CollectionDAO {
     List<SearchIndexRetryRecord> findByStatuses(
         @BindList("statuses") List<String> statuses, @Bind("limit") int limit);
 
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+                + "FROM search_index_retry_queue WHERE status = 'PENDING' "
+                + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
+                + "claimedAt <= DATE_SUB(NOW(), INTERVAL :firstRetryBackoffSeconds SECOND))) "
+                + "OR (status = 'PENDING_RETRY_2' AND (claimedAt IS NULL OR "
+                + "claimedAt <= DATE_SUB(NOW(), INTERVAL :secondRetryBackoffSeconds SECOND))) "
+                + "LIMIT :limit",
+        connectionType = MYSQL)
+    @ConnectionAwareSqlQuery(
+        value =
+            "SELECT entityId, entityFqn, failureReason, status, entityType, retryCount, claimedAt "
+                + "FROM search_index_retry_queue WHERE status = 'PENDING' "
+                + "OR (status = 'PENDING_RETRY_1' AND (claimedAt IS NULL OR "
+                + "claimedAt <= NOW() - (:firstRetryBackoffSeconds * INTERVAL '1 second'))) "
+                + "OR (status = 'PENDING_RETRY_2' AND (claimedAt IS NULL OR "
+                + "claimedAt <= NOW() - (:secondRetryBackoffSeconds * INTERVAL '1 second'))) "
+                + "LIMIT :limit",
+        connectionType = POSTGRES)
+    @RegisterRowMapper(SearchIndexRetryRecordMapper.class)
+    List<SearchIndexRetryRecord> findRetryCandidates(
+        @Bind("firstRetryBackoffSeconds") int firstRetryBackoffSeconds,
+        @Bind("secondRetryBackoffSeconds") int secondRetryBackoffSeconds,
+        @Bind("limit") int limit);
+
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :newStatus "
             + "WHERE entityId = :entityId AND entityFqn = :entityFqn AND status = :currentStatus")
@@ -13502,7 +13561,7 @@ public interface CollectionDAO {
 
     @SqlUpdate(
         "UPDATE search_index_retry_queue SET status = :status, failureReason = :failureReason, "
-            + "retryCount = retryCount + 1, claimedAt = NULL "
+            + "retryCount = retryCount + 1, claimedAt = NOW() "
             + "WHERE entityId = :entityId AND entityFqn = :entityFqn")
     int updateFailureAndRetryCount(
         @Bind("entityId") String entityId,
@@ -13511,10 +13570,15 @@ public interface CollectionDAO {
         @Bind("status") String status);
 
     default List<SearchIndexRetryRecord> claimPending(int batchSize) {
+      return claimPending(batchSize, 0, 0);
+    }
+
+    default List<SearchIndexRetryRecord> claimPending(
+        int batchSize, int firstRetryBackoffSeconds, int secondRetryBackoffSeconds) {
       int fetchSize = Math.max(batchSize * 5, batchSize);
       List<SearchIndexRetryRecord> candidates =
           new ArrayList<>(
-              findByStatuses(List.of("PENDING", "PENDING_RETRY_1", "PENDING_RETRY_2"), fetchSize));
+              findRetryCandidates(firstRetryBackoffSeconds, secondRetryBackoffSeconds, fetchSize));
       // Shuffle so concurrent worker threads attempt different rows first,
       // reducing wasted optimistic-lock failures on the same candidates.
       Collections.shuffle(candidates);
@@ -15847,71 +15911,5 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM asset_entity WHERE id = :id")
     void delete(@Bind("id") String id);
-  }
-
-  interface McpConversationDAO {
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_conversation (json) VALUES (:json)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_conversation (json) VALUES (:json::jsonb)",
-        connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM mcp_conversation WHERE id = :id")
-    String getById(@BindUUID("id") UUID id);
-
-    @SqlQuery(
-        "SELECT json FROM mcp_conversation WHERE userId = :userId "
-            + "ORDER BY updatedAt DESC LIMIT :limit OFFSET :offset")
-    List<String> listByUser(
-        @BindUUID("userId") UUID userId, @Bind("limit") int limit, @Bind("offset") int offset);
-
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE mcp_conversation SET json = :json WHERE id = :id",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE mcp_conversation SET json = :json::jsonb WHERE id = :id",
-        connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
-
-    @SqlQuery("SELECT COUNT(*) FROM mcp_conversation WHERE userId = :userId")
-    int countByUser(@BindUUID("userId") UUID userId);
-
-    @SqlUpdate("DELETE FROM mcp_conversation WHERE id = :id")
-    void delete(@BindUUID("id") UUID id);
-  }
-
-  interface McpMessageDAO {
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_message (json) VALUES (:json)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_message (json) VALUES (:json::jsonb)",
-        connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
-
-    @SqlQuery(
-        "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
-            + "ORDER BY messageIndex ASC LIMIT :limit OFFSET :offset")
-    List<String> listByConversation(
-        @BindUUID("conversationId") UUID conversationId,
-        @Bind("limit") int limit,
-        @Bind("offset") int offset);
-
-    @SqlQuery(
-        "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
-            + "ORDER BY messageIndex DESC LIMIT :limit")
-    List<String> listRecentByConversation(
-        @BindUUID("conversationId") UUID conversationId, @Bind("limit") int limit);
-
-    @SqlQuery("SELECT COUNT(*) FROM mcp_message WHERE conversationId = :conversationId")
-    int countByConversation(@BindUUID("conversationId") UUID conversationId);
-
-    @SqlUpdate("DELETE FROM mcp_message WHERE id = :id")
-    void delete(@BindUUID("id") UUID id);
-
-    @SqlUpdate("DELETE FROM mcp_message WHERE conversationId = :conversationId")
-    void deleteByConversation(@BindUUID("conversationId") UUID conversationId);
   }
 }
