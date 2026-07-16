@@ -475,15 +475,18 @@ public class LdapAuthenticator implements AuthenticatorHandler {
   }
 
   static Filter buildGroupMemberFilter(LdapConfiguration ldapConfiguration, String userDn) {
+    final Filter filter;
     if (Boolean.TRUE.equals(ldapConfiguration.getRecursiveGroupMembership())) {
-      return Filter.createExtensibleMatchFilter(
-          ldapConfiguration.getGroupMemberAttributeName(),
-          AD_RECURSIVE_GROUP_MATCHING_RULE,
-          false,
-          userDn);
+      filter =
+          Filter.createExtensibleMatchFilter(
+              ldapConfiguration.getGroupMemberAttributeName(),
+              AD_RECURSIVE_GROUP_MATCHING_RULE,
+              false,
+              userDn);
+    } else {
+      filter = Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
     }
-
-    return Filter.createEqualityFilter(ldapConfiguration.getGroupMemberAttributeName(), userDn);
+    return filter;
   }
 
   /**
