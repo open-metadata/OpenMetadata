@@ -63,8 +63,12 @@ class TrinoContainer(DbContainer):
                 with engine.connect() as conn:
                     return conn.execute(text(sql))
 
+            # Scan a real catalog, not system.runtime.nodes: for the first seconds after startup
+            # trino accepts queries but cannot yet schedule one against a catalog
+            # (NO_NODES_AVAILABLE), while the system connector, registered on every active node,
+            # already answers. Any catalog proves the rest -- one announcement lists them all.
             retry(wait=wait_fixed(1), stop=stop_after_delay(120))(_exec)(
-                "select system.runtime.nodes.node_id from system.runtime.nodes"
+                "SELECT count(*) FROM tpch.tiny.nation"
             ).fetchall()
         finally:
             engine.dispose()

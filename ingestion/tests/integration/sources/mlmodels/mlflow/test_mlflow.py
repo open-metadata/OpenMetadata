@@ -57,6 +57,7 @@ MODEL_HYPERPARAMS = {
 }
 
 MODEL_NAME = "ElasticnetWineModel"
+MODEL_DESCRIPTION = "ElasticNet model predicting wine quality"
 
 
 def eval_metrics(actual, pred):
@@ -157,6 +158,10 @@ def create_data(mlflow_environment):
                 else:
                     raise
 
+    # Describing the model bumps RegisteredModel.last_updated_timestamp past the
+    # version's, which must not hide the version from the registry listing.
+    mlflow.MlflowClient().update_registered_model(MODEL_NAME, description=MODEL_DESCRIPTION)
+
 
 @pytest.fixture(scope="module")
 def service(metadata, mlflow_environment):
@@ -211,6 +216,8 @@ def test_mlflow(ingest_mlflow, metadata, service):
 
     # Assert name is as expected
     assert model.name.root == MODEL_NAME
+
+    assert model.description.root == MODEL_DESCRIPTION
 
     # Assert HyperParameters are as expected
     assert len(model.mlHyperParameters) == 2
