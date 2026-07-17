@@ -44,13 +44,15 @@ LEGACY_CLIENT = MagicMock(name="legacy_client")
 @patch(f"{SECURITY_SERVICE_MODULE}.create_connection")
 def test_owned_connection_closed_when_test_connection_fails(mock_create_connection, mock_run_test_connection):
     """A failing test-connection in __init__ disposes the owned connection and
-    re-raises the original error."""
+    re-raises the original error without running the source's ``close()`` (whose
+    subclass overrides touch attributes the source ``__init__`` never set)."""
     mock_run_test_connection.side_effect = RuntimeError("cannot connect")
 
-    with pytest.raises(RuntimeError):
+    with patch.object(SecuritySourceForTest, "close") as mock_close, pytest.raises(RuntimeError):
         SecuritySourceForTest(MagicMock(), MagicMock())
 
     mock_create_connection.return_value.close.assert_called_once()
+    mock_close.assert_not_called()
 
 
 @patch(f"{SECURITY_SERVICE_MODULE}.run_test_connection")

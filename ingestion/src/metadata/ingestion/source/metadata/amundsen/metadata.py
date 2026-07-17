@@ -60,6 +60,7 @@ from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
+    close_on_failure,
     create_connection,
     get_connection,
     run_test_connection,
@@ -130,11 +131,8 @@ class AmundsenSource(Source):
         self.client = self._connection.client if self._connection else get_connection(self.service_connection)
         self.connection_obj = self.client
         self.database_service_map = {service.value.lower(): service.value for service in DatabaseServiceType}
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045

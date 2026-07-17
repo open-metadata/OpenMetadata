@@ -44,6 +44,7 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
+    close_on_failure,
     create_connection,
     get_connection,
     run_test_connection,
@@ -95,11 +96,8 @@ class AtlasSource(Source):
             "Table": {self.service_connection.entity_type: {"db": "db", "column": "columns"}},
             "Topic": {"Topic": {"schema": "schema"}},
         }
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045

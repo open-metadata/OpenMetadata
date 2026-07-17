@@ -15,6 +15,8 @@ for any source.
 """
 
 import traceback
+from collections.abc import Iterator
+from contextlib import contextmanager
 from typing import Any, Callable, Optional, Type  # noqa: UP035
 
 from pydantic import BaseModel
@@ -73,6 +75,17 @@ def run_test_connection(metadata: OpenMetadata, connection: BaseConnection) -> N
     """Test an already-built connection owner, reusing its live client, and raise
     on failure. Does not close it; the source owns and closes the connection."""
     raise_test_connection_exception(connection.test_connection(metadata))
+
+
+@contextmanager
+def close_on_failure(connection: Optional[BaseConnection]) -> Iterator[None]:  # noqa: UP045
+    """Release the owned connection if the wrapped verification fails."""
+    try:
+        yield
+    except Exception:
+        if connection is not None:
+            connection.close()
+        raise
 
 
 def get_test_connection_fn(connection: BaseModel) -> Callable:

@@ -62,7 +62,11 @@ from metadata.ingestion.connections.session import create_and_bind_thread_safe_s
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.patch_request import PatchedEntity, PatchRequest
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection, get_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.sql_column_handler import SqlColumnHandlerMixin
 from metadata.ingestion.source.database.sqlalchemy_source import SqlAlchemySource
@@ -129,9 +133,13 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
         # Flag the connection for the test connection
         self.connection_obj = self.engine
         try:
-            self.test_connection()
+            with close_on_failure(self._connection):
+                self.test_connection()
         except Exception:
-            self.close()
+            # The SSL temp files are the source's, not the connection owner's,
+            # until they move into a BaseConnection hook.
+            if self.ssl_manager:
+                self.ssl_manager.cleanup_temp_files()
             raise
 
         self.table_constraints = None
