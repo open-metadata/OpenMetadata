@@ -211,24 +211,6 @@ def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
     return SQLiteConnection(airflow_connection)._get_client()
 
 
-def get_connection(connection: AirflowConnectionConfig):
-    """
-    Create connection
-    """
-    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-        AirflowRestApiConnection,
-    )
-
-    if isinstance(connection.connection, AirflowRestApiConnection):
-        return AirflowApiClient(connection)
-
-    try:
-        return _get_connection(connection.connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
 class AirflowTaskDetailsAccessError(Exception):
     """
     Raise when Task detail information is not retrieved
@@ -472,7 +454,19 @@ class AirflowChecks:
 
 class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
     def _get_client(self) -> Any:
-        client = get_connection(self.service_connection)
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            AirflowRestApiConnection,
+        )
+
+        connection = self.service_connection
+        if isinstance(connection.connection, AirflowRestApiConnection):
+            return AirflowApiClient(connection)
+
+        try:
+            client = _get_connection(connection.connection)
+        except Exception as exc:
+            msg = f"Unknown error connecting with {connection}: {exc}."
+            raise SourceConnectionException(msg) from exc
         if isinstance(client, Engine):
             self._on_close(client.dispose)
         return client
