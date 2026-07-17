@@ -21,6 +21,7 @@ import { selectOption } from '../../utils/advancedSearch';
 import {
   createNewPage,
   descriptionBox,
+  getDefaultAdminAPIContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -278,14 +279,16 @@ test.describe.serial('Persona operations', () => {
 });
 
 test.describe.serial('Default persona setting and removal flow', () => {
+  const user1 = new UserClass();
+
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await user.create(apiContext);
+    await user1.create(apiContext);
     const adminResponse = await apiContext.get('/api/v1/users/name/admin');
     const adminData = await adminResponse.json();
 
-    await persona1.create(apiContext, [user.responseData.id, adminData.id]);
-    await persona2.create(apiContext, [user.responseData.id]);
+    await persona1.create(apiContext, [user1.responseData.id, adminData.id]);
+    await persona2.create(apiContext, [user1.responseData.id]);
     await afterAction();
   });
 
@@ -294,7 +297,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
     async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await Promise.all([
-        user.delete(apiContext),
+        user1.delete(apiContext),
         persona1.delete(apiContext),
         persona2.delete(apiContext),
       ]);
@@ -308,7 +311,8 @@ test.describe.serial('Default persona setting and removal flow', () => {
   }) => {
     const userContext = await browser.newContext({ storageState: undefined });
     const userPage = await userContext.newPage();
-    await user.login(userPage);
+
+    await user1.login(userPage);
 
     test.slow(true);
 
