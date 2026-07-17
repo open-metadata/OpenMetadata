@@ -114,6 +114,7 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_pk_constraint,
     get_schema_columns,
     get_schema_foreign_keys,
+    get_semantic_view_definition,
     get_semantic_view_names,
     get_semantic_view_names_reflection,
     get_stage_names,
@@ -194,6 +195,7 @@ SnowflakeDialect.get_columns = get_columns
 Inspector.get_all_table_ddls = get_all_table_ddls
 Inspector.get_table_ddl = get_table_ddl
 Inspector.get_stream_definition = get_stream_definition
+Inspector.get_semantic_view_definition = get_semantic_view_definition
 SnowflakeDialect._get_schema_foreign_keys = get_schema_foreign_keys
 
 
@@ -1148,6 +1150,10 @@ class SnowflakeSource(
                 schema_definition = inspector.get_view_definition(table_name, schema_name)
             elif table_type == TableType.Stream:
                 schema_definition = inspector.get_stream_definition(self.connection, table_name, schema_name)
+            elif table_type == TableType.SemanticView:
+                schema_definition = inspector.get_semantic_view_definition(
+                    self.connection, table_name, schema_name
+                )
             elif table_type == TableType.Stage:
                 # Snowflake Stage does not have a DDL or definition,
                 # so we will return None for stage type

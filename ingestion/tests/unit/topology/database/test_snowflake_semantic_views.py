@@ -17,6 +17,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
 from metadata.ingestion.source.database.snowflake.utils import get_semantic_view_names
 
 
@@ -49,3 +50,24 @@ def test_get_semantic_view_names_maps_rows_to_semantic_view_type():
     assert names == ["SALES_SEMANTIC", "ORDERS_SEMANTIC"]
     assert all(t.type_ == TableType.SemanticView for t in result.tables)
     assert all(t.deleted is None for t in result.tables)
+
+
+def test_get_schema_definition_uses_semantic_view_definition():
+    inspector = Mock()
+    inspector.get_semantic_view_definition.return_value = "CREATE SEMANTIC VIEW SALES_SEMANTIC ..."
+
+    self_mock = Mock()
+    self_mock.connection = Mock()
+
+    result = SnowflakeSource.get_schema_definition(
+        self_mock,
+        table_type=TableType.SemanticView,
+        table_name="SALES_SEMANTIC",
+        schema_name="PUBLIC",
+        inspector=inspector,
+    )
+
+    inspector.get_semantic_view_definition.assert_called_once_with(
+        self_mock.connection, "SALES_SEMANTIC", "PUBLIC"
+    )
+    assert result == "CREATE SEMANTIC VIEW SALES_SEMANTIC ..."

@@ -39,6 +39,7 @@ from metadata.ingestion.source.database.snowflake.queries import (
     SNOWFLAKE_GET_COMMENTS,
     SNOWFLAKE_GET_MVIEW_NAMES,
     SNOWFLAKE_GET_SCHEMA_COLUMNS,
+    SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION,
     SNOWFLAKE_GET_SEMANTIC_VIEWS,
     SNOWFLAKE_GET_STAGES,
     SNOWFLAKE_GET_STREAM_DEFINITION,
@@ -410,6 +411,24 @@ def get_stream_definition(  # pylint: disable=unused-argument
     schema = schema or self.default_schema_name
     stream_name = f'"{schema}"."{stream_name}"' if schema else f'"{stream_name}"'
     cursor = connection.execute(text(SNOWFLAKE_GET_STREAM_DEFINITION.format(stream_name=stream_name)))
+    try:
+        result = cursor.fetchone()
+        if result:
+            return result[0]
+    except Exception:
+        pass
+    return None
+
+
+def get_semantic_view_definition(  # pylint: disable=unused-argument
+    self, connection, semantic_view_name, schema=None, **kw
+):
+    """Gets the semantic view definition (DDL)."""
+    schema = schema or self.default_schema_name
+    semantic_view_name = f'"{schema}"."{semantic_view_name}"' if schema else f'"{semantic_view_name}"'
+    cursor = connection.execute(
+        text(SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION.format(semantic_view_name=semantic_view_name))
+    )
     try:
         result = cursor.fetchone()
         if result:
