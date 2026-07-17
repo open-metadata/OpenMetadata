@@ -507,6 +507,7 @@ test = {
     "testcontainers~=4.8.0",
     "minio==7.2.5",
     *plugins["mlflow"],
+    "skops",  # mlflow 3.14 switched the mlflow.sklearn serialization default to skops, which mlflow-skinny does not pull in
     *plugins["datalake-s3"],
     *plugins["kafka"],
     "kafka-python==2.0.2",
