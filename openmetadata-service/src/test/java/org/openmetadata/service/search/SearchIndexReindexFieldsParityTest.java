@@ -26,6 +26,7 @@ import org.openmetadata.service.search.indexes.DashboardIndex;
 import org.openmetadata.service.search.indexes.DatabaseIndex;
 import org.openmetadata.service.search.indexes.DatabaseSchemaIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
+import org.openmetadata.service.search.indexes.TableIndex;
 import org.openmetadata.service.search.indexes.TeamIndex;
 import org.openmetadata.service.search.indexes.UserIndex;
 
@@ -172,6 +173,43 @@ class SearchIndexReindexFieldsParityTest {
             "certification",
             "dataProducts"),
         SearchIndex.COMMON_REINDEX_FIELDS);
+  }
+
+  // --- required-field contract guard (the positive side of the risk chain) --------
+
+  /**
+   * Regression guard for the "ER diagram loses foreign keys after a reindex" bug (customer: Assent,
+   * v1.13.1). {@code TableIndex.buildSearchIndexDocInternal} builds the {@code
+   * upstreamEntityRelationship} doc field — the sole source the entity-relationship graph aggregates
+   * on — from {@code table.getTableConstraints()}. {@code tableConstraints} is fields-gated ({@code
+   * TableRepository.clearFields} nulls it unless requested), so if reindex does not declare it the
+   * constraints read back null, the doc field is written empty, and FK edges silently vanish on the
+   * next reindex while the table's own schema tab still shows the constraints. Live indexing hides
+   * this because it serializes the full entity. Keep {@code tableConstraints} in the reindex set.
+   */
+  @Test
+  void tableIndexDeclaresTableConstraintsForErDiagram() {
+    assertTrue(
+        new TableIndex(null).getRequiredReindexFields().contains("tableConstraints"),
+        "TableIndex.getRequiredReindexFields() must include 'tableConstraints' — the ER diagram's "
+            + "upstreamEntityRelationship doc field is built from it; dropping it makes foreign-key "
+            + "edges disappear after a reindex");
+  }
+
+  /**
+   * Same fields-gated reindex-drop risk as {@link #tableIndexDeclaresTableConstraintsForErDiagram},
+   * for {@code schemaDefinition}: {@code buildSearchIndexDocInternal} indexes it ({@code
+   * doc.put("schemaDefinition", table.getSchemaDefinition())}) and {@code
+   * TableRepository.clearFields} nulls it unless requested, so dropping it from the reindex set
+   * removes the view/DDL text from the search doc after a reindex and breaks full-text search on it.
+   */
+  @Test
+  void tableIndexDeclaresSchemaDefinitionForSearch() {
+    assertTrue(
+        new TableIndex(null).getRequiredReindexFields().contains("schemaDefinition"),
+        "TableIndex.getRequiredReindexFields() must include 'schemaDefinition' — "
+            + "buildSearchIndexDocInternal indexes it; dropping it removes view/DDL text from the "
+            + "search doc after a reindex");
   }
 
   // --- helpers --------------------------------------------------------------------
