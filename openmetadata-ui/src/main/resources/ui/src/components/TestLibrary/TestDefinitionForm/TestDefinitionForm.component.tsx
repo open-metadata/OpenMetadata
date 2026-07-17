@@ -32,6 +32,7 @@ import {
   createTestDefinition,
   patchTestDefinition,
 } from '../../../rest/testAPI';
+import { monospaceParameterNames } from '../../../utils/DataQuality/FormHintDocUtils';
 import { createScrollToErrorHandler } from '../../../utils/formPureUtils';
 import { isExternalTestDefinition } from '../../../utils/TestDefinitionUtils';
 import { showSuccessToast } from '../../../utils/ToastUtils';
@@ -315,7 +316,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
             <div className="form-hint-doc">
               <RichTextEditorPreviewerV1
                 enableSeeMoreVariant={false}
-                markdown={markdown}
+                markdown={monospaceParameterNames(markdown)}
               />
             </div>
           )}

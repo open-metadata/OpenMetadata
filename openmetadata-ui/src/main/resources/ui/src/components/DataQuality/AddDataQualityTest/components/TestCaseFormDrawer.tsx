@@ -48,6 +48,7 @@ import {
   updateTestCaseById,
 } from '../../../../rest/testAPI';
 import { createUpdatedTestCasePatch } from '../../../../utils/DataQuality/DataQualityPureUtils';
+import { monospaceParameterNames } from '../../../../utils/DataQuality/FormHintDocUtils';
 import { getDefaultTestCaseFormVariant } from '../../../../utils/DataQuality/TestCaseFormVariantUtils';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { submitAndClose } from '../../../../utils/FormDrawerUtils';
@@ -504,7 +505,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             <div className="form-hint-doc">
               <RichTextEditorPreviewerV1
                 enableSeeMoreVariant={false}
-                markdown={markdown}
+                markdown={monospaceParameterNames(markdown)}
               />
             </div>
           )}
