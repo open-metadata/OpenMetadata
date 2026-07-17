@@ -425,4 +425,32 @@ describe('MetricListPage', () => {
       { timeout: 2000 }
     );
   });
+
+  it('does not flash the create placeholder while a cleared search is still pending', async () => {
+    const { searchQuery } = require('../../../rest/searchAPI');
+    searchQuery.mockImplementation((req: { query?: string }) =>
+      Promise.resolve(
+        buildSearchResponse(
+          req.query === 'zzz' ? [] : [{ id: 'a', name: 'a_metric' }]
+        )
+      )
+    );
+
+    renderPage();
+
+    const searchInput = await screen.findByPlaceholderText(
+      'label.search-entity'
+    );
+
+    fireEvent.change(searchInput, { target: { value: 'zzz' } });
+
+    await screen.findByTestId('error-placeholder', {}, { timeout: 2000 });
+
+    fireEvent.change(searchInput, { target: { value: '' } });
+
+    expect(screen.queryByTestId('error-placeholder')).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('metric-empty-placeholder')
+    ).not.toBeInTheDocument();
+  });
 });

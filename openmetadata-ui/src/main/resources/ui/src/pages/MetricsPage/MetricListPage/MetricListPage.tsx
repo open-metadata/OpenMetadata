@@ -242,6 +242,8 @@ const MetricListPage = () => {
     [searchResponse]
   );
 
+  const isSearchPending = searchText.trim() !== debouncedSearch;
+
   const totalMetrics = searchResponse?.hits.total.value ?? 0;
 
   useEffect(() => {
@@ -706,7 +708,11 @@ const MetricListPage = () => {
   );
 
   const isMetricListEmpty =
-    !isMetricsFetching && metrics.length === 0 && !searchText && !statusFilter;
+    !isMetricsFetching &&
+    !isSearchPending &&
+    metrics.length === 0 &&
+    !searchText &&
+    !statusFilter;
 
   const metricEmptyState = (
     <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl tw:border tw:border-border-secondary">
@@ -960,21 +966,22 @@ const MetricListPage = () => {
                   dataSource={metrics}
                   loading={isMetricsFetching}
                   locale={{
-                    emptyText: isMetricsFetching ? (
-                      <Loader />
-                    ) : (
-                      <ErrorPlaceHolder
-                        className="p-y-md border-none"
-                        doc={METRICS_DOCS}
-                        heading={t('label.metric')}
-                        permission={permission.Create}
-                        permissionValue={t('label.create-entity', {
-                          entity: t('label.metric'),
-                        })}
-                        type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                        onClick={() => navigate(ROUTES.ADD_METRIC)}
-                      />
-                    ),
+                    emptyText:
+                      isMetricsFetching || isSearchPending ? (
+                        <Loader />
+                      ) : (
+                        <ErrorPlaceHolder
+                          className="p-y-md border-none"
+                          doc={METRICS_DOCS}
+                          heading={t('label.metric')}
+                          permission={permission.Create}
+                          permissionValue={t('label.create-entity', {
+                            entity: t('label.metric'),
+                          })}
+                          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                          onClick={() => navigate(ROUTES.ADD_METRIC)}
+                        />
+                      ),
                   }}
                   pagination={false}
                   rowKey="id"
