@@ -16,6 +16,12 @@
   display: flex;
   gap: @size-mlg;
   width: 100%;
+  // Without this the cards sit flush against their label. 6px matches every
+  // other field on the form, which gets it from the shared field wrapper's
+  // `tw:gap-[6px]` (core-components form-field.tsx). There is no 6px LESS
+  // variable — @size-xxs is 4px and @size-xs is 8px — so it is spelled out
+  // rather than rounded to a variable that would not line up.
+  margin-top: 6px;
 
   // Icon above the text instead of beside it, so the label gets the card's full
   // width. Opt-in via `layout="vertical"` — in a narrow column the horizontal
