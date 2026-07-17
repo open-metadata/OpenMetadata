@@ -136,8 +136,11 @@ class CommonDbSourceService(DatabaseServiceSource, SqlColumnHandlerMixin, SqlAlc
             with close_on_failure(self._connection):
                 self.test_connection()
         except Exception:
-            # The SSL temp files are the source's, not the connection owner's,
-            # until they move into a BaseConnection hook.
+            # The engine of a connector with no connection_class is unowned, and
+            # the SSL temp files are the source's rather than the owner's until
+            # they move into a BaseConnection hook. Both are released here.
+            if self._connection is None:
+                self._release_engine()
             if self.ssl_manager:
                 self.ssl_manager.cleanup_temp_files()
             raise

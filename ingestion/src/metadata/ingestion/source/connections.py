@@ -79,12 +79,17 @@ def run_test_connection(metadata: OpenMetadata, connection: BaseConnection) -> N
 
 @contextmanager
 def close_on_failure(connection: Optional[BaseConnection]) -> Iterator[None]:  # noqa: UP045
-    """Release the owned connection if the wrapped verification fails."""
+    """Release the owned connection if the wrapped verification fails. A teardown
+    that fails is logged, never raised: the verification error is the one the
+    caller needs."""
     try:
         yield
     except Exception:
         if connection is not None:
-            connection.close()
+            try:
+                connection.close()
+            except Exception:
+                logger.warning("Failed to release the connection after a failed verification", exc_info=True)
         raise
 
 

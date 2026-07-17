@@ -15,7 +15,7 @@ Atlas source to extract metadata
 
 import traceback
 from dataclasses import dataclass
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.api.lineage.addLineage import AddLineageRequest
 from metadata.generated.schema.api.services.createDatabaseService import (
@@ -46,9 +46,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
-    get_connection,
     run_test_connection,
-    test_connection_common,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
@@ -57,6 +55,9 @@ from metadata.utils.helpers import get_database_name_for_lineage, retry_with_doc
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -85,7 +86,7 @@ class AtlasSource(Source):
         self.service_connection = self.config.serviceConnection.root.config
 
         self._connection = create_connection(self.service_connection)
-        self.atlas_client = self._connection.client if self._connection else get_connection(self.service_connection)
+        self.atlas_client = cast("BaseConnection", self._connection).client
         self.connection_obj = self.atlas_client
         self.tables: Dict[str, Any] = {}  # noqa: UP006
         self.topics: Dict[str, Any] = {}  # noqa: UP006
@@ -435,7 +436,4 @@ class AtlasSource(Source):
         return None
 
     def test_connection(self) -> None:
-        if self._connection is not None:
-            run_test_connection(self.metadata, self._connection)
-        else:
-            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

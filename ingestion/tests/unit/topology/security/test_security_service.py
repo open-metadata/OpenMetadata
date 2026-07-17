@@ -29,15 +29,8 @@ class SecuritySourceForTest(SecurityServiceSource):
     def prepare(self):
         """Not exercised"""
 
-    def get_client(self):
-        """Legacy hook: only reached when the connector has no connection_class"""
-        return LEGACY_CLIENT
-
     def mark_security_entities_as_deleted(self):
         """Not exercised"""
-
-
-LEGACY_CLIENT = MagicMock(name="legacy_client")
 
 
 @patch(f"{SECURITY_SERVICE_MODULE}.run_test_connection")
@@ -70,13 +63,15 @@ def test_owned_connection_is_reused_for_the_test_step(mock_create_connection, mo
 @patch(f"{SECURITY_SERVICE_MODULE}.test_connection_common")
 @patch(f"{SECURITY_SERVICE_MODULE}.get_connection")
 @patch(f"{SECURITY_SERVICE_MODULE}.create_connection", return_value=None)
-def test_unowned_connection_reports_a_failing_test(_mock_create_connection, _mock_get_connection, mock_common):
-    """Without a ``connection_class`` the test still runs through the legacy seam,
-    which raises on failure instead of discarding the result."""
+def test_unowned_connection_reports_a_failing_test(_mock_create_connection, mock_get_connection, mock_common):
+    """Without a ``connection_class`` the client comes from the legacy seam and the
+    test runs through it, raising on failure instead of discarding the result."""
     mock_common.side_effect = RuntimeError("cannot connect")
 
     with pytest.raises(RuntimeError, match="cannot connect"):
         SecuritySourceForTest(MagicMock(), MagicMock())
+
+    mock_get_connection.assert_called_once()
 
 
 @patch(f"{SECURITY_SERVICE_MODULE}.run_test_connection")

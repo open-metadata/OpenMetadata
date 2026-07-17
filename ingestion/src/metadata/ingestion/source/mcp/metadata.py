@@ -17,7 +17,7 @@ for AI governance in OpenMetadata.
 
 import re
 import traceback
-from typing import Any, Dict, Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Dict, Iterable, List, Optional, cast  # noqa: UP035
 from uuid import uuid4
 
 from metadata.generated.schema.api.ai.createMcpServer import CreateMcpServerRequest
@@ -49,9 +49,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
-    get_connection,
     run_test_connection,
-    test_connection_common,
 )
 from metadata.ingestion.source.mcp.client import McpClient, McpProtocolError
 from metadata.ingestion.source.mcp.client import McpServerInfo as ClientServerInfo
@@ -59,6 +57,9 @@ from metadata.ingestion.source.mcp.connection import McpConnectionManager
 from metadata.utils.filters import filter_by_server
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -150,9 +151,7 @@ class McpSource(Source):
         self.source_config = self.config.sourceConfig.config
 
         self._connection = create_connection(self.service_connection)
-        self.connection_manager = (
-            self._connection.client if self._connection else get_connection(self.service_connection)
-        )
+        self.connection_manager = cast("BaseConnection", self._connection).client
         self.connection_obj = self.connection_manager
         with close_on_failure(self._connection):
             self.test_connection()
@@ -392,7 +391,4 @@ class McpSource(Source):
 
     def test_connection(self) -> None:
         """Test connection to MCP servers"""
-        if self._connection is not None:
-            run_test_connection(self.metadata, self._connection)
-        else:
-            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

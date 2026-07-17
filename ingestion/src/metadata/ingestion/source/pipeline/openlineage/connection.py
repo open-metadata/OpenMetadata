@@ -107,7 +107,9 @@ class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaCon
             return consumer
 
         if isinstance(broker, KinesisBrokerConfig):
-            return _get_kinesis_connection(broker)
+            client = _get_kinesis_connection(broker)
+            self._on_close(client.close)
+            return client
 
         raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 

@@ -13,7 +13,7 @@ Base class for ingesting security services
 """
 
 from abc import ABC
-from typing import Any, Set  # noqa: UP035
+from typing import Set  # noqa: UP035
 
 from pydantic import Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -108,14 +108,9 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
         self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.client = self.connection if self._connection else self.get_client()
+        self.client = self.connection
         with close_on_failure(self._connection):
             self.test_connection()
-
-    def get_client(self) -> Any:
-        """Build the client. Only reached when the connector ships no
-        ``connection_class``; migrated connectors take it from the owner."""
-        raise NotImplementedError(f"{type(self).__name__} has no connection_class and does not implement get_client")
 
     @property
     def name(self) -> str:

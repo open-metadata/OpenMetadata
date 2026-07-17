@@ -14,7 +14,7 @@ AlationSink source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Iterable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -38,9 +38,7 @@ from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
-    get_connection,
     run_test_connection,
-    test_connection_common,
 )
 from metadata.ingestion.source.metadata.alationsink.client import AlationSinkClient
 from metadata.ingestion.source.metadata.alationsink.constants import (
@@ -61,6 +59,9 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -88,9 +89,7 @@ class AlationsinkSource(Source):
         self.source_config = self.config.sourceConfig.config
 
         self._connection = create_connection(self.service_connection)
-        self.alation_sink_client = (
-            self._connection.client if self._connection else get_connection(self.service_connection)
-        )
+        self.alation_sink_client = cast("BaseConnection", self._connection).client
         self.connectors = {}
         with close_on_failure(self._connection):
             self.test_connection()
@@ -401,7 +400,4 @@ class AlationsinkSource(Source):
             self._connection.close()
 
     def test_connection(self) -> None:
-        if self._connection is not None:
-            run_test_connection(self.metadata, self._connection)
-        else:
-            test_connection_common(self.metadata, self.alation_sink_client, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

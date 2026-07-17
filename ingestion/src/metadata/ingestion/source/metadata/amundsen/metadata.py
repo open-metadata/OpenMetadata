@@ -14,7 +14,7 @@ Amundsen source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Iterable, List, Optional, cast  # noqa: UP035
 
 from pydantic import SecretStr
 from sqlalchemy.engine.url import make_url
@@ -62,9 +62,7 @@ from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.source.connections import (
     close_on_failure,
     create_connection,
-    get_connection,
     run_test_connection,
-    test_connection_common,
 )
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.amundsen.queries import (
@@ -77,6 +75,9 @@ from metadata.utils.helpers import get_standard_chart_type, retry_with_docker_ho
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.metadata_service_helper import SERVICE_TYPE_MAPPER
 from metadata.utils.tag_utils import get_ometa_tag_and_classification, get_tag_labels
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -128,7 +129,7 @@ class AmundsenSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self._connection = create_connection(self.service_connection)
-        self.client = self._connection.client if self._connection else get_connection(self.service_connection)
+        self.client = cast("BaseConnection", self._connection).client
         self.connection_obj = self.client
         self.database_service_map = {service.value.lower(): service.value for service in DatabaseServiceType}
         with close_on_failure(self._connection):
@@ -444,7 +445,4 @@ class AmundsenSource(Source):
         return None
 
     def test_connection(self) -> None:
-        if self._connection is not None:
-            run_test_connection(self.metadata, self._connection)
-        else:
-            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))
