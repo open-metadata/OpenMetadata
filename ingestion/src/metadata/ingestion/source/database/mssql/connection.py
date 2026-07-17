@@ -30,6 +30,7 @@ from metadata.core.connections.test_connection.checks.database import (
     run_sql,
 )
 from metadata.core.connections.test_connection.checks.summary import enumerated
+from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
@@ -54,6 +55,7 @@ from metadata.ingestion.source.database.mssql.utils import is_query_store_enable
 if TYPE_CHECKING:
     from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
+    from metadata.core.connections.test_connection.classifier import Matcher
     from metadata.core.connections.test_connection.records import Evidence
 
 
@@ -61,44 +63,76 @@ if TYPE_CHECKING:
 # Grouped and self-contained so the Fabric (Database) connector, which speaks the
 # same SQL Server protocol, can lift it verbatim later.
 #
-# The two supported drivers surface SQL Server errors differently:
-#   * pymssql exposes the numeric SQL Server error in ``args[0]`` -> Matchers.errno
-#   * pyodbc exposes a string SQLSTATE + message text -> Matchers.contains
-# Both shapes are covered per failure mode; first match wins, so the errno and the
-# message rule fold to the same diagnosis whichever driver raised.
-#
 # Error numbers are from the SQL Server system error message reference
 # (https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors).
+
+
+def _mssql_number(error: BaseException) -> int | None:
+    """The SQL Server error number, however the raising driver carries it.
+
+    ``Matchers.errno`` cannot find it: it wants an ``int`` at ``args[0]`` and no
+    supported driver puts one there. pytds sets ``.number``/``.msg_no``
+    (``tds_base._create_exception_by_message``); pymssql leaves a ``(number, message)``
+    tuple at ``args[0]`` (``_pymssql.pyx``, ``connect``); pyodbc exposes no number at
+    all, only ``(sqlstate, message)``.
+
+    Only ever the number of pytds' LAST server message - see SQLSERVER_ERRORS.
+    """
+    for current in exception_chain(error):
+        for attribute in ("number", "msg_no"):
+            value = getattr(current, attribute, None)
+            if isinstance(value, int):
+                return value
+        args = getattr(current, "args", ())
+        if args and isinstance(args[0], tuple) and args[0] and isinstance(args[0][0], int):
+            return args[0][0]
+    return None
+
+
+def _sqlserver_errno(*codes: int) -> Matcher:
+    """Match a SQL Server error by number, across the cause chain."""
+    wanted = frozenset(codes)
+    return lambda error: _mssql_number(error) in wanted
+
+
+# --- SQL Server error pack ---------------------------------------------------
+# Numbers: https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors
+#
+# SQL Server answers one failure with several messages, and pytds folds them
+# unevenly (tds_session._TdsSession.raise_db_exception): the text is every message
+# joined, the number is the LAST message's only. So a number is matchable only where
+# it arrives last. Observed live, and pinned by the tests:
+#
+#   missing database     -> [4060, 18456] -> number 18456
+#   bad password         -> [18456]       -> number 18456
+#   denied SELECT        -> [229]         -> number 229
+#   no VIEW SERVER STATE -> [300, 297]    -> number 297
+#
+# Hence no 4060 or 300 rule. 911 arrives alone but only from USE, which no check
+# issues; 262 is a statement permission and these checks only SELECT.
 SQLSERVER_ERRORS = ErrorPack(
-    # Database missing / not accessible MUST be matched before the login rules: SQL
-    # Server's 4060 message is "Cannot open database "X" requested by the login. The
-    # login failed." - it contains "login failed", so a login-first ordering would
-    # misclassify a missing database as an auth failure (confirmed live on pytds).
-    # 4060 (cannot open database requested by the login), 911 (database does not exist).
-    when(
-        Matchers.any_of(
-            Matchers.errno(4060, 911),
-            Matchers.contains("Cannot open database"),
-        )
-    ).diagnose(
+    # Must precede the login rules: the joined text ends "Login failed for user ..."
+    # and the number is 18456, so both signals point at auth. No number to key on
+    # here, so a non-English server reads this as an auth failure.
+    when(Matchers.contains("Cannot open database")).diagnose(
         "Database not found or not accessible",
         fix="Verify the configured database exists and the login is allowed to open it.",
     ),
-    # Login failed (auth). SQL Server error 18456; message "Login failed for user".
     when(
         Matchers.any_of(
-            Matchers.errno(18456),
+            _sqlserver_errno(18456),
             Matchers.contains("Login failed"),
         )
     ).diagnose(
         "Authentication failed",
         fix="Check the username and password, and that the login is allowed to connect.",
     ),
-    # Permission denied. 229 (permission denied on object), 297 (no permission for the
-    # action), 262 (statement permission denied); message "permission was denied".
+    # 229 denied SELECT on an object GetTables/GetViews reads; 297 the tail of the
+    # VIEW SERVER STATE denial GetQueries provokes via sys.dm_exec_query_stats.
+    # 297's own text lacks "permission was denied", so its number is the only signal.
     when(
         Matchers.any_of(
-            Matchers.errno(229, 297, 262),
+            _sqlserver_errno(229, 297),
             Matchers.contains("permission was denied"),
         )
     ).diagnose(

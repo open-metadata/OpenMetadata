@@ -34,7 +34,6 @@ from metadata.core.connections.test_connection.checks.rest import (
     http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection as DBTCloudConnectionConfig,
 )
@@ -124,7 +123,13 @@ DBTCLOUD_ERRORS = ErrorPack(
         fix="Check Host for typos and that it resolves from where ingestion runs. dbt Cloud is "
         "regional - the access URL differs per region.",
     ),
-).including(NETWORK_ERRORS)
+)
+# NETWORK_ERRORS is deliberately not folded in: `including` appends at lower
+# precedence, so the requests-typed rules above claim every network failure first
+# (a DNS gaierror arrives wrapped in requests' ConnectionError), and
+# NetworkUnreachableError needs a tcp_probe this connector never runs. No preflight
+# is added because requests honours HTTPS_PROXY and a raw TCP probe does not, which
+# would fail a proxied setup - see `ping`.
 
 
 class DBTCloudChecks:

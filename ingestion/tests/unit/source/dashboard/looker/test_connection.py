@@ -11,10 +11,13 @@
 """Unit tests for Looker test-connection checks."""
 
 import socket
+from typing import ClassVar
 from unittest.mock import MagicMock, patch
 
 import pytest
 from looker_sdk.error import SDKError
+from looker_sdk.rtl.requests_transport import RequestsTransport
+from looker_sdk.rtl.transport import HttpMethod
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
@@ -37,6 +40,20 @@ DASHBOARDS_429 = "https://cloud.google.com/looker/docs/r/err/4.0/429/get/api/4.0
 DASHBOARDS_400 = "https://cloud.google.com/looker/docs/r/err/4.0/400/get/api/4.0/dashboards"
 DASHBOARDS_401 = "https://cloud.google.com/looker/docs/r/err/4.0/401/get/api/4.0/dashboards"
 DASHBOARDS_403 = "https://cloud.google.com/looker/docs/r/err/4.0/403/get/api/4.0/dashboards"
+
+
+class _TransportSettings:
+    """The transport's settings contract, as looker_sdk.rtl.transport defines it.
+
+    Duck-typed rather than mocked: RequestsTransport reads these attributes at
+    configure() time, and a MagicMock would silently satisfy any shape.
+    """
+
+    base_url = "https://looker.example.com:19999"
+    verify_ssl = True
+    timeout = 10
+    agent_tag = "test"
+    headers: ClassVar[dict] = {}
 
 
 def _sdk_error(message: str, documentation_url: str = "") -> SDKError:
@@ -415,13 +432,44 @@ def test_an_unreachable_host_is_diagnosed_from_the_flattened_message():
     assert diagnosis.title == "Cannot reach the host"
 
 
-def test_the_shared_network_pack_still_classifies_a_raw_socket_error():
-    # Anything raised outside the SDK's transport keeps its type, so the folded
-    # NETWORK_ERRORS rules remain the fallback.
-    diagnosis = LOOKER_ERRORS.classify(socket.gaierror("nodename nor servname provided"))
+@pytest.mark.parametrize(
+    ("raised", "title"),
+    [
+        (ConnectionRefusedError(61, "Connection refused"), "Connection refused"),
+        (socket.gaierror(8, "nodename nor servname provided"), "Host could not be resolved"),
+        (TimeoutError("timed out"), "Connection timed out"),
+    ],
+)
+def test_a_socket_error_is_flattened_by_the_sdk_and_diagnosed_from_its_text(raised, title):
+    """Drives the real transport: the type is destroyed, the text still diagnoses.
 
-    assert diagnosis is not None
-    assert diagnosis.title == "Host could not be resolved"
+    This is why NETWORK_ERRORS (which matches by type) is not folded into the pack.
+    """
+    transport_ = RequestsTransport.configure(_TransportSettings())
+
+    with patch.object(transport_.session, "request", side_effect=raised):
+        response = transport_.request(HttpMethod.GET, "/api/4.0/user")
+
+    assert response.ok is False
+    assert isinstance(response.value, bytes)
+
+    # What the SDK hands the classifier: the flattened text, not the exception.
+    flattened = _sdk_error(response.value.decode())
+    assert LOOKER_ERRORS.classify(flattened).title == title
+
+
+@pytest.mark.parametrize(
+    ("raised", "title"),
+    [
+        (ConnectionRefusedError(61, "Connection refused"), "Connection refused"),
+        (socket.gaierror(8, "nodename nor servname provided"), "Host could not be resolved"),
+        (TimeoutError("timed out"), "Connection timed out"),
+    ],
+)
+def test_dropping_the_network_fold_changes_no_diagnosis(raised, title):
+    """_transport_text returns the same titles NETWORK_ERRORS would, so dropping the
+    fold is behaviour-preserving even where it could have been reached."""
+    assert LOOKER_ERRORS.classify(raised).title == title
 
 
 def test_an_unknown_error_is_not_classified():
