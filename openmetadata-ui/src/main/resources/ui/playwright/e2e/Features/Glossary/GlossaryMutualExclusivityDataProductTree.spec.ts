@@ -27,13 +27,13 @@ import {
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
 
-test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
+test.describe('Glossary Mutual Exclusivity Feature - Data Product Tree', () => {
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
 
   test.describe('Suite 1: Radio/Checkbox Rendering', () => {
-    test('MUI-ME-R01: Children of ME parent should render Radio buttons', async ({
+    test('ME-R01: Children of ME parent should render Radio buttons', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -50,12 +50,12 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
         const child1 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUIRadioChild1'
+          'RadioChild1'
         );
         const child2 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUIRadioChild2'
+          'RadioChild2'
         );
         await child1.create(apiContext);
         await child2.create(apiContext);
@@ -77,7 +77,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
       }
     });
 
-    test('MUI-ME-R02: Children of non-ME parent should render Checkboxes', async ({
+    test('ME-R02: Children of non-ME parent should render Checkboxes', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -94,12 +94,12 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
         const child1 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUICheckChild1'
+          'CheckChild1'
         );
         const child2 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUICheckChild2'
+          'CheckChild2'
         );
         await child1.create(apiContext);
         await child2.create(apiContext);
@@ -123,7 +123,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
   });
 
   test.describe('Suite 2: Selection Behavior', () => {
-    test('MUI-ME-S01: Selecting ME child should auto-deselect siblings', async ({
+    test('ME-S01: Selecting ME child should auto-deselect siblings', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -140,17 +140,17 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
         const child1 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUISelectChild1'
+          'SelectChild1'
         );
         const child2 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUISelectChild2'
+          'SelectChild2'
         );
         const child3 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUISelectChild3'
+          'SelectChild3'
         );
         await child1.create(apiContext);
         await child2.create(apiContext);
@@ -186,7 +186,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
       }
     });
 
-    test('MUI-ME-S02: Can select multiple children under non-ME parent', async ({
+    test('ME-S02: Can select multiple children under non-ME parent', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -203,17 +203,17 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
         const child1 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUIMultiChild1'
+          'MultiChild1'
         );
         const child2 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUIMultiChild2'
+          'MultiChild2'
         );
         const child3 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUIMultiChild3'
+          'MultiChild3'
         );
         await child1.create(apiContext);
         await child2.create(apiContext);
@@ -250,7 +250,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
       }
     });
 
-    test('MUI-ME-S03: Can deselect currently selected ME term', async ({
+    test('ME-S03: Can deselect currently selected ME term', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -267,7 +267,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
         const child1 = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUIDeselectChild'
+          'DeselectChild'
         );
         await child1.create(apiContext);
 
@@ -295,7 +295,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
   });
 
   test.describe('Suite 3: Data Product Save Integration', () => {
-    test('MUI-ME-T01: Apply single ME glossary term and save Data Product', async ({
+    test('ME-T01: Apply single ME glossary term and save Data Product', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -312,7 +312,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
         const child = new GlossaryTerm(
           glossary,
           parentTerm.responseData.fullyQualifiedName,
-          'MUISaveChild'
+          'SaveChild'
         );
         await child.create(apiContext);
 
@@ -362,7 +362,7 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
   });
 
   test.describe('Suite 4: Hierarchy & Edge Cases', () => {
-    test('MUI-ME-H01: ME glossary (top level) children render Radio with ME behavior', async ({
+    test('ME-H01: ME glossary (top level) children render Radio with ME behavior', async ({
       page,
     }) => {
       const { apiContext, afterAction } = await getApiContext(page);
@@ -376,11 +376,11 @@ test.describe('MUI Glossary Mutual Exclusivity Feature', () => {
         await glossary.create(apiContext);
 
         const term1 = new GlossaryTerm(glossary);
-        term1.data.name = 'MUIGlossaryChild1';
-        term1.data.displayName = 'MUIGlossaryChild1';
+        term1.data.name = 'GlossaryChild1';
+        term1.data.displayName = 'GlossaryChild1';
         const term2 = new GlossaryTerm(glossary);
-        term2.data.name = 'MUIGlossaryChild2';
-        term2.data.displayName = 'MUIGlossaryChild2';
+        term2.data.name = 'GlossaryChild2';
+        term2.data.displayName = 'GlossaryChild2';
         await term1.create(apiContext);
         await term2.create(apiContext);
 
