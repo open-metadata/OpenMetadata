@@ -19,7 +19,10 @@ from metadata.generated.schema.entity.services.connections.database.snowflakeCon
 )
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
-from metadata.ingestion.source.database.snowflake.utils import get_semantic_view_names
+from metadata.ingestion.source.database.snowflake.utils import (
+    get_semantic_view_definition,
+    get_semantic_view_names,
+)
 
 
 def test_semantic_view_table_type_exists():
@@ -115,6 +118,31 @@ def test_query_table_names_excludes_semantic_views_when_disabled():
 
     self_mock._get_semantic_view_names_and_types.assert_not_called()
     assert result == []
+
+
+def test_get_semantic_view_definition_returns_ddl_when_row_found():
+    self_mock = Mock()
+    self_mock.default_schema_name = "PUBLIC"
+
+    connection = Mock()
+    connection.execute.return_value.fetchone.return_value = ("CREATE SEMANTIC VIEW SALES_SEMANTIC ...",)
+
+    result = get_semantic_view_definition(self_mock, connection, "SALES_SEMANTIC", schema="PUBLIC")
+
+    assert result == "CREATE SEMANTIC VIEW SALES_SEMANTIC ..."
+    connection.execute.assert_called_once()
+
+
+def test_get_semantic_view_definition_returns_none_when_no_row():
+    self_mock = Mock()
+    self_mock.default_schema_name = "PUBLIC"
+
+    connection = Mock()
+    connection.execute.return_value.fetchone.return_value = None
+
+    result = get_semantic_view_definition(self_mock, connection, "SALES_SEMANTIC", schema="PUBLIC")
+
+    assert result is None
 
 
 def test_query_table_names_swallows_semantic_view_errors():
