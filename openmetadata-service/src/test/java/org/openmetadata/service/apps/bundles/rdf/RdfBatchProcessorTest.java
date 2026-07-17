@@ -31,6 +31,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -47,6 +48,7 @@ import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipDAO;
 import org.openmetadata.service.jdbi3.CollectionDAO.EntityRelationshipObject;
 import org.openmetadata.service.rdf.RdfRepository;
+import org.openmetadata.service.rdf.RdfWriteMode;
 import org.openmetadata.service.rdf.storage.RdfStorageCircuitOpenException;
 
 /**
@@ -109,9 +111,8 @@ class RdfBatchProcessorTest {
     assertEquals(3, result.successCount(), "all entities should be indexed");
     assertEquals(0, result.failedCount(), "no entity-level failure on the happy path");
     assertNull(result.lastError());
-    // Bulk path took the write; per-entity createOrUpdate must NOT fire.
-    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities);
-    verify(rdfRepository, never()).createOrUpdate(any(EntityInterface.class));
+    // Bulk path took the write; no singleton bulk fallback must fire.
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
   }
 
   @Test
@@ -125,18 +126,15 @@ class RdfBatchProcessorTest {
 
     // First, the bulk path fails with a payload-shape error (a real
     // SerializationException-style failure, NOT the circuit breaker).
-    doThrow(new RuntimeException("bad RDF model")).when(rdfRepository).bulkCreateOrUpdate(entities);
+    doThrow(new RuntimeException("bad RDF model"))
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
 
     // Then in the fallback loop, only entity b fails — a and c succeed.
-    // Use lenient() because MockitoExtension's strict stubbing would
-    // otherwise throw PotentialStubbingProblem on the createOrUpdate(a)
-    // and createOrUpdate(c) calls (no matching stub for those arg values),
-    // which the fallback's catch (Exception) block would treat as entity
-    // failures and skew the success/failure counts.
     lenient()
         .doThrow(new RuntimeException("payload broken on b"))
         .when(rdfRepository)
-        .createOrUpdate(b);
+        .bulkCreateOrUpdate(List.of(b), RdfWriteMode.RECONCILE);
 
     RdfBatchProcessor.BatchProcessingResult result =
         processor.processEntities("table", entities, null);
@@ -150,8 +148,10 @@ class RdfBatchProcessorTest {
     assertTrue(
         result.lastError().contains("payload broken on b"),
         "lastError should carry the underlying message");
-    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities);
-    verify(rdfRepository, times(3)).createOrUpdate(any(EntityInterface.class));
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(List.of(a), RdfWriteMode.RECONCILE);
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(List.of(b), RdfWriteMode.RECONCILE);
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(List.of(c), RdfWriteMode.RECONCILE);
   }
 
   @Test
@@ -164,7 +164,7 @@ class RdfBatchProcessorTest {
     // attempt would hit the same breaker).
     doThrow(new RdfStorageCircuitOpenException("bulkStoreEntities"))
         .when(rdfRepository)
-        .bulkCreateOrUpdate(entities);
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
 
     RdfBatchProcessor.BatchProcessingResult result =
         processor.processEntities("table", entities, null);
@@ -175,10 +175,7 @@ class RdfBatchProcessorTest {
     assertTrue(
         result.lastError().contains("table batch"),
         "lastError prefix should identify the failed entity-type batch");
-    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities);
-    // The critical assertion: NO per-entity calls were issued. Pre-fix the
-    // implementation looped 3 times each hitting the same breaker.
-    verify(rdfRepository, never()).createOrUpdate(any(EntityInterface.class));
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
   }
 
   @Test
@@ -192,7 +189,7 @@ class RdfBatchProcessorTest {
     // walk in isCircuitBreakerOpen must still find it.
     Throwable inner = new RdfStorageCircuitOpenException("bulkStoreEntities");
     Throwable wrapped = new RuntimeException("Failed to bulk create/update entities in RDF", inner);
-    doThrow(wrapped).when(rdfRepository).bulkCreateOrUpdate(entities);
+    doThrow(wrapped).when(rdfRepository).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
 
     RdfBatchProcessor.BatchProcessingResult result =
         processor.processEntities("dashboard", entities, null);
@@ -200,7 +197,7 @@ class RdfBatchProcessorTest {
     // Same as the unwrapped case: NO per-entity fallback.
     assertEquals(0, result.successCount());
     assertEquals(2, result.failedCount());
-    verify(rdfRepository, never()).createOrUpdate(any(EntityInterface.class));
+    verify(rdfRepository, times(1)).bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
   }
 
   @Test
@@ -214,8 +211,7 @@ class RdfBatchProcessorTest {
 
     assertEquals(0, result.successCount());
     assertEquals(0, result.failedCount());
-    verify(rdfRepository, never()).bulkCreateOrUpdate(anyList());
-    verify(rdfRepository, never()).createOrUpdate(any(EntityInterface.class));
+    verify(rdfRepository, never()).bulkCreateOrUpdate(anyList(), any(RdfWriteMode.class));
   }
 
   @Test
@@ -225,8 +221,7 @@ class RdfBatchProcessorTest {
         processor.processEntities("table", List.of(), null);
     assertEquals(0, result.successCount());
     assertEquals(0, result.failedCount());
-    verify(rdfRepository, never()).bulkCreateOrUpdate(anyList());
-    verify(rdfRepository, never()).createOrUpdate(any(EntityInterface.class));
+    verify(rdfRepository, never()).bulkCreateOrUpdate(anyList(), any(RdfWriteMode.class));
   }
 
   @Test
@@ -238,10 +233,12 @@ class RdfBatchProcessorTest {
     EntityInterface c = mockEntity();
     List<EntityInterface> entities = List.of(a, b, c);
 
-    doThrow(new RuntimeException("bad model")).when(rdfRepository).bulkCreateOrUpdate(entities);
+    doThrow(new RuntimeException("bad model"))
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
 
     // Latch flips to true after the first per-entity attempt succeeds. The
-    // loop must NOT call createOrUpdate for b or c after that.
+    // loop must NOT call the singleton bulk path for b or c after that.
     java.util.concurrent.atomic.AtomicBoolean stop =
         new java.util.concurrent.atomic.AtomicBoolean(false);
     org.mockito.Mockito.doAnswer(
@@ -250,16 +247,17 @@ class RdfBatchProcessorTest {
               return null;
             })
         .when(rdfRepository)
-        .createOrUpdate(eq(a));
+        .bulkCreateOrUpdate(eq(List.of(a)), eq(RdfWriteMode.RECONCILE));
 
     RdfBatchProcessor.BatchProcessingResult result =
         processor.processEntities("table", entities, stop::get);
 
     assertEquals(1, result.successCount(), "only a should have completed before stop");
     assertEquals(0, result.failedCount());
-    verify(rdfRepository, atLeastOnce()).createOrUpdate(eq(a));
-    verify(rdfRepository, never()).createOrUpdate(eq(b));
-    verify(rdfRepository, never()).createOrUpdate(eq(c));
+    verify(rdfRepository, atLeastOnce())
+        .bulkCreateOrUpdate(eq(List.of(a)), eq(RdfWriteMode.RECONCILE));
+    verify(rdfRepository, never()).bulkCreateOrUpdate(eq(List.of(b)), eq(RdfWriteMode.RECONCILE));
+    verify(rdfRepository, never()).bulkCreateOrUpdate(eq(List.of(c)), eq(RdfWriteMode.RECONCILE));
   }
 
   @Test
@@ -291,10 +289,171 @@ class RdfBatchProcessorTest {
 
     @SuppressWarnings("unchecked")
     ArgumentCaptor<List<EntityRelationship>> captor = ArgumentCaptor.forClass(List.class);
-    verify(rdfRepository).bulkAddRelationships(captor.capture(), any());
+    verify(rdfRepository).bulkAddRelationships(captor.capture(), any(), eq(RdfWriteMode.RECONCILE));
 
     List<EntityRelationship> stored = captor.getValue();
     assertEquals(1, stored.size(), "aiChart edge filtered; only the table edge remains");
     assertEquals("table", stored.get(0).getToEntity());
+  }
+
+  @Test
+  @DisplayName("insert-only run context is propagated to entity and relationship bulk writes")
+  void insertOnlyContextIsPropagated() {
+    processor =
+        new RdfBatchProcessor(
+            collectionDAO,
+            rdfRepository,
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
+    List<EntityInterface> entities = List.of(mockEntity());
+
+    processor.processEntities("table", entities, null);
+
+    verify(rdfRepository).bulkCreateOrUpdate(entities, RdfWriteMode.INSERT_ONLY);
+    verify(rdfRepository).bulkAddRelationships(anyList(), any(), eq(RdfWriteMode.INSERT_ONLY));
+  }
+
+  @Test
+  @DisplayName("insert-only mode is preserved by singleton entity fallback")
+  void insertOnlyModeIsPreservedByEntityFallback() {
+    processor =
+        new RdfBatchProcessor(
+            collectionDAO,
+            rdfRepository,
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
+    List<EntityInterface> entities = List.of(mockEntity());
+    doThrow(new RuntimeException("bulk payload rejected"))
+        .doNothing()
+        .when(rdfRepository)
+        .bulkCreateOrUpdate(entities, RdfWriteMode.INSERT_ONLY);
+
+    RdfBatchProcessor.BatchProcessingResult result =
+        processor.processEntities("table", entities, null);
+
+    assertEquals(1, result.successCount());
+    assertEquals(0, result.failedCount());
+    verify(rdfRepository, times(2)).bulkCreateOrUpdate(entities, RdfWriteMode.INSERT_ONLY);
+  }
+
+  @Test
+  @DisplayName("incoming lineage is skipped when its source type is indexed in the same run")
+  void incomingLineageIsDeduplicatedForIndexedSourceType() {
+    processor =
+        new RdfBatchProcessor(
+            collectionDAO,
+            rdfRepository,
+            new RdfIndexingRunContext(RdfWriteMode.INSERT_ONLY, Set.of("table")));
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    EntityInterface from = mock(EntityInterface.class);
+    EntityInterface to = mock(EntityInterface.class);
+    when(from.getId()).thenReturn(fromId);
+    when(to.getId()).thenReturn(toId);
+    EntityRelationshipObject lineage = lineage(fromId, toId);
+    when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+        .thenReturn(List.of(lineage));
+    when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
+        .thenReturn(List.of(lineage));
+
+    processor.processBatchRelationships("table", List.of(from, to));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<RdfRepository.LineageEdgeData>> captor =
+        ArgumentCaptor.forClass(List.class);
+    verify(rdfRepository).bulkAddLineage(captor.capture(), eq(RdfWriteMode.INSERT_ONLY));
+    assertEquals(1, captor.getValue().size());
+    assertEquals(fromId, captor.getValue().get(0).fromId());
+    assertEquals(toId, captor.getValue().get(0).toId());
+  }
+
+  @Test
+  @DisplayName("legacy run context still processes incoming lineage")
+  void legacyContextProcessesIncomingLineage() {
+    UUID fromId = UUID.randomUUID();
+    UUID toId = UUID.randomUUID();
+    EntityInterface to = mock(EntityInterface.class);
+    when(to.getId()).thenReturn(toId);
+    when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+        .thenReturn(List.of());
+    when(relationshipDAO.findFromBatch(anyList(), anyInt(), any(Include.class)))
+        .thenReturn(List.of(lineage(fromId, toId)));
+
+    processor.processBatchRelationships("table", List.of(to));
+
+    @SuppressWarnings("unchecked")
+    ArgumentCaptor<List<RdfRepository.LineageEdgeData>> captor =
+        ArgumentCaptor.forClass(List.class);
+    verify(rdfRepository).bulkAddLineage(captor.capture(), eq(RdfWriteMode.RECONCILE));
+    assertEquals(1, captor.getValue().size());
+  }
+
+  @Test
+  @DisplayName("lineage bulk failure falls back per edge and isolates a bad edge")
+  void lineageFallbackIsolatesBadEdge() {
+    UUID fromId = UUID.randomUUID();
+    UUID goodTargetId = UUID.randomUUID();
+    UUID badTargetId = UUID.randomUUID();
+    EntityInterface source = mock(EntityInterface.class);
+    when(source.getId()).thenReturn(fromId);
+    when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+        .thenReturn(List.of(lineage(fromId, goodTargetId), lineage(fromId, badTargetId)));
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              List<RdfRepository.LineageEdgeData> edges = invocation.getArgument(0);
+              if (edges.size() > 1) {
+                throw new RuntimeException("bulk lineage rejected");
+              }
+              if (edges.get(0).toId().equals(badTargetId)) {
+                throw new RuntimeException("bad lineage edge");
+              }
+              return null;
+            })
+        .when(rdfRepository)
+        .bulkAddLineage(anyList(), eq(RdfWriteMode.RECONCILE));
+
+    RdfBatchProcessor.RelationshipProcessingResult result =
+        processor.processBatchRelationships("table", List.of(source));
+
+    assertEquals(1, result.failureCount());
+    assertTrue(result.lastError().contains(badTargetId.toString()));
+    verify(rdfRepository, times(3)).bulkAddLineage(anyList(), eq(RdfWriteMode.RECONCILE));
+  }
+
+  @Test
+  @DisplayName("lineage fallback stops when the RDF circuit breaker opens")
+  void lineageFallbackStopsWhenCircuitBreakerOpens() {
+    UUID fromId = UUID.randomUUID();
+    UUID firstTargetId = UUID.randomUUID();
+    UUID secondTargetId = UUID.randomUUID();
+    EntityInterface source = mock(EntityInterface.class);
+    when(source.getId()).thenReturn(fromId);
+    when(relationshipDAO.findToBatchWithRelations(anyList(), anyString(), anyList()))
+        .thenReturn(List.of(lineage(fromId, firstTargetId), lineage(fromId, secondTargetId)));
+    org.mockito.Mockito.doAnswer(
+            invocation -> {
+              List<RdfRepository.LineageEdgeData> edges = invocation.getArgument(0);
+              if (edges.size() > 1) {
+                throw new RuntimeException("bulk lineage rejected");
+              }
+              throw new RdfStorageCircuitOpenException("bulkAddLineage");
+            })
+        .when(rdfRepository)
+        .bulkAddLineage(anyList(), eq(RdfWriteMode.RECONCILE));
+
+    RdfBatchProcessor.RelationshipProcessingResult result =
+        processor.processBatchRelationships("table", List.of(source));
+
+    assertEquals(2, result.failureCount());
+    verify(rdfRepository, times(2)).bulkAddLineage(anyList(), eq(RdfWriteMode.RECONCILE));
+  }
+
+  private static EntityRelationshipObject lineage(UUID fromId, UUID toId) {
+    return EntityRelationshipObject.builder()
+        .fromId(fromId.toString())
+        .toId(toId.toString())
+        .fromEntity("table")
+        .toEntity("table")
+        .relation(Relationship.UPSTREAM.ordinal())
+        .json("{\"sqlQuery\":\"SELECT 1\"}")
+        .build();
   }
 }
