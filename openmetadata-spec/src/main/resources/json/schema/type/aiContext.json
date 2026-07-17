@@ -360,6 +360,25 @@
                 }
             },
             "additionalProperties": false
+        },
+        "lineageEdgeContext": {
+            "type": "object",
+            "javaType": "org.openmetadata.schema.type.aicontext.LineageEdgeContext",
+            "description": "One immediate lineage edge of the asset: the neighboring asset's fully qualified name plus the column-level mappings recorded on the edge, when available.",
+            "properties": {
+                "fullyQualifiedName": {
+                    "description": "Fully qualified name of the neighboring upstream or downstream asset.",
+                    "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+                },
+                "columns": {
+                    "description": "Column-level lineage recorded on this edge, capped server-side; fetch the full graph with the get_entity_lineage tool.",
+                    "type": "array",
+                    "items": {
+                        "$ref": "entityLineage.json#/definitions/columnLineage"
+                    }
+                }
+            },
+            "additionalProperties": false
         }
     },
     "properties": {
@@ -421,6 +440,20 @@
             "type": "array",
             "items": {
                 "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
+            }
+        },
+        "upstreamEdges": {
+            "description": "Immediate upstream lineage edges with optional column mappings. Supplements the upstream fully qualified name list.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/lineageEdgeContext"
+            }
+        },
+        "downstreamEdges": {
+            "description": "Immediate downstream lineage edges with optional column mappings. Supplements the downstream fully qualified name list.",
+            "type": "array",
+            "items": {
+                "$ref": "#/definitions/lineageEdgeContext"
             }
         },
         "assetContext": {

@@ -13,12 +13,15 @@
 package org.openmetadata.service.aicontext;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.data.MetricExpression;
 import org.openmetadata.schema.entity.data.Metric;
@@ -29,8 +32,13 @@ import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnConstraint;
 import org.openmetadata.schema.type.ColumnDataType;
 import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
+import org.openmetadata.schema.type.Edge;
+import org.openmetadata.schema.type.EntityLineage;
+import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.TableConstraint;
 import org.openmetadata.schema.type.TableJoins;
@@ -42,6 +50,7 @@ import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 
@@ -228,6 +237,120 @@ class AIContextBuilderTest {
     assertEquals("id", fields.get(0).getName());
     assertEquals("PRIMARY_KEY", fields.get(0).getConstraint());
     assertEquals("bigint", fields.get(1).getDataType());
+  }
+
+  @Test
+  void edgeContexts_capturesColumnMappingsAndFunctions() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    UUID targetId = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    ColumnLineage mapping =
+        new ColumnLineage()
+            .withFromColumns(List.of("svc.db.raw.orders.balance"))
+            .withToColumn("svc.db.analytics.orders.amount")
+            .withFunction("SUM");
+    Edge edge =
+        new Edge()
+            .withFromEntity(sourceId)
+            .withToEntity(targetId)
+            .withLineageDetails(new LineageDetails().withColumnsLineage(List.of(mapping)));
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(List.of(edge));
+
+    List<LineageEdgeContext> contexts = AIContextBuilder.edgeContexts(lineage, true);
+
+    assertEquals(1, contexts.size());
+    assertEquals("svc.db.raw.orders", contexts.getFirst().getFullyQualifiedName());
+    assertEquals(List.of(mapping), contexts.getFirst().getColumns());
+    assertEquals("SUM", contexts.getFirst().getColumns().getFirst().getFunction());
+  }
+
+  @Test
+  void edgeContexts_capsColumnMappingsAtThePerEdgeLimit() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    List<ColumnLineage> mappings = new ArrayList<>();
+    for (int index = 0; index < 30; index++) {
+      mappings.add(
+          new ColumnLineage()
+              .withFromColumns(List.of("source.column_" + index))
+              .withToColumn("target.column_" + index));
+    }
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(
+                    new Edge()
+                        .withFromEntity(sourceId)
+                        .withToEntity(UUID.randomUUID())
+                        .withLineageDetails(new LineageDetails().withColumnsLineage(mappings))));
+
+    List<ColumnLineage> columns =
+        AIContextBuilder.edgeContexts(lineage, true).getFirst().getColumns();
+
+    assertEquals(AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE, columns.size());
+    assertEquals("target.column_24", columns.getLast().getToColumn());
+  }
+
+  @Test
+  void edgeContexts_leavesColumnsNullWhenLineageDetailsAreAbsent() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(new Edge().withFromEntity(sourceId).withToEntity(UUID.randomUUID())));
+
+    List<LineageEdgeContext> contexts = AIContextBuilder.edgeContexts(lineage, true);
+
+    assertNull(contexts.getFirst().getColumns());
+  }
+
+  @Test
+  void edgeContexts_leavesColumnsNullWhenColumnMappingsAreEmpty() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(
+                    new Edge()
+                        .withFromEntity(sourceId)
+                        .withToEntity(UUID.randomUUID())
+                        .withLineageDetails(new LineageDetails().withColumnsLineage(List.of()))));
+
+    List<LineageEdgeContext> contexts = AIContextBuilder.edgeContexts(lineage, true);
+
+    assertNull(contexts.getFirst().getColumns());
+  }
+
+  @Test
+  void edgeContexts_dropsEdgesWhoseNeighborNodeCannotBeResolved() {
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(List.of())
+            .withUpstreamEdges(
+                List.of(
+                    new Edge().withFromEntity(UUID.randomUUID()).withToEntity(UUID.randomUUID())));
+
+    assertTrue(AIContextBuilder.edgeContexts(lineage, true).isEmpty());
   }
 
   @Test

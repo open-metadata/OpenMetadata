@@ -12,13 +12,17 @@
  */
 package org.openmetadata.service.aicontext;
 
+import static org.openmetadata.common.utils.CommonUtil.listOrEmpty;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.time.Instant;
 import java.util.EnumSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
+import java.util.stream.Stream;
 import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
@@ -26,9 +30,11 @@ import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextSection;
+import org.openmetadata.service.Entity;
 
 /**
  * Renders an {@link AIContext} as a self-describing markdown document for consumption by LLM agents,
@@ -46,6 +52,10 @@ public final class AIContextMarkdown {
 
   private static final int MAX_CONTENT_CHARS = 2000;
   private static final int MAX_SUMMARY_CHARS = 150;
+  private static final String ABSENT_CONSTRAINT_CELL = "--";
+  private static final String COLUMN_MAPPING_CAP_NOTE =
+      "\n_Column mappings are capped at %d per edge — fetch the full lineage graph with "
+          + "get_entity_lineage(entityType=`%s`, fqn=`%s`)._\n";
   private static final Set<ContextSection> LEGACY_RENDER_SECTIONS =
       EnumSet.complementOf(EnumSet.of(ContextSection.TAGS));
 
@@ -352,7 +362,7 @@ public final class AIContextMarkdown {
           .append(" | ")
           .append(cell(column.getDataType()))
           .append(" | ")
-          .append(cell(column.getConstraint()))
+          .append(constraintCell(column.getConstraint()))
           .append(" | ")
           .append(cell(column.getDescription()))
           .append(" |\n");
@@ -466,17 +476,113 @@ public final class AIContextMarkdown {
   private static void appendLineage(
       StringBuilder markdown, AIContext context, String headingPrefix) {
     boolean hasLineage =
-        !nullOrEmpty(context.getUpstream()) || !nullOrEmpty(context.getDownstream());
+        !nullOrEmpty(context.getUpstream())
+            || !nullOrEmpty(context.getDownstream())
+            || !nullOrEmpty(context.getUpstreamEdges())
+            || !nullOrEmpty(context.getDownstreamEdges());
     if (hasLineage) {
       appendHeading(markdown, headingPrefix, "Lineage");
       markdown.append('\n');
-      if (!nullOrEmpty(context.getUpstream())) {
-        markdown.append("**Upstream:** ").append(codeJoin(context.getUpstream())).append('\n');
-      }
-      if (!nullOrEmpty(context.getDownstream())) {
-        markdown.append("**Downstream:** ").append(codeJoin(context.getDownstream())).append('\n');
-      }
+      appendLineageDirection(
+          markdown,
+          "Upstream",
+          context.getUpstream(),
+          context.getUpstreamEdges(),
+          context.getFullyQualifiedName(),
+          true);
+      appendLineageDirection(
+          markdown,
+          "Downstream",
+          context.getDownstream(),
+          context.getDownstreamEdges(),
+          context.getFullyQualifiedName(),
+          false);
+      appendMappingCapNote(markdown, context);
     }
+  }
+
+  private static void appendLineageDirection(
+      StringBuilder markdown,
+      String label,
+      List<String> fqns,
+      List<LineageEdgeContext> edges,
+      String assetFqn,
+      boolean upstream) {
+    if (hasColumnMappings(edges)) {
+      markdown.append("**").append(label).append(":**\n");
+      listOrEmpty(edges).forEach(edge -> appendLineageEdge(markdown, edge, assetFqn, upstream));
+      markdown.append('\n');
+    } else if (!nullOrEmpty(fqns)) {
+      markdown.append("**").append(label).append(":** ").append(codeJoin(fqns)).append('\n');
+    }
+  }
+
+  private static boolean hasColumnMappings(List<LineageEdgeContext> edges) {
+    return listOrEmpty(edges).stream().anyMatch(edge -> !nullOrEmpty(edge.getColumns()));
+  }
+
+  private static void appendLineageEdge(
+      StringBuilder markdown, LineageEdgeContext edge, String assetFqn, boolean upstream) {
+    markdown.append("- `").append(edge.getFullyQualifiedName()).append("`\n");
+    String sourcePrefix = upstream ? edge.getFullyQualifiedName() : assetFqn;
+    String targetPrefix = upstream ? assetFqn : edge.getFullyQualifiedName();
+    listOrEmpty(edge.getColumns())
+        .forEach(mapping -> appendColumnMapping(markdown, mapping, sourcePrefix, targetPrefix));
+  }
+
+  private static void appendColumnMapping(
+      StringBuilder markdown, ColumnLineage mapping, String sourcePrefix, String targetPrefix) {
+    String toColumn = mapping.getToColumn();
+    if (!nullOrEmpty(toColumn) && !toColumn.isBlank()) {
+      String sourceColumns = shortNames(mapping.getFromColumns(), sourcePrefix);
+      markdown
+          .append("  - `")
+          .append(sourceColumns.isEmpty() ? "→ " : sourceColumns + " → ")
+          .append(shortName(toColumn, targetPrefix))
+          .append(functionSuffix(mapping.getFunction()))
+          .append("`\n");
+    }
+  }
+
+  private static String shortNames(List<String> fqns, String prefix) {
+    return String.join(
+        ", ",
+        listOrEmpty(fqns).stream()
+            .filter(fqn -> !nullOrEmpty(fqn) && !fqn.isBlank())
+            .map(fqn -> shortName(fqn, prefix))
+            .toList());
+  }
+
+  static String shortName(String fqn, String prefix) {
+    String result = fqn == null ? "" : fqn;
+    if (fqn != null && prefix != null && fqn.startsWith(prefix + Entity.SEPARATOR)) {
+      result = fqn.substring(prefix.length() + Entity.SEPARATOR.length());
+    }
+    return result;
+  }
+
+  private static String functionSuffix(String function) {
+    return nullOrEmpty(function) || function.isBlank() ? "" : " (" + function.strip() + ")";
+  }
+
+  private static void appendMappingCapNote(StringBuilder markdown, AIContext context) {
+    if (hasCappedMappings(context)) {
+      markdown.append(
+          COLUMN_MAPPING_CAP_NOTE.formatted(
+              AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE,
+              Objects.toString(context.getEntityType(), ""),
+              Objects.toString(context.getFullyQualifiedName(), "")));
+    }
+  }
+
+  private static boolean hasCappedMappings(AIContext context) {
+    return Stream.concat(
+            listOrEmpty(context.getUpstreamEdges()).stream(),
+            listOrEmpty(context.getDownstreamEdges()).stream())
+        .anyMatch(
+            edge ->
+                listOrEmpty(edge.getColumns()).size()
+                    >= AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE);
   }
 
   private static String codeJoin(List<String> values) {
@@ -503,6 +609,10 @@ public final class AIContextMarkdown {
 
   private static String cell(String value) {
     return nullOrEmpty(value) ? "" : value.replace("|", "\\|").replace("\n", " ").strip();
+  }
+
+  private static String constraintCell(String constraint) {
+    return nullOrEmpty(constraint) ? ABSENT_CONSTRAINT_CELL : cell(constraint);
   }
 
   private static String truncate(String value) {

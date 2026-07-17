@@ -231,10 +231,27 @@ class PersonaContextMarkdownTest {
   }
 
   @Test
-  void manifestPointersUseTheRegisteredCollectionRoutes() {
-    assertEquals("contextCenter/pages", PersonaContextMarkdown.collectionPath("page"));
-    assertEquals(
-        "dashboard/datamodels", PersonaContextMarkdown.collectionPath("dashboardDataModel"));
+  void manifestPointersUseTheAssetContextTool() {
+    Persona persona = persona();
+    PersonaContextBuilder.MaterializedPersonaContext result =
+        PersonaContextMarkdown.render(
+            persona,
+            new PersonaContextDefinition().withCharacterBudget(300).withRules(List.of(rule())),
+            List.of(materializedRule()),
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(1782864000000L)
+                .withSharedKnowledge(new SharedKnowledge()),
+            false);
+
+    assertTrue(result.markdown().contains("# Overflow Manifest"));
+    assertTrue(
+        result
+            .markdown()
+            .contains(
+                "fetch get_asset_context(entityType=`table`, "
+                    + "fqn=`ecommerce.public.semantic.fact_orders`)"));
+    assertFalse(result.markdown().contains("GET /v1/"));
   }
 
   @Test
@@ -268,7 +285,44 @@ class PersonaContextMarkdownTest {
     assertTrue(markdown.contains("**Row count:** 42"));
     assertTrue(markdown.contains("**Profiled at:** 2026-07-01T"));
     assertTrue(markdown.contains("Column-level profile details are caller-sensitive"));
+    assertTrue(
+        markdown.contains(
+            "fetch get_asset_context(entityType=`table`, "
+                + "fqn=`ecommerce.public.semantic.fact_orders`) "
+                + "for the latest permitted profile"));
+    assertFalse(markdown.contains("GET /v1/"));
     assertEquals(1, markdown.split("### Data Profile", -1).length - 1);
+  }
+
+  @Test
+  void compactTierUsesTheAssetContextTool() {
+    Persona persona = persona();
+    ContextRule selectedRule = rule();
+    PersonaContextBuilder.SelectedEntity selected = selectedEntity();
+    selected.context().withDescription("A".repeat(3000));
+    PersonaContextBuilder.MaterializedPersonaContext result =
+        PersonaContextMarkdown.render(
+            persona,
+            new PersonaContextDefinition()
+                .withCharacterBudget(2400)
+                .withRules(List.of(selectedRule)),
+            List.of(
+                new PersonaContextBuilder.RuleMaterialization(selectedRule, 1, List.of(selected))),
+            new PersonaContext()
+                .withPersona(persona.getEntityReference())
+                .withGeneratedAt(1782864000000L)
+                .withSharedKnowledge(new SharedKnowledge()),
+            false);
+
+    assertEquals(1, result.context().getRules().getFirst().getRenderedCompact());
+    assertTrue(
+        result
+            .markdown()
+            .contains(
+                "_Compact rendering — fetch get_asset_context(entityType=`table`, "
+                    + "fqn=`ecommerce.public.semantic.fact_orders`) "
+                    + "for the complete asset context._"));
+    assertFalse(result.markdown().contains("GET /v1/"));
   }
 
   private static Persona persona() {
