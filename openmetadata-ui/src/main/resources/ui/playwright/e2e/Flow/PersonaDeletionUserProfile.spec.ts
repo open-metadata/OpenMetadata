@@ -152,6 +152,9 @@ test.describe.serial('User profile works after persona deletion', () => {
 
     // Step 4: Go back to user profile and verify it still loads
     await test.step('Verify user profile still loads after persona deletion', async () => {
+      // Reload the page to ensure that the user profile is still accessible and loads correctly after the persona has been deleted
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
       await visitUserProfilePage(page, user.responseData.name);
       await waitForAllLoadersToDisappear(page);
 
