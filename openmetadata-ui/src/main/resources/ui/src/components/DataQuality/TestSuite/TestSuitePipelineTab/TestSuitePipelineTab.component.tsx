@@ -479,7 +479,7 @@ const TestSuitePipelineTab = ({
                     data-row-key={record.fullyQualifiedName}
                     id={record.id}
                     key={record.id}>
-                    <Table.Cell className="tw:align-middle tw:w-72 tw:min-w-56">
+                    <Table.Cell className="tw:align-middle tw:w-full tw:min-w-56">
                       {renderNameField()(record.name, record)}
                     </Table.Cell>
 

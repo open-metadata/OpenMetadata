@@ -36,7 +36,7 @@ VERSIONS = {
     "msal": "msal~=1.2",
     "neo4j": "neo4j~=5.3",
     "pandas": "pandas~=2.1.4",
-    "pyarrow": "pyarrow~=16.0",
+    "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
     "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
     "pydomo": "pydomo~=0.3",
@@ -340,8 +340,9 @@ plugins: Dict[str, Set[str]] = {  # noqa: UP006
         VERSIONS["giturlparse"],
         "python-liquid",
     },
-    # >=3.11.1 closes CVE-2026-4137 (insecure tmp dir permissions).
-    "mlflow": {"mlflow-skinny>=3.11.1,<3.13"},
+    # >=3.13.0 closes CVE-2026-2635 (default creds) + CVE-2026-8147 (missing authz);
+    # retains the CVE-2026-4137 (insecure tmp dir) fix from the prior >=3.11.1 floor.
+    "mlflow": {"mlflow-skinny>=3.13.0,<3.15"},
     "mongo": {VERSIONS["mongo"], VERSIONS["pandas"], VERSIONS["numpy"]},
     "cassandra": {VERSIONS["cassandra"]},
     "couchbase": {"couchbase~=4.1"},
