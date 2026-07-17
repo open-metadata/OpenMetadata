@@ -11,12 +11,40 @@
  *  limitations under the License.
  */
 
+@import (reference) '../variables.less';
+
 // Docs typography for the Form Hint column, matching the approved design:
-// 12.5px/1.55 body with mono for inline code. Scoped to the hint column so it
-// cannot leak into other RichTextEditorPreviewerV1 usages.
+// 12.5px/1.55 body in the secondary text colour, with mono for inline code.
+// Scoped to the hint column so it cannot leak into other
+// RichTextEditorPreviewerV1 usages.
 .form-hint-doc {
   font-size: 12.5px;
   line-height: 1.55;
+
+  // Setting the size on this wrapper alone is NOT enough. The doc is rendered
+  // through RichTextEditorPreviewerV1, whose TipTap block editor declares its
+  // own 14px/20px on `.block-editor-wrapper .tiptap.ProseMirror p` — more
+  // specific than anything this wrapper inherits down, so the text stayed at
+  // 14px/20px. These selectors deliberately mirror that chain (and add
+  // `.form-hint-doc`) to out-specify it; a shorter selector silently loses.
+  .block-editor-wrapper .tiptap.ProseMirror {
+    font-size: 12.5px;
+    line-height: 1.55;
+
+    p,
+    li,
+    span {
+      font-size: 12.5px;
+      line-height: 1.55;
+    }
+
+    // The design renders doc prose in the secondary text colour; the previewer
+    // defaults to the primary near-black.
+    p,
+    li {
+      color: @grey-600;
+    }
+  }
 
   // Inline code spans carry parameter names, operators and literals in
   // TestCaseForm.md. Geist Mono is registered globally in
@@ -30,5 +58,6 @@
     font-family: 'Geist Mono', 'JetBrains Mono', Menlo, monospace;
     font-size: 12.5px;
     font-weight: 600;
+    color: @grey-800;
   }
 }

@@ -60,7 +60,7 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
         // Body scrolls within the column; the header (if any) stays pinned so a
         // long doc never pushes it out of view.
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-4">
-          <h4 className="tw:text-md tw:mb-1 tw:font-medium tw:text-primary">
+          <h4 className="tw:text-md tw:mb-1 tw:font-semibold tw:text-primary">
             {entry.label}
           </h4>
           {(renderDoc ?? defaultRenderDoc)(entry.doc)}
