@@ -21,6 +21,10 @@ import RichTextEditorPreviewerV1 from './RichTextEditorPreviewerV1';
  * (formatClientContent -> BlockEditor -> showdown -> tiptap), so mocking either
  * end hides it.
  */
+// The BlockEditor is lazy-loaded and tiptap initialises asynchronously, which
+// can take well over the 1s default when the suite runs alongside others.
+const RENDER_TIMEOUT = { timeout: 15000 };
+
 describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
   it('should render > and < from code spans as real characters', async () => {
     const markdown =
@@ -33,11 +37,11 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
       />
     );
 
-    const container = await screen.findByTestId('markdown-parser');
+    const container = await screen.findByTestId('markdown-parser', {}, RENDER_TIMEOUT);
 
     await waitFor(() => {
       expect(container.textContent).toContain('>');
-    });
+    }, RENDER_TIMEOUT);
 
     // The user must never see the literal entity text.
     expect(container.textContent).not.toContain('&gt;');
@@ -60,11 +64,11 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
       />
     );
 
-    const container = await screen.findByTestId('markdown-parser');
+    const container = await screen.findByTestId('markdown-parser', {}, RENDER_TIMEOUT);
 
     await waitFor(() => {
       expect(container.textContent).toContain('price');
-    });
+    }, RENDER_TIMEOUT);
 
     expect(container.textContent).not.toContain('&gt;');
     expect(container.textContent).not.toContain('&lt;');
@@ -81,7 +85,7 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
       />
     );
 
-    await screen.findByTestId('markdown-parser');
+    await screen.findByTestId('markdown-parser', {}, RENDER_TIMEOUT);
 
     expect(container.querySelector('script')).toBeNull();
   });
