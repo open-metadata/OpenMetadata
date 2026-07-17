@@ -1040,6 +1040,11 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
             .parameter("columnCount", "2")
             .create();
 
+    testCase1.setDescription("Edited before logical suite assignment");
+    patchEntity(testCase1.getId().toString(), testCase1);
+    testCase2.setDescription("Also edited before logical suite assignment");
+    patchEntity(testCase2.getId().toString(), testCase2);
+
     CreateTestSuite suiteReq = new CreateTestSuite();
     suiteReq.setName(ns.prefix("logical_bulk_ids"));
     TestSuite logicalSuite = client.testSuites().create(suiteReq);
@@ -1088,6 +1093,22 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
         updatedSuite.getTests().stream().map(ref -> ref.getId()).toList();
     assertTrue(testIdsInSuite.contains(testCase1.getId()));
     assertTrue(testIdsInSuite.contains(testCase2.getId()));
+
+    try (Rest5Client searchClient = TestSuiteBootstrap.createSearchClient()) {
+      Awaitility.await("edited test cases added to logical suite are indexed")
+          .atMost(SEARCH_CONVERGENCE_TIMEOUT)
+          .pollInterval(Duration.ofSeconds(2))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertSearchDocContainsTestSuite(
+                    queryTestCaseSearchSource(searchClient, testCase1.getId()),
+                    logicalSuite.getId());
+                assertSearchDocContainsTestSuite(
+                    queryTestCaseSearchSource(searchClient, testCase2.getId()),
+                    logicalSuite.getId());
+              });
+    }
   }
 
   @Test

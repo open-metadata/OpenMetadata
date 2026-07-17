@@ -1002,10 +1002,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestSuite testSuite = Entity.getEntity(TEST_SUITE, relationshipChange.testSuiteId(), "*", ALL);
     FieldChange testsChange =
         new FieldChange().withName("tests").withNewValue(listOrEmpty(testSuite.getTests()));
-    testSuite.setChangeDescription(
+    ChangeDescription changeDescription =
         new ChangeDescription()
             .withPreviousVersion(testSuite.getVersion())
-            .withFieldsUpdated(List.of(testsChange)));
+            .withFieldsUpdated(List.of(testsChange));
+    testSuite.setChangeDescription(changeDescription);
+    testSuite.setIncrementalChangeDescription(changeDescription);
     EntityLifecycleEventDispatcher.getInstance()
         .onEntitiesUpdated(
             List.of(testSuite),
@@ -1237,10 +1239,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
               new FieldChange()
                   .withName(FIELD_TEST_SUITES)
                   .withNewValue(listOrEmpty(tc.getTestSuites()));
-          tc.setChangeDescription(
+          ChangeDescription changeDescription =
               new ChangeDescription()
                   .withPreviousVersion(tc.getVersion())
-                  .withFieldsUpdated(List.of(relationshipChange)));
+                  .withFieldsUpdated(List.of(relationshipChange));
+          tc.setChangeDescription(changeDescription);
+          tc.setIncrementalChangeDescription(changeDescription);
         });
     return testCases;
   }
