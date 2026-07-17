@@ -13,6 +13,7 @@
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matchers,
+    chain_text,
     when,
 )
 
@@ -106,3 +107,29 @@ def test_including_returns_a_new_pack_leaving_the_original_unchanged():
     other = ErrorPack(when(Matchers.contains("b")).diagnose("B"))
     base.including(other)
     assert base.classify(Exception("b")) is None
+
+
+def test_text_joins_the_whole_cause_chain_lowercased():
+    inner = ValueError("Access DENIED")
+    outer = RuntimeError("Wrapper")
+    outer.__cause__ = inner
+    assert chain_text(outer) == "wrapper access denied"
+
+
+def test_any_of_matches_when_one_matcher_does():
+    matcher = Matchers.any_of(Matchers.contains("alpha"), Matchers.errno(1045))
+    assert matcher(Exception("alpha")) is True
+    assert matcher(Exception(1045, "beta")) is True
+
+
+def test_any_of_does_not_match_when_none_do():
+    matcher = Matchers.any_of(Matchers.contains("alpha"), Matchers.errno(1045))
+    assert matcher(Exception("gamma")) is False
+
+
+def test_any_of_binds_one_diagnosis_to_several_signals():
+    pack = ErrorPack(
+        when(Matchers.any_of(Matchers.contains("alpha"), Matchers.errno(1045))).diagnose("Same", fix="one fix")
+    )
+    assert pack.classify(Exception("alpha")).title == "Same"
+    assert pack.classify(Exception(1045, "x")).remediation == "one fix"
