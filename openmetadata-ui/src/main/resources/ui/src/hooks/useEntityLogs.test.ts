@@ -99,6 +99,26 @@ describe('useEntityLogs', () => {
     expect(result.current.hasMore).toBe(true);
   });
 
+  it('does not fetch logs until the fqn is known', async () => {
+    // Logs are fetched by fqn; a pipeline with an id but no fqn yet must not
+    // fire a request for `/logs//last`.
+    (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
+      id: 'pid',
+      name: 'My Pipeline',
+      pipelineType: 'Metadata',
+    });
+
+    renderHook(() =>
+      useEntityLogs({
+        logEntityType: 'databaseServices',
+        fqn: 'svc.pipeline',
+      })
+    );
+
+    await waitFor(() => expect(getIngestionPipelineByFqn).toHaveBeenCalled());
+    expect(getIngestionPipelineLogById).not.toHaveBeenCalled();
+  });
+
   it('appends the next page when loadMore is called', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
