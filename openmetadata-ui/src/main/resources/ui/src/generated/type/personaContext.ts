@@ -157,6 +157,11 @@ export interface AIContext {
      */
     glossaryTerms?: KnowledgeItem[];
     /**
+     * Unique identifier of the asset this context describes. Stable, non-null primary key,
+     * unlike the presentation-layer `resource` href.
+     */
+    id?: string;
+    /**
      * Metrics associated with the asset.
      */
     metrics?: KnowledgeItem[];
@@ -166,9 +171,18 @@ export interface AIContext {
      */
     observability?: Observability;
     /**
+     * Owners (users/teams) of the asset.
+     */
+    owners?: EntityReference[];
+    /**
      * Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).
      */
     resource?: string;
+    /**
+     * Service type of the asset's service (e.g. Snowflake, BigQuery), used by clients to pick
+     * the service icon.
+     */
+    serviceType?: string;
     /**
      * Classification tags and tier applied to the asset (tag fully qualified names).
      */
@@ -202,7 +216,11 @@ export interface KnowledgeItem {
     contentTruncated?:   boolean;
     displayName?:        string;
     fullyQualifiedName?: string;
-    name?:               string;
+    /**
+     * Unique identifier of the knowledge entity.
+     */
+    id?:   string;
+    name?: string;
     /**
      * The entity type of the knowledge item.
      */
