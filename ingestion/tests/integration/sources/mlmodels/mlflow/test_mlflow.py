@@ -176,6 +176,10 @@ def create_data(mlflow_environment):
     # version's, which must not hide the version from the registry listing.
     mlflow.MlflowClient().update_registered_model(MODEL_NAME, description=MODEL_DESCRIPTION)
 
+    # Describing the model bumps RegisteredModel.last_updated_timestamp past the
+    # version's, which must not hide the version from the registry listing.
+    mlflow.MlflowClient().update_registered_model(MODEL_NAME, description=MODEL_DESCRIPTION)
+
 
 @pytest.fixture(scope="module")
 def service(metadata, mlflow_environment):
