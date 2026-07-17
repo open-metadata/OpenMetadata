@@ -17,7 +17,7 @@ import {
   Tooltip,
 } from '@openmetadata/ui-core-components';
 import Qs from 'qs';
-import { FC, useCallback, useMemo, useRef, useState } from 'react';
+import { FC, useCallback, useMemo } from 'react';
 import type { Key } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';

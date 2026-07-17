@@ -36,8 +36,8 @@ import {
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import {
   connectEdgeBetweenNodesViaAPI,
+  fitToScreen,
   openImpactAnalysisTab,
-  performZoomOut,
   rearrangeNodes,
   setLineageDepthAndVerify,
   visitLineageTab,
