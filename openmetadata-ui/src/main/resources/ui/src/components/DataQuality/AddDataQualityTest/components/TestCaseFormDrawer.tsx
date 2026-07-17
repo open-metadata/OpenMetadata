@@ -494,7 +494,10 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             </Box>
           }
           form={form}
-          formClassName="form-hint-doc-form tw:px-7 tw:pt-6 tw:pb-7"
+          // min-w-150 (600px) overrides HookForm's 380px default: this form's
+          // test-level cards need ~574px before they clip, so a lower floor
+          // lets the hint steal room the form cannot spare.
+          formClassName="tw:min-w-150 tw:px-7 tw:pt-6 tw:pb-7"
           renderFieldDoc={(markdown) => (
             // Render the full field doc without the "see more" toggle — the
             // column scrolls, so the whole hint is reachable without it.

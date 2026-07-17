@@ -102,12 +102,21 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
     <FormProvider {...form}>
       <FieldDocProvider enabled={showFieldDocs}>
         {isPanel ? (
-          <div className="tw:flex tw:h-full tw:min-h-0 tw:w-full tw:flex-row">
-            {/* min-w-95 (380px) is load-bearing: without a floor on the form,
-                the hint's 380px is reserved first and the form merely grows
-                into what is left, so the hint's shrink never fires (there is no
-                overflow to distribute) and the form gets crushed on narrow
-                viewports instead. */}
+          // No `h-full` here, deliberately. The host caps the body with
+          // `max-height` and no explicit height, so `height: 100%` would be an
+          // indefinite percentage: it resolves to `auto` (the full content
+          // height) AND suppresses flex `stretch`. The columns then never
+          // become scrollable and the host clips them instead. Letting the row
+          // stretch to the clamped height is what makes `overflow-y-auto` on
+          // each column actually scroll.
+          <div className="tw:flex tw:min-h-0 tw:w-full tw:flex-row">
+            {/* The form's min-width is load-bearing, not cosmetic: without a
+                floor here the hint's width is reserved first and the form
+                merely grows into what is left, so the hint's shrink never fires
+                (there is no overflow to distribute) and the form is crushed on
+                narrow viewports instead. Callers can raise it via
+                `formClassName` when their form needs more room than the
+                default. */}
             <AriaForm
               {...props}
               className={cx(
