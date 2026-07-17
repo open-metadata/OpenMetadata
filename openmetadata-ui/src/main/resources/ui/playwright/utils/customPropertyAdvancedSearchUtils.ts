@@ -466,9 +466,12 @@ const handlePropertyValueInput = async (
 
     await fillPropertyValue(inputElement, stringValue);
 
-    // Press Enter for multiselect operators and date types
-    if (
-      MULTISELECT_OPERATORS.includes(operator) ||
+    if (MULTISELECT_OPERATORS.includes(operator)) {
+      // react-aria MultiSelect commits the FOCUSED option on Enter — focus
+      // the first filtered option first (antd committed the typed text).
+      await page.keyboard.press('ArrowDown');
+      await page.keyboard.press('Enter');
+    } else if (
       ((operator === 'equal' || operator === 'not_equal') &&
         propertyType === 'dateTime-cp') ||
       propertyType === 'date-cp'

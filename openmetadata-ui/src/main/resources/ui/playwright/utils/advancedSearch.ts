@@ -236,12 +236,18 @@ export const selectOption = async (
     .getAttribute('aria-controls', { timeout: 1000 })
     .catch(() => null);
   if (openListboxId) {
-    await page
-      .locator(`[role="listbox"][id="${openListboxId}"]`)
+    const openListbox = page.locator(`[role="listbox"][id="${openListboxId}"]`);
+    await openListbox
       .waitFor({ state: 'hidden', timeout: 2000 })
-      .catch(() =>
-        control.press('Escape', { timeout: 1000 }).catch(() => undefined)
-      );
+      .catch(async () => {
+        // Blur the control — react-aria comboboxes close their popup when
+        // focus leaves. NEVER send Escape here: surrounding antd modals and
+        // forms handle Escape in the capture phase and dismiss themselves.
+        await control.blur({ timeout: 1000 }).catch(() => undefined);
+        await openListbox
+          .waitFor({ state: 'hidden', timeout: 1000 })
+          .catch(() => undefined);
+      });
   }
 };
 
@@ -701,7 +707,9 @@ export const runRuleGroupTestsWithNonExistingValue = async (page: Page) => {
   // eslint-disable-next-line playwright/no-wait-for-timeout -- search debounce delay
   await page.waitForTimeout(1000);
 
-  await expect(listbox.getByRole('option')).toHaveCount(0);
+  // allowsEmptyCollection keeps the popup open and renders the "No data"
+  // empty state (as an option row) instead of an empty listbox.
+  await expect(listbox.getByText('No data')).toBeVisible();
 };
 
 // For fields backed by hard-coded listValues (no aggregate API call), options are
