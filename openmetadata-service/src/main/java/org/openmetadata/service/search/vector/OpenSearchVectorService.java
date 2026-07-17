@@ -56,9 +56,11 @@ public class OpenSearchVectorService implements VectorIndexService {
   public static synchronized void init(OpenSearchClient client, EmbeddingClient embeddingClient) {
     if (instance != null) {
       LOG.warn("OpenSearchVectorService already initialized, reinitializing");
+      EntityLifecycleEventDispatcher.getInstance().unregisterHandler("VectorEmbeddingHandler");
     }
-    instance = new OpenSearchVectorService(client, embeddingClient);
-    instance.registerVectorEmbeddingHandler();
+    OpenSearchVectorService svc = new OpenSearchVectorService(client, embeddingClient);
+    svc.registerVectorEmbeddingHandler();
+    instance = svc;
     LOG.info(
         "OpenSearchVectorService initialized with model={}, dimension={}",
         embeddingClient.getModelId(),
@@ -563,7 +565,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           executeGenericRequest(
               "POST",
               "/_aliases",
-              buildChunkPromoteActions(generation, base, getSearchAlias(), oldTarget));
+              buildChunkPromoteActions(generation, base, getIndexAlias(), oldTarget));
         } catch (Exception e) {
           throw new RuntimeException("Failed to promote staged chunk index " + generation, e);
         }
@@ -774,7 +776,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         // docs. The alias PUT is idempotent. Only report "ensured" once the mapping is at the
         // current version so a failed upgrade does not latch (and so docs are not stamped with the
         // new docVersion into a still-stale mapping).
-        executeGenericRequest("PUT", "/" + target + "/_alias/" + getSearchAlias(), "{}");
+        executeGenericRequest("PUT", "/" + target + "/_alias/" + getIndexAlias(), "{}");
         ensured = applyChunkMappingUpgradeIfStale(target);
       }
     } catch (Exception e) {
@@ -834,7 +836,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     // the half-built generation searchable alongside the live one.
     if (withSearchAlias) {
       root.set(
-          "aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
+          "aliases", MAPPER.createObjectNode().set(getIndexAlias(), MAPPER.createObjectNode()));
     }
     return root.toString();
   }
@@ -1315,7 +1317,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         overFetchSize = Math.min(overFetchSize, k);
       }
 
-      String aliasName = getSearchAlias();
+      String aliasName = getIndexAlias();
       while (!exhausted && byParent.size() < requestedParents) {
         String queryJson =
             VectorSearchQueryBuilder.build(
@@ -1426,6 +1428,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     return -1L;
   }
 
+  @Override
   public String getExistingFingerprint(String indexName, String entityId) {
     try {
       String query =
@@ -1447,6 +1450,50 @@ public class OpenSearchVectorService implements VectorIndexService {
           e.getMessage());
     }
     return null;
+  }
+
+  @Override
+  public Map<String, String> getExistingFingerprintsBatch(
+      String indexName, List<String> entityIds) {
+    if (entityIds == null || entityIds.isEmpty()) {
+      return Collections.emptyMap();
+    }
+    try {
+      StringBuilder idsArray = new StringBuilder("[");
+      for (int i = 0; i < entityIds.size(); i++) {
+        if (i > 0) idsArray.append(',');
+        idsArray
+            .append("\"")
+            .append(VectorSearchQueryBuilder.escape(entityIds.get(i)))
+            .append("\"");
+      }
+      idsArray.append("]");
+
+      String query =
+          "{\"size\":"
+              + entityIds.size()
+              + ",\"_source\":[\"fingerprint\"]"
+              + ",\"query\":{\"ids\":{\"values\":"
+              + idsArray
+              + "}}}";
+
+      String response = executeGenericRequest("POST", "/" + indexName + "/_search", query);
+      JsonNode root = MAPPER.readTree(response);
+      JsonNode hits = root.path("hits").path("hits");
+
+      Map<String, String> result = new HashMap<>();
+      for (JsonNode hit : hits) {
+        String id = hit.path("_id").asText();
+        String fp = hit.path("_source").path("fingerprint").asText(null);
+        if (id != null && fp != null) {
+          result.put(id, fp);
+        }
+      }
+      return result;
+    } catch (Exception e) {
+      LOG.error("Failed to batch get fingerprints in index={}: {}", indexName, e.getMessage(), e);
+      return Collections.emptyMap();
+    }
   }
 
   private static final List<String> EMBEDDING_SOURCE_FIELDS =
@@ -1599,7 +1646,8 @@ public class OpenSearchVectorService implements VectorIndexService {
     }
   }
 
-  String executeGenericRequest(String method, String endpoint, String body) {
+  @Override
+  public String executeGenericRequest(String method, String endpoint, String body) {
     try {
       OpenSearchGenericClient genericClient = client.generic();
       var builder = Requests.builder().endpoint(endpoint).method(method);
@@ -1628,18 +1676,6 @@ public class OpenSearchVectorService implements VectorIndexService {
     } catch (Exception e) {
       LOG.error("Generic request failed: {} {}", method, endpoint, e);
       throw new RuntimeException("OpenSearch generic request failed", e);
-    }
-  }
-
-  private String getSearchAlias() {
-    try {
-      String clusterAlias = Entity.getSearchRepository().getClusterAlias();
-      if (clusterAlias == null || clusterAlias.isEmpty()) {
-        return VECTOR_EMBEDDING_ALIAS;
-      }
-      return clusterAlias + "_" + VECTOR_EMBEDDING_ALIAS;
-    } catch (Exception ex) {
-      return VECTOR_EMBEDDING_ALIAS;
     }
   }
 }

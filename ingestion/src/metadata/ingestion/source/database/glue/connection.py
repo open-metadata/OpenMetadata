@@ -24,6 +24,7 @@ from metadata.core.connections.test_connection import ErrorPack, check, when
 from metadata.core.connections.test_connection.aws import AWS_ERRORS, aws_code
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
+from metadata.core.connections.test_connection.checks.summary import count, enumerated, more_suffix
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection as GlueConnectionConfig,
@@ -59,16 +60,6 @@ GLUE_ERRORS = ErrorPack(
 ).including(AWS_ERRORS)
 
 
-def _count(n: int, noun: str) -> str:
-    """``3 tables`` / ``1 table`` - pluralize the noun to match the count."""
-    return f"{n} {noun if n == 1 else noun + 's'}"
-
-
-def _more_suffix(shown: int, more: bool) -> str:
-    """Mark a summary as capped when the catalog holds more assets beyond ``shown``."""
-    return f" (showing first {shown}; more exist)" if more else ""
-
-
 def _paginate(client: Any, operation: str, key: str, limit: int, **kwargs: Any) -> list[Any]:
     """Return at most ``limit + 1`` items - one past the cap, so the caller can
     report "more exist" without crawling the whole catalog."""
@@ -96,7 +87,7 @@ def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
             "collect nothing as configured.",
         )
     shown = min(len(databases), limit)
-    summary = f"{_count(shown, 'database')} enumerated" + _more_suffix(shown, len(databases) > limit)
+    summary = enumerated(shown, "database") + more_suffix(shown, len(databases) > limit)
     return Evidence(summary=summary, command=command, caveat=caveat)
 
 
@@ -118,13 +109,13 @@ def list_tables(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
             tables = _paginate(client, "get_tables", "TableList", limit, DatabaseName=name)
             if tables:
                 shown = min(len(tables), limit)
-                summary = f"{_count(shown, 'table')} in database '{name}'" + _more_suffix(shown, len(tables) > limit)
+                summary = f"{count(shown, 'table')} in database '{name}'" + more_suffix(shown, len(tables) > limit)
                 return Evidence(summary=summary, command=command)
     except Exception as cause:
         raise CheckError(cause, Evidence(command=command)) from cause
     probed = min(len(databases), MAX_DATABASES_TO_PROBE)
     return Evidence(
-        summary=f"no tables in the first {_count(probed, 'database')}",
+        summary=f"no tables in the first {count(probed, 'database')}",
         command=command,
         caveat=_no_tables_caveat(),
     )
