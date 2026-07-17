@@ -420,6 +420,7 @@ def get_stream_definition(  # pylint: disable=unused-argument
     return None
 
 
+@reflection.cache
 def get_semantic_view_definition(  # pylint: disable=unused-argument
     self, connection, semantic_view_name, schema=None, **kw
 ):
