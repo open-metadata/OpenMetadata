@@ -299,7 +299,7 @@ class AIContextMarkdownTest {
   }
 
   @Test
-  void render_notesWhenColumnMappingsReachTheCap() {
+  void render_doesNotNoteUntruncatedColumnMappingsAtTheCap() {
     List<ColumnLineage> mappings = new ArrayList<>();
     for (int index = 0; index < AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE; index++) {
       mappings.add(
@@ -321,6 +321,32 @@ class AIContextMarkdownTest {
 
     String markdown = AIContextMarkdown.render(context);
 
+    assertFalse(
+        markdown.contains(
+            "_Column mappings are capped at 25 per edge — fetch the full lineage graph with "
+                + "get_entity_lineage(entityType=`table`, fqn=`svc.db.sch.orders`)._"));
+  }
+
+  @Test
+  void render_notesOnlyWhenColumnMappingsWereTruncated() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDownstream(List.of("svc.db.analytics.orders"))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName("svc.db.raw.orders")
+                        .withColumns(
+                            List.of(
+                                new ColumnLineage()
+                                    .withFromColumns(List.of("svc.db.raw.orders.source"))
+                                    .withToColumn("svc.db.sch.orders.target")))
+                        .withColumnsTruncated(true)));
+
+    String markdown = AIContextMarkdown.render(context);
+
     assertTrue(
         markdown.contains(
             "_Column mappings are capped at 25 per edge — fetch the full lineage graph with "
@@ -328,6 +354,34 @@ class AIContextMarkdownTest {
     assertTrue(
         markdown.contains(
             "**Downstream:** `svc.db.analytics.orders`\n\n_Column mappings are capped"));
+  }
+
+  @Test
+  void render_sanitizesDelimiterSensitiveLineageValues() {
+    String upstreamFqn = "svc.db.raw.or`ders\nv2";
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withUpstream(List.of(upstreamFqn))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName(upstreamFqn)
+                        .withColumns(
+                            List.of(
+                                new ColumnLineage()
+                                    .withFromColumns(List.of(upstreamFqn + ".source`_amount\nraw"))
+                                    .withToColumn("svc.db.sch.orders.target`_amount\r\nnet")
+                                    .withFunction("coalesce(`amount`,\n0)")))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains(
+            "- `svc.db.raw.orders v2`\n"
+                + "  - `source_amount raw → target_amount net (coalesce(amount, 0))`\n"));
+    assertFalse(markdown.contains("or`ders"));
   }
 
   @Test

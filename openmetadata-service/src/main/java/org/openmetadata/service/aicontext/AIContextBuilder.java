@@ -450,14 +450,20 @@ public class AIContextBuilder {
         String nodeFullyQualifiedName =
             nodeFqn.get(upstream ? edge.getFromEntity() : edge.getToEntity());
         if (nodeFullyQualifiedName != null) {
-          contexts.add(
-              new LineageEdgeContext()
-                  .withFullyQualifiedName(nodeFullyQualifiedName)
-                  .withColumns(edgeColumns(edge)));
+          contexts.add(edgeContext(nodeFullyQualifiedName, edge));
         }
       }
     }
     return contexts;
+  }
+
+  private static LineageEdgeContext edgeContext(String fullyQualifiedName, Edge edge) {
+    List<ColumnLineage> columns = edgeColumns(edge);
+    boolean columnsTruncated = columns != null && columns.size() > MAX_COLUMN_MAPPINGS_PER_EDGE;
+    return new LineageEdgeContext()
+        .withFullyQualifiedName(fullyQualifiedName)
+        .withColumns(columns == null ? null : capList(columns, MAX_COLUMN_MAPPINGS_PER_EDGE))
+        .withColumnsTruncated(columnsTruncated ? Boolean.TRUE : null);
   }
 
   private static List<String> edgeFqns(List<LineageEdgeContext> edges) {
@@ -468,7 +474,7 @@ public class AIContextBuilder {
     List<ColumnLineage> columns = null;
     LineageDetails lineageDetails = edge.getLineageDetails();
     if (lineageDetails != null && !nullOrEmpty(lineageDetails.getColumnsLineage())) {
-      columns = capList(lineageDetails.getColumnsLineage(), MAX_COLUMN_MAPPINGS_PER_EDGE);
+      columns = lineageDetails.getColumnsLineage();
     }
     return columns;
   }

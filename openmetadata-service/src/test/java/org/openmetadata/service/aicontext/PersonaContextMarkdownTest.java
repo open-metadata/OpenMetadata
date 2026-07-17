@@ -325,6 +325,13 @@ class PersonaContextMarkdownTest {
     assertFalse(result.markdown().contains("GET /v1/"));
   }
 
+  @Test
+  void contextToolCallSanitizesDelimiterSensitiveArguments() {
+    assertEquals(
+        "get_asset_context(entityType=`table variant`, fqn=`svc.db.orders current`)",
+        PersonaContextMarkdown.contextToolCall("ta`ble\nvariant", "svc.db.or`ders\r\ncurrent"));
+  }
+
   private static Persona persona() {
     return new Persona()
         .withId(UUID.fromString("11111111-1111-1111-1111-111111111111"))

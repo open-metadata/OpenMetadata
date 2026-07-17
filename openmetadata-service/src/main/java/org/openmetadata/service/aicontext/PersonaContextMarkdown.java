@@ -600,12 +600,12 @@ final class PersonaContextMarkdown {
         .withReason(reason);
   }
 
-  private static String contextToolCall(String entityType, String fqn) {
+  static String contextToolCall(String entityType, String fqn) {
     return ASSET_CONTEXT_TOOL
         + "(entityType=`"
-        + (nullOrEmpty(entityType) ? "" : entityType)
+        + AIContextMarkdown.inlineCodeValue(entityType)
         + "`, fqn=`"
-        + (nullOrEmpty(fqn) ? "" : fqn)
+        + AIContextMarkdown.inlineCodeValue(fqn)
         + "`)";
   }
 

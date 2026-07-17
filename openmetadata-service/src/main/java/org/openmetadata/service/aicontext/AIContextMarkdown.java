@@ -523,7 +523,7 @@ public final class AIContextMarkdown {
 
   private static void appendLineageEdge(
       StringBuilder markdown, LineageEdgeContext edge, String assetFqn, boolean upstream) {
-    markdown.append("- `").append(edge.getFullyQualifiedName()).append("`\n");
+    markdown.append("- `").append(inlineCodeValue(edge.getFullyQualifiedName())).append("`\n");
     String sourcePrefix = upstream ? edge.getFullyQualifiedName() : assetFqn;
     String targetPrefix = upstream ? assetFqn : edge.getFullyQualifiedName();
     listOrEmpty(edge.getColumns())
@@ -538,7 +538,7 @@ public final class AIContextMarkdown {
       markdown
           .append("  - `")
           .append(sourceColumns.isEmpty() ? "→ " : sourceColumns + " → ")
-          .append(shortName(toColumn, targetPrefix))
+          .append(inlineCodeValue(shortName(toColumn, targetPrefix)))
           .append(functionSuffix(mapping.getFunction()))
           .append("`\n");
     }
@@ -549,7 +549,7 @@ public final class AIContextMarkdown {
         ", ",
         listOrEmpty(fqns).stream()
             .filter(fqn -> !nullOrEmpty(fqn) && !fqn.isBlank())
-            .map(fqn -> shortName(fqn, prefix))
+            .map(fqn -> inlineCodeValue(shortName(fqn, prefix)))
             .toList());
   }
 
@@ -562,7 +562,8 @@ public final class AIContextMarkdown {
   }
 
   private static String functionSuffix(String function) {
-    return nullOrEmpty(function) || function.isBlank() ? "" : " (" + function.strip() + ")";
+    String safeFunction = inlineCodeValue(function);
+    return safeFunction.isEmpty() ? "" : " (" + safeFunction + ")";
   }
 
   private static void appendMappingCapNote(StringBuilder markdown, AIContext context) {
@@ -570,8 +571,8 @@ public final class AIContextMarkdown {
       markdown.append(
           COLUMN_MAPPING_CAP_NOTE.formatted(
               AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE,
-              Objects.toString(context.getEntityType(), ""),
-              Objects.toString(context.getFullyQualifiedName(), "")));
+              inlineCodeValue(Objects.toString(context.getEntityType(), "")),
+              inlineCodeValue(Objects.toString(context.getFullyQualifiedName(), ""))));
     }
   }
 
@@ -579,10 +580,7 @@ public final class AIContextMarkdown {
     return Stream.concat(
             listOrEmpty(context.getUpstreamEdges()).stream(),
             listOrEmpty(context.getDownstreamEdges()).stream())
-        .anyMatch(
-            edge ->
-                listOrEmpty(edge.getColumns()).size()
-                    >= AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE);
+        .anyMatch(edge -> Boolean.TRUE.equals(edge.getColumnsTruncated()));
   }
 
   private static String codeJoin(List<String> values) {
@@ -591,9 +589,13 @@ public final class AIContextMarkdown {
       if (i > 0) {
         joined.append(", ");
       }
-      joined.append('`').append(values.get(i)).append('`');
+      joined.append('`').append(inlineCodeValue(values.get(i))).append('`');
     }
     return joined.toString();
+  }
+
+  static String inlineCodeValue(String value) {
+    return nullOrEmpty(value) ? "" : value.replace("`", "").replaceAll("\\R+", " ").strip();
   }
 
   private static void appendTags(StringBuilder markdown, List<String> tags, String headingPrefix) {

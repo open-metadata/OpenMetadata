@@ -294,11 +294,42 @@ class AIContextBuilderTest {
                         .withToEntity(UUID.randomUUID())
                         .withLineageDetails(new LineageDetails().withColumnsLineage(mappings))));
 
-    List<ColumnLineage> columns =
-        AIContextBuilder.edgeContexts(lineage, true).getFirst().getColumns();
+    LineageEdgeContext context = AIContextBuilder.edgeContexts(lineage, true).getFirst();
+    List<ColumnLineage> columns = context.getColumns();
 
     assertEquals(AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE, columns.size());
     assertEquals("target.column_24", columns.getLast().getToColumn());
+    assertTrue(Boolean.TRUE.equals(context.getColumnsTruncated()));
+  }
+
+  @Test
+  void edgeContexts_doesNotMarkMappingsAtTheCapAsTruncated() {
+    UUID sourceId = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    List<ColumnLineage> mappings = new ArrayList<>();
+    for (int index = 0; index < AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE; index++) {
+      mappings.add(
+          new ColumnLineage()
+              .withFromColumns(List.of("source.column_" + index))
+              .withToColumn("target.column_" + index));
+    }
+    EntityLineage lineage =
+        new EntityLineage()
+            .withNodes(
+                List.of(
+                    new EntityReference()
+                        .withId(sourceId)
+                        .withFullyQualifiedName("svc.db.raw.orders")))
+            .withUpstreamEdges(
+                List.of(
+                    new Edge()
+                        .withFromEntity(sourceId)
+                        .withToEntity(UUID.randomUUID())
+                        .withLineageDetails(new LineageDetails().withColumnsLineage(mappings))));
+
+    LineageEdgeContext context = AIContextBuilder.edgeContexts(lineage, true).getFirst();
+
+    assertEquals(AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE, context.getColumns().size());
+    assertNull(context.getColumnsTruncated());
   }
 
   @Test

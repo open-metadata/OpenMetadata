@@ -376,6 +376,10 @@
                     "items": {
                         "$ref": "entityLineage.json#/definitions/columnLineage"
                     }
+                },
+                "columnsTruncated": {
+                    "description": "True when column-level lineage was truncated at the server-side per-edge cap; fetch the full graph with the get_entity_lineage tool.",
+                    "type": "boolean"
                 }
             },
             "additionalProperties": false
