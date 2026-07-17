@@ -261,8 +261,11 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
 
   const hintLabel = (label: string) => (
     <Box align="center" className="tw:gap-2" direction="row">
-      <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-      <Typography className="tw:text-secondary" size="text-sm" weight="medium">
+      <Lightbulb05 className="tw:size-4 tw:shrink-0 tw:text-secondary" />
+      <Typography
+        className="tw:whitespace-nowrap tw:text-secondary"
+        size="text-sm"
+        weight="medium">
         {label}
       </Typography>
     </Box>

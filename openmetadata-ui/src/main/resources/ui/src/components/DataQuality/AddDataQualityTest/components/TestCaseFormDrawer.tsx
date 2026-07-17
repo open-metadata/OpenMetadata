@@ -442,7 +442,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             <Box align="center" className="tw:gap-2" direction="row">
               <Lightbulb05 className="tw:size-4 tw:text-secondary" />
               <Typography
-                className="tw:text-secondary"
+                className="tw:whitespace-nowrap tw:text-secondary"
                 size="text-sm"
                 weight="medium">
                 {t('label.show-hint')}

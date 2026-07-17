@@ -133,7 +133,13 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 align="center"
                 className="tw:w-full tw:justify-between tw:gap-3 tw:pr-10"
                 direction="row">
-                <Box align="center" className="tw:gap-3" direction="row">
+                {/* min-w-0 lets the title block absorb the squeeze (its
+                    subtitle wraps) so the actions keep their intrinsic width
+                    instead of being compressed into a wrap. */}
+                <Box
+                  align="center"
+                  className="tw:min-w-0 tw:gap-3"
+                  direction="row">
                   <FeaturedIcon
                     color="gray"
                     icon={CheckCircle}
@@ -153,7 +159,12 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                     )}
                   </Box>
                 </Box>
-                {headerActions}
+                {/* shrink-0: the actions (e.g. the Show Hint label + toggle)
+                    must never be compressed, or the label wraps mid-phrase when
+                    the modal narrows. */}
+                <Box align="center" className="tw:shrink-0" direction="row">
+                  {headerActions}
+                </Box>
               </Box>
             </Dialog.Header>
             {/* With a hint column the content is a padding-free flex row that
