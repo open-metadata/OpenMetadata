@@ -103,6 +103,10 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
+  // Stage id a workflow-managed task carries between being persisted and its Flowable workflow
+  // instance actually starting. Mirrors CreateTask.PENDING_WORKFLOW_START_STAGE_ID.
+  private static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
+
   /**
    * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
    * Granted are intermediate stages in multi-stage approval/grant workflows, not terminal states.
@@ -862,20 +866,21 @@ public class TaskRepository extends EntityRepository<Task> {
    * moves through the requested transitions.
    */
   public Task reopenTaskWithWorkflow(Task task, String user) {
+    Task terminalSnapshot = JsonUtils.deepCopy(task, Task.class);
     Task reopened = reopenTask(task, user);
     if (reopened.getWorkflowDefinitionId() == null) {
       return reopened;
     }
 
-    Task original = JsonUtils.deepCopy(reopened, Task.class);
+    Task openSnapshot = JsonUtils.deepCopy(reopened, Task.class);
     reopened.setWorkflowInstanceId(null);
-    reopened.setWorkflowStageId("pending-workflow-start");
+    reopened.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
     reopened.setWorkflowStageDisplayName("Starting");
     reopened.setAvailableTransitions(List.of());
     reopened.setUpdatedBy(user);
     reopened.setUpdatedAt(System.currentTimeMillis());
     storeEntity(reopened, true);
-    postUpdate(original, reopened);
+    postUpdate(openSnapshot, reopened);
 
     triggerWorkflowManagedTask(reopened);
 
@@ -885,11 +890,24 @@ public class TaskRepository extends EntityRepository<Task> {
             reopened.getId(),
             getFields(
                 "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution,availableTransitions"));
-    if ("workflow-start-failed".equals(refreshed.getWorkflowStageId())) {
+    // A successful restart populates a fresh workflowInstanceId (the running Flowable instance);
+    // any failure leaves it null. Keying off that is robust to the exact failure-marker stage id.
+    if (refreshed.getWorkflowInstanceId() == null) {
+      // The workflow could not restart. Roll the task back to its prior terminal state so we never
+      // leave an Open task without a live workflow (which a later failure could otherwise reuse).
+      restoreTerminalTask(terminalSnapshot, refreshed, user);
       throw new IllegalStateException(
           String.format("Workflow restart failed for reopened task %s", reopened.getId()));
     }
     return refreshed;
+  }
+
+  private void restoreTerminalTask(Task terminalSnapshot, Task current, String user) {
+    Task restored = JsonUtils.deepCopy(terminalSnapshot, Task.class);
+    restored.setUpdatedBy(user);
+    restored.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(restored, true);
+    postUpdate(current, restored);
   }
 
   /**
@@ -1397,7 +1415,7 @@ public class TaskRepository extends EntityRepository<Task> {
               task.setTaskFormSchemaVersion(
                   binding.schema() != null ? binding.schema().getVersion() : null);
               task.setWorkflowDefinitionId(workflowDefinition.getId());
-              task.setWorkflowStageId("pending-workflow-start");
+              task.setWorkflowStageId(PENDING_WORKFLOW_START_STAGE_ID);
               task.setWorkflowStageDisplayName("Starting");
               task.setAvailableTransitions(List.of());
             });
@@ -1481,7 +1499,7 @@ public class TaskRepository extends EntityRepository<Task> {
   private boolean isPendingWorkflowManagedTask(Task task) {
     return shouldCreateWorkflowManagedTask(task)
         && task.getWorkflowDefinitionId() != null
-        && "pending-workflow-start".equals(task.getWorkflowStageId());
+        && PENDING_WORKFLOW_START_STAGE_ID.equals(task.getWorkflowStageId());
   }
 
   /**
