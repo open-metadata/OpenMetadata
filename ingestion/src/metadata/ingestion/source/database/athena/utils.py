@@ -121,8 +121,7 @@ def _deduplicate_columns(columns: List[Dict], table_name: str) -> List[Dict]:  #
 
         if dedupe_key in seen_column_names:
             logger.warning(
-                "Table '%s': dropping duplicate Athena column '%s' (type %s); "
-                "keeping the first definition",
+                "Table '%s': dropping duplicate Athena column '%s' (type %s); keeping the first definition",
                 table_name,
                 dedupe_key,
                 column.get("system_data_type"),
