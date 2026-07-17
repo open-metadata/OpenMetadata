@@ -35,19 +35,19 @@ const SummaryCardV1 = ({
 
   return (
     <div>
-      <div className="tw:flex tw:w-full tw:min-w-52 tw:items-center tw:gap-4 tw:rounded-lg tw:border tw:border-secondary tw:px-5 tw:py-4 tw:shadow-xs">
+      <div className="tw:flex tw:w-full tw:min-w-52 tw:items-center tw:gap-3 tw:rounded-lg tw:border tw:border-secondary tw:px-2.5 tw:py-4 tw:shadow-xs">
         <Icon height={40} width={40} />
         <div>
-          <p className="tw:m-0 tw:text-lg tw:font-semibold tw:text-primary">
+          <p className="tw:m-0 tw:text-base tw:font-semibold tw:text-primary">
             {value}
           </p>
-          <p className="tw:m-0 tw:text-sm tw:font-medium tw:text-secondary">
+          <p className="tw:m-0 tw:text-xs tw:font-medium tw:text-secondary">
             {title}
           </p>
         </div>
       </div>
       {extra && (
-        <div className="tw:mx-4 tw:rounded-b-lg tw:bg-secondary tw:px-2 tw:py-2">
+        <div className="tw:mx-4 tw:rounded-b-lg tw:bg-secondary tw:px-2 tw:py-1">
           <p className="tw:m-0 tw:text-[10px] tw:font-medium tw:text-primary">
             {extra}
           </p>
