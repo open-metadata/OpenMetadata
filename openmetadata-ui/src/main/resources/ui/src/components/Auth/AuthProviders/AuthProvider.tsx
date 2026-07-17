@@ -52,6 +52,7 @@ import { User } from '../../../generated/entity/teams/user';
 import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/settings';
 import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
+import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
@@ -544,7 +545,7 @@ export const AuthProvider = ({
         config.headers['Content-type'] = 'application/json-patch+json';
       }
 
-      return withActivePersonaHeader(withDomainFilter(config));
+      return withLanguageHeader(withActivePersonaHeader(withDomainFilter(config)));
     });
 
     // Axios response interceptor for statusCode 401,403
