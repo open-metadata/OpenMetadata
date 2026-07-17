@@ -174,6 +174,7 @@ public final class AttachedKnowledgeBatch {
     if (content != null && content.length() > MAX_CONTENT_CHARS) {
       result =
           new KnowledgeItem()
+              .withId(item.getId())
               .withType(item.getType())
               .withName(item.getName())
               .withDisplayName(item.getDisplayName())

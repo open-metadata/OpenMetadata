@@ -497,13 +497,46 @@ final class PersonaContextMarkdown {
             .append(": ")
             .append(labelOf(item))
             .append('\n');
-    if (!nullOrEmpty(item.getFullyQualifiedName())) {
+    // Emit a ready-to-cite chat entity link so the agent renders this metric / glossary term /
+    // article as a clickable link (like it does for tables), instead of leaving it as plain text.
+    // Fall back to the bare backticked FQN for types with no chat-linkable form (e.g. knowledge
+    // pills). See the entity-link format in SharedChatGuardrails (FORMATTING_RULES).
+    String chatLink = chatEntityLink(item);
+    if (chatLink != null) {
+      markdown.append(chatLink).append('\n');
+    } else if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
     if (!nullOrEmpty(item.getContent())) {
       markdown.append('\n').append(item.getContent().strip()).append('\n');
     }
     return markdown.toString();
+  }
+
+  /**
+   * Builds a chat entity link ({@code [label](#entityType/fqn)}) for a knowledge item so the agent
+   * can cite it directly. Returns null when the item has no fqn or its type has no chat-linkable
+   * form (a context-memory knowledge pill is not a browsable entity). The fqn path segment is
+   * percent-encoded for the characters the chat UI expects (space, parentheses), matching the entity
+   * link format the agent's formatting rules use.
+   */
+  private static String chatEntityLink(KnowledgeItem item) {
+    if (item.getType() == null || nullOrEmpty(item.getFullyQualifiedName())) {
+      return null;
+    }
+    String entityType =
+        switch (item.getType()) {
+          case METRIC -> "metric";
+          case GLOSSARY_TERM -> "glossaryTerm";
+          case PAGE -> "page";
+          default -> null;
+        };
+    if (entityType == null) {
+      return null;
+    }
+    String encodedFqn =
+        item.getFullyQualifiedName().replace(" ", "%20").replace("(", "%28").replace(")", "%29");
+    return "[" + labelOf(item) + "](#" + entityType + "/" + encodedFqn + ")";
   }
 
   private static void appendManifest(StringBuilder markdown, List<ManifestEntry> manifest) {

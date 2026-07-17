@@ -124,6 +124,8 @@ public class PersonaContextBuilder {
     "entityType",
     "entityStatus",
     "href",
+    "owners",
+    "serviceType",
     "tags",
     "tier",
     "classificationTags",
@@ -319,11 +321,14 @@ public class PersonaContextBuilder {
     String id = stringValue(document.get("id"));
     AIContext context =
         new AIContext()
+            .withId(nullOrEmpty(id) ? null : UUID.fromString(id))
             .withFullyQualifiedName(fqn)
             .withEntityType(rule.getEntityType())
             .withDisplayName(stringValue(document.get("displayName")))
             .withDescription(stringValue(document.get("description")))
+            .withServiceType(stringValue(document.get("serviceType")))
             .withTags(classificationTags(document))
+            .withOwners(ownerReferences(document))
             .withAssetContext(assetContext(document))
             .withGeneratedAt(System.currentTimeMillis());
     String href = stringValue(document.get("href"));
@@ -438,6 +443,7 @@ public class PersonaContextBuilder {
       }
       AIContext context =
           new AIContext()
+              .withId(entity.getId())
               .withFullyQualifiedName(entity.getFullyQualifiedName())
               .withEntityType(entityType)
               .withDisplayName(entity.getDisplayName())
@@ -681,6 +687,7 @@ public class PersonaContextBuilder {
               "Unsupported knowledge type: " + entityType);
         };
     return new KnowledgeItem()
+        .withId(entity.getId())
         .withType(type)
         .withName(entity.getName())
         .withDisplayName(entity.getDisplayName())
@@ -690,6 +697,7 @@ public class PersonaContextBuilder {
 
   private static KnowledgeItem referenceOf(KnowledgeItem item) {
     return new KnowledgeItem()
+        .withId(item.getId())
         .withType(item.getType())
         .withName(item.getName())
         .withDisplayName(item.getDisplayName())
@@ -774,6 +782,33 @@ public class PersonaContextBuilder {
       }
     }
     return new ArrayList<>(terms);
+  }
+
+  private static List<EntityReference> ownerReferences(Map<String, Object> document) {
+    List<EntityReference> owners = new ArrayList<>();
+    for (Map<String, Object> owner : tagMaps(document.get("owners"))) {
+      String name = stringValue(owner.get("name"));
+      String fqn = stringValue(owner.get("fullyQualifiedName"));
+      if (nullOrEmpty(name) && nullOrEmpty(fqn)) {
+        continue;
+      }
+      EntityReference reference =
+          new EntityReference()
+              .withName(name)
+              .withType(stringValue(owner.get("type")))
+              .withFullyQualifiedName(fqn)
+              .withDisplayName(stringValue(owner.get("displayName")));
+      String ownerId = stringValue(owner.get("id"));
+      if (!nullOrEmpty(ownerId)) {
+        try {
+          reference.withId(UUID.fromString(ownerId));
+        } catch (IllegalArgumentException ignored) {
+          // Non-UUID id in the indexed document; keep name/type, skip the id.
+        }
+      }
+      owners.add(reference);
+    }
+    return owners;
   }
 
   private static void addStrings(Set<String> destination, Object value) {
