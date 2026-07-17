@@ -14,6 +14,7 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
 import { Agent, AgentRun } from '../AgentsPage.interface';
+import { useAgentRuns } from '../hooks/useAgentRuns';
 import RunHistoryDrawer from './RunHistoryDrawer.component';
 
 jest.mock('./RunStepRow.component', () =>
@@ -133,5 +134,21 @@ describe('RunHistoryDrawer', () => {
     fireEvent.click(screen.getByText('label.run-now'));
 
     expect(mockOnRun).toHaveBeenCalledWith(agent);
+  });
+
+  it('should forward fetchRuns to useAgentRuns', () => {
+    const fetchRuns = jest.fn().mockResolvedValue([]);
+    render(
+      <RunHistoryDrawer
+        open
+        agent={agent}
+        fetchRuns={fetchRuns}
+        onClose={jest.fn()}
+        onOpenLogs={jest.fn()}
+        onRun={mockOnRun}
+      />
+    );
+
+    expect(useAgentRuns).toHaveBeenCalledWith(agent.fqn, true, fetchRuns);
   });
 });

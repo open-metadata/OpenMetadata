@@ -317,5 +317,6 @@ class CommonBrokerSource(MessagingServiceSource, ABC):
         return str(record)
 
     def close(self):
-        if self.generate_sample_data and self.consumer_client:
+        if getattr(self, "generate_sample_data", False) and getattr(self, "consumer_client", None):
             self.consumer_client.close()
+        super().close()
