@@ -63,7 +63,12 @@ from metadata.generated.schema.entity.data.searchIndex import (
     SearchIndex,
     SearchIndexSampleData,
 )
-from metadata.generated.schema.entity.data.table import DataModel, Table, TableData
+from metadata.generated.schema.entity.data.table import (
+    ColumnName,
+    DataModel,
+    Table,
+    TableData,
+)
 from metadata.generated.schema.entity.data.topic import Topic, TopicSampleData
 from metadata.generated.schema.entity.datacontract.dataContractResult import (
     DataContractResult,
@@ -1009,7 +1014,7 @@ class MetadataRestSink(Sink):  # pylint: disable=too-many-public-methods
         return False
 
     @staticmethod
-    def _unflatten_dotted_row(columns, row) -> dict:
+    def _unflatten_dotted_row(columns: list[ColumnName], row: list) -> dict:
         """
         Rebuild the original (possibly nested) message structure from the sampler's
         dotted-path column names so nested RECORD topics keep their real shape.
