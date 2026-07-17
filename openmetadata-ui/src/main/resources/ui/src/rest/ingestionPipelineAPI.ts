@@ -135,9 +135,11 @@ export const getPipelineServiceHostIp = async () => {
   return response;
 };
 
-export const getIngestionPipelineLogById = (id: string, after?: string) => {
+// `idOrFqn` may be the pipeline Id or its fullyQualifiedName — the endpoint accepts both. Encoding
+// is a no-op for a UUID and safely escapes an fqn's separators.
+export const getIngestionPipelineLogById = (idOrFqn: string, after?: string) => {
   return APIClient.get<IngestionPipelineLogByIdInterface>(
-    `/services/ingestionPipelines/logs/${id}/last`,
+    `/services/ingestionPipelines/logs/${getEncodedFqn(idOrFqn)}/last`,
     {
       params: {
         after,
@@ -170,9 +172,9 @@ export const getRunHistoryForPipeline = async (
   return response.data;
 };
 
-export const downloadIngestionPipelineLogsById = (id: string) => {
+export const downloadIngestionPipelineLogsById = (idOrFqn: string) => {
   return APIClient.get(
-    `/services/ingestionPipelines/logs/${id}/last/download`,
+    `/services/ingestionPipelines/logs/${getEncodedFqn(idOrFqn)}/last/download`,
     {
       responseType: 'blob',
     }

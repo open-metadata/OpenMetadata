@@ -77,6 +77,7 @@ describe('useEntityLogs', () => {
   it('loads ingestion pipeline logs and derives pagination', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
     });
@@ -101,6 +102,7 @@ describe('useEntityLogs', () => {
   it('appends the next page when loadMore is called', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
     });
@@ -196,6 +198,7 @@ describe('useEntityLogs', () => {
   it('downloads ingestion logs and resets the progress store', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
     });
@@ -216,7 +219,8 @@ describe('useEntityLogs', () => {
       await result.current.download();
     });
 
-    expect(downloadIngestionLog).toHaveBeenCalledWith('pid');
+    // Logs are fetched/downloaded by fqn (not id) so the backend needs no id -> fqn lookup.
+    expect(downloadIngestionLog).toHaveBeenCalledWith('svc.pipeline');
     expect(mockUpdateProgress).toHaveBeenCalled();
     expect(mockReset).toHaveBeenCalled();
   });
@@ -226,6 +230,7 @@ describe('useEntityLogs — live (polling) state', () => {
   it('is live while the ingestion run is running', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
       pipelineStatuses: [{ pipelineState: PipelineState.Running }],
@@ -247,6 +252,7 @@ describe('useEntityLogs — live (polling) state', () => {
   it('is not live once the ingestion run reaches a terminal state', async () => {
     (getIngestionPipelineByFqn as jest.Mock).mockResolvedValue({
       id: 'pid',
+      fullyQualifiedName: 'svc.pipeline',
       name: 'My Pipeline',
       pipelineType: 'Metadata',
       pipelineStatuses: [{ pipelineState: PipelineState.Success }],

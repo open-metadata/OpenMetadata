@@ -970,6 +970,24 @@ public class IngestionPipelineResource
     return restoreEntity(uriInfo, securityContext, restore.getId());
   }
 
+  /**
+   * Resolve the ingestion pipeline from a path segment that is either its Id (UUID) or its
+   * fullyQualifiedName. Accepting the fqn lets a client fetch logs directly by the pipeline's
+   * fully-qualified name — the identifier the logs are stored under — without first looking up the
+   * pipeline Id, and keeps the log URL stable for a pipeline across its lifetime. The Id form is
+   * unchanged and remains fully supported.
+   */
+  private IngestionPipeline getIngestionPipelineByIdOrName(
+      UriInfo uriInfo, SecurityContext securityContext, String idOrName, String fields) {
+    try {
+      UUID pipelineId = UUID.fromString(idOrName);
+      return getInternal(uriInfo, securityContext, pipelineId, fields, Include.NON_DELETED);
+    } catch (IllegalArgumentException notAUuid) {
+      // Not a UUID -> treat the segment as the pipeline's fullyQualifiedName.
+      return getByNameInternal(uriInfo, securityContext, idOrName, fields, Include.NON_DELETED);
+    }
+  }
+
   @GET
   @Path("/logs/{id}/last")
   @Operation(
@@ -986,9 +1004,11 @@ public class IngestionPipelineResource
   public Response getLastIngestionLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+      @Parameter(
+              description = "Id (UUID) or fullyQualifiedName of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("id")
-          UUID id,
+          String id,
       @Parameter(
               description = "Returns log chunk after this cursor",
               schema = @Schema(type = "string"))
@@ -1004,8 +1024,8 @@ public class IngestionPipelineResource
       return Response.status(200).entity("Pipeline Client Disabled").build();
     }
     IngestionPipeline ingestionPipeline =
-        getInternal(
-            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner", Include.NON_DELETED);
+        getIngestionPipelineByIdOrName(
+            uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
     Map<String, String> lastIngestionLogs;
     boolean useStreamableLogs =
         ingestionPipeline.getEnableStreamableLogs()
@@ -1059,20 +1079,18 @@ public class IngestionPipelineResource
   public Response downloadLastIngestionLogs(
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
-      @Parameter(description = "Id of the ingestion pipeline", schema = @Schema(type = "UUID"))
+      @Parameter(
+              description = "Id (UUID) or fullyQualifiedName of the ingestion pipeline",
+              schema = @Schema(type = "string"))
           @PathParam("id")
-          UUID id) {
+          String id) {
     try {
       if (pipelineServiceClient == null) {
         return Response.status(200).entity("Pipeline Client Disabled").build();
       }
       IngestionPipeline ingestionPipeline =
-          getInternal(
-              uriInfo,
-              securityContext,
-              id,
-              "pipelineStatuses,ingestionRunner",
-              Include.NON_DELETED);
+          getIngestionPipelineByIdOrName(
+              uriInfo, securityContext, id, "pipelineStatuses,ingestionRunner");
 
       String filename =
           String.format(
