@@ -118,7 +118,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table filter with sorting should work', async ({
@@ -176,7 +176,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table page should show schema tab with count', async ({
