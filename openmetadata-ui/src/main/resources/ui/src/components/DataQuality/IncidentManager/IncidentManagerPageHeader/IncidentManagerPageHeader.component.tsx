@@ -172,6 +172,20 @@ const IncidentManagerPageHeader = ({
     );
   }, [testCaseStatusData, isLoading, taskLinkInfo, hasEditStatusPermission]);
 
+  const testDefinitionName = getEntityName(testCaseData?.testDefinition);
+  const testDefinitionDescription = testCaseData?.testDefinition?.description;
+
+  // The value is truncated to keep the header on one row, so reveal the full
+  // test type name (plus its description when present) on hover.
+  const testTypeTooltip = testDefinitionDescription ? (
+    <div className="tw:flex tw:flex-col tw:gap-1.5">
+      <div className="tw:font-medium">{testDefinitionName}</div>
+      <div>{testDefinitionDescription}</div>
+    </div>
+  ) : (
+    testDefinitionName
+  );
+
   return (
     <div className="incident-manager-header w-full">
       <DomainLabel
@@ -245,13 +259,15 @@ const IncidentManagerPageHeader = ({
       <HeaderDotSeparator />
       <HeaderField label={t('label.test-type')}>
         <Tooltip
-          isDisabled={!testCaseData?.testDefinition?.description}
+          isDisabled={!testDefinitionName}
           placement="bottom"
-          title={testCaseData?.testDefinition?.description}>
-          <TooltipTrigger className="tw:w-fit">
-            <HeaderFieldValue dataTestId="test-definition-name">
-              {getEntityName(testCaseData?.testDefinition)}
-            </HeaderFieldValue>
+          title={testTypeTooltip}>
+          <TooltipTrigger className="tw:w-fit tw:max-w-full">
+            <span
+              className="tw:block tw:max-w-[176px] tw:truncate tw:text-sm tw:font-medium tw:text-primary"
+              data-testid="test-definition-name">
+              {testDefinitionName}
+            </span>
           </TooltipTrigger>
         </Tooltip>
       </HeaderField>

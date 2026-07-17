@@ -145,7 +145,7 @@ def test_get_dashboards_empty_passes_with_caveat():
 
     evidence = provider.get_dashboards()
 
-    assert evidence.summary == "0 dashboards enumerated"
+    assert evidence.summary == "no dashboards enumerated"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "No dashboards visible"
 

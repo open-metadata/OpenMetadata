@@ -208,7 +208,7 @@ def test_check_access_reports_unreachable_host_as_network_failure():
     probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
     with (
         patch(
-            "metadata.core.connections.test_connection.checks.database.tcp_probe",
+            "metadata.core.connections.test_connection.network.tcp_probe",
             side_effect=probe_error,
         ) as mock_probe,
         pytest.raises(CheckError) as exc,

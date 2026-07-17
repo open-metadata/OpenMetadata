@@ -131,6 +131,11 @@ export interface AIContext {
      */
     downstream?: string[];
     /**
+     * Immediate downstream lineage edges with optional column mappings. Supplements the
+     * downstream fully qualified name list.
+     */
+    downstreamEdges?: LineageEdgeContext[];
+    /**
      * Entity type of the asset (table, dashboard, pipeline, topic, ...).
      */
     entityType?: string;
@@ -172,6 +177,11 @@ export interface AIContext {
      * Immediate upstream lineage (fully qualified names).
      */
     upstream?: string[];
+    /**
+     * Immediate upstream lineage edges with optional column mappings. Supplements the upstream
+     * fully qualified name list.
+     */
+    upstreamEdges?: LineageEdgeContext[];
 }
 
 /**
@@ -361,6 +371,46 @@ export interface TopicContext {
     partitions?:      number;
     schemaFields?:    FieldContext[];
     schemaType?:      string;
+}
+
+/**
+ * One immediate lineage edge of the asset: the neighboring asset's fully qualified name
+ * plus the column-level mappings recorded on the edge, when available.
+ */
+export interface LineageEdgeContext {
+    /**
+     * Column-level lineage recorded on this edge, capped server-side; fetch the full graph with
+     * the get_entity_lineage tool.
+     */
+    columns?: ColumnLineage[];
+    /**
+     * True when column-level lineage was truncated at the server-side per-edge cap; fetch the
+     * full graph with the get_entity_lineage tool.
+     */
+    columnsTruncated?: boolean;
+    /**
+     * Fully qualified name of the neighboring upstream or downstream asset.
+     */
+    fullyQualifiedName?: string;
+}
+
+export interface ColumnLineage {
+    /**
+     * One or more source columns identified by fully qualified column name used by
+     * transformation function to create destination column.
+     */
+    fromColumns?: string[];
+    /**
+     * Transformation function applied to source columns to create destination column. That is
+     * `function(fromColumns) -> toColumn`.
+     */
+    function?: string;
+    /**
+     * Destination column identified by fully qualified column name created by the
+     * transformation of source columns.
+     */
+    toColumn?: string;
+    [property: string]: any;
 }
 
 /**

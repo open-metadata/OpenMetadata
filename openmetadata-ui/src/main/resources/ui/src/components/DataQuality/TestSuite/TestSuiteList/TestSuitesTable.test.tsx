@@ -121,7 +121,43 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <td className={className}>{children}</td>
   );
 
+  const MockBox = ({
+    children,
+    ...props
+  }: React.PropsWithChildren<Record<string, unknown>>) => (
+    <div {...props}>{children}</div>
+  );
+
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    actions?: {
+      key: string;
+      label: React.ReactNode;
+      onPress?: () => void;
+    }[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {(actions ?? []).map((action) => (
+        <button
+          data-testid={`empty-placeholder-action-${action.key}`}
+          key={action.key}
+          onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return {
+    Box: MockBox,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Table: MockTable,
   };
 });
@@ -137,25 +173,6 @@ jest.mock('react-router-dom', () => ({
 
 jest.mock('../../../common/NextPrevious/NextPrevious', () =>
   jest.fn().mockImplementation(() => <div data-testid="next-previous" />)
-);
-
-jest.mock('../../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
-  __esModule: true,
-  default: jest
-    .fn()
-    .mockImplementation(({ type }) => (
-      <div data-testid={`error-placeholder-type-${type}`} />
-    )),
-}));
-
-jest.mock(
-  '../../../common/ErrorWithPlaceholder/FilterTablePlaceHolder',
-  () => ({
-    __esModule: true,
-    default: jest
-      .fn()
-      .mockImplementation(() => <div data-testid="filter-table-placeholder" />),
-  })
 );
 
 jest.mock('../../../common/OwnerLabel/OwnerLabel.component', () => ({
@@ -291,32 +308,111 @@ describe('TestSuitesTable component', () => {
     expect(mockOnSortChange).not.toHaveBeenCalled();
   });
 
-  it('should render FilterTablePlaceHolder when data is empty for table suites', () => {
-    renderTable({ data: [] });
+  it('should render the EmptyPlaceholder for empty table suites', () => {
+    render(
+      <TestSuitesTable
+        {...defaultProps}
+        data={[]}
+        hasActiveFilters={false}
+        isLoading={false}
+        subTab={DataQualitySubTabs.TABLE_SUITES}
+      />,
+      { wrapper: MemoryRouter }
+    );
 
-    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-table-suites-yet')).toBeInTheDocument();
   });
 
-  it('should render create placeholder when empty bundle suites with no active filters', () => {
+  it('should render the EmptyPlaceholder for empty bundle suites when no active filters', () => {
     renderTable({
       data: [],
       subTab: DataQualitySubTabs.BUNDLE_SUITES,
       hasActiveFilters: false,
     });
 
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
-      screen.getByTestId('error-placeholder-type-CREATE')
+      screen.getByText('message.no-bundle-suites-yet')
     ).toBeInTheDocument();
   });
 
-  it('should render FilterTablePlaceHolder for empty bundle suites when filters are active', () => {
+  it('should render the filtered EmptyPlaceholder copy when filters are active', () => {
     renderTable({
       data: [],
       subTab: DataQualitySubTabs.BUNDLE_SUITES,
       hasActiveFilters: true,
     });
 
-    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(
+      screen.getByText('message.no-matching-test-suites')
+    ).toBeInTheDocument();
+  });
+
+  it('should render the empty-state CTA when emptyStateAction is provided and no active filters', () => {
+    const mockOnPress = jest.fn();
+    const emptyStateAction = {
+      key: 'new-bundle-suite',
+      label: 'label.new-entity',
+      onPress: mockOnPress,
+    };
+
+    renderTable({
+      data: [],
+      hasActiveFilters: false,
+      subTab: DataQualitySubTabs.BUNDLE_SUITES,
+      emptyStateAction,
+    });
+
+    const actionButton = screen.getByTestId(
+      'empty-placeholder-action-new-bundle-suite'
+    );
+
+    expect(actionButton).toBeInTheDocument();
+    expect(actionButton).toHaveTextContent('label.new-entity');
+
+    fireEvent.click(actionButton);
+
+    expect(mockOnPress).toHaveBeenCalledTimes(1);
+  });
+
+  it('should NOT render the empty-state CTA on the Table Suites sub-tab', () => {
+    const emptyStateAction = {
+      key: 'new-bundle-suite',
+      label: 'label.new-entity',
+      onPress: jest.fn(),
+    };
+
+    renderTable({
+      data: [],
+      hasActiveFilters: false,
+      subTab: DataQualitySubTabs.TABLE_SUITES,
+      emptyStateAction,
+    });
+
+    expect(
+      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+    ).not.toBeInTheDocument();
+  });
+
+  it('should NOT render the empty-state CTA when filters are active, even with emptyStateAction provided', () => {
+    const emptyStateAction = {
+      key: 'new-bundle-suite',
+      label: 'label.new-entity',
+      onPress: jest.fn(),
+    };
+
+    renderTable({
+      data: [],
+      hasActiveFilters: true,
+      subTab: DataQualitySubTabs.BUNDLE_SUITES,
+      emptyStateAction,
+    });
+
+    expect(
+      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+    ).not.toBeInTheDocument();
   });
 
   it('should not render rows while loading', () => {
