@@ -508,6 +508,10 @@ SNOWFLAKE_GET_STREAM_DEFINITION = """
 SELECT GET_DDL('STREAM','{stream_name}') AS \"text\"
 """
 
+SNOWFLAKE_GET_SEMANTIC_VIEW_DEFINITION = """
+SELECT GET_DDL('SEMANTIC_VIEW','{semantic_view_name}') AS \"text\"
+"""
+
 SNOWFLAKE_QUERY_LOG_QUERY = """
     SELECT
         QUERY_ID,
