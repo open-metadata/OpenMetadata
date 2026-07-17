@@ -114,13 +114,10 @@ public class RecreateWithEmbeddings extends DefaultRecreateHandler {
     }
     markChunkTypeOutcomeAndRethrow(context, reindexSuccess, superFailure);
 
-    if (reindexSuccess) {
-      SearchRepository searchRepository = Entity.getSearchRepository();
-      if (searchRepository.isVectorEmbeddingEnabled()) {
-        LOG.info(
-            "Reindex finalized for entity type '{}' with vector embeddings enabled",
-            context.getEntityType());
-      }
+    if (reindexSuccess && Entity.getSearchRepository().isVectorEmbeddingEnabled()) {
+      LOG.info(
+          "Reindex finalized for entity type '{}' with vector embeddings enabled",
+          context.getEntityType());
     }
   }
 
