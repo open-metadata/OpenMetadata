@@ -32,6 +32,7 @@ const mockD3Force = jest.fn((name: string) =>
   name === 'charge' ? mockChargeForce : mockLinkForce
 );
 const mockD3ReheatSimulation = jest.fn();
+let mockForceGraphProps: { onEngineTick?: () => void } = {};
 const mockGraphMethods = {
   camera: jest.fn(() => ({ position: { x: 0, y: 0, z: 1000 } })),
   cameraPosition: jest.fn(),
@@ -44,7 +45,8 @@ const mockGraphMethods = {
 jest.mock('react-force-graph-3d', () => {
   const React = jest.requireActual('react');
   const MockForceGraph = React.forwardRef(
-    (_props: Record<string, unknown>, ref: unknown) => {
+    (props: Record<string, unknown>, ref: unknown) => {
+      mockForceGraphProps = props;
       React.useImperativeHandle(ref, () => mockGraphMethods);
 
       return React.createElement('canvas', {
@@ -85,6 +87,8 @@ const PROPS: KnowledgeGraph3DSceneProps = {
 
 describe('KnowledgeGraph3DScene', () => {
   beforeEach(() => {
+    jest.clearAllMocks();
+    mockForceGraphProps = {};
     mockLinkForce.distance.mockReturnValue(mockLinkForce);
     mockLinkForce.strength.mockReturnValue(mockLinkForce);
   });
@@ -95,5 +99,30 @@ describe('KnowledgeGraph3DScene', () => {
     expect(mockD3Force).toHaveBeenCalledWith('charge');
     expect(mockD3Force).toHaveBeenCalledWith('link');
     expect(mockD3ReheatSimulation).not.toHaveBeenCalled();
+  });
+
+  it('reheats the initialized simulation when graph data changes', () => {
+    const { rerender } = render(<KnowledgeGraph3DScene {...PROPS} />);
+
+    mockForceGraphProps.onEngineTick?.();
+    rerender(
+      <KnowledgeGraph3DScene
+        {...PROPS}
+        data={{
+          nodes: [
+            ...PROPS.data.nodes,
+            {
+              id: 'table-2',
+              name: 'orders',
+              type: 'table',
+              levels: ['asset'],
+            },
+          ],
+          links: [],
+        }}
+      />
+    );
+
+    expect(mockD3ReheatSimulation).toHaveBeenCalledTimes(1);
   });
 });

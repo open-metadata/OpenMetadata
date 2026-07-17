@@ -164,6 +164,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const refitPendingRef = useRef(false);
   const settledFitPendingRef = useRef(true);
   const layoutExpandedRef = useRef(false);
+  const simulationReadyRef = useRef(false);
   const cameraGuardTimerRef = useRef(0);
   const hoveredNodeRef = useRef<SceneNode | null>(null);
   const pendingHoveredNodeRef = useRef<SceneNode | null>(null);
@@ -376,10 +377,17 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     const link = graph?.d3Force('link');
     charge?.strength(CHARGE_STRENGTH);
     link?.distance(LINK_DISTANCE).strength(LINK_STRENGTH);
+    if (simulationReadyRef.current) {
+      graph?.d3ReheatSimulation();
+    }
     const frame = setTimeout(resetView, FRAME_DELAY_MS);
 
     return () => clearTimeout(frame);
   }, [data, resetView]);
+
+  const handleEngineTick = useCallback(() => {
+    simulationReadyRef.current = true;
+  }, []);
 
   const handleEngineStop = useCallback(() => {
     if (settledFitPendingRef.current) {
@@ -479,6 +487,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
         width={size.width}
         onBackgroundClick={() => onSelectNode(null)}
         onEngineStop={handleEngineStop}
+        onEngineTick={handleEngineTick}
         onLinkClick={(link: SceneLink) => onSelectLink(link as GraphLink3D)}
         onNodeClick={(node: SceneNode) => onSelectNode(node as GraphNode3D)}
         onNodeHover={handleNodeHover}
