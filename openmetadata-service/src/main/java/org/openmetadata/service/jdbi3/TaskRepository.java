@@ -855,6 +855,44 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
+   * Reopen a resolved workflow-managed task and restart its governance workflow so the lifecycle
+   * (stages, transitions, assignee flows, notifications) is live again. The prior Flowable
+   * instance ended at the workflow's end event and cannot be resumed, so the workflow is
+   * re-triggered from scratch on the same task: the task re-enters the initial stage and then
+   * moves through the requested transitions.
+   */
+  public Task reopenTaskWithWorkflow(Task task, String user) {
+    Task reopened = reopenTask(task, user);
+    if (reopened.getWorkflowDefinitionId() == null) {
+      return reopened;
+    }
+
+    Task original = JsonUtils.deepCopy(reopened, Task.class);
+    reopened.setWorkflowInstanceId(null);
+    reopened.setWorkflowStageId("pending-workflow-start");
+    reopened.setWorkflowStageDisplayName("Starting");
+    reopened.setAvailableTransitions(List.of());
+    reopened.setUpdatedBy(user);
+    reopened.setUpdatedAt(System.currentTimeMillis());
+    storeEntity(reopened, true);
+    postUpdate(original, reopened);
+
+    triggerWorkflowManagedTask(reopened);
+
+    Task refreshed =
+        get(
+            null,
+            reopened.getId(),
+            getFields(
+                "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution,availableTransitions"));
+    if ("workflow-start-failed".equals(refreshed.getWorkflowStageId())) {
+      throw new IllegalStateException(
+          String.format("Workflow restart failed for reopened task %s", reopened.getId()));
+    }
+    return refreshed;
+  }
+
+  /**
    * Close a task without applying any entity changes.
    */
   public Task closeTask(Task task, String user, String comment) {
