@@ -426,8 +426,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
     }
 
-    // Ongoing incidents come from the resolution-status timeseries (latest unresolved record),
-    // not from the incidentId frozen on the latest test case result at ingestion time.
+    // Ongoing incident = latest unresolved resolution-status record, not the result's stamped id.
     Map<String, UUID> fqnToOngoingIncident = new HashMap<>();
     if (setIncidents) {
       List<CollectionDAO.LatestRecordWithFQNHash> incidentRecords =
@@ -1074,10 +1073,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     return testCaseResult;
   }
 
-  /**
-   * Return the stateId of the test case's ongoing incident: the latest unresolved
-   * TestCaseResolutionStatus record. Resolved incidents are terminal and no longer ongoing.
-   */
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
   private UUID getIncidentId(TestCase test) {
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
