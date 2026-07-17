@@ -818,6 +818,17 @@ class SnowflakeSource(
 
         return [TableNameAndType(name=stage.name, type_=table_type) for stage in snowflake_stages.get_not_deleted()]
 
+    def _get_semantic_view_names_and_types(self, schema_name: str) -> List[TableNameAndType]:  # noqa: UP006
+        """Fetch semantic views from the schema"""
+        table_type = TableType.SemanticView
+
+        snowflake_semantic_views = self.inspector.get_semantic_view_names(schema=schema_name)
+
+        return [
+            TableNameAndType(name=semantic_view.name, type_=table_type)
+            for semantic_view in snowflake_semantic_views.get_not_deleted()
+        ]
+
     def query_table_names_and_types(self, schema_name: str) -> Iterable[TableNameAndType]:
         """
         Connect to the source database to get the table
@@ -834,6 +845,13 @@ class SnowflakeSource(
 
         if self.service_connection.includeStages:
             table_list.extend(self._get_stage_names_and_types(schema_name))
+
+        if self.service_connection.includeSemanticViews:
+            try:
+                table_list.extend(self._get_semantic_view_names_and_types(schema_name))
+            except Exception as exc:
+                logger.warning(f"Failed to list semantic views for schema [{schema_name}]: {exc}")
+                logger.debug(traceback.format_exc())
 
         return table_list
 
@@ -1068,8 +1086,8 @@ class SnowflakeSource(
         """
         Get columns of table/view/stream/stage
         """
-        # Stages do not have columns in Snowflake
-        if table_type == TableType.Stage:
+        # Stages and semantic views do not expose columns in Snowflake
+        if table_type in (TableType.Stage, TableType.SemanticView):
             return []
 
         # For streams, we will use source table/view's columns
@@ -1151,9 +1169,7 @@ class SnowflakeSource(
             elif table_type == TableType.Stream:
                 schema_definition = inspector.get_stream_definition(self.connection, table_name, schema_name)
             elif table_type == TableType.SemanticView:
-                schema_definition = inspector.get_semantic_view_definition(
-                    self.connection, table_name, schema_name
-                )
+                schema_definition = inspector.get_semantic_view_definition(self.connection, table_name, schema_name)
             elif table_type == TableType.Stage:
                 # Snowflake Stage does not have a DDL or definition,
                 # so we will return None for stage type
