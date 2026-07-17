@@ -11,9 +11,9 @@
  *  limitations under the License.
  */
 import {
+  borderAfter,
   Dropdown,
   Typography,
-  borderAfter,
 } from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isString } from 'lodash';

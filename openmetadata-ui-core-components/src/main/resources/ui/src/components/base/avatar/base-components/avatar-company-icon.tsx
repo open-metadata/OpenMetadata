@@ -6,7 +6,7 @@ const sizes = {
   md: 'size-3.5',
   lg: 'size-4',
   xl: 'size-4.5',
-  '2xl': 'size-5 ring-[1.67px]',
+  '2xl': 'size-5',
 };
 
 interface AvatarCompanyIconProps {
