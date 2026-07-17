@@ -43,7 +43,12 @@ from metadata.ingestion.api.models import Either, Entity, StackTraceError
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.atlas.client import AtlasClient
 from metadata.utils import fqn
@@ -78,7 +83,8 @@ class AtlasSource(Source):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
 
-        self.atlas_client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.atlas_client = self._connection.client if self._connection else get_connection(self.service_connection)
         self.connection_obj = self.atlas_client
         self.tables: Dict[str, Any] = {}  # noqa: UP006
         self.topics: Dict[str, Any] = {}  # noqa: UP006
@@ -89,7 +95,11 @@ class AtlasSource(Source):
             "Table": {self.service_connection.entity_type: {"db": "db", "column": "columns"}},
             "Topic": {"Topic": {"schema": "schema"}},
         }
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -140,7 +150,8 @@ class AtlasSource(Source):
                 )
 
     def close(self):
-        """Not required to implement"""
+        if self._connection is not None:
+            self._connection.close()
 
     def _parse_topic_entity(self, name):
         for key in self.topics:
@@ -426,4 +437,7 @@ class AtlasSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

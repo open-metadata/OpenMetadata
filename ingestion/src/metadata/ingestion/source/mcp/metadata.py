@@ -46,7 +46,12 @@ from metadata.ingestion.api.common import Entity
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.mcp.client import McpClient, McpProtocolError
 from metadata.ingestion.source.mcp.client import McpServerInfo as ClientServerInfo
 from metadata.ingestion.source.mcp.connection import McpConnectionManager
@@ -143,9 +148,16 @@ class McpSource(Source):
         self.service_connection: McpConnection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
 
-        self.connection_manager = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection_manager = (
+            self._connection.client if self._connection else get_connection(self.service_connection)
+        )
         self.connection_obj = self.connection_manager
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -377,8 +389,12 @@ class McpSource(Source):
 
     def close(self):
         """Cleanup resources"""
-        pass  # noqa: PIE790
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
         """Test connection to MCP servers"""
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

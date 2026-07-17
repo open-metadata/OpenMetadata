@@ -59,7 +59,12 @@ from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.models.user import OMetaUserProfile
 from metadata.ingestion.ometa.client_utils import get_chart_entities_from_id
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.metadata.amundsen.queries import (
     NEO4J_AMUNDSEN_DASHBOARD_QUERY,
@@ -121,10 +126,15 @@ class AmundsenSource(Source):
         self.database_object = None
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.client = self._connection.client if self._connection else get_connection(self.service_connection)
         self.connection_obj = self.client
         self.database_service_map = {service.value.lower(): service.value for service in DatabaseServiceType}
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -404,8 +414,8 @@ class AmundsenSource(Source):
             yield Either(right=chart)
 
     def close(self):
-        if self.client is not None:
-            self.client.close()
+        if self._connection is not None:
+            self._connection.close()
 
     def get_type_primitive_type(self, data_type):
         for p_type in PRIMITIVE_TYPES:
@@ -436,4 +446,7 @@ class AmundsenSource(Source):
         return None
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

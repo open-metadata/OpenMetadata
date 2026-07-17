@@ -13,7 +13,7 @@ Base class for ingesting security services
 """
 
 from abc import ABC
-from typing import Set  # noqa: UP035
+from typing import Any, Set  # noqa: UP035
 
 from pydantic import Field
 from typing_extensions import Annotated  # noqa: UP035
@@ -38,7 +38,12 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.utils.logger import ingestion_logger
 
 logger = ingestion_logger()
@@ -98,21 +103,35 @@ class SecurityServiceSource(TopologyRunnerMixin, Source, ABC):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: SecurityServiceMetadataPipeline = self.config.sourceConfig.config
 
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.client = self.get_client()
-        self.test_connection()
+        self.client = self.connection if self._connection else self.get_client()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
+
+    def get_client(self) -> Any:
+        """Build the client. Only reached when the connector ships no
+        ``connection_class``; migrated connectors take it from the owner."""
+        raise NotImplementedError(f"{type(self).__name__} has no connection_class and does not implement get_client")
 
     @property
     def name(self) -> str:
         return self.service_connection.type.name
 
     def close(self):
-        pass
+        if self._connection is not None:
+            self._connection.close()
 
     def yield_create_request_security_service(self, config: WorkflowSource):
         yield Either(right=self.metadata.get_create_service_from_source(entity=SecurityService, config=config))
 
     def test_connection(self) -> None:
-        self.client.test_connection()
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)

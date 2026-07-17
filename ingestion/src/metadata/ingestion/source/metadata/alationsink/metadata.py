@@ -35,7 +35,12 @@ from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.metadata.alationsink.client import AlationSinkClient
 from metadata.ingestion.source.metadata.alationsink.constants import (
     SERVICE_TYPE_MAPPER,
@@ -81,9 +86,16 @@ class AlationsinkSource(Source):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
 
-        self.alation_sink_client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.alation_sink_client = (
+            self._connection.client if self._connection else get_connection(self.service_connection)
+        )
         self.connectors = {}
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -387,7 +399,11 @@ class AlationsinkSource(Source):
                     self.ingest_schemas(alation_datasource.id, om_database)
 
     def close(self):
-        """Not required to implement"""
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.alation_sink_client, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.alation_sink_client, self.service_connection)
