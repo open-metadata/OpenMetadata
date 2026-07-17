@@ -227,8 +227,13 @@ public class SearchSourceBuilderFactoryTest {
             "description:\"exact phrase\"",
             "[a TO z]",
             "-deprecated",
+            "(-deprecated)",
+            "(+certified)",
+            "name:-deprecated",
+            "status:+active",
             "customer -orders",
-            "*PII*")
+            "*PII*",
+            "\\\\".repeat(5000) + "*")
         .forEach(query -> assertTrue(osFactory.containsQuerySyntax(query)));
 
     List.of(
@@ -237,14 +242,18 @@ public class SearchSourceBuilderFactoryTest {
             "\"customer orders\"",
             "[".repeat(5000),
             "[a TO " + " ".repeat(5000),
-            "a".repeat(5000))
+            "a".repeat(5000),
+            "\\\\".repeat(5000),
+            "\\\\".repeat(5000) + "\\*")
         .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
 
     List.of(
             "customer\\-orders",
             "name\\:test",
+            "name\\:-deprecated",
             "\\\"customer orders\\\"",
             "orders\\(daily\\)",
+            "\\(-deprecated",
             "\\[a TO z\\]")
         .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
   }
