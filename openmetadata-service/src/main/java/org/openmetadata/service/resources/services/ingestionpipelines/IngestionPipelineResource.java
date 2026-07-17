@@ -992,14 +992,17 @@ public class IngestionPipelineResource
   @Path("/logs/{id}/last")
   @Operation(
       summary = "Retrieve all logs from last ingestion pipeline run",
-      description = "Get all logs from last ingestion pipeline run by `Id`.",
+      description =
+          "Get all logs from last ingestion pipeline run by `Id` or `fullyQualifiedName`.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description =
                 "JSON object with the task instance name of the ingestion on each key and log in the value",
             content = @Content(mediaType = "application/json")),
-        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logs for the ingestion pipeline are not found")
       })
   public Response getLastIngestionLogs(
       @Context UriInfo uriInfo,
@@ -1068,13 +1071,16 @@ public class IngestionPipelineResource
   @Operation(
       operationId = "downloadLastIngestionLogs",
       summary = "Download all logs from last ingestion pipeline run as a stream",
-      description = "Stream all logs from last ingestion pipeline run by `Id` for download.",
+      description =
+          "Stream all logs from last ingestion pipeline run by `Id` or `fullyQualifiedName` for download.",
       responses = {
         @ApiResponse(
             responseCode = "200",
             description = "Log content as a downloadable stream",
             content = @Content(mediaType = "application/octet-stream")),
-        @ApiResponse(responseCode = "404", description = "Logs for instance {id} is not found")
+        @ApiResponse(
+            responseCode = "404",
+            description = "Logs for the ingestion pipeline are not found")
       })
   public Response downloadLastIngestionLogs(
       @Context UriInfo uriInfo,

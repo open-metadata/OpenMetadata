@@ -116,6 +116,7 @@ describe('useEntityLogs', () => {
     );
 
     await waitFor(() => expect(getIngestionPipelineByFqn).toHaveBeenCalled());
+
     expect(getIngestionPipelineLogById).not.toHaveBeenCalled();
   });
 
