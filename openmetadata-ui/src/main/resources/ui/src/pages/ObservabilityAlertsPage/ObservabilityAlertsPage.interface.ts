@@ -32,6 +32,8 @@ export interface UseObservabilityAlertsOptions {
 export interface UseObservabilityAlertsReturn {
   alertPermissions?: AlertPermission[];
   alertResourcePermission?: OperationPermission;
+  hasResourcePermissionError: boolean;
+  refetchResourcePermission: () => Promise<void>;
   alerts: EventSubscription[];
   columnList: AlertTableColumn[];
   currentPage: number;
@@ -66,6 +68,8 @@ export interface ObservabilityAlertActionsProps {
 
 export interface ObservabilityAlertsTableProps {
   alertPermissions?: AlertPermission[];
+  alertResourcePermission?: OperationPermission;
+  hasResourcePermissionError?: boolean;
   alerts: EventSubscription[];
   columnList: AlertTableColumn[];
   currentPage: number;
@@ -73,6 +77,7 @@ export interface ObservabilityAlertsTableProps {
   loadingCount: number;
   getAlertDetailsPath: (fqn: string) => string;
   onAddAlert: () => void;
+  onRetryPermission?: () => void;
   onEditAlert?: (alert: EventSubscription) => void;
   onPageChange: (params: PagingHandlerParams) => void;
   onPageSizeChange: (pageSize: number) => void;

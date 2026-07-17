@@ -9,6 +9,7 @@ import static org.openmetadata.service.migration.utils.v200.MigrationUtil.addTas
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillAnnouncementRelationships;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.backfillSearchRankingSettings;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateLegacyActivityThreadsToActivityStream;
+import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateRdfIndexAppScheduleToWeekly;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateSuggestionsToTaskEntity;
 import static org.openmetadata.service.migration.utils.v200.MigrationUtil.migrateThreadTasksToTaskEntity;
 
@@ -36,6 +37,7 @@ public class Migration extends MigrationProcessImpl {
     // runDataMigration() per PR #26571, so this dual-invoke is required to
     // close that path. The helper is idempotent — safe on every run.
     backfillSearchRankingSettings();
+    migrateRdfIndexAppScheduleToWeekly(collectionDAO);
     addTableColumnSearchSettings();
     migrateSuggestionsToTaskEntity(handle, POSTGRES);
     migrateThreadTasksToTaskEntity(handle, POSTGRES);
