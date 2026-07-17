@@ -11,7 +11,8 @@
  *  limitations under the License.
  */
 import type { FC, ReactNode } from 'react';
-import { useActiveFieldDoc } from './field-doc-context';
+import { useRef } from 'react';
+import { useActiveFieldDoc, useFieldDocRegistry } from './field-doc-context';
 
 export interface FieldDocPanelProps {
   /** Renders the active doc body. Defaults to preformatted text. */
@@ -19,9 +20,13 @@ export interface FieldDocPanelProps {
   /** Pinned card header (e.g. an icon + "Form Hint"); hidden when omitted. */
   header?: ReactNode;
   /**
-   * Shown when no documented field has focus. Rendered into a `relative`,
-   * non-scrolling container that fills the remaining column height, so an
-   * `EmptyPlaceholder` can be passed straight in and will centre itself.
+   * Shown until the first documented field is focused. Rendered into a
+   * `relative`, non-scrolling container that fills the remaining column
+   * height, so an `EmptyPlaceholder` can be passed straight in and will centre
+   * itself.
+   *
+   * Once a doc has been shown the panel keeps it (see below), so this is an
+   * initial state rather than a recurring one.
    *
    * Pass `width="100%"` to an EmptyPlaceholder here — its 300px default is
    * wider than this column's 260px minimum and would overflow when the column
@@ -41,6 +46,14 @@ const defaultRenderDoc = (doc: string): ReactNode => (
  * does no positioning — it occupies real layout space, so it cannot drift from
  * the surface or track the focused field's vertical position.
  *
+ * The last doc stays on screen once focus leaves the documented fields. The
+ * registry clears the active field on blur, which is right for the popover
+ * (it closes), but this column is always visible: reverting to the empty state
+ * every time focus lands on an undocumented control — the description editor,
+ * a button, whitespace — would blank the panel out mid-task. Holding the last
+ * doc is a presentation choice, so it lives here rather than in the shared
+ * registry.
+ *
  * Must be rendered inside a FieldDocProvider or it will always be empty.
  */
 export const FieldDocPanel: FC<FieldDocPanelProps> = ({
@@ -49,6 +62,21 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
   emptyState,
 }) => {
   const { entry } = useActiveFieldDoc();
+  const { enabled } = useFieldDocRegistry();
+  // Remembering the last entry is idempotent, so writing it during render is
+  // safe under StrictMode's double-invoke.
+  const lastEntry = useRef(entry);
+  if (entry) {
+    lastEntry.current = entry;
+  }
+  // Forget it while docs are switched off. The panel stays mounted (collapsed
+  // to zero width) so that toggling never remounts the form, which means a
+  // remembered doc would otherwise linger in the DOM while hidden and reappear
+  // instead of the empty state when docs are switched back on.
+  if (!enabled) {
+    lastEntry.current = undefined;
+  }
+  const shownEntry = enabled ? entry ?? lastEntry.current : undefined;
 
   return (
     <div
@@ -56,14 +84,14 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
       className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
       role="note">
       {header != null && <div className="tw:px-4 tw:pt-4">{header}</div>}
-      {entry ? (
+      {shownEntry ? (
         // Body scrolls within the column; the header (if any) stays pinned so a
         // long doc never pushes it out of view.
         <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-4">
           <h4 className="tw:text-md tw:mb-1 tw:font-semibold tw:text-primary">
-            {entry.label}
+            {shownEntry.label}
           </h4>
-          {(renderDoc ?? defaultRenderDoc)(entry.doc)}
+          {(renderDoc ?? defaultRenderDoc)(shownEntry.doc)}
         </div>
       ) : (
         // `relative` is required, not cosmetic: EmptyPlaceholder's shell is

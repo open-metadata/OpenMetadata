@@ -631,6 +631,34 @@ describe('TestCaseFormDrawer', () => {
       expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
     });
 
+    it('keeps the last doc when focus leaves the documented fields', async () => {
+      renderDrawer({ variant: 'modal' });
+
+      const testType = await screen.findByLabelText(/test type/i);
+
+      await act(async () => {
+        testType.focus();
+      });
+
+      expect(
+        await screen.findByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+
+      // Focus moves to something with no doc of its own. The panel is always on
+      // screen, so blanking it back to the empty state here would wipe the hint
+      // out mid-task.
+      await act(async () => {
+        fireEvent.blur(testType, {
+          relatedTarget: screen.getByTestId('test-case-name'),
+        });
+      });
+
+      expect(
+        screen.getByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    });
+
     it('keeps entered form values when the hint is toggled', async () => {
       renderDrawer({ variant: 'modal' });
 
