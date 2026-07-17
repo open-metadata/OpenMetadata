@@ -299,6 +299,8 @@ export interface DatabaseConnection {
  *
  * BurstIQ LifeGraph Database Connection Config
  *
+ * InfluxDB 3 Connection Config
+ *
  * IBM Informix Database Connection Config
  *
  * IOMETE Connection Config
@@ -330,6 +332,8 @@ export interface Connection {
      *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
+     *
+     * Regex to only fetch databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -399,6 +403,8 @@ export interface Connection {
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
      *
+     * InfluxDB 3 HTTP API URL (e.g. https://cluster.influxdata.com or http://localhost:8086).
+     *
      * Host and port of the Informix service.
      *
      * Host and port of the IOMETE service, e.g. dev.iomete.cloud:443
@@ -423,6 +429,8 @@ export interface Connection {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only fetch tables or databases that matches the pattern.
      *
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
@@ -466,6 +474,8 @@ export interface Connection {
      * Regex to only include/exclude tables that match the pattern.
      *
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+     *
+     * Regex exclude tables or databases that matches the pattern.
      *
      * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
      * pattern.
@@ -1286,6 +1296,10 @@ export interface Connection {
      */
     realmName?: string;
     /**
+     * InfluxDB 3 API token for authentication.
+     */
+    token?: string;
+    /**
      * Informix server name as defined in the sqlhosts file or INFORMIXSERVER environment
      * variable.
      */
@@ -2012,6 +2026,12 @@ export interface AccessDatabaseLocationLocalPathOrS3 {
  *
  * Regex to only include/exclude dictionaries (tables) that matches the pattern.
  *
+ * Regex to only fetch databases that matches the pattern.
+ *
+ * Regex to only fetch tables or databases that matches the pattern.
+ *
+ * Regex exclude tables or databases that matches the pattern.
+ *
  * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
  * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
  *
@@ -2500,6 +2520,7 @@ export enum ConfigType {
     Greenplum = "Greenplum",
     Hive = "Hive",
     Impala = "Impala",
+    InfluxDB = "InfluxDB",
     Informix = "Informix",
     Iomete = "Iomete",
     MariaDB = "MariaDB",
@@ -2651,6 +2672,7 @@ export enum DatabaseServiceType {
     Greenplum = "Greenplum",
     Hive = "Hive",
     Impala = "Impala",
+    InfluxDB = "InfluxDB",
     Informix = "Informix",
     Iomete = "Iomete",
     MariaDB = "MariaDB",

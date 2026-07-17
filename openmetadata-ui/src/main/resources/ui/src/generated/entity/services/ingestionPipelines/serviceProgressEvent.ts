@@ -3992,6 +3992,8 @@ export interface ServiceConnection {
  *
  * BurstIQ LifeGraph Database Connection Config
  *
+ * InfluxDB 3 Connection Config
+ *
  * IBM Informix Database Connection Config
  *
  * IOMETE Connection Config
@@ -4159,6 +4161,8 @@ export interface ConfigObject {
      * token to connect to Qlik Cloud.
      *
      * Hex API token for authentication. Can be personal or workspace token.
+     *
+     * InfluxDB 3 API token for authentication.
      *
      * To Connect to Dagster Cloud
      *
@@ -4362,6 +4366,8 @@ export interface ConfigObject {
      *
      * Host and port of the Microsoft Fabric SQL endpoint (e.g.,
      * your-workspace.datawarehouse.fabric.microsoft.com:1433).
+     *
+     * InfluxDB 3 HTTP API URL (e.g. https://cluster.influxdata.com or http://localhost:8086).
      *
      * Host and port of the Informix service.
      *
@@ -4916,6 +4922,8 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude namespaces (sources/spaces) that match the pattern. In
      * Dremio Cloud, namespaces are mapped as databases.
+     *
+     * Regex to only fetch databases that matches the pattern.
      */
     databaseFilterPattern?: FilterPattern;
     /**
@@ -4933,6 +4941,8 @@ export interface ConfigObject {
      *
      * Regex to only include/exclude folders that match the pattern. In Dremio Cloud, folders
      * are mapped as schemas.
+     *
+     * Regex to only fetch tables or databases that matches the pattern.
      *
      * Regex to only include/exclude IOMETE databases (e.g. 'default', 'finance_db') that match
      * the pattern. In IOMETE, a database corresponds to an OpenMetadata schema.
@@ -4971,6 +4981,8 @@ export interface ConfigObject {
      * Regex to only include/exclude tables that match the pattern.
      *
      * Regex to only include/exclude dictionaries (tables) that matches the pattern.
+     *
+     * Regex exclude tables or databases that matches the pattern.
      *
      * Regex to only include/exclude InfoProviders (ADSOs, CompositeProviders) that match the
      * pattern.
@@ -8461,6 +8473,7 @@ export enum PurpleType {
     Hex = "Hex",
     Hive = "Hive",
     Impala = "Impala",
+    InfluxDB = "InfluxDB",
     Informix = "Informix",
     Iomete = "Iomete",
     Kafka = "Kafka",
