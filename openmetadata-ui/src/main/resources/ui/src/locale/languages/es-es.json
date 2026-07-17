@@ -4229,7 +4229,7 @@
     "update-profiler-settings": "Actualizar la configuración del perfilador.",
     "update-tag-message": "Solicitud para actualizar etiquetas de",
     "updating-existing-not-possible-can-add-new-values": "No es posible actualizar valores existentes, solo se permite añadir nuevos valores.",
-    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG o SVG (máx. 5MB)",
+    "upload-document-hint": "Admite todos los tipos de archivo (máx. 5 MB)",
     "upload-failed": "Error al subir, inténtalo de nuevo",
     "upload-file": "Subir archivo",
     "upload-file-description": "Cargue archivos de contrato a este activo.",

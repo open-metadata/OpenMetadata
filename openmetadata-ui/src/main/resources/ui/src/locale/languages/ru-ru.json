@@ -4229,7 +4229,7 @@
     "update-profiler-settings": "Обновить настройки профилировщика.",
     "update-tag-message": "Запрос на обновление тегов для",
     "updating-existing-not-possible-can-add-new-values": "Обновлять существующие значения нельзя, но можно добавить новые.",
-    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG или SVG (макс. 5МБ)",
+    "upload-document-hint": "Поддерживаются все типы файлов (макс. 5 МБ)",
     "upload-failed": "Ошибка загрузки, попробуйте ещё раз",
     "upload-file": "Загрузить файл",
     "upload-file-description": "Загрузите файлы контракта для этого ресурса.",

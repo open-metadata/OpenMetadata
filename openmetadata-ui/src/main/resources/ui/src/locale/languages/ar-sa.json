@@ -4229,7 +4229,7 @@
     "update-profiler-settings": "تحديث إعدادات المُحلل (profiler).",
     "update-tag-message": "طلب تحديث العلامات لـ",
     "updating-existing-not-possible-can-add-new-values": "تحديث القيم الحالية غير ممكن، يُسمح فقط بإضافة قيم جديدة.",
-    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG أو SVG (الحد الأقصى 5MB)",
+    "upload-document-hint": "يدعم جميع أنواع الملفات (بحد أقصى 5 ميغابايت)",
     "upload-failed": "فشل التحميل، يرجى المحاولة مرة أخرى",
     "upload-file": "تحميل ملف",
     "upload-file-description": "قم بتحميل ملفات العقد إلى هذا الأصل.",

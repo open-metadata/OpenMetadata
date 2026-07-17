@@ -4229,7 +4229,7 @@
     "update-profiler-settings": "Uppdatera profileringsinställning.",
     "update-tag-message": "Begäran om att uppdatera taggar för",
     "updating-existing-not-possible-can-add-new-values": "Det går inte att uppdatera befintliga värden, endast tillägg av nya värden är tillåtet.",
-    "upload-document-hint": "PDF, DOC, XLS, CSV, PNG, JPG eller SVG (max. 5 MB)",
+    "upload-document-hint": "Stöder alla filtyper (max 5 MB)",
     "upload-failed": "Uppladdningen misslyckades, försök igen",
     "upload-file": "Ladda upp fil",
     "upload-file-description": "Ladda upp kontraktsfiler till denna tillgång.",
