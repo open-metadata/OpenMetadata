@@ -31,6 +31,10 @@ from metadata.generated.schema.entity.services.databaseService import (
 
 from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401, TID252
 
+HIVE_METASTORE_IMAGE = (
+    "bitsondatadev/hive-metastore@sha256:b44a186b6dcffafc6a72327aaa5912a5824feecb50718aaf661727ff6aef011b"
+)
+
 
 class TrinoTableNotReadyError(RuntimeError):
     pass
@@ -171,7 +175,7 @@ def mysql_container(docker_network):
 @pytest.fixture(scope="package")
 def hive_metastore_container(mysql_container, minio_container, docker_network):
     with (
-        HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
+        HiveMetaStoreContainer(HIVE_METASTORE_IMAGE)
         .with_network(docker_network)
         .with_network_aliases("metastore")
         .with_env("METASTORE_DB_HOSTNAME", "mariadb")
@@ -223,8 +227,43 @@ def create_test_data(trino_container):
 
         wait_for_table_data(engine, file_path.stem, expected_rows)
         _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
-    _execute_with_connect("CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')")
+    engine.dispose()
     return
+
+
+@pytest.fixture(scope="package")
+def reset_trino_table_statistics(trino_container, create_test_data):
+    engine = create_engine(make_url(trino_container.get_connection_url()).set(database="minio"))
+
+    def reset(table_name: str) -> None:
+        with engine.connect() as conn:
+            conn.execute(
+                text(f"CALL system.drop_stats(schema_name => 'my_schema', table_name => '{table_name}')")
+            ).fetchall()
+            conn.commit()
+
+        with engine.connect() as conn:
+            conn.execute(
+                text(f"CALL system.flush_metadata_cache(schema_name => 'my_schema', table_name => '{table_name}')")
+            ).fetchall()
+            conn.commit()
+
+        with engine.connect() as conn:
+            rows = conn.execute(text(f'SHOW STATS FOR "my_schema"."{table_name}"'))
+            table_statistics = [row._asdict() for row in rows if row._asdict().get("column_name") is None]
+
+        if len(table_statistics) != 1:
+            raise AssertionError(
+                f"Expected one table statistics row for [my_schema.{table_name}], got [{len(table_statistics)}]"
+            )
+        if table_statistics[0].get("row_count") is not None:
+            raise AssertionError(
+                f"Expected missing row-count statistics for [my_schema.{table_name}], "
+                f"got [{table_statistics[0].get('row_count')}]"
+            )
+
+    yield reset
+    engine.dispose()
 
 
 def create_test_data_from_parquet(engine: Engine, file_path: Path) -> int:
