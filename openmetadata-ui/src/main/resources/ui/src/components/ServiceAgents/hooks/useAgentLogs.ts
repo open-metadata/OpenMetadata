@@ -11,11 +11,10 @@
  *  limitations under the License.
  */
 
-import { AxiosError } from 'axios';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useMemo } from 'react';
 import { PipelineType } from '../../../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import { usePaginatedLiveLog } from '../../../hooks/usePaginatedLiveLog';
 import { getIngestionPipelineLogById } from '../../../rest/ingestionPipelineAPI';
-import { showErrorToast } from '../../../utils/ToastUtils';
 import { LogLine } from '../AgentsPage.interface';
 import {
   getLogTaskFieldForType,
@@ -31,73 +30,35 @@ interface UseAgentLogsResult {
 }
 
 /**
- * Streams the raw logs for a pipeline run via `getIngestionPipelineLogById`,
- * picking the task field for the pipeline type and paginating through the
- * `after`/`total` cursor. Parses the accumulated text into LogLine[].
+ * Reads the raw logs for a pipeline run via `getIngestionPipelineLogById`,
+ * picking the task field for the pipeline type. Delegates cursor pagination
+ * (infinite scroll) + tail polling to `usePaginatedLiveLog`; polls the tail
+ * only while `isActive`. Parses the accumulated text into LogLine[].
  */
 export const useAgentLogs = (
   id: string,
   pipelineType: PipelineType,
-  enabled: boolean
+  enabled: boolean,
+  isActive = false
 ): UseAgentLogsResult => {
-  const [rawText, setRawText] = useState('');
-  const [after, setAfter] = useState<string | undefined>();
-  const [total, setTotal] = useState<string | undefined>();
-  const [isLoading, setIsLoading] = useState(false);
-  const requestIdRef = useRef(0);
-
-  const fetchLogs = useCallback(
-    (cursor?: string) => {
-      const requestId = requestIdRef.current;
-      const isCurrent = () => requestId === requestIdRef.current;
-      setIsLoading(true);
-      getIngestionPipelineLogById(id, cursor)
-        .then((res) => {
-          if (!isCurrent()) {
-            return;
-          }
-          const chunk = getLogTaskFieldForType(res.data, pipelineType);
-          setRawText((prev) => (cursor ? prev + chunk : chunk));
-          setAfter(res.data.after);
-          setTotal(res.data.total);
-        })
-        .catch((err) => {
-          if (isCurrent()) {
-            showErrorToast(err as AxiosError);
-          }
-        })
-        .finally(() => {
-          if (isCurrent()) {
-            setIsLoading(false);
-          }
-        });
-    },
+  const fetchPage = useCallback(
+    (cursor?: string) =>
+      getIngestionPipelineLogById(id, cursor).then((res) => ({
+        content: getLogTaskFieldForType(res.data, pipelineType),
+        after: res.data.after,
+        total: res.data.total,
+      })),
     [id, pipelineType]
   );
 
-  useEffect(() => {
-    if (!enabled || !id) {
-      return;
-    }
-    requestIdRef.current += 1;
-    setRawText('');
-    setAfter(undefined);
-    setTotal(undefined);
-    fetchLogs();
+  const { logs, hasMore, loading, loadMore } = usePaginatedLiveLog({
+    fetchPage,
+    resetKey: id,
+    enabled: Boolean(enabled && id),
+    isLive: isActive,
+  });
 
-    return () => {
-      requestIdRef.current += 1;
-    };
-  }, [id, enabled, fetchLogs]);
+  const lines = useMemo(() => parseLogLines(logs), [logs]);
 
-  const lines = useMemo(() => parseLogLines(rawText), [rawText]);
-  const hasMore =
-    after !== undefined && total !== undefined && Number(after) < Number(total);
-  const loadMore = useCallback(() => {
-    if (hasMore) {
-      fetchLogs(after);
-    }
-  }, [hasMore, after, fetchLogs]);
-
-  return { lines, rawText, isLoading, hasMore, loadMore };
+  return { lines, rawText: logs, isLoading: loading, hasMore, loadMore };
 };

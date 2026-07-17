@@ -52,52 +52,45 @@ class GoogleDriveClient:
         self.drive_service = drive_service
 
 
-def get_connection(connection: GoogleDriveConnectionConfig) -> GoogleDriveClient:
-    """
-    Create connection to Google Drive
-    """
-    scopes = (
-        connection.scopes
-        if hasattr(connection, "scopes") and connection.scopes
-        else [
+class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDriveClient]):
+    def _get_client(self) -> GoogleDriveClient:
+        """
+        Create connection to Google Drive
+        """
+        connection = self.service_connection
+        scopes = getattr(connection, "scopes", None) or [
             "https://www.googleapis.com/auth/spreadsheets.readonly",
             "https://www.googleapis.com/auth/drive.readonly",
             "https://www.googleapis.com/auth/drive.metadata.readonly",
         ]
-    )
 
-    # Set Google credentials using the utility function
-    set_google_credentials(gcp_credentials=connection.credentials)
+        # Set Google credentials using the utility function
+        set_google_credentials(gcp_credentials=connection.credentials)
 
-    # Get default credentials - this will use the credentials set by set_google_credentials
-    credentials, _ = default(scopes=scopes)
+        # Get default credentials - this will use the credentials set by set_google_credentials
+        credentials, _ = default(scopes=scopes)
 
-    # Handle impersonation if configured
-    if (
-        connection.credentials.gcpImpersonateServiceAccount
-        and connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
-    ):
-        from google.auth import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-            impersonated_credentials,
-        )
+        # Handle impersonation if configured
+        if (
+            connection.credentials.gcpImpersonateServiceAccount
+            and connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount
+        ):
+            from google.auth import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+                impersonated_credentials,
+            )
 
-        credentials = impersonated_credentials.Credentials(
-            source_credentials=credentials,
-            target_principal=connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount,
-            target_scopes=scopes,
-            lifetime=connection.credentials.gcpImpersonateServiceAccount.lifetime,
-        )
+            credentials = impersonated_credentials.Credentials(
+                source_credentials=credentials,
+                target_principal=connection.credentials.gcpImpersonateServiceAccount.impersonateServiceAccount,
+                target_scopes=scopes,
+                lifetime=connection.credentials.gcpImpersonateServiceAccount.lifetime or 3600,
+            )
 
-    # Build the services
-    sheets_service = build("sheets", "v4", credentials=credentials)
-    drive_service = build("drive", "v3", credentials=credentials)
+        # Build the services
+        sheets_service = build("sheets", "v4", credentials=credentials)
+        drive_service = build("drive", "v3", credentials=credentials)
 
-    return GoogleDriveClient(sheets_service, drive_service)
-
-
-class GoogleDriveConnection(BaseConnection[GoogleDriveConnectionConfig, GoogleDriveClient]):
-    def _get_client(self) -> GoogleDriveClient:
-        return get_connection(self.service_connection)
+        return GoogleDriveClient(sheets_service, drive_service)
 
     def test_connection(
         self,

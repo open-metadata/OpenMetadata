@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Optional, Union
+from typing import Optional
 
 from botocore.client import BaseClient
 from confluent_kafka import Consumer as KafkaConsumer
@@ -43,23 +43,6 @@ from metadata.ingestion.connections.test_connections import (
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.utils.constants import THREE_MIN
-
-
-def get_connection(
-    connection: OpenLineageConnectionConfig,
-) -> Union[KafkaConsumer, BaseClient]:  # noqa: UP007
-    """
-    Create connection based on broker config type.
-    """
-    broker = connection.brokerConfig
-
-    if isinstance(broker, KafkaBrokerConfig):
-        return _get_kafka_connection(broker)
-
-    if isinstance(broker, KinesisBrokerConfig):
-        return _get_kinesis_connection(broker)
-
-    raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 
 
 def _get_kafka_connection(broker: KafkaBrokerConfig) -> KafkaConsumer:
@@ -113,7 +96,18 @@ def _get_kinesis_connection(broker: KinesisBrokerConfig):
 
 class OpenLineageConnection(BaseConnection[OpenLineageConnectionConfig, KafkaConsumer | BaseClient]):
     def _get_client(self) -> KafkaConsumer | BaseClient:
-        return get_connection(self.service_connection)
+        """
+        Create connection based on broker config type.
+        """
+        broker = self.service_connection.brokerConfig
+
+        if isinstance(broker, KafkaBrokerConfig):
+            return _get_kafka_connection(broker)
+
+        if isinstance(broker, KinesisBrokerConfig):
+            return _get_kinesis_connection(broker)
+
+        raise SourceConnectionException(f"Unsupported broker config type: {type(broker)}")
 
     def test_connection(
         self,

@@ -48,36 +48,31 @@ def get_connection_url(connection: DatabricksPipelineConnectionConfig) -> str:
     return url  # noqa: RET504
 
 
-def get_connection(connection: DatabricksPipelineConnectionConfig) -> DatabricksClient:
-    """
-    Create connection
-    """
-
-    if not connection.connectionArguments:
-        connection.connectionArguments = init_empty_connection_arguments()
-
-    if connection.httpPath:
-        connection.connectionArguments.root["http_path"] = connection.httpPath
-
-    auth_args = get_auth_config(connection)
-
-    original_connection_arguments = connection.connectionArguments
-    connection.connectionArguments = deepcopy(original_connection_arguments)
-    connection.connectionArguments.root.update(auth_args)  # pyright: ignore[reportOptionalMemberAccess]
-
-    engine = create_generic_db_connection(
-        connection=connection,
-        get_connection_url_fn=get_connection_url,
-        get_connection_args_fn=get_connection_args_common,
-    )
-
-    connection.connectionArguments = original_connection_arguments
-    return DatabricksClient(connection, engine)
-
-
 class DatabricksPipelineConnection(BaseConnection[DatabricksPipelineConnectionConfig, DatabricksClient]):
     def _get_client(self) -> DatabricksClient:
-        return get_connection(self.service_connection)
+        connection = self.service_connection
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        if connection.connectionArguments.root is None:
+            connection.connectionArguments.root = {}
+        if connection.httpPath:
+            connection.connectionArguments.root["http_path"] = connection.httpPath
+
+        auth_args = get_auth_config(connection)
+
+        original_connection_arguments = connection.connectionArguments
+        connection.connectionArguments = deepcopy(original_connection_arguments)
+        connection.connectionArguments.root.update(auth_args)
+
+        engine = create_generic_db_connection(
+            connection=connection,
+            get_connection_url_fn=get_connection_url,
+            get_connection_args_fn=get_connection_args_common,
+        )
+        self._on_close(engine.dispose)
+
+        connection.connectionArguments = original_connection_arguments
+        return DatabricksClient(connection, engine)
 
     def test_connection(
         self,

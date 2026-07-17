@@ -25,6 +25,7 @@ import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.openmetadata.schema.entity.app.App;
 import org.openmetadata.schema.entity.app.AppRunRecord;
+import org.openmetadata.schema.system.IndexingError;
 import org.openmetadata.schema.system.Stats;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -287,6 +288,13 @@ class OmAppJobListenerTest {
         JsonUtils.readOrConvertValue(dataMap.get("AppScheduleRun"), AppRunRecord.class);
     assert updatedRecord.getStatus() == AppRunRecord.Status.FAILED;
     assert updatedRecord.getFailureContext() != null;
+
+    IndexingError failure = updatedRecord.getFailureContext().getFailure();
+    assert failure != null;
+    assert IndexingError.ErrorSource.JOB.equals(failure.getErrorSource());
+    assert "Something went wrong".equals(failure.getMessage());
+    assert failure.getStackTrace() != null
+        && failure.getStackTrace().contains("Something went wrong");
   }
 
   @Test

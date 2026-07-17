@@ -138,8 +138,6 @@ test.describe.serial('User profile works after persona deletion', () => {
       await page.getByTestId('manage-button').click();
       await page.getByTestId('delete-button-title').click();
 
-      await page.getByTestId('hard-delete').click();
-
       const confirmButton = page.getByTestId('confirm-button');
 
       const deleteResponse = page.waitForResponse(

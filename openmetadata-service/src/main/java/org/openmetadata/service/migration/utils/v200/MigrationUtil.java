@@ -7,6 +7,7 @@ import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENT
 import static org.openmetadata.service.governance.workflows.Workflow.UPDATED_BY_VARIABLE;
 import static org.openmetadata.service.governance.workflows.WorkflowVariableHandler.getNamespacedVariableName;
 import static org.openmetadata.service.governance.workflows.elements.TriggerFactory.getTriggerWorkflowId;
+import static org.openmetadata.service.migration.utils.v160.MigrationUtil.addOperationsToPolicyRule;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.node.ArrayNode;
@@ -16,14 +17,22 @@ import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.jdbi.v3.core.Handle;
 import org.openmetadata.schema.EntityInterface;
+import org.openmetadata.schema.api.search.AssetTypeConfiguration;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
+import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -32,6 +41,7 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
+import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -62,6 +72,7 @@ import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
+import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
 import org.openmetadata.service.resources.databases.DatasourceConfig;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
@@ -75,6 +86,9 @@ public class MigrationUtil {
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
   private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+  private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
+  private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
+  private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -99,6 +113,142 @@ public class MigrationUtil {
       };
 
   private MigrationUtil() {}
+
+  public static void migrateRdfIndexAppScheduleToWeekly(CollectionDAO collectionDAO) {
+    try {
+      List<String> applications =
+          collectionDAO
+              .applicationDAO()
+              .listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "", "");
+      for (String applicationJson : applications) {
+        try {
+          App application = JsonUtils.readValue(applicationJson, App.class);
+          if (RDF_INDEX_APP_NAME.equals(application.getName())
+              && application.getAppSchedule() != null
+              && application.getAppSchedule().getScheduleTimeline() == ScheduleTimeline.CUSTOM
+              && RDF_OLD_DAILY_CRON.equals(application.getAppSchedule().getCronExpression())) {
+            application.getAppSchedule().setCronExpression(RDF_WEEKLY_CRON);
+            collectionDAO.applicationDAO().update(application);
+            LOG.info("Migrated {} schedule from daily to weekly", RDF_INDEX_APP_NAME);
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Skipping malformed application while migrating RDF schedule: {}", e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to migrate the RDF indexing schedule; continuing upgrade", e);
+    }
+  }
+
+  public static void backfillSearchRankingSettings() {
+    Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();
+    if (searchSettings == null) {
+      LOG.warn(
+          "Search settings not found in database. "
+              + "Default settings will be loaded on next startup with ranking settings.");
+    } else {
+      SearchSettings currentSettings = SearchSettingsMergeUtil.loadSearchSettings(searchSettings);
+      SearchSettings defaultSettings = SearchSettingsMergeUtil.loadSearchSettingsFromFile();
+      AssetTypeConfiguration defaultConfiguration =
+          defaultSettings != null ? defaultSettings.getDefaultConfiguration() : null;
+
+      if (currentSettings == null) {
+        LOG.warn("Stored searchSettings could not be loaded; skipping ranking settings backfill");
+      } else if (defaultConfiguration == null || defaultConfiguration.getRanking() == null) {
+        LOG.warn("Default ranking settings not found in packaged searchSettings.json");
+      } else {
+        AssetTypeConfiguration currentDefaultConfiguration =
+            currentSettings.getDefaultConfiguration();
+        if (currentDefaultConfiguration == null) {
+          currentSettings.setDefaultConfiguration(defaultConfiguration);
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled default search configuration with ranking settings");
+        } else if (currentDefaultConfiguration.getRanking() == null) {
+          currentDefaultConfiguration.setRanking(defaultConfiguration.getRanking());
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled search ranking settings into stored searchSettings");
+        } else if (mergeMissingDefaultRankingStages(
+            currentDefaultConfiguration.getRanking(), defaultConfiguration.getRanking())) {
+          SearchSettingsMergeUtil.saveSearchSettings(searchSettings, currentSettings);
+          LOG.info("Backfilled missing search ranking stages into stored searchSettings");
+        } else {
+          LOG.info("Search ranking settings already exist in stored searchSettings");
+        }
+      }
+    }
+  }
+
+  private static boolean mergeMissingDefaultRankingStages(
+      RankingConfiguration currentRanking, RankingConfiguration defaultRanking) {
+    if (currentRanking == null
+        || defaultRanking == null
+        || Boolean.FALSE.equals(currentRanking.getEnabled())) {
+      return false;
+    }
+
+    List<RankingStage> defaultStages = listOrEmpty(defaultRanking.getStages());
+    if (defaultStages.isEmpty()) {
+      return false;
+    }
+
+    List<RankingStage> currentStages = new ArrayList<>(listOrEmpty(currentRanking.getStages()));
+    Set<String> currentStageNames = new HashSet<>();
+    for (RankingStage stage : currentStages) {
+      if (!nullOrEmpty(stage.getName())) {
+        currentStageNames.add(stage.getName());
+      }
+    }
+
+    boolean merged = false;
+    for (int index = 0; index < defaultStages.size(); index++) {
+      RankingStage defaultStage = defaultStages.get(index);
+      if (nullOrEmpty(defaultStage.getName())
+          || currentStageNames.contains(defaultStage.getName())) {
+        continue;
+      }
+      currentStages.add(rankingStageInsertIndex(currentStages, defaultStages, index), defaultStage);
+      currentStageNames.add(defaultStage.getName());
+      merged = true;
+      LOG.info("Backfilled missing search ranking stage: {}", defaultStage.getName());
+    }
+
+    if (merged) {
+      currentRanking.setStages(currentStages);
+    }
+    return merged;
+  }
+
+  private static int rankingStageInsertIndex(
+      List<RankingStage> currentStages, List<RankingStage> defaultStages, int defaultStageIndex) {
+    for (int index = defaultStageIndex - 1; index >= 0; index--) {
+      int currentIndex = rankingStageIndex(currentStages, defaultStages.get(index).getName());
+      if (currentIndex >= 0) {
+        return currentIndex + 1;
+      }
+    }
+
+    for (int index = defaultStageIndex + 1; index < defaultStages.size(); index++) {
+      int currentIndex = rankingStageIndex(currentStages, defaultStages.get(index).getName());
+      if (currentIndex >= 0) {
+        return currentIndex;
+      }
+    }
+
+    return currentStages.size();
+  }
+
+  private static int rankingStageIndex(List<RankingStage> stages, String stageName) {
+    if (nullOrEmpty(stageName)) {
+      return -1;
+    }
+    for (int index = 0; index < stages.size(); index++) {
+      if (stageName.equals(stages.get(index).getName())) {
+        return index;
+      }
+    }
+    return -1;
+  }
 
   /**
    * Ensure {@code TaskAuthorPolicy} is seeded and attached to the {@code DataConsumer} role on
@@ -239,6 +389,23 @@ public class MigrationUtil {
       LOG.error(
           "Failed to add {} to {}: {}", TASK_RULE_NAME, DATA_CONSUMER_POLICY, ex.getMessage(), ex);
     }
+  }
+
+  /**
+   * Backfill the {@code CreateTask} operation onto an existing tenant's {@code ApplicationBotPolicy}.
+   * The operation is added to the seed JSON in this release but seed policies are
+   * create-if-not-exists, so without this migration upgraded deployments would leave application
+   * bots (e.g. the AI automation bot) unable to file suggestions as task entities — {@link
+   * org.openmetadata.service.resources.tasks.TaskResource} rejects the create with 403. Idempotent:
+   * {@link org.openmetadata.service.migration.utils.v160.MigrationUtil#addOperationsToPolicyRule}
+   * skips the operation when it is already present.
+   */
+  public static void addCreateTaskOperationToApplicationBotPolicy(CollectionDAO collectionDAO) {
+    addOperationsToPolicyRule(
+        "ApplicationBotPolicy",
+        "ApplicationBotRule-Allow",
+        List.of(MetadataOperation.CREATE_TASK),
+        collectionDAO);
   }
 
   private static Policy ensureTaskAuthorPolicySeeded(PolicyRepository repository) {

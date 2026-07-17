@@ -61,10 +61,17 @@ test(
         .click();
       await page.getByTestId('profiler-add-table-test-btn').click();
       await selectAddObservabilityFeature(page, ObservabilityFeature.TEST_CASE);
-      await page.getByTestId('test-case-name').clear();
-      await page.getByTestId('test-case-name').fill(testCaseName);
-      await page.getByTestId('test-type').locator('div').click();
-      await page.getByTestId('tableColumnCountToEqual').click();
+      await page.getByTestId('test-case-name').locator('input').clear();
+      await page
+        .getByTestId('test-case-name')
+        .locator('input')
+        .fill(testCaseName);
+      await page.click('[id="root\\/testType"]');
+      await page
+        .getByRole('option')
+        .filter({ hasText: 'Table Column Count To Equal' })
+        .first()
+        .click();
       await page.getByPlaceholder('Enter a Count').fill('13');
       await submitTestCaseForm(page);
 
@@ -209,12 +216,13 @@ test(
         .click();
       await confirmIngestionPipelineHardDelete(page);
 
-      await expect(
-        page.getByTestId('assign-error-placeholder-Pipeline')
-      ).toContainText(
+      const emptyPlaceholder = page.getByTestId('empty-placeholder');
+      await expect(emptyPlaceholder).toContainText(
         "Add a pipeline to automate the data quality tests at a regular schedule. It's advisable to align the schedule with the frequency of table loads for optimal results"
       );
-      await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
+      await expect(
+        emptyPlaceholder.getByRole('button', { name: /add pipeline/i })
+      ).toBeVisible();
     });
 
     await table.delete(apiContext);

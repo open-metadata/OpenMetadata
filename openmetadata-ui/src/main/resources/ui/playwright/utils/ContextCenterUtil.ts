@@ -18,11 +18,13 @@ import {
   Page,
   Response,
 } from '@playwright/test';
+import { SLASH_COMMANDS } from '../constant/KnowledgeCenter.constant';
 import { PolicyRulesType } from '../support/access-control/PoliciesClass';
 import { KnowledgeCenterResponseDataType } from '../support/entity/KnowledgeCenter.interface';
 import { UserClass } from '../support/user/UserClass';
 import { createNewPage, uuid } from './common';
 import { waitForAllLoadersToDisappear } from './entity';
+import { executeSlashCommand } from './KnowledgeCenter';
 
 // ─── Document types ───────────────────────────────────────────────────────────
 
@@ -254,7 +256,10 @@ export const selectFolderInSidebar = async (
 };
 
 export const openUploadModal = async (page: Page): Promise<void> => {
-  await page.getByRole('button', { name: /upload file/i }).click();
+  await page
+    .getByTestId('header-shell')
+    .getByRole('button', { name: /upload file/i })
+    .click();
   await expect(
     page.getByRole('dialog', { name: /upload documents/i })
   ).toBeVisible();
@@ -296,7 +301,7 @@ export const softDeleteDocument = async (
 ): Promise<void> => {
   const docRow = page.getByTestId(docRowId);
   await expect(docRow).toBeVisible();
-  await docRow.locator('button[aria-label="Open menu"]').click();
+  await docRow.getByTestId('manage-button').click();
   await page.getByTestId('delete-btn').click();
 
   const deleteResPromise = page.waitForResponse(
@@ -352,11 +357,47 @@ export const uploadDisposableDocument = async (
   return { id: data.id, name };
 };
 
+export async function waitForDocumentInFileList(
+  apiContext: APIRequestContext,
+  documentId: string,
+  timeout = 60_000,
+  interval = 2_000
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: { orderBy: 'DESC', limit: 100 },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling the file list for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in the file list after ${timeout}ms`
+  );
+}
+
 export const createDisposableArchivedDocument = async (
   apiContext: APIRequestContext,
   namePrefix = 'cc-disposable-archived-doc'
 ): Promise<{ id: string; name: string }> => {
   const { id, name } = await uploadDisposableDocument(apiContext, namePrefix);
+  await waitForDocumentInFileList(apiContext, id);
   await apiContext.delete(
     `/api/v1/contextCenter/drive/files/${id}?hardDelete=false`
   );
@@ -364,7 +405,7 @@ export const createDisposableArchivedDocument = async (
   return { id, name };
 };
 
-export async function waitForDocumentInArchive(
+export async function waitForDocumentPermanentlyDeleted(
   apiContext: APIRequestContext,
   documentId: string,
   timeout = 60_000,
@@ -374,63 +415,18 @@ export async function waitForDocumentInArchive(
 
   while (Date.now() - start < timeout) {
     const response = await apiContext.get(
-      '/api/v1/contextCenter/drive/files?include=deleted&limit=1000'
+      `/api/v1/contextCenter/drive/files/${documentId}?include=all`
     );
 
-    expect(response.ok()).toBeTruthy();
-
-    const files = await response.json();
-
-    const found = (files?.data ?? []).some(
-      (file: { id: string; deleted: boolean }) =>
-        file.id === documentId && file.deleted === true
-    );
-
-    if (found) {
+    if (response.status() === 404) {
       return;
     }
 
-    await new Promise((resolve) => setTimeout(resolve, interval));
-  }
-
-  throw new Error(
-    `Document ${documentId} did not appear in archive API within ${timeout}ms`
-  );
-}
-
-export async function waitForDocumentPermanentlyDeleted(
-  apiContext: APIRequestContext,
-  documentId: string,
-  timeout = 60_000,
-  interval = 2_000
-) {
-  const start = Date.now();
-  const pageSize = 200;
-
-  while (Date.now() - start < timeout) {
-    let after: string | undefined;
-    let foundInArchive = false;
-
-    do {
-      const response = await apiContext.get(
-        `/api/v1/contextCenter/drive/files?include=deleted&limit=${pageSize}${
-          after ? `&after=${after}` : ''
-        }`
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling for permanent deletion of document ${documentId}: ${response.status()} ${body}`
       );
-
-      expect(response.ok()).toBeTruthy();
-
-      const files = await response.json();
-
-      foundInArchive = (files?.data ?? []).some(
-        (file: { id: string }) => file.id === documentId
-      );
-
-      after = files?.paging?.after;
-    } while (!foundInArchive && after);
-
-    if (!foundInArchive) {
-      return;
     }
 
     await new Promise((resolve) => setTimeout(resolve, interval));
@@ -440,6 +436,58 @@ export async function waitForDocumentPermanentlyDeleted(
     `Document ${documentId} was still present in the archive API after ${timeout}ms`
   );
 }
+
+interface WaitForDocumentInArchiveOptions {
+  updatedBy?: string;
+  timeout?: number;
+  interval?: number;
+  limit?: number;
+}
+
+export async function waitForDocumentInArchive(
+  apiContext: APIRequestContext,
+  documentId: string,
+  {
+    updatedBy,
+    timeout = 60_000,
+    interval = 2_000,
+    limit = 100,
+  }: WaitForDocumentInArchiveOptions = {}
+) {
+  const start = Date.now();
+
+  while (Date.now() - start < timeout) {
+    const response = await apiContext.get('/api/v1/contextCenter/drive/files', {
+      params: {
+        include: 'deleted',
+        orderBy: 'DESC',
+        limit,
+        ...(updatedBy ? { updatedBy } : {}),
+      },
+    });
+
+    if (!response.ok()) {
+      const body = await response.text();
+      throw new Error(
+        `Unexpected response while polling the archive list for document ${documentId}: ${response.status()} ${body}`
+      );
+    }
+
+    const { data } = await response.json();
+    if (
+      (data as Array<{ id: string }>).some((file) => file.id === documentId)
+    ) {
+      return;
+    }
+
+    await new Promise((resolve) => setTimeout(resolve, interval));
+  }
+
+  throw new Error(
+    `Document ${documentId} did not appear in the archive list (limit=${limit}) after ${timeout}ms`
+  );
+}
+
 export const ARTICLE_DESCRIPTION =
   'Playwright article description for card detail check';
 export const QUICK_LINK_URL = 'https://example.com';
@@ -638,6 +686,11 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
       .getAttribute('data-testid');
 
   let previousLastCard = '';
+  // Require 3 consecutive unchanged readings before concluding end-of-list.
+  // A single unchanged reading can be a false positive when the scroll lands
+  // just before the next infinite-scroll fetch threshold.
+  let staleCount = 0;
+
   for (let attempt = 0; attempt < 50 && !(await card.isVisible()); attempt++) {
     // Registered before the scroll so it can observe the fetch the scroll
     // triggers; only awaited below if the card list looks unchanged.
@@ -665,9 +718,17 @@ export const scrollListingToCard = async (page: Page, displayName: string) => {
       lastCard = await getLastCard();
 
       if (lastCard === previousLastCard) {
-        break;
+        staleCount += 1;
+        if (staleCount >= 3) {
+          break;
+        }
+      } else {
+        staleCount = 0;
       }
+    } else {
+      staleCount = 0;
     }
+
     previousLastCard = lastCard ?? '';
   }
 
@@ -795,4 +856,49 @@ export const readDraftStore = async (
   } catch {
     return {};
   }
+};
+
+/**
+ * A minimal valid 1x1 transparent PNG, used as an in-memory upload fixture
+ * since this repo has no binary image fixtures under playwright/test-data/.
+ */
+const ONE_PIXEL_PNG_BASE64 =
+  'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mNk+A8AAQUBAScY42YAAAAASUVORK5CYII=';
+
+export const insertImageViaUpload = async (
+  page: Page,
+  fileName: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').click();
+  await page.getByRole('tab', { name: 'Upload' }).click();
+
+  const uploadResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/api/v1/attachments/upload') &&
+      response.request().method() === 'POST'
+  );
+
+  await page.getByTestId('upload-file-input').setInputFiles({
+    name: fileName,
+    mimeType: 'image/png',
+    buffer: Buffer.from(ONE_PIXEL_PNG_BASE64, 'base64'),
+  });
+
+  const uploadResponse = await uploadResponsePromise;
+  expect(uploadResponse.status()).toBe(201);
+};
+
+export const insertImageViaUrl = async (
+  page: Page,
+  url: string
+): Promise<void> => {
+  await executeSlashCommand(page, SLASH_COMMANDS.image);
+  await page.getByTestId('add-image-container').last().click();
+  const embedForm = page.getByTestId('embed-link-form');
+  await expect(embedForm).toBeVisible();
+  await embedForm.getByTestId('embed-input').fill(url);
+  await embedForm.getByRole('button', { name: /embed/i }).click();
+
+  await expect(embedForm).not.toBeVisible();
 };
