@@ -112,11 +112,16 @@ export const AiFormModal: FC<AiFormModalProps> = ({
           className="tw:w-full tw:justify-center"
           direction="row">
           {/* Dialog applies `width` as max-width, so the transition targets
-              max-width. The modal grows/shrinks in place and stays centered —
-              the hint is a column inside it, not a floating layer beside it. */}
+              max-width. It must go on `panelClassName`, not `className`: the
+              latter lands on the outer dialog wrapper, and the modal would then
+              snap to its new width while the hint column animated separately —
+              the two must move in lockstep or the hint visibly overflows the
+              modal mid-transition.
+              The modal grows/shrinks in place and stays centered — the hint is
+              a column inside it, not a floating layer beside it. */}
           <Dialog
             showCloseButton
-            className="tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out"
+            panelClassName="tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out"
             width={
               hasHintColumn
                 ? hintOpen
