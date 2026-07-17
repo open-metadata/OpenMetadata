@@ -200,6 +200,7 @@ const MetricListPage = () => {
   const {
     data: permission = DEFAULT_ENTITY_PERMISSION,
     isPending: isPermissionPending,
+    error: permissionError,
   } = useQuery({
     queryKey: ['metric-list-permission', ResourceEntity.METRIC],
     queryFn: () => getResourcePermission(ResourceEntity.METRIC),
@@ -246,20 +247,24 @@ const MetricListPage = () => {
 
   const totalMetrics = searchResponse?.hits.total.value ?? 0;
 
+  const listingError = permissionError ?? metricsError;
+  const listingErrorMessage = permissionError
+    ? t('server.fetch-entity-permissions-error', {
+        entity: t('label.metric-plural'),
+      })
+    : t('server.entity-fetch-error', { entity: t('label.metric-plural') });
+
   useEffect(() => {
     handlePagingChange({ total: totalMetrics });
   }, [totalMetrics, handlePagingChange]);
 
   useEffect(() => {
-    if (metricsError) {
+    if (listingError) {
       showErrorToast(
-        getErrorText(
-          metricsError as AxiosError,
-          t('server.entity-fetch-error', { entity: t('label.metric-plural') })
-        )
+        getErrorText(listingError as AxiosError, listingErrorMessage)
       );
     }
-  }, [metricsError, t]);
+  }, [listingError, listingErrorMessage]);
 
   const handleStatusFilterChange = useCallback(
     (status?: EntityStatus) => {
@@ -628,14 +633,11 @@ const MetricListPage = () => {
     return <Loader />;
   }
 
-  if (metricsError && !searchResponse) {
+  if (listingError && !searchResponse) {
     return (
       <ErrorPlaceHolder>
         <p className="text-center m-auto">
-          {getErrorText(
-            metricsError as AxiosError,
-            t('server.entity-fetch-error', { entity: t('label.metric-plural') })
-          )}
+          {getErrorText(listingError as AxiosError, listingErrorMessage)}
         </p>
       </ErrorPlaceHolder>
     );

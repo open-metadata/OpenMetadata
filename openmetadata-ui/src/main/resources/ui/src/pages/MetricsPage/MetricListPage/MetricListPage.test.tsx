@@ -453,4 +453,22 @@ describe('MetricListPage', () => {
       screen.queryByTestId('metric-empty-placeholder')
     ).not.toBeInTheDocument();
   });
+
+  it('surfaces an error when the permission fetch fails', async () => {
+    const {
+      usePermissionProvider,
+    } = require('../../../context/PermissionProvider/PermissionProvider');
+    usePermissionProvider.mockReturnValue({
+      getResourcePermission: jest
+        .fn()
+        .mockRejectedValue(new Error('permission boom')),
+    });
+    const { showErrorToast } = require('../../../utils/ToastUtils');
+
+    renderPage();
+
+    expect(await screen.findByTestId('error-placeholder')).toBeInTheDocument();
+
+    await waitFor(() => expect(showErrorToast).toHaveBeenCalled());
+  });
 });
