@@ -43,8 +43,6 @@ const LineageControlButtons: FC<{
   const { reactFlowInstance, redraw } = useLineageProvider();
   const navigate = useNavigate();
   const location = useCustomLocation();
-  const [fitViewOpen, setFitViewOpen] = useState(false);
-  const fitScreenRef = useRef<HTMLButtonElement>(null);
 
   const isFullscreen = useMemo(() => {
     const params = Qs.parse(location.search, { ignoreQueryPrefix: true });
@@ -128,16 +126,14 @@ const LineageControlButtons: FC<{
       selectionMode="multiple"
       size="sm"
       onSelectionChange={() => void 0}>
-      <Dropdown.Root isOpen={fitViewOpen} onOpenChange={setFitViewOpen}>
+      <Dropdown.Root>
         <ButtonGroupItem
           aria-label={t('label.lineage-view-option-plural')}
           data-testid="fit-screen"
           iconLeading={FitViewOptionsIcon as FC<{ className?: string }>}
           id="fit-view"
-          ref={fitScreenRef}
-          onPress={() => setFitViewOpen(true)}
         />
-        <Dropdown.Popover placement="top right" triggerRef={fitScreenRef}>
+        <Dropdown.Popover placement="right">
           <Dropdown.Menu
             aria-label={t('label.lineage-view-option-plural')}
             selectionMode="none"

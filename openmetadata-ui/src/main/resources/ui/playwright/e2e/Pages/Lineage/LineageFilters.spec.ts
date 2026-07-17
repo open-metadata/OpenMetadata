@@ -131,7 +131,7 @@ test.describe('Lineage Filters', () => {
     await setLineageDepthAndVerify(page, 2, 2);
     await waitForAllLoadersToDisappear(page);
     await rearrangeNodes(page);
-    await performZoomOut(page);
+    await fitToScreen(page);
     await expect(
       page.getByTestId(
         `lineage-node-${lineageEntity.entityResponseData.fullyQualifiedName}`
@@ -291,7 +291,7 @@ test.describe('Lineage Filters', () => {
           await lineageRes;
 
           await rearrangeNodes(page);
-          await performZoomOut(page);
+          await fitToScreen(page);
 
           for (const entity of entitiesToShow) {
             await expect(
@@ -523,7 +523,7 @@ test.describe('Lineage Filters', () => {
         await expect(page.getByRole('button', { name: 'Update' })).toBeHidden();
 
         await rearrangeNodes(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
           await expect(
@@ -688,7 +688,7 @@ test.describe('Lineage Filters', () => {
         await lineageRes;
 
         await rearrangeNodes(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entitiesToShow) {
           await expect(
@@ -783,7 +783,7 @@ test.describe('Lineage Filters', () => {
       await lineageRes;
 
       await rearrangeNodes(page);
-      await performZoomOut(page);
+      await fitToScreen(page);
 
       // filtered service node should be visible
       await expect(
@@ -828,7 +828,7 @@ test.describe('Lineage Filters', () => {
       await lineageRes;
 
       await rearrangeNodes(page);
-      await performZoomOut(page);
+      await fitToScreen(page);
 
       // filtered service node should be visible
       await expect(
@@ -873,7 +873,7 @@ test.describe('Lineage Filters', () => {
       await lineageRes;
 
       await rearrangeNodes(page);
-      await performZoomOut(page);
+      await fitToScreen(page);
 
       // filtered service node should be visible
       await expect(
@@ -934,7 +934,7 @@ test.describe('Lineage Filters', () => {
     });
 
     await rearrangeNodes(page);
-    await performZoomOut(page);
+    await fitToScreen(page);
 
     await expect(page.getByTestId(`lineage-node-${topicFqn}`)).toBeVisible();
   });
