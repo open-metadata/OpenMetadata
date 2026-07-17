@@ -2923,7 +2923,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "bulk list derivation must also clear the pointer after resolve");
             });
 
-    // Manual Ack after Resolved reopens the SAME incident (task-first reopen semantics).
     client
         .testCaseResolutionStatuses()
         .create(
@@ -2950,7 +2949,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "bulk list derivation must agree with the single read");
             });
 
-    // A passing run does NOT close the incident: the pointer must survive it.
     client
         .testCaseResults()
         .create(

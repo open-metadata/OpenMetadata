@@ -220,10 +220,8 @@ public class TestCaseResolutionStatusRepository
               ? lastIncident.getSeverity()
               : recordEntity.getSeverity());
     } else if (lastIncident != null && isReopeningStatus(recordEntity)) {
-      // Manual Ack/Assigned (or repeated Resolved) after a Resolved incident REOPENS that
-      // incident: keep the same stateId (and severity) so the timeline stays contiguous and the
-      // bridge can find the incident's Task by id. `New` is deliberately excluded — a new
-      // failure after resolution starts a fresh incident (see getOrCreateIncident).
+      // Ack/Assigned/Resolved after a Resolved incident reopens it: reuse the stateId and severity
+      // so the timeline stays contiguous. New is excluded — a new failure starts a fresh incident.
       recordEntity.setStateId(lastIncident.getStateId());
       recordEntity.setSeverity(
           recordEntity.getSeverity() == null
@@ -321,7 +319,7 @@ public class TestCaseResolutionStatusRepository
     if (TaskRepository.isTerminalStatus(task.getStatus())
         && recordEntity.getTestCaseResolutionStatusType()
             != TestCaseResolutionStatusTypes.Resolved) {
-      // Ack/Assigned on a resolved incident REOPENS it: same task (stateId), workflow restarted.
+      // Ack/Assigned on a resolved incident reopens it: same task/stateId, workflow restarted.
       String reopeningUser =
           recordEntity.getUpdatedBy() != null ? recordEntity.getUpdatedBy().getName() : null;
       try {
@@ -377,8 +375,8 @@ public class TestCaseResolutionStatusRepository
     UUID stateId = recordEntity.getStateId();
     if (stateId != null) {
       try {
-        // `about` is relationship-backed and stripped from the stored JSON, so it must be
-        // requested explicitly — a bare find() would never match the FQN guard below.
+        // `about` is relationship-backed and stripped from stored JSON — request it explicitly,
+        // or a bare find() leaves it null and the FQN guard below never matches.
         Task task =
             taskRepository.get(
                 null, stateId, taskRepository.getFields("about"), Include.ALL, false);

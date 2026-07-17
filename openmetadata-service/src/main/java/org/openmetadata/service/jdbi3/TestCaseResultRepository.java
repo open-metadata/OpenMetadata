@@ -325,10 +325,8 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   /**
-   * The row's incidentId tracks the ongoing incident, read from the resolution-status timeseries
-   * (the single source of truth, same as {@code TestCaseRepository.getIncidentId}). We deliberately
-   * do not trust the incidentId stamped on the result at ingestion time: a resolution can land
-   * between that stamp and this update, which would otherwise write a resolved incident back.
+   * Ongoing incident for the row, read from the resolution-status timeseries — not the incidentId
+   * stamped on the result at ingestion, which a concurrent resolution could make stale.
    */
   private UUID resolveOngoingIncidentId(TestCase testCase) {
     TestCaseResolutionStatusRepository tcrsRepo =

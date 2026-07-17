@@ -103,9 +103,9 @@ public class TaskRepository extends EntityRepository<Task> {
   public static final List<TaskEntityStatus> OPEN_TASK_STATUSES =
       List.of(TaskEntityStatus.Open, TaskEntityStatus.InProgress, TaskEntityStatus.Pending);
 
-  // Stage id a workflow-managed task carries between being persisted and its Flowable workflow
-  // instance actually starting. Mirrors CreateTask.PENDING_WORKFLOW_START_STAGE_ID.
-  private static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
+  // Stage a workflow-managed task holds after being persisted but before its Flowable instance
+  // starts.
+  public static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
 
   /**
    * Statuses for which a task is still live (non-terminal): work can still progress. Approved and
@@ -859,11 +859,9 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   /**
-   * Reopen a resolved workflow-managed task and restart its governance workflow so the lifecycle
-   * (stages, transitions, assignee flows, notifications) is live again. The prior Flowable
-   * instance ended at the workflow's end event and cannot be resumed, so the workflow is
-   * re-triggered from scratch on the same task: the task re-enters the initial stage and then
-   * moves through the requested transitions.
+   * Reopen a resolved workflow-managed task and restart its governance workflow. The prior Flowable
+   * instance ended at the workflow's end event and can't be resumed, so it is re-triggered from
+   * scratch on the same task.
    */
   public Task reopenTaskWithWorkflow(Task task, String user) {
     Task terminalSnapshot = JsonUtils.deepCopy(task, Task.class);
@@ -882,7 +880,7 @@ public class TaskRepository extends EntityRepository<Task> {
     storeEntity(reopened, true);
     postUpdate(openSnapshot, reopened);
 
-    triggerWorkflowManagedTask(reopened);
+    boolean started = triggerWorkflowManagedTask(reopened);
 
     Task refreshed =
         get(
@@ -890,11 +888,11 @@ public class TaskRepository extends EntityRepository<Task> {
             reopened.getId(),
             getFields(
                 "assignees,reviewers,watchers,about,domains,createdBy,payload,resolution,availableTransitions"));
-    // A successful restart populates a fresh workflowInstanceId (the running Flowable instance);
-    // any failure leaves it null. Keying off that is robust to the exact failure-marker stage id.
-    if (refreshed.getWorkflowInstanceId() == null) {
-      // The workflow could not restart. Roll the task back to its prior terminal state so we never
-      // leave an Open task without a live workflow (which a later failure could otherwise reuse).
+    // Use the trigger's own success signal: a null workflowInstanceId would also appear if the
+    // workflow started then immediately completed, and the failure-marker stage is brittle to
+    // match.
+    if (!started) {
+      // Roll back to the prior terminal state so no Open task is left without a live workflow.
       restoreTerminalTask(terminalSnapshot, refreshed, user);
       throw new IllegalStateException(
           String.format("Workflow restart failed for reopened task %s", reopened.getId()));
@@ -1421,9 +1419,10 @@ public class TaskRepository extends EntityRepository<Task> {
             });
   }
 
-  private void triggerWorkflowManagedTask(Task task) {
+  /** Returns true only if the Flowable workflow instance was started successfully. */
+  private boolean triggerWorkflowManagedTask(Task task) {
     if (!isPendingWorkflowManagedTask(task)) {
-      return;
+      return false;
     }
 
     try {
@@ -1463,6 +1462,7 @@ public class TaskRepository extends EntityRepository<Task> {
               getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
               task.getId().toString(),
               variables);
+      return true;
     } catch (Exception e) {
       LOG.error(
           "Failed to trigger workflow-managed task {} using workflow definition {}",
@@ -1470,6 +1470,7 @@ public class TaskRepository extends EntityRepository<Task> {
           task.getWorkflowDefinitionId(),
           e);
       markWorkflowTriggerFailure(task);
+      return false;
     }
   }
 

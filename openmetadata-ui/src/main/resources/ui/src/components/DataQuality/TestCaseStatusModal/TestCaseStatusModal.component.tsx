@@ -99,11 +99,8 @@ export const TestCaseStatusModal = ({
     }));
   }, [data]);
 
-  // The outer `data` prop is the current TCRS record. In task-first mode
-  // its stateId equals the Task UUID. Reopening a Resolved incident with
-  // Ack/Assigned goes through the legacy TCRS endpoint: the backend reopens
-  // the SAME incident task (same stateId) and restarts its workflow. Only an
-  // explicit `New` starts a fresh incident (new task).
+  // Ack/Assigned reopens the same incident via the TCRS endpoint (the backend reopens the
+  // existing task); only an explicit New starts a fresh incident.
   const handleReopenFromResolved = async (
     targetStatus: TestCaseResolutionStatusTypes,
     formData: CreateTestCaseResolutionStatus

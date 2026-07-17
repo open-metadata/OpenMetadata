@@ -183,9 +183,8 @@ public final class IncidentTcrsSyncHandler {
   }
 
   /**
-   * Keep the TestCase row's denormalized {@code incidentId} aligned with the ongoing incident:
-   * the task id while the incident is active, null once it is resolved. Without this, no-fields
-   * reads keep returning the incidentId frozen by the last test-case result.
+   * Keep the denormalized {@code TestCase.incidentId} row aligned with the ongoing incident (task
+   * id while active, null once resolved) so no-fields reads don't return a stale frozen value.
    */
   private static void updateTestCaseRowIncident(Task task, TestCaseResolutionStatusTypes tcrsType) {
     UUID rowIncidentId = tcrsType == TestCaseResolutionStatusTypes.Resolved ? null : task.getId();

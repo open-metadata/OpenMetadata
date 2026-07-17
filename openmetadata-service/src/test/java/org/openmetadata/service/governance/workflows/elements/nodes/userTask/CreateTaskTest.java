@@ -60,7 +60,7 @@ class CreateTaskTest {
     Task existingTask =
         new Task()
             .withId(UUID.randomUUID())
-            .withWorkflowStageId(CreateTask.PENDING_WORKFLOW_START_STAGE_ID)
+            .withWorkflowStageId(TaskRepository.PENDING_WORKFLOW_START_STAGE_ID)
             .withAssignees(List.of(existingAssignee));
 
     List<EntityReference> resolved =
