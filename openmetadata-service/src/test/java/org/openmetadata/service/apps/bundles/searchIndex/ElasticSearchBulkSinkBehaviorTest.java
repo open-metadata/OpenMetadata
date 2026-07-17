@@ -17,6 +17,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
@@ -37,11 +39,13 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StatsResult;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
+import org.openmetadata.service.search.vector.client.EmbeddingClient;
 
 class ElasticSearchBulkSinkBehaviorTest {
 
@@ -123,11 +127,22 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
           entity,
           "table_index",
+          null,
           tracker,
-          Collections.emptyMap());
+          false,
+          Map.of(),
+          Map.of());
 
       verify(processor)
           .add(any(), eq(entityId.toString()), eq(ENTITY_TYPE), eq(tracker), anyLong());
@@ -161,11 +176,22 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
           entity,
           "table_index",
+          null,
           tracker,
-          Collections.emptyMap());
+          false,
+          Map.of(),
+          Map.of());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
       verify(tracker).recordProcess(StatsResult.WARNING);
@@ -286,6 +312,31 @@ class ElasticSearchBulkSinkBehaviorTest {
   }
 
   @Test
+  void isVectorEmbeddingEnabledForEntityReturnsFalseWhenIndexMappingMissing() {
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<org.openmetadata.service.search.vector.ElasticSearchVectorService>
+            vectorServiceMock =
+                mockStatic(
+                    org.openmetadata.service.search.vector.ElasticSearchVectorService.class)) {
+      vectorServiceMock
+          .when(org.openmetadata.service.search.vector.ElasticSearchVectorService::getInstance)
+          .thenReturn(
+              mock(org.openmetadata.service.search.vector.ElasticSearchVectorService.class));
+      when(searchRepository.isVectorEmbeddingEnabled()).thenReturn(true);
+
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+
+      // table is vector-indexable AND has mapping → enabled
+      assertTrue(sink.isVectorEmbeddingEnabledForEntity("table"));
+
+      // mapping unloaded → disabled, even when everything else says yes
+      when(searchRepository.getIndexMapping("table")).thenReturn(null);
+      assertFalse(sink.isVectorEmbeddingEnabledForEntity("table"));
+    }
+  }
+
+  @Test
   void settersUpdateConfigurationAndForwardFailureCallbacks() {
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
         mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
@@ -327,10 +378,21 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
           entity,
           "table_index",
           null,
+          null,
+          false,
+          Map.of(),
           docBuildContexts);
 
       assertSame(ctxForEntity, ContextCapturingIndex.observedContext);
@@ -357,10 +419,21 @@ class ElasticSearchBulkSinkBehaviorTest {
       invokePrivate(
           sink,
           "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          new Class<?>[] {
+            EntityInterface.class,
+            String.class,
+            ReindexContext.class,
+            StageStatsTracker.class,
+            boolean.class,
+            Map.class,
+            Map.class
+          },
           entity,
           "table_index",
           null,
+          null,
+          false,
+          Map.of(),
           Collections.emptyMap());
 
       assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
@@ -368,42 +441,119 @@ class ElasticSearchBulkSinkBehaviorTest {
   }
 
   @Test
-  void addEntityNeverTouchesVectorServiceBecauseElasticsearchHasNoEmbeddingPath() throws Exception {
-    // Vector embedding is OpenSearch-only (SearchRepository: "Vector embedding is only supported
-    // with OpenSearch. Elasticsearch support is planned."). The ES sink therefore has no
-    // embedding-reuse path and needs no dimension guard. This test locks that invariant in: if ES
-    // vector support is ever added, the sink will start consulting OpenSearchVectorService and this
-    // test will fail — forcing the author to also add the embedding-dimension reuse guard that
-    // OpenSearchBulkSink#canReuseCachedEmbedding applies.
+  void enrichWithEmbeddingReusesCachedFieldsWhenServiceReportsMatch() throws Exception {
+    // P1 guard: on an incremental reindex the doc is re-indexed via a full index op, so a
+    // state-matched entity must carry its cached embedding spliced back in — never embedding-less
+    // (which would wipe the stored vector). Mirrors the OpenSearch sink test.
     EntityInterface entity = mock(EntityInterface.class);
-    StageStatsTracker tracker = mock(StageStatsTracker.class);
     UUID entityId = UUID.randomUUID();
     when(entity.getId()).thenReturn(entityId);
 
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
+    ObjectMapper mapper = new ObjectMapper();
+    JsonNode cached =
+        mapper.readTree(
+            "{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3],\"textToEmbed\":\"cached\"}");
+    Map<String, JsonNode> existingEmbeddingsById = Map.of(entityId.toString(), cached);
+
     try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
             mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-        MockedStatic<OpenSearchVectorService> vectorServiceMock =
-            mockStatic(OpenSearchVectorService.class)) {
-      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(ENTITY_TYPE);
-      entityMock
-          .when(() -> Entity.buildSearchIndex(ENTITY_TYPE, entity))
-          .thenReturn(new StubSearchIndex(Map.of("field", "value")));
-
+        MockedStatic<ElasticSearchVectorService> vectorServiceMock =
+            mockStatic(ElasticSearchVectorService.class)) {
+      vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
       ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+
+      String result =
+          (String)
+              invokePrivate(
+                  sink,
+                  "enrichWithEmbedding",
+                  new Class<?>[] {
+                    EntityInterface.class, String.class, Map.class, StageStatsTracker.class
+                  },
+                  entity,
+                  "{\"name\":\"my-table\"}",
+                  existingEmbeddingsById,
+                  tracker);
+
+      verify(vectorService, never()).generateEmbeddingFields(any());
+      verify(tracker).recordVector(StatsResult.SUCCESS);
+      JsonNode doc = mapper.readTree(result);
+      assertEquals("my-table", doc.get("name").asText());
+      assertEquals("fp", doc.get("fingerprint").asText());
+      assertTrue(doc.get("embedding").isArray());
+    }
+  }
+
+  @Test
+  void enrichWithEmbeddingRecomputesWhenNoCachedEntryAvailable() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    when(entity.getId()).thenReturn(UUID.randomUUID());
+
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
+    when(vectorService.generateEmbeddingFields(entity))
+        .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.9, 0.8)));
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<ElasticSearchVectorService> vectorServiceMock =
+            mockStatic(ElasticSearchVectorService.class)) {
+      vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+
+      String result =
+          (String)
+              invokePrivate(
+                  sink,
+                  "enrichWithEmbedding",
+                  new Class<?>[] {
+                    EntityInterface.class, String.class, Map.class, StageStatsTracker.class
+                  },
+                  entity,
+                  "{\"name\":\"t\"}",
+                  Collections.<String, JsonNode>emptyMap(),
+                  tracker);
+
+      verify(vectorService).generateEmbeddingFields(entity);
+      assertEquals("fp-new", new ObjectMapper().readTree(result).get("fingerprint").asText());
+    }
+  }
+
+  @Test
+  void enrichWithEmbeddingRecomputesWhenCachedDimensionMismatchesClient() throws Exception {
+    EntityInterface entity = mock(EntityInterface.class);
+    UUID entityId = UUID.randomUUID();
+    when(entity.getId()).thenReturn(entityId);
+
+    StageStatsTracker tracker = mock(StageStatsTracker.class);
+    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
+    when(embeddingClient.getDimension()).thenReturn(384);
+    ElasticSearchVectorService vectorService = mock(ElasticSearchVectorService.class);
+    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
+    when(vectorService.generateEmbeddingFields(entity))
+        .thenReturn(Map.of("fingerprint", "fp-new", "embedding", List.of(0.1, 0.2, 0.3)));
+    JsonNode cached =
+        new ObjectMapper().readTree("{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2,0.3]}");
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> ignored =
+            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
+        MockedStatic<ElasticSearchVectorService> vectorServiceMock =
+            mockStatic(ElasticSearchVectorService.class)) {
+      vectorServiceMock.when(ElasticSearchVectorService::getInstance).thenReturn(vectorService);
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+
       invokePrivate(
           sink,
-          "addEntity",
-          new Class<?>[] {EntityInterface.class, String.class, StageStatsTracker.class, Map.class},
+          "enrichWithEmbedding",
+          new Class<?>[] {EntityInterface.class, String.class, Map.class, StageStatsTracker.class},
           entity,
-          "table_index",
-          tracker,
-          Collections.emptyMap());
+          "{\"name\":\"z\"}",
+          Map.of(entityId.toString(), cached),
+          tracker);
 
-      vectorServiceMock.verify(OpenSearchVectorService::getInstance, never());
-      verify(tracker).recordProcess(StatsResult.SUCCESS);
-      assertEquals(1, sink.getProcessStats().getSuccessRecords());
+      verify(vectorService).generateEmbeddingFields(entity);
     }
   }
 
