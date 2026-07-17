@@ -114,6 +114,8 @@ from metadata.ingestion.source.database.snowflake.utils import (
     get_pk_constraint,
     get_schema_columns,
     get_schema_foreign_keys,
+    get_semantic_view_names,
+    get_semantic_view_names_reflection,
     get_stage_names,
     get_stage_names_reflection,
     get_stream_definition,
@@ -172,6 +174,7 @@ SnowflakeDialect.get_table_names = get_table_names
 SnowflakeDialect.get_view_names = get_view_names
 SnowflakeDialect.get_stream_names = get_stream_names
 SnowflakeDialect.get_stage_names = get_stage_names
+SnowflakeDialect.get_semantic_view_names = get_semantic_view_names
 SnowflakeDialect.get_all_table_comments = get_all_table_comments
 SnowflakeDialect.normalize_name = normalize_names
 SnowflakeDialect.get_table_comment = get_table_comment
@@ -183,6 +186,7 @@ Inspector.get_table_names = get_table_names_reflection
 Inspector.get_view_names = get_view_names_reflection
 Inspector.get_stream_names = get_stream_names_reflection
 Inspector.get_stage_names = get_stage_names_reflection
+Inspector.get_semantic_view_names = get_semantic_view_names_reflection
 SnowflakeDialect._current_database_schema = _current_database_schema
 SnowflakeDialect.get_pk_constraint = get_pk_constraint
 SnowflakeDialect.get_foreign_keys = get_foreign_keys
