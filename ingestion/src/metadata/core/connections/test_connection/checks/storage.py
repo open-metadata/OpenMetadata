@@ -21,7 +21,7 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
-from metadata.core.connections.test_connection.checks.summary import count, more_suffix
+from metadata.core.connections.test_connection.checks.summary import count, enumerated, more_suffix
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
@@ -61,7 +61,7 @@ def list_buckets(client: BaseClient, limit: int = DEFAULT_LIST_LIMIT) -> Evidenc
             remediation="Verify the identity can list buckets, or configure bucketNames explicitly.",
         )
     shown = min(len(buckets), limit)
-    summary = f"{count(shown, 'bucket')} enumerated" + more_suffix(shown, len(buckets) > limit)
+    summary = enumerated(shown, "bucket") + more_suffix(shown, len(buckets) > limit)
     return Evidence(summary=summary, command=command, caveat=caveat)
 
 

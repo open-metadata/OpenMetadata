@@ -24,7 +24,7 @@ from metadata.core.connections.test_connection import ErrorPack, check, when
 from metadata.core.connections.test_connection.aws import AWS_ERRORS, aws_code
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
-from metadata.core.connections.test_connection.checks.summary import count, more_suffix
+from metadata.core.connections.test_connection.checks.summary import count, enumerated, more_suffix
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.glueConnection import (
     GlueConnection as GlueConnectionConfig,
@@ -87,7 +87,7 @@ def list_databases(client: Any, limit: int = DEFAULT_LIST_LIMIT) -> Evidence:
             "collect nothing as configured.",
         )
     shown = min(len(databases), limit)
-    summary = f"{count(shown, 'database')} enumerated" + more_suffix(shown, len(databases) > limit)
+    summary = enumerated(shown, "database") + more_suffix(shown, len(databases) > limit)
     return Evidence(summary=summary, command=command, caveat=caveat)
 
 

@@ -54,14 +54,14 @@ def normalize_host_port(host_port: str) -> str:
     return host_port.split("://", 1)[-1].split("/", 1)[0]
 
 
-def probe_target(host_port: str, default_port: int = DEFAULT_WORKSPACE_PORT) -> tuple[str, int]:
+def probe_target(host_port: str) -> tuple[str, int]:
     """The host:port a gate check should TCP-probe, normalized the way the client
     dials it so the probe targets the host the driver will actually reach."""
     normalized = normalize_host_port(host_port)
     host, _, port = normalized.rpartition(":")
     if host and port.isdigit():
         return host, int(port)
-    return normalized, default_port
+    return normalized, DEFAULT_WORKSPACE_PORT
 
 
 def catalog_url(scheme: Scheme | None, host_port: str, catalog: str | None) -> str:

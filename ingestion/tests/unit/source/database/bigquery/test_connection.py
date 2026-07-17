@@ -24,7 +24,7 @@ from google.auth.exceptions import DefaultCredentialsError, RefreshError
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
 from metadata.core.connections.test_connection.check import collect_checks
-from metadata.core.connections.test_connection.checks.database import DatabaseStep, enumerated
+from metadata.core.connections.test_connection.checks.database import DatabaseStep
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
 from metadata.generated.schema.entity.services.connections.database.bigQueryConnection import (
     BigQueryConnection as BigQueryConnectionConfig,
@@ -236,9 +236,3 @@ def test_probe_table_view_enumeration_tolerates_deleted_dataset():
     bq_client.list_tables.side_effect = NotFound("404 Not found: Dataset was deleted")
     evidence = probe_table_view_enumeration(engine)
     assert evidence.summary == "1 dataset enumerated"
-
-
-def test_enumerated_pluralizes_by_count():
-    assert enumerated(1, "dataset") == "1 dataset enumerated"
-    assert enumerated(3, "dataset") == "3 datasets enumerated"
-    assert enumerated(1, "policy tag") == "1 policy tag enumerated"

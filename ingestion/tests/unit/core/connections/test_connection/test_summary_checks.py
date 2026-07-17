@@ -12,7 +12,7 @@
 
 import pytest
 
-from metadata.core.connections.test_connection.checks.summary import count, more_suffix
+from metadata.core.connections.test_connection.checks.summary import count, enumerated, more_suffix
 
 
 @pytest.mark.parametrize(
@@ -46,3 +46,17 @@ def test_more_suffix_marks_a_capped_listing():
 
 def test_more_suffix_is_silent_when_nothing_was_dropped():
     assert more_suffix(3, False) == ""
+
+
+def test_enumerated_pluralizes_by_count():
+    assert enumerated(1, "dataset") == "1 dataset enumerated"
+    assert enumerated(3, "dataset") == "3 datasets enumerated"
+    assert enumerated(1, "policy tag") == "1 policy tag enumerated"
+
+
+def test_enumerated_says_none_for_an_empty_count():
+    assert enumerated(0, "dataset") == "no datasets enumerated"
+
+
+def test_enumerated_marks_the_cap():
+    assert enumerated(100, "dataset", 100) == "100+ datasets enumerated"
