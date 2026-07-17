@@ -8867,11 +8867,12 @@ public interface CollectionDAO {
 
     @RegisterRowMapper(LatestRecordWithFQNHashMapper.class)
     @SqlQuery(
-        "SELECT t1.entityFQNHash, t1.json FROM test_case_resolution_status_time_series t1 "
-            + "INNER JOIN (SELECT entityFQNHash, MAX(timestamp) as maxTs "
-            + "FROM test_case_resolution_status_time_series WHERE entityFQNHash IN (<entityFQNHashes>) "
-            + "GROUP BY entityFQNHash) t2 "
-            + "ON t1.entityFQNHash = t2.entityFQNHash AND t1.timestamp = t2.maxTs")
+        "SELECT entityFQNHash, json FROM ("
+            + "SELECT entityFQNHash, json, "
+            + "ROW_NUMBER() OVER (PARTITION BY entityFQNHash ORDER BY timestamp DESC, id DESC) AS rn "
+            + "FROM test_case_resolution_status_time_series "
+            + "WHERE entityFQNHash IN (<entityFQNHashes>)) ranked "
+            + "WHERE rn = 1")
     List<LatestRecordWithFQNHash> getLatestRecordBatchInternal(
         @BindListFQN("entityFQNHashes") List<String> entityFQNs);
 
