@@ -384,6 +384,11 @@ export interface LineageEdgeContext {
      */
     columns?: ColumnLineage[];
     /**
+     * True when column-level lineage was truncated at the server-side per-edge cap; fetch the
+     * full graph with the get_entity_lineage tool.
+     */
+    columnsTruncated?: boolean;
+    /**
      * Fully qualified name of the neighboring upstream or downstream asset.
      */
     fullyQualifiedName?: string;
