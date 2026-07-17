@@ -12,6 +12,7 @@
  */
 import {
   Box,
+  EmptyPlaceholder,
   HookForm,
   Toggle,
   Typography,
@@ -281,23 +282,39 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
             />
           </Box>
         }
+        hintOpen={showHint}
         isSubmitting={form.formState.isSubmitting}
         open={open}
-        reserveHintSpace={showHint}
         submitLabel={t('label.save')}
         subtitle={t('message.page-sub-header-for-test-definitions')}
         title={resolvedTitle}
         onClose={handleDismiss}
         onSubmit={submitAndClose}>
         <HookForm
-          fieldDocHeader={hintLabel(t('label.form-hint'))}
-          fieldDocOffset={56}
-          form={form}
-          renderFieldDoc={(markdown) => (
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant={false}
-              markdown={markdown}
+          emptyFieldDoc={
+            // width="100%" is required: EmptyPlaceholder's 300px default is
+            // wider than the hint column's 260px minimum and would overflow
+            // once the column shrinks on a narrow viewport.
+            <EmptyPlaceholder
+              description={t('message.form-hint-empty-state')}
+              icon={Lightbulb05}
+              title={t('label.no-entity-selected', {
+                entity: t('label.field'),
+              })}
+              width="100%"
             />
+          }
+          fieldDocDisplay="panel"
+          fieldDocHeader={hintLabel(t('label.form-hint'))}
+          form={form}
+          formClassName="tw:px-7 tw:pt-6 tw:pb-7"
+          renderFieldDoc={(markdown) => (
+            <div className="form-hint-doc">
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant={false}
+                markdown={markdown}
+              />
+            </div>
           )}
           showFieldDocs={showHint}
           onSubmit={submitAndClose}>

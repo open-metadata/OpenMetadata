@@ -67,7 +67,6 @@ import {
   TestLevel,
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
-import './form-hint-doc.less';
 import {
   buildEditDefaults,
   buildTestSuitePipelinePayload,
