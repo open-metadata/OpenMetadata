@@ -39,7 +39,7 @@ VERSIONS = {
     "pandas": "pandas~=2.1.4",
     "pyarrow": "pyarrow>=23.0.1,<26",  # CVE-2026-25087 / CVE-2024-52338 IPC pre-buffer use-after-free (fixed in 23.0.1)
     "pydantic": "pydantic~=2.0,>=2.7.0,<2.12",  # Pin down to <2.12 due to breaking changes in 2.12.0
-    "pydantic-settings": "pydantic-settings~=2.0,>=2.7.0",
+    "pydantic-settings": "pydantic-settings~=2.0,>=2.14.2",  # GHSA-4xgf-cpjx-pc3j secrets_dir symlink escape
     "pydomo": "pydomo~=0.3",
     "pymysql": "pymysql~=1.0",
     "pyodbc": "pyodbc~=5.3.0",
@@ -154,7 +154,7 @@ base_requirements = {
     "cached-property==1.5.2",  # LineageParser
     "cachetools",  # Used to cache masked queries in ingestion/src/metadata/ingestion/lineage/masker.py
     "chardet==4.0.0",  # Used in the profiler
-    "cryptography>=46.0.5",  # CVE-2026-26007
+    "cryptography>=48.0.1",  # GHSA-537c-gmf6-5ccf bundled OpenSSL vuln in wheels <48.0.1
     "google-cloud-secret-manager==2.24.0",
     "google-crc32c",
     "email-validator>=2.0",  # For the pydantic generated models for Email
@@ -166,9 +166,9 @@ base_requirements = {
     "lxml>=6.1.0",  # CVE-2026-41066 iterparse/ETCompatXMLParser XXE
     "Mako>=1.3.12",  # CVE-2026-44307 TemplateLookup path traversal
     "memory-profiler",
-    "mistune>=3.2.1",  # CVE-2026-33079 ReDoS + CVE-2026-44898/44899 XSS/CSS injection
+    "mistune>=3.3.0",  # CVE-2026-49851 ReDoS in parse_link_text
     "mypy_extensions>=0.4.3",
-    "PyJWT>=2.12.0",  # CVE-2026-32597 unknown crit header acceptance
+    "PyJWT>=2.13.0",  # CVE-2026-48522/48523/48525/48526 SSRF + DoS + algorithm-confusion
     VERSIONS["pydantic"],
     VERSIONS["pydantic-settings"],
     VERSIONS["pymysql"],
@@ -204,10 +204,10 @@ plugins: Dict[str, Set[str]] = {
         "apache-airflow-providers-http>=6.0.0",  # CVE-2025-69219 unsafe pickle RCE
         "apache-airflow-providers-opensearch>=1.9.1",  # CVE-2026-43826 credential leak
         "apache-airflow-providers-elasticsearch>=6.5.3",  # CVE-2026-41018 credential leak
-        "tornado>=6.5.5",  # CVE-2026-31958 DoS + CVE-2026-35536 cookie injection
+        "tornado>=6.5.7",  # CVE-2026-49853/49854/49855 header leak + OOB read + gzip bomb + GHSA-pw6j-qg29-8w7f curl credential leak
         "Werkzeug>=3.0.6",  # CVE-2024-34069 debugger RCE
         "starlette>=0.49.1",  # CVE-2025-62727 O(n^2) DoS; Airflow 3.2.1 lifts the fastapi<0.118 cap
-        "python-multipart>=0.0.27",  # CVE-2026-42561 unbounded headers DoS
+        "python-multipart>=0.0.31",  # CVE-2026-53537/53538/53539 param smuggling + querystring DoS + CVE-2026-53540 negative Content-Length OOM
     },  # Same as ingestion container. For development.
     "amundsen": {VERSIONS["neo4j"]},
     "athena": {VERSIONS["pyathena"]},
