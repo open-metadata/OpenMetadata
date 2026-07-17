@@ -17,6 +17,10 @@ tests/unit/test_source_url.py and tests/unit/test_source_connection.py.
 import socket
 from unittest.mock import MagicMock, patch
 
+from sqlalchemy import create_engine
+from sqlalchemy.engine import Engine
+from sqlalchemy.pool import StaticPool
+
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import collect_checks
 from metadata.core.connections.test_connection.checks.database import DEFAULT_SAMPLE_ROWS, DatabaseStep
@@ -31,7 +35,6 @@ from metadata.ingestion.source.database.mssql.connection import (
     MSSQL_ERRORS,
     MssqlChecks,
     MssqlConnection,
-    _databases_enumerated,
     get_connection_url,
 )
 from metadata.ingestion.source.database.mssql.queries import (
@@ -190,9 +193,25 @@ def test_unknown_error_is_not_classified():
     assert MSSQL_ERRORS.classify(Exception("something unexpected")) is None
 
 
-def test_databases_summary_reports_exact_count_below_cap():
-    assert _databases_enumerated([object()] * 3) == "3 databases enumerated"
+def _engine_returning(rows: int) -> Engine:
+    """A real engine whose probe statement returns ``rows`` rows."""
+    engine = create_engine("sqlite://", poolclass=StaticPool, connect_args={"check_same_thread": False})
+    with engine.connect() as connection:
+        connection.exec_driver_sql("CREATE TABLE probe (name TEXT)")
+        for index in range(rows):
+            connection.exec_driver_sql(f"INSERT INTO probe VALUES ('db{index}')")
+        connection.commit()
+    return engine
 
 
-def test_databases_summary_reports_floor_when_capped():
-    assert _databases_enumerated([object()] * DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"
+def _databases_summary(rows: int) -> str:
+    checks = MssqlChecks(db=Borrowed.of(_engine_returning(rows)), get_databases_statement="SELECT name FROM probe")
+    return collect_checks(checks)[DatabaseStep.GetDatabases]().summary
+
+
+def test_get_databases_counts_the_databases_it_found():
+    assert _databases_summary(3) == "3 databases enumerated"
+
+
+def test_get_databases_reports_a_floor_when_the_sample_is_capped():
+    assert _databases_summary(DEFAULT_SAMPLE_ROWS) == f"{DEFAULT_SAMPLE_ROWS}+ databases enumerated"

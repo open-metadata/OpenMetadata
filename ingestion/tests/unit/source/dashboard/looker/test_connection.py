@@ -205,7 +205,7 @@ def test_list_dashboards_warns_when_none_are_visible():
 
     evidence = provider.list_dashboards()
 
-    assert evidence.summary == "0 dashboards enumerated"
+    assert evidence.summary == "no dashboards enumerated"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "No dashboards visible"
 
