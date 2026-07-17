@@ -9,8 +9,10 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """mlflow integration tests"""
+import logging
 import os
 import sys
+import time
 from urllib.parse import urlparse
 
 import mlflow
@@ -111,20 +113,26 @@ def create_data(mlflow_environment):
 
         tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
 
-        # Model registry does not work with file store
-        if tracking_url_type_store != "file":
-            # Register the model
-            # There are other ways to use the Model Registry, which depends on the use case,
-            # please refer to the doc for more information:
-            # https://mlflow.org/docs/latest/model-registry.html#api-workflow
-            mlflow.sklearn.log_model(
-                lr,
-                "model",
-                registered_model_name=MODEL_NAME,
-                signature=signature,
-            )
-        else:
-            mlflow.sklearn.log_model(lr, "model")
+        for attempt in range(5):
+            try:
+                if tracking_url_type_store != "file":
+                    mlflow.sklearn.log_model(
+                        lr,
+                        "model",
+                        registered_model_name=MODEL_NAME,
+                        signature=signature,
+                    )
+                else:
+                    mlflow.sklearn.log_model(lr, "model")
+                break
+            except Exception as exc:
+                if attempt < 4:
+                    logging.getLogger(__name__).warning(
+                        "Retry %d/5: log_model failed (%s: %s), retrying...", attempt + 1, type(exc).__name__, exc
+                    )
+                    time.sleep(5 * (attempt + 1))
+                else:
+                    raise
 
 
 @pytest.fixture(scope="module")
