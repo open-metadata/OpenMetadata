@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { act, fireEvent, render, screen } from '@testing-library/react';
-import { MemoryRouter, useNavigate } from 'react-router-dom';
+import { MemoryRouter, useNavigate, useParams } from 'react-router-dom';
 import { DataQualityPageTabs } from '../../../../pages/DataQuality/DataQualityPage.interface';
 import { getListTestSuitesBySearch } from '../../../../rest/testAPI';
 import observabilityRouterClassBase from '../../../../utils/ObservabilityRouterClassBase';
@@ -235,8 +235,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
     />
   );
 
+  const MockEmptyPlaceholder = ({
+    title,
+    description,
+    actions,
+  }: {
+    title?: React.ReactNode;
+    description?: React.ReactNode;
+    actions?: {
+      key: string;
+      label: React.ReactNode;
+      onPress?: () => void;
+    }[];
+  }) => (
+    <div data-testid="empty-placeholder">
+      <span>{title}</span>
+      <span>{description}</span>
+      {(actions ?? []).map((action) => (
+        <button
+          data-testid={`empty-placeholder-action-${action.key}`}
+          key={action.key}
+          onClick={action.onPress}>
+          {action.label}
+        </button>
+      ))}
+    </div>
+  );
+
   return {
     Box: MockBox,
+    EmptyPlaceholder: MockEmptyPlaceholder,
     Input: MockInput,
     Tabs: MockTabs,
     Table: MockTable,
@@ -298,7 +326,22 @@ jest.mock('../../../../utils/ObservabilityRouterClassBase', () => ({
   },
 }));
 
-const mockDataQualityContext = {
+const mockOnAddBundleSuite = jest.fn();
+
+const mockDataQualityContext: {
+  isTestCaseSummaryLoading: boolean;
+  testCaseSummary: {
+    total: number;
+    passed: number;
+    failed: number;
+    skipped: number;
+  };
+  activeTab: DataQualityPageTabs;
+  createActions?: {
+    canCreateBundleSuite?: boolean;
+    onAddBundleSuite?: () => void;
+  };
+} = {
   isTestCaseSummaryLoading: false,
   testCaseSummary: {
     total: 0,
@@ -377,6 +420,11 @@ describe('TestSuites component', () => {
     jest.clearAllMocks();
     testSuitePermission.ViewAll = true;
     mockLocation.search = '';
+    mockDataQualityContext.createActions = undefined;
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'table-suites',
+    });
   });
 
   it('component should render', async () => {
@@ -551,9 +599,50 @@ describe('TestSuites component', () => {
 
     render(<TestSuites />);
 
+    expect(await screen.findByTestId('empty-placeholder')).toBeInTheDocument();
+  });
+
+  it('should wire the New Bundle Suite empty-state action from DataQualityContext', async () => {
+    (useParams as jest.Mock).mockReturnValue({
+      tab: 'test-cases',
+      subTab: 'bundle-suites',
+    });
+    mockDataQualityContext.createActions = {
+      canCreateBundleSuite: true,
+      onAddBundleSuite: mockOnAddBundleSuite,
+    };
+    (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 0 } })
+    );
+
+    render(<TestSuites />);
+
+    const actionButton = await screen.findByTestId(
+      'empty-placeholder-action-new-bundle-suite'
+    );
+
+    expect(actionButton).toHaveTextContent('label.new-entity');
+
+    fireEvent.click(actionButton);
+
+    expect(mockOnAddBundleSuite).toHaveBeenCalledTimes(1);
+  });
+
+  it('should not render the New Bundle Suite CTA when canCreateBundleSuite is false', async () => {
+    mockDataQualityContext.createActions = {
+      canCreateBundleSuite: false,
+      onAddBundleSuite: mockOnAddBundleSuite,
+    };
+    (getListTestSuitesBySearch as jest.Mock).mockImplementationOnce(() =>
+      Promise.resolve({ data: [], paging: { total: 0 } })
+    );
+
+    render(<TestSuites />);
+
+    expect(await screen.findByTestId('empty-placeholder')).toBeInTheDocument();
     expect(
-      await screen.findByTestId('filter-table-placeholder')
-    ).toBeInTheDocument();
+      screen.queryByTestId('empty-placeholder-action-new-bundle-suite')
+    ).not.toBeInTheDocument();
   });
 
   it('should not render pagination when showPagination is false', async () => {

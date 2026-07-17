@@ -40,15 +40,12 @@ from metadata.core.connections.test_connection import (
 )
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import run_sql
-from metadata.core.connections.test_connection.checks.pipeline import (
-    PipelineStep,
-    verify_access,
-)
+from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.core.connections.test_connection.checks.rest import http_status, verify_access
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MysqlConnectionConfig,
@@ -211,24 +208,6 @@ def _(airflow_connection: SQLiteConnectionConfig) -> Engine:
     return SQLiteConnection(airflow_connection)._get_client()
 
 
-def get_connection(connection: AirflowConnectionConfig):
-    """
-    Create connection
-    """
-    from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
-        AirflowRestApiConnection,
-    )
-
-    if isinstance(connection.connection, AirflowRestApiConnection):
-        return AirflowApiClient(connection)
-
-    try:
-        return _get_connection(connection.connection)
-    except Exception as exc:
-        msg = f"Unknown error connecting with {connection}: {exc}."
-        raise SourceConnectionException(msg) from exc
-
-
 class AirflowTaskDetailsAccessError(Exception):
     """
     Raise when Task detail information is not retrieved
@@ -289,19 +268,6 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # 
     return result
 
 
-def _http_status(*codes: int) -> Matcher:
-    """Match an Airflow REST error by HTTP status, across the cause chain."""
-    wanted = frozenset(codes)
-
-    def match(error: BaseException) -> bool:
-        return any(
-            getattr(getattr(current, "response", None), "status_code", None) in wanted
-            for current in exception_chain(error)
-        )
-
-    return match
-
-
 def _db_message(*tokens: str) -> Matcher:
     """Match a metadata-DB driver error by message token.
 
@@ -324,15 +290,15 @@ def _db_message(*tokens: str) -> Matcher:
 # Only signals we exercised live or that follow directly from HTTP / driver
 # documentation are diagnosed here; everything else keeps its raw error log.
 AIRFLOW_ERRORS = ErrorPack(
-    when(_http_status(401)).diagnose(
+    when(http_status(401)).diagnose(
         "Authentication failed",
         fix="Airflow rejected the credentials. Check the username and password (or token) are correct and not expired.",
     ),
-    when(_http_status(403)).diagnose(
+    when(http_status(403)).diagnose(
         "Access denied",
         fix="The credentials are valid but lack access. Grant this user permission to read the Airflow REST API.",
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404)).diagnose(
         "Endpoint not found",
         fix="Airflow returned 404 for this URL. Check the Host and Port point to the Airflow web "
         "server, not a UI or console page.",
@@ -411,10 +377,7 @@ class AirflowChecks:
         parsed = urlparse(host)
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         if parsed.hostname:
-            try:
-                tcp_probe(parsed.hostname, port)
-            except NetworkUnreachableError as error:
-                raise CheckError(error, Evidence(command=f"TCP connect {parsed.hostname}:{port}")) from error
+            probe_or_fail(parsed.hostname, port)
 
     @staticmethod
     def _rest_context(client: AirflowApiClient) -> tuple[str | None, Any, bool]:
@@ -472,7 +435,19 @@ class AirflowChecks:
 
 class AirflowConnection(BaseConnection[AirflowConnectionConfig, Any]):
     def _get_client(self) -> Any:
-        client = get_connection(self.service_connection)
+        from metadata.generated.schema.entity.utils.airflowRestApiConnection import (  # pylint: disable=import-outside-toplevel  # noqa: PLC0415
+            AirflowRestApiConnection,
+        )
+
+        connection = self.service_connection
+        if isinstance(connection.connection, AirflowRestApiConnection):
+            return AirflowApiClient(connection)
+
+        try:
+            client = _get_connection(connection.connection)
+        except Exception as exc:
+            msg = f"Unknown error connecting with {connection}: {exc}."
+            raise SourceConnectionException(msg) from exc
         if isinstance(client, Engine):
             self._on_close(client.dispose)
         return client

@@ -11,14 +11,15 @@
  *  limitations under the License.
  */
 
-import { PlusOutlined } from '@ant-design/icons';
 import {
+  Box,
+  EmptyPlaceholder,
   Table,
   TableCard,
   Tooltip,
   TooltipTrigger,
 } from '@openmetadata/ui-core-components';
-import { HelpCircle } from '@untitledui/icons';
+import { Dataflow03, HelpCircle, Plus } from '@untitledui/icons';
 import { Button, Col, Row } from 'antd';
 import { AxiosError } from 'axios';
 import { sortBy } from 'lodash';
@@ -354,26 +355,29 @@ const TestSuitePipelineTab = ({
   const emptyPlaceholder = useMemo(
     () =>
       testSuite ? (
-        <ErrorPlaceHolder
-          button={
-            <Button
-              ghost
-              className="p-x-lg"
-              data-testid="add-placeholder-button"
-              icon={<PlusOutlined />}
-              type="primary"
-              onClick={handleAddPipelineRedirection}>
-              {t('label.add')}
-            </Button>
-          }
-          heading={t('label.pipeline')}
-          permission={createPermission}
-          permissionValue={t('label.create-entity', {
-            entity: t('label.test-suite-ingestion'),
-          })}
-          type={ERROR_PLACEHOLDER_TYPE.ASSIGN}>
-          {t('message.no-table-pipeline')}
-        </ErrorPlaceHolder>
+        <Box className="tw:relative tw:min-h-80 tw:w-full">
+          <EmptyPlaceholder
+            actions={
+              createPermission
+                ? [
+                    {
+                      key: 'add-pipeline',
+                      label: t('label.add-entity', {
+                        entity: t('label.pipeline'),
+                      }),
+                      color: 'primary' as const,
+                      iconLeading: Plus,
+                      onPress: handleAddPipelineRedirection,
+                    },
+                  ]
+                : undefined
+            }
+            description={t('message.no-table-pipeline')}
+            icon={<Dataflow03 className="tw:text-fg-brand-primary" />}
+            title={t('message.no-pipelines-yet')}
+            variant="blank"
+          />
+        </Box>
       ) : (
         <ErrorPlaceHolder
           placeholderText={t('message.no-test-suite-table-pipeline')}
@@ -479,7 +483,7 @@ const TestSuitePipelineTab = ({
                     data-row-key={record.fullyQualifiedName}
                     id={record.id}
                     key={record.id}>
-                    <Table.Cell className="tw:align-middle tw:w-72 tw:min-w-56">
+                    <Table.Cell className="tw:align-middle tw:w-full tw:min-w-56">
                       {renderNameField()(record.name, record)}
                     </Table.Cell>
 

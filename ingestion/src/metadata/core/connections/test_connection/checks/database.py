@@ -9,13 +9,9 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Database service step identity and shared check helpers.
+Database service step identity and check helpers.
 
-This is the only place in the test-connection core that knows about SQLAlchemy:
-the runner and the rest of the package stay engine-agnostic. Connectors reuse
-these helpers from their ``@check`` methods. On failure the helpers raise
-``CheckError`` carrying the command they attempted, so a failed step still
-reports its ``Evidence`` to the backend.
+The only place in the test-connection core that knows about SQLAlchemy.
 """
 
 from __future__ import annotations
@@ -26,10 +22,8 @@ from typing import TYPE_CHECKING
 from sqlalchemy import event, inspect
 
 from metadata.core.connections.test_connection.check import CheckError, StepName
-from metadata.core.connections.test_connection.network import (
-    NetworkUnreachableError,
-    tcp_probe,
-)
+from metadata.core.connections.test_connection.checks.summary import count, enumerated
+from metadata.core.connections.test_connection.network import probe_or_fail
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
@@ -39,8 +33,7 @@ if TYPE_CHECKING:
     from sqlalchemy.engine.reflection import Inspector
 
 
-# A check only needs to prove a statement runs, not return its whole result, so
-# probes fetch at most this many rows instead of the full (potentially huge) set.
+# Rows a probe fetches; proving a statement runs never needs the whole result.
 DEFAULT_SAMPLE_ROWS = 100
 
 
@@ -72,10 +65,8 @@ class DatabaseStep(StepName):
 def _captured_sql(client: Engine) -> Iterator[list[str]]:
     """Record the SQL the dialect emits within the wrapped call.
 
-    ``inspect()`` hides the dialect-specific reflection query; capturing it keeps
-    the reported ``command`` the real statement, without hard-coding any SQL here.
-    The listener is scoped to the wrapped call, which the runner makes
-    sequentially on a single thread, so no other query on the engine races it.
+    Scoped to the wrapped call; safe because the runner drives checks
+    sequentially on one thread.
     """
     statements: list[str] = []
 
@@ -97,12 +88,7 @@ def _captured_sql(client: Engine) -> Iterator[list[str]]:
 
 
 def _without_header(statement: str) -> str:
-    """Drop the leading OpenMetadata attribution comment for display.
-
-    The engine prepends ``/* {"app": "OpenMetadata", ...} */`` to every statement
-    (for query attribution); it is still sent, but it is noise in the reported
-    command, so we strip it here.
-    """
+    """Drop the leading ``/* {"app": "OpenMetadata"} */`` attribution comment."""
     text = statement.lstrip()
     if text.startswith("/*"):
         end = text.find("*/")
@@ -126,13 +112,7 @@ def run_sql(
     summarize: Callable[[Sequence[Row]], str],
     max_rows: int = DEFAULT_SAMPLE_ROWS,
 ) -> Evidence:
-    """Run a statement and report the command plus a summary of its rows.
-
-    Fetches at most ``max_rows`` so a check that probes an unbounded statement
-    cannot pull the whole result into memory. On failure, re-raise as
-    ``CheckError`` carrying the attempted command, so the failed step still
-    reports what it ran.
-    """
+    """Run a statement, reporting the command and a summary of at most ``max_rows`` rows."""
     with _captured_sql(client) as captured:
         try:
             with client.connect() as conn:
@@ -143,18 +123,11 @@ def run_sql(
 
 
 def ping(client: Engine) -> Evidence:
-    """Open a connection and run a trivial query to prove access.
+    """Open a connection and run ``SELECT 1``, TCP-probing host:port first.
 
-    A TCP reachability preflight runs first when the engine URL carries a host
-    and port, so an unreachable host fails as a network problem before the
-    driver, TLS, or auth is exercised. Engines without a host:port (file-based
-    URLs, connector-tunnelled engines) skip the preflight and go straight to the
-    query.
-
-    The preflight assumes the driver connects directly to the URL's host:port. A
-    connector whose transport differs while the URL still carries a host:port
-    (an HTTP gateway, a load balancer, a unix socket) should call ``run_sql``
-    directly instead of ``ping`` to avoid a spurious reachability failure.
+    The probe assumes the driver dials the URL's host:port directly. A connector
+    whose transport differs (gateway, load balancer, unix socket) should call
+    ``run_sql`` instead, to avoid a spurious reachability failure.
     """
     _preflight(client)
     return run_sql(client, "SELECT 1", lambda _: "connection established")
@@ -163,10 +136,7 @@ def ping(client: Engine) -> Evidence:
 def _preflight(client: Engine) -> None:
     host, port = client.url.host, client.url.port
     if host and port:
-        try:
-            tcp_probe(host, port)
-        except NetworkUnreachableError as error:
-            raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
+        probe_or_fail(host, port)
 
 
 def _reflect(client: Engine, operation: Callable[[], list[str]]) -> tuple[list[str], str | None]:
@@ -185,11 +155,9 @@ def _reflect(client: Engine, operation: Callable[[], list[str]]) -> tuple[list[s
 def _resolve_schema(
     inspector: Inspector, schema: str | None, system_schemas: frozenset[str]
 ) -> tuple[str | None, bool]:
-    """Return the schema to probe and whether it was auto-selected.
+    """The schema to probe, and whether it was auto-selected.
 
-    A configured ``schema`` is used as-is. Otherwise the first schema that the
-    connector did not flag as a system schema is picked, so table/view checks
-    still probe real data when ``databaseSchema`` is left unset.
+    Falls back to the first non-system schema so the checks still probe real data.
     """
     if schema:
         return schema, False
@@ -200,15 +168,14 @@ def _resolve_schema(
     return None, False
 
 
-def _count(n: int, noun: str) -> str:
-    """``3 tables`` / ``1 table`` - pluralize the noun to match the count."""
-    return f"{n} {noun if n == 1 else noun + 's'}"
+def _in_schema(kind: str, number: int, schema: str | None, auto_selected: bool) -> str:
+    """``3 tables in schema 'sales'``; falls back to ``enumerated`` with no schema.
 
-
-def _enumerated(kind: str, count: int, schema: str | None, auto_selected: bool) -> str:
-    counted = _count(count, kind)
+    Reflection returns every name, so the count carries no cap.
+    """
     if schema is None:
-        return f"{counted} enumerated"
+        return enumerated(number, kind)
+    counted = count(number, kind)
     if auto_selected:
         return f"{counted} in schema '{schema}', auto-selected because no databaseSchema was configured"
     return f"{counted} in schema '{schema}'"
@@ -217,11 +184,10 @@ def _enumerated(kind: str, count: int, schema: str | None, auto_selected: bool) 
 def _empty_caveat(kind: str, scope: str) -> Diagnosis:
     """A non-blocking advisory for a scope that exposes none of ``kind``.
 
-    An empty reflection never raises - the catalog filters objects the login
-    cannot see, so 'none visible' reads identically whether the scope is empty or
-    the permissions are too narrow. Surfacing it as a caveat lets the user judge.
-    Schemas and tables are the artifacts a connection must reach, so they warn; an
-    empty view list is normal, so ``list_views`` stays silent."""
+    An empty reflection never raises: the catalog filters what the login cannot
+    see, so "none visible" and "none exist" read identically. ``list_views``
+    stays silent - an empty view list is normal.
+    """
     return Diagnosis(
         title=f"No {kind}s visible in {scope}",
         remediation=f"Verify the login can see the {kind}s (object permissions), or confirm {scope} is not empty.",
@@ -231,7 +197,7 @@ def _empty_caveat(kind: str, scope: str) -> Diagnosis:
 def list_schemas(client: Engine) -> Evidence:
     names, command = _reflect(client, lambda: inspect(client).get_schema_names())
     return Evidence(
-        summary=f"{_count(len(names), 'schema')} enumerated",
+        summary=enumerated(len(names), "schema"),
         command=command,
         caveat=None if names else _empty_caveat("schema", "the database"),
     )
@@ -243,7 +209,7 @@ def list_tables(client: Engine, schema: str | None, system_schemas: frozenset[st
     names, command = _reflect(client, lambda: inspector.get_table_names(target))
     scope = f"schema '{target}'" if target else "the database"
     return Evidence(
-        summary=_enumerated("table", len(names), target, auto_selected),
+        summary=_in_schema("table", len(names), target, auto_selected),
         command=command,
         caveat=None if names else _empty_caveat("table", scope),
     )
@@ -254,6 +220,6 @@ def list_views(client: Engine, schema: str | None, system_schemas: frozenset[str
     target, auto_selected = _resolve_schema(inspector, schema, system_schemas)
     names, command = _reflect(client, lambda: inspector.get_view_names(target))
     return Evidence(
-        summary=_enumerated("view", len(names), target, auto_selected),
+        summary=_in_schema("view", len(names), target, auto_selected),
         command=command,
     )
