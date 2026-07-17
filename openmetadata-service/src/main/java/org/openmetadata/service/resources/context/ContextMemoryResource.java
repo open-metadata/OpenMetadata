@@ -166,18 +166,6 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           Integer offset,
       @Parameter(
               description =
-                  "Only return knowledge pills extracted from the context file with this id",
-              schema = @Schema(type = "string", format = "uuid"))
-          @QueryParam("sourceFileId")
-          UUID sourceFileId,
-      @Parameter(
-              description =
-                  "Only return knowledge pills extracted from the context entity (file or page) with this id",
-              schema = @Schema(type = "string", format = "uuid"))
-          @QueryParam("sourceEntityId")
-          UUID sourceEntityId,
-      @Parameter(
-              description =
                   "Only return knowledge pills whose primaryEntity (the data asset the pill applies to) has this id",
               schema = @Schema(type = "string", format = "uuid"))
           @QueryParam("primaryEntityId")
@@ -199,25 +187,24 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
           before,
           after,
           include,
-          sourceFileId,
-          sourceEntityId,
           primaryEntityId);
     }
 
     ListFilter filter = new ListFilter(include);
-    if (sourceFileId != null) {
-      filter.addQueryParam("sourceFileId", sourceFileId.toString());
-    }
-    if (sourceEntityId != null) {
-      filter.addQueryParam("sourceEntityId", sourceEntityId.toString());
-    }
     if (primaryEntityId != null) {
       filter.addQueryParam("primaryEntityId", primaryEntityId.toString());
     }
     ResultList<ContextMemory> memories =
         addHref(
             uriInfo,
-            listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after));
+            listInternal(
+                uriInfo,
+                securityContext,
+                fieldsParam,
+                new ListFilter(include),
+                limitParam,
+                before,
+                after));
     List<ContextMemory> visible =
         ContextMemoryVisibility.filterByVisibility(memories.getData(), securityContext);
     if (visible.size() == memories.getData().size()) {
@@ -241,11 +228,9 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
       String before,
       String after,
       Include include,
-      UUID sourceFileId,
-      UUID sourceEntityId,
       UUID primaryEntityId)
       throws IOException {
-    validateSearchBackedListParams(before, after, sourceFileId, sourceEntityId, primaryEntityId);
+    validateSearchBackedListParams(before, after, primaryEntityId);
     SearchListFilter searchListFilter =
         buildContextMemorySearchFilter(include, assets, author, pinned, null);
     SearchSortFilter searchSortFilter =
@@ -281,14 +266,14 @@ public class ContextMemoryResource extends EntityResource<ContextMemory, Context
   }
 
   private static void validateSearchBackedListParams(
-      String before, String after, UUID sourceFileId, UUID sourceEntityId, UUID primaryEntityId) {
+      String before, String after, UUID primaryEntityId) {
     if (!CommonUtil.nullOrEmpty(before) || !CommonUtil.nullOrEmpty(after)) {
       throw new BadRequestException(
           "before/after cursor pagination cannot be combined with q/assets/author/pinned/sortBy/offset");
     }
-    if (sourceFileId != null || sourceEntityId != null || primaryEntityId != null) {
+    if (primaryEntityId != null) {
       throw new BadRequestException(
-          "sourceFileId/sourceEntityId/primaryEntityId cannot be combined with q/assets/author/pinned/sortBy/offset");
+          "primaryEntityId cannot be combined with q/assets/author/pinned/sortBy/offset");
     }
   }
 

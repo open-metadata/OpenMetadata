@@ -434,7 +434,6 @@ const KnowledgePageListComponent = forwardRef<
         title: t('label.knowledge-center'),
         rightPanel: getRightPanelElement(),
         data: undefined,
-        header: null,
       });
     }, [getRightPanelElement]);
 

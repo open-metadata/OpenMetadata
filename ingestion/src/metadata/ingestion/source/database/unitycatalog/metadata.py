@@ -16,7 +16,7 @@ import json
 import traceback
 from functools import partial
 from threading import RLock
-from typing import Any, Callable, Dict, Iterable, List, Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, List, Optional, Tuple, cast  # noqa: UP035
 
 from databricks.sdk.service.catalog import ColumnInfo
 from databricks.sdk.service.catalog import TableConstraint as DBTableConstraint
@@ -64,9 +64,9 @@ from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.progress.modes import TotalsDeclarer
+from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.database.column_type_parser import ColumnTypeParser
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
-from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.ownership import (
     DatabricksOwnerResolver,
 )
@@ -78,10 +78,6 @@ from metadata.ingestion.source.database.incremental_metadata_extraction import (
 )
 from metadata.ingestion.source.database.multi_db_source import MultiDBSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
-from metadata.ingestion.source.database.unitycatalog.connection import (
-    get_connection,
-    get_sqlalchemy_connection,
-)
 from metadata.ingestion.source.database.unitycatalog.incremental_table_processor import (
     UnityCatalogIncrementalTableProcessor,
 )
@@ -104,6 +100,12 @@ from metadata.utils.filters import filter_by_database, filter_by_schema, filter_
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.tag_utils import get_ometa_tag_and_classification
+
+if TYPE_CHECKING:
+    from metadata.ingestion.source.database.unitycatalog.connection import (
+        UnityCatalogConnection as UnityCatalogConnectionHandler,
+    )
+
 
 logger = ingestion_logger()
 
@@ -136,7 +138,9 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         self.service_connection: UnityCatalogConnection = self.config.serviceConnection.root.config
         self._state_lock = RLock()
         self.external_location_map = {}
-        self.client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        connection = cast("UnityCatalogConnectionHandler", self._connection)
+        self.client = connection.client
         self.connection_obj = self.client
         self.table_constraints = []
         self.context.storage_location = None
@@ -144,7 +148,7 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
         self._catalog_cache: dict[str, Any] = {}
         self._schema_cache: dict[tuple[str, str], Any] = {}
         self.owner_resolver = DatabricksOwnerResolver(
-            api_client=DatabricksClient(self.service_connection),
+            api_client=connection.api.client,
             metadata=self.metadata,
             include_owners=self.source_config.includeOwners,
         )
@@ -158,10 +162,14 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
                 self.incremental.start_datetime_utc,
             )
 
-        self.test_connection()
-
         self._sql_connection_map = {}
-        self.engine = get_sqlalchemy_connection(self.service_connection)
+        self.engine = connection.sql.client
+
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @property
     def sql_connection(self) -> Connection:
@@ -877,8 +885,8 @@ class UnitycatalogSource(ExternalTableLineageMixin, DatabaseServiceSource, Multi
             sql_connections = list(self._sql_connection_map.values())
         for sql_connection in sql_connections:
             sql_connection.close()
-        if self.engine:
-            self.engine.dispose()
+        if self._connection is not None:
+            self._connection.close()
 
     # pylint: disable=arguments-renamed
     def get_owner_ref(self, owner: Optional[str]) -> Optional[EntityReferenceList]:  # noqa: UP045

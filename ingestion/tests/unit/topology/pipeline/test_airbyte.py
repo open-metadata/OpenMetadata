@@ -237,7 +237,7 @@ class AirbyteUnitTest(TestCase):
     """Test class for Airbyte source module."""
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    @patch("metadata.ingestion.source.pipeline.airbyte.connection.get_connection")
+    @patch("metadata.ingestion.source.pipeline.airbyte.connection.AirbyteConnection._get_client")
     def __init__(self, methodName, airbyte_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
@@ -456,7 +456,7 @@ class AirbyteCloudUnitTest(TestCase):
     """Test class for Airbyte Cloud source module."""
 
     @patch("metadata.ingestion.source.pipeline.pipeline_service.PipelineServiceSource.test_connection")
-    @patch("metadata.ingestion.source.pipeline.airbyte.connection.get_connection")
+    @patch("metadata.ingestion.source.pipeline.airbyte.connection.AirbyteConnection._get_client")
     def __init__(self, methodName, airbyte_cloud_client, test_connection) -> None:  # noqa: N803
         super().__init__(methodName)
         test_connection.return_value = False
