@@ -11,6 +11,10 @@
             "javaType": "org.openmetadata.schema.type.aicontext.KnowledgeItem",
             "description": "A single piece of business knowledge attached to the asset (glossary term definition, metric definition, or Context Center article/pill).",
             "properties": {
+                "id": {
+                    "description": "Unique identifier of the knowledge entity.",
+                    "$ref": "basic.json#/definitions/uuid"
+                },
                 "type": {
                     "description": "The entity type of the knowledge item.",
                     "type": "string",
@@ -386,6 +390,10 @@
         }
     },
     "properties": {
+        "id": {
+            "description": "Unique identifier of the asset this context describes.",
+            "$ref": "basic.json#/definitions/uuid"
+        },
         "fullyQualifiedName": {
             "description": "Fully qualified name of the asset this context describes.",
             "$ref": "basic.json#/definitions/fullyQualifiedEntityName"
@@ -394,11 +402,23 @@
             "description": "Entity type of the asset (table, dashboard, pipeline, topic, ...).",
             "type": "string"
         },
+        "serviceType": {
+            "description": "Service type of the asset's service (e.g. Snowflake, BigQuery).",
+            "type": "string"
+        },
         "displayName": {
             "type": "string"
         },
         "description": {
             "type": "string"
+        },
+        "owners": {
+            "description": "Owners (users/teams) of the asset.",
+            "type": "array",
+            "items": {
+                "$ref": "entityReference.json"
+            },
+            "default": null
         },
         "resource": {
             "description": "Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).",
