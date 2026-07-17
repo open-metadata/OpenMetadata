@@ -580,9 +580,9 @@ make unit_ingestion_dev_env  # For Python changes
 - ✅ **REQUIRE**: All user-facing text uses `useTranslation` hook: `const { t } = useTranslation()`
 - ✅ **REQUIRE**: Translation keys like `t('label.key')` from locale files
 
-#### MUI Migration (Preferred)
-- ⚠️ **FLAG**: New features using Ant Design components (should use MUI v7.3.1)
-- ✅ **PREFER**: MUI components and theme tokens from `openmetadata-ui-core-components`
+#### Component Library (Preferred)
+- ⚠️ **FLAG**: New features using Ant Design components (should use `openmetadata-ui-core-components`)
+- ✅ **PREFER**: Components and theme tokens from `openmetadata-ui-core-components`
 - ❌ **REJECT**: Hardcoded colors instead of theme tokens
 
 #### Code Quality (Must Pass)
@@ -617,7 +617,7 @@ When reviewing a UI PR, verify ALL of these:
 2. **Type Safety**: Search for `any` type usage - must be zero occurrences
 3. **i18n Compliance**: Search for hardcoded strings - must use translation keys
 4. **Import Organization**: Check import order follows standard
-5. **MUI Usage**: New components prefer MUI over Ant Design
+5. **Component Library Usage**: New components prefer `openmetadata-ui-core-components` over Ant Design
 6. **No Debug Code**: No console.log, commented code, or debug statements
 7. **Performance**: Proper memoization, no unnecessary re-renders
 8. **Accessibility**: Semantic HTML, ARIA labels, keyboard navigation
@@ -656,7 +656,7 @@ Use this template when reviewing UI PRs:
 - [ ] `yarn build` succeeds
 - [ ] No `any` types
 - [ ] No hardcoded strings
-- [ ] Proper MUI usage
+- [ ] Proper `openmetadata-ui-core-components` usage
 - [ ] Screenshots provided
 
 See [UI_PR_REVIEW_GUIDELINES.md](../openmetadata-ui/UI_PR_REVIEW_GUIDELINES.md) for complete checklist.

@@ -22,7 +22,7 @@ these exist — check this table before writing layout markup.
 Only **layout container** divs (the ones whose `className` is mostly
 `flex`/`grid`/`gap`/`items-*`/`justify-*`/border-as-separator) go through a
 primitive. Leave alone: single non-layout divs, text wrappers, spans, icon
-wrappers, and anything built from antd/MUI form components — this is not a
+wrappers, and anything built from antd/other external library form components — this is not a
 "replace every div" rule.
 
 ## Quick reference

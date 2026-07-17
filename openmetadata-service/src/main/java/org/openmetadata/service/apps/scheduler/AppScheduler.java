@@ -85,6 +85,7 @@ public class AppScheduler {
   private static AppScheduler instance;
   private static volatile boolean initialized = false;
   @Getter private final Scheduler scheduler;
+  private final ScheduledExecutorService errorTriggerResetScheduler;
   private static final @Getter CronMapper cronMapper = CronMapper.fromUnixToQuartz();
   private static final @Getter CronParser cronParser =
       new CronParser(CronDefinitionBuilder.instanceDefinitionFor(UNIX));
@@ -108,10 +109,14 @@ public class AppScheduler {
         .getListenerManager()
         .addJobListener(new OmAppJobListener(), jobGroupEquals(APPS_JOB_GROUP));
 
-    ScheduledExecutorService threadScheduler =
+    // Daemon thread + retained reference so shutDown() can stop it. Previously this pool was a
+    // local with a non-daemon thread that was never shut down, so it survived shutDown() and
+    // blocked JVM exit (and leaked another pool on each re-initialize in embedded/test contexts).
+    this.errorTriggerResetScheduler =
         Executors.newScheduledThreadPool(
-            1, Thread.ofPlatform().name("om-app-error-trigger-reset").factory());
-    threadScheduler.scheduleAtFixedRate(this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
+            1, Thread.ofPlatform().daemon().name("om-app-error-trigger-reset").factory());
+    this.errorTriggerResetScheduler.scheduleAtFixedRate(
+        this::resetErrorTriggers, 0, 24, TimeUnit.HOURS);
   }
 
   public void start() throws SchedulerException {
@@ -243,6 +248,7 @@ public class AppScheduler {
   public static void shutDown() throws SchedulerException {
     if (instance != null) {
       instance.scheduler.shutdown();
+      instance.errorTriggerResetScheduler.shutdownNow();
     }
   }
 
