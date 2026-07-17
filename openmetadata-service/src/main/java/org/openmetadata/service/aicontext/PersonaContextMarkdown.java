@@ -536,7 +536,10 @@ final class PersonaContextMarkdown {
     }
     String encodedFqn =
         item.getFullyQualifiedName().replace(" ", "%20").replace("(", "%28").replace(")", "%29");
-    return "[" + labelOf(item) + "](#" + entityType + "/" + encodedFqn + ")";
+    // Escape Markdown link-text delimiters so a display name like "Revenue [YTD]" does not
+    // terminate the link text early and produce a broken link.
+    String label = labelOf(item).replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]");
+    return "[" + label + "](#" + entityType + "/" + encodedFqn + ")";
   }
 
   private static void appendManifest(StringBuilder markdown, List<ManifestEntry> manifest) {

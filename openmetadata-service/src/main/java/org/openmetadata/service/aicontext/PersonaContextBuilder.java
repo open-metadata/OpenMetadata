@@ -319,9 +319,18 @@ public class PersonaContextBuilder {
       ContextRule rule, Map<String, Object> document, boolean loadHeavySections) {
     String fqn = stringValue(document.get("fullyQualifiedName"));
     String id = stringValue(document.get("id"));
+    UUID assetId = null;
+    if (!nullOrEmpty(id)) {
+      try {
+        assetId = UUID.fromString(id);
+      } catch (IllegalArgumentException ignored) {
+        // Degrade like the sibling owner/href parses rather than aborting the whole build.
+        LOG.debug("Ignoring invalid indexed id for {}: {}", fqn, id);
+      }
+    }
     AIContext context =
         new AIContext()
-            .withId(nullOrEmpty(id) ? null : UUID.fromString(id))
+            .withId(assetId)
             .withFullyQualifiedName(fqn)
             .withEntityType(rule.getEntityType())
             .withDisplayName(stringValue(document.get("displayName")))
