@@ -23,7 +23,10 @@ export const LANGUAGE_HEADER = 'X-OpenMetadata-Language';
 export const withLanguageHeader = (
   config: InternalAxiosRequestConfig
 ): InternalAxiosRequestConfig => {
-  const language = i18next.resolvedLanguage || i18next.language;
+  // Use i18next.language (the selected UI language, e.g. 'fr-FR'), NOT resolvedLanguage — the latter
+  // can sit at the fallback ('en-US') even when a non-fallback language is active. This matches the
+  // NavBar language switcher, which reads i18next.language as the source of truth.
+  const language = i18next.language;
 
   if (language) {
     config.headers[LANGUAGE_HEADER] = language;
