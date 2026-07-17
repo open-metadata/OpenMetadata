@@ -497,13 +497,10 @@ final class PersonaContextMarkdown {
             .append(": ")
             .append(labelOf(item))
             .append('\n');
-    // Emit a ready-to-cite chat entity link so the agent renders this metric / glossary term /
-    // article as a clickable link (like it does for tables), instead of leaving it as plain text.
-    // Fall back to the bare backticked FQN for types with no chat-linkable form (e.g. knowledge
-    // pills). See the entity-link format in SharedChatGuardrails (FORMATTING_RULES).
-    String chatLink = chatEntityLink(item);
-    if (chatLink != null) {
-      markdown.append(chatLink).append('\n');
+    // Prefer an entity link for linkable types; otherwise a bare FQN.
+    String link = entityLink(item);
+    if (link != null) {
+      markdown.append(link).append('\n');
     } else if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
@@ -514,13 +511,11 @@ final class PersonaContextMarkdown {
   }
 
   /**
-   * Builds a chat entity link ({@code [label](#entityType/fqn)}) for a knowledge item so the agent
-   * can cite it directly. Returns null when the item has no fqn or its type has no chat-linkable
-   * form (a context-memory knowledge pill is not a browsable entity). The fqn path segment is
-   * percent-encoded for the characters the chat UI expects (space, parentheses), matching the entity
-   * link format the agent's formatting rules use.
+   * Builds an entity link ({@code [label](#entityType/fqn)}) for a linkable knowledge item, or null
+   * for items with no FQN or a non-linkable type (context memory). The FQN is percent-encoded for
+   * spaces and parentheses.
    */
-  private static String chatEntityLink(KnowledgeItem item) {
+  private static String entityLink(KnowledgeItem item) {
     if (item.getType() == null || nullOrEmpty(item.getFullyQualifiedName())) {
       return null;
     }

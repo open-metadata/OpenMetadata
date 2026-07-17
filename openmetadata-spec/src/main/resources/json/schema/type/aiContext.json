@@ -391,7 +391,7 @@
     },
     "properties": {
         "id": {
-            "description": "Unique identifier of the asset this context describes. Stable, non-null primary key, unlike the presentation-layer `resource` href.",
+            "description": "Unique identifier of the asset this context describes.",
             "$ref": "basic.json#/definitions/uuid"
         },
         "fullyQualifiedName": {
@@ -403,7 +403,7 @@
             "type": "string"
         },
         "serviceType": {
-            "description": "Service type of the asset's service (e.g. Snowflake, BigQuery), used by clients to pick the service icon.",
+            "description": "Service type of the asset's service (e.g. Snowflake, BigQuery).",
             "type": "string"
         },
         "displayName": {
