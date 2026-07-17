@@ -20,6 +20,7 @@ interface FormProps<TFieldValues extends FieldValues = FieldValues>
   renderFieldDoc?: (doc: string) => ReactNode;
   fieldDocHeader?: ReactNode;
   fieldDocOffset?: number;
+  fieldDocMaxHeight?: number;
 }
 
 interface FormFieldProps<
@@ -71,6 +72,7 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   renderFieldDoc,
   fieldDocHeader,
   fieldDocOffset,
+  fieldDocMaxHeight,
   ...props
 }: FormProps<TFieldValues>) => {
   // Always keep the same tree shape (FormProvider > FieldDocProvider > AriaForm)
@@ -83,6 +85,7 @@ export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
         {showFieldDocs ? (
           <FieldDocPopover
             header={fieldDocHeader}
+            maxHeight={fieldDocMaxHeight}
             offset={fieldDocOffset}
             renderDoc={renderFieldDoc}
           />
