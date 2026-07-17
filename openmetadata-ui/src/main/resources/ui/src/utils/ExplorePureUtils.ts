@@ -113,16 +113,16 @@ export const getSelectedValuesFromQuickFilter = (
 
 export const findActiveSearchIndex = (
   obj: SearchHitCounts,
-  tabsData: Record<ExploreSearchIndex, TabsInfoData>
+  tabsData: Record<ExploreSearchIndex, TabsInfoData>,
+  topHitIndex?: ExploreSearchIndex
 ): ExploreSearchIndex | null => {
   const keysInOrder = Object.keys(tabsData) as ExploreSearchIndex[];
   const keysWithHits = keysInOrder.filter((key) => obj[key] > 0);
 
-  // Land on the entity index with the most matches, not merely the first
-  // populated tab in order. A relevance-ranked query surfaces related entities
-  // across several asset types (e.g. searching a chart name also matches the
-  // dashboard that embeds it), so the first populated tab can be one that does
-  // not contain the searched entity. Ties keep the original tab order.
+  if (topHitIndex && keysWithHits.includes(topHitIndex)) {
+    return topHitIndex;
+  }
+
   return keysWithHits.reduce<ExploreSearchIndex | null>(
     (activeKey, key) =>
       activeKey === null || obj[key] > obj[activeKey] ? key : activeKey,

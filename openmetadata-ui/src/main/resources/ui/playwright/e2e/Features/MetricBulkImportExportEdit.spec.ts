@@ -591,7 +591,12 @@ const waitForMetricBulkEditGrid = async (page: Page, metricName: string) => {
   await expect(page.locator('.rdg-header-row')).toBeVisible({
     timeout: 90000,
   });
-  await expect(page.getByText(metricName)).toBeVisible();
+  await expect(
+    page
+      .locator('.bulk-edit-name-value')
+      .filter({ hasText: metricName })
+      .first()
+  ).toBeVisible();
 };
 
 const editFirstDisplayNameCell = async (page: Page, value: string) => {

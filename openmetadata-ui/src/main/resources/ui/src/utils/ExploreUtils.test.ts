@@ -759,6 +759,7 @@ describe('fetchEntityData', () => {
       TABS_SEARCH_INDEXES: [SearchIndex.TABLE],
       EntityTypeSearchIndexMapping: { [EntityType.TABLE]: SearchIndex.TABLE },
       setSearchHitCounts: jest.fn(),
+      setAutoSelectedSearchIndex: jest.fn(),
       setSearchResults: jest.fn(),
       setUpdatedAggregations: jest.fn(),
       setShowIndexNotFoundAlert: jest.fn(),
@@ -798,13 +799,58 @@ describe('fetchEntityData', () => {
     expect(mockSearchQuery.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         searchIndex: SearchIndex.DATA_ASSET,
-        pageSize: 0,
+        pageNumber: 1,
+        pageSize: 1,
+        fetchSource: true,
+        includeFields: ['entityType'],
       })
     );
     expect(params.setSearchHitCounts).toHaveBeenCalledWith({
       [SearchIndex.TABLE]: 42,
     });
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
+  });
+
+  it('selects the index of the top ranked hit instead of the largest bucket', async () => {
+    const countResponse = {
+      aggregations: {
+        entityType: {
+          buckets: [
+            { key: 'dashboard', doc_count: 20 },
+            { key: 'chart', doc_count: 1 },
+          ],
+        },
+      },
+      hits: {
+        hits: [{ _source: { entityType: EntityType.CHART } }],
+        total: { value: 21 },
+      },
+    };
+    mockSearchQuery
+      .mockResolvedValueOnce(countResponse)
+      .mockResolvedValueOnce(RESULTS_RESPONSE);
+    const params = buildParams({
+      searchQueryParam: 'revenue chart',
+      tab: '',
+      tabsInfo: {
+        [SearchIndex.DASHBOARD]: {},
+        [SearchIndex.CHART]: {},
+      },
+      TABS_SEARCH_INDEXES: [SearchIndex.DASHBOARD, SearchIndex.CHART],
+      EntityTypeSearchIndexMapping: {
+        [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
+        [EntityType.CHART]: SearchIndex.CHART,
+      },
+    });
+
+    await fetchEntityData(params);
+
+    expect(mockSearchQuery.mock.calls[1][0]).toEqual(
+      expect.objectContaining({ searchIndex: SearchIndex.CHART })
+    );
+    expect(params.setAutoSelectedSearchIndex).toHaveBeenCalledWith(
+      SearchIndex.CHART
+    );
   });
 
   it('ANDs the browse/filter scope into the query_filter sent to search', async () => {

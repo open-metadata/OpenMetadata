@@ -841,7 +841,22 @@ describe('findActiveSearchIndex', () => {
       {} as Record<ExploreSearchIndex, TabsInfoData>
     );
 
-  it('returns the index with the most hits, not the first populated tab', () => {
+  it('prefers the top relevance-ranked hit over the largest bucket', () => {
+    const counts = {
+      [SearchIndex.DASHBOARD]: 4,
+      [SearchIndex.CHART]: 1,
+    } as SearchHitCounts;
+
+    const result = findActiveSearchIndex(
+      counts,
+      tabsInTabOrder([SearchIndex.DASHBOARD, SearchIndex.CHART]),
+      SearchIndex.CHART
+    );
+
+    expect(result).toBe(SearchIndex.CHART);
+  });
+
+  it('falls back to the index with the most hits', () => {
     const counts = {
       [SearchIndex.DASHBOARD]: 1,
       [SearchIndex.CHART]: 4,
