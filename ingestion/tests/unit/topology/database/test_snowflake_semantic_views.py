@@ -17,6 +17,7 @@ from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
+from metadata.ingestion.source.database.common_db_source import TableNameAndType
 from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
 from metadata.ingestion.source.database.snowflake.utils import get_semantic_view_names
 
@@ -67,7 +68,63 @@ def test_get_schema_definition_uses_semantic_view_definition():
         inspector=inspector,
     )
 
-    inspector.get_semantic_view_definition.assert_called_once_with(
-        self_mock.connection, "SALES_SEMANTIC", "PUBLIC"
-    )
+    inspector.get_semantic_view_definition.assert_called_once_with(self_mock.connection, "SALES_SEMANTIC", "PUBLIC")
     assert result == "CREATE SEMANTIC VIEW SALES_SEMANTIC ..."
+
+
+def test_semantic_view_has_no_columns():
+    inspector = Mock()
+
+    result = SnowflakeSource._get_columns_internal(
+        Mock(),
+        schema_name="PUBLIC",
+        table_name="SALES_SEMANTIC",
+        db_name="DB",
+        inspector=inspector,
+        table_type=TableType.SemanticView,
+    )
+
+    assert result == []
+    assert inspector.get_columns.call_count == 0
+
+
+def test_query_table_names_includes_semantic_views_when_enabled():
+    self_mock = Mock()
+    self_mock.service_connection.includeStreams = False
+    self_mock.service_connection.includeStages = False
+    self_mock.service_connection.includeSemanticViews = True
+    self_mock._get_table_names_and_types.return_value = []
+    self_mock._get_semantic_view_names_and_types.return_value = [
+        TableNameAndType(name="SALES_SEMANTIC", type_=TableType.SemanticView)
+    ]
+
+    result = SnowflakeSource.query_table_names_and_types(self_mock, "PUBLIC")
+
+    self_mock._get_semantic_view_names_and_types.assert_called_once_with("PUBLIC")
+    assert [t.name for t in result] == ["SALES_SEMANTIC"]
+
+
+def test_query_table_names_excludes_semantic_views_when_disabled():
+    self_mock = Mock()
+    self_mock.service_connection.includeStreams = False
+    self_mock.service_connection.includeStages = False
+    self_mock.service_connection.includeSemanticViews = False
+    self_mock._get_table_names_and_types.return_value = []
+
+    result = SnowflakeSource.query_table_names_and_types(self_mock, "PUBLIC")
+
+    self_mock._get_semantic_view_names_and_types.assert_not_called()
+    assert result == []
+
+
+def test_query_table_names_swallows_semantic_view_errors():
+    self_mock = Mock()
+    self_mock.service_connection.includeStreams = False
+    self_mock.service_connection.includeStages = False
+    self_mock.service_connection.includeSemanticViews = True
+    self_mock._get_table_names_and_types.return_value = [TableNameAndType(name="T1", type_=TableType.Regular)]
+    self_mock._get_semantic_view_names_and_types.side_effect = Exception("Unsupported feature: SEMANTIC VIEWS")
+
+    result = SnowflakeSource.query_table_names_and_types(self_mock, "PUBLIC")
+
+    assert [t.name for t in result] == ["T1"]
