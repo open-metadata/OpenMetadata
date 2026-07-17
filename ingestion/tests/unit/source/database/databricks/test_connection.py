@@ -200,7 +200,7 @@ def test_construction_does_not_build_the_inspector():
 def test_check_access_probes_the_host_port_then_pings():
     checks = DatabricksChecks(db=Borrowed.of(MagicMock()), service_connection=_config())
     with (
-        patch(f"{CONNECTION_MODULE}.tcp_probe") as mock_probe,
+        patch("metadata.core.connections.test_connection.network.tcp_probe") as mock_probe,
         patch(f"{CONNECTION_MODULE}.run_sql", return_value=MagicMock()) as mock_run,
     ):
         checks.check_access()
@@ -213,7 +213,7 @@ def test_check_access_reports_unreachable_host_as_network_failure():
     probe_error = NetworkUnreachableError("my-workspace.cloud.databricks.com:443 is not reachable")
     probe_error.__cause__ = ConnectionRefusedError(61, "Connection refused")
     with (
-        patch(f"{CONNECTION_MODULE}.tcp_probe", side_effect=probe_error) as mock_probe,
+        patch("metadata.core.connections.test_connection.network.tcp_probe", side_effect=probe_error) as mock_probe,
         pytest.raises(CheckError) as exc,
     ):
         checks.check_access()

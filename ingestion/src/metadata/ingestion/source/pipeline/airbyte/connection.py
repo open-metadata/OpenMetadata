@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Optional, Union
+from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
@@ -37,21 +37,16 @@ from metadata.ingestion.source.pipeline.airbyte.client import (
 from metadata.utils.constants import THREE_MIN
 
 
-def get_connection(
-    connection: AirbyteConnectionConfig,
-) -> Union[AirbyteClient, AirbyteCloudClient]:  # noqa: UP007
-    """
-    Create connection - returns appropriate client based on auth type.
-    OAuth authentication indicates Airbyte Cloud, otherwise self-hosted instance.
-    """
-    if connection.auth and isinstance(connection.auth, Oauth20ClientCredentialsAuthentication):
-        return AirbyteCloudClient(connection)
-    return AirbyteClient(connection)
-
-
 class AirbyteConnection(BaseConnection[AirbyteConnectionConfig, AirbyteClient | AirbyteCloudClient]):
     def _get_client(self) -> AirbyteClient | AirbyteCloudClient:
-        return get_connection(self.service_connection)
+        """
+        Return the appropriate client based on auth type.
+        OAuth authentication indicates Airbyte Cloud, otherwise self-hosted instance.
+        """
+        connection = self.service_connection
+        if connection.auth and isinstance(connection.auth, Oauth20ClientCredentialsAuthentication):
+            return AirbyteCloudClient(connection)
+        return AirbyteClient(connection)
 
     def test_connection(
         self,

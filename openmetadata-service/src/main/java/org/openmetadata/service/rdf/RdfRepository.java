@@ -7,6 +7,7 @@ import com.github.benmanes.caffeine.cache.Cache;
 import com.github.benmanes.caffeine.cache.Caffeine;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.StringWriter;
 import java.time.Duration;
 import java.util.ArrayList;
 import java.util.Collection;
@@ -38,6 +39,7 @@ import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityRelationship;
 import org.openmetadata.schema.type.Include;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.Relationship;
 import org.openmetadata.schema.type.TagLabel;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -79,8 +81,9 @@ public class RdfRepository {
   private static final int GRAPH_CACHE_MAX_SIZE = 500;
   private static final long GRAPH_CACHE_TTL_SECONDS = 60L;
   private static final long TRUNCATED_GRAPH_CACHE_TTL_SECONDS = 5L;
-  static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 50;
-  static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 25;
+  static final int DEFAULT_BULK_ENTITY_BATCH_SIZE = 100;
+  static final int DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE = 100;
+  static final int DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE = 50;
 
   // Fallback predicate URIs for clearAllGlossaryTermRelations when
   // GlossaryTermRelationSettings can't be loaded (e.g. DB blip during startup).
@@ -181,6 +184,10 @@ public class RdfRepository {
   static int resolveBulkRelationshipSourceBatchSize(RdfConfiguration config) {
     return positiveInt(
         config.getBulkRelationshipSourceBatchSize(), DEFAULT_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE);
+  }
+
+  static int resolveBulkLineageEdgeBatchSize(RdfConfiguration config) {
+    return positiveInt(config.getBulkLineageEdgeBatchSize(), DEFAULT_BULK_LINEAGE_EDGE_BATCH_SIZE);
   }
 
   private static int positiveInt(Integer value, int defaultValue) {
@@ -300,9 +307,10 @@ public class RdfRepository {
    * {@link #createOrUpdate}.
    *
    * <p>From the caller's perspective: all-or-nothing — a single thrown
-   * exception means the caller should retry the whole batch (or fall back to
-   * per-entity {@link #createOrUpdate} for per-row error attribution). The
-   * indexer in {@code RdfBatchProcessor.processEntities} does the latter.
+   * exception means the caller should retry the whole batch (or retry singleton
+   * batches for per-row error attribution). The indexer in
+   * {@code RdfBatchProcessor.processEntities} does the latter while preserving
+   * the run's write mode.
    *
    * <p>Implementation note: {@link
    * org.openmetadata.service.rdf.storage.JenaFusekiStorage#bulkStoreEntities}
@@ -314,6 +322,10 @@ public class RdfRepository {
    * row-level failure attribution when a chunk fails.
    */
   public void bulkCreateOrUpdate(List<? extends EntityInterface> entities) {
+    bulkCreateOrUpdate(entities, RdfWriteMode.RECONCILE);
+  }
+
+  public void bulkCreateOrUpdate(List<? extends EntityInterface> entities, RdfWriteMode writeMode) {
     if (!isEnabled() || entities == null || entities.isEmpty()) {
       return;
     }
@@ -325,7 +337,7 @@ public class RdfRepository {
           new RdfStorageInterface.EntityWriteRequest(entityType, entity.getId(), rdfModel));
     }
     try {
-      bulkStoreEntityRequests(requests);
+      bulkStoreEntityRequests(requests, writeMode);
       LOG.debug("Bulk created/updated {} entities in RDF store", entities.size());
     } catch (Exception e) {
       LOG.error("Failed to bulk create/update {} entities in RDF", entities.size(), e);
@@ -334,13 +346,18 @@ public class RdfRepository {
   }
 
   void bulkStoreEntityRequests(List<RdfStorageInterface.EntityWriteRequest> requests) {
+    bulkStoreEntityRequests(requests, RdfWriteMode.RECONCILE);
+  }
+
+  void bulkStoreEntityRequests(
+      List<RdfStorageInterface.EntityWriteRequest> requests, RdfWriteMode writeMode) {
     if (requests == null || requests.isEmpty()) {
       return;
     }
     int chunkSize = resolveBulkEntityBatchSize(config);
     for (int start = 0; start < requests.size(); start += chunkSize) {
       int end = Math.min(start + chunkSize, requests.size());
-      storageService.bulkStoreEntities(requests.subList(start, end));
+      storageService.bulkStoreEntities(requests.subList(start, end), writeMode);
     }
   }
 
@@ -575,6 +592,13 @@ public class RdfRepository {
    */
   public void bulkAddRelationships(
       List<EntityRelationship> relationships, Set<EntitySourceRef> reconcileSources) {
+    bulkAddRelationships(relationships, reconcileSources, RdfWriteMode.RECONCILE);
+  }
+
+  public void bulkAddRelationships(
+      List<EntityRelationship> relationships,
+      Set<EntitySourceRef> reconcileSources,
+      RdfWriteMode writeMode) {
     if (!isEnabled()) {
       return;
     }
@@ -617,7 +641,9 @@ public class RdfRepository {
       } finally {
         tempModel.close();
       }
-      if (reconcileSources != null) {
+      if (writeMode == RdfWriteMode.INSERT_ONLY) {
+        bulkStoreRelationshipData(relationshipDataList, Set.of());
+      } else if (reconcileSources != null) {
         Set<String> sourceUris = new LinkedHashSet<>();
         for (EntitySourceRef ref : reconcileSources) {
           sourceUris.add(
@@ -702,264 +728,26 @@ public class RdfRepository {
    * source table feed into column Z"
    */
   public void addLineageWithDetails(
-      String fromType,
-      UUID fromId,
-      String toType,
-      UUID toId,
-      org.openmetadata.schema.type.LineageDetails lineageDetails) {
+      String fromType, UUID fromId, String toType, UUID toId, LineageDetails lineageDetails) {
     if (!isEnabled()) {
       return;
     }
 
     try {
-      Model model = ModelFactory.createDefaultModel();
-
-      model.setNsPrefix("om", "https://open-metadata.org/ontology/");
-      model.setNsPrefix("prov", "http://www.w3.org/ns/prov#");
-      model.setNsPrefix("dct", "http://purl.org/dc/terms/");
-
-      String fromUri = config.getBaseUri().toString() + "entity/" + fromType + "/" + fromId;
-      String toUri = config.getBaseUri().toString() + "entity/" + toType + "/" + toId;
-
-      Resource fromResource = model.createResource(fromUri);
-      Resource toResource = model.createResource(toUri);
-
-      // PROV-O: to wasDerivedFrom from (reverse direction for semantic correctness)
-      Property derivedFrom = model.createProperty("http://www.w3.org/ns/prov#", "wasDerivedFrom");
-      toResource.addProperty(derivedFrom, fromResource);
-
-      // OpenMetadata-specific upstream for compatibility
-      Property upstream = model.createProperty("https://open-metadata.org/ontology/", "UPSTREAM");
-      fromResource.addProperty(upstream, toResource);
-
-      if (lineageDetails != null) {
-        // Deterministic URI: re-indexing the same lineage produces the same URI,
-        // letting the DELETE+INSERT idempotency below collapse duplicate
-        // LineageDetails resources instead of creating a new one per run.
-        String detailsUri =
-            config.getBaseUri().toString() + "lineageDetails/" + fromId + "/" + toId;
-        Resource detailsResource = model.createResource(detailsUri);
-
-        Property hasLineageDetails =
-            model.createProperty("https://open-metadata.org/ontology/", "hasLineageDetails");
-        fromResource.addProperty(hasLineageDetails, detailsResource);
-
-        detailsResource.addProperty(
-            model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
-            model.createResource("https://open-metadata.org/ontology/LineageDetails"));
-        // detailsResource is the Activity instance for this lineage edge — it
-        // carries Activity-shaped predicates (prov:startedAtTime, endedAtTime,
-        // used, hadPlan, wasGeneratedBy, wasAssociatedWith). Type it as
-        // prov:Activity so PROV-O reasoners and federated SPARQL clients treat
-        // it as one without having to learn the OM-specific type.
-        detailsResource.addProperty(
-            model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
-            model.createResource("http://www.w3.org/ns/prov#Activity"));
-
-        if (lineageDetails.getSqlQuery() != null && !lineageDetails.getSqlQuery().isEmpty()) {
-          detailsResource.addProperty(
-              model.createProperty("https://open-metadata.org/ontology/", "sqlQuery"),
-              lineageDetails.getSqlQuery());
-
-          // PROV-O Plan: model the SQL transformation recipe as a prov:Plan that
-          // the Activity hadPlan. Lets external clients diff/version transformation
-          // logic separately from individual runs.
-          String planUri = detailsUri + "/plan";
-          Resource planResource = model.createResource(planUri);
-          planResource.addProperty(
-              model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
-              model.createResource("http://www.w3.org/ns/prov#Plan"));
-          planResource.addProperty(
-              model.createProperty("http://www.w3.org/ns/prov#", "value"),
-              lineageDetails.getSqlQuery());
-          detailsResource.addProperty(
-              model.createProperty("http://www.w3.org/ns/prov#", "hadPlan"), planResource);
-        }
-
-        if (lineageDetails.getSource() != null) {
-          detailsResource.addProperty(
-              model.createProperty("https://open-metadata.org/ontology/", "lineageSource"),
-              lineageDetails.getSource().value());
-        }
-
-        if (lineageDetails.getDescription() != null && !lineageDetails.getDescription().isEmpty()) {
-          detailsResource.addProperty(
-              model.createProperty("http://purl.org/dc/terms/", "description"),
-              lineageDetails.getDescription());
-        }
-
-        if (lineageDetails.getPipeline() != null && lineageDetails.getPipeline().getId() != null) {
-          EntityReference pipeline = lineageDetails.getPipeline();
-          String pipelineType = pipeline.getType() != null ? pipeline.getType() : "pipeline";
-          String pipelineUri =
-              config.getBaseUri().toString() + "entity/" + pipelineType + "/" + pipeline.getId();
-          Resource pipelineResource = model.createResource(pipelineUri);
-
-          detailsResource.addProperty(
-              model.createProperty("http://www.w3.org/ns/prov#", "wasGeneratedBy"),
-              pipelineResource);
-
-          // PROV-O inverse: pipeline prov:generated lineageDetails. Emitting both
-          // directions lets activity-side queries ("what did this pipeline produce?")
-          // run without needing reverse-property reasoning support in the triple store.
-          pipelineResource.addProperty(
-              model.createProperty("http://www.w3.org/ns/prov#", "generated"), detailsResource);
-        }
-
-        // PROV-O input: lineageDetails prov:used <upstream entity>. Completes the
-        // standard PROV-O Entity → Activity → Entity chain alongside wasDerivedFrom,
-        // so external SPARQL clients can query "what inputs did this activity use?".
-        detailsResource.addProperty(
-            model.createProperty("http://www.w3.org/ns/prov#", "used"), fromResource);
-
-        if (lineageDetails.getColumnsLineage() != null
-            && !lineageDetails.getColumnsLineage().isEmpty()) {
-          Property hasColumnLineage =
-              model.createProperty("https://open-metadata.org/ontology/", "hasColumnLineage");
-
-          int colLineageIndex = 0;
-          for (org.openmetadata.schema.type.ColumnLineage colLineage :
-              lineageDetails.getColumnsLineage()) {
-            // Deterministic URI per (lineage edge, target column) so re-indexing
-            // doesn't multiply column-lineage resources. The index suffix is a
-            // tiebreaker so distinct toColumn values that normalize to the same
-            // string (e.g. `a-b` and `a_b` both → `a_b` after the
-            // [^A-Za-z0-9]→`_` replacement) don't collapse to one resource.
-            String safeName =
-                colLineage.getToColumn() != null
-                    ? colLineage.getToColumn().replaceAll("[^A-Za-z0-9]", "_")
-                    : "noTarget";
-            String colLineageUri =
-                detailsUri + "/columnLineage/" + safeName + "_" + colLineageIndex;
-            Resource colLineageResource = model.createResource(colLineageUri);
-            colLineageIndex++;
-
-            detailsResource.addProperty(hasColumnLineage, colLineageResource);
-            colLineageResource.addProperty(
-                model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
-                model.createResource("https://open-metadata.org/ontology/ColumnLineage"));
-
-            if (colLineage.getFromColumns() != null) {
-              Property fromColumnProp =
-                  model.createProperty("https://open-metadata.org/ontology/", "fromColumn");
-              for (String fromCol : colLineage.getFromColumns()) {
-                colLineageResource.addProperty(fromColumnProp, fromCol);
-              }
-            }
-
-            if (colLineage.getToColumn() != null) {
-              colLineageResource.addProperty(
-                  model.createProperty("https://open-metadata.org/ontology/", "toColumn"),
-                  colLineage.getToColumn());
-            }
-
-            if (colLineage.getFunction() != null) {
-              colLineageResource.addProperty(
-                  model.createProperty("https://open-metadata.org/ontology/", "transformFunction"),
-                  colLineage.getFunction());
-            }
-          }
-        }
-
-        if (lineageDetails.getCreatedAt() != null) {
-          detailsResource.addProperty(
-              model.createProperty("http://purl.org/dc/terms/", "created"),
-              model.createTypedLiteral(
-                  lineageDetails.getCreatedAt().toString(),
-                  org.apache.jena.datatypes.xsd.XSDDatatype.XSDlong));
-          // PROV-O timing: detailsResource represents the Activity instance, so its
-          // createdAt is when the Activity started.
-          detailsResource.addProperty(
-              model.createProperty("http://www.w3.org/ns/prov#", "startedAtTime"),
-              model.createTypedLiteral(
-                  java.time.Instant.ofEpochMilli(lineageDetails.getCreatedAt()).toString(),
-                  org.apache.jena.datatypes.xsd.XSDDatatype.XSDdateTime));
-        }
-        if (lineageDetails.getUpdatedAt() != null) {
-          detailsResource.addProperty(
-              model.createProperty("http://purl.org/dc/terms/", "modified"),
-              model.createTypedLiteral(
-                  lineageDetails.getUpdatedAt().toString(),
-                  org.apache.jena.datatypes.xsd.XSDDatatype.XSDlong));
-          // PROV-O timing: updatedAt is when the Activity last completed (or was
-          // last observed). For instantaneous activities it equals startedAtTime.
-          detailsResource.addProperty(
-              model.createProperty("http://www.w3.org/ns/prov#", "endedAtTime"),
-              model.createTypedLiteral(
-                  java.time.Instant.ofEpochMilli(lineageDetails.getUpdatedAt()).toString(),
-                  org.apache.jena.datatypes.xsd.XSDDatatype.XSDdateTime));
-        }
-
-        if (lineageDetails.getCreatedBy() != null) {
-          detailsResource.addProperty(
-              model.createProperty("https://open-metadata.org/ontology/", "lineageCreatedBy"),
-              lineageDetails.getCreatedBy());
-          // PROV-O agency: the Activity was associated with the Agent (user/bot)
-          // that triggered or owns it. We don't know the agent's UUID from a
-          // username string, so use a name-based URI under entity/user/.
-          String associatedAgentUri =
-              config.getBaseUri().toString()
-                  + "entity/user/"
-                  + lineageDetails.getCreatedBy().replaceAll("[^A-Za-z0-9_.-]", "_");
-          detailsResource.addProperty(
-              model.createProperty("http://www.w3.org/ns/prov#", "wasAssociatedWith"),
-              model.createResource(associatedAgentUri));
-        }
-        if (lineageDetails.getUpdatedBy() != null) {
-          detailsResource.addProperty(
-              model.createProperty("https://open-metadata.org/ontology/", "lineageUpdatedBy"),
-              lineageDetails.getUpdatedBy());
-        }
+      Model model = buildLineageModel(fromType, fromId, toType, toId, lineageDetails);
+      String fromUri = entityUri(fromType, fromId);
+      String toUri = entityUri(toType, toId);
+      String detailsUri = lineageDetailsUri(fromId, toId);
+      String triples = serializeModel(model);
+      if (triples.isBlank()) {
+        return;
       }
-
-      // Idempotent delete/insert pattern ensures no duplicate triples
-      java.io.StringWriter writer = new java.io.StringWriter();
-      model.write(writer, "N-TRIPLES");
-      String triples = writer.toString();
-
-      if (!triples.isEmpty()) {
-        String detailsUri =
-            config.getBaseUri().toString() + "lineageDetails/" + fromId + "/" + toId;
-        // Cleanup before re-insert: remove the lineage edge (both directions),
-        // any LineageDetails subtree for THIS specific (fromId, toId) edge — never
-        // touch the source entity's hasLineageDetails links to OTHER downstream
-        // entities — and any prov:generated reference to this details resource.
-        // The hasLineageDetails delete is pinned to <fromUri> hasLineageDetails
-        // <detailsUri> so reindexing one edge doesn't strip the source's other
-        // downstream lineage links. The detailsUri-prefixed delete cleans up the
-        // LineageDetails resource itself plus its child columnLineage resources
-        // (deterministic URI prefix).
-        String deleteQuery =
-            String.format(
-                "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } };"
-                    + " DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } };"
-                    + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> <%s> . } };"
-                    + " DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), \"%s\")) } };"
-                    + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } }",
-                KNOWLEDGE_GRAPH,
-                fromUri,
-                toUri,
-                KNOWLEDGE_GRAPH,
-                toUri,
-                fromUri,
-                KNOWLEDGE_GRAPH,
-                fromUri,
-                detailsUri,
-                KNOWLEDGE_GRAPH,
-                KNOWLEDGE_GRAPH,
-                detailsUri,
-                KNOWLEDGE_GRAPH,
-                detailsUri,
-                KNOWLEDGE_GRAPH,
-                detailsUri);
-
-        storageService.executeSparqlUpdate(deleteQuery);
-
-        String insertQuery = "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
-
-        storageService.executeSparqlUpdate(insertQuery);
-        LOG.debug("Added lineage with details from {}/{} to {}/{}", fromType, fromId, toType, toId);
-      }
+      String update =
+          buildLineageDeleteStatements(fromUri, toUri, detailsUri)
+              + ";\n"
+              + buildInsertData(triples);
+      storageService.executeSparqlUpdate(update);
+      LOG.debug("Added lineage with details from {}/{} to {}/{}", fromType, fromId, toType, toId);
     } catch (Exception e) {
       LOG.error(
           "Failed to add lineage with details from {}/{} to {}/{}",
@@ -970,6 +758,311 @@ public class RdfRepository {
           e);
       throw new RuntimeException("Failed to add lineage with details", e);
     }
+  }
+
+  Model buildLineageModel(
+      String fromType, UUID fromId, String toType, UUID toId, LineageDetails lineageDetails) {
+    Model model = ModelFactory.createDefaultModel();
+
+    model.setNsPrefix("om", "https://open-metadata.org/ontology/");
+    model.setNsPrefix("prov", "http://www.w3.org/ns/prov#");
+    model.setNsPrefix("dct", "http://purl.org/dc/terms/");
+
+    String fromUri = entityUri(fromType, fromId);
+    String toUri = entityUri(toType, toId);
+
+    Resource fromResource = model.createResource(fromUri);
+    Resource toResource = model.createResource(toUri);
+
+    // PROV-O: to wasDerivedFrom from (reverse direction for semantic correctness)
+    Property derivedFrom = model.createProperty("http://www.w3.org/ns/prov#", "wasDerivedFrom");
+    toResource.addProperty(derivedFrom, fromResource);
+
+    // OpenMetadata-specific upstream for compatibility
+    Property upstream = model.createProperty("https://open-metadata.org/ontology/", "UPSTREAM");
+    fromResource.addProperty(upstream, toResource);
+
+    if (lineageDetails != null) {
+      // Deterministic URI: re-indexing the same lineage produces the same URI,
+      // letting the DELETE+INSERT idempotency below collapse duplicate
+      // LineageDetails resources instead of creating a new one per run.
+      String detailsUri = lineageDetailsUri(fromId, toId);
+      Resource detailsResource = model.createResource(detailsUri);
+
+      Property hasLineageDetails =
+          model.createProperty("https://open-metadata.org/ontology/", "hasLineageDetails");
+      fromResource.addProperty(hasLineageDetails, detailsResource);
+
+      detailsResource.addProperty(
+          model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+          model.createResource("https://open-metadata.org/ontology/LineageDetails"));
+      // detailsResource is the Activity instance for this lineage edge — it
+      // carries Activity-shaped predicates (prov:startedAtTime, endedAtTime,
+      // used, hadPlan, wasGeneratedBy, wasAssociatedWith). Type it as
+      // prov:Activity so PROV-O reasoners and federated SPARQL clients treat
+      // it as one without having to learn the OM-specific type.
+      detailsResource.addProperty(
+          model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+          model.createResource("http://www.w3.org/ns/prov#Activity"));
+
+      if (lineageDetails.getSqlQuery() != null && !lineageDetails.getSqlQuery().isEmpty()) {
+        detailsResource.addProperty(
+            model.createProperty("https://open-metadata.org/ontology/", "sqlQuery"),
+            lineageDetails.getSqlQuery());
+
+        // PROV-O Plan: model the SQL transformation recipe as a prov:Plan that
+        // the Activity hadPlan. Lets external clients diff/version transformation
+        // logic separately from individual runs.
+        String planUri = detailsUri + "/plan";
+        Resource planResource = model.createResource(planUri);
+        planResource.addProperty(
+            model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+            model.createResource("http://www.w3.org/ns/prov#Plan"));
+        planResource.addProperty(
+            model.createProperty("http://www.w3.org/ns/prov#", "value"),
+            lineageDetails.getSqlQuery());
+        detailsResource.addProperty(
+            model.createProperty("http://www.w3.org/ns/prov#", "hadPlan"), planResource);
+      }
+
+      if (lineageDetails.getSource() != null) {
+        detailsResource.addProperty(
+            model.createProperty("https://open-metadata.org/ontology/", "lineageSource"),
+            lineageDetails.getSource().value());
+      }
+
+      if (lineageDetails.getDescription() != null && !lineageDetails.getDescription().isEmpty()) {
+        detailsResource.addProperty(
+            model.createProperty("http://purl.org/dc/terms/", "description"),
+            lineageDetails.getDescription());
+      }
+
+      if (lineageDetails.getPipeline() != null && lineageDetails.getPipeline().getId() != null) {
+        EntityReference pipeline = lineageDetails.getPipeline();
+        String pipelineType = pipeline.getType() != null ? pipeline.getType() : "pipeline";
+        String pipelineUri =
+            config.getBaseUri().toString() + "entity/" + pipelineType + "/" + pipeline.getId();
+        Resource pipelineResource = model.createResource(pipelineUri);
+
+        detailsResource.addProperty(
+            model.createProperty("http://www.w3.org/ns/prov#", "wasGeneratedBy"), pipelineResource);
+
+        // PROV-O inverse: pipeline prov:generated lineageDetails. Emitting both
+        // directions lets activity-side queries ("what did this pipeline produce?")
+        // run without needing reverse-property reasoning support in the triple store.
+        pipelineResource.addProperty(
+            model.createProperty("http://www.w3.org/ns/prov#", "generated"), detailsResource);
+      }
+
+      // PROV-O input: lineageDetails prov:used <upstream entity>. Completes the
+      // standard PROV-O Entity → Activity → Entity chain alongside wasDerivedFrom,
+      // so external SPARQL clients can query "what inputs did this activity use?".
+      detailsResource.addProperty(
+          model.createProperty("http://www.w3.org/ns/prov#", "used"), fromResource);
+
+      if (lineageDetails.getColumnsLineage() != null
+          && !lineageDetails.getColumnsLineage().isEmpty()) {
+        Property hasColumnLineage =
+            model.createProperty("https://open-metadata.org/ontology/", "hasColumnLineage");
+
+        int colLineageIndex = 0;
+        for (org.openmetadata.schema.type.ColumnLineage colLineage :
+            lineageDetails.getColumnsLineage()) {
+          // Deterministic URI per (lineage edge, target column) so re-indexing
+          // doesn't multiply column-lineage resources. The index suffix is a
+          // tiebreaker so distinct toColumn values that normalize to the same
+          // string (e.g. `a-b` and `a_b` both → `a_b` after the
+          // [^A-Za-z0-9]→`_` replacement) don't collapse to one resource.
+          String safeName =
+              colLineage.getToColumn() != null
+                  ? colLineage.getToColumn().replaceAll("[^A-Za-z0-9]", "_")
+                  : "noTarget";
+          String colLineageUri = detailsUri + "/columnLineage/" + safeName + "_" + colLineageIndex;
+          Resource colLineageResource = model.createResource(colLineageUri);
+          colLineageIndex++;
+
+          detailsResource.addProperty(hasColumnLineage, colLineageResource);
+          colLineageResource.addProperty(
+              model.createProperty("http://www.w3.org/1999/02/22-rdf-syntax-ns#", "type"),
+              model.createResource("https://open-metadata.org/ontology/ColumnLineage"));
+
+          if (colLineage.getFromColumns() != null) {
+            Property fromColumnProp =
+                model.createProperty("https://open-metadata.org/ontology/", "fromColumn");
+            for (String fromCol : colLineage.getFromColumns()) {
+              colLineageResource.addProperty(fromColumnProp, fromCol);
+            }
+          }
+
+          if (colLineage.getToColumn() != null) {
+            colLineageResource.addProperty(
+                model.createProperty("https://open-metadata.org/ontology/", "toColumn"),
+                colLineage.getToColumn());
+          }
+
+          if (colLineage.getFunction() != null) {
+            colLineageResource.addProperty(
+                model.createProperty("https://open-metadata.org/ontology/", "transformFunction"),
+                colLineage.getFunction());
+          }
+        }
+      }
+
+      if (lineageDetails.getCreatedAt() != null) {
+        detailsResource.addProperty(
+            model.createProperty("http://purl.org/dc/terms/", "created"),
+            model.createTypedLiteral(
+                lineageDetails.getCreatedAt().toString(),
+                org.apache.jena.datatypes.xsd.XSDDatatype.XSDlong));
+        // PROV-O timing: detailsResource represents the Activity instance, so its
+        // createdAt is when the Activity started.
+        detailsResource.addProperty(
+            model.createProperty("http://www.w3.org/ns/prov#", "startedAtTime"),
+            model.createTypedLiteral(
+                java.time.Instant.ofEpochMilli(lineageDetails.getCreatedAt()).toString(),
+                org.apache.jena.datatypes.xsd.XSDDatatype.XSDdateTime));
+      }
+      if (lineageDetails.getUpdatedAt() != null) {
+        detailsResource.addProperty(
+            model.createProperty("http://purl.org/dc/terms/", "modified"),
+            model.createTypedLiteral(
+                lineageDetails.getUpdatedAt().toString(),
+                org.apache.jena.datatypes.xsd.XSDDatatype.XSDlong));
+        // PROV-O timing: updatedAt is when the Activity last completed (or was
+        // last observed). For instantaneous activities it equals startedAtTime.
+        detailsResource.addProperty(
+            model.createProperty("http://www.w3.org/ns/prov#", "endedAtTime"),
+            model.createTypedLiteral(
+                java.time.Instant.ofEpochMilli(lineageDetails.getUpdatedAt()).toString(),
+                org.apache.jena.datatypes.xsd.XSDDatatype.XSDdateTime));
+      }
+
+      if (lineageDetails.getCreatedBy() != null) {
+        detailsResource.addProperty(
+            model.createProperty("https://open-metadata.org/ontology/", "lineageCreatedBy"),
+            lineageDetails.getCreatedBy());
+        // PROV-O agency: the Activity was associated with the Agent (user/bot)
+        // that triggered or owns it. We don't know the agent's UUID from a
+        // username string, so use a name-based URI under entity/user/.
+        String associatedAgentUri =
+            config.getBaseUri().toString()
+                + "entity/user/"
+                + lineageDetails.getCreatedBy().replaceAll("[^A-Za-z0-9_.-]", "_");
+        detailsResource.addProperty(
+            model.createProperty("http://www.w3.org/ns/prov#", "wasAssociatedWith"),
+            model.createResource(associatedAgentUri));
+      }
+      if (lineageDetails.getUpdatedBy() != null) {
+        detailsResource.addProperty(
+            model.createProperty("https://open-metadata.org/ontology/", "lineageUpdatedBy"),
+            lineageDetails.getUpdatedBy());
+      }
+    }
+
+    return model;
+  }
+
+  public record LineageEdgeData(
+      String fromType, UUID fromId, String toType, UUID toId, LineageDetails details) {}
+
+  public void bulkAddLineage(List<LineageEdgeData> edges, RdfWriteMode writeMode) {
+    if (!isEnabled() || edges == null || edges.isEmpty()) {
+      return;
+    }
+
+    try {
+      int chunkSize = resolveBulkLineageEdgeBatchSize(config);
+      for (int start = 0; start < edges.size(); start += chunkSize) {
+        int end = Math.min(start + chunkSize, edges.size());
+        bulkStoreLineageChunk(edges.subList(start, end), writeMode);
+      }
+      LOG.debug("Bulk added {} lineage edges to RDF store", edges.size());
+    } catch (Exception e) {
+      LOG.error("Failed to bulk add {} lineage edges to RDF", edges.size(), e);
+      throw new RuntimeException("Failed to bulk add lineage edges to RDF", e);
+    }
+  }
+
+  void bulkStoreLineageChunk(List<LineageEdgeData> edges, RdfWriteMode writeMode) {
+    if (edges == null || edges.isEmpty()) {
+      return;
+    }
+
+    StringBuilder update = new StringBuilder();
+    Model combinedModel = ModelFactory.createDefaultModel();
+    for (LineageEdgeData edge : edges) {
+      Model edgeModel =
+          buildLineageModel(
+              edge.fromType(), edge.fromId(), edge.toType(), edge.toId(), edge.details());
+      combinedModel.add(edgeModel);
+      edgeModel.close();
+
+      if (writeMode != RdfWriteMode.INSERT_ONLY) {
+        if (!update.isEmpty()) {
+          update.append(";\n");
+        }
+        update.append(
+            buildLineageDeleteStatements(
+                entityUri(edge.fromType(), edge.fromId()),
+                entityUri(edge.toType(), edge.toId()),
+                lineageDetailsUri(edge.fromId(), edge.toId())));
+      }
+    }
+
+    String triples = serializeModel(combinedModel);
+    combinedModel.close();
+    if (!triples.isBlank()) {
+      if (!update.isEmpty()) {
+        update.append(";\n");
+      }
+      update.append(buildInsertData(triples));
+    }
+    if (!update.isEmpty()) {
+      storageService.executeSparqlUpdate(update.toString());
+    }
+  }
+
+  String lineageDetailsUri(UUID fromId, UUID toId) {
+    return config.getBaseUri().toString() + "lineageDetails/" + fromId + "/" + toId;
+  }
+
+  String buildLineageDeleteStatements(String fromUri, String toUri, String detailsUri) {
+    return String.format(
+        "DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/UPSTREAM> <%s> . } };"
+            + " DELETE WHERE { GRAPH <%s> { <%s> <http://www.w3.org/ns/prov#wasDerivedFrom> <%s> . } };"
+            + " DELETE WHERE { GRAPH <%s> { <%s> <https://open-metadata.org/ontology/hasLineageDetails> <%s> . } };"
+            + " DELETE { GRAPH <%s> { ?s ?p ?o } } WHERE { GRAPH <%s> { ?s ?p ?o . FILTER(STRSTARTS(STR(?s), \"%s\")) } };"
+            + " DELETE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } } WHERE { GRAPH <%s> { ?act <http://www.w3.org/ns/prov#generated> <%s> } }",
+        KNOWLEDGE_GRAPH,
+        fromUri,
+        toUri,
+        KNOWLEDGE_GRAPH,
+        toUri,
+        fromUri,
+        KNOWLEDGE_GRAPH,
+        fromUri,
+        detailsUri,
+        KNOWLEDGE_GRAPH,
+        KNOWLEDGE_GRAPH,
+        detailsUri,
+        KNOWLEDGE_GRAPH,
+        detailsUri,
+        KNOWLEDGE_GRAPH,
+        detailsUri);
+  }
+
+  private String entityUri(String entityType, UUID entityId) {
+    return config.getBaseUri().toString() + "entity/" + entityType + "/" + entityId;
+  }
+
+  private static String serializeModel(Model model) {
+    StringWriter writer = new StringWriter();
+    model.write(writer, "N-TRIPLES");
+    return writer.toString();
+  }
+
+  private static String buildInsertData(String triples) {
+    return "INSERT DATA { GRAPH <" + KNOWLEDGE_GRAPH + "> { " + triples + " } }";
   }
 
   public void removeRelationship(EntityRelationship relationship) {
@@ -1112,6 +1205,11 @@ public class RdfRepository {
 
   public List<Map<String, String>> executeSparqlQueryAsJson(String query) {
     String result = executeSparqlQuery(query, "json");
+    return parseSparqlJsonResults(result);
+  }
+
+  public List<Map<String, String>> executeSparqlQueryDirectAsJson(String query) {
+    String result = executeSparqlQueryDirect(query, "json");
     return parseSparqlJsonResults(result);
   }
 

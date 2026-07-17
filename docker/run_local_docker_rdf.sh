@@ -49,7 +49,7 @@ if [[ $startFuseki == "true" ]]; then
   export RDF_ENABLED=true
   export RDF_AUTO_REINDEX=true
   export RDF_STORAGE_TYPE="${RDF_STORAGE_TYPE:-FUSEKI}"
-  export RDF_ENDPOINT="${RDF_ENDPOINT:-http://fuseki:3030/openmetadata}"
+  export RDF_ENDPOINT="${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-http://fuseki:3030/openmetadata}}"
   export RDF_REMOTE_USERNAME="${RDF_REMOTE_USERNAME:-admin}"
   export RDF_REMOTE_PASSWORD="${RDF_REMOTE_PASSWORD:-admin}"
   export RDF_BASE_URI="${RDF_BASE_URI:-https://open-metadata.org/}"

@@ -45,6 +45,7 @@ import {
   deleteNode,
   editLineage,
   editLineageClick,
+  fitToScreen,
   getEntityColumns,
   performZoomOut,
   rearrangeNodes,
@@ -163,7 +164,7 @@ test.describe('Data asset lineage', () => {
         for (const entity of entities) {
           await connectEdgeBetweenNodes(page, lineageEntity, entity);
           await rearrangeNodes(page);
-          await performZoomOut(page);
+          await fitToScreen(page);
         }
 
         const lineageRes = page.waitForResponse('/api/v1/lineage/getLineage?*');
@@ -180,14 +181,14 @@ test.describe('Data asset lineage', () => {
           )
           .waitFor();
         await rearrangeNodes(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           await verifyNodePresent(page, entity);
         }
 
         // Check the Entity Drawer
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           const toNodeFqn = get(
@@ -240,7 +241,7 @@ test.describe('Data asset lineage', () => {
       await test.step('Verify Lineage Export CSV', async () => {
         await editLineageClick(page);
         await waitForAllLoadersToDisappear(page);
-        await performZoomOut(page);
+        await fitToScreen(page);
         await verifyExportLineageCSV(page, lineageEntity, entities, pipeline);
       });
 
@@ -254,7 +255,7 @@ test.describe('Data asset lineage', () => {
         await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
         await waitForAllLoadersToDisappear(page);
 
-        await performZoomOut(page);
+        await fitToScreen(page);
 
         for (const entity of entities) {
           await deleteEdge(page, lineageEntity, entity);

@@ -10,6 +10,7 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Box, EmptyPlaceholder } from '@openmetadata/ui-core-components';
 import {
   Button,
   Checkbox,
@@ -34,6 +35,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
+import { ReactComponent as FilterOffIcon } from '../../../assets/svg/ic-filter-off.svg';
 import { WILD_CARD_CHAR } from '../../../constants/char.constants';
 import { PAGE_SIZE_BASE, PAGE_SIZE_MEDIUM } from '../../../constants/constants';
 import {
@@ -41,7 +43,6 @@ import {
   TEST_CASE_STATUS_LABELS,
   TEST_CASE_TYPE_OPTION,
 } from '../../../constants/profiler.constant';
-import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityTabs, EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
 import { TestCaseType } from '../../../enums/TestSuite.enum';
@@ -61,7 +62,6 @@ import { getEntityFQN } from '../../../utils/FeedUtilsPure';
 import { getNameFromFQN } from '../../../utils/FqnUtils';
 import { getEntityDetailsPath } from '../../../utils/RouterUtils';
 import { replacePlus } from '../../../utils/StringUtils';
-import ErrorPlaceHolder from '../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import Loader from '../../common/Loader/Loader';
 import Searchbar from '../../common/SearchBarComponent/SearchBar.component';
 import { SearchDropdownOption } from '../../SearchDropdown/SearchDropdown.interface';
@@ -613,16 +613,14 @@ export const AddTestCaseList = ({
     if (!isLoading && isEmpty(source)) {
       return (
         <Col span={24}>
-          <Space
-            align="center"
-            className="w-full"
-            direction="vertical"
-            prefixCls="w-full">
-            <ErrorPlaceHolder
-              className="mt-0-important p-b-sm"
-              type={ERROR_PLACEHOLDER_TYPE.FILTER}
+          <Box className="tw:relative tw:min-h-80 tw:w-full">
+            <EmptyPlaceholder
+              description={t('message.try-adjusting-filter')}
+              icon={<FilterOffIcon className="tw:text-fg-quaternary" />}
+              title={t('label.no-result-found')}
+              variant="blank"
             />
-          </Space>
+          </Box>
         </Col>
       );
     } else {
