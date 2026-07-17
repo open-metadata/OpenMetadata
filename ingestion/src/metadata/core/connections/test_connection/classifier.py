@@ -36,13 +36,16 @@ def exception_chain(error: BaseException) -> Iterator[BaseException]:
         current = current.__cause__ or current.__context__
 
 
+def chain_text(error: BaseException) -> str:
+    """The lower-cased text of the error and its cause chain, joined.
+
+    A projection for building a matcher, not a matcher itself.
+    """
+    return " ".join(str(current) for current in exception_chain(error)).lower()
+
+
 class Matchers:
     """Predicates over an exception (and its cause chain)."""
-
-    @staticmethod
-    def text(error: BaseException) -> str:
-        """The lower-cased text of the error and its cause chain, joined."""
-        return " ".join(str(current) for current in exception_chain(error)).lower()
 
     @staticmethod
     def contains(text: str) -> Matcher:
@@ -113,23 +116,3 @@ class ErrorPack:
             if rule.matcher(error):
                 return rule.diagnosis
         return None
-
-
-def response_status(error: BaseException) -> int | None:
-    """The HTTP status a ``requests``-shaped error carries, or ``None``."""
-    code = getattr(error, "status_code", None)
-    if not isinstance(code, int):
-        code = getattr(getattr(error, "response", None), "status_code", None)
-    return code if isinstance(code, int) else None
-
-
-def http_status(*codes: int, extract: Callable[[BaseException], int | None] = response_status) -> Matcher:
-    """Match a REST error by HTTP status. ``extract`` says where the SDK keeps it."""
-    wanted = frozenset(codes)
-    return lambda error: any(extract(current) in wanted for current in exception_chain(error))
-
-
-# A check only needs to prove the list endpoint is reachable and returns items,
-# not enumerate every one, so ``fetch_list`` counts at most this many and renders
-# ``<cap>+`` when the count meets or exceeds it, keeping the summary bounded on
-# huge tenants and accounts.

@@ -10,13 +10,10 @@
 #  limitations under the License.
 """Unit tests for the ErrorPack classifier."""
 
-import requests
-
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matchers,
-    http_status,
-    response_status,
+    chain_text,
     when,
 )
 
@@ -116,7 +113,7 @@ def test_text_joins_the_whole_cause_chain_lowercased():
     inner = ValueError("Access DENIED")
     outer = RuntimeError("Wrapper")
     outer.__cause__ = inner
-    assert Matchers.text(outer) == "wrapper access denied"
+    assert chain_text(outer) == "wrapper access denied"
 
 
 def test_any_of_matches_when_one_matcher_does():
@@ -136,42 +133,3 @@ def test_any_of_binds_one_diagnosis_to_several_signals():
     )
     assert pack.classify(Exception("alpha")).title == "Same"
     assert pack.classify(Exception(1045, "x")).remediation == "one fix"
-
-
-def test_response_status_reads_a_top_level_status_code():
-    error = Exception("api error")
-    error.status_code = 401
-    assert response_status(error) == 401
-
-
-def test_response_status_falls_back_to_the_response():
-    response = requests.Response()
-    response.status_code = 403
-    assert response_status(requests.HTTPError("403", response=response)) == 403
-
-
-def test_response_status_prefers_the_top_level_code_over_the_response():
-    response = requests.Response()
-    response.status_code = 500
-    error = requests.HTTPError("boom", response=response)
-    error.status_code = 401
-    assert response_status(error) == 401
-
-
-def test_response_status_is_none_when_the_error_carries_no_status():
-    assert response_status(Exception("plain")) is None
-
-
-def test_http_status_matches_a_top_level_status_code_across_the_chain():
-    error = Exception("api error")
-    error.status_code = 404
-    wrapper = RuntimeError("wrapped")
-    wrapper.__cause__ = error
-    assert http_status(404)(wrapper) is True
-    assert http_status(401)(wrapper) is False
-
-
-def test_http_status_uses_a_connector_supplied_extractor():
-    error = Exception("vendor 401002")
-    matcher = http_status(401, extract=lambda e: int(str(e).split()[-1][:3]) if "vendor" in str(e) else None)
-    assert matcher(error) is True

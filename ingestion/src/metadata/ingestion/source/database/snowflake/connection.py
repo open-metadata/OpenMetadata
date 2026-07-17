@@ -40,7 +40,7 @@ from metadata.core.connections.test_connection.checks.database import (
     run_sql,
 )
 from metadata.core.connections.test_connection.checks.summary import enumerated
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
     probe_or_fail,
@@ -174,7 +174,7 @@ def _account_usage_denied(account_usage_schema: str | None) -> Matcher:
     token = (account_usage_schema or DEFAULT_ACCOUNT_USAGE_SCHEMA).lower()
 
     def match(error: BaseException) -> bool:
-        text_chain = Matchers.text(error)
+        text_chain = chain_text(error)
         return token in text_chain and ("not authorized" in text_chain or "does not exist" in text_chain)
 
     return match

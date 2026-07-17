@@ -31,9 +31,9 @@ from metadata.core.connections.test_connection import (
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
 from metadata.core.connections.test_connection.checks.rest import (
     fetch_list,
+    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import http_status
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.pipeline.dbtCloudConnection import (
     DBTCloudConnection as DBTCloudConnectionConfig,

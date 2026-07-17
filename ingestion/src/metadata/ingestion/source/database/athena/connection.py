@@ -39,6 +39,7 @@ from metadata.core.connections.test_connection.checks.database import (
     list_schemas,
     run_sql,
 )
+from metadata.core.connections.test_connection.classifier import chain_text
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 from metadata.generated.schema.entity.services.connections.database.athenaConnection import (
     AthenaConnection as AthenaConnectionConfig,
@@ -70,7 +71,7 @@ LIST_TABLE_METADATA = "athena:ListTableMetadata"
 
 def _all_of(*tokens: str) -> Matcher:
     """Match when every token is present in the error's cause-chain text."""
-    return lambda error: all(token in Matchers.text(error) for token in tokens)
+    return lambda error: all(token in chain_text(error) for token in tokens)
 
 
 _AUTHORIZATION_CODES = frozenset({"AccessDeniedException", "AccessDenied"})
@@ -84,7 +85,7 @@ def _authorization_error(error: BaseException) -> bool:
     fallback stands down for an authentication code, which AWS_ERRORS owns."""
     code = aws_error_code(error)
     return code in _AUTHORIZATION_CODES or (
-        code not in AWS_AUTHENTICATION_CODES and "not authorized" in Matchers.text(error)
+        code not in AWS_AUTHENTICATION_CODES and "not authorized" in chain_text(error)
     )
 
 

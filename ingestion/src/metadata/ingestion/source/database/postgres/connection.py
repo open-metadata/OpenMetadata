@@ -30,7 +30,7 @@ from metadata.core.connections.test_connection.checks.database import (
     run_sql,
 )
 from metadata.core.connections.test_connection.checks.summary import enumerated
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.azureConfig import (
     AzureConfigurationSource,
@@ -89,7 +89,7 @@ def _database_not_found(error: BaseException) -> bool:
     ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
     ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
     a missing relation) is not misread as a missing database."""
-    text = Matchers.text(error)
+    text = chain_text(error)
     return 'database "' in text and "does not exist" in text
 
 
@@ -99,7 +99,7 @@ def _role_not_found(error: BaseException) -> bool:
     password auth returns "password authentication failed" instead, to avoid role
     enumeration). Match the quoted token ``role "`` so it is not confused with the
     ``database "`` case, which shares the ``does not exist`` suffix."""
-    text = Matchers.text(error)
+    text = chain_text(error)
     return 'role "' in text and "does not exist" in text
 
 

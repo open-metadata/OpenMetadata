@@ -30,6 +30,7 @@ from botocore.exceptions import (
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matchers,
+    chain_text,
     exception_chain,
     when,
 )
@@ -74,7 +75,7 @@ def _clock_skew(error: BaseException) -> bool:
     is told apart only by message."""
     if aws_error_code(error) not in _BAD_SIGNATURE:
         return False
-    text = Matchers.text(error)
+    text = chain_text(error)
     return any(message in text for message in _SKEW_MESSAGES)
 
 

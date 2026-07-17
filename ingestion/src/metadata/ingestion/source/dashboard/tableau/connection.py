@@ -34,9 +34,9 @@ from metadata.core.connections.test_connection import (
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
 from metadata.core.connections.test_connection.checks.rest import (
     call_endpoint,
+    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import http_status
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection as TableauConnectionConfig,

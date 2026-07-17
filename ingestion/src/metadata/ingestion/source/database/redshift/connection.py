@@ -39,7 +39,7 @@ from metadata.core.connections.test_connection.checks.database import (
     run_sql,
 )
 from metadata.core.connections.test_connection.checks.summary import count
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
@@ -233,7 +233,7 @@ def _database_not_found(error: BaseException) -> bool:
     ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
     ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
     a missing relation) is not misread as a missing database."""
-    text_ = Matchers.text(error)
+    text_ = chain_text(error)
     return 'database "' in text_ and "does not exist" in text_
 
 

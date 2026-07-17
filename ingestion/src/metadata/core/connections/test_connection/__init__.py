@@ -26,6 +26,7 @@ from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matcher,
     Matchers,
+    chain_text,
     exception_chain,
     when,
 )
@@ -41,6 +42,7 @@ __all__ = [
     "Matchers",
     "StepName",
     "TestConnectionRunner",
+    "chain_text",
     "check",
     "collect_checks",
     "exception_chain",

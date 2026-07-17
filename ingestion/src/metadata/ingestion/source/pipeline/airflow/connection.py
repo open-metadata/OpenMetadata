@@ -41,8 +41,8 @@ from metadata.core.connections.test_connection import (
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import run_sql
 from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
-from metadata.core.connections.test_connection.checks.rest import verify_access
-from metadata.core.connections.test_connection.classifier import exception_chain, http_status
+from metadata.core.connections.test_connection.checks.rest import http_status, verify_access
+from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
     probe_or_fail,

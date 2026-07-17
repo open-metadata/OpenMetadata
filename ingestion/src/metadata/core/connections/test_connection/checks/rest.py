@@ -22,10 +22,13 @@ from typing import TYPE_CHECKING, TypeVar
 
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.summary import enumerated
+from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.records import Diagnosis, Evidence
 
 if TYPE_CHECKING:
     from collections.abc import Callable, Sized
+
+    from metadata.core.connections.test_connection.classifier import Matcher
 
 _T = TypeVar("_T")
 
@@ -70,3 +73,23 @@ def fetch_list(
     counted = min(len(items) if items else 0, cap)
     caveat = empty_caveat if counted == 0 else None
     return Evidence(summary=enumerated(counted, noun, cap), command=command, caveat=caveat)
+
+
+def response_status(error: BaseException) -> int | None:
+    """The HTTP status a ``requests``-shaped error carries, or ``None``."""
+    code = getattr(error, "status_code", None)
+    if not isinstance(code, int):
+        code = getattr(getattr(error, "response", None), "status_code", None)
+    return code if isinstance(code, int) else None
+
+
+def http_status(*codes: int, extract: Callable[[BaseException], int | None] = response_status) -> Matcher:
+    """Match a REST error by HTTP status. ``extract`` says where the SDK keeps it."""
+    wanted = frozenset(codes)
+    return lambda error: any(extract(current) in wanted for current in exception_chain(error))
+
+
+# A check only needs to prove the list endpoint is reachable and returns items,
+# not enumerate every one, so ``fetch_list`` counts at most this many and renders
+# ``<cap>+`` when the count meets or exceeds it, keeping the summary bounded on
+# huge tenants and accounts.
