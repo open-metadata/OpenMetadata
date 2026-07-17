@@ -376,7 +376,6 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     const link = graph?.d3Force('link');
     charge?.strength(CHARGE_STRENGTH);
     link?.distance(LINK_DISTANCE).strength(LINK_STRENGTH);
-    graph?.d3ReheatSimulation();
     const frame = setTimeout(resetView, FRAME_DELAY_MS);
 
     return () => clearTimeout(frame);
