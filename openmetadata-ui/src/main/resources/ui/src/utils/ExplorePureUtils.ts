@@ -116,9 +116,18 @@ export const findActiveSearchIndex = (
   tabsData: Record<ExploreSearchIndex, TabsInfoData>
 ): ExploreSearchIndex | null => {
   const keysInOrder = Object.keys(tabsData) as ExploreSearchIndex[];
-  const filteredKeys = keysInOrder.filter((key) => obj[key] > 0);
+  const keysWithHits = keysInOrder.filter((key) => obj[key] > 0);
 
-  return filteredKeys.length > 0 ? filteredKeys[0] : null;
+  // Land on the entity index with the most matches, not merely the first
+  // populated tab in order. A relevance-ranked query surfaces related entities
+  // across several asset types (e.g. searching a chart name also matches the
+  // dashboard that embeds it), so the first populated tab can be one that does
+  // not contain the searched entity. Ties keep the original tab order.
+  return keysWithHits.reduce<ExploreSearchIndex | null>(
+    (activeKey, key) =>
+      activeKey === null || obj[key] > obj[activeKey] ? key : activeKey,
+    null
+  );
 };
 
 export const getAggregations = (data: Aggregations) => {
