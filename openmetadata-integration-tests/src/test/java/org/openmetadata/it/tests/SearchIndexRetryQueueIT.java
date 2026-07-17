@@ -383,7 +383,7 @@ class SearchIndexRetryQueueIT {
   // ---------------------------------------------------------------------------
 
   @Test
-  void testUpdateFailureAndRetryCountIncrementsCount(TestNamespace ns) {
+  void testUpdateFailureAndRetryCountIncrementsCountAndRetainsAttemptTime(TestNamespace ns) {
     String entityId = UUID.randomUUID().toString();
     String entityFqn = ns.prefix("rq") + ".entity";
 
@@ -400,7 +400,40 @@ class SearchIndexRetryQueueIT {
         records.stream().filter(r -> r.getEntityId().equals(entityId)).findFirst().orElseThrow();
     assertEquals(1, record.getRetryCount());
     assertEquals("retry 1 failed", record.getFailureReason());
-    assertNull(record.getClaimedAt());
+    assertNotNull(record.getClaimedAt());
+
+    retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
+  void testClaimPendingHonorsRetryBackoff(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".backoff";
+
+    retryQueueDAO.upsert(
+        entityId, entityFqn, "initial", SearchIndexRetryQueue.STATUS_PENDING, "table");
+    retryQueueDAO.claimRecord(entityId, entityFqn, SearchIndexRetryQueue.STATUS_PENDING);
+    retryQueueDAO.updateFailureAndRetryCount(
+        entityId, entityFqn, "retry 1 failed", SearchIndexRetryQueue.STATUS_PENDING_RETRY_1);
+
+    List<SearchIndexRetryRecord> delayedFirstRetry = retryQueueDAO.claimPending(1000, 3600, 7200);
+    assertTrue(
+        delayedFirstRetry.stream().noneMatch(record -> record.getEntityId().equals(entityId)));
+
+    List<SearchIndexRetryRecord> eligibleFirstRetry = retryQueueDAO.claimPending(1000, 0, 0);
+    assertTrue(
+        eligibleFirstRetry.stream().anyMatch(record -> record.getEntityId().equals(entityId)));
+
+    retryQueueDAO.updateFailureAndRetryCount(
+        entityId, entityFqn, "retry 2 failed", SearchIndexRetryQueue.STATUS_PENDING_RETRY_2);
+
+    List<SearchIndexRetryRecord> delayedSecondRetry = retryQueueDAO.claimPending(1000, 0, 7200);
+    assertTrue(
+        delayedSecondRetry.stream().noneMatch(record -> record.getEntityId().equals(entityId)));
+
+    List<SearchIndexRetryRecord> eligibleSecondRetry = retryQueueDAO.claimPending(1000, 0, 0);
+    assertTrue(
+        eligibleSecondRetry.stream().anyMatch(record -> record.getEntityId().equals(entityId)));
 
     retryQueueDAO.deleteByEntity(entityId, entityFqn);
   }

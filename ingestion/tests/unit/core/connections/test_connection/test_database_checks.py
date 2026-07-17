@@ -11,7 +11,7 @@
 """Unit tests for the shared database check helpers."""
 
 import socket
-from unittest.mock import MagicMock
+from unittest.mock import MagicMock, patch
 
 import pytest
 from sqlalchemy import create_engine
@@ -27,6 +27,8 @@ from metadata.core.connections.test_connection.checks.database import (
     run_sql,
 )
 from metadata.core.connections.test_connection.network import NetworkUnreachableError
+
+_MODULE = "metadata.core.connections.test_connection.checks.database"
 
 
 def _closed_port() -> int:
@@ -52,6 +54,7 @@ def test_database_step_values_match_schema():
     assert DatabaseStep.CheckAccess.value == "CheckAccess"
     assert DatabaseStep.GetTables.value == "GetTables"
     assert DatabaseStep.GetStreams.value == "GetStreams"
+    assert DatabaseStep.GetAccessHistory.value == "GetAccessHistory"
 
 
 def test_ping_succeeds_on_a_live_engine(engine):
@@ -103,8 +106,40 @@ def test_auto_select_skips_connector_supplied_system_schemas():
     assert summary == ("1 table in schema 'userschema', auto-selected because no databaseSchema was configured")
 
 
+def test_list_tables_has_no_caveat_when_tables_exist(engine):
+    assert list_tables(engine, "main").caveat is None
+
+
+def test_list_tables_warns_when_no_tables_visible():
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    evidence = list_tables(eng, "main")
+    assert evidence.summary == "0 tables in schema 'main'"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No tables visible in schema 'main'"
+    assert "permission" in evidence.caveat.remediation
+
+
+def test_list_views_never_warns_when_empty():
+    # An empty view list is normal, so list_views stays silent (no caveat).
+    eng = create_engine("sqlite://", connect_args={"check_same_thread": False}, poolclass=StaticPool)
+    assert list_views(eng, "main").caveat is None
+
+
 def test_list_schemas_summarizes_count(engine):
     assert list_schemas(engine).summary == "1 schema enumerated"
+
+
+def test_list_schemas_has_no_caveat_when_schemas_exist(engine):
+    assert list_schemas(engine).caveat is None
+
+
+def test_list_schemas_warns_when_no_schemas_visible(engine):
+    with patch(f"{_MODULE}.inspect") as inspect_mock:
+        inspect_mock.return_value.get_schema_names.return_value = []
+        evidence = list_schemas(engine)
+    assert evidence.summary == "0 schemas enumerated"
+    assert evidence.caveat is not None
+    assert evidence.caveat.title == "No schemas visible in the database"
 
 
 def test_run_sql_failure_carries_the_attempted_command(engine):

@@ -12,19 +12,27 @@
  */
 
 import { expect } from '@playwright/test';
-import { createNewPage, uuid } from '../../utils/common';
+import { SHORTCUTS } from '../../constant/KnowledgeCenter.constant';
+import { createNewPage, getApiContext, uuid } from '../../utils/common';
 import {
   ContextCenterDocument,
+  createArticleViaApi,
+  deleteArticleByFqn,
   expectBulkIdsRequest,
   expectCapturedDownload,
   expectSelectedCount,
   getDocumentRowByName,
+  insertImageViaUpload,
+  insertImageViaUrl,
   installDownloadCapture,
+  navigateToArticle,
   navigateToDocuments,
   responseMatchesRequestPath,
   selectDocumentByName,
   uploadDocument,
 } from '../../utils/ContextCenterUtil';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import { getEditor, waitForAutoSave } from '../../utils/KnowledgeCenter';
 import { test as base } from '../fixtures/pages';
 
 const test = base;
@@ -69,12 +77,13 @@ test.describe('Context Center - Download', () => {
   });
 
   test('download button triggers file download', async ({ browser, page }) => {
+    const fileContent = 'document for download test';
     const fileName = `download-doc-${uuid()}.txt`;
     const { apiContext, afterAction } = await createNewPage(browser);
     const document = await uploadAndTrack(
       apiContext,
       fileName,
-      Buffer.from('document for download test')
+      Buffer.from(fileContent)
     );
     await afterAction();
 
@@ -82,7 +91,6 @@ test.describe('Context Center - Download', () => {
 
     const targetRow = getDocumentRowByName(page, fileName);
     await expect(targetRow).toBeVisible();
-    await installDownloadCapture(page);
 
     const downloadPath = `/api/v1/contextCenter/drive/files/${document.id}/download`;
     const downloadResPromise = page.waitForResponse(
@@ -94,8 +102,21 @@ test.describe('Context Center - Download', () => {
     await targetRow.getByTestId('download-btn').click();
     const downloadRes = await downloadResPromise;
 
-    expect([200, 302, 303]).toContain(downloadRes.status());
-    await expectCapturedDownload(page, fileName);
+    expect([200, 302, 303, 307]).toContain(downloadRes.status());
+
+    // The browser-side download request follows a redirect to cloud storage
+    // (S3/Azure), which the browser cannot read cross-origin without CORS
+    // headers on the storage container. Verify the downloaded content via
+    // Playwright's Node-side apiContext instead, which isn't subject to
+    // browser CORS enforcement and can follow the redirect directly.
+    const { apiContext: verifyApiContext, afterAction: afterVerify } =
+      await getApiContext(page);
+    const verifyRes = await verifyApiContext.get(downloadPath, {
+      params: { redirect: true },
+    });
+    expect(verifyRes.ok()).toBeTruthy();
+    expect(await verifyRes.text()).toBe(fileContent);
+    await afterVerify();
   });
 
   test('bulk download downloads selected documents as a zip with a single API call', async ({
@@ -144,5 +165,111 @@ test.describe('Context Center - Download', () => {
     await expect(
       page.getByText('2 selected', { exact: true })
     ).not.toBeVisible();
+  });
+});
+
+test.describe('Context Center - Article Attachments', () => {
+  const articleFqnsToCleanup = new Set<string>();
+
+  test.afterAll(async ({ browser }) => {
+    if (articleFqnsToCleanup.size === 0) {
+      return;
+    }
+
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    for (const fqn of articleFqnsToCleanup) {
+      await deleteArticleByFqn(apiContext, fqn);
+    }
+
+    articleFqnsToCleanup.clear();
+    await afterAction();
+  });
+
+  test('image insert via upload and URL renders in editor, persists on reload, and is downloadable from the attachment widget', async ({
+    browser,
+    page,
+  }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const article = await createArticleViaApi(apiContext);
+    await afterAction();
+    articleFqnsToCleanup.add(article.fullyQualifiedName);
+
+    const uploadedFileName = `attachment-${uuid()}.png`;
+
+    await test.step('navigate to the article', async () => {
+      await navigateToArticle(page, article.fullyQualifiedName);
+    });
+
+    await test.step('insert image via file upload', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.keyboard.press(SHORTCUTS.enter);
+      await insertImageViaUpload(page, uploadedFileName);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
+    });
+
+    await test.step('insert image via URL embed', async () => {
+      const editor = await getEditor(page, true);
+      await editor.click();
+      await page.getByRole('paragraph').last().click();
+      await page.keyboard.press('Enter');
+      await insertImageViaUrl(
+        page,
+        'https://raw.githubusercontent.com/open-metadata/OpenMetadata/main/openmetadata-docs/images/logo-mark.svg'
+      );
+
+      await expect(page.getByTestId('uploaded-image-node')).toHaveCount(2);
+    });
+
+    await test.step('verify autosave', async () => {
+      await waitForAutoSave(page);
+    });
+
+    await test.step('reload and verify persistence and attachment widget', async () => {
+      await page.reload();
+      await waitForAllLoadersToDisappear(page);
+      await getEditor(page, true);
+
+      await expect(
+        page.getByTestId('uploaded-image-node').first()
+      ).toBeVisible();
+
+      const attachmentWidget = page.getByTestId('attachment-widget');
+      await expect(attachmentWidget).toBeVisible();
+
+      const attachmentItem = attachmentWidget
+        .locator('[data-testid^="attachment-item-"]')
+        .filter({ hasText: uploadedFileName });
+      await expect(attachmentItem).toBeVisible();
+    });
+
+    await test.step('download attachment from the widget', async () => {
+      await installDownloadCapture(page);
+
+      const attachmentWidget = page.getByTestId('attachment-widget');
+      const attachmentItem = attachmentWidget
+        .locator('[data-testid^="attachment-item-"]')
+        .filter({ hasText: uploadedFileName });
+      const downloadButton = attachmentItem.locator(
+        '[data-testid^="download-attachment-"]'
+      );
+
+      const downloadResponsePromise = page.waitForResponse(
+        (response) =>
+          response.url().includes('/api/v1/attachments/') &&
+          response.url().includes('/download') &&
+          response.request().method() === 'GET'
+      );
+
+      await downloadButton.click();
+      const downloadResponse = await downloadResponsePromise;
+
+      expect([200, 302, 303]).toContain(downloadResponse.status());
+      await expectCapturedDownload(page, uploadedFileName);
+    });
   });
 });

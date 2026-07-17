@@ -9,11 +9,18 @@ import type {
   UseFormReturn,
 } from 'react-hook-form';
 import { FormProvider, useController, useFormContext } from 'react-hook-form';
+import { FieldDocProvider } from '../../application/form-field/field-doc-context';
+import { FieldDocPopover } from '../../application/form-field/field-doc-popover';
 
 interface FormProps<TFieldValues extends FieldValues = FieldValues>
   extends ComponentPropsWithoutRef<typeof AriaForm> {
   form: UseFormReturn<TFieldValues>;
   children: ReactNode;
+  showFieldDocs?: boolean;
+  renderFieldDoc?: (doc: string) => ReactNode;
+  fieldDocHeader?: ReactNode;
+  fieldDocOffset?: number;
+  fieldDocMaxHeight?: number;
 }
 
 interface FormFieldProps<
@@ -61,11 +68,29 @@ export const useFormFieldContext = () => {
 
 export const HookForm = <TFieldValues extends FieldValues = FieldValues>({
   form,
+  showFieldDocs = false,
+  renderFieldDoc,
+  fieldDocHeader,
+  fieldDocOffset,
+  fieldDocMaxHeight,
   ...props
 }: FormProps<TFieldValues>) => {
+  // Always keep the same tree shape (FormProvider > FieldDocProvider > AriaForm)
+  // so toggling showFieldDocs never remounts the form and resets its state.
+  // FieldDocProvider is a no-op when disabled, and adds no DOM.
   return (
     <FormProvider {...form}>
-      <AriaForm {...props} />
+      <FieldDocProvider enabled={showFieldDocs}>
+        <AriaForm {...props} />
+        {showFieldDocs ? (
+          <FieldDocPopover
+            header={fieldDocHeader}
+            maxHeight={fieldDocMaxHeight}
+            offset={fieldDocOffset}
+            renderDoc={renderFieldDoc}
+          />
+        ) : null}
+      </FieldDocProvider>
     </FormProvider>
   );
 };

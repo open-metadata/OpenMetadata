@@ -29,6 +29,8 @@ import {
   clickOutside,
   descriptionBox,
   descriptionBoxReadOnly,
+  fetchCompletedCsvAsyncJobResult,
+  getApiContext,
   uuid,
 } from './common';
 import {
@@ -43,6 +45,10 @@ const IMPORT_GRID_LOAD_MASK_SELECTOR =
 const EDITOR_OPEN_TIMEOUT = 1500;
 const TEXT_EDITOR_FILL_TIMEOUT = 2000;
 const IMPORT_STATUS_TIMEOUT = 90000;
+
+type CsvExportResponse = {
+  jobId: string;
+};
 
 const waitForVisibleLocator = async (locator: Locator, timeout = 1500) => {
   try {
@@ -1332,46 +1338,23 @@ export const pressKeyXTimes = async (
   length: number,
   key: string
 ) => {
-  const maxRetries = 3;
-  const retryDelay = 1000; // 1 second delay between retries
-
   for (let i = 0; i < length; i++) {
-    let retryCount = 0;
-    let success = false;
+    const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR).first();
+    if (!(await activeCell.isVisible())) {
+      await page
+        .locator('.rdg-row')
+        .last()
+        .locator('.rdg-cell')
+        .first()
+        .click();
+    }
 
-    while (!success && retryCount < maxRetries) {
-      try {
-        // Wait for the active cell to be visible
-        const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
-        await activeCell.waitFor({ state: 'visible', timeout: 5000 });
-
-        // Ensure the cell is focused
-        if (!(await activeCell.isVisible())) {
-          await activeCell.click({ timeout: 5000 });
-        }
-
-        // Perform the key press with a longer delay
-        await activeCell.press(key, { delay: 200 });
-
-        // Verify the key press was successful by checking if the cell is still active
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- state update settling delay
-        await page.waitForTimeout(100);
-        const isStillActive = await activeCell.isVisible();
-
-        if (isStillActive) {
-          success = true;
-        } else {
-          // If cell lost focus, try to regain it
-          await activeCell.click({ timeout: 5000 });
-          retryCount++;
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- retry backoff delay
-          await page.waitForTimeout(retryDelay);
-        }
-      } catch {
-        retryCount++;
-        // eslint-disable-next-line playwright/no-wait-for-timeout -- retry backoff delay
-        await page.waitForTimeout(retryDelay);
-      }
+    if (key === 'ArrowLeft') {
+      await moveToPrevColumnWithVerification(page);
+    } else if (key === 'ArrowRight') {
+      await moveToNextColumnWithVerification(page);
+    } else {
+      await activeCell.press(key, { delay: 200 });
     }
   }
 };
@@ -1507,11 +1490,19 @@ export const fillRecursiveColumnDetails = async (
 export const firstTimeGridAddRowAction = async (page: Page) => {
   const firstRow = page.locator('.rdg-row').first();
   if ((await firstRow.count()) > 0) {
-    const firstCell = page
-      .locator('.rdg-row')
-      .first()
+    const firstCell = firstRow.locator('.rdg-cell').first();
+    const hasFirstRowContent = await firstRow
       .locator('.rdg-cell')
-      .first();
+      .evaluateAll((cells) =>
+        cells.some((cell) => (cell.textContent ?? '').trim().length > 0)
+      );
+
+    if (!hasFirstRowContent) {
+      await firstCell.click();
+      await expect(firstCell).toBeFocused();
+
+      return;
+    }
 
     await expect(firstCell).toBeFocused();
 
@@ -1529,6 +1520,21 @@ export const firstTimeGridAddRowAction = async (page: Page) => {
     .first();
 
   await expect(lastRowFirstCell).toBeFocused();
+};
+
+export const addGridRowAndSelectFirstCell = async (page: Page) => {
+  const rows = page.locator('.rdg-row');
+  const rowCount = await rows.count();
+
+  await page.click('[data-testid="add-row-btn"]');
+  await expect(rows).toHaveCount(rowCount + 1);
+
+  const lastRowFirstCell = rows.last().locator('.rdg-cell').first();
+
+  await scrollIntoViewCenter(lastRowFirstCell);
+  await lastRowFirstCell.click();
+  await expect(page.locator(RDG_ACTIVE_CELL_SELECTOR).first()).toBeVisible();
+  await selectActiveRowCellByColumn(page, 'name');
 };
 
 /**
@@ -1551,6 +1557,30 @@ const moveToNextColumnWithVerification = async (page: Page): Promise<void> => {
     retries < MAX_COLUMN_NAVIGATION_RETRIES
   ) {
     await page.keyboard.press('ArrowRight', { delay: 100 });
+    newColIndex = await activeCell.getAttribute('aria-colindex');
+    retries++;
+  }
+};
+
+const moveToPrevColumnWithVerification = async (page: Page): Promise<void> => {
+  const activeCell = page.locator(RDG_ACTIVE_CELL_SELECTOR);
+
+  const currentColIndex = await activeCell.getAttribute('aria-colindex');
+
+  if (currentColIndex === '1') {
+    return;
+  }
+
+  await page.keyboard.press('ArrowLeft', { delay: 100 });
+
+  let newColIndex = await activeCell.getAttribute('aria-colindex');
+  let retries = 0;
+
+  while (
+    currentColIndex === newColIndex &&
+    retries < MAX_COLUMN_NAVIGATION_RETRIES
+  ) {
+    await page.keyboard.press('ArrowLeft', { delay: 100 });
     newColIndex = await activeCell.getAttribute('aria-colindex');
     retries++;
   }
@@ -1632,24 +1662,31 @@ export const performColumnSelectAndDeleteOperation = async (page: Page) => {
 };
 
 export const performBulkDownload = async (page: Page, fileName: string) => {
-  const downloadPromise = page.waitForEvent('download');
+  const { apiContext, afterAction } = await getApiContext(page);
+  const exportResponsePromise = page.waitForResponse(
+    (response) =>
+      response.url().includes('/exportAsync') &&
+      response.request().method() === 'GET'
+  );
 
-  await page.click('[data-testid="manage-button"]');
-  await page
-    .getByTestId('manage-dropdown-list-container')
-    .waitFor({ state: 'visible' });
-  await page.click('[data-testid="export-button-title"]');
+  try {
+    await page.click('[data-testid="manage-button"]');
+    await page
+      .getByTestId('manage-dropdown-list-container')
+      .waitFor({ state: 'visible' });
+    await page.click('[data-testid="export-button-title"]');
 
-  await expect(page.locator('.ant-modal-wrap')).toBeVisible();
+    const exportResponse = await exportResponsePromise;
+    expect(exportResponse.ok()).toBeTruthy();
 
-  await page.fill('#fileName', fileName);
-  await page.click('#submit-button');
+    const { jobId } = (await exportResponse.json()) as CsvExportResponse;
+    const csvContent = await fetchCompletedCsvAsyncJobResult(apiContext, jobId);
 
-  await page.locator('.message-banner-wrapper').waitFor({ state: 'detached' });
-  const download = await downloadPromise;
-
-  // Wait for the download process to complete and save the downloaded file somewhere.
-  await download.saveAs('downloads/' + download.suggestedFilename());
+    fs.mkdirSync('downloads', { recursive: true });
+    fs.writeFileSync(path.join('downloads', `${fileName}.csv`), csvContent);
+  } finally {
+    await afterAction();
+  }
 };
 
 /**

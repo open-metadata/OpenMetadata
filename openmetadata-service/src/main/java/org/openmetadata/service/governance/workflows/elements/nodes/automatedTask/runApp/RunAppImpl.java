@@ -20,7 +20,6 @@ import org.openmetadata.schema.entity.applications.configuration.internal.Backfi
 import org.openmetadata.schema.entity.applications.configuration.internal.CostAnalysisConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataAssetsConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.DataInsightsAppConfig;
-import org.openmetadata.schema.entity.applications.configuration.internal.DataQualityConfig;
 import org.openmetadata.schema.entity.applications.configuration.internal.ModuleConfiguration;
 import org.openmetadata.schema.entity.applications.configuration.internal.ServiceFilter;
 import org.openmetadata.schema.entity.services.ingestionPipelines.IngestionPipeline;
@@ -134,7 +133,6 @@ public class RunAppImpl {
                 .getModuleConfiguration()
                 .withAppAnalytics(new AppAnalyticsConfig().withEnabled(false))
                 .withCostAnalysis(new CostAnalysisConfig().withEnabled(false))
-                .withDataQuality(new DataQualityConfig().withEnabled(false))
                 .withDataAssets(
                     new DataAssetsConfig()
                         .withRetention(

@@ -22,13 +22,18 @@ def test_googledrive_connection_is_base_connection():
     assert issubclass(GoogleDriveConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = GoogleDriveConnection(MagicMock())
-        client = conn.client
+def test_get_client_builds_googledrive_client():
+    config = MagicMock()
+    config.credentials.gcpImpersonateServiceAccount = None
+    with (
+        patch(f"{CONNECTION_MODULE}.set_google_credentials"),
+        patch(f"{CONNECTION_MODULE}.default", return_value=(MagicMock(), None)),
+        patch(f"{CONNECTION_MODULE}.build") as mock_build,
+    ):
+        client = GoogleDriveConnection(config).client
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    assert client is not None
+    assert mock_build.call_count == 2
 
 
 def test_test_connection_runs_steps():

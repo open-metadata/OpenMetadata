@@ -378,20 +378,20 @@ jest.mock(
   }
 );
 
-jest.mock('../../components/Modals/EntityDeleteModal/EntityDeleteModal', () => {
-  return jest.fn().mockImplementation(({ onCancel, onConfirm }) => (
+jest.mock('../../components/common/DeleteModal/DeleteModal', () => {
+  return jest.fn().mockImplementation(({ onCancel, onDelete }) => (
     <div data-testid="confirmation-modal">
       <button data-testid="cancel-modal" onClick={onCancel}>
         Cancel
       </button>
-      <button data-testid="confirm-modal" onClick={onConfirm}>
+      <button data-testid="confirm-modal" onClick={onDelete}>
         Confirm
       </button>
     </div>
   ));
 });
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () => {
+jest.mock('../../components/common/EntityDescription/Description', () => {
   return jest.fn().mockReturnValue(<p>DescriptionComponent</p>);
 });
 

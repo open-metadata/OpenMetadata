@@ -17,14 +17,13 @@ import static org.openmetadata.service.governance.workflows.Workflow.EXCEPTION_V
 import static org.openmetadata.service.governance.workflows.Workflow.GLOBAL_NAMESPACE;
 import static org.openmetadata.service.governance.workflows.Workflow.RECOGNIZER_FEEDBACK;
 import static org.openmetadata.service.governance.workflows.Workflow.RELATED_ENTITY_VARIABLE;
+import static org.openmetadata.service.governance.workflows.Workflow.SUPERSEDED_BY_NEWER_RUN;
 import static org.openmetadata.service.governance.workflows.Workflow.WORKFLOW_RUNTIME_EXCEPTION;
 import static org.openmetadata.service.governance.workflows.WorkflowHandler.getProcessDefinitionKeyFromId;
 
 import io.github.resilience4j.core.IntervalFunction;
 import io.github.resilience4j.retry.Retry;
 import io.github.resilience4j.retry.RetryConfig;
-import java.time.Duration;
-import java.time.Period;
 import java.time.ZoneOffset;
 import java.time.ZonedDateTime;
 import java.time.format.DateTimeParseException;
@@ -50,6 +49,7 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.type.ChangeEvent;
+import org.openmetadata.schema.type.DataAccessRequestPayload;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EventType;
 import org.openmetadata.schema.type.Include;
@@ -69,11 +69,13 @@ import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.governance.workflows.WorkflowVariableHandler;
 import org.openmetadata.service.governance.workflows.elements.TriggerFactory;
 import org.openmetadata.service.governance.workflows.elements.nodes.userTask.helper.WorkflowVariableResolver;
+import org.openmetadata.service.governance.workflows.util.ChangePreviewUtils;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.jdbi3.TaskRepository;
 import org.openmetadata.service.resources.feeds.MessageParser;
 import org.openmetadata.service.tasks.TaskWorkflowLifecycleResolver;
 import org.openmetadata.service.util.AsyncService;
+import org.openmetadata.service.util.DurationUtil;
 import org.openmetadata.service.util.WebsocketNotificationHandler;
 
 /**
@@ -90,8 +92,6 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 public class CreateTask implements TaskListener {
   static final String PENDING_WORKFLOW_START_STAGE_ID = "pending-workflow-start";
   private static final String DEFAULT_SYSTEM_USER = "admin";
-  private static final String SUPERSEDED_BY_NEWER_RUN =
-      "Superseded by a newer approval workflow run for the same entity";
   private static final int WORKFLOW_MANAGED_DRAFT_LOOKUP_MAX_ATTEMPTS = 6;
   private static final long INITIAL_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 25L;
   private static final long MAX_WORKFLOW_MANAGED_DRAFT_LOOKUP_DELAY_MILLIS = 250L;
@@ -385,6 +385,7 @@ public class CreateTask implements TaskListener {
         WorkflowVariableResolver.stringVariable(delegateTask, "taskDisplayName");
     String taskDescription =
         WorkflowVariableResolver.stringVariable(delegateTask, "taskDescription");
+    String manualGrantReason = resolveManualGrantReason(delegateTask);
     TaskPriority requestedPriority = resolveTaskPriority(delegateTask);
     Object requestedPayload =
         WorkflowVariableResolver.workflowObjectVariable(delegateTask, "taskPayload");
@@ -446,6 +447,15 @@ public class CreateTask implements TaskListener {
       terminateDeletedWorkflowManagedDraftTask(delegateTask, requestedTaskId);
       return null;
     }
+    Object priorApprovalPayload =
+        existingTask == null
+            ? findPriorOpenApprovalPayload(
+                taskRepository,
+                entity,
+                taskCategory,
+                resolvedWorkflowDefinitionId,
+                workflowInstanceId)
+            : null;
     if (existingTask != null) {
       LOG.info(
           "[CreateTask] Updating existing task '{}' stage='{}' workflowAssignees={} requestedAssignees={}",
@@ -488,7 +498,10 @@ public class CreateTask implements TaskListener {
       updatedTask.setUpdatedAt(System.currentTimeMillis());
       updatedTask.setUpdatedBy(updatedBy);
       updatedTask.setPayload(
-          requestedPayload != null ? requestedPayload : updatedTask.getPayload());
+          requestedPayload != null
+              ? ChangePreviewUtils.preserveProposedChanges(
+                  requestedPayload, updatedTask.getPayload())
+              : updatedTask.getPayload());
       if (effectiveWorkflowDefinitionId != null) {
         updatedTask.setWorkflowDefinitionId(effectiveWorkflowDefinitionId);
       }
@@ -516,6 +529,9 @@ public class CreateTask implements TaskListener {
         updatedTask.setDueDate(effectiveDueDate);
       }
       updatedTask.setPayload(withGrantExpirationDate(stageStatus, updatedTask.getPayload()));
+      updatedTask.setPayload(mergeManualGrantReason(updatedTask.getPayload(), manualGrantReason));
+      updatedTask.setPayload(
+          applyProposedChangesIfApproval(taskType, entity, updatedTask.getPayload()));
       if (requestedExternalReference != null) {
         updatedTask.setExternalReference(
             JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -552,7 +568,12 @@ public class CreateTask implements TaskListener {
             .withAvailableTransitions(availableTransitions)
             .withDescription(
                 taskDescription != null ? taskDescription : buildTaskDescription(entity, taskType))
-            .withPayload(requestedPayload != null ? requestedPayload : payload)
+            .withPayload(
+                ChangePreviewUtils.preserveProposedChanges(
+                    requestedPayload != null
+                        ? requestedPayload
+                        : (payload != null ? payload : priorApprovalPayload),
+                    priorApprovalPayload))
             .withCreatedAt(System.currentTimeMillis())
             .withUpdatedAt(System.currentTimeMillis())
             .withUpdatedBy(updatedBy);
@@ -578,6 +599,8 @@ public class CreateTask implements TaskListener {
       task.setDueDate(effectiveDueDate);
     }
     task.setPayload(withGrantExpirationDate(stageStatus, task.getPayload()));
+    task.setPayload(mergeManualGrantReason(task.getPayload(), manualGrantReason));
+    task.setPayload(applyProposedChangesIfApproval(taskType, entity, task.getPayload()));
     if (requestedExternalReference != null) {
       task.setExternalReference(
           JsonUtils.convertValue(requestedExternalReference, TaskExternalReference.class));
@@ -656,6 +679,45 @@ public class CreateTask implements TaskListener {
             e.getMessage());
       }
     }
+  }
+
+  /**
+   * Find an open prior approval task on the same entity bound to the same workflow definition but
+   * a different workflow instance, and return its payload. Used to carry forward the {@code
+   * proposedChanges} blob across re-edits, since each entity edit spawns a fresh workflow run that
+   * creates a new Task (the prior task is closed asynchronously by {@link
+   * #supersedePriorApprovalTask}). Returns {@code null} when no eligible prior task exists.
+   */
+  static Object findPriorOpenApprovalPayload(
+      TaskRepository taskRepository,
+      EntityInterface entity,
+      TaskCategory taskCategory,
+      UUID currentWorkflowDefinitionId,
+      UUID currentWorkflowInstanceId) {
+    Object priorPayload = null;
+    if (taskCategory == TaskCategory.Approval && entity != null) {
+      try {
+        priorPayload =
+            taskRepository
+                .listNonTerminalTasksByEntityAndCategory(
+                    entity.getFullyQualifiedName(), taskCategory)
+                .stream()
+                .filter(
+                    prior ->
+                        isSupersedablePriorApprovalTask(
+                            prior, currentWorkflowDefinitionId, currentWorkflowInstanceId))
+                .map(Task::getPayload)
+                .filter(java.util.Objects::nonNull)
+                .findFirst()
+                .orElse(null);
+      } catch (Exception e) {
+        LOG.warn(
+            "[CreateTask] Failed to lookup prior approval task payload for entity '{}': {}",
+            entity.getFullyQualifiedName(),
+            e.getMessage());
+      }
+    }
+    return priorPayload;
   }
 
   static boolean isSupersedablePriorApprovalTask(
@@ -743,13 +805,12 @@ public class CreateTask implements TaskListener {
     return existingAssignees;
   }
 
+  // Delegates to TaskRepository.isTerminalStatus so the two predicates can't drift when a new
+  // TaskEntityStatus value is added — the canonical NON_TERMINAL_TASK_STATUSES list on
+  // TaskRepository is the single source of truth. Kept as a static wrapper here for call-site
+  // readability at the workflow-lifecycle guards below.
   static boolean isTerminalTaskStatus(TaskEntityStatus status) {
-    return status != null
-        && status != TaskEntityStatus.Open
-        && status != TaskEntityStatus.InProgress
-        && status != TaskEntityStatus.Pending
-        && status != TaskEntityStatus.Approved
-        && status != TaskEntityStatus.Granted;
+    return TaskRepository.isTerminalStatus(status);
   }
 
   static boolean shouldSkipDeletedWorkflowManagedDraftTask(
@@ -895,23 +956,35 @@ public class CreateTask implements TaskListener {
     return merged;
   }
 
-  static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
-    try {
-      return System.currentTimeMillis() + Duration.parse(duration).toMillis();
-    } catch (DateTimeParseException ignored) {
-      // Duration.parse does not support month/year designators; try Period
+  /**
+   * For approval task types (GlossaryApproval, RequestApproval), augment the task payload with a
+   * {@code proposedChanges} map computed from the target entity's change description, merged
+   * against any existing {@code proposedChanges} on the prior payload (set-cancellation). Returns
+   * the payload unchanged for non-approval task types or when the entity carries no change
+   * description.
+   */
+  static Object applyProposedChangesIfApproval(
+      TaskEntityType taskType, EntityInterface entity, Object payload) {
+    if (taskType != TaskEntityType.GlossaryApproval && taskType != TaskEntityType.RequestApproval) {
+      return payload;
     }
+    return ChangePreviewUtils.buildProposedChangesPayload(entity, payload);
+  }
+
+  static Long parseMillisFromIso8601Duration(String duration, Long fallback) {
+    Long millis = fallback;
     try {
-      return ZonedDateTime.now(ZoneOffset.UTC)
-          .plus(Period.parse(duration))
-          .toInstant()
-          .toEpochMilli();
-    } catch (DateTimeParseException e) {
+      millis =
+          ZonedDateTime.now(ZoneOffset.UTC)
+              .plus(DurationUtil.parseIso8601(duration))
+              .toInstant()
+              .toEpochMilli();
+    } catch (DateTimeParseException invalid) {
       LOG.warn(
           "[CreateTask] Could not parse ISO-8601 duration '{}'; falling back to caller default",
           duration);
-      return fallback;
     }
+    return millis;
   }
 
   private TaskPriority resolveTaskPriority(DelegateTask delegateTask) {
@@ -924,6 +997,47 @@ public class CreateTask implements TaskListener {
 
   private String buildTaskDescription(EntityInterface entity, TaskEntityType taskType) {
     return String.format("Approval required for %s", entity.getName());
+  }
+
+  /**
+   * Optional, workflow-supplied reason (only the Policy Agent DAR path sets it). Wrapped so a
+   * problem reading or typing it can never break task creation for the generic approval workflows
+   * (Glossary, etc.) that never set it — for those it returns null and {@link #mergeManualGrantReason}
+   * is a no-op.
+   */
+  private static String resolveManualGrantReason(DelegateTask delegateTask) {
+    try {
+      Object reason =
+          new WorkflowVariableHandler(delegateTask)
+              .getNamespacedVariable(GLOBAL_NAMESPACE, "manualGrantReason");
+      // Flowable process variables are untyped Object; the DAR path sets this as a String. Any
+      // other
+      // shape (or an unset variable → null) means "no reason", so mergeManualGrantReason no-ops.
+      return reason instanceof String s ? s : null;
+    } catch (Exception e) {
+      // Missing variable already returns null above; only a real lookup error reaches here.
+      LOG.debug("[CreateTask] Could not resolve manualGrantReason: {}", e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Attach a workflow-supplied reason (only the Policy Agent DAR path sets it) to the task payload
+   * as {@code manualGrantReason} — its own structured field, so the UI renders it separately from
+   * the description. Returns the payload unchanged for tasks/workflows that don't set one.
+   */
+  static Object mergeManualGrantReason(Object payload, String reason) {
+    Object result = payload;
+    if (reason != null && !reason.isBlank()) {
+      // manualGrantReason is only ever set on the DAR path, so the payload is a
+      // DataAccessRequestPayload — bind the typed POJO and set the field instead of hand-merging a
+      // raw Map. JsonUtils ignores unknown properties, so the round-trip preserves every field. A
+      // null payload (convertValue returns null) yields a fresh payload carrying only the reason.
+      DataAccessRequestPayload dar =
+          JsonUtils.convertValue(payload, DataAccessRequestPayload.class);
+      result = (dar != null ? dar : new DataAccessRequestPayload()).withManualGrantReason(reason);
+    }
+    return result;
   }
 
   private EntityReference resolveCreatedByReference(
@@ -1053,6 +1167,7 @@ public class CreateTask implements TaskListener {
           "[CreateTask] Draft task '{}' was deleted before materialization; deleting workflow instance '{}'",
           requestedTaskId,
           processInstanceId);
+      // Reason string matches WorkflowFailureListener's "Workflow-managed draft task " prefix.
       runtimeService.deleteProcessInstance(processInstanceId, terminationReason);
     } catch (FlowableObjectNotFoundException e) {
       LOG.debug(

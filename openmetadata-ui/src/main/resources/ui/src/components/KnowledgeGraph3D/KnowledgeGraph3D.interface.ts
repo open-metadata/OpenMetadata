@@ -26,6 +26,7 @@ export interface KnowledgeGraph3DProps {
 
 export interface KnowledgeGraph3DSceneProps {
   data: Graph3DData;
+  focusNodeId?: string;
   level: Level;
   gaps: boolean;
   selectedNodeId: string | null;
@@ -36,6 +37,11 @@ export interface KnowledgeGraph3DSceneProps {
   getNodeTooltip: (node: GraphNode3D) => string;
   /** Builds the on-hover tooltip for a link (the relationship), translated. */
   getLinkTooltip: (link: GraphLink3D) => string;
+  /**
+   * Whether the graph is in fullscreen. Toggling it re-fits the camera so the
+   * graph fills the resized stage; free-form window resizes are left alone.
+   */
+  isFullscreen: boolean;
   /** Imperative reset handle wired by the parent to the "Reset view" control. */
   registerResetView?: (resetView: () => void) => void;
   /** Imperative PNG-export handle wired to the "Export" control. */
@@ -66,6 +72,7 @@ export interface KnowledgeGraph3DPanelProps {
   graph: Graph3DData;
   node: GraphNode3D;
   onClose: () => void;
+  onSelectNode: (node: GraphNode3D) => void;
 }
 
 export interface KnowledgeGraph3DEdgePanelProps {

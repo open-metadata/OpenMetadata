@@ -3,6 +3,7 @@ package org.openmetadata.service.apps.bundles.searchIndex;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
+import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceMessage;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -166,10 +167,12 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong totalSubmitted = new AtomicLong(0);
   private final AtomicLong totalSuccess = new AtomicLong(0);
   private final AtomicLong totalFailed = new AtomicLong(0);
+  private final AtomicLong totalWarnings = new AtomicLong(0);
 
   // Process stage metrics (document building/transformation)
   private final AtomicLong processSuccess = new AtomicLong(0);
   private final AtomicLong processFailed = new AtomicLong(0);
+  private final AtomicLong processWarnings = new AtomicLong(0);
 
   // Configuration
   private volatile int batchSize;
@@ -190,6 +193,7 @@ public class OpenSearchBulkSink implements BulkSink {
   private final AtomicLong columnSinkSubmitted = new AtomicLong(0);
   private final AtomicLong columnSinkSuccess = new AtomicLong(0);
   private final AtomicLong columnSinkFailed = new AtomicLong(0);
+  private final AtomicLong columnSinkWarnings = new AtomicLong(0);
   private final AtomicLong columnBuildFailed = new AtomicLong(0);
   private final ConcurrentLinkedDeque<CompletableFuture<Void>> pendingColumnFutures =
       new ConcurrentLinkedDeque<>();
@@ -252,6 +256,7 @@ public class OpenSearchBulkSink implements BulkSink {
         totalSubmitted,
         totalSuccess,
         totalFailed,
+        totalWarnings,
         this::updateStats,
         circuitBreaker);
   }
@@ -269,6 +274,7 @@ public class OpenSearchBulkSink implements BulkSink {
         columnSinkSubmitted,
         columnSinkSuccess,
         columnSinkFailed,
+        columnSinkWarnings,
         () -> {},
         circuitBreaker);
   }
@@ -442,7 +448,13 @@ public class OpenSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
+        // Run-scoped chunk routing: the staged chunk generation (when this run created one) is
+        // carried in the ReindexContext, so writes target exactly this run's generation — partial
+        // recreates and normal runs carry none and write to the live index.
+        String stagedChunkTarget =
+            reindexContext != null ? reindexContext.getStagedChunkIndex().orElse(null) : null;
+        json =
+            enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker, stagedChunkTarget);
       }
 
       String finalJson = json;
@@ -501,23 +513,12 @@ public class OpenSearchBulkSink implements BulkSink {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
-      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      totalFailed.incrementAndGet();
-      processFailed.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
-      if (failureCallback != null) {
-        String entityTypeName = Entity.getEntityTypeFromObject(entity);
-        failureCallback.onFailure(
-            entityTypeName,
-            entity.getId() != null ? entity.getId().toString() : null,
-            entity.getFullyQualifiedName(),
-            e.getMessage(),
-            IndexingFailureRecorder.FailureStage.PROCESS);
-      }
+      recordStaleReferenceWarning(entity, tracker, e);
     } catch (Exception e) {
+      if (isStaleReferenceMessage(e.getMessage())) {
+        recordStaleReferenceWarning(entity, tracker, e);
+        return;
+      }
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
@@ -538,6 +539,31 @@ public class OpenSearchBulkSink implements BulkSink {
     }
   }
 
+  private void recordStaleReferenceWarning(
+      EntityInterface entity, StageStatsTracker tracker, Exception e) {
+    recordStaleReferenceWarning(
+        Entity.getEntityTypeFromObject(entity),
+        entity.getId(),
+        entity.getFullyQualifiedName(),
+        tracker,
+        e);
+  }
+
+  private void recordStaleReferenceWarning(
+      String entityType, UUID entityId, String entityFqn, StageStatsTracker tracker, Exception e) {
+    LOG.warn(
+        "Skipping stale reference while building search doc for {} {}: {}",
+        entityType,
+        entityFqn != null ? entityFqn : entityId,
+        e.getMessage());
+    totalWarnings.incrementAndGet();
+    processWarnings.incrementAndGet();
+    updateStats();
+    if (tracker != null) {
+      tracker.recordProcess(StatsResult.WARNING);
+    }
+  }
+
   private void indexDocumentDirectly(
       String indexName, String docId, String json, String entityType, StageStatsTracker tracker) {
     try {
@@ -550,18 +576,23 @@ public class OpenSearchBulkSink implements BulkSink {
         tracker.recordSink(StatsResult.SUCCESS);
       }
     } catch (Exception e) {
+      boolean staleReference = isStaleReferenceMessage(e.getMessage());
       LOG.error(
           "Direct index failed for document {} of type {}: {}",
           docId,
           entityType,
           e.getMessage(),
           e);
-      totalFailed.incrementAndGet();
+      if (staleReference) {
+        totalWarnings.incrementAndGet();
+      } else {
+        totalFailed.incrementAndGet();
+      }
       updateStats();
       if (tracker != null) {
-        tracker.recordSink(StatsResult.FAILED);
+        tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
       }
-      if (failureCallback != null) {
+      if (!staleReference && failureCallback != null) {
         failureCallback.onFailure(
             entityType,
             docId,
@@ -601,22 +632,12 @@ public class OpenSearchBulkSink implements BulkSink {
         tracker.recordProcess(StatsResult.SUCCESS);
       }
     } catch (EntityNotFoundException e) {
-      LOG.error("Entity Not Found Due to : {}", e.getMessage(), e);
-      totalFailed.incrementAndGet();
-      processFailed.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordProcess(StatsResult.FAILED);
-      }
-      if (failureCallback != null) {
-        failureCallback.onFailure(
-            entityType,
-            entity.getId() != null ? entity.getId().toString() : null,
-            null,
-            e.getMessage(),
-            IndexingFailureRecorder.FailureStage.PROCESS);
-      }
+      recordStaleReferenceWarning(entityType, entity.getId(), null, tracker, e);
     } catch (Exception e) {
+      if (isStaleReferenceMessage(e.getMessage())) {
+        recordStaleReferenceWarning(entityType, entity.getId(), null, tracker, e);
+        return;
+      }
       LOG.error(
           "Encountered Issue while building SearchDoc from Entity Due to : {}", e.getMessage(), e);
       totalFailed.incrementAndGet();
@@ -738,10 +759,12 @@ public class OpenSearchBulkSink implements BulkSink {
   public StepStats getColumnStats() {
     long success = columnSinkSuccess.get();
     long failed = columnSinkFailed.get() + columnBuildFailed.get();
+    long warnings = columnSinkWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   private void drainPendingColumnFutures(int timeoutSeconds) {
@@ -769,6 +792,7 @@ public class OpenSearchBulkSink implements BulkSink {
     stats.setTotalRecords((int) totalSubmitted.get());
     stats.setSuccessRecords((int) totalSuccess.get());
     stats.setFailedRecords((int) totalFailed.get());
+    stats.setWarningRecords((int) totalWarnings.get());
   }
 
   @Override
@@ -780,14 +804,16 @@ public class OpenSearchBulkSink implements BulkSink {
   @Override
   public StepStats getStats() {
     // Read directly from atomic counters for accurate real-time stats
-    // Use success + failed as total to ensure invariant holds (total = success + failed)
+    // Include warnings so skipped stale references are visible but not counted as failures.
     // This handles entity build failures which increment failed but not submitted
     long success = totalSuccess.get();
     long failed = totalFailed.get();
+    long warnings = totalWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   @Override
@@ -901,7 +927,8 @@ public class OpenSearchBulkSink implements BulkSink {
       EntityInterface entity,
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
-      StageStatsTracker tracker) {
+      StageStatsTracker tracker,
+      String stagedChunkTarget) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
       if (vectorService == null) {
@@ -916,19 +943,34 @@ public class OpenSearchBulkSink implements BulkSink {
         return json;
       }
 
-      int expectedDimension =
-          vectorService.getEmbeddingClient() != null
-              ? vectorService.getEmbeddingClient().getDimension()
-              : -1;
+      var embeddingClient = vectorService.getEmbeddingClient();
+      int expectedDimension = embeddingClient != null ? embeddingClient.getDimension() : -1;
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
       if (canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
         // service-layer pre-filter only admits entries whose state matches (same fingerprint or
         // same updatedAt), and fingerprint covers the body text that determines chunk count.
         doc.setAll((ObjectNode) cached);
-      } else {
-        Map<String, Object> embeddingFields = vectorService.generateEmbeddingFields(entity);
-        doc.setAll((ObjectNode) OBJECT_MAPPER.valueToTree(embeddingFields));
+        // Backfill: the entity content is unchanged, but the dedicated chunk index (issue #4789)
+        // may not hold this entity's chunk docs yet (catalogs embedded before multi-chunk
+        // shipped). The call is fingerprint-guarded, so it is a cheap no-op once chunks exist;
+        // chunk docs reflect committed entity state, so writing them mid-reindex is safe even if
+        // the staged index is never promoted.
+        vectorService.backfillEntityChunks(entity, stagedChunkTarget);
+      } else if (embeddingClient != null && embeddingClient.isAvailable()) {
+        // Build the chunk docs once (one embedding call per chunk): chunk 0's embedding fields
+        // are spliced into the staged entity doc for hybrid search, and the full set is written to
+        // the dedicated chunk index for the semantic vector path (issue #4789). Skipped when the
+        // provider circuit is open so a transient outage indexes without embeddings (self-heals on
+        // the next reindex) instead of failing every entity.
+        List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
+        if (!chunkDocs.isEmpty()) {
+          doc.setAll(
+              (ObjectNode)
+                  OBJECT_MAPPER.valueToTree(
+                      OpenSearchVectorService.legacyEmbeddingFields(chunkDocs.get(0))));
+          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs, stagedChunkTarget);
+        }
       }
 
       vectorSuccess.incrementAndGet();
@@ -1023,10 +1065,12 @@ public class OpenSearchBulkSink implements BulkSink {
   public StepStats getProcessStats() {
     long success = processSuccess.get();
     long failed = processFailed.get();
+    long warnings = processWarnings.get();
     return new StepStats()
-        .withTotalRecords((int) (success + failed))
+        .withTotalRecords((int) (success + failed + warnings))
         .withSuccessRecords((int) success)
-        .withFailedRecords((int) failed);
+        .withFailedRecords((int) failed)
+        .withWarningRecords((int) warnings);
   }
 
   public static class CustomBulkProcessor {
@@ -1067,6 +1111,7 @@ public class OpenSearchBulkSink implements BulkSink {
     private final AtomicLong totalSubmitted;
     private final AtomicLong totalSuccess;
     private final AtomicLong totalFailed;
+    private final AtomicLong totalWarnings;
     private final Runnable statsUpdater;
     private final long initialBackoffMillis;
     private final int maxRetries;
@@ -1086,6 +1131,7 @@ public class OpenSearchBulkSink implements BulkSink {
         AtomicLong totalSubmitted,
         AtomicLong totalSuccess,
         AtomicLong totalFailed,
+        AtomicLong totalWarnings,
         Runnable statsUpdater,
         BulkCircuitBreaker circuitBreaker) {
       this.asyncClient = new OpenSearchAsyncClient(client.getNewClient()._transport());
@@ -1097,6 +1143,7 @@ public class OpenSearchBulkSink implements BulkSink {
       this.totalSubmitted = totalSubmitted;
       this.totalSuccess = totalSuccess;
       this.totalFailed = totalFailed;
+      this.totalWarnings = totalWarnings;
       this.statsUpdater = statsUpdater;
       this.circuitBreaker = circuitBreaker;
       this.scheduler = Executors.newScheduledThreadPool(1);
@@ -1227,6 +1274,11 @@ public class OpenSearchBulkSink implements BulkSink {
         if (!buffer.isEmpty() && !closed) {
           flushInternal();
         }
+      } catch (Exception e) {
+        // An exception escaping here would cancel the scheduled task permanently
+        // (ScheduledExecutorService contract), silently disabling periodic flushing so trailing
+        // buffers only ship on an explicit flush/close. Log and continue to the next interval.
+        LOG.error("Scheduled flush failed; will retry on the next interval", e);
       } finally {
         lock.unlock();
       }
@@ -1440,7 +1492,12 @@ public class OpenSearchBulkSink implements BulkSink {
 
     private void recordPermanentFailure(
         List<BulkOperation> operations, int numberOfActions, String failureMessage) {
-      totalFailed.addAndGet(numberOfActions);
+      boolean staleReference = isStaleReferenceMessage(failureMessage);
+      if (staleReference) {
+        totalWarnings.addAndGet(numberOfActions);
+      } else {
+        totalFailed.addAndGet(numberOfActions);
+      }
 
       Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
       for (BulkOperation op : operations) {
@@ -1453,13 +1510,15 @@ public class OpenSearchBulkSink implements BulkSink {
         if (entityType == null) {
           entityType = extractEntityTypeFromIndex(getIndex(op));
         }
-        failuresByType.merge(entityType, 1, Integer::sum);
+        if (!staleReference) {
+          failuresByType.merge(entityType, 1, Integer::sum);
+        }
 
         StageStatsTracker tracker = docIdToTracker.remove(docId);
         if (tracker != null) {
-          tracker.recordSink(StatsResult.FAILED);
+          tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
         }
-        if (failureCallback != null) {
+        if (!staleReference && failureCallback != null) {
           failureCallback.onFailure(
               entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
         }
@@ -1477,14 +1536,20 @@ public class OpenSearchBulkSink implements BulkSink {
     private void handlePartialFailure(
         BulkResponse response, long executionId, int numberOfActions) {
       int failures = 0;
+      int warnings = 0;
       Map<String, Integer> successesByType = new ConcurrentHashMap<>();
       Map<String, Integer> failuresByType = new ConcurrentHashMap<>();
       for (BulkResponseItem item : response.items()) {
         String docId = item.id();
         StageStatsTracker tracker = docId != null ? docIdToTracker.remove(docId) : null;
         if (item.error() != null) {
-          failures++;
           String failureMessage = item.error().reason();
+          boolean staleReference = isStaleReferenceMessage(failureMessage);
+          if (staleReference) {
+            warnings++;
+          } else {
+            failures++;
+          }
           if (failureMessage != null && failureMessage.contains("document_missing_exception")) {
             LOG.warn(
                 "Document missing error for {}: {} - This may occur during concurrent reindexing",
@@ -1497,11 +1562,13 @@ public class OpenSearchBulkSink implements BulkSink {
           if (entityType == null) {
             entityType = extractEntityTypeFromIndex(item.index());
           }
-          failuresByType.merge(entityType, 1, Integer::sum);
-          if (tracker != null) {
-            tracker.recordSink(StatsResult.FAILED);
+          if (!staleReference) {
+            failuresByType.merge(entityType, 1, Integer::sum);
           }
-          if (failureCallback != null) {
+          if (tracker != null) {
+            tracker.recordSink(staleReference ? StatsResult.WARNING : StatsResult.FAILED);
+          }
+          if (!staleReference && failureCallback != null) {
             failureCallback.onFailure(
                 entityType, docId, null, failureMessage, IndexingFailureRecorder.FailureStage.SINK);
           }
@@ -1516,9 +1583,10 @@ public class OpenSearchBulkSink implements BulkSink {
           }
         }
       }
-      int successes = numberOfActions - failures;
+      int successes = numberOfActions - failures - warnings;
       totalSuccess.addAndGet(successes);
       totalFailed.addAndGet(failures);
+      totalWarnings.addAndGet(warnings);
 
       if (statsCallback != null) {
         for (Map.Entry<String, Integer> entry : successesByType.entrySet()) {
@@ -1530,9 +1598,10 @@ public class OpenSearchBulkSink implements BulkSink {
       }
 
       LOG.warn(
-          "Bulk request {} completed with {} failures out of {} actions",
+          "Bulk request {} completed with {} failures and {} warnings out of {} actions",
           executionId,
           failures,
+          warnings,
           numberOfActions);
       statsUpdater.run();
     }
