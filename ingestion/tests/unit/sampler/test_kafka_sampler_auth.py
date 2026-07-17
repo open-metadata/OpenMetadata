@@ -9,6 +9,7 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 
+import hashlib
 from unittest.mock import MagicMock, patch
 
 from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (
@@ -16,6 +17,11 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
 from metadata.sampler.messaging.kafka.sampler import KafkaSampler
+
+
+def _expected_group_id(fqn: str) -> str:
+    digest = hashlib.sha256(fqn.encode("utf-8")).hexdigest()[:16]
+    return f"openmetadata-auto-classification-{digest}"
 
 
 def test_build_consumer_config_plain_no_auth():
@@ -29,7 +35,7 @@ def test_build_consumer_config_plain_no_auth():
     )
     config = sampler._build_consumer_config()
     assert config["bootstrap.servers"] == "localhost:9092"
-    assert config["group.id"] == "openmetadata-auto-classification"
+    assert config["group.id"] == _expected_group_id("kafka.test-topic")
     assert config["auto.offset.reset"] == "earliest"
     assert config["enable.auto.commit"] is False
     assert "sasl.username" not in config
@@ -99,7 +105,9 @@ def test_fetch_messages_timeout(mock_time, mock_consumer_class):
     mock_consumer_class.return_value = mock_consumer
     mock_consumer.poll.return_value = None
 
-    time_values = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 31.0]
+    # Extra trailing values cover time.time() calls made internally by
+    # logging when the timeout-warning branch fires (time.time is patched globally).
+    time_values = [0.0, 5.0, 10.0, 15.0, 20.0, 25.0, 31.0, 31.0, 31.0]
     mock_time.side_effect = time_values
 
     connection_config = KafkaConnection(bootstrapServers="localhost:9092", type="Kafka")

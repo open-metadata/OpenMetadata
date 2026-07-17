@@ -137,11 +137,13 @@ class KafkaSampler(MessagingSampler):
         messages = []
         consumer = None
         start_time = time.time()
+        elapsed = 0.0
         try:
             consumer = Consumer(consumer_config)
             consumer.subscribe([topic_name])
-            while len(messages) < count and (time.time() - start_time) < FETCH_TIMEOUT_SECONDS:
+            while len(messages) < count and elapsed < FETCH_TIMEOUT_SECONDS:
                 msg = consumer.poll(timeout=5.0)
+                elapsed = time.time() - start_time
                 if msg is None:
                     continue
                 if msg.error():
@@ -149,7 +151,7 @@ class KafkaSampler(MessagingSampler):
                     break
                 if msg.value():
                     messages.append(self._try_parse_message(msg.value()))
-            if len(messages) < count and (time.time() - start_time) >= FETCH_TIMEOUT_SECONDS:
+            if len(messages) < count and elapsed >= FETCH_TIMEOUT_SECONDS:
                 logger.warning(
                     "Kafka message fetch timeout after %s seconds; collected %s of %s messages",
                     FETCH_TIMEOUT_SECONDS,
