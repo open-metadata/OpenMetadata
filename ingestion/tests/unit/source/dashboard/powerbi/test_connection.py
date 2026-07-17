@@ -16,11 +16,13 @@ from unittest.mock import MagicMock, patch
 import pytest
 from requests.exceptions import HTTPError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.check import CheckError, collect_checks
 from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.ometa.client import APIError
+from metadata.ingestion.source.dashboard.powerbi.client import PowerBiApiClient
 from metadata.ingestion.source.dashboard.powerbi.connection import (
     POWERBI_ERRORS,
     PowerBIChecks,
@@ -44,11 +46,11 @@ def _raw_http_error(status_code: int) -> HTTPError:
     return HTTPError("server said no", response=response)
 
 
-def _checks(api_client_cls) -> tuple[PowerBIChecks, MagicMock]:
-    """A provider whose lazily-built REST client is the returned mock."""
+def _checks() -> tuple[PowerBIChecks, MagicMock]:
+    """A provider over a borrowed client - the one its connection owns."""
     api_client = MagicMock()
-    api_client_cls.return_value = api_client
-    return PowerBIChecks(connection=MagicMock()), api_client
+    powerbi_client = MagicMock(api_client=api_client)
+    return PowerBIChecks(powerbi=Borrowed.of(powerbi_client)), api_client
 
 
 def test_powerbi_connection_is_base_connection():
@@ -64,20 +66,33 @@ def test_checks_does_not_touch_the_network():
     mock_client.assert_not_called()
 
 
-def test_collect_checks_maps_every_step():
+def test_checks_reuse_the_connections_client_and_never_authenticate_twice():
+    # The provider borrows the client its connection owns, so the checks and the
+    # ingestion share one authenticated session instead of acquiring a second token.
     with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, _ = _checks(mock_client)
+        # PowerBiClient validates its api_client field, so the fake must carry the spec.
+        mock_client.return_value = MagicMock(spec=PowerBiApiClient)
+        conn = PowerBIConnection(MagicMock(pbitFilesSource=None))
+        provider = conn.checks()
+
+        provider.check_access()
+        provider.get_dashboards()
+
+    assert mock_client.call_count == 1
+
+
+def test_collect_checks_maps_every_step():
+    provider, _ = _checks()
     collected = collect_checks(provider)
 
     assert set(collected) == {DashboardStep.CheckAccess, DashboardStep.GetDashboards}
 
 
 def test_check_access_authenticates():
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, client = _checks(mock_client)
-        client.get_auth_token.return_value = ("token", "3600")
+    provider, client = _checks()
+    client.get_auth_token.return_value = ("token", "3600")
 
-        evidence = provider.check_access()
+    evidence = provider.check_access()
 
     client.get_auth_token.assert_called_once_with()
     assert evidence.summary == "authenticated"
@@ -85,81 +100,74 @@ def test_check_access_authenticates():
 
 
 def test_check_access_wraps_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, client = _checks(mock_client)
-        client.get_auth_token.side_effect = InvalidSourceException("no token")
+    provider, client = _checks()
+    client.get_auth_token.side_effect = InvalidSourceException("no token")
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.check_access()
+    with pytest.raises(CheckError) as exc_info:
+        provider.check_access()
 
     assert isinstance(exc_info.value.cause, InvalidSourceException)
     assert exc_info.value.evidence.command == "acquire OAuth token"
 
 
 def test_get_dashboards_counts_results():
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, client = _checks(mock_client)
-        client.fetch_dashboards.return_value = [object(), object(), object()]
+    provider, client = _checks()
+    client.fetch_dashboards.return_value = [object(), object(), object()]
 
-        evidence = provider.get_dashboards()
+    evidence = provider.get_dashboards()
 
     assert evidence.summary == "3 dashboards enumerated"
     assert evidence.command == "fetch dashboards"
 
 
 def test_get_dashboards_caps_the_count():
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, client = _checks(mock_client)
-        client.fetch_dashboards.return_value = [object()] * 250
+    provider, client = _checks()
+    client.fetch_dashboards.return_value = [object()] * 250
 
-        evidence = provider.get_dashboards()
+    evidence = provider.get_dashboards()
 
     assert evidence.summary == "100+ dashboards enumerated"
     assert evidence.caveat is None
 
 
 def test_get_dashboards_at_cap_shows_plus():
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, client = _checks(mock_client)
-        client.fetch_dashboards.return_value = [object()] * 100
+    provider, client = _checks()
+    client.fetch_dashboards.return_value = [object()] * 100
 
-        evidence = provider.get_dashboards()
+    evidence = provider.get_dashboards()
 
     assert evidence.summary == "100+ dashboards enumerated"
 
 
 def test_get_dashboards_empty_passes_with_caveat():
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, client = _checks(mock_client)
-        client.fetch_dashboards.return_value = None
+    provider, client = _checks()
+    client.fetch_dashboards.return_value = None
 
-        evidence = provider.get_dashboards()
+    evidence = provider.get_dashboards()
 
-    assert evidence.summary == "0 dashboards enumerated"
+    assert evidence.summary == "no dashboards enumerated"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "No dashboards visible"
 
 
 def test_get_dashboards_wraps_failure_as_check_error():
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider, client = _checks(mock_client)
-        client.fetch_dashboards.side_effect = _api_error(403)
+    provider, client = _checks()
+    client.fetch_dashboards.side_effect = _api_error(403)
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.get_dashboards()
+    with pytest.raises(CheckError) as exc_info:
+        provider.get_dashboards()
 
     assert exc_info.value.evidence.command == "fetch dashboards"
 
 
 def test_get_dashboards_wraps_client_build_failure():
-    # Client construction (MSAL discovery) happens inside fetch_list's try, so a
-    # build failure still reports the step's command rather than escaping raw.
-    with patch(f"{CONNECTION_MODULE}.PowerBiApiClient") as mock_client:
-        provider = PowerBIChecks(connection=MagicMock())
-        mock_client.side_effect = ValueError("authority discovery failed")
+    # Reading the borrow is what builds the client (MSAL discovery), and that read
+    # happens inside fetch_list's try, so a build failure still reports the step's
+    # command rather than escaping raw.
+    provider = PowerBIChecks(powerbi=Borrowed(MagicMock(side_effect=ValueError("authority discovery failed"))))
 
-        with pytest.raises(CheckError) as exc_info:
-            provider.get_dashboards()
+    with pytest.raises(CheckError) as exc_info:
+        provider.get_dashboards()
 
     assert exc_info.value.evidence.command == "fetch dashboards"
     assert isinstance(exc_info.value.cause, ValueError)

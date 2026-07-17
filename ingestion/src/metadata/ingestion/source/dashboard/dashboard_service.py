@@ -72,6 +72,7 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.ometa.utils import model_str
 from metadata.ingestion.source.connections import (
     create_connection,
     get_connection,
@@ -557,16 +558,24 @@ class DashboardServiceSource(TopologyRunnerMixin, Source, ABC):
         sql: Optional[str] = None,  # noqa: UP045
     ) -> Optional[Either[AddLineageRequest]]:  # noqa: UP045
         if from_entity and to_entity:
-            return Either(
+            return Either(  # pyright: ignore[reportCallIssue]
                 right=AddLineageRequest(
                     edge=EntitiesEdge(
-                        fromEntity=EntityReference(
+                        # Carry the FQN on both references so the sink can return the source FQN
+                        # without a follow-up lineage GET (see add_lineage return_lineage flag).
+                        fromEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(from_entity.id.root),
                             type=LINEAGE_MAP[type(from_entity)],
+                            fullyQualifiedName=(
+                                model_str(from_entity.fullyQualifiedName) if from_entity.fullyQualifiedName else None
+                            ),
                         ),
-                        toEntity=EntityReference(
+                        toEntity=EntityReference(  # pyright: ignore[reportCallIssue]
                             id=Uuid(to_entity.id.root),
                             type=LINEAGE_MAP[type(to_entity)],
+                            fullyQualifiedName=(
+                                model_str(to_entity.fullyQualifiedName) if to_entity.fullyQualifiedName else None
+                            ),
                         ),
                         lineageDetails=LineageDetails(
                             source=LineageSource.DashboardLineage,

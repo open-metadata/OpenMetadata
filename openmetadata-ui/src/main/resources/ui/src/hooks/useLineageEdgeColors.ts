@@ -17,10 +17,8 @@ import { LineageEdgeColors } from '../utils/EdgeStyleUtils';
 /**
  * Resolves the literal colors used to paint lineage edges on the canvas.
  *
- * Mirrors the palette computation in `createMuiTheme` so the canvas keeps the
- * exact same colors it had while reading them from the MUI theme, but without
- * depending on MUI. The MUI theme is not dark-mode aware (dark mode is handled
- * via CSS variables), so these values are intentionally the same in both modes.
+ * These values are intentionally the same in both light and dark mode, since
+ * dark mode is handled via CSS variables rather than a recomputed palette.
  */
 export const useLineageEdgeColors = (): LineageEdgeColors => {
   const { brandColors } = useTheme();

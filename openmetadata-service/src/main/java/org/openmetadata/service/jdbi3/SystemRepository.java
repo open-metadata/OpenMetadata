@@ -51,6 +51,7 @@ import org.openmetadata.schema.attachments.Asset;
 import org.openmetadata.schema.auth.LdapConfiguration;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.ExecutorConfiguration;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
 import org.openmetadata.schema.configuration.HistoryCleanUpConfiguration;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
@@ -66,7 +67,6 @@ import org.openmetadata.schema.security.client.OidcClientConfig;
 import org.openmetadata.schema.security.client.OpenMetadataJWTClientConfig;
 import org.openmetadata.schema.security.credentials.AWSBaseConfig;
 import org.openmetadata.schema.security.scim.ScimConfiguration;
-import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.slackApp.SlackAppConfiguration;
 import org.openmetadata.schema.services.connections.metadata.AuthProvider;
 import org.openmetadata.schema.services.connections.metadata.OpenMetadataConnection;
@@ -93,6 +93,7 @@ import org.openmetadata.service.config.ObjectStorageConfiguration;
 import org.openmetadata.service.events.scheduled.ServicesStatusJobHandler;
 import org.openmetadata.service.exception.CustomExceptionMessage;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.exception.PreconditionFailedException;
 import org.openmetadata.service.fernet.Fernet;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.CollectionDAO.SystemDAO;
@@ -194,31 +195,34 @@ public class SystemRepository {
       if (fetchedSettings == null) {
         return null;
       }
-
-      if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
-        if (!nullOrEmpty(emailConfig.getPassword())) {
-          emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
-        }
-        fetchedSettings.setConfigValue(emailConfig);
-      }
-
-      // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
-      // previously null
-      if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
-        AuthenticationConfiguration authConfig =
-            (AuthenticationConfiguration) fetchedSettings.getConfigValue();
-        if (authConfig != null && authConfig.getLdapConfiguration() != null) {
-          ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
-          fetchedSettings.setConfigValue(authConfig);
-        }
-      }
-
-      return fetchedSettings;
+      return prepareFetchedSettings(fetchedSettings);
     } catch (Exception ex) {
       LOG.error("Error while trying fetch Settings ", ex);
     }
     return null;
+  }
+
+  private Settings prepareFetchedSettings(Settings fetchedSettings) {
+    if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+      SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();
+      if (!nullOrEmpty(emailConfig.getPassword())) {
+        emailConfig.setPassword(PasswordEntityMasker.PASSWORD_MASK);
+      }
+      fetchedSettings.setConfigValue(emailConfig);
+    }
+
+    // Apply LDAP default values to prevent JSON PATCH errors when updating fields that were
+    // previously null
+    if (fetchedSettings.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+      AuthenticationConfiguration authConfig =
+          (AuthenticationConfiguration) fetchedSettings.getConfigValue();
+      if (authConfig != null && authConfig.getLdapConfiguration() != null) {
+        ensureLdapConfigDefaultValues(authConfig.getLdapConfiguration());
+        fetchedSettings.setConfigValue(authConfig);
+      }
+    }
+
+    return fetchedSettings;
   }
 
   public AssetCertificationSettings getAssetCertificationSettings() {
@@ -432,21 +436,50 @@ public class SystemRepository {
   }
 
   public Response patchSetting(String settingName, JsonPatch patch) {
-    Settings original = getConfigWithKey(settingName);
-    // Apply JSON patch to the original entity to get the updated entity
+    if (SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value().equalsIgnoreCase(settingName)) {
+      return patchGlossaryTermRelationSettings(patch);
+    }
+
+    String expectedJson = dao.getConfigJsonWithKey(settingName);
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(settingName);
+    }
+    Settings original =
+        prepareFetchedSettings(
+            CollectionDAO.SettingsRowMapper.getSettings(
+                SettingsType.fromValue(settingName), expectedJson));
     JsonValue updated = JsonUtils.applyPatch(original.getConfigValue(), patch);
-    // Convert JsonValue back to a regular Java object
-    // JsonValue is from Jakarta JSON API, we need to convert it to a Jackson-compatible object
     String jsonString = updated.toString();
     Object updatedConfigValue = JsonUtils.readValue(jsonString, Object.class);
     original.setConfigValue(updatedConfigValue);
-    try {
-      updateSetting(original);
-    } catch (Exception ex) {
-      LOG.error(FAILED_TO_UPDATE_SETTINGS, ex.getMessage());
-      return Response.status(500, INTERNAL_SERVER_ERROR_WITH_REASON + ex.getMessage()).build();
-    }
+    updateSettingIfCurrent(original, expectedJson);
     return (new RestUtil.PutResponse<>(Response.Status.OK, original, ENTITY_UPDATED)).toResponse();
+  }
+
+  private Response patchGlossaryTermRelationSettings(JsonPatch patch) {
+    String expectedJson = dao.getGlossaryTermRelationSettingsJson();
+    if (expectedJson == null) {
+      throw EntityNotFoundException.byName(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    }
+
+    GlossaryTermRelationSettings current =
+        JsonUtils.readValue(expectedJson, GlossaryTermRelationSettings.class);
+    JsonValue patched = JsonUtils.applyPatch(current, patch);
+    GlossaryTermRelationSettings updated =
+        JsonUtils.readValue(patched.toString(), GlossaryTermRelationSettings.class);
+    String updatedJson = JsonUtils.pojoToJson(updated);
+    int updatedRows = dao.updateGlossaryTermRelationSettingsIfCurrent(expectedJson, updatedJson);
+    if (updatedRows == 0) {
+      throw new PreconditionFailedException(
+          "Glossary term relation settings changed while the JSON Patch was being applied");
+    }
+
+    SettingsCache.invalidateSettings(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS.value());
+    Settings response =
+        new Settings()
+            .withConfigType(SettingsType.GLOSSARY_TERM_RELATION_SETTINGS)
+            .withConfigValue(updated);
+    return (new RestUtil.PutResponse<>(Response.Status.OK, response, ENTITY_UPDATED)).toResponse();
   }
 
   private void postUpdate(SettingsType settingsType) {
@@ -462,54 +495,9 @@ public class SystemRepository {
 
   public void updateSetting(Settings setting) {
     try {
-      if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
-        SmtpSettings emailConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
-        if (!nullOrEmpty(emailConfig.getPassword())) {
-          setting.setConfigValue(encryptEmailSetting(emailConfig));
-        }
-      } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
-        OpenMetadataBaseUrlConfiguration omBaseUrl =
-            JsonUtils.convertValue(
-                setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
-        setting.setConfigValue(omBaseUrl);
-      } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
-        SlackAppConfiguration appConfiguration =
-            JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
-        setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
-        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
-        String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
-      } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
-        String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
-        setting.setConfigValue(encryptSlackStateSetting(slackState));
-      } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
-      } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
-      } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
-        ScimConfiguration scimConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
-        JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
-        setting.setConfigValue(scimConfig);
-      } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
-        AuthenticationConfiguration authConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
-        setting.setConfigValue(authConfig);
-      } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
-        AuthorizerConfiguration authorizerConfig =
-            JsonUtils.convertValue(setting.getConfigValue(), AuthorizerConfiguration.class);
-        JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
-        setting.setConfigValue(authorizerConfig);
-      }
-      dao.insertSettings(
-          setting.getConfigType().toString(), JsonUtils.pojoToJson(setting.getConfigValue()));
-      // Invalidate Cache
-      SettingsCache.invalidateSettings(setting.getConfigType().value());
-      postUpdate(setting.getConfigType());
+      String updatedJson = prepareSettingForUpdate(setting);
+      dao.insertSettings(setting.getConfigType().toString(), updatedJson);
+      settingUpdated(setting.getConfigType());
     } catch (Exception ex) {
       LOG.error("Failing in Updating Setting.", ex);
       throw new CustomExceptionMessage(
@@ -517,6 +505,79 @@ public class SystemRepository {
           "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
           ex.getMessage());
     }
+  }
+
+  private void updateSettingIfCurrent(Settings setting, String expectedJson) {
+    try {
+      String updatedJson = prepareSettingForUpdate(setting);
+      int updated =
+          dao.updateSettingsIfCurrent(
+              setting.getConfigType().toString(), expectedJson, updatedJson);
+      if (updated == 0) {
+        throw new PreconditionFailedException(
+            "Setting changed while the JSON Patch was being applied");
+      }
+      settingUpdated(setting.getConfigType());
+    } catch (PreconditionFailedException ex) {
+      throw ex;
+    } catch (Exception ex) {
+      LOG.error("Failing in Updating Setting.", ex);
+      throw new CustomExceptionMessage(
+          Response.Status.INTERNAL_SERVER_ERROR,
+          "FAILED_TO_UPDATE_SLACK_OR_EMAIL",
+          ex.getMessage());
+    }
+  }
+
+  private String prepareSettingForUpdate(Settings setting) {
+    if (setting.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
+      SmtpSettings emailConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), SmtpSettings.class);
+      if (!nullOrEmpty(emailConfig.getPassword())) {
+        setting.setConfigValue(encryptEmailSetting(emailConfig));
+      }
+    } else if (setting.getConfigType() == SettingsType.OPEN_METADATA_BASE_URL_CONFIGURATION) {
+      OpenMetadataBaseUrlConfiguration omBaseUrl =
+          JsonUtils.convertValue(setting.getConfigValue(), OpenMetadataBaseUrlConfiguration.class);
+      setting.setConfigValue(omBaseUrl);
+    } else if (setting.getConfigType() == SettingsType.SLACK_APP_CONFIGURATION) {
+      SlackAppConfiguration appConfiguration =
+          JsonUtils.convertValue(setting.getConfigValue(), SlackAppConfiguration.class);
+      setting.setConfigValue(encryptSlackAppSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_BOT) {
+      String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackDefaultBotSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_INSTALLER) {
+      String appConfiguration = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackDefaultInstallerSetting(appConfiguration));
+    } else if (setting.getConfigType() == SettingsType.SLACK_STATE) {
+      String slackState = JsonUtils.convertValue(setting.getConfigValue(), String.class);
+      setting.setConfigValue(encryptSlackStateSetting(slackState));
+    } else if (setting.getConfigType() == SettingsType.CUSTOM_UI_THEME_PREFERENCE) {
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), UiThemePreference.class);
+    } else if (setting.getConfigType() == SettingsType.SEARCH_SETTINGS) {
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), SearchSettings.class);
+    } else if (setting.getConfigType() == SettingsType.SCIM_CONFIGURATION) {
+      ScimConfiguration scimConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), ScimConfiguration.class);
+      JsonUtils.validateJsonSchema(setting.getConfigValue(), ScimConfiguration.class);
+      setting.setConfigValue(scimConfig);
+    } else if (setting.getConfigType() == SettingsType.AUTHENTICATION_CONFIGURATION) {
+      AuthenticationConfiguration authConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), AuthenticationConfiguration.class);
+      setting.setConfigValue(authConfig);
+    } else if (setting.getConfigType() == SettingsType.AUTHORIZER_CONFIGURATION) {
+      AuthorizerConfiguration authorizerConfig =
+          JsonUtils.convertValue(setting.getConfigValue(), AuthorizerConfiguration.class);
+      JsonUtils.validateJsonSchema(authorizerConfig, AuthorizerConfiguration.class);
+      setting.setConfigValue(authorizerConfig);
+    }
+    return JsonUtils.pojoToJson(setting.getConfigValue());
+  }
+
+  private void settingUpdated(SettingsType settingsType) {
+    SettingsCache.invalidateSettings(settingsType.value());
+    postUpdate(settingsType);
   }
 
   public Settings getSlackbotConfigInternal() {
@@ -805,14 +866,6 @@ public class SystemRepository {
     StepValidation embeddingsValidation = new StepValidation();
     String description = "Embeddings are used to allow Semantic Search";
     SearchRepository searchRepository = Entity.getSearchRepository();
-
-    if (searchRepository.getSearchType() == ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
-      return embeddingsValidation
-          .withDescription(description)
-          .withMessage(
-              "Elasticsearch is not supported for Semantic Search embeddings. Please use OpenSearch.")
-          .withPassed(false);
-    }
 
     String configMessage = getEmbeddingConfigurationMessage();
 

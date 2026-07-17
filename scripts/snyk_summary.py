@@ -162,7 +162,7 @@ def count_severities(libs, by_rule):
     for info in libs.values():
         sev = (info["sev"] or "low").lower()
         if sev in counts:
-            counts[sev] += info["paths"]
+            counts[sev] += 1
     for rid, items in by_rule.items():
         for uri, level, lines in items:
             mapped = {"error": "high", "warning": "medium", "note": "low"}.get(level, "medium")
