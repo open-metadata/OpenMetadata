@@ -27,6 +27,7 @@ import lombok.Getter;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.system.EventPublisherJob;
 import org.openmetadata.service.apps.bundles.rdf.RdfBatchProcessor;
+import org.openmetadata.service.apps.bundles.rdf.RdfIndexingRunContext;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.IndexJobStatus;
 import org.openmetadata.service.apps.bundles.searchIndex.distributed.ServerIdentityResolver;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -204,7 +205,10 @@ public class DistributedRdfIndexExecutor {
                 Runtime.getRuntime().availableProcessors() * 2));
     int batchSize = jobConfiguration.getBatchSize() != null ? jobConfiguration.getBatchSize() : 100;
     RdfBatchProcessor batchProcessor =
-        new RdfBatchProcessor(collectionDAO, RdfRepository.getInstance());
+        new RdfBatchProcessor(
+            collectionDAO,
+            RdfRepository.getInstance(),
+            RdfIndexingRunContext.forJob(jobConfiguration));
 
     workerExecutor =
         Executors.newFixedThreadPool(

@@ -191,6 +191,7 @@ jobs:
               tests/integration/mysql
               tests/integration/profiler
               tests/integration/data_quality
+              tests/integration/sql_server
           - name: "shard-2"
             nox-args: >-
               --ignore=tests/integration/ometa
@@ -198,6 +199,7 @@ jobs:
               --ignore=tests/integration/mysql
               --ignore=tests/integration/profiler
               --ignore=tests/integration/data_quality
+              --ignore=tests/integration/sql_server
     steps:
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
