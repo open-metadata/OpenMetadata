@@ -36,6 +36,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
+import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -85,11 +86,6 @@ public final class IncidentTcrsSyncHandler {
           "resolved", TestCaseResolutionStatusTypes.Resolved);
 
   private static final String TEST_CASE_TYPE = "testCase";
-
-  // Mirrors TestCaseResultRepository.TEST_CASE_INDEX_FIELDS so the row patch rebuilds the same
-  // search document.
-  private static final String TEST_CASE_ROW_FIELDS =
-      "testDefinition,testSuite,testSuites,owners,tags,followers";
 
   private IncidentTcrsSyncHandler() {}
 
@@ -197,7 +193,7 @@ public final class IncidentTcrsSyncHandler {
         Entity.getEntityByName(
             Entity.TEST_CASE,
             task.getAbout().getFullyQualifiedName(),
-            TEST_CASE_ROW_FIELDS,
+            TestCaseResultRepository.TEST_CASE_INDEX_FIELDS,
             Include.ALL);
     if (Objects.equals(original.getIncidentId(), rowIncidentId)) {
       return;

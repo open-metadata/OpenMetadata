@@ -44,7 +44,7 @@ import org.openmetadata.service.util.RestUtil;
 public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCaseResult> {
   public static final String TESTCASE_RESULT_EXTENSION = "testCase.testCaseResult";
   private static final String TEST_CASE_RESULT_FIELD = "testCaseResult";
-  private static final String TEST_CASE_INDEX_FIELDS =
+  public static final String TEST_CASE_INDEX_FIELDS =
       "testDefinition,testSuite,testSuites,owners,tags,followers";
   private final TestCaseRepository testCaseRepository;
   private final TestCaseDimensionResultRepository dimensionResultRepository;
@@ -317,7 +317,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     }
     updated.setTestCaseStatus(
         testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
-    updated.setIncidentId(resolveOngoingIncidentId(testCaseResult, original));
+    updated.setIncidentId(resolveOngoingIncidentId(original));
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
@@ -325,14 +325,12 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
   }
 
   /**
-   * The row's incidentId tracks the ongoing incident. A Failed result carries it directly; for
-   * any other result the incident (if unresolved) stays open, so read it from the resolution
-   * status timeseries instead of clearing it.
+   * The row's incidentId tracks the ongoing incident, read from the resolution-status timeseries
+   * (the single source of truth, same as {@code TestCaseRepository.getIncidentId}). We deliberately
+   * do not trust the incidentId stamped on the result at ingestion time: a resolution can land
+   * between that stamp and this update, which would otherwise write a resolved incident back.
    */
-  private UUID resolveOngoingIncidentId(TestCaseResult testCaseResult, TestCase testCase) {
-    if (testCaseResult != null && testCaseResult.getIncidentId() != null) {
-      return testCaseResult.getIncidentId();
-    }
+  private UUID resolveOngoingIncidentId(TestCase testCase) {
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
