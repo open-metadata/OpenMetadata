@@ -1213,17 +1213,6 @@ test.describe('Data Contracts', () => {
       'Tier.Tier1',
       true
     );
-    // TEMP DIAGNOSTIC
-    const diag = await page.evaluate(() => ({
-      actionsRows: document.querySelectorAll('.semantic-form-item-actions')
-        .length,
-      buttons: Array.from(document.querySelectorAll('button'))
-        .map((b) => b.textContent?.trim())
-        .filter((t) => t && t.length < 30),
-      editInputs: document.querySelectorAll('#semantics_0_name').length,
-      groups: document.querySelectorAll('.group').length,
-    }));
-    console.log('DIAG', JSON.stringify(diag));
     await page.getByRole('button', { name: 'Add New Rule' }).click();
 
     await expect(page.locator('.group--conjunctions')).toBeVisible();
