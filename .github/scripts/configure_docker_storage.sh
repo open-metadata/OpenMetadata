@@ -3,7 +3,7 @@
 set -euo pipefail
 
 readonly docker_root="/mnt/docker"
-readonly minimum_free_kb=$((50 * 1024 * 1024))
+readonly minimum_free_kb=$((32 * 1024 * 1024))
 
 if [[ ! -d /mnt ]]; then
   echo "::error::The runner does not provide /mnt"
