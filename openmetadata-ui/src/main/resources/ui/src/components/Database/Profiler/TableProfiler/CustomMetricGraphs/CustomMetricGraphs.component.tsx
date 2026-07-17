@@ -33,7 +33,6 @@ import {
   CHART_CURSOR_STROKE,
 } from '../../../../../constants/Color.constants';
 import { GRAPH_BACKGROUND_COLOR } from '../../../../../constants/constants';
-import { EntityType } from '../../../../../enums/entity.enum';
 import { CustomMetric } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/policy';
 import {
@@ -52,7 +51,7 @@ import {
   showErrorToast,
   showSuccessToast,
 } from '../../../../../utils/ToastUtils';
-import DeleteWidgetModal from '../../../../common/DeleteWidget/DeleteWidgetModal';
+import DeleteModal from '../../../../common/DeleteModal/DeleteModal';
 import ErrorPlaceHolder from '../../../../common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import CustomMetricForm from '../../../../DataQuality/CustomMetricForm/CustomMetricForm.component';
 import ProfilerStateWrapper from '../../ProfilerStateWrapper/ProfilerStateWrapper.component';
@@ -308,12 +307,15 @@ const CustomMetricGraphs = ({
           </div>
         );
       })}
-      <DeleteWidgetModal
-        allowSoftDelete={false}
-        entityName={selectedMetrics?.name ?? t('label.custom-metric')}
-        entityType={EntityType.CUSTOM_METRIC}
+      <DeleteModal
+        entityTitle={selectedMetrics?.name ?? t('label.custom-metric')}
         isDeleting={isActionLoading}
-        visible={isDeleteModalVisible}
+        message={t('message.permanently-delete-common-message', {
+          entity: (
+            selectedMetrics?.name ?? t('label.custom-metric')
+          ).toLowerCase(),
+        })}
+        open={isDeleteModalVisible}
         onCancel={handleModalCancel}
         onDelete={handleDeleteClick}
       />

@@ -25,14 +25,17 @@ import ForceGraph3D, {
   LinkObject,
   NodeObject,
 } from 'react-force-graph-3d';
+import type { Object3D } from 'three';
 import {
   CAMERA_FOCUS_DISTANCE,
   CAMERA_FOCUS_DURATION_MS,
   CHARGE_STRENGTH,
   COVERAGE_DIMMED_OPACITY,
   DIMMED_NODE_OPACITY,
-  LABEL_NODE_LIMIT,
+  LABEL_RENDER_LIMIT,
+  LINK_DISTANCE,
   LINK_ONTOLOGY_COLOR,
+  LINK_STRENGTH,
   LINK_TECHNICAL_COLOR,
   MIN_CAMERA_DISTANCE,
   ONTOLOGY_PARTICLE_COLOR,
@@ -46,18 +49,38 @@ import { KnowledgeGraph3DSceneProps } from './KnowledgeGraph3D.interface';
 import {
   computeHighlight,
   computeLinkHighlight,
+  expandGraphLayout,
+  getVisibleLabelIds,
   HighlightSet,
 } from './KnowledgeGraph3D.utils';
 import { hexRgba, sizeFor } from './nodeCanvas';
-import { buildNodeObject, disposeTextureCaches } from './nodeRendering';
+import {
+  buildNodeObject,
+  disposeTextureCaches,
+  NODE_LABEL_OBJECT_NAME,
+} from './nodeRendering';
 import { GraphLink3D, GraphNode3D } from './types';
 
 type SceneNode = NodeObject<GraphNode3D>;
 type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
-const FRAME_DELAY_MS = 500;
+const FRAME_DELAY_MS = 600;
 const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
+
+const sceneNodeId = (node: SceneNode | null): string | null =>
+  node?.id ? String(node.id) : null;
+
+const setNodeLabelVisibility = (
+  node: SceneNode | null,
+  visible: boolean
+): void => {
+  const object = node?.__threeObj as Object3D | undefined;
+  const label = object?.getObjectByName(NODE_LABEL_OBJECT_NAME);
+  if (label) {
+    label.visible = visible;
+  }
+};
 
 const nodeOpacityFor = (
   node: GraphNode3D,
@@ -97,6 +120,9 @@ const linkWidthFor = (
   highlight: HighlightSet | null
 ): number => {
   let width = link.kind === 'ontology' ? 0.8 : 1.2;
+  if (link.derived) {
+    width = 1.7;
+  }
   if (highlight && highlight.links.has(link)) {
     width = 2.4;
   }
@@ -110,12 +136,16 @@ const linkParticlesFor = (
   reducedMotion: boolean
 ): number => {
   const active = Boolean(highlight && highlight.links.has(link));
+  // Derived ontology edges always animate so they read as semantic (not
+  // technical) links; other ontology edges animate only while highlighted.
+  const animated = link.derived || (link.kind === 'ontology' && active);
 
-  return !reducedMotion && link.kind === 'ontology' && active ? 2 : 0;
+  return !reducedMotion && animated ? 2 : 0;
 };
 
 const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   data,
+  focusNodeId,
   level,
   gaps,
   selectedNodeId,
@@ -124,11 +154,20 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   onSelectLink,
   getNodeTooltip,
   getLinkTooltip,
+  isFullscreen,
   registerResetView,
   registerExportImage,
 }) => {
   const fgRef = useRef<SceneGraphMethods | undefined>(undefined);
   const containerRef = useRef<HTMLDivElement>(null);
+  const didMountRef = useRef(false);
+  const refitPendingRef = useRef(false);
+  const settledFitPendingRef = useRef(true);
+  const layoutExpandedRef = useRef(false);
+  const cameraGuardTimerRef = useRef(0);
+  const hoveredNodeRef = useRef<SceneNode | null>(null);
+  const pendingHoveredNodeRef = useRef<SceneNode | null>(null);
+  const hoverFrameRef = useRef(0);
   const [size, setSize] = useState({ width: 0, height: 0 });
 
   const reducedMotion = useMemo(
@@ -149,22 +188,31 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return result;
   }, [data.links, selectedNodeId, selectedLinkKey]);
 
+  const visibleLabelIds = useMemo(
+    () => getVisibleLabelIds(data, focusNodeId, selectedNodeId),
+    [data, focusNodeId, selectedNodeId]
+  );
+
   const resetView = useCallback(() => {
     const fg = fgRef.current;
     if (!fg) {
       return;
     }
     fg.zoomToFit(ZOOM_TO_FIT_DURATION_MS, ZOOM_TO_FIT_PADDING);
-    window.setTimeout(() => {
+    window.clearTimeout(cameraGuardTimerRef.current);
+    cameraGuardTimerRef.current = window.setTimeout(() => {
       const { x, y, z } = fg.camera().position;
       const distance = Math.hypot(x, y, z);
-      if (distance > 0 && distance < MIN_CAMERA_DISTANCE) {
-        const ratio = MIN_CAMERA_DISTANCE / distance;
-        fg.cameraPosition(
-          { x: x * ratio, y: y * ratio, z: z * ratio },
-          undefined,
-          400
-        );
+      if (distance < MIN_CAMERA_DISTANCE) {
+        const position =
+          distance === 0
+            ? { x: 0, y: 0, z: MIN_CAMERA_DISTANCE }
+            : {
+                x: x * (MIN_CAMERA_DISTANCE / distance),
+                y: y * (MIN_CAMERA_DISTANCE / distance),
+                z: z * (MIN_CAMERA_DISTANCE / distance),
+              };
+        fg.cameraPosition(position, undefined, 300);
       }
     }, ZOOM_TO_FIT_DURATION_MS + 60);
   }, []);
@@ -184,24 +232,69 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return result;
   }, []);
 
-  const showLabels = data.nodes.length <= LABEL_NODE_LIMIT;
+  const renderLabels = data.nodes.length <= LABEL_RENDER_LIMIT;
   const nodeThreeObject = useCallback(
     (node: SceneNode) =>
       buildNodeObject(node as GraphNode3D, {
         level,
         gaps,
-        showLabel: showLabels,
+        showLabel: renderLabels,
       }),
-    [level, gaps, showLabels]
+    [level, gaps, renderLabels]
   );
 
-  const applyNodeOpacity = useCallback(() => {
+  const handleNodeHover = useCallback(
+    (node: SceneNode | null) => {
+      if (!renderLabels) {
+        return;
+      }
+
+      const queuedNode = hoverFrameRef.current
+        ? pendingHoveredNodeRef.current
+        : hoveredNodeRef.current;
+      if (sceneNodeId(queuedNode) === sceneNodeId(node)) {
+        return;
+      }
+
+      pendingHoveredNodeRef.current = node;
+      window.cancelAnimationFrame(hoverFrameRef.current);
+      hoverFrameRef.current = window.requestAnimationFrame(() => {
+        const previousNode = hoveredNodeRef.current;
+        const nextNode = pendingHoveredNodeRef.current;
+        const previousNodeId = sceneNodeId(previousNode);
+        const nextNodeId = sceneNodeId(nextNode);
+
+        if (
+          previousNodeId &&
+          previousNodeId !== nextNodeId &&
+          !visibleLabelIds.has(previousNodeId)
+        ) {
+          setNodeLabelVisibility(previousNode, false);
+        }
+        if (nextNodeId) {
+          setNodeLabelVisibility(nextNode, true);
+        }
+
+        hoveredNodeRef.current = nextNode;
+        pendingHoveredNodeRef.current = null;
+        hoverFrameRef.current = 0;
+        fgRef.current?.refresh();
+      });
+    },
+    [renderLabels, visibleLabelIds]
+  );
+
+  const applyNodePresentation = useCallback(() => {
+    const hoveredNodeId = sceneNodeId(hoveredNodeRef.current);
     data.nodes.forEach((node) => {
-      const object = (node as SceneNode).__threeObj as
-        | { traverse: (cb: (child: unknown) => void) => void }
-        | undefined;
+      const object = (node as SceneNode).__threeObj as Object3D | undefined;
       if (!object) {
         return;
+      }
+      const label = object.getObjectByName(NODE_LABEL_OBJECT_NAME);
+      if (label) {
+        label.visible =
+          visibleLabelIds.has(node.id) || hoveredNodeId === node.id;
       }
       const opacity = nodeOpacityFor(node, gaps, highlight);
       object.traverse((child) => {
@@ -214,14 +307,28 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
         }
       });
     });
-  }, [data.nodes, gaps, highlight]);
+  }, [data.nodes, gaps, highlight, visibleLabelIds]);
 
   useEffect(() => {
     registerResetView?.(resetView);
     registerExportImage?.(exportImage);
   }, [registerResetView, registerExportImage, resetView, exportImage]);
 
-  useEffect(() => () => disposeTextureCaches(), []);
+  useEffect(
+    () => () => {
+      window.clearTimeout(cameraGuardTimerRef.current);
+      window.cancelAnimationFrame(hoverFrameRef.current);
+      disposeTextureCaches();
+    },
+    []
+  );
+
+  useEffect(() => {
+    window.cancelAnimationFrame(hoverFrameRef.current);
+    hoveredNodeRef.current = null;
+    pendingHoveredNodeRef.current = null;
+    hoverFrameRef.current = 0;
+  }, [data]);
 
   useLayoutEffect(() => {
     const element = containerRef.current;
@@ -237,19 +344,61 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     return () => observer.disconnect();
   }, []);
 
+  // Arm a re-fit when fullscreen is toggled. The fit itself runs below, once
+  // the stage has actually resized, so it never fits against stale dimensions.
+  // The first render is skipped because the data-load effect already fits.
   useEffect(() => {
-    const charge = fgRef.current?.d3Force('charge');
+    if (didMountRef.current) {
+      refitPendingRef.current = true;
+    } else {
+      didMountRef.current = true;
+    }
+  }, [isFullscreen]);
+
+  // Run the armed re-fit once the ResizeObserver reports the new stage size, so
+  // the graph fills it. Plain window resizes (no pending toggle) are ignored,
+  // preserving any manual zoom/pan.
+  useEffect(() => {
+    let raf = 0;
+    if (refitPendingRef.current && size.width > 0 && size.height > 0) {
+      refitPendingRef.current = false;
+      raf = window.requestAnimationFrame(resetView);
+    }
+
+    return () => window.cancelAnimationFrame(raf);
+  }, [size.width, size.height, resetView]);
+
+  useEffect(() => {
+    const graph = fgRef.current;
+    settledFitPendingRef.current = true;
+    layoutExpandedRef.current = false;
+    const charge = graph?.d3Force('charge');
+    const link = graph?.d3Force('link');
     charge?.strength(CHARGE_STRENGTH);
+    link?.distance(LINK_DISTANCE).strength(LINK_STRENGTH);
+    graph?.d3ReheatSimulation();
     const frame = setTimeout(resetView, FRAME_DELAY_MS);
 
     return () => clearTimeout(frame);
   }, [data, resetView]);
 
+  const handleEngineStop = useCallback(() => {
+    if (settledFitPendingRef.current) {
+      settledFitPendingRef.current = false;
+      if (!layoutExpandedRef.current) {
+        layoutExpandedRef.current = true;
+        expandGraphLayout(data.nodes, size.width, size.height);
+        fgRef.current?.refresh();
+      }
+      resetView();
+    }
+  }, [data.nodes, resetView, size.height, size.width]);
+
   useEffect(() => {
     let frame = 0;
     let raf = 0;
     const tick = (): void => {
-      applyNodeOpacity();
+      applyNodePresentation();
       frame += 1;
       if (frame < OPACITY_APPLY_FRAMES) {
         raf = window.requestAnimationFrame(tick);
@@ -258,7 +407,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     raf = window.requestAnimationFrame(tick);
 
     return () => window.cancelAnimationFrame(raf);
-  }, [applyNodeOpacity, level]);
+  }, [applyNodePresentation, level]);
 
   useEffect(() => {
     if (!selectedNodeId) {
@@ -330,8 +479,10 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
         showNavInfo={false}
         width={size.width}
         onBackgroundClick={() => onSelectNode(null)}
+        onEngineStop={handleEngineStop}
         onLinkClick={(link: SceneLink) => onSelectLink(link as GraphLink3D)}
         onNodeClick={(node: SceneNode) => onSelectNode(node as GraphNode3D)}
+        onNodeHover={handleNodeHover}
       />
     </div>
   );

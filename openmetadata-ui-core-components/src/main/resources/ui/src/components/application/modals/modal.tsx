@@ -1,3 +1,5 @@
+import { CloseButton } from '@/components/base/buttons/close-button';
+import { cx } from '@/utils/cx';
 import type { ReactNode } from 'react';
 import type {
   DialogProps as AriaDialogProps,
@@ -6,12 +8,10 @@ import type {
 import {
   Dialog as AriaDialog,
   DialogTrigger as AriaDialogTrigger,
-  Heading,
   Modal as AriaModal,
   ModalOverlay as AriaModalOverlay,
+  Heading,
 } from 'react-aria-components';
-import { CloseButton } from '@/components/base/buttons/close-button';
-import { cx } from '@/utils/cx';
 
 export const DialogTrigger = AriaDialogTrigger;
 
@@ -136,30 +136,34 @@ const DialogBase = ({
       'tw:flex tw:w-full tw:items-center tw:justify-center tw:outline-hidden',
       props.className as string | undefined
     )}>
-    <div
-      className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
-      style={{ maxWidth: width }}>
-      <div className="tw:overflow-hidden tw:rounded-2xl">
-        {title && (
-          <>
-            <DialogHeader
-              className={showCloseButton ? 'tw:pr-12' : undefined}
-              title={title}
-            />
-            <div className="tw:h-5 tw:w-full" />
-            <div className="tw:w-full tw:border-t tw:border-secondary" />
-          </>
+    {({ close }) => (
+      <div
+        className="tw:relative tw:w-full tw:rounded-2xl tw:bg-primary tw:shadow-xl"
+        style={{ maxWidth: width }}>
+        <div className="tw:overflow-hidden tw:rounded-2xl">
+          {title && (
+            <>
+              <DialogHeader
+                className={showCloseButton ? 'tw:pr-12' : undefined}
+                title={title}
+              />
+              <div className="tw:h-5 tw:w-full" />
+              <div className="tw:w-full tw:border-t tw:border-secondary" />
+            </>
+          )}
+          {children}
+        </div>
+        {showCloseButton && (
+          <CloseButton
+            className="tw:absolute tw:top-3 tw:right-3 tw:z-10"
+            size="lg"
+            // If a caller doesn’t pass onClose, fall back to React Aria’s built-in
+            // close() to dismiss the dialog.
+            onPress={onClose ?? close}
+          />
         )}
-        {children}
       </div>
-      {showCloseButton && (
-        <CloseButton
-          className="tw:absolute tw:top-3 tw:right-3 tw:z-10"
-          size="lg"
-          onPress={onClose}
-        />
-      )}
-    </div>
+    )}
   </AriaDialog>
 );
 

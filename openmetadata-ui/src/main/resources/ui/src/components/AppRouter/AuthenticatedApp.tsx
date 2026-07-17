@@ -11,15 +11,12 @@
  *  limitations under the License.
  */
 
-import { GlobalStyles, ThemeProvider } from '@mui/material';
-import { createMuiTheme } from '@openmetadata/ui-core-components';
-import { FC, ReactNode, useMemo } from 'react';
+import { FC, ReactNode } from 'react';
 import { RouterProvider } from 'react-aria-components';
 import { DndProvider } from 'react-dnd';
 import { HTML5Backend } from 'react-dnd-html5-backend';
 import { useNavigate } from 'react-router-dom';
 import { useShallow } from 'zustand/react/shallow';
-import { DEFAULT_THEME } from '../../constants/Appearance.constants';
 import AirflowStatusProvider from '../../context/AirflowStatusProvider/AirflowStatusProvider';
 import AsyncDeleteProvider from '../../context/AsyncDeleteProvider/AsyncDeleteProvider';
 import PermissionProvider from '../../context/PermissionProvider/PermissionProvider';
@@ -27,6 +24,7 @@ import RuleEnforcementProvider from '../../context/RuleEnforcementProvider/RuleE
 import TourProvider from '../../context/TourProvider/TourProvider';
 import WebSocketProvider from '../../context/WebSocketProvider/WebSocketProvider';
 import { useApplicationStore } from '../../hooks/useApplicationStore';
+import { CsvJobsTrayContainer } from '../common/EntityImport/CsvJobsTray/CsvJobsTrayContainer.component';
 import { EntityExportModalProvider } from '../Entity/EntityExportModalProvider/EntityExportModalProvider.component';
 import ApplicationsProvider from '../Settings/Applications/ApplicationsProvider/ApplicationsProvider';
 import WebAnalyticsProvider from '../WebAnalytics/WebAnalyticsProvider';
@@ -49,40 +47,32 @@ const AuthenticatedApp: FC<AuthenticatedAppProps> = ({ children }) => {
     }))
   );
 
-  const muiTheme = useMemo(
-    () => createMuiTheme(applicationConfig?.customTheme, DEFAULT_THEME),
-    [applicationConfig?.customTheme]
-  );
-
   return (
     <UntitledUIThemeProvider brandColors={applicationConfig?.customTheme}>
-      <ThemeProvider theme={muiTheme}>
-        <GlobalStyles styles={{ html: { fontSize: '14px' } }} />
-
-        <ReactAriaRouterBridge>
-          <TourProvider>
-            <WebAnalyticsProvider>
-              <PermissionProvider>
-                <WebSocketProvider>
-                  <ApplicationsProvider>
-                    <AsyncDeleteProvider>
-                      <EntityExportModalProvider>
-                        <AirflowStatusProvider>
-                          <RuleEnforcementProvider>
-                            <DndProvider backend={HTML5Backend}>
-                              {children}
-                            </DndProvider>
-                          </RuleEnforcementProvider>
-                        </AirflowStatusProvider>
-                      </EntityExportModalProvider>
-                    </AsyncDeleteProvider>
-                  </ApplicationsProvider>
-                </WebSocketProvider>
-              </PermissionProvider>
-            </WebAnalyticsProvider>
-          </TourProvider>
-        </ReactAriaRouterBridge>
-      </ThemeProvider>
+      <ReactAriaRouterBridge>
+        <TourProvider>
+          <WebAnalyticsProvider>
+            <PermissionProvider>
+              <WebSocketProvider>
+                <ApplicationsProvider>
+                  <AsyncDeleteProvider>
+                    <EntityExportModalProvider>
+                      <AirflowStatusProvider>
+                        <RuleEnforcementProvider>
+                          <DndProvider backend={HTML5Backend}>
+                            {children}
+                          </DndProvider>
+                        </RuleEnforcementProvider>
+                      </AirflowStatusProvider>
+                      <CsvJobsTrayContainer />
+                    </EntityExportModalProvider>
+                  </AsyncDeleteProvider>
+                </ApplicationsProvider>
+              </WebSocketProvider>
+            </PermissionProvider>
+          </WebAnalyticsProvider>
+        </TourProvider>
+      </ReactAriaRouterBridge>
     </UntitledUIThemeProvider>
   );
 };

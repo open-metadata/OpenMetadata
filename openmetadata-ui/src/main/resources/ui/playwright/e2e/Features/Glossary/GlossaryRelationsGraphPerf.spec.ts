@@ -13,9 +13,10 @@
 import { expect, test } from '@playwright/test';
 import { Glossary } from '../../../support/glossary/Glossary';
 import { GlossaryTerm } from '../../../support/glossary/GlossaryTerm';
-import { AdminClass } from '../../../support/user/AdminClass';
-import { performAdminLogin } from '../../../utils/admin';
-import { redirectToHomePage } from '../../../utils/common';
+import {
+  getDefaultAdminAPIContext,
+  redirectToHomePage,
+} from '../../../utils/common';
 import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 
 // Regression coverage for the Sentry N+1 on the Relations Graph tab.
@@ -26,7 +27,8 @@ import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 // zero per-Id by-Id fetches with the resolution-loop fields signature when
 // visiting the tab — failing if anyone re-introduces a per-Id loop.
 
-const adminUser = new AdminClass();
+test.use({ storageState: 'playwright/.auth/admin.json' });
+
 const glossaryA = new Glossary();
 const glossaryB = new Glossary();
 const termInA = new GlossaryTerm(glossaryA);
@@ -35,7 +37,9 @@ const termInB = new GlossaryTerm(glossaryB);
 test.beforeAll(
   'Seed two glossaries with a cross-glossary relation',
   async ({ browser }) => {
-    const { apiContext, afterAction } = await performAdminLogin(browser);
+    const { apiContext, afterAction } = await getDefaultAdminAPIContext(
+      browser
+    );
 
     await glossaryA.create(apiContext);
     await glossaryB.create(apiContext);
@@ -69,7 +73,7 @@ test.beforeAll(
 );
 
 test.afterAll('Cleanup glossaries', async ({ browser }) => {
-  const { apiContext, afterAction } = await performAdminLogin(browser);
+  const { apiContext, afterAction } = await getDefaultAdminAPIContext(browser);
 
   await termInA.delete(apiContext);
   await termInB.delete(apiContext);
@@ -81,15 +85,9 @@ test.afterAll('Cleanup glossaries', async ({ browser }) => {
 
 test.describe('Glossary Relations Graph — N+1 regression guard', () => {
   test('opening Relations Graph tab does NOT fan out per-Id glossary term fetches', async ({
-    browser,
+    page,
   }) => {
     test.slow();
-    // Authenticate the same `page` we'll attach the request listener to.
-    // Using a fresh `browser.newPage()` without explicit login would redirect
-    // to /signin and the listener would never see the API calls we care about.
-    const page = await browser.newPage();
-    await adminUser.login(page);
-
     const perIdRequests: string[] = [];
     const byIdsRequests: string[] = [];
 
@@ -140,7 +138,5 @@ test.describe('Glossary Relations Graph — N+1 regression guard', () => {
       byIdsRequests.length,
       '/glossaryTerms/byIds should be called at least once when resolving cross-glossary related terms'
     ).toBeGreaterThan(0);
-
-    await page.close();
   });
 });

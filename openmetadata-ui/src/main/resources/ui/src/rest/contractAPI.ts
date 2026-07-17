@@ -12,6 +12,7 @@
  */
 import { AxiosResponse } from 'axios';
 import { Operation } from 'fast-json-patch';
+import { PagingResponse } from 'Models';
 import {
   ContractAllResult,
   ContractResultFilter,
@@ -46,6 +47,24 @@ export const listContracts = async (params: ListContractsParams) => {
   });
 
   return response.data;
+};
+
+export const searchContracts = async (
+  query: string,
+  limit = 25
+): Promise<DataContract[]> => {
+  const response = await APIClient.get<PagingResponse<DataContract[]>>(
+    `${BASE_URL}/search`,
+    {
+      params: {
+        q: query || undefined,
+        limit,
+        offset: 0,
+      },
+    }
+  );
+
+  return response.data.data;
 };
 
 export const getContract = async (fqn: string) => {

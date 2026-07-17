@@ -16,16 +16,21 @@ import {
   ButtonUtility,
   Dot,
   Dropdown,
+  EmptyPlaceholder,
   Skeleton,
   Tooltip,
   TooltipTrigger,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { Clock, Copy06, Pin01, Trash01 } from '@untitledui/icons';
-import classNames from 'classnames';
-import { FC, useMemo, useState } from 'react';
+import { FC, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
-import { ReactComponent as EditNewIcon } from '../../../assets/svg/edit-new.svg';
+import { ReactComponent as CopyIcon } from '../../../assets/svg/action-icons/copy.svg';
+import { ReactComponent as DotsVerticalIcon } from '../../../assets/svg/action-icons/dots-vertical.svg';
+import { ReactComponent as EditIcon } from '../../../assets/svg/action-icons/edit.svg';
+import { ReactComponent as TrashIcon } from '../../../assets/svg/action-icons/trash.svg';
+import { ReactComponent as ClockIcon } from '../../../assets/svg/common/clock.svg';
+import { ReactComponent as NoFilterResultsIcon } from '../../../assets/svg/common/no-filter-results.svg';
+import { ReactComponent as NoSearchResultIcon } from '../../../assets/svg/common/no-search-result.svg';
 import ProfilePicture from '../../../components/common/ProfilePicture/ProfilePicture';
 import { ENTITY_ICON_MAPPER } from '../../../constants/Assets.constants';
 import {
@@ -47,11 +52,13 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
 
   return (
     <Dropdown.Root>
-      <Tooltip title={t('label.manage-entity', { entity: t('label.memory') })}>
-        <TooltipTrigger>
-          <Dropdown.DotsButton className="tw:flex tw:p-1" />
-        </TooltipTrigger>
-      </Tooltip>
+      <ButtonUtility
+        color="tertiary"
+        data-testid="manage-button"
+        icon={<DotsVerticalIcon height={20} width={20} />}
+        size="sm"
+        tooltip={t('label.manage-entity', { entity: t('label.memory') })}
+      />
       <Dropdown.Popover className="tw:w-36">
         <Dropdown.Menu
           onAction={(key) => {
@@ -61,9 +68,11 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
           }}>
           <Dropdown.Item data-testid="delete-btn" id="delete">
             <Box align="center" gap={2}>
-              <Trash01
+              <TrashIcon
                 aria-hidden="true"
-                className="tw:size-4 tw:shrink-0 tw:stroke-[2.25px] tw:text-error-primary"
+                className="tw:shrink-0 tw:text-error-primary"
+                height={20}
+                width={20}
               />
               <Typography
                 ellipsis
@@ -77,37 +86,6 @@ const MemoryActions: FC<MemoryActionsProps> = ({ memory, onDeleteMemory }) => {
         </Dropdown.Menu>
       </Dropdown.Popover>
     </Dropdown.Root>
-  );
-};
-
-interface PinButtonProps {
-  pinned: boolean;
-  animKey: number;
-  onClick: () => void;
-}
-
-const PinButton: FC<PinButtonProps> = ({ pinned, animKey, onClick }) => {
-  const { t } = useTranslation();
-
-  return (
-    <Tooltip title={pinned ? t('label.unpin') : t('label.pin')}>
-      <TooltipTrigger>
-        <ButtonUtility
-          className={classNames('tw:transition-colors tw:duration-150', {
-            'tw:bg-utility-blue-50 tw:text-fg-brand-primary': pinned,
-          })}
-          color="tertiary"
-          icon={
-            <Pin01
-              className={pinned ? 'pin-icon-pinned' : 'pin-icon-unpinned'}
-              key={animKey}
-              size={15}
-            />
-          }
-          onClick={onClick}
-        />
-      </TooltipTrigger>
-    </Tooltip>
   );
 };
 
@@ -144,7 +122,9 @@ interface MemoryRowProps {
   canDelete?: boolean;
   onDeleteMemory?: (memory: ContextMemory) => void;
   onEditMemory?: (memory: ContextMemory) => void;
+  onTogglePin?: (memory: ContextMemory) => void;
   onViewMemory?: (memory: ContextMemory) => void;
+  isPinningMemoryId?: string;
 }
 
 const MemoryRow: FC<MemoryRowProps> = ({
@@ -161,8 +141,6 @@ const MemoryRow: FC<MemoryRowProps> = ({
     memory.owners?.some((owner) => owner.name === currentUserName) ?? false;
   const canActOnMemory = isOwner || Boolean(isAdminUser);
   const { t } = useTranslation();
-  const [pinned, setPinned] = useState(false);
-  const [pinAnimKey, setPinAnimKey] = useState(0);
   const memoryUrl = useMemo(
     () =>
       memory.name
@@ -204,34 +182,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
       className="tw:group tw:relative tw:px-5.5 tw:py-4.5 tw:border-b tw:border-secondary tw:last:border-b-0 tw:cursor-pointer tw:transition-colors tw:overflow-hidden"
       data-testid={`memory-row-${memory.id}`}
       gap={3}
-      style={
-        pinned
-          ? {
-              background:
-                'linear-gradient(180deg, color-mix(in srgb, var(--tw-color-utility-brand-50) 80%, transparent) 0%, transparent 60%)',
-            }
-          : undefined
-      }
       onClick={() => onViewMemory?.(memory)}>
-      {pinned && (
-        <Box
-          align="start"
-          className="tw:pointer-events-none tw:absolute tw:top-0 tw:right-0 tw:text-fg-brand-primary"
-          justify="end"
-          style={{
-            width: 28,
-            height: 28,
-            background:
-              'linear-gradient(225deg, color-mix(in srgb, var(--tw-color-utility-brand-100) 80%, transparent) 0%, transparent 70%)',
-            borderBottomLeftRadius: 12,
-            padding: '5px 7px 0 0',
-          }}>
-          <Pin01 size={11} strokeWidth={2.4} />
-        </Box>
-      )}
-      {(memory.owners?.[0]?.name ?? memory.updatedBy) && (
+      {memory?.updatedBy && (
         <div className="tw:shrink-0 tw:mt-0.5">
-          <ProfilePicture name={getEntityName(memory.owners?.[0])} />
+          <ProfilePicture name={memory.updatedBy} />
         </div>
       )}
       <Box
@@ -244,13 +198,9 @@ const MemoryRow: FC<MemoryRowProps> = ({
           direction="col"
           gap={1}>
           <Box align="center" gap={2} wrap="wrap">
-            {(memory.owners?.[0]?.displayName ??
-              memory.owners?.[0]?.name ??
-              memory.updatedBy) && (
+            {memory?.updatedBy && (
               <Typography className="tw:text-secondary" size="text-sm">
-                {memory.owners?.[0]?.displayName ??
-                  memory.owners?.[0]?.name ??
-                  memory.updatedBy}
+                {memory.updatedBy}
               </Typography>
             )}
             {memory.updatedAt !== undefined && (
@@ -316,10 +266,10 @@ const MemoryRow: FC<MemoryRowProps> = ({
           {(memory.usageCount !== undefined ||
             memory.lastUsedAt !== undefined) && (
             <Box align="center" className="tw:mt-1" gap={1}>
-              <Clock
-                className="tw:text-utility-gray-500"
-                size={12}
-                strokeWidth={1.5}
+              <ClockIcon
+                className="tw:text-quaternary"
+                height={16}
+                width={16}
               />
               <Typography
                 className="tw:text-quaternary tw:whitespace-nowrap"
@@ -339,16 +289,8 @@ const MemoryRow: FC<MemoryRowProps> = ({
 
         {/* Actions — always visible */}
         <Box align="center" gap={1} onClick={(e) => e.stopPropagation()}>
-          <PinButton
-            animKey={pinAnimKey}
-            pinned={pinned}
-            onClick={() => {
-              setPinned((prev) => !prev);
-              setPinAnimKey((prev) => prev + 1);
-            }}
-          />
-          <CopyLinkButton className="tw:w-7 tw:h-7" url={memoryUrl}>
-            <Copy06 aria-hidden="true" size={17} strokeWidth={1.8} />
+          <CopyLinkButton url={memoryUrl}>
+            <CopyIcon aria-hidden="true" height={20} width={20} />
           </CopyLinkButton>
           {canActOnMemory && canEdit && onEditMemory && (
             <Tooltip title={t('label.edit')}>
@@ -356,7 +298,7 @@ const MemoryRow: FC<MemoryRowProps> = ({
                 <ButtonUtility
                   color="tertiary"
                   data-testid="edit-memory-btn"
-                  icon={<EditNewIcon height={16} width={16} />}
+                  icon={<EditIcon height={20} width={20} />}
                   size="sm"
                   onClick={() => onEditMemory(memory)}
                 />
@@ -381,7 +323,12 @@ const MemoriesView: FC<MemoriesViewProps> = ({
   onEditMemory,
   canEdit,
   canDelete,
+  isPinningMemoryId,
+  onTogglePin,
   onViewMemory,
+  isSearching,
+  isFiltered,
+  onClearFilters,
 }) => {
   const { t } = useTranslation();
   if (isLoading) {
@@ -394,26 +341,42 @@ const MemoriesView: FC<MemoriesViewProps> = ({
     );
   }
 
-  if (data.length === 0) {
+  if (data.length === 0 && (isSearching || isFiltered)) {
     return (
-      <Box
-        align="center"
-        className="tw:py-12 tw:text-center"
-        direction="col"
-        gap={1}
-        justify="center">
-        <Typography
-          className="tw:text-secondary"
-          size="text-sm"
-          weight="medium">
-          {t('label.no-entity-available', {
-            entity: t('label.memory-plural'),
-          })}
-        </Typography>
-        <Typography className="tw:text-quaternary" size="text-sm">
-          {t('message.try-a-different-filter-or-search')}
-        </Typography>
-      </Box>
+      <div className="tw:relative tw:min-h-[320px] tw:py-12">
+        <EmptyPlaceholder
+          actions={
+            !isSearching && onClearFilters
+              ? [
+                  {
+                    key: 'clear-filters',
+                    label: t('label.clear-entity', { entity: t('label.all') }),
+                    color: 'primary',
+                    onClick: onClearFilters,
+                  },
+                ]
+              : undefined
+          }
+          description={
+            isSearching
+              ? t('message.check-spelling-or-try-different-term')
+              : t('message.no-results-for-filters-description')
+          }
+          icon={
+            isSearching ? (
+              <NoSearchResultIcon className="tw:text-quaternary" />
+            ) : (
+              <NoFilterResultsIcon className="tw:text-quaternary" />
+            )
+          }
+          title={
+            isSearching
+              ? t('label.no-matching-results')
+              : t('label.no-results-for-filters')
+          }
+          variant="blank"
+        />
+      </div>
     );
   }
 
@@ -425,10 +388,12 @@ const MemoriesView: FC<MemoriesViewProps> = ({
           canEdit={canEdit}
           currentUserName={currentUserName}
           isAdminUser={isAdminUser}
+          isPinningMemoryId={isPinningMemoryId}
           key={memory.id}
           memory={memory}
           onDeleteMemory={onDeleteMemory}
           onEditMemory={onEditMemory}
+          onTogglePin={onTogglePin}
           onViewMemory={onViewMemory}
         />
       ))}

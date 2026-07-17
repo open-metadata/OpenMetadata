@@ -10,8 +10,6 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Tooltip, TooltipTrigger } from '@openmetadata/ui-core-components';
-import { InfoCircle } from '@untitledui/icons';
 import { Divider, Space, Tooltip as AntDTooltip, Typography } from 'antd';
 import classNames from 'classnames';
 import { get, isEmpty, isUndefined, noop } from 'lodash';
@@ -125,8 +123,10 @@ export const domainTypeTooltipDataRender = () => (
     {DOMAIN_TYPE_DATA.map(({ type, description }, index) => (
       <Fragment key={type}>
         <Space direction="vertical" size={0}>
-          <Typography.Text>{`${t(type)} :`}</Typography.Text>
-          <Typography.Paragraph className="m-0 text-grey-muted">
+          <Typography.Text className="tw:text-primary_on-brand">{`${t(
+            type
+          )} :`}</Typography.Text>
+          <Typography.Paragraph className="m-0 tw:text-primary_on-brand">
             {t(description)}
           </Typography.Paragraph>
         </Space>
@@ -135,14 +135,6 @@ export const domainTypeTooltipDataRender = () => (
       </Fragment>
     ))}
   </Space>
-);
-
-export const iconTooltipDataRender = () => (
-  <Tooltip placement="top" title={t('message.icon-aspect-ratio')}>
-    <TooltipTrigger>
-      <InfoCircle data-testid="helper-icon" size={14} />
-    </TooltipTrigger>
-  </Tooltip>
 );
 
 export const renderDomainLink = (

@@ -89,7 +89,7 @@ class TestS3ArchiveIntegration:
             patch("boto3.client"),
             patch("metadata.ingestion.source.storage.storage_service.StorageServiceSource.test_connection"),
             patch(
-                "metadata.ingestion.source.storage.storage_service.get_connection",
+                "metadata.ingestion.source.storage.storage_service.create_connection",
                 return_value=MagicMock(),
             ),
         ):

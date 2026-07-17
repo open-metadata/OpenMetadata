@@ -25,7 +25,8 @@ import {
   getCsvAsyncJobResult,
   getCsvAsyncJobs,
 } from '../../../../rest/csvAPI';
-import { CsvJobsTray, CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.component';
+import { CsvJobsTray } from './CsvJobsTray.component';
+import { CSV_JOBS_REFRESH_EVENT } from './CsvJobsTray.constants';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
   Button: jest

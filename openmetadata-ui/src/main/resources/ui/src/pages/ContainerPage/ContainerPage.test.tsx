@@ -85,11 +85,11 @@ jest.mock(
   })
 );
 
-jest.mock('../../components/common/EntityDescription/DescriptionV1', () =>
+jest.mock('../../components/common/EntityDescription/Description', () =>
   jest
     .fn()
     .mockImplementation(({ onThreadLinkSelect }) => (
-      <button onClick={onThreadLinkSelect}>DescriptionV1</button>
+      <button onClick={onThreadLinkSelect}>Description</button>
     ))
 );
 
@@ -135,7 +135,7 @@ jest.mock('../../components/Customization/GenericTab/GenericTab', () => ({
 
     return (
       <>
-        <span>DescriptionV1</span>
+        <span>Description</span>
         <span>ContainerDataModel</span>
         <span>CustomPropertyTable</span>
         <span>label.glossary-term</span>
@@ -173,9 +173,15 @@ jest.mock('../../context/LineageProvider/LineageProvider', () =>
   jest.fn().mockReturnValue(<>LineageProvider</>)
 );
 
-jest.mock('../../components/common/Loader/Loader', () =>
-  jest.fn().mockReturnValue(<div>Loader</div>)
-);
+jest.mock('../../components/common/Loader/Loader', () => ({
+  __esModule: true,
+  default: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+  PageLoader: jest
+    .fn()
+    .mockImplementation(() => <div data-testid="loader">Loader</div>),
+}));
 
 jest.mock('../../components/PageLayoutV1/PageLayoutV1', () =>
   jest.fn().mockImplementation(({ children }) => <>{children}</>)
@@ -501,7 +507,7 @@ describe('Container Page Component', () => {
 
     expect(tabs).toHaveLength(7);
     expect(tabs[0]).toHaveAttribute('aria-selected', 'true');
-    expect(screen.getByText('DescriptionV1')).toBeVisible();
+    expect(screen.getByText('Description')).toBeVisible();
     expect(screen.getByText('ContainerDataModel')).toBeVisible();
     expect(screen.getByText('CustomPropertyTable')).toBeVisible();
     expect(screen.getByText('label.glossary-term')).toBeVisible();

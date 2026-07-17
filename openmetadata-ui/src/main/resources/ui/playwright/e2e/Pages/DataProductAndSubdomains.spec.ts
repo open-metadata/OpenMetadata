@@ -35,7 +35,11 @@ import {
   selectDataProduct,
   selectDomain,
 } from '../../utils/domain';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  fillDeleteConfirmationIfPresent,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
+import { waitForSearchIndexed } from '../../utils/polling';
 import { sidebarClick } from '../../utils/sidebar';
 
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -152,7 +156,7 @@ test.describe('Data Product Comprehensive Tests', () => {
         timeout: 10000,
       });
 
-      // Fill the form - use locator for MUI TextField input
+      // Fill the form - use locator for the text field input
       const dpName = `PW-DataProduct-${uuid()}`;
       await page.getByTestId('name').locator('input').fill(dpName);
 
@@ -271,8 +275,12 @@ test.describe('Data Product Comprehensive Tests', () => {
         }
 
         if (retry < maxRetries - 1) {
-          // eslint-disable-next-line playwright/no-wait-for-timeout -- wait for ES indexing before retry
-          await page.waitForTimeout(2000);
+          await waitForSearchIndexed(
+            apiContext,
+            user.getUserName(),
+            'user_search_index',
+            { timeout: 3000 }
+          ).catch(() => undefined);
         }
       }
 
@@ -794,9 +802,8 @@ test.describe('Multiple Subdomains Tests', () => {
 
       await expect(page.getByRole('dialog')).toBeVisible();
 
-      await page.getByTestId('confirmation-text-input').fill('DELETE');
-
       const deleteRes = page.waitForResponse('/api/v1/domains/*');
+      await fillDeleteConfirmationIfPresent(page);
       await page.getByTestId('confirm-button').click();
       await deleteRes;
 

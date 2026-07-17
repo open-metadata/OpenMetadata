@@ -79,6 +79,7 @@ export const useAsyncDataAssetOptions = ({
           reference: { ...entityRef },
           displayName: entityName,
           name: _source.name,
+          id: _source.id,
         };
       });
 
