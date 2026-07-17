@@ -21,6 +21,7 @@ import numpy as np
 import pandas as pd
 import pytest
 from mlflow.models import infer_signature
+from mlflow.sklearn import SERIALIZATION_FORMAT_CLOUDPICKLE
 from sklearn.linear_model import ElasticNet
 from sklearn.metrics import mean_absolute_error, mean_squared_error, r2_score
 from sklearn.model_selection import train_test_split
@@ -136,13 +137,16 @@ def create_data(mlflow_environment):
                         "model",
                         registered_model_name=MODEL_NAME,
                         signature=signature,
+                        serialization_format=SERIALIZATION_FORMAT_CLOUDPICKLE,
                     )
                 else:
-                    mlflow.sklearn.log_model(lr, "model")
+                    mlflow.sklearn.log_model(lr, "model", serialization_format=SERIALIZATION_FORMAT_CLOUDPICKLE)
                 break
-            except Exception:
+            except Exception as exc:
                 if attempt < 4:
-                    logging.getLogger(__name__).warning("Retry %d/5: S3 upload failed, retrying...", attempt + 1)
+                    logging.getLogger(__name__).warning(
+                        "Retry %d/5: log_model failed (%s), retrying...", attempt + 1, exc
+                    )
                     time.sleep(5 * (attempt + 1))
                 else:
                     raise
