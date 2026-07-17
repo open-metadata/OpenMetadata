@@ -1778,6 +1778,44 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
   }
 
   @Test
+  void test_addPort_rejectsNonDataAssetEntity(TestNamespace ns) throws Exception {
+    Domain domain = getOrCreateDomain(ns);
+
+    CreateDataProduct create =
+        new CreateDataProduct()
+            .withName(ns.prefix("dp_port_type_guard"))
+            .withDescription("Data product for port type validation test")
+            .withDomains(List.of(domain.getFullyQualifiedName()));
+    DataProduct dataProduct = createEntity(create);
+
+    // A user is a real entity but not a data asset, so it cannot be a port.
+    String userName = ns.shortPrefix("port_user");
+    User user =
+        SdkClients.adminClient()
+            .users()
+            .create(
+                new CreateUser().withName(userName).withEmail(userName + "@test.openmetadata.org"));
+
+    BulkAssets request = new BulkAssets().withAssets(List.of(user.getEntityReference()));
+    InvalidRequestException failException =
+        assertThrows(
+            InvalidRequestException.class,
+            () -> addInputPortsWithResult(dataProduct.getFullyQualifiedName(), request));
+    BulkOperationResult failResult =
+        JsonUtils.readValue(failException.getResponseBody(), BulkOperationResult.class);
+
+    assertEquals(ApiStatus.FAILURE, failResult.getStatus());
+    assertEquals(1, failResult.getNumberOfRowsFailed());
+    assertEquals(1, failResult.getFailedRequest().size());
+    assertTrue(
+        failResult.getFailedRequest().get(0).getMessage().contains("cannot be added as a port"));
+
+    // The rejected asset must not appear as a port, and the view must load without error.
+    DataProductPortsView portsView = getPortsView(dataProduct.getId(), 10, 0, 10, 0);
+    assertEquals(0, portsView.getInputPorts().getPaging().getTotal());
+  }
+
+  @Test
   void test_getPortsViewCombined(TestNamespace ns) throws Exception {
     Domain domain = getOrCreateDomain(ns);
 
@@ -1913,6 +1951,14 @@ public class DataProductResourceIT extends BaseEntityIT<DataProduct, CreateDataP
 
   private void bulkAddInputPorts(String dataProductName, BulkAssets request) {
     SdkClients.adminClient().dataProducts().inputPorts(dataProductName).add(request);
+  }
+
+  private BulkOperationResult addInputPortsWithResult(String dataProductName, BulkAssets request)
+      throws Exception {
+    String path = "/v1/dataProducts/name/" + dataProductName + "/inputPorts/add";
+    return SdkClients.adminClient()
+        .getHttpClient()
+        .execute(HttpMethod.PUT, path, request, BulkOperationResult.class);
   }
 
   private void bulkAddOutputPorts(String dataProductName, BulkAssets request) throws Exception {

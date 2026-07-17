@@ -226,3 +226,12 @@ SET json = (json::jsonb - 'openMetadataServerConnection' - 'privateConfiguration
 WHERE extension LIKE 'app.version.%'
   AND (jsonb_exists(json::jsonb, 'openMetadataServerConnection')
        OR jsonb_exists(json::jsonb, 'privateConfiguration'));
+
+-- Remove data product input/output port relationships that point at a column
+-- (entity type 'tableColumn'). Columns are not standalone entities, so loading such a port
+-- throws "Entity repository for tableColumn not found" and 500s the portsView API.
+-- relation 23 = INPUT_PORT, 24 = OUTPUT_PORT.
+DELETE FROM entity_relationship
+WHERE fromEntity = 'dataProduct'
+  AND toEntity = 'tableColumn'
+  AND relation IN (23, 24);

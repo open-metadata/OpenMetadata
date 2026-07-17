@@ -458,6 +458,17 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       result.setNumberOfRowsProcessed(result.getNumberOfRowsProcessed() + 1);
 
       if (isAdd) {
+        if (!isPortEligibleType(ref.getType())) {
+          String msg =
+              String.format(
+                  "Asset '%s' of type '%s' cannot be added as a port; ports must reference a data asset",
+                  ref.getFullyQualifiedName(), ref.getType());
+          failed.add(new BulkResponse().withRequest(ref).withMessage(msg));
+          result.setNumberOfRowsFailed(result.getNumberOfRowsFailed() + 1);
+          result.setStatus(ApiStatus.PARTIAL_SUCCESS);
+          continue;
+        }
+
         if (oppositePortIds.contains(ref.getId())) {
           String oppositePortType =
               oppositeRelationship == Relationship.INPUT_PORT ? "input" : "output";
@@ -609,6 +620,18 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
       String dataProductName, String fields, int limit, int offset) {
     DataProduct dataProduct = getByName(null, dataProductName, getFields("id"));
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
+  }
+
+  // A port exposes/consumes a data asset: an entity that can itself belong to a data product
+  // (i.e. its schema declares a `dataProducts` field). Derived from the entity's own
+  // capabilities, so it stays correct as new asset types are added — no list to maintain.
+  // Time-series-only types are excluded because entityHasField resolves via the standard
+  // repository map and throws for them.
+  private static boolean isPortEligibleType(String entityType) {
+    return entityType != null
+        && Entity.hasEntityRepository(entityType)
+        && !Entity.isTimeSeriesEntity(entityType)
+        && Entity.entityHasField(entityType, Entity.FIELD_DATA_PRODUCTS);
   }
 
   private ResultList<EntityWithType> getPaginatedPorts(
