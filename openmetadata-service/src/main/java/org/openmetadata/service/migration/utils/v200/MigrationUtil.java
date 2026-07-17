@@ -741,10 +741,16 @@ public class MigrationUtil {
         String updatedBy =
             threadJson.has("updatedBy") ? threadJson.get("updatedBy").asText() : createdByName;
 
-        // Look up createdBy user ID from user_entity by name
+        // Look up createdBy user ID from user_entity by name. Store both the id (for the
+        // generated-column createdBy filter) and the entityReference (which the task drawer's
+        // "Created By" reads) so the original requester is preserved, not left blank.
         String createdByUserId = lookupUserId(handle, createdByName);
         if (createdByUserId != null) {
           taskJson.put("createdById", createdByUserId);
+          ObjectNode createdByRef = buildUserRef(handle, createdByName);
+          if (createdByRef != null) {
+            taskJson.set("createdBy", createdByRef);
+          }
         }
 
         taskJson.put("createdAt", createdAt);
@@ -752,16 +758,25 @@ public class MigrationUtil {
         taskJson.put("updatedBy", updatedBy);
         taskJson.put("deleted", false);
         taskJson.put("version", 0.1);
-        taskJson.set("comments", JsonUtils.getObjectNode().arrayNode());
-        taskJson.put("commentCount", 0);
+        // Migrate the thread's posts (replies + resolve/close records) into task comments,
+        // and carry over thread-level emoji reactions — both were dropped previously.
+        migrateThreadPostsToComments(handle, threadJson, taskJson);
+        if (threadJson.has("reactions") && threadJson.get("reactions").isArray()) {
+          taskJson.set("reactions", threadJson.get("reactions"));
+        }
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
-        // Set resolution details for closed tasks
+        // Set resolution details for closed tasks. Preserve who resolved/closed it
+        // (resolvedBy from the legacy closedBy) instead of a generic placeholder — the original
+        // close note survives as a migrated comment (see migrateThreadPostsToComments).
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
           resolution.put("type", newStatus.equals("Approved") ? "Approved" : "Completed");
           if (taskDetails.has("closedBy")) {
-            resolution.put("comment", "Migrated from thread-based task system");
+            ObjectNode resolvedBy = buildUserRef(handle, taskDetails.get("closedBy").asText());
+            if (resolvedBy != null) {
+              resolution.set("resolvedBy", resolvedBy);
+            }
           }
           if (taskDetails.has("closedAt")) {
             resolution.put("resolvedAt", taskDetails.get("closedAt").asLong());
@@ -1469,6 +1484,62 @@ public class MigrationUtil {
       LOG.debug("Could not look up user '{}': {}", userName, e.getMessage());
       return null;
     }
+  }
+
+  /**
+   * Build a user {@code entityReference} ({id, type, name}) for a legacy username, resolving the id
+   * from user_entity. Returns null when the name is missing/system or the user cannot be resolved,
+   * so callers can omit the field rather than write a dangling reference.
+   */
+  private static ObjectNode buildUserRef(Handle handle, String userName) {
+    String id = lookupUserId(handle, userName);
+    if (id == null) {
+      return null;
+    }
+    ObjectNode ref = JsonUtils.getObjectNode();
+    ref.put("id", id);
+    ref.put("type", Entity.USER);
+    ref.put("name", userName);
+    return ref;
+  }
+
+  /**
+   * Migrate a legacy thread's {@code posts[]} (user replies + resolve/close records) into the new
+   * task's {@code comments[]} so the task discussion history survives, and sets {@code commentCount}.
+   * Each post maps to a {@code taskComment} ({id, message, author, createdAt, reactions}); posts
+   * whose author cannot be resolved keep their message but fall back to a system author so no
+   * comment is silently dropped.
+   */
+  private static void migrateThreadPostsToComments(
+      Handle handle, JsonNode threadJson, ObjectNode taskJson) {
+    JsonNode posts = threadJson.get("posts");
+    ArrayNode comments = JsonUtils.getObjectNode().arrayNode();
+    if (posts != null && posts.isArray()) {
+      for (JsonNode post : posts) {
+        if (!post.has("message")) {
+          continue;
+        }
+        ObjectNode comment = JsonUtils.getObjectNode();
+        comment.put("id", post.has("id") ? post.get("id").asText() : UUID.randomUUID().toString());
+        comment.put("message", post.get("message").asText());
+        ObjectNode author = buildUserRef(handle, post.path("from").asText(null));
+        if (author == null) {
+          author = JsonUtils.getObjectNode();
+          author.put(
+              "id", UUID.nameUUIDFromBytes("system".getBytes(StandardCharsets.UTF_8)).toString());
+          author.put("type", Entity.USER);
+          author.put("name", "system");
+        }
+        comment.set("author", author);
+        comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : 0);
+        if (post.has("reactions") && post.get("reactions").isArray()) {
+          comment.set("reactions", post.get("reactions"));
+        }
+        comments.add(comment);
+      }
+    }
+    taskJson.set("comments", comments);
+    taskJson.put("commentCount", comments.size());
   }
 
   /**
