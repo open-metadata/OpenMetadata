@@ -43,15 +43,15 @@ const WIDTH_NO_HINT_COLUMN = 820;
 
 /**
  * The two-column body is capped at `88vh` minus the chrome it shares the
- * viewport with — the header (~88px including its bottom padding) and the
- * footer (~69px), i.e. 157px. Without that subtraction the body claims the
+ * viewport with — the header (72px) and the footer (69px), i.e. 141px, both
+ * measured in the running modal. Without that subtraction the body claims the
  * full 88vh on its own and the modal overflows its cap by the height of its
  * own header and footer.
  *
  * It is spelled out in the class rather than derived from a constant: Tailwind
  * scans source statically, so an interpolated arbitrary value generates no
  * class at all and the cap would silently vanish. If the header or footer
- * padding changes, re-measure and update `max-h-[calc(88vh-157px)]` below.
+ * padding changes, re-measure and update `max-h-[calc(88vh-141px)]` below.
  */
 
 export interface AiFormModalProps {
@@ -144,8 +144,10 @@ export const AiFormModal: FC<AiFormModalProps> = ({
             }
             onClose={onClose}>
             {/* Dialog.Header ships no bottom padding, so the body would sit
-                flush against the title. */}
-            <Dialog.Header className={hasHintColumn ? 'tw:pb-5' : undefined}>
+                flush against the title. Just enough to separate them — the
+                body's own top padding provides the rest of the breathing
+                room. */}
+            <Dialog.Header className={hasHintColumn ? 'tw:pb-1' : undefined}>
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
@@ -198,7 +200,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
             <Dialog.Content
               className={
                 hasHintColumn
-                  ? 'tw:max-h-[calc(88vh-157px)] tw:flex-row tw:gap-0 tw:overflow-hidden tw:p-0 tw:sm:p-0'
+                  ? 'tw:max-h-[calc(88vh-141px)] tw:flex-row tw:gap-0 tw:overflow-hidden tw:p-0 tw:sm:p-0'
                   : 'tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto'
               }>
               {children}
