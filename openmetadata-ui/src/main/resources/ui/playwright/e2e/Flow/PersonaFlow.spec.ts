@@ -21,7 +21,6 @@ import { selectOption } from '../../utils/advancedSearch';
 import {
   createNewPage,
   descriptionBox,
-  getDefaultAdminAPIContext,
   redirectToHomePage,
   uuid,
 } from '../../utils/common';
@@ -48,7 +47,6 @@ const PERSONA_DETAILS = {
   description: `Persona description ${uuid()}.`,
 };
 
-const user = new UserClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
 
@@ -347,16 +345,16 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
         const searchUser = adminPage.waitForResponse(
           `/api/v1/search/query?q=*${encodeURIComponent(
-            user.responseData.displayName
+            user1.responseData.displayName
           )}*`
         );
         await adminPage
           .getByTestId('searchbar')
-          .fill(user.responseData.displayName);
+          .fill(user1.responseData.displayName);
         await searchUser;
 
         await adminPage
-          .getByRole('listitem', { name: user.responseData.displayName })
+          .getByRole('listitem', { name: user1.responseData.displayName })
           .click();
         await adminPage.getByTestId('selectable-list-update-btn').click();
 
@@ -393,8 +391,8 @@ test.describe.serial('Default persona setting and removal flow', () => {
         ).toContainText(PERSONA_DETAILS.description);
 
         await expect(
-          adminPage.getByTestId(user.responseData.name)
-        ).toContainText(user.responseData.name);
+          adminPage.getByTestId(user1.responseData.name)
+        ).toContainText(user1.responseData.name);
 
         await setPersonaAsDefault(adminPage);
       });
