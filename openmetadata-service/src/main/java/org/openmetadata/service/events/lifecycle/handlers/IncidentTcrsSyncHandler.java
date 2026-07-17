@@ -20,17 +20,21 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.tasks.Task;
+import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
+import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
+import org.openmetadata.service.jdbi3.EntityRepository;
+import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.util.EntityUtil;
 
@@ -81,6 +85,11 @@ public final class IncidentTcrsSyncHandler {
           "resolved", TestCaseResolutionStatusTypes.Resolved);
 
   private static final String TEST_CASE_TYPE = "testCase";
+
+  // Mirrors TestCaseResultRepository.TEST_CASE_INDEX_FIELDS so the row patch rebuilds the same
+  // search document.
+  private static final String TEST_CASE_ROW_FIELDS =
+      "testDefinition,testSuite,testSuites,owners,tags,followers";
 
   private IncidentTcrsSyncHandler() {}
 
@@ -162,6 +171,7 @@ public final class IncidentTcrsSyncHandler {
 
       String testCaseFqn = task.getAbout().getFullyQualifiedName();
       repo.syncFromTask(record, testCaseFqn);
+      updateTestCaseRowIncident(task, tcrsType);
 
       LOG.debug(
           "[TCRS Sync] Wrote {} record for task {} (stateId={})", tcrsType, task.getId(), stateId);
@@ -174,6 +184,31 @@ public final class IncidentTcrsSyncHandler {
           e.getMessage(),
           e);
     }
+  }
+
+  /**
+   * Keep the TestCase row's denormalized {@code incidentId} aligned with the ongoing incident:
+   * the task id while the incident is active, null once it is resolved. Without this, no-fields
+   * reads keep returning the incidentId frozen by the last test-case result.
+   */
+  private static void updateTestCaseRowIncident(Task task, TestCaseResolutionStatusTypes tcrsType) {
+    UUID rowIncidentId = tcrsType == TestCaseResolutionStatusTypes.Resolved ? null : task.getId();
+    TestCase original =
+        Entity.getEntityByName(
+            Entity.TEST_CASE,
+            task.getAbout().getFullyQualifiedName(),
+            TEST_CASE_ROW_FIELDS,
+            Include.ALL);
+    if (Objects.equals(original.getIncidentId(), rowIncidentId)) {
+      return;
+    }
+    TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
+    updated.setIncidentId(rowIncidentId);
+    TestCaseRepository testCaseRepository =
+        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
+    testCaseRepository
+        .getUpdater(original, updated, EntityRepository.Operation.PATCH, null)
+        .update();
   }
 
   private static Object buildDetailsForStage(TestCaseResolutionStatusTypes type, Task task) {
