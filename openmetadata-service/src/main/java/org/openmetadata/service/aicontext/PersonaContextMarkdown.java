@@ -44,6 +44,7 @@ import org.openmetadata.schema.type.personaContext.SharedKnowledge;
 final class PersonaContextMarkdown {
   private static final int COMPACT_MAX_CHARS = 1200;
   private static final int DOCUMENT_OVERHEAD_RESERVE = 1024;
+  private static final String ASSET_CONTEXT_TOOL = "get_asset_context";
 
   private PersonaContextMarkdown() {}
 
@@ -409,7 +410,7 @@ final class PersonaContextMarkdown {
       }
       markdown
           .append("\n_Column-level profile details are caller-sensitive; fetch ")
-          .append(contextEndpoint(context))
+          .append(contextToolCall(context.getEntityType(), context.getFullyQualifiedName()))
           .append(" for the latest permitted profile._\n");
     }
     return markdown.toString();
@@ -418,7 +419,7 @@ final class PersonaContextMarkdown {
   private static String renderCompactEntity(AIContext context) {
     String marker =
         "\n_Compact rendering — fetch "
-            + contextEndpoint(context)
+            + contextToolCall(context.getEntityType(), context.getFullyQualifiedName())
             + " for the complete asset context._\n";
     StringBuilder compact = new StringBuilder();
     compact
@@ -519,7 +520,7 @@ final class PersonaContextMarkdown {
           .append(") — ")
           .append(entry.getReason().value())
           .append("; fetch ")
-          .append(contextEndpoint(entry.getEntityType(), entry.getFullyQualifiedName()));
+          .append(contextToolCall(entry.getEntityType(), entry.getFullyQualifiedName()));
     }
     markdown.append('\n');
   }
@@ -599,26 +600,13 @@ final class PersonaContextMarkdown {
         .withReason(reason);
   }
 
-  private static String contextEndpoint(AIContext context) {
-    return contextEndpoint(context.getEntityType(), context.getFullyQualifiedName());
-  }
-
-  private static String contextEndpoint(String entityType, String fqn) {
-    return "`GET /v1/" + collectionPath(entityType) + "/name/" + fqn + "/context`";
-  }
-
-  static String collectionPath(String entityType) {
-    return switch (entityType) {
-      case "glossaryTerm" -> "glossaryTerms";
-      case "mlmodel" -> "mlmodels";
-      case "searchIndex" -> "searchIndexes";
-      case "databaseSchema" -> "databaseSchemas";
-      case "storedProcedure" -> "storedProcedures";
-      case "apiEndpoint" -> "apiEndpoints";
-      case "page" -> "contextCenter/pages";
-      case "dashboardDataModel" -> "dashboard/datamodels";
-      default -> entityType.endsWith("s") ? entityType : entityType + 's';
-    };
+  static String contextToolCall(String entityType, String fqn) {
+    return ASSET_CONTEXT_TOOL
+        + "(entityType=`"
+        + AIContextMarkdown.inlineCodeValue(entityType)
+        + "`, fqn=`"
+        + AIContextMarkdown.inlineCodeValue(fqn)
+        + "`)";
   }
 
   private static String entityTypeLabel(String entityType) {

@@ -404,13 +404,21 @@ public class PersonaContextBuilder {
     Set<ContextSection> selected = sections == null ? Set.of() : sections;
     boolean needsLineage = selected.contains(ContextSection.LINEAGE);
     boolean needsDataQuality = selected.contains(ContextSection.DATA_QUALITY);
-    if (!needsLineage && !needsDataQuality) {
-      return;
+    if (needsLineage || needsDataQuality) {
+      AIContext heavy =
+          new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName()).build();
+      applyHeavySections(context, heavy, needsLineage, needsDataQuality);
     }
-    AIContext heavy =
-        new AIContextBuilder(context.getEntityType(), context.getFullyQualifiedName()).build();
+  }
+
+  static void applyHeavySections(
+      AIContext context, AIContext heavy, boolean needsLineage, boolean needsDataQuality) {
     if (needsLineage) {
-      context.withUpstream(heavy.getUpstream()).withDownstream(heavy.getDownstream());
+      context
+          .withUpstream(heavy.getUpstream())
+          .withUpstreamEdges(heavy.getUpstreamEdges())
+          .withDownstream(heavy.getDownstream())
+          .withDownstreamEdges(heavy.getDownstreamEdges());
     }
     if (needsDataQuality && heavy.getObservability() != null) {
       context.withObservability(

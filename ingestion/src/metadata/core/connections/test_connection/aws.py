@@ -9,11 +9,11 @@
 #  See the License for the specific language governing permissions and
 #  limitations under the License.
 """
-Shared authentication diagnoses for the AWS-backed connectors (boto3 / botocore).
+Shared authentication diagnoses for the boto3/botocore connectors.
 
-Fold in with ``ErrorPack.including(AWS_ERRORS)``; the connector's own rules still
-match first, and it keeps its authorization diagnosis (an ``AccessDenied`` fix must
-name that service's IAM actions). ``NETWORK_ERRORS`` is already folded in here.
+Fold in with ``ErrorPack.including(AWS_ERRORS)``; the connector keeps its own
+authorization rule, whose fix must name that service's IAM actions.
+``NETWORK_ERRORS`` is already folded in here.
 """
 
 from __future__ import annotations
@@ -30,6 +30,7 @@ from botocore.exceptions import (
 from metadata.core.connections.test_connection.classifier import (
     ErrorPack,
     Matchers,
+    chain_text,
     exception_chain,
     when,
 )
@@ -74,7 +75,7 @@ def _clock_skew(error: BaseException) -> bool:
     is told apart only by message."""
     if aws_error_code(error) not in _BAD_SIGNATURE:
         return False
-    text = " ".join(str(current) for current in exception_chain(error)).lower()
+    text = chain_text(error)
     return any(message in text for message in _SKEW_MESSAGES)
 
 

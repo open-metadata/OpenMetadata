@@ -140,9 +140,11 @@ def create_data(mlflow_environment):
                 else:
                     mlflow.sklearn.log_model(lr, "model")
                 break
-            except Exception:
+            except Exception as exc:
                 if attempt < 4:
-                    logging.getLogger(__name__).warning("Retry %d/5: S3 upload failed, retrying...", attempt + 1)
+                    logging.getLogger(__name__).warning(
+                        "Retry %d/5: log_model failed (%s: %s), retrying...", attempt + 1, type(exc).__name__, exc
+                    )
                     time.sleep(5 * (attempt + 1))
                 else:
                     raise
