@@ -212,6 +212,43 @@ public class SearchRepository {
     public ScriptedPartialUpdate(String script, Map<String, Object> parameters) {
       this(script, parameters, false);
     }
+
+    /**
+     * Converts null document fields into explicit removals for the relationship-preserving
+     * scripted-upsert contract. Omitting a null parameter leaves the old value untouched in the
+     * existing search document.
+     */
+    public Map<String, Object> parametersForIndexing() {
+      if (!scriptedUpsert || parameters.values().stream().noneMatch(Objects::isNull)) {
+        return parameters;
+      }
+
+      Map<String, Object> normalizedParameters = new LinkedHashMap<>();
+      Set<String> fieldsToRemove = new TreeSet<>();
+      Object configuredRemovals = parameters.get("fieldsToRemove");
+      if (configuredRemovals instanceof Iterable<?> removals) {
+        for (Object field : removals) {
+          if (field != null) {
+            fieldsToRemove.add(field.toString());
+          }
+        }
+      }
+      parameters.forEach(
+          (field, value) -> {
+            if ("fieldsToRemove".equals(field)) {
+              return;
+            }
+            if (value == null) {
+              fieldsToRemove.add(field);
+            } else {
+              normalizedParameters.put(field, value);
+            }
+          });
+      if (!fieldsToRemove.isEmpty()) {
+        normalizedParameters.put("fieldsToRemove", List.copyOf(fieldsToRemove));
+      }
+      return normalizedParameters;
+    }
   }
 
   private record RelationshipRevisionSpec(
@@ -1694,7 +1731,7 @@ public class SearchRepository {
               buildRelationshipDocumentUpdate(entity, doc);
           if (relationshipDocumentUpdate != null) {
             scriptTxt = relationshipDocumentUpdate.script();
-            doc = relationshipDocumentUpdate.parameters();
+            doc = relationshipDocumentUpdate.parametersForIndexing();
           }
         }
       }

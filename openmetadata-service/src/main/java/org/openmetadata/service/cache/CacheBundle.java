@@ -6,10 +6,6 @@ import io.dropwizard.core.setup.Bootstrap;
 import io.dropwizard.core.setup.Environment;
 import io.dropwizard.lifecycle.Managed;
 import io.micrometer.core.instrument.Metrics;
-import java.util.HashSet;
-import java.util.Map;
-import java.util.Set;
-import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.OpenMetadataApplicationConfig;
@@ -121,13 +117,6 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
               // the path new cache layers should plug into — implement Invalidatable, call
               // registerInvalidatable, and the remote-pod invalidation Just Works.
               for (Invalidatable layer : INVALIDATABLES) {
-                // NotFoundCache is Redis-backed and therefore already shared by every pod. A
-                // remote entity invalidation must not delete a hard-delete tombstone that the
-                // writer just installed after removing the row. Create/restore paths still clear
-                // the shared marker directly through CacheBundle.invalidateEntity().
-                if (layer instanceof NotFoundCache) {
-                  continue;
-                }
                 try {
                   layer.invalidate(msg.type(), msg.id(), msg.fqn());
                 } catch (Exception ex) {
@@ -241,7 +230,7 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
    *
    * <p>No-op if no layers are registered (cache disabled or none registered yet).
    */
-  public static void invalidateEntity(String type, UUID id, String fqn) {
+  public static void invalidateEntity(String type, java.util.UUID id, String fqn) {
     for (Invalidatable layer : INVALIDATABLES) {
       try {
         layer.invalidate(type, id, fqn);
@@ -249,53 +238,6 @@ public class CacheBundle implements ConfiguredBundle<OpenMetadataApplicationConf
         LOG.debug("Invalidatable {} failed for type={} id={} fqn={}", layer, type, id, fqn, e);
       }
     }
-  }
-
-  public static Set<UUID> invalidateEntities(String type, Map<UUID, String> entities) {
-    if (entities == null || entities.isEmpty()) {
-      return Set.of();
-    }
-    Set<UUID> hardDeleteWinners = new HashSet<>();
-    for (Invalidatable layer : INVALIDATABLES) {
-      try {
-        if (layer instanceof NotFoundCache negativeCache) {
-          hardDeleteWinners.addAll(negativeCache.invalidateAll(type, entities));
-        } else if (layer instanceof CachedLineage lineageCache) {
-          lineageCache.invalidateAll(entities.keySet());
-        } else {
-          entities.forEach((id, fqn) -> layer.invalidate(type, id, fqn));
-        }
-      } catch (Exception e) {
-        LOG.debug("Invalidatable {} failed for {} created entities", layer, entities.size(), e);
-      }
-    }
-    return hardDeleteWinners;
-  }
-
-  /**
-   * Invalidate an entity after an update while preserving a hard-delete tombstone that may have
-   * committed between the database update and its post-commit cache write-through.
-   */
-  public static boolean invalidateEntityPreservingHardDelete(String type, UUID id, String fqn) {
-    boolean hardDeleteWon = false;
-    for (Invalidatable layer : INVALIDATABLES) {
-      try {
-        if (layer instanceof NotFoundCache negativeCache) {
-          hardDeleteWon |= negativeCache.invalidatePreservingHardDelete(type, id, fqn);
-        } else {
-          layer.invalidate(type, id, fqn);
-        }
-      } catch (Exception e) {
-        LOG.debug(
-            "Invalidatable {} failed after update for type={} id={} fqn={}",
-            layer,
-            type,
-            id,
-            fqn,
-            e);
-      }
-    }
-    return hardDeleteWon;
   }
 
   public static CacheInvalidationPubSub getCacheInvalidationPubSub() {

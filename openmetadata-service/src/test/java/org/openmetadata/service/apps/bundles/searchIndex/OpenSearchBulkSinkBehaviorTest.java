@@ -255,6 +255,56 @@ class OpenSearchBulkSinkBehaviorTest {
   }
 
   @Test
+  void scriptedUpsertConvertsNullFieldsIntoExplicitRemovals() throws Exception {
+    Map<String, Object> parameters = new HashMap<>();
+    parameters.put("name", "current");
+    parameters.put("description", null);
+    parameters.put("fieldsToRemove", List.of("displayName"));
+    SearchRepository.ScriptedPartialUpdate partialUpdate =
+        new SearchRepository.ScriptedPartialUpdate("remove-null-fields", parameters, true);
+
+    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
+        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
+      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
+
+      invokePrivate(
+          sink,
+          "addScriptedPartialUpdate",
+          new Class<?>[] {
+            String.class,
+            String.class,
+            String.class,
+            SearchRepository.ScriptedPartialUpdate.class,
+            String.class,
+            StageStatsTracker.class
+          },
+          "test_case_index",
+          "test-case-id",
+          Entity.TEST_CASE,
+          partialUpdate,
+          "{\"name\":\"current\"}",
+          null);
+
+      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
+      verify(processorConstruction.constructed().getFirst())
+          .add(
+              operationCaptor.capture(),
+              eq("test-case-id"),
+              eq(Entity.TEST_CASE),
+              isNull(),
+              anyLong());
+      Object operationData = getPrivateField(operationCaptor.getValue().update(), "data");
+      Script script = (Script) getPrivateField(operationData, "script");
+      Map<String, JsonData> scriptParameters = script.inline().params();
+      assertFalse(scriptParameters.containsKey("description"));
+      assertEquals("current", scriptParameters.get("name").to(String.class));
+      assertEquals(
+          List.of("description", "displayName"),
+          scriptParameters.get("fieldsToRemove").to(List.class));
+    }
+  }
+
+  @Test
   @SuppressWarnings({"rawtypes", "unchecked"})
   void oversizedScriptedUpdateIsSentDirectlyInsteadOfPoisoningTheBulkBatch() throws Exception {
     os.org.opensearch.client.opensearch.OpenSearchClient rawClient =

@@ -21,15 +21,11 @@ import java.util.concurrent.ConcurrentLinkedDeque;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.TimeUnit;
-import java.util.concurrent.TimeoutException;
 import java.util.concurrent.atomic.AtomicInteger;
 import lombok.extern.slf4j.Slf4j;
 
 @Slf4j
 public class RedisCacheProvider implements CacheProvider {
-  private static final String DELETE_IF_VALUE_SCRIPT =
-      "if redis.call('get', KEYS[1]) == ARGV[1] then "
-          + "return redis.call('del', KEYS[1]) else return 0 end";
   // Sliding-window failure detector. A single 300ms timeout used to flip the provider to
   // unavailable, which combined with a 1s health-check that flipped it back on a single PING
   // success caused the indexer's setFieldsInBulk path to flap — every cycle it paid one timeout
@@ -367,7 +363,11 @@ public class RedisCacheProvider implements CacheProvider {
     try {
       Long deleted =
           syncCommands.eval(
-              DELETE_IF_VALUE_SCRIPT, ScriptOutputType.INTEGER, new String[] {key}, expectedValue);
+              "if redis.call('get', KEYS[1]) == ARGV[1] then "
+                  + "return redis.call('del', KEYS[1]) else return 0 end",
+              ScriptOutputType.INTEGER,
+              new String[] {key},
+              expectedValue);
       if (m != null && deleted != null && deleted > 0) m.recordEviction();
       recordSuccess();
       return deleted != null && deleted > 0;
@@ -376,73 +376,6 @@ public class RedisCacheProvider implements CacheProvider {
       recordFailure(e);
       LOG.error("Error deleting key with owner check: {}", key, e);
       return false;
-    } finally {
-      stopWriteTimer(m, sample);
-    }
-  }
-
-  @Override
-  public int deleteIfValues(Map<String, String> expectedValues) {
-    if (!available || expectedValues == null || expectedValues.isEmpty()) return 0;
-
-    CacheMetrics m = metrics();
-    Timer.Sample sample = startWriteTimer(m);
-    List<Map.Entry<String, String>> entries = new ArrayList<>(expectedValues.entrySet());
-    try {
-      pipelineLock.lock();
-      List<RedisFuture<Long>> futures = new ArrayList<>(entries.size());
-      try {
-        pipelineConnection.setAutoFlushCommands(false);
-        try {
-          for (Map.Entry<String, String> entry : entries) {
-            futures.add(
-                pipelineAsyncCommands.eval(
-                    DELETE_IF_VALUE_SCRIPT,
-                    ScriptOutputType.INTEGER,
-                    new String[] {entry.getKey()},
-                    entry.getValue()));
-          }
-          pipelineConnection.flushCommands();
-        } finally {
-          pipelineConnection.setAutoFlushCommands(true);
-        }
-      } finally {
-        pipelineLock.unlock();
-      }
-
-      long timeoutMs = Math.max(1000L, config.redis.commandTimeoutMs * 2L);
-      boolean allCompleted =
-          LettuceFutures.awaitAll(
-              Duration.ofMillis(timeoutMs), futures.toArray(RedisFuture[]::new));
-      if (!allCompleted) {
-        for (RedisFuture<Long> future : futures) {
-          if (!future.isDone()) {
-            future.cancel(false);
-          }
-        }
-        if (m != null) m.recordError();
-        recordFailure(new TimeoutException("deleteIfValues timed out after " + timeoutMs + "ms"));
-      }
-
-      int deleted = 0;
-      for (RedisFuture<Long> future : futures) {
-        try {
-          Long result = future.get();
-          if (result != null && result > 0) {
-            deleted++;
-            if (m != null) m.recordEviction();
-          }
-        } catch (Exception ignored) {
-          // A timed-out or failed compare-and-delete is safely treated as not deleted.
-        }
-      }
-      if (allCompleted) recordSuccess();
-      return deleted;
-    } catch (Exception e) {
-      if (m != null) m.recordError();
-      recordFailure(e);
-      LOG.error("Error deleting {} keys with owner checks", entries.size(), e);
-      return 0;
     } finally {
       stopWriteTimer(m, sample);
     }

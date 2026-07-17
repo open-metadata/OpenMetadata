@@ -238,9 +238,9 @@ jobs:
           docker compose down --remove-orphans || true
           sudo rm -rf "${PWD}/docker-volume"
 
-  # Set "py-tests-postgres / py-tests-postgres-status" as the sole required check for this workflow.
-  py-tests-postgres-status:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'py-tests-postgres-status (ignored label)' || 'py-tests-postgres-status' }}
+  # Keep the existing required context until the repository ruleset is migrated atomically.
+  py-tests-status:
+    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'py-tests-status (ignored label)' || 'py-tests-status' }}
     needs: [changes, py-integration-tests]
     if: ${{ always() && !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     runs-on: ubuntu-latest

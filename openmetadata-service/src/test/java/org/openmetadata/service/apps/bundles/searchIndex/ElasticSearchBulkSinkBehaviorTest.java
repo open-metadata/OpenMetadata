@@ -26,6 +26,7 @@ import es.co.elastic.clients.json.JsonData;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -239,6 +240,55 @@ class ElasticSearchBulkSinkBehaviorTest {
       assertEquals(
           "ctx._source.testSuites = params.testSuites;",
           operation.update().action().script().source().scriptString());
+    }
+  }
+
+  @Test
+  void scriptedUpsertConvertsNullFieldsIntoExplicitRemovals() throws Exception {
+    Map<String, Object> parameters = new HashMap<>();
+    parameters.put("name", "current");
+    parameters.put("description", null);
+    parameters.put("fieldsToRemove", List.of("displayName"));
+    SearchRepository.ScriptedPartialUpdate partialUpdate =
+        new SearchRepository.ScriptedPartialUpdate("remove-null-fields", parameters, true);
+
+    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
+        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
+      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
+
+      invokePrivate(
+          sink,
+          "addScriptedPartialUpdate",
+          new Class<?>[] {
+            String.class,
+            String.class,
+            String.class,
+            SearchRepository.ScriptedPartialUpdate.class,
+            String.class,
+            StageStatsTracker.class
+          },
+          "test_case_index",
+          "test-case-id",
+          Entity.TEST_CASE,
+          partialUpdate,
+          "{\"name\":\"current\"}",
+          null);
+
+      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
+      verify(processorConstruction.constructed().getFirst())
+          .add(
+              operationCaptor.capture(),
+              eq("test-case-id"),
+              eq(Entity.TEST_CASE),
+              isNull(),
+              anyLong());
+      Map<String, JsonData> scriptParameters =
+          operationCaptor.getValue().update().action().script().params();
+      assertFalse(scriptParameters.containsKey("description"));
+      assertEquals("current", scriptParameters.get("name").to(String.class));
+      assertEquals(
+          List.of("description", "displayName"),
+          scriptParameters.get("fieldsToRemove").to(List.class));
     }
   }
 

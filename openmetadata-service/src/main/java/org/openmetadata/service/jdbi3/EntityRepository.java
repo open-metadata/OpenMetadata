@@ -1628,24 +1628,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return find(id, include, true);
   }
 
-  private boolean isKnownMissingById(NotFoundCache notFoundCache, UUID id, Include include) {
-    return notFoundCache != null
-        && notFoundCache.isKnownMissingById(entityType, id, include == NON_DELETED);
-  }
-
-  private boolean isKnownMissingByName(
-      NotFoundCache notFoundCache, String canonicalFqn, Include include) {
-    return notFoundCache != null
-        && notFoundCache.isKnownMissingByName(entityType, canonicalFqn, include == NON_DELETED);
-  }
-
   public final T find(UUID id, Include include, boolean fromCache) throws EntityNotFoundException {
     var notFoundCache = CacheBundle.getNotFoundCache();
     if (!fromCache) {
       // On the explicit-bypass path the L1 cache is being skipped entirely, so checking the
       // negative cache before touching the DB is a clear win — short-circuits a known-missing
       // entity without paying for the DB round-trip.
-      if (isKnownMissingById(notFoundCache, id, include)) {
+      if (include == NON_DELETED
+          && notFoundCache != null
+          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
         throw new EntityNotFoundException(entityNotFound(entityType, id));
       }
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
@@ -1684,15 +1675,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (cachedJson == null) {
         // L1 miss. Consult the negative cache so we can short-circuit before invoking the
         // loader (which would do DB + optional Redis-L2 work).
-        if (isKnownMissingById(notFoundCache, id, include)) {
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundById(entityType, id)) {
           throw new EntityNotFoundException(entityNotFound(entityType, id));
         }
         try (var ignored = phase("cacheGet")) {
           cachedJson = CACHE_WITH_ID.get(cacheKey);
         }
-      } else if (notFoundCache != null
+      } else if (include == NON_DELETED
+          && notFoundCache != null
           && readEpochById(cacheKey) != 0L
-          && isKnownMissingById(notFoundCache, id, include)) {
+          && notFoundCache.isMarkedNotFoundById(entityType, id)) {
         // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
         // Epoch gate skips the Redis GET on keys no writer has touched.
         CACHE_WITH_ID.invalidate(cacheKey);
@@ -2286,7 +2280,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Explicit cache bypass — checking the negative cache before the DB still saves the
       // DB hit on a known-missing entity. (Same reasoning as find(UUID, …).)
       String bypassCanonicalFqn = cacheNameKey(entityType, fqn).getRight();
-      if (isKnownMissingByName(notFoundCache, bypassCanonicalFqn, include)) {
+      if (include == NON_DELETED
+          && notFoundCache != null
+          && notFoundCache.isMarkedNotFoundByName(entityType, bypassCanonicalFqn)) {
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
       }
       CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, fqn));
@@ -2315,15 +2311,18 @@ public abstract class EntityRepository<T extends EntityInterface> {
       String canonicalFqn = cacheKey.getRight();
       String cachedJson = CACHE_WITH_NAME.getIfPresent(cacheKey);
       if (cachedJson == null) {
-        if (isKnownMissingByName(notFoundCache, canonicalFqn, include)) {
+        if (include == NON_DELETED
+            && notFoundCache != null
+            && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
           throw new EntityNotFoundException(entityNotFound(entityType, fqn));
         }
         try (var ignored = phase("cacheGet")) {
           cachedJson = CACHE_WITH_NAME.get(cacheKey);
         }
-      } else if (notFoundCache != null
+      } else if (include == NON_DELETED
+          && notFoundCache != null
           && readEpochByName(cacheKey) != 0L
-          && isKnownMissingByName(notFoundCache, canonicalFqn, include)) {
+          && notFoundCache.isMarkedNotFoundByName(entityType, canonicalFqn)) {
         // Stale L1 from a racing loader after a delete — marker says gone, evict and 404.
         CACHE_WITH_NAME.invalidate(cacheKey);
         throw new EntityNotFoundException(entityNotFound(entityType, fqn));
@@ -3856,7 +3855,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
     // 4. Batch cache writes
     writeThroughCacheMany(entities, false);
-    invalidateCreatedEntityCaches(entities);
 
     return entities;
   }
@@ -3923,6 +3921,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
     RdfUpdater.updateEntity(entity);
     ListCountCache.invalidate(entityType);
+    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   /**
@@ -4095,46 +4094,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
       RdfUpdater.updateEntity(entity);
     }
     ListCountCache.invalidate(entityType);
-  }
-
-  private void invalidateCreatedEntityCaches(T entity) {
-    if (entity == null || entity.getId() == null) {
-      return;
-    }
-    String fqn = entity.getFullyQualifiedName();
-    String canonicalFqn = fqn == null ? null : cacheNameKey(entityType, fqn).getRight();
-    if (CacheBundle.invalidateEntityPreservingHardDelete(
-        entityType, entity.getId(), canonicalFqn)) {
-      invalidateCreatedEntityAfterHardDelete(entity);
-    }
-  }
-
-  private void invalidateCreatedEntityCaches(List<T> entities) {
-    if (entities == null || entities.isEmpty()) {
-      return;
-    }
-    Map<UUID, String> createdEntityKeys = new LinkedHashMap<>(entities.size());
-    Map<UUID, T> createdEntitiesById = new LinkedHashMap<>(entities.size());
-    for (T entity : entities) {
-      if (entity == null || entity.getId() == null) {
-        continue;
-      }
-      String fqn = entity.getFullyQualifiedName();
-      String canonicalFqn = fqn == null ? null : cacheNameKey(entityType, fqn).getRight();
-      createdEntityKeys.put(entity.getId(), canonicalFqn);
-      createdEntitiesById.put(entity.getId(), entity);
-    }
-    for (UUID id : CacheBundle.invalidateEntities(entityType, createdEntityKeys)) {
-      T entity = createdEntitiesById.get(id);
-      if (entity != null) {
-        invalidateCreatedEntityAfterHardDelete(entity);
-      }
-    }
-  }
-
-  private void invalidateCreatedEntityAfterHardDelete(T entity) {
-    RequestEntityCache.invalidate(entityType, entity.getId(), entity.getFullyQualifiedName());
-    invalidateCacheForEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   @SuppressWarnings("unused")
@@ -4949,26 +4908,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
               return null;
             });
-    // Install the tombstone before the final post-commit invalidation. This closes both races:
-    // a read that re-populated from the still-visible row before commit and an older updater whose
-    // late cache write-through would otherwise resurrect the now-deleted entity.
-    markEntityHardDeleted(entityInterface);
-    invalidatePreservingHardDelete(entityInterface);
+    // Re-invalidate after the transaction commits. Any read that slipped in between the
+    // pre-delete invalidate and the commit could have re-populated the cache from the
+    // still-visible DB row; clearing again here guarantees the next read goes back to the
+    // (now empty) DB and observes the deletion.
+    invalidate(entityInterface);
+    markEntityNotFound(entityInterface);
   }
 
-  private void markEntityHardDeleted(T entity) {
+  private void markEntityNotFound(T entity) {
     NotFoundCache notFoundCache = CacheBundle.getNotFoundCache();
     if (notFoundCache == null || !notFoundCache.enabled()) {
       return;
     }
     if (entity.getId() != null) {
-      notFoundCache.markHardDeletedById(entityType, entity.getId());
+      notFoundCache.markNotFoundById(entityType, entity.getId());
     }
     if (entity.getFullyQualifiedName() != null) {
-      notFoundCache.markHardDeletedByName(
-          entityType,
-          cacheNameKey(entityType, entity.getFullyQualifiedName()).getRight(),
-          entity.getId());
+      notFoundCache.markNotFoundByName(entityType, entity.getFullyQualifiedName());
     }
   }
 
@@ -4985,14 +4942,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   void invalidate(T entity) {
-    invalidate(entity, false);
-  }
-
-  private void invalidatePreservingHardDelete(T entity) {
-    invalidate(entity, true);
-  }
-
-  private void invalidate(T entity, boolean preserveHardDelete) {
     bumpWriteEpoch(entityType, entity.getId(), entity.getFullyQualifiedName());
     CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, entity.getId()));
     CACHE_WITH_NAME.invalidate(cacheNameKey(entityType, entity.getFullyQualifiedName()));
@@ -5000,12 +4949,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
     EntityCacheRepair.scheduleRepair(
         entityType, entity.getId(), entity.getFullyQualifiedName(), null);
     invalidateCache(entity);
-    if (preserveHardDelete) {
-      CacheBundle.invalidateEntityPreservingHardDelete(
-          entityType, entity.getId(), entity.getFullyQualifiedName());
-    } else {
-      CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
-    }
+    CacheBundle.invalidateEntity(entityType, entity.getId(), entity.getFullyQualifiedName());
   }
 
   @Transaction
@@ -5095,7 +5039,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("createWriteThroughCache")) {
       writeThroughCache(entity, false);
     }
-    invalidateCreatedEntityCaches(entity);
 
     return entity;
   }
@@ -5335,7 +5278,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     try (var ignored = phase("postCreate")) {
       postCreate(entities);
     }
-    invalidateCreatedEntityCaches(entities);
 
     return entities;
   }
@@ -6975,14 +6917,14 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void bulkInvalidate(List<T> entities) {
     for (T entity : entities) {
+      invalidate(entity);
       // Mirror cleanup()'s NotFoundCache marker so a concurrent reader that re-populates
       // L1/Redis between bulkDeleteEntityRows and the next invalidate doesn't keep
       // returning a stale "found" entity. Without this the next get_by_name/find against
       // the same id or FQN can still hit the cache and return a deleted entity, which
       // breaks fixture teardown (DELETE returns 404 because the row is gone but Redis
       // still hands out the entity to the get_by_name probe).
-      markEntityHardDeleted(entity);
-      invalidatePreservingHardDelete(entity);
+      markEntityNotFound(entity);
     }
   }
 
@@ -10375,16 +10317,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // so the next GET on this instance can't race an in-flight async repopulate.
       EntityRepository.this.writeThroughCache(updated, true);
       RequestEntityCache.invalidate(entityType, id, fqn);
-      boolean hardDeleteWon = CacheBundle.invalidateEntityPreservingHardDelete(entityType, id, fqn);
-      if (hardDeleteWon) {
-        if (cachedEntityDao != null) {
-          cachedEntityDao.invalidateBase(entityType, id);
-          if (fqn != null) {
-            cachedEntityDao.invalidateByName(entityType, fqn);
-          }
-        }
-        return;
-      }
+      CacheBundle.invalidateEntity(entityType, id, fqn);
 
       EntityCacheRepair.scheduleRepair(entityType, id, fqn, originalFqn);
 

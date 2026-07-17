@@ -29,6 +29,7 @@ import static org.mockito.Mockito.when;
 import java.io.IOException;
 import java.net.URI;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -450,6 +451,25 @@ class SearchRepositoryTest {
     assertNull(
         searchRepository.buildRelationshipDocumentUpdate(
             new MockEntityWithType(Entity.TABLE, "table"), document));
+  }
+
+  @Test
+  void relationshipDocumentUpdateConvertsNullFieldsIntoExplicitRemovals() {
+    doCallRealMethod().when(searchRepository).buildRelationshipDocumentUpdate(any(), any());
+    MockEntityWithType testCase = new MockEntityWithType(Entity.TEST_CASE, "testCase");
+    Map<String, Object> document = new HashMap<>();
+    document.put("name", "testCase");
+    document.put("description", null);
+    document.put("fieldsToRemove", List.of("displayName"));
+
+    SearchRepository.ScriptedPartialUpdate update =
+        searchRepository.buildRelationshipDocumentUpdate(testCase, document);
+
+    assertNotNull(update);
+    Map<String, Object> parameters = update.parametersForIndexing();
+    assertEquals("testCase", parameters.get("name"));
+    assertFalse(parameters.containsKey("description"));
+    assertEquals(List.of("description", "displayName"), parameters.get("fieldsToRemove"));
   }
 
   @Test

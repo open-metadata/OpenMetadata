@@ -617,22 +617,19 @@ public class OpenSearchBulkSink implements BulkSink {
       String upsertDocument,
       StageStatsTracker tracker) {
     String effectiveUpsertDocument = partialUpdate.scriptedUpsert() ? "{}" : upsertDocument;
+    Map<String, Object> scriptParameters = partialUpdate.parametersForIndexing();
     long estimatedSize =
         (long) effectiveUpsertDocument.getBytes(StandardCharsets.UTF_8).length
-            + JsonUtils.pojoToJson(partialUpdate.parameters())
-                .getBytes(StandardCharsets.UTF_8)
-                .length
+            + JsonUtils.pojoToJson(scriptParameters).getBytes(StandardCharsets.UTF_8).length
             + partialUpdate.script().getBytes(StandardCharsets.UTF_8).length
             + BULK_OPERATION_METADATA_OVERHEAD;
     Map<String, JsonData> params = new HashMap<>();
-    partialUpdate
-        .parameters()
-        .forEach(
-            (key, value) -> {
-              if (value != null) {
-                params.put(key, JsonData.of(value, JACKSON_JSONP_MAPPER));
-              }
-            });
+    scriptParameters.forEach(
+        (key, value) -> {
+          if (value != null) {
+            params.put(key, JsonData.of(value, JACKSON_JSONP_MAPPER));
+          }
+        });
     if (estimatedSize > maxPayloadSizeBytes) {
       LOG.warn(
           "Scripted update {} of type {} is too large for bulk ({} bytes), sending directly",

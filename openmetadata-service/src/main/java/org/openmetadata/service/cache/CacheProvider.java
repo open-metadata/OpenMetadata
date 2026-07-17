@@ -23,23 +23,6 @@ public interface CacheProvider extends AutoCloseable {
     return false;
   }
 
-  /**
-   * Deletes each key only when its current value matches the corresponding expected value.
-   * Implementations should pipeline the atomic compare-and-delete operations when possible.
-   */
-  default int deleteIfValues(Map<String, String> expectedValues) {
-    if (expectedValues == null || expectedValues.isEmpty()) {
-      return 0;
-    }
-    int deleted = 0;
-    for (Map.Entry<String, String> entry : expectedValues.entrySet()) {
-      if (deleteIfValue(entry.getKey(), entry.getValue())) {
-        deleted++;
-      }
-    }
-    return deleted;
-  }
-
   Optional<String> hget(String key, String field);
 
   void hset(String key, Map<String, String> fields, Duration ttl);
