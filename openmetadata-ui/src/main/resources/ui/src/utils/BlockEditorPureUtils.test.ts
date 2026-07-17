@@ -13,6 +13,7 @@
 import {
   formatClientContent,
   getHtmlStringFromMarkdownString,
+  isHTMLString,
 } from './BlockEditorPureUtils';
 
 describe('formatClientContent: markdown special characters', () => {
@@ -70,6 +71,49 @@ describe('formatClientContent: markdown special characters', () => {
     expect(result).toContain('<h1');
     expect(result).toContain('<ul>');
     expect(result).toContain('<li>item one</li>');
+  });
+});
+
+describe('isHTMLString: parser failure', () => {
+  it('should fall back to treating content as markdown when parsing throws', () => {
+    const spy = jest
+      .spyOn(DOMParser.prototype, 'parseFromString')
+      .mockImplementation(() => {
+        throw new Error('parser exploded');
+      });
+
+    try {
+      // Passes the tag pre-check, so the parser is reached and throws.
+      // Falling back to `false` routes content down the markdown path, which
+      // still sanitises; the reverse default would trust unparsed input.
+      expect(isHTMLString('<p>hello</p>')).toBe(false);
+    } finally {
+      spy.mockRestore();
+    }
+  });
+});
+
+describe('getHtmlStringFromMarkdownString', () => {
+  it('should convert markdown to HTML', () => {
+    expect(getHtmlStringFromMarkdownString('# Title')).toContain('<h1');
+  });
+
+  it('should keep > and < inside code spans as entities, not double-escape them', () => {
+    const result = getHtmlStringFromMarkdownString('Use `>` and `<`');
+
+    expect(result).toContain('<code>&gt;</code>');
+    expect(result).toContain('<code>&lt;</code>');
+    expect(result).not.toContain('&amp;gt;');
+  });
+
+  it('should return HTML input untouched', () => {
+    const html = '<p>already html</p>';
+
+    expect(getHtmlStringFromMarkdownString(html)).toBe(html);
+  });
+
+  it('should return an empty string unchanged', () => {
+    expect(getHtmlStringFromMarkdownString('')).toBe('');
   });
 });
 
@@ -169,6 +213,38 @@ describe('formatClientContent: mentions and hashtags', () => {
     expect(result).toContain('data-type="hashtag"');
     // The rendered label is the entity FQN, not the display text.
     expect(result).toContain('#sample_data.ecommerce');
+  });
+
+  it('should rewrite every mention when several are present', () => {
+    const markdown =
+      'cc [@john](http://localhost:3000/users/john) and [@jane](http://localhost:3000/users/jane)';
+
+    const result = formatClientContent(markdown);
+
+    expect(result.match(/data-type="mention"/g) ?? []).toHaveLength(2);
+    expect(result).toContain('@john');
+    expect(result).toContain('@jane');
+  });
+
+  it('should rewrite every hashtag when several are present', () => {
+    const markdown =
+      'see [#a](http://localhost:3000/table/db.a) and [#b](http://localhost:3000/topic/db.b)';
+
+    const result = formatClientContent(markdown);
+
+    expect(result.match(/data-type="hashtag"/g) ?? []).toHaveLength(2);
+    expect(result).toContain('#db.a');
+    expect(result).toContain('#db.b');
+  });
+
+  it('should not build a mention link for an unsupported entity type', () => {
+    // Only team and user are mention-able; a table link stays an ordinary link.
+    const result = formatClientContent(
+      'hi [@x](http://localhost:3000/table/db.foo)'
+    );
+
+    expect(result).not.toContain('data-type="mention"');
+    expect(result).toContain('href="http://localhost:3000/table/db.foo"');
   });
 
   it('should keep mention label when content is already HTML', () => {
