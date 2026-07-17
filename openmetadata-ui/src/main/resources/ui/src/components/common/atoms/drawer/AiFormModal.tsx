@@ -23,6 +23,8 @@ import { CheckCircle } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
+type FeaturedIconColor = 'brand' | 'gray' | 'success' | 'warning' | 'error';
+
 /** Width of the Form Hint column itself, per the approved design. */
 const HINT_COLUMN_WIDTH = 380;
 /**
@@ -62,7 +64,11 @@ export interface AiFormModalProps {
   children: ReactNode;
   isSubmitting?: boolean;
   onClose: () => void;
-  onSubmit: () => void | Promise<unknown>;
+  /**
+   * Called when the submit button is pressed. Optional: forms that submit
+   * natively via `submitFormId` do not need it.
+   */
+  onSubmit?: () => void | Promise<unknown>;
   /** Footer button test ids, defaulted to match the classic test case drawer. */
   submitTestId?: string;
   cancelTestId?: string;
@@ -79,6 +85,20 @@ export interface AiFormModalProps {
    * doc. This prop only drives the modal's width.
    */
   hintOpen?: boolean;
+  /** Header featured-icon glyph. Defaults to CheckCircle. */
+  icon?: FC<{ className?: string }>;
+  /** Header featured-icon colour. Defaults to 'gray'. */
+  iconColor?: FeaturedIconColor;
+  /** Extra footer buttons, rendered between Cancel and the submit button. */
+  footerActions?: ReactNode;
+  /**
+   * When set, the submit button becomes a native form submitter
+   * (`form={submitFormId}` + `type="submit"`) instead of calling `onSubmit`.
+   * For forms rendered as a `<HookForm id=...>` that submit themselves.
+   */
+  submitFormId?: string;
+  /** Disables the submit button (e.g. while the form is loading). */
+  isSubmitDisabled?: boolean;
 }
 
 /**
@@ -105,6 +125,11 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   cancelTestId = 'cancel-btn',
   hintOpen,
   submitLabel,
+  icon = CheckCircle,
+  iconColor = 'gray',
+  footerActions,
+  submitFormId,
+  isSubmitDisabled,
 }) => {
   const { t } = useTranslation();
   const hasHintColumn = hintOpen !== undefined;
@@ -112,7 +137,15 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   // The submit handler surfaces failures via an inline alert in the form body
   // and resolves so the modal stays open; swallow the rejection here so React
   // does not log an unhandled promise rejection.
-  const handleSubmit = () => Promise.resolve(onSubmit()).catch(() => undefined);
+  const handleSubmit = () =>
+    Promise.resolve(onSubmit?.()).catch(() => undefined);
+
+  // A form with its own id submits natively; otherwise the button drives
+  // onSubmit. Never both — a native submitter that also ran onClick would fire
+  // the form twice.
+  const submitButtonProps = submitFormId
+    ? { form: submitFormId, type: 'submit' as const }
+    : { onClick: handleSubmit };
 
   return (
     <ModalOverlay
@@ -163,8 +196,8 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                   className="tw:min-w-0 tw:gap-3"
                   direction="row">
                   <FeaturedIcon
-                    color="gray"
-                    icon={CheckCircle}
+                    color={iconColor}
+                    icon={icon}
                     radius="md"
                     shape="square"
                     size="md"
@@ -218,11 +251,13 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 onClick={onClose}>
                 {t('label.cancel')}
               </Button>
+              {footerActions}
               <Button
                 color="primary"
                 data-testid={submitTestId}
+                isDisabled={isSubmitDisabled}
                 isLoading={isSubmitting}
-                onClick={handleSubmit}>
+                {...submitButtonProps}>
                 {submitLabel ?? t('label.create')}
               </Button>
             </Dialog.Footer>
