@@ -3404,6 +3404,7 @@
     "find-apps-to-improve-data": "ابحث عن تطبيقات لتحسين بياناتك",
     "find-in-table": "البحث في الجدول",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "حدد أي حقل لعرض تلميحه هنا.",
     "fosters-collaboration-among-producers-and-consumers": "حدد الأهداف التنظيمية ومؤشرات الأداء الرئيسية لدفع ثقافة البيانات في شركتك بشكل استباقي. عزز ثقافة التحسين المستمر بتقارير في الوقت المناسب لمراقبة سلامة البيانات.",
     "freshness-sla-description": "<0>{{label}}</0>: يجب تحديث البيانات خلال آخر <0>{{data}}</0>",
     "get-started-with-open-metadata": "ابدأ مع {{brandName}}",

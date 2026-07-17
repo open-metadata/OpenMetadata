@@ -3404,6 +3404,7 @@
     "find-apps-to-improve-data": "데이터를 개선할 애플리케이션 찾기",
     "find-in-table": "테이블에서 찾기",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "필드를 선택하면 해당 힌트가 여기에 표시됩니다.",
     "fosters-collaboration-among-producers-and-consumers": "조직의 목표와 KPI를 설정하여 회사의 데이터 문화를 적극적으로 추진하세요. 데이터 건강을 모니터링하는 시기적절한 보고서로 지속적인 개선 문화를 조성하세요.",
     "freshness-sla-description": "<0>{{label}}</0>: 데이터는 최근 <0>{{data}}</0> 내에 업데이트되어야 합니다.",
     "get-started-with-open-metadata": "{{brandName}} 시작하기",

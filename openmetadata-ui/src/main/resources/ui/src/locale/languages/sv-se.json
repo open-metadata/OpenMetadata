@@ -3404,6 +3404,7 @@
     "find-apps-to-improve-data": "Hitta applikationer för att förbättra dina data",
     "find-in-table": "Hitta i tabell",
     "focused-docs-fallback-description": "Granska kraven och den fokuserade fältguiden innan du testar anslutningen.",
+    "form-hint-empty-state": "Välj ett fält för att se dess tips här.",
     "fosters-collaboration-among-producers-and-consumers": "Sätt organisatoriska mål och KPI:er för att proaktivt driva datakulturen i ditt företag. Främja en kultur av kontinuerlig förbättring med rapporter i rätt tid för att övervaka datahälsan.",
     "freshness-sla-description": "<0>{{label}}</0>: Data måste uppdateras inom de senaste  <0>{{data}}</0>",
     "get-started-with-open-metadata": "Kom igång med {{brandName}}",

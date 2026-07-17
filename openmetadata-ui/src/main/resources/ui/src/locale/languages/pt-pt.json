@@ -3404,6 +3404,7 @@
     "find-apps-to-improve-data": "Encontre aplicativos para melhorar seus dados",
     "find-in-table": "Encontrar na tabela",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "Selecione qualquer campo para ver a sugestão aqui.",
     "fosters-collaboration-among-producers-and-consumers": "Estabeleça metas organizacionais e KPIs para impulsionar proativamente a cultura de dados da sua empresa. Fomente uma cultura de melhoria contínua com relatórios oportunos para monitorar a saúde dos dados.",
     "freshness-sla-description": "<0>{{label}}</0>: Os dados devem ser atualizados nos últimos <0>{{data}}</0>",
     "get-started-with-open-metadata": "Comece com o {{brandName}}",

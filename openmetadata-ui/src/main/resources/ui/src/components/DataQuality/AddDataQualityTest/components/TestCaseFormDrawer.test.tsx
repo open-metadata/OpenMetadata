@@ -233,7 +233,7 @@ jest.mock('../../../common/ServiceDocPanel/ServiceDocPanel', () =>
 
 // RichTextEditorPreviewerV1 wraps a lazy BlockEditor (TipTap) that does not
 // render its content synchronously in jsdom. Mock it to render the markdown as
-// plain text so the field-doc popover assertion inspects the real doc string
+// plain text so the field-doc assertion inspects the real doc string
 // that renderFieldDoc receives.
 jest.mock(
   '../../../common/RichTextEditor/RichTextEditorPreviewerV1',
@@ -400,7 +400,7 @@ describe('TestCaseFormDrawer', () => {
       await screen.findByTestId('test-case-form-body')
     ).toBeInTheDocument();
     // The AI variant replaces the ServiceDocPanel hint with the per-field
-    // documentation popover (gated by the Show Hint toggle).
+    // documentation panel (gated by the Show Hint toggle).
     expect(screen.queryByTestId('service-doc-panel')).not.toBeInTheDocument();
   });
 
@@ -580,12 +580,12 @@ describe('TestCaseFormDrawer', () => {
       expect(onClose).not.toHaveBeenCalled();
     });
 
-    it('gates the field doc popover behind the Show Hint toggle', async () => {
+    it('gates the field doc panel behind the Show Hint toggle', async () => {
       renderDrawer({ variant: 'modal' });
 
       const testType = await screen.findByLabelText(/test type/i);
 
-      // Show Hint is on by default: focusing a field shows its doc popover.
+      // Show Hint is on by default: focusing a field shows its doc in the panel.
       await act(async () => {
         testType.focus();
       });
@@ -594,7 +594,7 @@ describe('TestCaseFormDrawer', () => {
         await screen.findByText(/kind of validation to run/i)
       ).toBeInTheDocument();
 
-      // Toggling Show Hint off removes the popover.
+      // Toggling Show Hint off collapses the panel and hides the doc.
       await act(async () => {
         fireEvent.click(
           screen.getByRole('switch', { name: 'label.show-hint' })
@@ -606,7 +606,55 @@ describe('TestCaseFormDrawer', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('shows the field doc popover in the AI variant on focus', async () => {
+    it('shows the empty state in the hint panel before any field is focused', async () => {
+      renderDrawer({ variant: 'modal' });
+
+      // Assert on EmptyPlaceholder's testid rather than the copy, so rewording
+      // the hint does not break this test.
+      expect(
+        await screen.findByTestId('empty-placeholder')
+      ).toBeInTheDocument();
+    });
+
+    it('replaces the empty state with the focused field doc', async () => {
+      renderDrawer({ variant: 'modal' });
+
+      const testType = await screen.findByLabelText(/test type/i);
+
+      await act(async () => {
+        testType.focus();
+      });
+
+      expect(
+        await screen.findByText(/kind of validation to run/i)
+      ).toBeInTheDocument();
+      expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
+    });
+
+    it('keeps entered form values when the hint is toggled', async () => {
+      renderDrawer({ variant: 'modal' });
+
+      // Test Type is the one genuinely hook-form-bound field the mocked body
+      // renders; the other inputs are controlled with a no-op onChange.
+      const testType = await screen.findByLabelText(/test type/i);
+      await act(async () => {
+        fireEvent.change(testType, { target: { value: 'my_test_type' } });
+      });
+
+      // The hint column animates to zero width rather than unmounting; if it
+      // ever unmounts, the form remounts and the value is lost.
+      await act(async () => {
+        fireEvent.click(
+          screen.getByRole('switch', { name: 'label.show-hint' })
+        );
+      });
+
+      expect(await screen.findByLabelText(/test type/i)).toHaveValue(
+        'my_test_type'
+      );
+    });
+
+    it('shows the field doc in the AI variant panel on focus', async () => {
       renderDrawer({ variant: 'modal' });
 
       const testType = await screen.findByLabelText(/test type/i);
@@ -621,7 +669,7 @@ describe('TestCaseFormDrawer', () => {
     });
   });
 
-  it('does not show the field doc popover in the classic variant on focus', async () => {
+  it('does not show the field doc in the classic variant on focus', async () => {
     renderDrawer({ variant: 'drawer' });
 
     const testType = await screen.findByLabelText(/test type/i);

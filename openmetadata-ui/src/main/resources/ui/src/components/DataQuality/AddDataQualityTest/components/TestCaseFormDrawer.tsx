@@ -12,6 +12,7 @@
  */
 import {
   Box,
+  EmptyPlaceholder,
   HookForm,
   Toggle,
   Typography,
@@ -66,6 +67,7 @@ import {
   TestLevel,
 } from './TestCaseFormV1.interface';
 import './TestCaseFormV1.less';
+import './form-hint-doc.less';
 import {
   buildEditDefaults,
   buildTestSuitePipelinePayload,
@@ -455,9 +457,9 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
             </Box>
           )
         }
+        hintOpen={showHint}
         isSubmitting={form.formState.isSubmitting}
         open={open}
-        reserveHintSpace={showHint}
         submitLabel={isEditMode ? t('label.update') : undefined}
         subtitle={t('message.page-sub-header-for-data-quality')}
         title={title ?? defaultTitle}
@@ -467,6 +469,20 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
           () => scrollToError()
         )}>
         <HookForm
+          emptyFieldDoc={
+            // width="100%" is required: EmptyPlaceholder's 300px default is
+            // wider than the hint column's 260px minimum and would overflow
+            // once the column shrinks on a narrow viewport.
+            <EmptyPlaceholder
+              description={t('message.form-hint-empty-state')}
+              icon={Lightbulb05}
+              title={t('label.no-entity-selected', {
+                entity: t('label.field'),
+              })}
+              width="100%"
+            />
+          }
+          fieldDocDisplay="panel"
           fieldDocHeader={
             <Box align="center" className="tw:gap-2" direction="row">
               <Lightbulb05 className="tw:size-4 tw:text-secondary" />
@@ -478,16 +494,17 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
               </Typography>
             </Box>
           }
-          fieldDocOffset={56}
           form={form}
+          formClassName="form-hint-doc-form tw:px-7 tw:pt-6 tw:pb-7"
           renderFieldDoc={(markdown) => (
             // Render the full field doc without the "see more" toggle — the
-            // popover shows the whole hint, and toggling it would resize the
-            // popover and make react-aria re-anchor it (flicker).
-            <RichTextEditorPreviewerV1
-              enableSeeMoreVariant={false}
-              markdown={markdown}
-            />
+            // column scrolls, so the whole hint is reachable without it.
+            <div className="form-hint-doc">
+              <RichTextEditorPreviewerV1
+                enableSeeMoreVariant={false}
+                markdown={markdown}
+              />
+            </div>
           )}
           showFieldDocs={showHint}
           onSubmit={form.handleSubmit(

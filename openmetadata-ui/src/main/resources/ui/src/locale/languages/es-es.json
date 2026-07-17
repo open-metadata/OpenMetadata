@@ -3404,6 +3404,7 @@
     "find-apps-to-improve-data": "Encuentra aplicaciones para mejorar tus datos",
     "find-in-table": "Buscar en la tabla",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "Seleccione cualquier campo para ver su sugerencia aquí.",
     "fosters-collaboration-among-producers-and-consumers": "Fomenta la colaboración entre los productores y consumidores de datos.",
     "freshness-sla-description": "<0>{{label}}</0>: Los datos deben estar actualizados en los últimos <0>{{data}}</0>.",
     "get-started-with-open-metadata": "Comienza con {{brandName}}",

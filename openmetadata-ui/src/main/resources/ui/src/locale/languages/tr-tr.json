@@ -3404,6 +3404,7 @@
     "find-apps-to-improve-data": "Verilerinizi geliştirmek için uygulamalar bulun",
     "find-in-table": "Tabloda bul",
     "focused-docs-fallback-description": "Review the requirements and focused field guidance before testing the connection.",
+    "form-hint-empty-state": "İpucunu burada görmek için herhangi bir alan seçin.",
     "fosters-collaboration-among-producers-and-consumers": "Şirketinizin veri kültürünü proaktif olarak yönlendirmek için kurumsal hedefler ve KPI'lar belirleyin. Veri sağlığını izlemek için zamanında raporlarla sürekli iyileştirme kültürünü teşvik edin.",
     "freshness-sla-description": "<0>{{label}}</0>: Veriler son <0>{{data}}</0> içinde güncellenmelidir.",
     "get-started-with-open-metadata": "{{brandName}} ile Başlayın",
