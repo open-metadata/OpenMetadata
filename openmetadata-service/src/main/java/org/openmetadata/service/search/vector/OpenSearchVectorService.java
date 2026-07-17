@@ -565,7 +565,7 @@ public class OpenSearchVectorService implements VectorIndexService {
           executeGenericRequest(
               "POST",
               "/_aliases",
-              buildChunkPromoteActions(generation, base, getSearchAlias(), oldTarget));
+              buildChunkPromoteActions(generation, base, getIndexAlias(), oldTarget));
         } catch (Exception e) {
           throw new RuntimeException("Failed to promote staged chunk index " + generation, e);
         }
@@ -776,7 +776,7 @@ public class OpenSearchVectorService implements VectorIndexService {
         // docs. The alias PUT is idempotent. Only report "ensured" once the mapping is at the
         // current version so a failed upgrade does not latch (and so docs are not stamped with the
         // new docVersion into a still-stale mapping).
-        executeGenericRequest("PUT", "/" + target + "/_alias/" + getSearchAlias(), "{}");
+        executeGenericRequest("PUT", "/" + target + "/_alias/" + getIndexAlias(), "{}");
         ensured = applyChunkMappingUpgradeIfStale(target);
       }
     } catch (Exception e) {
@@ -836,7 +836,7 @@ public class OpenSearchVectorService implements VectorIndexService {
     // the half-built generation searchable alongside the live one.
     if (withSearchAlias) {
       root.set(
-          "aliases", MAPPER.createObjectNode().set(getSearchAlias(), MAPPER.createObjectNode()));
+          "aliases", MAPPER.createObjectNode().set(getIndexAlias(), MAPPER.createObjectNode()));
     }
     return root.toString();
   }
