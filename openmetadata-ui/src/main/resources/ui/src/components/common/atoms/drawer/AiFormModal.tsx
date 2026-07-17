@@ -23,10 +23,21 @@ import { CheckCircle } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
-/** Modal width when the Form Hint column is shown, per the approved design. */
-const WIDTH_WITH_HINT = 1024;
+/** Width of the Form Hint column itself, per the approved design. */
+const HINT_COLUMN_WIDTH = 380;
+/**
+ * Width of the form column. The approved design pairs a 1024px modal with a
+ * 642px form, but the real Data Quality form needs the ~772px it had before the
+ * hint moved inside the modal — at 642px its test-level cards wrap. The two
+ * widths below are derived from this so the form column stays the same width
+ * whether the hint is shown or hidden, and only the hint appears/disappears.
+ */
+const FORM_COLUMN_WIDTH = 772;
+
+/** Modal width when the Form Hint column is shown. */
+const WIDTH_WITH_HINT = FORM_COLUMN_WIDTH + HINT_COLUMN_WIDTH;
 /** Modal width when the Form Hint column is collapsed. */
-const WIDTH_WITHOUT_HINT = 648;
+const WIDTH_WITHOUT_HINT = FORM_COLUMN_WIDTH;
 /** Modal width for forms that have no Form Hint column at all. */
 const WIDTH_NO_HINT_COLUMN = 820;
 
@@ -147,11 +158,16 @@ export const AiFormModal: FC<AiFormModalProps> = ({
             </Dialog.Header>
             {/* With a hint column the content is a padding-free flex row that
                 clips; each column scrolls itself, so neither can drive the
-                modal's height. Without one it keeps the single scrolling body. */}
+                modal's height. Without one it keeps the single scrolling body.
+                `sm:p-0` is required alongside `p-0`: Dialog.Content ships a
+                responsive `sm:px-6`, and tailwind-merge treats a variant class
+                as a different group from its base, so `p-0` alone leaves 24px
+                of side padding at sm and up. That padding stops the hint column
+                reaching the modal edge and steals width from the form. */}
             <Dialog.Content
               className={
                 hasHintColumn
-                  ? 'tw:max-h-[calc(88vh-152px)] tw:flex-row tw:gap-0 tw:overflow-hidden tw:p-0'
+                  ? 'tw:max-h-[calc(88vh-152px)] tw:flex-row tw:gap-0 tw:overflow-hidden tw:p-0 tw:sm:p-0'
                   : 'tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto'
               }>
               {children}

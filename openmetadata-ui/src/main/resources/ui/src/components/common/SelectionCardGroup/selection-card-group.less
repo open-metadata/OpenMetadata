@@ -17,6 +17,22 @@
   gap: @size-mlg;
   width: 100%;
 
+  // Icon above the text instead of beside it, so the label gets the card's full
+  // width. Opt-in via `layout="vertical"` — in a narrow column the horizontal
+  // default leaves the label ~60px and wraps it mid-phrase ("Table / Level").
+  .selection-card-vertical {
+    .selection-body {
+      flex-direction: column;
+      gap: @size-sm;
+    }
+
+    // The checkmark sits top-right against the icon rather than centred on a
+    // now-taller card.
+    .selection-content {
+      align-items: flex-start;
+    }
+  }
+
   .selection-card {
     flex: 1;
     border: 1px solid @grey-300;
@@ -40,6 +56,15 @@
         display: flex;
         justify-content: space-between;
         width: 100%;
+
+        // Replaces the previous `d-flex gap-3` utilities on this element so the
+        // icon/text arrangement can vary by layout. The horizontal default is
+        // byte-for-byte what those utilities produced.
+        .selection-body {
+          display: flex;
+          gap: 12px;
+          min-width: 0;
+        }
 
         .selection-icon {
           display: flex;
