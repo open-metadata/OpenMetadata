@@ -10,9 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
+import { Lightbulb05 } from '@untitledui/icons';
 import type { Meta, StoryObj } from '@storybook/react';
 import { expect, userEvent, within } from '@storybook/test';
 import { useForm } from 'react-hook-form';
+import { EmptyPlaceholder } from '../components/application/empty-placeholder/empty-placeholder';
 import { getField } from '../components/application/form-field/form-field';
 import { FieldTypes } from '../components/application/form-field/form-field.types';
 import { HookForm } from '../components/base/form/hook-form';
@@ -20,6 +22,17 @@ import { HookForm } from '../components/base/form/hook-form';
 const TITLE_DOC = 'Documentation body for the title field.';
 const OWNER_DOC = 'Documentation body for the owner field.';
 const EMPTY = 'Select a field to see its hint.';
+
+// width="100%" is required: EmptyPlaceholder's 300px default is wider than the
+// hint column's 260px minimum and would overflow once the column shrinks.
+const emptyState = (
+  <EmptyPlaceholder
+    description={EMPTY}
+    icon={Lightbulb05}
+    title="No field selected"
+    width="100%"
+  />
+);
 
 const Demo = ({ showFieldDocs = true }: { showFieldDocs?: boolean }) => {
   const form = useForm({ defaultValues: { title: '', owner: '' } });
@@ -29,7 +42,7 @@ const Demo = ({ showFieldDocs = true }: { showFieldDocs?: boolean }) => {
   return (
     <div style={{ height: 320 }}>
       <HookForm
-        emptyFieldDoc={EMPTY}
+        emptyFieldDoc={emptyState}
         fieldDocDisplay="panel"
         form={form}
         showFieldDocs={showFieldDocs}>

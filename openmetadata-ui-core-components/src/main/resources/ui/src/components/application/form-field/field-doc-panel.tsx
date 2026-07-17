@@ -18,7 +18,15 @@ export interface FieldDocPanelProps {
   renderDoc?: (doc: string) => ReactNode;
   /** Pinned card header (e.g. an icon + "Form Hint"); hidden when omitted. */
   header?: ReactNode;
-  /** Shown when no documented field has focus. */
+  /**
+   * Shown when no documented field has focus. Rendered into a `relative`,
+   * non-scrolling container that fills the remaining column height, so an
+   * `EmptyPlaceholder` can be passed straight in and will centre itself.
+   *
+   * Pass `width="100%"` to an EmptyPlaceholder here — its 300px default is
+   * wider than this column's 260px minimum and would overflow when the column
+   * shrinks.
+   */
   emptyState?: ReactNode;
 }
 
@@ -48,20 +56,22 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
       className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
       role="note">
       {header != null && <div className="tw:px-4 tw:pt-4">{header}</div>}
-      {/* Body scrolls within the column; the header (if any) stays pinned so a
-          long doc never pushes it out of view. */}
-      <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-4">
-        {entry ? (
-          <>
-            <h4 className="tw:text-md tw:mb-1 tw:font-medium tw:text-primary">
-              {entry.label}
-            </h4>
-            {(renderDoc ?? defaultRenderDoc)(entry.doc)}
-          </>
-        ) : (
-          <p className="tw:text-sm tw:text-tertiary">{emptyState}</p>
-        )}
-      </div>
+      {entry ? (
+        // Body scrolls within the column; the header (if any) stays pinned so a
+        // long doc never pushes it out of view.
+        <div className="tw:min-h-0 tw:flex-1 tw:overflow-y-auto tw:p-4">
+          <h4 className="tw:text-md tw:mb-1 tw:font-medium tw:text-primary">
+            {entry.label}
+          </h4>
+          {(renderDoc ?? defaultRenderDoc)(entry.doc)}
+        </div>
+      ) : (
+        // `relative` is required, not cosmetic: EmptyPlaceholder's shell is
+        // absolutely positioned and fills its nearest positioned ancestor, so
+        // without this it would escape the column and fill the whole modal.
+        // Not scrollable — the placeholder centres itself in the space.
+        <div className="tw:relative tw:min-h-0 tw:flex-1">{emptyState}</div>
+      )}
     </div>
   );
 };
