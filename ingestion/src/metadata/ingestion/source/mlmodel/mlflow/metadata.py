@@ -82,10 +82,10 @@ class MlflowSource(MlModelServiceSource):
                 )
                 continue
 
-            # Get the latest version
-            latest_version: Optional[ModelVersion] = next(  # noqa: UP045
-                (ver for ver in model.latest_versions if ver.last_updated_timestamp == model.last_updated_timestamp),
-                None,
+            latest_version: Optional[ModelVersion] = max(  # noqa: UP045
+                model.latest_versions,
+                key=lambda ver: int(ver.version),
+                default=None,
             )
             if not latest_version:
                 self.status.failed(
