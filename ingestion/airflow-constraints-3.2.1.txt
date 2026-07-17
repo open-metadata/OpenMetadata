@@ -583,7 +583,7 @@ python-http-client==3.3.7
 python-jenkins==1.8.3
 python-keycloak==7.1.1
 python-ldap==3.4.5
-python-multipart==0.0.30
+python-multipart==0.0.31
 python-slugify==8.0.4
 python-telegram-bot==22.7
 python3-saml==1.16.0
@@ -663,7 +663,7 @@ tinycss2==1.4.0
 tokenizers==0.22.2
 tomli==2.4.1
 tomlkit==0.14.0
-tornado==6.5.6
+tornado==6.5.7
 tqdm==4.67.3
 traitlets==5.14.3
 trino==0.337.0
