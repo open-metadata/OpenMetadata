@@ -114,9 +114,7 @@ class KafkaSampler(MessagingSampler):
                 if not hasattr(self, "_avro_deserializer"):
                     self._avro_deserializer = None
                     client = self.get_client()
-                    schema_registry_client = (
-                        getattr(client, "schema_registry_client", None) if client else None
-                    )
+                    schema_registry_client = getattr(client, "schema_registry_client", None) if client else None
                     if schema_registry_client:
                         self._avro_deserializer = AvroDeserializer(schema_registry_client)
                 if self._avro_deserializer:
