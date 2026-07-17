@@ -157,8 +157,7 @@ export interface AIContext {
      */
     glossaryTerms?: KnowledgeItem[];
     /**
-     * Unique identifier of the asset this context describes. Stable, non-null primary key,
-     * unlike the presentation-layer `resource` href.
+     * Unique identifier of the asset this context describes.
      */
     id?: string;
     /**
@@ -179,8 +178,7 @@ export interface AIContext {
      */
     resource?: string;
     /**
-     * Service type of the asset's service (e.g. Snowflake, BigQuery), used by clients to pick
-     * the service icon.
+     * Service type of the asset's service (e.g. Snowflake, BigQuery).
      */
     serviceType?: string;
     /**
