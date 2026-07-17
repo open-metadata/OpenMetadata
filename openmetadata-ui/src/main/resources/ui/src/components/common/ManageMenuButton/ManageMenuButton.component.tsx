@@ -10,7 +10,11 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { Dropdown, Typography } from '@openmetadata/ui-core-components';
+import {
+  Dropdown,
+  Typography,
+  borderAfter,
+} from '@openmetadata/ui-core-components';
 import classNames from 'classnames';
 import { isString } from 'lodash';
 import { FC, Key, ReactElement, ReactNode } from 'react';
@@ -59,8 +63,11 @@ const ManageMenuButton: FC<ManageMenuButtonProps> = ({
   return (
     <Dropdown.Root>
       <Dropdown.DotsButton
+        // Border on ::after: DotsButton's own outline is reserved for its focus ring.
         className={classNames(
-          'tw:flex tw:items-center tw:justify-center tw:rounded-lg tw:bg-primary tw:p-2 tw:ring-1 tw:ring-primary tw:ring-inset tw:shadow-xs-skeuomorphic',
+          'tw:relative tw:flex tw:items-center tw:justify-center tw:rounded-lg tw:bg-primary tw:p-2 tw:shadow-xs-skeuomorphic',
+          borderAfter,
+          'tw:after:outline-primary',
           triggerClassName
         )}
         data-testid="manage-button"
