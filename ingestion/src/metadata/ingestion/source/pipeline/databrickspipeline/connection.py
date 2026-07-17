@@ -62,7 +62,7 @@ class DatabricksPipelineConnection(BaseConnection[DatabricksPipelineConnectionCo
 
         original_connection_arguments = connection.connectionArguments
         connection.connectionArguments = deepcopy(original_connection_arguments)
-        connection.connectionArguments.root.update(auth_args)
+        connection.connectionArguments.root.update(auth_args)  # pyright: ignore[reportOptionalMemberAccess]
 
         engine = create_generic_db_connection(
             connection=connection,
