@@ -594,9 +594,9 @@ elasticsearch:
     # Embedding provider/model/credentials now live under llmConfiguration.embeddings (single LLM config home).
 
 # Platform-wide LLM provider configuration. Generic - consumed by any feature that needs LLM
-# completions (e.g. Context Center knowledge-pill extraction and the MCP Chat application). The
-# file content of uploaded documents is sent to the configured provider when enabled. Disabled by
-# default; set provider + credentials (or the matching env vars) to enable.
+# completions or embeddings (currently the semantic-search embeddings under
+# llmConfiguration.embeddings). Disabled by default; set provider + credentials (or the matching
+# env vars) to enable.
 llmConfiguration:
   enabled: ${LLM_ENABLED:-false}
   provider: ${LLM_PROVIDER:-noop}  # noop | openai | azureOpenAI | bedrock | google | anthropic
@@ -848,17 +848,19 @@ rdf:
   enabled: ${RDF_ENABLED:-false}
   baseUri: ${RDF_BASE_URI:-"https://open-metadata.org/"}
   storageType: ${RDF_STORAGE_TYPE:-"FUSEKI"}
-  remoteEndpoint: ${RDF_ENDPOINT:-"http://localhost:3030/openmetadata"}
+  remoteEndpoint: ${RDF_ENDPOINT:-${RDF_REMOTE_ENDPOINT:-"http://localhost:3030/openmetadata"}}
   connectTimeoutMs: ${RDF_CONNECT_TIMEOUT_MS:-2000}
   requestTimeoutMs: ${RDF_REQUEST_TIMEOUT_MS:-60000}
   writeMaxRetries: ${RDF_WRITE_MAX_RETRIES:-2}
   writeRetryInitialBackoffMs: ${RDF_WRITE_RETRY_INITIAL_BACKOFF_MS:-250}
   writeRetryMaxBackoffMs: ${RDF_WRITE_RETRY_MAX_BACKOFF_MS:-2000}
-  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-50}
-  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-25}
+  bulkEntityBatchSize: ${RDF_BULK_ENTITY_BATCH_SIZE:-100}
+  bulkRelationshipSourceBatchSize: ${RDF_BULK_RELATIONSHIP_SOURCE_BATCH_SIZE:-100}
+  bulkLineageEdgeBatchSize: ${RDF_BULK_LINEAGE_EDGE_BATCH_SIZE:-50}
   username: ${RDF_REMOTE_USERNAME:-"admin"}
   password: ${RDF_REMOTE_PASSWORD:-"admin"}
   dataset: ${RDF_DATASET:-"openmetadata"}
+  inferenceEnabled: ${RDF_INFERENCE_ENABLED:-false}
 
 # Cache Configuration
 # Caching layer for entity metadata, relationships, and tag usage to reduce database load

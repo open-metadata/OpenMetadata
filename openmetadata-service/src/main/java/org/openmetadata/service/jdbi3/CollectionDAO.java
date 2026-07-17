@@ -84,7 +84,6 @@ import org.openmetadata.schema.auth.PersonalAccessToken;
 import org.openmetadata.schema.auth.RefreshToken;
 import org.openmetadata.schema.auth.TokenType;
 import org.openmetadata.schema.auth.collate.SupportToken;
-import org.openmetadata.schema.configuration.AISettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.EntityRulesSettings;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -204,12 +203,6 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 public interface CollectionDAO {
-  @CreateSqlObject
-  McpConversationDAO mcpConversationDAO();
-
-  @CreateSqlObject
-  McpMessageDAO mcpMessageDAO();
-
   @CreateSqlObject
   DatabaseDAO databaseDAO();
 
@@ -10888,7 +10881,6 @@ public interface CollectionDAO {
             case MCP_CONFIGURATION -> JsonUtils.readValue(json, MCPConfiguration.class);
             case GLOSSARY_TERM_RELATION_SETTINGS -> JsonUtils.readValue(
                 json, GlossaryTermRelationSettings.class);
-            case AI_SETTINGS -> JsonUtils.readValue(json, AISettings.class);
             case SEARCH_INDEX_MAPPINGS -> JsonUtils.readValue(json, SearchIndexMappings.class);
             case STARTUP_CHECKSUMS -> JsonUtils.readValue(json, StartupChecksums.class);
             default -> throw new IllegalArgumentException("Invalid Settings Type " + configType);
@@ -15878,71 +15870,5 @@ public interface CollectionDAO {
 
     @SqlUpdate("DELETE FROM asset_entity WHERE id = :id")
     void delete(@Bind("id") String id);
-  }
-
-  interface McpConversationDAO {
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_conversation (json) VALUES (:json)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_conversation (json) VALUES (:json::jsonb)",
-        connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
-
-    @SqlQuery("SELECT json FROM mcp_conversation WHERE id = :id")
-    String getById(@BindUUID("id") UUID id);
-
-    @SqlQuery(
-        "SELECT json FROM mcp_conversation WHERE userId = :userId "
-            + "ORDER BY updatedAt DESC LIMIT :limit OFFSET :offset")
-    List<String> listByUser(
-        @BindUUID("userId") UUID userId, @Bind("limit") int limit, @Bind("offset") int offset);
-
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE mcp_conversation SET json = :json WHERE id = :id",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "UPDATE mcp_conversation SET json = :json::jsonb WHERE id = :id",
-        connectionType = POSTGRES)
-    void update(@BindUUID("id") UUID id, @Bind("json") String json);
-
-    @SqlQuery("SELECT COUNT(*) FROM mcp_conversation WHERE userId = :userId")
-    int countByUser(@BindUUID("userId") UUID userId);
-
-    @SqlUpdate("DELETE FROM mcp_conversation WHERE id = :id")
-    void delete(@BindUUID("id") UUID id);
-  }
-
-  interface McpMessageDAO {
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_message (json) VALUES (:json)",
-        connectionType = MYSQL)
-    @ConnectionAwareSqlUpdate(
-        value = "INSERT INTO mcp_message (json) VALUES (:json::jsonb)",
-        connectionType = POSTGRES)
-    void insert(@Bind("json") String json);
-
-    @SqlQuery(
-        "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
-            + "ORDER BY messageIndex ASC LIMIT :limit OFFSET :offset")
-    List<String> listByConversation(
-        @BindUUID("conversationId") UUID conversationId,
-        @Bind("limit") int limit,
-        @Bind("offset") int offset);
-
-    @SqlQuery(
-        "SELECT json FROM mcp_message WHERE conversationId = :conversationId "
-            + "ORDER BY messageIndex DESC LIMIT :limit")
-    List<String> listRecentByConversation(
-        @BindUUID("conversationId") UUID conversationId, @Bind("limit") int limit);
-
-    @SqlQuery("SELECT COUNT(*) FROM mcp_message WHERE conversationId = :conversationId")
-    int countByConversation(@BindUUID("conversationId") UUID conversationId);
-
-    @SqlUpdate("DELETE FROM mcp_message WHERE id = :id")
-    void delete(@BindUUID("id") UUID id);
-
-    @SqlUpdate("DELETE FROM mcp_message WHERE conversationId = :conversationId")
-    void deleteByConversation(@BindUUID("conversationId") UUID conversationId);
   }
 }

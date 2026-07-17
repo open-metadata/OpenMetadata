@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import quote_plus
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -36,14 +35,17 @@ from metadata.core.connections.test_connection.checks.database import (
     DatabaseStep,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection as DatabricksConnectionConfig,
+)
+from metadata.generated.schema.entity.services.connections.database.unityCatalogConnection import (
+    UnityCatalogConnection as UnityCatalogConnectionConfig,
 )
 from metadata.ingestion.connections.builders import (
     create_generic_db_connection,
@@ -52,9 +54,11 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.databricks.auth import (
+    catalog_url,
     get_auth_config,
-    normalize_host_port,
+    probe_target,
 )
+from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
 )
@@ -74,14 +78,12 @@ from metadata.utils.logger import ingestion_logger
 if TYPE_CHECKING:
     from collections.abc import Callable, Sequence
 
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
 
 logger = ingestion_logger()
 
 suppress_user_agent_entry_deprecation_log()
-
-# Databricks dials the workspace over HTTPS; the gate TCP-probes this port.
-DEFAULT_DATABRICKS_PORT = 443
 
 DEFAULT_CATALOG = "main"
 
@@ -131,12 +133,12 @@ DATABRICKS_ERRORS = ErrorPack(
         fix="The referenced schema does not exist or is not visible. Verify the schema name and "
         "that the user has USAGE on it.",
     ),
-    when(Matchers.contains("permission_denied")).diagnose(
-        "Insufficient privileges",
-        fix="Grant the token's user the privileges the failing step needs (USAGE on the catalog / "
-        "schema and SELECT on the system or information_schema tables it reads).",
-    ),
-    when(Matchers.contains("insufficient_permissions")).diagnose(
+    when(
+        Matchers.any_of(
+            Matchers.contains("permission_denied"),
+            Matchers.contains("insufficient_permissions"),
+        )
+    ).diagnose(
         "Insufficient privileges",
         fix="Grant the token's user the privileges the failing step needs (USAGE on the catalog / "
         "schema and SELECT on the system or information_schema tables it reads).",
@@ -149,26 +151,20 @@ DATABRICKS_ERRORS = ErrorPack(
 ).including(NETWORK_ERRORS)
 
 
-def _summarize(rows: Sequence[object], noun: str) -> str:
-    """``N <noun>s enumerated`` (``N+`` at the cap) or ``no <noun>s enumerated``."""
-    count = len(rows)
-    if not count:
-        return f"no {noun}s enumerated"
-    suffix = "+" if count >= DEFAULT_SAMPLE_ROWS else ""
-    plural = noun if count == 1 else f"{noun}s"
-    return f"{count}{suffix} {plural} enumerated"
-
-
 class DatabricksEngineWrapper:
-    """Engine wrapper caching the resolved catalog and schema. Lookups are lazy, so
-    constructing it touches no network and stays behind the CheckAccess gate."""
+    """Wraps the borrowed engine, caching the resolved catalog and schema. Lookups
+    are lazy, so constructing it touches no network and stays behind the gate."""
 
-    def __init__(self, engine: Engine):
-        self.engine = engine
+    def __init__(self, db: Borrowed[Engine]):
+        self._db = db
         self._inspector = None
         self.schemas = None
         self.first_schema = None
         self.first_catalog = None
+
+    @property
+    def engine(self) -> Engine:
+        return self._db.client
 
     @property
     def inspector(self):
@@ -234,11 +230,7 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnectionConfig) -> str:
-    scheme = connection.scheme.value if connection.scheme else "databricks"
-    url = f"{scheme}://{normalize_host_port(connection.hostPort)}"
-    if connection.catalog:
-        url = f"{url}?catalog={quote_plus(connection.catalog)}"
-    return url
+    return catalog_url(connection.scheme, connection.hostPort, connection.catalog)
 
 
 def get_connection(connection: DatabricksConnectionConfig) -> Engine:
@@ -275,10 +267,10 @@ class DatabricksChecks:
 
     errors = DATABRICKS_ERRORS
 
-    def __init__(self, client: Engine, service_connection: DatabricksConnectionConfig) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine], service_connection: DatabricksConnectionConfig) -> None:
+        self._db = db
         self.service_connection = service_connection
-        self._engine_wrapper = DatabricksEngineWrapper(client)
+        self._engine_wrapper = DatabricksEngineWrapper(db)
 
     def _first_catalog(self) -> str:
         """Resolve and cache the catalog to scope tag probes to."""
@@ -287,11 +279,7 @@ class DatabricksChecks:
         return self._engine_wrapper.first_catalog or self.service_connection.catalog or DEFAULT_CATALOG
 
     def _probe_target(self) -> tuple[str, int]:
-        host_port = normalize_host_port(self.service_connection.hostPort)
-        host, _, port = host_port.rpartition(":")
-        if host and port.isdigit():
-            return host, int(port)
-        return host_port, DEFAULT_DATABRICKS_PORT
+        return probe_target(self.service_connection.hostPort)
 
     def _list(self, operation: Callable[[], Sequence[object] | None], command: str | None, noun: str) -> Evidence:
         """Run a wrapper listing op, reporting the command and a row-count summary;
@@ -301,16 +289,12 @@ class DatabricksChecks:
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
         rows = list(rows) if rows is not None else []
-        return Evidence(summary=_summarize(rows, noun), command=command)
+        return Evidence(summary=enumerated(len(rows), noun, DEFAULT_SAMPLE_ROWS), command=command)
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        host, port = self._probe_target()
-        try:
-            tcp_probe(host, port)
-        except NetworkUnreachableError as error:
-            raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
-        return run_sql(self.client, "SELECT 1", lambda _: "connection established")
+        probe_or_fail(*self._probe_target())
+        return run_sql(self._db.client, "SELECT 1", lambda _: "connection established")
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
@@ -342,39 +326,51 @@ class DatabricksChecks:
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
         statement = DATABRICKS_SQL_STATEMENT_TEST.format(query_history=self.service_connection.queryHistoryTable)
-        return run_sql(self.client, statement, lambda _: "query history accessible")
+        return run_sql(self._db.client, statement, lambda _: "query history accessible")
 
     @check(DatabaseStep.GetViewDefinitions)
     def get_view_definitions(self) -> Evidence:
-        return run_sql(self.client, TEST_VIEW_DEFINITIONS, lambda _: "view definitions accessible")
+        return run_sql(self._db.client, TEST_VIEW_DEFINITIONS, lambda _: "view definitions accessible")
 
     @check(DatabaseStep.GetCatalogTags)
     def get_catalog_tags(self) -> Evidence:
         statement = TEST_CATALOG_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "catalog tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "catalog tags accessible")
 
     @check(DatabaseStep.GetSchemaTags)
     def get_schema_tags(self) -> Evidence:
         statement = TEST_SCHEMA_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "schema tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "schema tags accessible")
 
     @check(DatabaseStep.GetTableTags)
     def get_table_tags(self) -> Evidence:
         statement = TEST_TABLE_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "table tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "table tags accessible")
 
     @check(DatabaseStep.GetColumnTags)
     def get_column_tags(self) -> Evidence:
         statement = TEST_COLUMN_TAGS.format(database_name=self._first_catalog())
-        return run_sql(self.client, statement, lambda _: "column tags accessible")
+        return run_sql(self._db.client, statement, lambda _: "column tags accessible")
 
     @check(DatabaseStep.GetTableLineage)
     def get_table_lineage(self) -> Evidence:
-        return run_sql(self.client, TEST_TABLE_LINEAGE, lambda _: "table lineage accessible")
+        return run_sql(self._db.client, TEST_TABLE_LINEAGE, lambda _: "table lineage accessible")
 
     @check(DatabaseStep.GetColumnLineage)
     def get_column_lineage(self) -> Evidence:
-        return run_sql(self.client, TEST_COLUMN_LINEAGE, lambda _: "column lineage accessible")
+        return run_sql(self._db.client, TEST_COLUMN_LINEAGE, lambda _: "column lineage accessible")
+
+
+class DatabricksApiConnection(
+    BaseConnection[DatabricksConnectionConfig | UnityCatalogConnectionConfig, DatabricksClient]
+):
+    """Owns the Databricks REST client (Jobs, query-history, and lineage APIs):
+    a separate lifetime from the SQL engine, shared by the databricks and Unity
+    Catalog sources."""
+
+    def _get_client(self) -> DatabricksClient:
+        # No pooled resource to close: uses the ``requests`` module, not a Session.
+        return DatabricksClient(self.service_connection)
 
 
 class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
@@ -383,14 +379,22 @@ class DatabricksConnection(BaseConnection[DatabricksConnectionConfig, Engine]):
         # Honor the user-facing connectionTimeout (default 120s) as the per-step
         # budget; a cold serverless warehouse can exceed the 60s framework default.
         self.step_timeout_seconds = service_connection.connectionTimeout or STEP_TIMEOUT_SECONDS
+        # A sub-owner, not a client: constructing it opens nothing.
+        self.api = DatabricksApiConnection(service_connection)
 
     def _get_client(self) -> Engine:
         engine = get_connection(self.service_connection)
         self._on_close(engine.dispose)
         return engine
 
+    def close(self) -> None:
+        # Not _on_close: that registry is reset by close(), so a sub-owner
+        # registered once would not be released on a later reuse cycle.
+        self.api.close()
+        super().close()
+
     def checks(self) -> ChecksProvider:
         return DatabricksChecks(
-            client=self.client,
+            db=self.borrow(),
             service_connection=self.service_connection,
         )

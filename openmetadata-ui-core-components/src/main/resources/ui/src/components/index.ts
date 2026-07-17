@@ -106,6 +106,8 @@ export {
 export * from './application/accordion/accordion';
 export * from './application/breadcrumbs/breadcrumbs';
 export * from './application/tree/tree';
+export * from './application/tree-select/tree-select.types';
+export * from './application/tree-select/tree-select';
 export { MobileNavigationHeader } from './application/app-navigation/base-components/mobile-header';
 export {
   NavAccountCard,

@@ -26,6 +26,7 @@ from collections.abc import Callable
 from contextlib import ExitStack
 from typing import TYPE_CHECKING, Generic, Optional, TypeVar
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.runner import TestConnectionRunner
 from metadata.generated.schema.entity.automations.workflow import (
@@ -70,14 +71,26 @@ class BaseConnection(ABC, Generic[S, C]):
         """The service client, built once on first access and cached. Rebuilt if
         requested after ``close()``."""
         if self._client is None:
-            if self._was_closed:
-                logger.info(
-                    "Connection client for %s was closed; opening a new client.",
-                    type(self).__name__,
-                )
-                self._was_closed = False
-            self._client = self._get_client()
+            self._client = self._build_client()
         return self._client
+
+    def borrow(self) -> Borrowed[C]:
+        """A read-only reference to this connection's client: readable, not
+        buildable, not closable. The first read is what builds the client."""
+        return Borrowed(lambda: self.client)
+
+    def _build_client(self) -> C:
+        if self._was_closed:
+            logger.info(
+                "Connection client for %s was closed; opening a new client.",
+                type(self).__name__,
+            )
+            self._was_closed = False
+        try:
+            return self._get_client()
+        except Exception:
+            self.close()
+            raise
 
     @abstractmethod
     def _get_client(self) -> C:

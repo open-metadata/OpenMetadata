@@ -29,6 +29,7 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.mssqlConnection import (
     MssqlConnection as MssqlConnectionConfig,
@@ -51,8 +52,7 @@ from metadata.ingestion.source.database.mssql.queries import (
 from metadata.ingestion.source.database.mssql.utils import is_query_store_enabled
 
 if TYPE_CHECKING:
-    from collections.abc import Sequence
-
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.records import Evidence
 
@@ -75,48 +75,39 @@ SQLSERVER_ERRORS = ErrorPack(
     # login failed." - it contains "login failed", so a login-first ordering would
     # misclassify a missing database as an auth failure (confirmed live on pytds).
     # 4060 (cannot open database requested by the login), 911 (database does not exist).
-    when(Matchers.errno(4060, 911)).diagnose(
-        "Database not found or not accessible",
-        fix="Verify the configured database exists and the login is allowed to open it.",
-    ),
-    when(Matchers.contains("Cannot open database")).diagnose(
+    when(
+        Matchers.any_of(
+            Matchers.errno(4060, 911),
+            Matchers.contains("Cannot open database"),
+        )
+    ).diagnose(
         "Database not found or not accessible",
         fix="Verify the configured database exists and the login is allowed to open it.",
     ),
     # Login failed (auth). SQL Server error 18456; message "Login failed for user".
-    when(Matchers.errno(18456)).diagnose(
-        "Authentication failed",
-        fix="Check the username and password, and that the login is allowed to connect.",
-    ),
-    when(Matchers.contains("Login failed")).diagnose(
+    when(
+        Matchers.any_of(
+            Matchers.errno(18456),
+            Matchers.contains("Login failed"),
+        )
+    ).diagnose(
         "Authentication failed",
         fix="Check the username and password, and that the login is allowed to connect.",
     ),
     # Permission denied. 229 (permission denied on object), 297 (no permission for the
     # action), 262 (statement permission denied); message "permission was denied".
-    when(Matchers.errno(229, 297, 262)).diagnose(
-        "Insufficient privileges",
-        fix="Grant the login SELECT on the objects the failing step reads (and VIEW SERVER STATE for query history).",
-    ),
-    when(Matchers.contains("permission was denied")).diagnose(
+    when(
+        Matchers.any_of(
+            Matchers.errno(229, 297, 262),
+            Matchers.contains("permission was denied"),
+        )
+    ).diagnose(
         "Insufficient privileges",
         fix="Grant the login SELECT on the objects the failing step reads (and VIEW SERVER STATE for query history).",
     ),
 )
 
 MSSQL_ERRORS = SQLSERVER_ERRORS.including(NETWORK_ERRORS)
-
-
-def _databases_enumerated(rows: Sequence[object]) -> str:
-    """Summarize the GetDatabases probe without overstating the count.
-
-    ``run_sql`` fetches at most ``DEFAULT_SAMPLE_ROWS`` rows, so on an instance
-    with more databases than the cap the count saturates; report it as ``N+`` so
-    the evidence reads as a floor, not an exact total.
-    """
-    count = len(rows)
-    label = f"{count}+" if count >= DEFAULT_SAMPLE_ROWS else str(count)
-    return f"{label} databases enumerated"
 
 
 def get_connection_url(connection: MssqlConnectionConfig) -> str:
@@ -149,39 +140,43 @@ class MssqlChecks:
         }
     )
 
-    def __init__(self, client: Engine, get_databases_statement: str) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine], get_databases_statement: str) -> None:
+        self._db = db
         self.get_databases_statement = get_databases_statement
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        return ping(self.client)
+        return ping(self._db.client)
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, self.get_databases_statement, _databases_enumerated)
+        return run_sql(
+            self._db.client,
+            self.get_databases_statement,
+            lambda rows: enumerated(len(rows), "database", DEFAULT_SAMPLE_ROWS),
+        )
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        return list_schemas(self._db.client)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return list_tables(self.client, None, self.SYSTEM_SCHEMAS)
+        return list_tables(self._db.client, None, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return list_views(self.client, None, self.SYSTEM_SCHEMAS)
+        return list_views(self._db.client, None, self.SYSTEM_SCHEMAS)
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
-        if is_query_store_enabled(self.client):
+        if is_query_store_enabled(self._db.client):
             query = MSSQL_TEST_GET_QUERIES_FROM_QUERY_STORE
             summary = "query history accessible via Query Store"
         else:
             query = MSSQL_TEST_GET_QUERIES
             summary = "query history accessible via plan-cache DMVs"
-        return run_sql(self.client, query, lambda _: summary)
+        return run_sql(self._db.client, query, lambda _: summary)
 
 
 class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
@@ -201,6 +196,6 @@ class MssqlConnection(BaseConnection[MssqlConnectionConfig, Engine]):
 
     def checks(self) -> ChecksProvider:
         return MssqlChecks(
-            client=self.client,
+            db=self.borrow(),
             get_databases_statement=self._get_databases_statement(),
         )

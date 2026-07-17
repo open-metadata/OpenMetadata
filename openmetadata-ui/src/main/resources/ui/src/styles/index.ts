@@ -40,6 +40,7 @@ import './components/slider.less';
 import './components/step.less';
 import './components/tags.less';
 import './fonts.less';
+import './geist-mono-variable.css';
 import './inter-variable.css';
 import './knowledge-center.less';
 import './modal.less';

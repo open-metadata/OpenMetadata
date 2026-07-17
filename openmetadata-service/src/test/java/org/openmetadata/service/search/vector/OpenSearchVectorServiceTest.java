@@ -6,6 +6,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -15,9 +16,11 @@ import java.lang.reflect.Method;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
+import org.openmetadata.schema.entity.data.Table;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
 import org.openmetadata.service.search.vector.utils.DTOs;
 import os.org.opensearch.client.opensearch.OpenSearchClient;
@@ -583,5 +586,36 @@ class OpenSearchVectorServiceTest {
     assertTrue(schema.has("name"), "databaseSchema.name mapped");
     assertTrue(
         schema.has("displayName"), "databaseSchema.displayName mapped (matches service/database)");
+  }
+
+  @Test
+  void updateEntityEmbeddingChunks_preservesExistingChunksWhenProviderUnavailable()
+      throws IOException {
+    when(mockEmbeddingClient.isAvailable()).thenReturn(false);
+    // Entity previously had 3 chunks under a now-stale fingerprint; a content change would normally
+    // re-embed and replace them. With the provider down, fromEntity() returns empty and the
+    // existing
+    // chunks must be preserved rather than deleted by replaceChunks().
+    mockOpenSearchResponse(
+        "{\"found\": true, \"_source\": {\"fingerprint\": \"STALE_FP\", \"chunkCount\": 3, \"docVersion\": 1}}");
+
+    Table entity =
+        new Table()
+            .withId(UUID.randomUUID())
+            .withName("orders")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDescription("changed description");
+
+    vectorService.updateEntityEmbeddingChunks(entity, "chunkIndex");
+
+    ArgumentCaptor<os.org.opensearch.client.opensearch.generic.Request> captor =
+        ArgumentCaptor.forClass(os.org.opensearch.client.opensearch.generic.Request.class);
+    verify(mockGenericClient, atLeastOnce()).execute(captor.capture());
+    boolean issuedBulk =
+        captor.getAllValues().stream()
+            .anyMatch(r -> r.getEndpoint() != null && r.getEndpoint().contains("_bulk"));
+    assertFalse(
+        issuedBulk,
+        "must not issue a chunk-delete bulk while the embedding provider is unavailable");
   }
 }

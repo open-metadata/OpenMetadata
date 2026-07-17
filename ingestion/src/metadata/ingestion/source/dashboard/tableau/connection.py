@@ -31,12 +31,12 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
-from metadata.core.connections.test_connection.checks.dashboard import (
-    DashboardStep,
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
     call_endpoint,
+    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.tableauConnection import (
     TableauConnection as TableauConnectionConfig,
@@ -59,8 +59,8 @@ from metadata.utils.logger import ingestion_logger
 from metadata.utils.ssl_manager import SSLManager
 
 if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
-    from metadata.core.connections.test_connection.classifier import Matcher
 
 logger = ingestion_logger()
 
@@ -90,29 +90,19 @@ def _status_of(error: BaseException) -> int | None:
     return status if isinstance(status, int) else None
 
 
-def _http_status(*codes: int) -> Matcher:
-    """Match a Tableau REST error by HTTP status, across the cause chain.
-
-    The status is the stable signal - the summary and detail of a Tableau error
-    vary by endpoint and server version.
-    """
-    wanted = frozenset(codes)
-    return lambda error: any(_status_of(current) in wanted for current in exception_chain(error))
-
-
 TABLEAU_ERRORS = ErrorPack(
-    when(_http_status(401)).diagnose(
+    when(http_status(401, extract=_status_of)).diagnose(
         "Authentication failed",
         fix="Tableau rejected the credentials (401). Check the Personal Access Token name and "
         "secret (or the username and password) and that it has not expired, and that the Site "
         "Name matches the site those credentials belong to.",
     ),
-    when(_http_status(403)).diagnose(
+    when(http_status(403, extract=_status_of)).diagnose(
         "Insufficient permissions",
         fix="The credentials are valid but not authorized for this resource (403). Grant the user "
         "at least the Viewer site role and read access to the projects to ingest.",
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404, extract=_status_of)).diagnose(
         "Resource not found",
         fix="Tableau could not find the requested resource (404). Check that Host Port points at "
         "the Tableau server or Tableau Cloud pod, and that the Site Name exists - for "
@@ -238,71 +228,68 @@ def build_server_config(connection: TableauConnectionConfig) -> Dict[str, Dict[s
 class TableauChecks:
     """Test-connection checks for Tableau.
 
-    ``ServerInfo`` is the gate: building the client signs in, so bad credentials,
-    a wrong site, or an unreachable server fail there and the remaining steps are
-    skipped rather than each re-dialling the host.
-
-    The client is built lazily inside the first check, never at construction: its
-    constructor signs in over the network, and doing that while the provider is
-    assembled would run before the runner's gate and surface as a raw workflow
-    error instead of a classified ``ServerInfo`` failure.
+    ``ServerInfo`` is the gate: reading the borrowed client signs in, so bad
+    credentials or an unreachable server fail there and the rest are skipped.
     """
 
     errors = TABLEAU_ERRORS
 
-    def __init__(self, connection: TableauConnectionConfig) -> None:
-        self._connection = connection
-        self._tableau_client: TableauClient | None = None
-
-    def _client(self) -> TableauClient:
-        """Build (once) and return the signed-in client. Only ever called from
-        inside a check, since signing in touches the network."""
-        if self._tableau_client is None:
-            self._tableau_client = get_connection(self._connection)
-        return self._tableau_client
+    def __init__(self, server: Borrowed[TableauClient]) -> None:
+        self._server = server
 
     @check(DashboardStep.ServerInfo)
     def server_info(self) -> Evidence:
+        # Lambda, not a bound method: the sign-in must happen inside verify_access's
+        # try, or a bad credential escapes unclassified.
         return verify_access(
-            lambda: self._client().server_info(),
+            lambda: self._server.client.server_info(),  # noqa: PLW0108
             command="sign in and read server info",
         )
 
     @check(DashboardStep.ValidateApiVersion)
     def validate_api_version(self) -> Evidence:
         command = "read the server REST API version"
-        version = call_endpoint(lambda: self._client().server_api_version(), command=command)
+        version = call_endpoint(lambda: self._server.client.server_api_version(), command=command)  # noqa: PLW0108
         return Evidence(summary=f"REST API version {version}", command=command)
 
     @check(DashboardStep.ValidateSiteUrl)
     def validate_site_url(self) -> Evidence:
         command = "validate the configured site name"
-        call_endpoint(lambda: self._client().test_site_url(), command=command)
+        call_endpoint(lambda: self._server.client.test_site_url(), command=command)  # noqa: PLW0108
         return Evidence(summary="site name is well formed", command=command)
 
     @check(DashboardStep.GetWorkbooks)
     def get_workbooks(self) -> Evidence:
         command = "fetch workbooks"
-        call_endpoint(lambda: self._client().test_get_workbooks(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_workbooks(), command=command)  # noqa: PLW0108
         return Evidence(summary="workbooks are readable", command=command)
 
     @check(DashboardStep.GetViews)
     def get_views(self) -> Evidence:
         command = "fetch the views of a workbook"
-        call_endpoint(lambda: self._client().test_get_workbook_views(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_workbook_views(), command=command)  # noqa: PLW0108
         return Evidence(summary="workbook views are readable", command=command)
 
     @check(DashboardStep.GetOwners)
     def get_owners(self) -> Evidence:
         command = "fetch the owner of a workbook"
-        call_endpoint(lambda: self._client().test_get_owners(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_owners(), command=command)  # noqa: PLW0108
         return Evidence(summary="workbook owners are resolvable", command=command)
 
     @check(DashboardStep.GetDataModels)
     def get_data_models(self) -> Evidence:
         command = "query the Metadata API for the data sources of a workbook"
-        call_endpoint(lambda: self._client().test_get_datamodels(), command=command)
+        call_endpoint(lambda: self._server.client.test_get_datamodels(), command=command)  # noqa: PLW0108
         return Evidence(summary="data sources are readable", command=command)
+
+
+def _sign_out(client: TableauClient) -> None:
+    """Best-effort: close() unwinds teardowns without catching, so a failed sign-out
+    must not replace the error being unwound."""
+    try:
+        client.sign_out()
+    except Exception:
+        logger.warning("Tableau sign-out failed while closing the connection", exc_info=True)
 
 
 class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
@@ -311,7 +298,10 @@ class TableauConnection(BaseConnection[TableauConnectionConfig, TableauClient]):
     step_timeout_seconds = THREE_MIN
 
     def _get_client(self) -> TableauClient:
-        return get_connection(self.service_connection)
+        client = get_connection(self.service_connection)
+        # sign_out releases the server session and clears the SSL temp files.
+        self._on_close(lambda: _sign_out(client))
+        return client
 
     def checks(self) -> ChecksProvider:
-        return TableauChecks(connection=self.service_connection)
+        return TableauChecks(server=self.borrow())

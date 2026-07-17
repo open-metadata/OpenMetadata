@@ -24,6 +24,12 @@ export interface FieldDocPopoverProps {
    * this to their layout (e.g. to clear a modal's padding). Defaults to 16.
    */
   offset?: number;
+  /**
+   * Max height in px of the popover card; the doc body scrolls internally
+   * beyond it so a long hint never grows to the full page height. Defaults
+   * to 480.
+   */
+  maxHeight?: number;
 }
 
 const defaultRenderDoc = (doc: string): ReactNode => (
@@ -42,6 +48,7 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   renderDoc,
   header,
   offset = 16,
+  maxHeight = 480,
 }) => {
   const { entry, name } = useActiveFieldDoc();
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -62,7 +69,12 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
     <Popover
       isNonModal
       isOpen
-      className="tw:flex tw:max-h-[85vh] tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
+      className="tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
+      // react-aria sets its own inline maxHeight from available space, which
+      // overrides any CSS max-h-* class; use the prop so the hint card stays a
+      // fixed, bounded height and scrolls internally instead of growing to the
+      // full page height.
+      maxHeight={maxHeight}
       offset={offset}
       placement="right top"
       triggerRef={anchorRef}>
