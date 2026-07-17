@@ -417,27 +417,48 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       fqnHashToFqn.put(FullyQualifiedName.buildHash(fqn), fqn);
     }
 
-    List<CollectionDAO.LatestRecordWithFQNHash> records =
-        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
-
     Map<String, TestCaseResult> fqnToResult = new HashMap<>();
-    for (CollectionDAO.LatestRecordWithFQNHash record : records) {
-      String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
-      if (fqn != null && record.getJson() != null) {
-        TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
-        if (result != null) {
-          fqnToResult.put(fqn, result);
+    if (setResults) {
+      List<CollectionDAO.LatestRecordWithFQNHash> records =
+          daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : records) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResult result = JsonUtils.readValue(record.getJson(), TestCaseResult.class);
+          if (result != null) {
+            fqnToResult.put(fqn, result);
+          }
+        }
+      }
+    }
+
+    // Ongoing incidents come from the resolution-status timeseries (latest unresolved record),
+    // not from the incidentId frozen on the latest test case result at ingestion time.
+    Map<String, UUID> fqnToOngoingIncident = new HashMap<>();
+    if (setIncidents) {
+      List<CollectionDAO.LatestRecordWithFQNHash> incidentRecords =
+          daoCollection.testCaseResolutionStatusTimeSeriesDao().getLatestRecordBatch(fqns);
+      for (CollectionDAO.LatestRecordWithFQNHash record : incidentRecords) {
+        String fqn = fqnHashToFqn.get(record.getEntityFQNHash());
+        if (fqn != null && record.getJson() != null) {
+          TestCaseResolutionStatus latest =
+              JsonUtils.readValue(record.getJson(), TestCaseResolutionStatus.class);
+          if (latest != null
+              && latest.getStateId() != null
+              && !TestCaseResolutionStatusTypes.Resolved.equals(
+                  latest.getTestCaseResolutionStatusType())) {
+            fqnToOngoingIncident.put(fqn, latest.getStateId());
+          }
         }
       }
     }
 
     for (TestCase testCase : testCases) {
-      TestCaseResult result = fqnToResult.get(testCase.getFullyQualifiedName());
       if (setResults) {
-        testCase.setTestCaseResult(result);
+        testCase.setTestCaseResult(fqnToResult.get(testCase.getFullyQualifiedName()));
       }
       if (setIncidents) {
-        testCase.setIncidentId(result != null ? result.getIncidentId() : null);
+        testCase.setIncidentId(fqnToOngoingIncident.get(testCase.getFullyQualifiedName()));
       }
     }
   }
@@ -1087,20 +1108,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   }
 
   /**
-   * Check all the test case results that have an ongoing incident and get the stateId of the
-   * incident
+   * Return the stateId of the test case's ongoing incident: the latest unresolved
+   * TestCaseResolutionStatus record. Resolved incidents are terminal and no longer ongoing.
    */
   private UUID getIncidentId(TestCase test) {
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
     TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
-
-    if (latest != null && latest.getStateId() != null) {
-      return latest.getStateId();
-    }
-
-    return null;
+    return Boolean.TRUE.equals(tcrsRepo.unresolvedIncident(latest)) ? latest.getStateId() : null;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
