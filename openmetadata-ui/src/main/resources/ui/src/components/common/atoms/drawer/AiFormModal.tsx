@@ -20,16 +20,21 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle } from '@untitledui/icons';
-import classNames from 'classnames';
-import { FC, ReactNode, useEffect } from 'react';
+import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
+
+/** Modal width when the Form Hint column is shown, per the approved design. */
+const WIDTH_WITH_HINT = 1024;
+/** Modal width when the Form Hint column is collapsed. */
+const WIDTH_WITHOUT_HINT = 648;
+/** Modal width for forms that have no Form Hint column at all. */
+const WIDTH_NO_HINT_COLUMN = 820;
 
 export interface AiFormModalProps {
   open: boolean;
   title: ReactNode;
   subtitle?: ReactNode;
   headerActions?: ReactNode;
-  hint?: ReactNode;
   children: ReactNode;
   isSubmitting?: boolean;
   onClose: () => void;
@@ -40,11 +45,16 @@ export interface AiFormModalProps {
   /** Footer submit button label, defaults to the create label. */
   submitLabel?: ReactNode;
   /**
-   * When true, reserve room to the right of the modal for the floating Form Hint
-   * popover so the modal+hint read as one centered group (using the full width).
-   * When false the modal is centered on its own.
+   * Tri-state control for the Form Hint column.
+   * - `undefined`: the form has no hint column; single-column layout.
+   * - `true`: hint column shown; the modal widens.
+   * - `false`: hint column collapsed; the modal narrows.
+   *
+   * The column itself is rendered by HookForm's `fieldDocDisplay="panel"` mode,
+   * because it must live inside FieldDocProvider to read the focused field's
+   * doc. This prop only drives the modal's width.
    */
-  reserveHintSpace?: boolean;
+  hintOpen?: boolean;
 }
 
 /**
@@ -53,51 +63,27 @@ export interface AiFormModalProps {
  * subtitle on the left, optional `headerActions` such as the Show-Hint toggle on
  * the right), the shared form body as children, and a Cancel/Create footer.
  *
- * The Form Hint popover floats to the right of the focused field (anchored via
- * react-aria). With `reserveHintSpace` the modal slides left (a transitioned
- * translate) by half the hint's footprint so the modal+hint read as one
- * centered group; a resize pump re-measures the popover across the slide so it
- * tracks the modal with no gap. Without it the modal is centered on its own.
+ * When `hintOpen` is defined the body is a two-column layout (form + Form Hint)
+ * and the modal animates its own width between the hint-shown and hint-hidden
+ * sizes, staying centered in both. It does not translate: the hint is part of
+ * the modal, not a floating layer beside it.
  */
 export const AiFormModal: FC<AiFormModalProps> = ({
   open,
   title,
   subtitle,
   headerActions,
-  hint,
   children,
   isSubmitting,
   onClose,
   onSubmit,
   submitTestId = 'create-btn',
   cancelTestId = 'cancel-btn',
-  reserveHintSpace = false,
+  hintOpen,
   submitLabel,
 }) => {
   const { t } = useTranslation();
-
-  // The hint-shown state slides the modal via a 300ms CSS transform, but
-  // react-aria only re-measures the floating hint's anchor on window
-  // resize/scroll — not while an ancestor transform animates. Pump resize
-  // events across the transition window so the hint tracks the modal frame by
-  // frame instead of jumping (or lagging behind) once the slide settles.
-  useEffect(() => {
-    let frame = 0;
-    // ~22 frames ≈ 370ms — covers the 300ms slide plus a small settle buffer.
-    let remaining = 22;
-    if (open) {
-      const pump = () => {
-        window.dispatchEvent(new Event('resize'));
-        remaining -= 1;
-        if (remaining > 0) {
-          frame = requestAnimationFrame(pump);
-        }
-      };
-      frame = requestAnimationFrame(pump);
-    }
-
-    return () => cancelAnimationFrame(frame);
-  }, [open, reserveHintSpace]);
+  const hasHintColumn = hintOpen !== undefined;
 
   // The submit handler surfaces failures via an inline alert in the form body
   // and resolves so the modal stays open; swallow the rejection here so React
@@ -112,22 +98,21 @@ export const AiFormModal: FC<AiFormModalProps> = ({
       <Modal>
         <Box
           align="start"
-          className="tw:w-full tw:justify-center tw:gap-4"
+          className="tw:w-full tw:justify-center"
           direction="row">
-          {/* 820px wide (roomier than the 702px Figma mock). When the hint is
-              shown the modal slides left by half the hint's footprint so the
-              modal+hint sit centered as a group; the transition animates the
-              slide and the resize pump keeps the hint tracking it. Gated at xl
-              so the shifted modal never clips the left edge on smaller screens. */}
+          {/* Dialog applies `width` as max-width, so the transition targets
+              max-width. The modal grows/shrinks in place and stays centered —
+              the hint is a column inside it, not a floating layer beside it. */}
           <Dialog
             showCloseButton
-            className={classNames(
-              `tw:max-w-205 tw:transition-transform tw:duration-300 tw:ease-in-out`,
-              {
-                'tw:xl:-translate-x-44.5': reserveHintSpace,
-              }
-            )}
-            width={820}
+            className="tw:transition-[max-width] tw:duration-[240ms] tw:ease-in-out"
+            width={
+              hasHintColumn
+                ? hintOpen
+                  ? WIDTH_WITH_HINT
+                  : WIDTH_WITHOUT_HINT
+                : WIDTH_NO_HINT_COLUMN
+            }
             onClose={onClose}>
             <Dialog.Header>
               {/* pr-10 reserves room for the absolutely-positioned close button
@@ -160,7 +145,15 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 {headerActions}
               </Box>
             </Dialog.Header>
-            <Dialog.Content className="tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto">
+            {/* With a hint column the content is a padding-free flex row that
+                clips; each column scrolls itself, so neither can drive the
+                modal's height. Without one it keeps the single scrolling body. */}
+            <Dialog.Content
+              className={
+                hasHintColumn
+                  ? 'tw:max-h-[calc(88vh-152px)] tw:flex-row tw:gap-0 tw:overflow-hidden tw:p-0'
+                  : 'tw:max-h-[calc(100vh-260px)] tw:overflow-y-auto'
+              }>
               {children}
             </Dialog.Content>
             <Dialog.Footer>
@@ -179,7 +172,6 @@ export const AiFormModal: FC<AiFormModalProps> = ({
               </Button>
             </Dialog.Footer>
           </Dialog>
-          {hint}
         </Box>
       </Modal>
     </ModalOverlay>
