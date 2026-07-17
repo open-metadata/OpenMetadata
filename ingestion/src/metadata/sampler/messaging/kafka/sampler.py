@@ -12,6 +12,7 @@
 Kafka sampler implementation
 """
 
+import hashlib
 import json
 import time
 import traceback
@@ -58,7 +59,10 @@ class KafkaSampler(MessagingSampler):
 
     def _consumer_group_id(self) -> str:
         fqn = self.entity.fullyQualifiedName.root if self.entity.fullyQualifiedName else ""
-        return f"openmetadata-auto-classification-{fqn}" if fqn else "openmetadata-auto-classification"
+        if not fqn:
+            return "openmetadata-auto-classification"
+        digest = hashlib.sha256(fqn.encode("utf-8")).hexdigest()[:16]
+        return f"openmetadata-auto-classification-{digest}"
 
     def _build_consumer_config(self) -> dict[str, Any]:
         from metadata.generated.schema.entity.services.connections.messaging.kafkaConnection import (  # noqa: PLC0415
@@ -108,11 +112,13 @@ class KafkaSampler(MessagingSampler):
         if AvroDeserializer and len(raw_value) > 4:
             try:
                 if not hasattr(self, "_avro_deserializer"):
+                    self._avro_deserializer = None
                     client = self.get_client()
-                    if client and hasattr(client, "schema_registry_client"):
-                        self._avro_deserializer = AvroDeserializer(client.schema_registry_client)
-                    else:
-                        self._avro_deserializer = None
+                    schema_registry_client = (
+                        getattr(client, "schema_registry_client", None) if client else None
+                    )
+                    if schema_registry_client:
+                        self._avro_deserializer = AvroDeserializer(schema_registry_client)
                 if self._avro_deserializer:
                     avro_obj = self._avro_deserializer(raw_value, None)
                     if isinstance(avro_obj, dict):
