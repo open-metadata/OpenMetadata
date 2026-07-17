@@ -237,15 +237,13 @@ def reset_trino_table_statistics(trino_container, create_test_data):
 
     def reset(table_name: str) -> None:
         with engine.connect() as conn:
-            conn.execute(
-                text(f"CALL system.drop_stats(schema_name => 'my_schema', table_name => '{table_name}')")
-            ).fetchall()
+            conn.execute(text(f"CALL system.drop_stats(schema_name => 'my_schema', table_name => '{table_name}')"))
             conn.commit()
 
         with engine.connect() as conn:
             conn.execute(
                 text(f"CALL system.flush_metadata_cache(schema_name => 'my_schema', table_name => '{table_name}')")
-            ).fetchall()
+            )
             conn.commit()
 
         with engine.connect() as conn:
