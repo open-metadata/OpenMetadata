@@ -37,7 +37,11 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
       />
     );
 
-    const container = await screen.findByTestId('markdown-parser', {}, RENDER_TIMEOUT);
+    const container = await screen.findByTestId(
+      'markdown-parser',
+      {},
+      RENDER_TIMEOUT
+    );
 
     await waitFor(() => {
       expect(container.textContent).toContain('>');
@@ -64,7 +68,11 @@ describe('RichTextEditorPreviewerV1: markdown entity rendering', () => {
       />
     );
 
-    const container = await screen.findByTestId('markdown-parser', {}, RENDER_TIMEOUT);
+    const container = await screen.findByTestId(
+      'markdown-parser',
+      {},
+      RENDER_TIMEOUT
+    );
 
     await waitFor(() => {
       expect(container.textContent).toContain('price');

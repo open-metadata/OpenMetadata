@@ -131,7 +131,9 @@ export const formatClientContent = (content: string) => {
   // `&gt;` to the user as literal text.
   const processedContent = isHTMLString(content)
     ? content
-    : getHtmlStringFromMarkdownString(convertMarkdownFormatToHtmlString(content));
+    : getHtmlStringFromMarkdownString(
+        convertMarkdownFormatToHtmlString(content)
+      );
 
   const doc = parser.parseFromString(processedContent, 'text/html');
 

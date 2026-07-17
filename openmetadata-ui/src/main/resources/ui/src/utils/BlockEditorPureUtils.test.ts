@@ -51,9 +51,11 @@ describe('formatClientContent: markdown special characters', () => {
   });
 
   it('should preserve > and < inside a fenced code block', () => {
-    const markdown = ['```sql', 'SELECT * FROM t WHERE price > 0 AND id < 10', '```'].join(
-      '\n'
-    );
+    const markdown = [
+      '```sql',
+      'SELECT * FROM t WHERE price > 0 AND id < 10',
+      '```',
+    ].join('\n');
 
     const result = formatClientContent(markdown);
 
@@ -127,10 +129,25 @@ describe('formatClientContent: idempotency', () => {
     ['horizontal rule', 'above\n\n---\n\nbelow'],
     ['underscores in a code block', '```\nfoo ___ bar\n```'],
     ['asterisks in a code block', '```\nfoo *** bar\n```'],
+    // A rendered code block whose body contains lines that look like markdown
+    // (a heading, a bold marker) must not be re-parsed into new structure when
+    // getHtmlStringFromMarkdownString runs over the already-rendered HTML.
+    ['heading line in a code block', '```\n# heading\nSELECT 1\n```'],
+    ['bold marker in a code block', '```\nfoo **bar** baz\n```'],
+    ['heading and list in a code block', '```\n# note\n- item\n```'],
   ])('should be stable when re-converted: %s', (_name, markdown) => {
     const formatted = formatClientContent(markdown);
 
     expect(getHtmlStringFromMarkdownString(formatted)).toBe(formatted);
+  });
+
+  it('should keep a heading line inside a code block as literal text', () => {
+    const result = formatClientContent('```\n# heading\nSELECT 1\n```');
+
+    // The `#` must survive as code content, not become an <h1>.
+    expect(result).toContain('<pre><code>');
+    expect(result).toContain('# heading');
+    expect(result).not.toContain('<h1');
   });
 });
 
@@ -176,7 +193,9 @@ describe('formatClientContent: XSS neutralisation', () => {
   });
 
   it('should strip javascript: hrefs from anchor tags', () => {
-    const result = formatClientContent('<a href="javascript:alert(1)">click</a>');
+    const result = formatClientContent(
+      '<a href="javascript:alert(1)">click</a>'
+    );
 
     expect(result).not.toContain('javascript:');
   });
