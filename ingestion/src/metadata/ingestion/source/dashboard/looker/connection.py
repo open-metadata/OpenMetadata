@@ -160,10 +160,8 @@ LOOKER_ERRORS = ErrorPack(
         fix=f"This connector uses API {SDK_API_VERSION}, which the instance does not list as supported.",
         doc=API_SDK_DOC,
     ),
-    # Matched on text, not type: the transport flattens every IOError into an
-    # SDKError message (see the note on NETWORK_ERRORS below), so these are the only
-    # rules that can diagnose reachability here. Guarded so a structured Looker error
-    # is not read as a transport failure.
+    # Matched on text, not type: the SDK transport flattens every IOError to a
+    # string (see NETWORK_ERRORS below), so type-based matching cannot work here.
     when(
         _transport_text("failed to resolve", "name or service not known", "nodename nor servname", "getaddrinfo failed")
     ).diagnose(
@@ -201,10 +199,9 @@ LOOKER_ERRORS = ErrorPack(
         fix="A server answered but did not return a Looker error. Check that Host Port points at the Looker instance.",
     ),
 )
-# NETWORK_ERRORS is deliberately not folded in: it matches by exception type, and
-# looker_sdk/rtl/requests_transport.py RequestsTransport.request catches IOError
-# (which every socket error and requests exception is) and returns its str() as a
-# response body, so no type survives. _transport_text above reads those strings.
+# NETWORK_ERRORS not folded in: it matches by type, but the SDK transport
+# (requests_transport.py) catches every IOError and returns its str() as a body,
+# so no exception type survives - _transport_text reads those strings instead.
 
 
 class LookerChecks:

@@ -59,24 +59,12 @@ if TYPE_CHECKING:
     from metadata.core.connections.test_connection.records import Evidence
 
 
-# --- SQL Server error pack ---------------------------------------------------
-# Grouped and self-contained so the Fabric (Database) connector, which speaks the
-# same SQL Server protocol, can lift it verbatim later.
-#
-# Error numbers are from the SQL Server system error message reference
-# (https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors).
-
-
 def _mssql_number(error: BaseException) -> int | None:
-    """The SQL Server error number, however the raising driver carries it.
+    """The SQL Server error number, wherever the driver puts it.
 
-    ``Matchers.errno`` cannot find it: it wants an ``int`` at ``args[0]`` and no
-    supported driver puts one there. pytds sets ``.number``/``.msg_no``
-    (``tds_base._create_exception_by_message``); pymssql leaves a ``(number, message)``
-    tuple at ``args[0]`` (``_pymssql.pyx``, ``connect``); pyodbc exposes no number at
-    all, only ``(sqlstate, message)``.
-
-    Only ever the number of pytds' LAST server message - see SQLSERVER_ERRORS.
+    ``Matchers.errno`` misses it: no supported driver leaves an ``int`` at
+    ``args[0]``. pytds uses ``.number``/``.msg_no``, pymssql a ``(number, message)``
+    tuple at ``args[0]``, pyodbc none at all.
     """
     for current in exception_chain(error):
         for attribute in ("number", "msg_no"):
@@ -95,25 +83,16 @@ def _sqlserver_errno(*codes: int) -> Matcher:
     return lambda error: _mssql_number(error) in wanted
 
 
-# --- SQL Server error pack ---------------------------------------------------
+# pytds folds a multi-message failure unevenly (tds_session.raise_db_exception):
+# the text joins every message, but the number is the LAST message's only. So a
+# number is keyable only when it arrives last (observed live, pinned by tests):
+#   missing database [4060,18456]->18456 ; no VIEW SERVER STATE [300,297]->297 ;
+#   bad password [18456] ; denied SELECT [229]. Hence no 4060/300 rule.
 # Numbers: https://learn.microsoft.com/en-us/sql/relational-databases/errors-events/database-engine-events-and-errors
-#
-# SQL Server answers one failure with several messages, and pytds folds them
-# unevenly (tds_session._TdsSession.raise_db_exception): the text is every message
-# joined, the number is the LAST message's only. So a number is matchable only where
-# it arrives last. Observed live, and pinned by the tests:
-#
-#   missing database     -> [4060, 18456] -> number 18456
-#   bad password         -> [18456]       -> number 18456
-#   denied SELECT        -> [229]         -> number 229
-#   no VIEW SERVER STATE -> [300, 297]    -> number 297
-#
-# Hence no 4060 or 300 rule. 911 arrives alone but only from USE, which no check
-# issues; 262 is a statement permission and these checks only SELECT.
 SQLSERVER_ERRORS = ErrorPack(
-    # Must precede the login rules: the joined text ends "Login failed for user ..."
-    # and the number is 18456, so both signals point at auth. No number to key on
-    # here, so a non-English server reads this as an auth failure.
+    # Precedes the login rules: 4060's joined text ends "Login failed", and its
+    # number (18456) also points at auth - so on a non-English server this reads
+    # as an auth failure, the only signal available.
     when(Matchers.contains("Cannot open database")).diagnose(
         "Database not found or not accessible",
         fix="Verify the configured database exists and the login is allowed to open it.",
@@ -127,9 +106,7 @@ SQLSERVER_ERRORS = ErrorPack(
         "Authentication failed",
         fix="Check the username and password, and that the login is allowed to connect.",
     ),
-    # 229 denied SELECT on an object GetTables/GetViews reads; 297 the tail of the
-    # VIEW SERVER STATE denial GetQueries provokes via sys.dm_exec_query_stats.
-    # 297's own text lacks "permission was denied", so its number is the only signal.
+    # 297's text lacks "permission was denied", so its number is the only signal.
     when(
         Matchers.any_of(
             _sqlserver_errno(229, 297),

@@ -193,13 +193,9 @@ def _snowflake_errors(account_usage_schema: str | None) -> ErrorPack:
     ``<account>.snowflakecomputing.com`` and accepts TCP on 443, so it is only
     rejected at the HTTP login layer, handled here."""
     return ErrorPack(
-        # snowflake/connector/auth/_auth.py turns ANY 403 at the login endpoint into
-        # this message, so it means "rejected at login", not specifically a bad
-        # account - a proxy, an IP allowlist or a network policy lands here too; the
-        # remediation says so. Keyed on the message, not the errno: this path's errno
-        # is 540001 (ForbiddenError.__init__ adds ER_HTTP_GENERAL_ERROR to the
-        # ER_FAILED_TO_CONNECT_TO_DB it is passed), an accidental sum, and never the
-        # 290404 once matched here - a number absent from the connector entirely.
+        # Any login-endpoint 403 yields this message (snowflake _auth.py), so it
+        # means "rejected at login" - proxy, IP allowlist, network policy too, per
+        # the fix. Keyed on the message: this path's errno is an accidental 540001.
         when(Matchers.contains("verify the account name is correct")).diagnose(
             "Snowflake rejected the login endpoint request",
             fix="Snowflake answered 403 before authenticating. Most often the account identifier is "

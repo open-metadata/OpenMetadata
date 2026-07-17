@@ -124,12 +124,10 @@ DBTCLOUD_ERRORS = ErrorPack(
         "regional - the access URL differs per region.",
     ),
 )
-# NETWORK_ERRORS is deliberately not folded in: `including` appends at lower
-# precedence, so the requests-typed rules above claim every network failure first
-# (a DNS gaierror arrives wrapped in requests' ConnectionError), and
-# NetworkUnreachableError needs a tcp_probe this connector never runs. No preflight
-# is added because requests honours HTTPS_PROXY and a raw TCP probe does not, which
-# would fail a proxied setup - see `ping`.
+# NETWORK_ERRORS not folded in: the requests-typed rules above already claim every
+# network failure, and NetworkUnreachableError needs a tcp_probe this connector
+# never runs. No preflight added - it would break a proxied setup (requests honours
+# HTTPS_PROXY, a raw probe does not).
 
 
 class DBTCloudChecks:

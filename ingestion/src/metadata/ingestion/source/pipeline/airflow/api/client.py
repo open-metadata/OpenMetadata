@@ -182,14 +182,9 @@ class AirflowApiClient:
     def test_get_version(self) -> dict:
         """Prove the host really is Airflow, for the test-connection gate.
 
-        ``get_version`` cannot gate anything on either flavour: over REST it is
-        lenient by design (``_parse_response`` turns a reply it cannot parse into
-        ``{}``, so a 200 text/html page passes), and over MWAA it is a hardcoded stub
-        that never calls AWS. Both need an accessor that actually fails.
-
-        REST uses ``get_raw`` so the status survives and ``JSONDecodeError`` escapes
-        to the classifier, mirroring dbt Cloud's ``_test_get``; MWAA makes a real
-        ``invoke_rest_api`` call.
+        Unlike ``get_version``, which is lenient over REST (parses to ``{}``, so a
+        200 HTML page passes) and a stub over MWAA: REST reads via ``get_raw`` so a
+        bad status/body raises, MWAA makes a real ``invoke_rest_api`` call.
         """
         if self.mwaa_client:
             return self.mwaa_client.test_get_version()
