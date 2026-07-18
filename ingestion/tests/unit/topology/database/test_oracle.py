@@ -367,13 +367,14 @@ class OracleUnitTest(TestCase):
 
     def test_get_columns_with_constraints_handles_no_pk_nosuchtableerror(self):
         """
-        OracleSource._get_columns_with_constraints: get_pk_constraint raising
-        NoSuchTableError (Oracle under SQLAlchemy >= 2.0, for tables without a
-        primary key) should not abort column extraction — it should be treated
-        as "no PK constraint" instead of propagating the error. This override is
-        scoped to Oracle only; the shared SqlColumnHandlerMixin implementation
-        used by other connectors is intentionally left unchanged, since for most
-        other dialects NoSuchTableError reliably means the table itself is gone.
+        get_pk_constraint raising NoSuchTableError (Oracle under SQLAlchemy >= 2.0,
+        for tables without a primary key) should not abort column extraction — it
+        should be treated as "no PK constraint" instead of propagating the error.
+        OracleSource only overrides _get_pk_constraint (the small helper extracted
+        from SqlColumnHandlerMixin._get_columns_with_constraints); the rest of the
+        constraint-handling logic is inherited unchanged from the shared mixin used
+        by other connectors, where NoSuchTableError reliably means the table itself
+        is gone and should still propagate.
         """
         from sqlalchemy.exc import NoSuchTableError
 

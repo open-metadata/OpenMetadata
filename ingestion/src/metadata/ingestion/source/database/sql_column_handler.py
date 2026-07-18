@@ -158,11 +158,18 @@ class SqlColumnHandlerMixin:
             data_type_display = data_type_display or column.get("display_type")
         return data_type_display, arr_data_type, parsed_string
 
-    @staticmethod
+    def _get_pk_constraint(self, schema_name: str, table_name: str, inspector: Inspector) -> Dict:  # noqa: UP006
+        """
+        Fetch the primary key constraint for a table. Split out from
+        _get_columns_with_constraints so dialect-specific subclasses (e.g. Oracle)
+        can override just this piece without duplicating the rest of the method.
+        """
+        return inspector.get_pk_constraint(table_name, schema_name)
+
     def _get_columns_with_constraints(
-        schema_name: str, table_name: str, inspector: Inspector
+        self, schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:  # noqa: UP006
-        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        pk_constraints = self._get_pk_constraint(schema_name, table_name, inspector)
         try:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
