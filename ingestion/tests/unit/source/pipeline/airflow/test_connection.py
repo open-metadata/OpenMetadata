@@ -106,7 +106,7 @@ def test_checks_borrow_the_connection_client():
 # ── REST path ────────────────────────────────────────────────────────────────
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe")
+@patch("metadata.core.connections.test_connection.network.tcp_probe")
 def test_rest_check_access_reads_the_version(_mock_probe):
     client = _rest_client()
     client.get_version.return_value = {"version": "2.9.0"}
@@ -117,7 +117,7 @@ def test_rest_check_access_reads_the_version(_mock_probe):
     assert evidence.summary == "authenticated"
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe")
+@patch("metadata.core.connections.test_connection.network.tcp_probe")
 def test_rest_check_access_failure_reports_a_check_error(_mock_probe):
     client = _rest_client()
     client.get_version.side_effect = RuntimeError("transport closed")
@@ -134,7 +134,10 @@ def test_rest_check_access_failure_reports_a_check_error(_mock_probe):
     assert failure.value.evidence.command == "read the Airflow REST API version"
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe", side_effect=NetworkUnreachableError("10.0.0.1:8080 is not reachable"))
+@patch(
+    "metadata.core.connections.test_connection.network.tcp_probe",
+    side_effect=NetworkUnreachableError("10.0.0.1:8080 is not reachable"),
+)
 def test_rest_gate_preflights_an_unreachable_host(_mock_probe):
     """An unreachable host fails fast at the TCP preflight instead of waiting out
     the REST client's connect-retry budget; get_version is never called."""
@@ -148,7 +151,7 @@ def test_rest_gate_preflights_an_unreachable_host(_mock_probe):
     assert AIRFLOW_ERRORS.classify(failure.value.cause).title == "Cannot reach the host"
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe")
+@patch("metadata.core.connections.test_connection.network.tcp_probe")
 def test_rest_gate_skips_preflight_for_mwaa(mock_probe):
     """MWAA reaches Airflow through the AWS SDK, not a socket to the host, so the
     preflight must not run for it."""
