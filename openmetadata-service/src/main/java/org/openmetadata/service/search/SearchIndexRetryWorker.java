@@ -639,7 +639,7 @@ public class SearchIndexRetryWorker implements Managed {
     searchRepository
         .getSearchClient()
         .createEntity(
-            indexMapping.getIndexName(searchRepository.getClusterAlias()),
+            searchRepository.getWriteIndexName(indexMapping),
             entity.getId().toString(),
             JsonUtils.pojoToJson(doc));
   }

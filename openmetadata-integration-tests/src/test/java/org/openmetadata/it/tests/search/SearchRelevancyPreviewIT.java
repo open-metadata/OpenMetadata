@@ -189,12 +189,14 @@ class SearchRelevancyPreviewIT {
 
   @Test
   void matchTypeExactRequiresTheFullKeyword(final TestNamespace ns) {
-    final String exactName = RelevancyFixtures.uniqueToken("ex");
+    final String namePrefix = RelevancyFixtures.uniqueToken("ex");
+    final String exactName = namePrefix + "a";
+    final String nearMatchName = namePrefix + "b";
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table exactTable =
         RelevancyFixtures.createTable(schema, exactName, "plaindescription", null);
-    RelevancyFixtures.createTable(schema, exactName + "_extra", "plaindescription", null);
-    awaitIndexed(exactName, 2);
+    RelevancyFixtures.createTable(schema, nearMatchName, "plaindescription", null);
+    awaitIndexed(namePrefix, 2);
 
     final SearchSettings base = currentSettings();
 
@@ -203,7 +205,7 @@ class SearchRelevancyPreviewIT {
         exact, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.EXACT);
     exact = SearchSettingsTestHelper.withRankingDisabled(exact, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, exact, 10))
-        .as("matchType=exact must match only the whole-keyword name, not the prefixed sibling")
+        .as("matchType=exact must match only the whole-keyword name, not the one-edit sibling")
         .containsExactly(exactTable.getId().toString());
 
     SearchSettings standard = SearchSettingsTestHelper.copyOf(base);
@@ -211,7 +213,7 @@ class SearchRelevancyPreviewIT {
         standard, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.STANDARD);
     standard = SearchSettingsTestHelper.withRankingDisabled(standard, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, standard, 10))
-        .as("matchType=standard must match both the exact and the prefixed name")
+        .as("matchType=standard must match both the exact and one-edit names")
         .hasSize(2);
   }
 

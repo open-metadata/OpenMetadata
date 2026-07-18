@@ -1213,6 +1213,7 @@ public class SearchRepository {
       SearchIndexRetryQueue.enqueue(
           entityId,
           entity.getFullyQualifiedName(),
+          entityType,
           SearchIndexRetryQueue.failureReason("createEntityIndex", ie));
       LOG.error(
           "Issue creating new search document for entity [{}] and entityType [{}]",
