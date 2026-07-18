@@ -59,6 +59,7 @@ from metadata.ingestion.api.delete import delete_entity_from_source
 from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import Source
 from metadata.ingestion.api.topology_runner import TopologyRunnerMixin
+from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.models.life_cycle import OMetaLifeCycleData
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.models.topology import (
@@ -68,9 +69,9 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.connections import test_connection_common
+from metadata.ingestion.source.connections import run_test_connection, test_connection_common
 from metadata.utils import fqn
-from metadata.utils.filters import filter_by_schema, filter_by_stored_procedure
+from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_stored_procedure
 from metadata.utils.logger import ingestion_logger
 from metadata.utils.owner_utils import get_owner_from_config
 from metadata.utils.tag_utils import get_tag_label
@@ -215,6 +216,10 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
 
     # When processing the database, the source will update the inspector if needed
     inspector: Inspector
+
+    # Set by sources that own their connection lifecycle; `None` keeps the
+    # legacy `connection_obj` test path for non-migrated sources.
+    _connection: Optional[BaseConnection] = None  # noqa: UP045
 
     topology = DatabaseServiceTopology()
     context = TopologyContextManager(topology)
@@ -572,6 +577,32 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
                 continue
             yield schema_fqn if return_fqn else schema_name
 
+    def _is_database_filtered(self, database_name: str) -> bool:
+        """Whether a database fails ``databaseFilterPattern``. Pure predicate — no
+        status side effects — so the totals hook and the walk can share it."""
+        database_fqn = fqn.build(
+            self.metadata,
+            entity_type=Database,
+            service_name=self.context.get().database_service,
+            database_name=database_name,
+        )
+        filter_name = database_fqn if self.source_config.useFqnForFiltering and database_fqn else database_name
+        return filter_by_database(self.source_config.databaseFilterPattern, filter_name)
+
+    def _is_schema_filtered(self, database_name: str, schema_name: str) -> bool:
+        """Whether a schema fails ``schemaFilterPattern``, matched the same way as the
+        walk (FQN or bare name per ``useFqnForFiltering``). Context-free: the FQN is
+        built from the explicit database name."""
+        schema_fqn = fqn.build(
+            self.metadata,
+            entity_type=DatabaseSchema,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
+            database_name=database_name,
+            schema_name=schema_name,
+        )
+        filter_name = schema_fqn if self.source_config.useFqnForFiltering and schema_fqn else schema_name
+        return filter_by_schema(self.source_config.schemaFilterPattern, filter_name)
+
     def is_stored_procedure_filtered(self, stored_procedure_name: str) -> bool:
         """
         Check if a stored procedure should be filtered based on the filter pattern.
@@ -579,7 +610,7 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         stored_procedure_fqn = fqn.build(
             self.metadata,
             entity_type=StoredProcedure,
-            service_name=self.context.get().database_service,
+            service_name=self.context.get().database_service,  # pyright: ignore[reportAttributeAccessIssue]
             database_name=self.context.get().database,
             schema_name=self.context.get().database_schema,
             procedure_name=stored_procedure_name,
@@ -867,4 +898,12 @@ class DatabaseServiceSource(TopologyRunnerMixin, Source, ABC):  # pylint: disabl
         """
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+
+    def close(self) -> None:
+        if self._connection is not None:
+            self._connection.close()
+            self._connection = None

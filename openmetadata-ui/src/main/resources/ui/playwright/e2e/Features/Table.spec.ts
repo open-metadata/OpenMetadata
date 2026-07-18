@@ -118,7 +118,7 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table filter with sorting should work', async ({
@@ -155,7 +155,28 @@ test.describe('Table pagination sorting search scenarios ', () => {
       .first()
       .waitFor({ state: 'detached' });
 
-    await expect(page.getByTestId('search-error-placeholder')).toBeVisible();
+    // Migration static data seeds test cases across every status (including
+    // Queued), so the status filter alone no longer yields an empty list.
+    // Combine it with a search term that matches nothing to deterministically
+    // land on the empty-state placeholder.
+    const noMatchSearch = `no-match-${uuid()}`;
+    const emptySearchResponse = page.waitForResponse(
+      (response) =>
+        response.url().includes('/api/v1/dataQuality/testCases/search/list') &&
+        response.url().includes(noMatchSearch)
+    );
+    await page.locator('[data-testid="searchbar-component"] input').click();
+    await page
+      .locator('[data-testid="searchbar-component"] input')
+      .fill(noMatchSearch);
+    await emptySearchResponse;
+    await page
+      .getByTestId('test-case-container')
+      .getByTestId('loader')
+      .first()
+      .waitFor({ state: 'detached' });
+
+    await expect(page.getByTestId('empty-placeholder')).toBeVisible();
   });
 
   test('Table page should show schema tab with count', async ({

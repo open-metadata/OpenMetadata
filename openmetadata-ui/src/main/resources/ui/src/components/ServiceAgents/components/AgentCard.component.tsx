@@ -11,11 +11,18 @@
  *  limitations under the License.
  */
 
-import { Box, Button, Card } from '@openmetadata/ui-core-components';
+import {
+  Box,
+  Button,
+  Card,
+  Tooltip,
+  TooltipTrigger,
+} from '@openmetadata/ui-core-components';
 import {
   AlertCircle,
   AlertTriangle,
   AlignLeft,
+  Calendar,
   Clock,
   Database01,
   Terminal,
@@ -23,6 +30,7 @@ import {
 import { FC } from 'react';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as PlayIcon } from '../../../assets/svg/agents/play.svg';
+import { useScheduleDescriptionTexts } from '../../../hooks/useScheduleDescriptionTexts';
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import {
   AGENT_ICON_CLASS,
@@ -44,6 +52,7 @@ import StatusPill from './shared/StatusPill.component';
 
 interface AgentCardProps {
   agent: Agent;
+  allowedActions?: string[];
   permissions?: AgentActionPermissions;
   onAction: (action: string, agent: Agent) => void;
   onLogs: (agent: Agent) => void;
@@ -53,6 +62,7 @@ interface AgentCardProps {
 
 const AgentCard: FC<AgentCardProps> = ({
   agent,
+  allowedActions,
   permissions = NO_AGENT_PERMISSIONS,
   onAction,
   onLogs,
@@ -60,6 +70,12 @@ const AgentCard: FC<AgentCardProps> = ({
   onRunDetails,
 }) => {
   const { t } = useTranslation();
+  const { descriptionFirstPart, descriptionSecondPart } =
+    useScheduleDescriptionTexts(agent.schedule);
+  const scheduleText = [descriptionFirstPart, descriptionSecondPart]
+    .filter(Boolean)
+    .join(', ');
+  const showSchedule = Boolean(agent.schedule) && Boolean(descriptionFirstPart);
   const Icon = AGENT_TYPE_ICON[agent.type] ?? AGENT_TYPE_ICON.Metadata;
   const isRunning = agent.status === 'running';
   const isFailed = agent.status === 'failed';
@@ -93,7 +109,9 @@ const AgentCard: FC<AgentCardProps> = ({
       )}
       <Box align="center" className="tw:gap-3.5">
         {/* identity */}
-        <Box align="center" className="tw:w-[250px] tw:shrink-0 tw:gap-3">
+        <Box
+          align="start"
+          className="tw:w-[30%] tw:min-w-[300px] tw:max-w-[520px] tw:shrink-0 tw:gap-3">
           <span
             className={`tw:grid tw:size-9.5 tw:shrink-0 tw:place-items-center tw:rounded-xl ${
               isRunning ? 'tw:bg-brand-primary' : 'tw:bg-tertiary'
@@ -101,16 +119,32 @@ const AgentCard: FC<AgentCardProps> = ({
             <Icon height={18} width={18} />
           </span>
           <div className="tw:min-w-0">
-            <div
-              className="tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight"
-              data-testid="pipeline-name">
-              {agent.name}
-            </div>
+            <Tooltip placement="top" title={agent.name}>
+              <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
+                <span
+                  className="tw:block tw:truncate tw:text-sm tw:font-semibold tw:text-primary tw:leading-tight"
+                  data-testid="pipeline-name">
+                  {agent.name}
+                </span>
+              </TooltipTrigger>
+            </Tooltip>
             <div
               className="tw:mt-px tw:text-xs tw:text-quaternary"
               data-testid="pipeline-type">
               {t(getAgentTypeLabelKey(agent.type))}
             </div>
+            {showSchedule && (
+              <Tooltip placement="top" title={scheduleText}>
+                <TooltipTrigger className="tw:block tw:!w-full tw:min-w-0 tw:text-left">
+                  <span
+                    className="tw:mt-px tw:flex tw:min-w-0 tw:items-center tw:gap-1 tw:text-xs tw:font-semibold tw:text-secondary"
+                    data-testid="agent-schedule">
+                    <Calendar className="tw:shrink-0" size={12} />
+                    <span className="tw:truncate">{scheduleText}</span>
+                  </span>
+                </TooltipTrigger>
+              </Tooltip>
+            )}
           </div>
         </Box>
 
@@ -160,25 +194,6 @@ const AgentCard: FC<AgentCardProps> = ({
                 value={`${t('label.failed-at')} ${agent.failStep}`}
               />
             )}
-            <span className="tw:flex-1" />
-            {agent.errors > 0 && (
-              <Metric
-                dataTestId="agent-errors-metric"
-                icon={<AlertCircle size={15} />}
-                label={t('label.error-plural-lowercase')}
-                tone="error"
-                value={agent.errors}
-              />
-            )}
-            {agent.warnings > 0 && (
-              <Metric
-                dataTestId="agent-warnings-metric"
-                icon={<AlertTriangle size={15} />}
-                label={t('label.warning-plural-lowercase')}
-                tone="warn"
-                value={agent.warnings}
-              />
-            )}
           </Box>
           {isRunning && (
             <div data-testid="agent-progress-bar">
@@ -218,6 +233,31 @@ const AgentCard: FC<AgentCardProps> = ({
           )}
         </div>
 
+        {/* errors / warnings — kept out of the status rows so the block stays
+            vertically centered in the card alongside the actions */}
+        {(agent.errors > 0 || agent.warnings > 0) && (
+          <Box align="center" className="tw:shrink-0 tw:gap-3.5">
+            {agent.errors > 0 && (
+              <Metric
+                dataTestId="agent-errors-metric"
+                icon={<AlertCircle size={15} />}
+                label={t('label.error-plural-lowercase')}
+                tone="error"
+                value={agent.errors}
+              />
+            )}
+            {agent.warnings > 0 && (
+              <Metric
+                dataTestId="agent-warnings-metric"
+                icon={<AlertTriangle size={15} />}
+                label={t('label.warning-plural-lowercase')}
+                tone="warn"
+                value={agent.warnings}
+              />
+            )}
+          </Box>
+        )}
+
         {/* actions */}
         <Box align="center" className="tw:shrink-0 tw:gap-2">
           {isFailed ? (
@@ -253,6 +293,7 @@ const AgentCard: FC<AgentCardProps> = ({
             </Button>
           )}
           <AgentOverflowMenu
+            allowedActions={allowedActions}
             permissions={permissions}
             status={agent.status}
             onAction={(action) => onAction(action, agent)}

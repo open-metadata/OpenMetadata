@@ -32,6 +32,12 @@ jest.mock('./shared/Metric.component', () =>
   jest.fn().mockImplementation(() => <p>Metric</p>)
 );
 
+const mockScheduleTexts = jest.fn();
+
+jest.mock('../../../hooks/useScheduleDescriptionTexts', () => ({
+  useScheduleDescriptionTexts: () => mockScheduleTexts(),
+}));
+
 const mockOnAction = jest.fn();
 const mockOnLogs = jest.fn();
 const mockOnRun = jest.fn();
@@ -75,6 +81,28 @@ const renderCard = (agent: Agent, permissions?: AgentActionPermissions) =>
 describe('AgentCard', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockScheduleTexts.mockReturnValue({
+      descriptionFirstPart: '',
+      descriptionSecondPart: '',
+    });
+  });
+
+  it('should show both schedule parts comma-separated when scheduled', () => {
+    mockScheduleTexts.mockReturnValue({
+      descriptionFirstPart: 'At 02:00 AM',
+      descriptionSecondPart: 'Every day',
+    });
+    renderCard({ ...baseAgent, schedule: '0 2 * * *' });
+
+    expect(screen.getByTestId('agent-schedule')).toHaveTextContent(
+      'At 02:00 AM, Every day'
+    );
+  });
+
+  it('should hide the schedule line for an unscheduled agent', () => {
+    renderCard({ ...baseAgent, schedule: undefined });
+
+    expect(screen.queryByTestId('agent-schedule')).not.toBeInTheDocument();
   });
 
   it('should render one dot per recent run', () => {

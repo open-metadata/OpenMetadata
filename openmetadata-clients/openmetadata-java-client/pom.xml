@@ -89,6 +89,16 @@
             <artifactId>msal4j</artifactId>
             <version>1.17.2</version>
         </dependency>
+        <!-- Force oauth2-oidc-sdk 11.38.1 (latest 11.x) which natively targets
+             nimbus-jose-jwt 10.9. msal4j 1.17.2 pins oauth2-oidc-sdk 11.18 which
+             transitively pulls the vulnerable nimbus 9.40; bumping the sdk keeps
+             both artifacts on API-compatible versions instead of forcing a
+             cross-major nimbus swap under an sdk built against 9.x. -->
+        <dependency>
+            <groupId>com.nimbusds</groupId>
+            <artifactId>oauth2-oidc-sdk</artifactId>
+            <version>11.38.1</version>
+        </dependency>
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>

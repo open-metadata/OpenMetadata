@@ -13,7 +13,7 @@ Deltalake source methods.
 """
 
 import traceback
-from typing import Any, Iterable, Optional, Tuple  # noqa: UP035
+from typing import TYPE_CHECKING, Any, Iterable, Optional, Tuple, cast  # noqa: UP035
 
 from metadata.generated.schema.api.data.createDatabase import CreateDatabaseRequest
 from metadata.generated.schema.api.data.createDatabaseSchema import (
@@ -43,12 +43,16 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection
+from metadata.ingestion.source.connections import create_connection
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.utils import fqn
 from metadata.utils.filters import filter_by_schema, filter_by_table
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
+
 
 logger = ingestion_logger()
 
@@ -77,11 +81,15 @@ class DeltalakeSource(DatabaseServiceSource):
         self.metadata = metadata
 
         self.service_connection = self.config.serviceConnection.root.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = cast("BaseConnection", self._connection).client
         self.client = self.connection.client
 
-        self.connection_obj = self.connection
-        self.test_connection()
+        try:
+            self.test_connection()
+        except Exception:
+            self.close()
+            raise
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -262,6 +270,3 @@ class DeltalakeSource(DatabaseServiceSource):
 
     def get_stored_procedure_queries(self) -> Iterable[QueryByProcedure]:
         """Not Implemented"""
-
-    def close(self):
-        """No client to close"""

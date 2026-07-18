@@ -60,6 +60,8 @@ const TestDefinitionList = () => {
     handleDeleteCancel,
     handleFormSuccess,
     handleFormCancel,
+    hasActiveFilters,
+    clearAllFilters,
   } = useTestDefinitionListPage();
 
   const { quickFilters } = useQuickFiltersWithComponent({
@@ -139,12 +141,14 @@ const TestDefinitionList = () => {
             </div>
 
             <TestDefinitionTable
+              hasActiveFilters={hasActiveFilters}
               isLoading={isLoading}
               pagingData={pagingData}
               permissionLoading={permissionLoading}
               showPagination={showPagination}
               testDefinitionPermissions={testDefinitionPermissions}
               testDefinitions={testDefinitions}
+              onClearFilters={clearAllFilters}
               onDelete={handleDeleteClick}
               onEdit={handleEdit}
               onEnableToggle={handleEnableToggle}
@@ -155,6 +159,7 @@ const TestDefinitionList = () => {
 
       {isFormVisible && (
         <TestDefinitionForm
+          open
           initialValues={selectedDefinition}
           onCancel={handleFormCancel}
           onSuccess={handleFormSuccess}

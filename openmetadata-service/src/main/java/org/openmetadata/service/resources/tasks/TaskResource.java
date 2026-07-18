@@ -616,12 +616,19 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
           Include include) {
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     addCurrentUserVisibleFilters(filter, uriInfo, securityContext);
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -667,6 +674,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -685,6 +698,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("ownedByIds", String.join(",", ownerIds));
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }
@@ -728,6 +742,12 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
           String before,
       @Parameter(description = "Returns list of tasks after this cursor") @QueryParam("after")
           String after,
+      @Parameter(description = "Filter by tasks created on or after this timestamp (epoch millis)")
+          @QueryParam("startTs")
+          Long startTs,
+      @Parameter(description = "Filter by tasks created on or before this timestamp (epoch millis)")
+          @QueryParam("endTs")
+          Long endTs,
       @Parameter(description = "Include deleted tasks")
           @QueryParam("include")
           @DefaultValue("non-deleted")
@@ -737,6 +757,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
 
     ListFilter filter = buildTaskListFilter(include, status, statusGroup, domain);
     filter.addQueryParam("createdById", user.getId().toString());
+    applyTaskTimeRange(filter, startTs, endTs);
 
     return listInternal(uriInfo, securityContext, fieldsParam, filter, limitParam, before, after);
   }

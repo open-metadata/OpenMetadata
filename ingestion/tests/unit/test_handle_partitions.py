@@ -164,7 +164,7 @@ class BigqueryUnitTest(TestCase):
     @patch("metadata.ingestion.connections.builders.create_generic_db_connection")
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource.set_project_id")
     @patch("metadata.ingestion.source.database.bigquery.metadata.BigquerySource._test_connection")
-    @patch("metadata.ingestion.source.database.common_db_source.get_connection")
+    @patch("metadata.ingestion.source.database.common_db_source.create_connection")
     def __init__(
         self,
         methodName,  # noqa: N803
