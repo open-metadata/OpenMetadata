@@ -130,6 +130,10 @@ public class RdfPropertyMapper {
     this.contextCache = Map.copyOf(Objects.requireNonNull(contextCache, "contextCache"));
   }
 
+  public static boolean isIgnoredEntityField(String fieldName) {
+    return IGNORED_PROPERTIES.contains(fieldName);
+  }
+
   /**
    * Convert all entity properties to RDF triples based on context mappings
    */

@@ -132,9 +132,10 @@ public final class RdfGraphService {
     return switch (direction) {
       case UPSTREAM -> """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> om:upstream+ ?entity .
+            <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
             ?entity om:name ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
@@ -144,9 +145,10 @@ public final class RdfGraphService {
           .formatted(entityUri);
       case DOWNSTREAM -> """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
           SELECT DISTINCT ?entity ?name ?type ?distance
           WHERE {
-            <%s> om:downstream+ ?entity .
+            <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
             ?entity om:name ?name .
             ?entity a ?type .
             BIND(1 as ?distance)
@@ -156,13 +158,14 @@ public final class RdfGraphService {
           .formatted(entityUri);
       case BOTH -> """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
           SELECT DISTINCT ?entity ?name ?type ?relationship
           WHERE {
             {
-              <%s> om:upstream+ ?entity .
+              <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?entity .
               BIND("upstream" as ?relationship)
             } UNION {
-              <%s> om:downstream+ ?entity .
+              <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?entity .
               BIND("downstream" as ?relationship)
             }
             ?entity om:name ?name .

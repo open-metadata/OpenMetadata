@@ -52,17 +52,17 @@ def test_airflow_connection_is_base_connection():
     assert issubclass(AirflowConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+def test_get_client_builds_engine_via_dispatch():
+    with patch(f"{CONNECTION_MODULE}._get_connection") as mock_get:
         conn = AirflowConnection(MagicMock())
         client = conn.client
 
     assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    mock_get.assert_called_once_with(conn.service_connection.connection)
 
 
 def test_client_is_built_once_and_cached():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+    with patch(f"{CONNECTION_MODULE}._get_connection") as mock_get:
         conn = AirflowConnection(MagicMock())
         first = conn.client
         second = conn.client
@@ -73,7 +73,7 @@ def test_client_is_built_once_and_cached():
 
 def test_engine_client_registers_dispose():
     engine = MagicMock(spec=Engine)
-    with patch(f"{CONNECTION_MODULE}.get_connection", return_value=engine):
+    with patch(f"{CONNECTION_MODULE}._get_connection", return_value=engine):
         conn = AirflowConnection(MagicMock())
         _ = conn.client
         conn.close()
@@ -82,7 +82,7 @@ def test_engine_client_registers_dispose():
 
 
 def test_checks_expose_every_step():
-    with patch(f"{CONNECTION_MODULE}.get_connection"):
+    with patch(f"{CONNECTION_MODULE}._get_connection"):
         resolved = collect_checks(AirflowConnection(MagicMock()).checks())
 
     assert set(resolved) == {
@@ -95,7 +95,7 @@ def test_checks_expose_every_step():
 def test_checks_borrow_the_connection_client():
     """The provider borrows the client BaseConnection owns, rather than building a
     second one behind its back."""
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
+    with patch(f"{CONNECTION_MODULE}._get_connection") as mock_get:
         conn = AirflowConnection(MagicMock())
         provider = conn.checks()
 
@@ -106,7 +106,7 @@ def test_checks_borrow_the_connection_client():
 # ── REST path ────────────────────────────────────────────────────────────────
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe")
+@patch("metadata.core.connections.test_connection.network.tcp_probe")
 def test_rest_check_access_reads_the_version(_mock_probe):
     client = _rest_client()
     client.get_version.return_value = {"version": "2.9.0"}
@@ -117,7 +117,7 @@ def test_rest_check_access_reads_the_version(_mock_probe):
     assert evidence.summary == "authenticated"
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe")
+@patch("metadata.core.connections.test_connection.network.tcp_probe")
 def test_rest_check_access_failure_reports_a_check_error(_mock_probe):
     client = _rest_client()
     client.get_version.side_effect = RuntimeError("transport closed")
@@ -134,7 +134,10 @@ def test_rest_check_access_failure_reports_a_check_error(_mock_probe):
     assert failure.value.evidence.command == "read the Airflow REST API version"
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe", side_effect=NetworkUnreachableError("10.0.0.1:8080 is not reachable"))
+@patch(
+    "metadata.core.connections.test_connection.network.tcp_probe",
+    side_effect=NetworkUnreachableError("10.0.0.1:8080 is not reachable"),
+)
 def test_rest_gate_preflights_an_unreachable_host(_mock_probe):
     """An unreachable host fails fast at the TCP preflight instead of waiting out
     the REST client's connect-retry budget; get_version is never called."""
@@ -148,7 +151,7 @@ def test_rest_gate_preflights_an_unreachable_host(_mock_probe):
     assert AIRFLOW_ERRORS.classify(failure.value.cause).title == "Cannot reach the host"
 
 
-@patch(f"{CONNECTION_MODULE}.tcp_probe")
+@patch("metadata.core.connections.test_connection.network.tcp_probe")
 def test_rest_gate_skips_preflight_for_mwaa(mock_probe):
     """MWAA reaches Airflow through the AWS SDK, not a socket to the host, so the
     preflight must not run for it."""

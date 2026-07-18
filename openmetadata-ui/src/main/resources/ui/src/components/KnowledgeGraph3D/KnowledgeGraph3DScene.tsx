@@ -168,6 +168,7 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const settledFitPendingRef = useRef(true);
   const layoutExpandedRef = useRef(false);
   const forcesConfiguredRef = useRef(false);
+  const simulationReadyRef = useRef(false);
   const cameraGuardTimerRef = useRef(0);
   const hoveredNodeRef = useRef<SceneNode | null>(null);
   const pendingHoveredNodeRef = useRef<SceneNode | null>(null);
@@ -389,6 +390,9 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     settledFitPendingRef.current = true;
     layoutExpandedRef.current = false;
     forcesConfiguredRef.current = false;
+    if (simulationReadyRef.current) {
+      fgRef.current?.d3ReheatSimulation();
+    }
   }, [data]);
 
   const configureForces = useCallback((): boolean => {
@@ -397,12 +401,12 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     const link = graph?.d3Force('link');
     charge?.strength(CHARGE_STRENGTH);
     link?.distance(LINK_DISTANCE).strength(LINK_STRENGTH);
-    graph?.d3ReheatSimulation();
 
     return Boolean(graph);
   }, []);
 
   const handleEngineTick = useCallback(() => {
+    simulationReadyRef.current = true;
     if (!forcesConfiguredRef.current) {
       forcesConfiguredRef.current = configureForces();
     }

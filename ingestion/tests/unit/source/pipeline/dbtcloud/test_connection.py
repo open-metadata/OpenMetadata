@@ -101,7 +101,7 @@ def test_get_jobs_caveats_an_account_with_no_jobs(checks, client):
 
     evidence = checks.get_jobs()
 
-    assert evidence.summary == "0 jobs enumerated"
+    assert evidence.summary == "no jobs enumerated"
     assert evidence.caveat is not None
     assert evidence.caveat.title == "No jobs visible"
 

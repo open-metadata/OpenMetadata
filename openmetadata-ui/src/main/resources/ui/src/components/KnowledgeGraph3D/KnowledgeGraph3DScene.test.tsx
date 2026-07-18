@@ -179,7 +179,7 @@ describe('KnowledgeGraph3DScene', () => {
     expect(mockChargeStrength).toHaveBeenCalled();
     expect(mockLinkDistance).toHaveBeenCalled();
     expect(mockLinkStrength).toHaveBeenCalled();
-    expect(mockGraphMethods.d3ReheatSimulation).toHaveBeenCalledTimes(1);
+    expect(mockGraphMethods.d3ReheatSimulation).not.toHaveBeenCalled();
     expect(mockGraphMethods.cameraPosition).toHaveBeenCalledWith(
       { x: 0, y: 0, z: 160 },
       { x: 0, y: 0, z: 0 },
@@ -188,5 +188,29 @@ describe('KnowledgeGraph3DScene', () => {
     expect(mockGraphMethods.zoomToFit).toHaveBeenCalledWith(700, 60);
 
     unmount();
+  });
+
+  it('reheats the initialized simulation when graph data changes', () => {
+    const initialData = graphData();
+    const { rerender } = render(
+      <KnowledgeGraph3DScene {...sceneProps(initialData)} />
+    );
+
+    act(() => mockForceGraphProps.onEngineTick?.());
+    const updatedData = graphData();
+    updatedData.nodes.push({
+      id: 'table-2',
+      levels: ['asset'],
+      name: 'Orders',
+      type: 'table',
+    });
+    rerender(
+      <KnowledgeGraph3DScene
+        {...sceneProps(updatedData)}
+        data={updatedData}
+      />
+    );
+
+    expect(mockGraphMethods.d3ReheatSimulation).toHaveBeenCalledTimes(1);
   });
 });

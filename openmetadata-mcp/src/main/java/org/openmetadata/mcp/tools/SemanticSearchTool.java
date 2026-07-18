@@ -14,7 +14,7 @@ import org.openmetadata.mcp.util.VectorPagingContract;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.limits.Limits;
-import org.openmetadata.service.search.vector.OpenSearchVectorService;
+import org.openmetadata.service.search.vector.VectorIndexService;
 import org.openmetadata.service.search.vector.utils.DTOs.VectorSearchResponse;
 import org.openmetadata.service.security.Authorizer;
 import org.openmetadata.service.security.auth.CatalogSecurityContext;
@@ -44,7 +44,7 @@ public class SemanticSearchTool implements McpTool<Map<String, Object>> {
           "Semantic search is not enabled. Configure vector embeddings in the OpenMetadata server settings.");
     }
 
-    OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
+    VectorIndexService vectorService = Entity.getSearchRepository().getVectorIndexService();
     if (vectorService == null) {
       return errorResponse("Vector search service is not initialized");
     }
