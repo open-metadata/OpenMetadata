@@ -70,11 +70,26 @@ describe('useOntologyGraphEdit', () => {
     act(() => result.current.selectTarget('b'));
 
     expect(result.current.pendingRelation).toEqual({
+      from: { x: 0, y: 0 },
       fromId: 'a',
+      to: { x: 100, y: 0 },
       toId: 'b',
       at: { x: 50, y: 0 },
     });
     expect(result.current.armedFromId).toBeNull();
+  });
+
+  it('uses the current rendered target point supplied by the graph', () => {
+    const { result } = setup();
+
+    act(() => result.current.startArm('a', { x: 20, y: 30 }));
+    act(() => result.current.selectTarget('b', { x: 220, y: 130 }));
+
+    expect(result.current.pendingRelation).toMatchObject({
+      at: { x: 120, y: 80 },
+      from: { x: 20, y: 30 },
+      to: { x: 220, y: 130 },
+    });
   });
 
   it('does not create a pending relation when the source is selected', () => {

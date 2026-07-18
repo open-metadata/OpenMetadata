@@ -19,7 +19,9 @@ export interface Point {
 }
 
 export interface PendingRelation {
+  from: Point;
   fromId: string;
+  to: Point;
   toId: string;
   at: Point;
 }
@@ -72,6 +74,7 @@ export const useOntologyGraphEdit = ({
   onCreateRelation,
 }: UseOntologyGraphEditParams) => {
   const [armedFromId, setArmedFromId] = useState<string | null>(null);
+  const [armedAt, setArmedAt] = useState<Point | null>(null);
   const [cursor, setCursor] = useState<Point | null>(null);
   const [candidateTargetId, setCandidateTargetId] = useState<string | null>(
     null
@@ -86,6 +89,7 @@ export const useOntologyGraphEdit = ({
 
   const cancel = useCallback(() => {
     setArmedFromId(null);
+    setArmedAt(null);
     setCursor(null);
     setCandidateTargetId(null);
   }, []);
@@ -95,6 +99,7 @@ export const useOntologyGraphEdit = ({
       if (isEditMode) {
         setPendingRelation(null);
         setArmedFromId(fromId);
+        setArmedAt(at);
         setCursor(at);
         setCandidateTargetId(null);
       }
@@ -103,17 +108,19 @@ export const useOntologyGraphEdit = ({
   );
 
   const selectTarget = useCallback(
-    (toId: string) => {
+    (toId: string, at?: Point) => {
       if (armedFromId === null || toId === armedFromId) {
         return;
       }
-      const from = nodePositionsRef.current[armedFromId];
-      const to = nodePositionsRef.current[toId];
+      const from = armedAt ?? nodePositionsRef.current[armedFromId];
+      const to = at ?? nodePositionsRef.current[toId];
       if (!from || !to) {
         return;
       }
       setPendingRelation({
+        from,
         fromId: armedFromId,
+        to,
         toId,
         at: {
           x: (from.x + to.x) / 2,
@@ -122,7 +129,7 @@ export const useOntologyGraphEdit = ({
       });
       cancel();
     },
-    [armedFromId, cancel]
+    [armedAt, armedFromId, cancel]
   );
 
   const setCandidateTarget = useCallback(
@@ -189,6 +196,7 @@ export const useOntologyGraphEdit = ({
 
   return {
     armedFromId,
+    armedAt,
     cursor,
     candidateTargetId,
     pendingRelation,

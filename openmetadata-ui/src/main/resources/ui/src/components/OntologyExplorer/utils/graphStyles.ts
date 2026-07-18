@@ -217,6 +217,9 @@ export function getCanvasColor(cssVar: string, fallbackHex: string): string {
   return fallbackHex;
 }
 
+export const STUDIO_EDIT_PORT_KEY = 'ontology-edit';
+export const STUDIO_EDIT_PORT_CLASS_NAME = `port-${STUDIO_EDIT_PORT_KEY}`;
+
 class StudioTermNode extends RectNode {
   override render(
     attributes: Required<RectStyleProps>,
@@ -263,6 +266,25 @@ class StudioTermNode extends RectNode {
         textAlign: 'left',
         textBaseline: 'middle',
       },
+      container
+    );
+    this.upsert(
+      'studio-edit-port-plus',
+      GText,
+      attrs.studioEditMode === true
+        ? {
+            x: bounds.max[0],
+            y: centerY,
+            text: '+',
+            fill: '#FFFFFF',
+            fontFamily: 'Inter',
+            fontSize: 14,
+            fontWeight: 500,
+            pointerEvents: 'none',
+            textAlign: 'center',
+            textBaseline: 'middle',
+          }
+        : false,
       container
     );
   }

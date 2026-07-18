@@ -55,6 +55,7 @@ import {
   formatRelationLabel,
   getCanvasColor,
   getEdgeRelationLabelStyle,
+  STUDIO_EDIT_PORT_KEY,
 } from '../utils/graphStyles';
 import {
   computeGlossaryGroupPositions,
@@ -238,6 +239,7 @@ export function useGraphDataBuilder({
   layoutType,
   hierarchyCombos = [],
   graphSearchHighlight = null,
+  isEditMode = false,
   relationTypes,
   studioMode = false,
 }: BuildGraphDataProps) {
@@ -691,10 +693,28 @@ export function useGraphDataBuilder({
           ),
           ...(studioMode && {
             label: false,
+            port: isEditMode,
+            ports: isEditMode
+              ? [
+                  {
+                    key: STUDIO_EDIT_PORT_KEY,
+                    placement: 'right',
+                    r: 9,
+                    cursor: 'pointer',
+                    fill: '#1570EF',
+                    lineWidth: 1,
+                    shadowBlur: 5,
+                    shadowColor: 'rgba(21, 112, 239, 0.4)',
+                    shadowOffsetY: 2,
+                    stroke: '#FFFFFF',
+                  },
+                ]
+              : [],
             stroke:
               node.type === 'glossaryTermIsolated' ? '#FEDF89' : '#E9EAEB',
             studioLabelText: label,
             studioAccentColor: studioAccentColor ?? STUDIO_DEFAULT_ACCENT,
+            studioEditMode: isEditMode,
           }),
         },
         ...(!studioMode &&

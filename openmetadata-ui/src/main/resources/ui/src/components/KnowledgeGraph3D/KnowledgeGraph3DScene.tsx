@@ -47,9 +47,11 @@ import {
 } from './KnowledgeGraph3D.constants';
 import { KnowledgeGraph3DSceneProps } from './KnowledgeGraph3D.interface';
 import {
+  canFitGraph,
   computeHighlight,
   computeLinkHighlight,
   expandGraphLayout,
+  getCameraRecoveryPosition,
   getVisibleLabelIds,
   HighlightSet,
 } from './KnowledgeGraph3D.utils';
@@ -65,8 +67,8 @@ type SceneNode = NodeObject<GraphNode3D>;
 type SceneLink = LinkObject<GraphNode3D, GraphLink3D>;
 type SceneGraphMethods = ForceGraphMethods<SceneNode, SceneLink>;
 
-const FRAME_DELAY_MS = 600;
 const DIM_LINK_COLOR = hexRgba('#7A8194', 0.07);
+const GRAPH_ORIGIN = { x: 0, y: 0, z: 0 };
 
 const sceneNodeId = (node: SceneNode | null): string | null =>
   node?.id ? String(node.id) : null;
@@ -162,8 +164,10 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   const containerRef = useRef<HTMLDivElement>(null);
   const didMountRef = useRef(false);
   const refitPendingRef = useRef(false);
+  const fitPendingRef = useRef(true);
   const settledFitPendingRef = useRef(true);
   const layoutExpandedRef = useRef(false);
+  const forcesConfiguredRef = useRef(false);
   const cameraGuardTimerRef = useRef(0);
   const hoveredNodeRef = useRef<SceneNode | null>(null);
   const pendingHoveredNodeRef = useRef<SceneNode | null>(null);
@@ -193,29 +197,41 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
     [data, focusNodeId, selectedNodeId]
   );
 
-  const resetView = useCallback(() => {
-    const fg = fgRef.current;
-    if (!fg) {
-      return;
+  const guardCamera = useCallback((transitionDuration = 0): void => {
+    const graph = fgRef.current;
+    const recovery = graph
+      ? getCameraRecoveryPosition(graph.camera().position, MIN_CAMERA_DISTANCE)
+      : null;
+    if (graph && recovery) {
+      graph.cameraPosition(recovery, GRAPH_ORIGIN, transitionDuration);
     }
-    fg.zoomToFit(ZOOM_TO_FIT_DURATION_MS, ZOOM_TO_FIT_PADDING);
+  }, []);
+
+  const scheduleCameraGuard = useCallback((): void => {
     window.clearTimeout(cameraGuardTimerRef.current);
     cameraGuardTimerRef.current = window.setTimeout(() => {
-      const { x, y, z } = fg.camera().position;
-      const distance = Math.hypot(x, y, z);
-      if (distance < MIN_CAMERA_DISTANCE) {
-        const position =
-          distance === 0
-            ? { x: 0, y: 0, z: MIN_CAMERA_DISTANCE }
-            : {
-                x: x * (MIN_CAMERA_DISTANCE / distance),
-                y: y * (MIN_CAMERA_DISTANCE / distance),
-                z: z * (MIN_CAMERA_DISTANCE / distance),
-              };
-        fg.cameraPosition(position, undefined, 300);
-      }
+      guardCamera(300);
     }, ZOOM_TO_FIT_DURATION_MS + 60);
-  }, []);
+  }, [guardCamera]);
+
+  const fitGraph = useCallback((): boolean => {
+    const graph = fgRef.current;
+    const isReady = Boolean(
+      graph &&
+        canFitGraph(data.nodes, size.width, size.height, ZOOM_TO_FIT_PADDING)
+    );
+    if (graph && isReady) {
+      guardCamera();
+      graph.zoomToFit(ZOOM_TO_FIT_DURATION_MS, ZOOM_TO_FIT_PADDING);
+      scheduleCameraGuard();
+    }
+
+    return isReady;
+  }, [data.nodes, guardCamera, scheduleCameraGuard, size.height, size.width]);
+
+  const resetView = useCallback(() => {
+    fitPendingRef.current = !fitGraph();
+  }, [fitGraph]);
 
   const exportImage = useCallback(async (): Promise<string | null> => {
     let result: string | null = null;
@@ -369,18 +385,31 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
   }, [size.width, size.height, resetView]);
 
   useEffect(() => {
-    const graph = fgRef.current;
+    fitPendingRef.current = true;
     settledFitPendingRef.current = true;
     layoutExpandedRef.current = false;
+    forcesConfiguredRef.current = false;
+  }, [data]);
+
+  const configureForces = useCallback((): boolean => {
+    const graph = fgRef.current;
     const charge = graph?.d3Force('charge');
     const link = graph?.d3Force('link');
     charge?.strength(CHARGE_STRENGTH);
     link?.distance(LINK_DISTANCE).strength(LINK_STRENGTH);
     graph?.d3ReheatSimulation();
-    const frame = setTimeout(resetView, FRAME_DELAY_MS);
 
-    return () => clearTimeout(frame);
-  }, [data, resetView]);
+    return Boolean(graph);
+  }, []);
+
+  const handleEngineTick = useCallback(() => {
+    if (!forcesConfiguredRef.current) {
+      forcesConfiguredRef.current = configureForces();
+    }
+    if (fitPendingRef.current && fitGraph()) {
+      fitPendingRef.current = false;
+    }
+  }, [configureForces, fitGraph]);
 
   const handleEngineStop = useCallback(() => {
     if (settledFitPendingRef.current) {
@@ -390,9 +419,9 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
         expandGraphLayout(data.nodes, size.width, size.height);
         fgRef.current?.refresh();
       }
-      resetView();
+      fitPendingRef.current = !fitGraph();
     }
-  }, [data.nodes, resetView, size.height, size.width]);
+  }, [data.nodes, fitGraph, size.height, size.width]);
 
   useEffect(() => {
     let frame = 0;
@@ -441,49 +470,53 @@ const KnowledgeGraph3DScene: FC<KnowledgeGraph3DSceneProps> = ({
       linkParticlesFor(link as GraphLink3D, highlight, reducedMotion),
     [highlight, reducedMotion]
   );
+  const hasMeasuredViewport = size.width > 0 && size.height > 0;
 
   return (
     <div className="tw:absolute tw:inset-0" ref={containerRef}>
-      <ForceGraph3D
-        backgroundColor="rgba(0,0,0,0)"
-        cooldownTicks={SIMULATION_COOLDOWN_TICKS}
-        cooldownTime={SIMULATION_COOLDOWN_TIME_MS}
-        graphData={data}
-        height={size.height}
-        linkColor={linkColor}
-        linkCurvature={(link: SceneLink) =>
-          (link as GraphLink3D).kind === 'ontology' ? 0.2 : 0
-        }
-        linkDirectionalArrowLength={3.5}
-        linkDirectionalArrowRelPos={1}
-        linkDirectionalParticleColor={() => ONTOLOGY_PARTICLE_COLOR}
-        linkDirectionalParticleWidth={1.6}
-        linkDirectionalParticles={linkParticles}
-        linkLabel={(link: SceneLink) => getLinkTooltip(link as GraphLink3D)}
-        linkOpacity={1}
-        linkWidth={linkWidth}
-        nodeLabel={(node: SceneNode) => getNodeTooltip(node as GraphNode3D)}
-        nodeOpacity={0.95}
-        nodeRelSize={4}
-        nodeThreeObject={nodeThreeObject}
-        nodeThreeObjectExtend={false}
-        nodeVal={(node: SceneNode) =>
-          Math.cbrt(sizeFor((node as GraphNode3D).type)) * 2
-        }
-        ref={fgRef}
-        rendererConfig={{
-          alpha: true,
-          antialias: true,
-          preserveDrawingBuffer: true,
-        }}
-        showNavInfo={false}
-        width={size.width}
-        onBackgroundClick={() => onSelectNode(null)}
-        onEngineStop={handleEngineStop}
-        onLinkClick={(link: SceneLink) => onSelectLink(link as GraphLink3D)}
-        onNodeClick={(node: SceneNode) => onSelectNode(node as GraphNode3D)}
-        onNodeHover={handleNodeHover}
-      />
+      {hasMeasuredViewport && (
+        <ForceGraph3D
+          backgroundColor="rgba(0,0,0,0)"
+          cooldownTicks={SIMULATION_COOLDOWN_TICKS}
+          cooldownTime={SIMULATION_COOLDOWN_TIME_MS}
+          graphData={data}
+          height={size.height}
+          linkColor={linkColor}
+          linkCurvature={(link: SceneLink) =>
+            (link as GraphLink3D).kind === 'ontology' ? 0.2 : 0
+          }
+          linkDirectionalArrowLength={3.5}
+          linkDirectionalArrowRelPos={1}
+          linkDirectionalParticleColor={() => ONTOLOGY_PARTICLE_COLOR}
+          linkDirectionalParticleWidth={1.6}
+          linkDirectionalParticles={linkParticles}
+          linkLabel={(link: SceneLink) => getLinkTooltip(link as GraphLink3D)}
+          linkOpacity={1}
+          linkWidth={linkWidth}
+          nodeLabel={(node: SceneNode) => getNodeTooltip(node as GraphNode3D)}
+          nodeOpacity={0.95}
+          nodeRelSize={4}
+          nodeThreeObject={nodeThreeObject}
+          nodeThreeObjectExtend={false}
+          nodeVal={(node: SceneNode) =>
+            Math.cbrt(sizeFor((node as GraphNode3D).type)) * 2
+          }
+          ref={fgRef}
+          rendererConfig={{
+            alpha: true,
+            antialias: true,
+            preserveDrawingBuffer: true,
+          }}
+          showNavInfo={false}
+          width={size.width}
+          onBackgroundClick={() => onSelectNode(null)}
+          onEngineStop={handleEngineStop}
+          onEngineTick={handleEngineTick}
+          onLinkClick={(link: SceneLink) => onSelectLink(link as GraphLink3D)}
+          onNodeClick={(node: SceneNode) => onSelectNode(node as GraphNode3D)}
+          onNodeHover={handleNodeHover}
+        />
+      )}
     </div>
   );
 };

@@ -136,9 +136,9 @@ export interface OntologyGraphProps {
   hierarchyCombos?: HierarchyComboInfo[];
   focusNodeId?: string | null;
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  isEditMode?: boolean;
   relationTypes?: GlossaryTermRelationType[];
   studioMode?: boolean;
-  isEditMode?: boolean;
   onCreateRelation?: (
     fromId: string,
     toId: string,
@@ -251,6 +251,7 @@ export interface BuildGraphDataProps {
   layoutType: LayoutEngineType;
   hierarchyCombos?: HierarchyComboInfo[];
   graphSearchHighlight?: GraphSearchHighlightInput | null;
+  isEditMode?: boolean;
   relationTypes?: GlossaryTermRelationType[];
   studioMode?: boolean;
 }

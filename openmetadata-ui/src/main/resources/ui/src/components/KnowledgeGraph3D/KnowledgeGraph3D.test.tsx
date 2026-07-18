@@ -14,6 +14,7 @@
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import {
   Children,
+  cloneElement,
   isValidElement,
   PropsWithChildren,
   ReactElement,
@@ -49,12 +50,36 @@ jest.mock('@openmetadata/ui-core-components', () => {
     <button {...props}>{children}</button>
   );
 
-  const ButtonGroup = ({ children }: PropsWithChildren) => (
-    <div>{children}</div>
+  interface ButtonGroupItemProps {
+    id: string;
+    onSelect?: (id: string) => void;
+  }
+
+  const ButtonGroup = ({
+    children,
+    onSelectionChange,
+  }: PropsWithChildren<{
+    onSelectionChange?: (selection: Set<string>) => void;
+  }>) => (
+    <div>
+      {Children.map(children, (child) =>
+        isValidElement<ButtonGroupItemProps>(child)
+          ? cloneElement(child, {
+              onSelect: (id: string) => onSelectionChange?.(new Set([id])),
+            })
+          : child
+      )}
+    </div>
   );
 
-  const ButtonGroupItem = ({ children }: PropsWithChildren) => (
-    <div>{children}</div>
+  const ButtonGroupItem = ({
+    children,
+    id,
+    onSelect,
+  }: PropsWithChildren<ButtonGroupItemProps>) => (
+    <button type="button" onClick={() => onSelect?.(id)}>
+      {children}
+    </button>
   );
 
   const Badge = ({ children }: PropsWithChildren) => <span>{children}</span>;
@@ -272,6 +297,26 @@ describe('KnowledgeGraph3D', () => {
       entityType: EntityType.TABLE,
       depth: 3,
     });
+  });
+
+  it('should fetch enough context when switching to the ontology lens', async () => {
+    mockGetEntityGraphData.mockResolvedValue(GRAPH_DATA);
+
+    renderGraph();
+
+    await screen.findByTestId('kg3d-scene');
+    fireEvent.click(screen.getByText('label.ontology'));
+
+    await waitFor(() =>
+      expect(mockGetEntityGraphData).toHaveBeenCalledTimes(2)
+    );
+
+    expect(mockGetEntityGraphData.mock.calls[1][0]).toEqual({
+      entityId: 'entity-1',
+      entityType: EntityType.TABLE,
+      depth: 2,
+    });
+    expect(screen.getByTestId('kg3d-depth-select')).toHaveValue('2');
   });
 
   it('should add column-derived nodes when "Show columns" is toggled on', async () => {

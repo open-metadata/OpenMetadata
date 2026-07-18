@@ -11,43 +11,63 @@
  *  limitations under the License.
  */
 
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import {
+  act,
+  fireEvent,
+  render,
+  screen,
+  waitFor,
+} from '@testing-library/react';
 import { useLayoutEffect, useRef } from 'react';
 import PortOverlay from './PortOverlay.component';
+import {
+  OntologyEditNodeClickDetail,
+  ONTOLOGY_EDIT_CANCEL_EVENT,
+  ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+} from './PortOverlay.interface';
 import { RelationshipTypePickerProps } from './RelationshipTypePicker.interface';
 
 jest.mock(
   './RelationshipTypePicker.component',
   () =>
     function RelationshipTypePickerMock({
+      onCancel,
       onSelect,
       sourceLabel,
       targetLabel,
     }: RelationshipTypePickerProps) {
       return (
-        <button
-          data-testid="relationship-type-picker"
-          type="button"
-          onClick={() => onSelect('broader')}>
-          {sourceLabel} {targetLabel}
-        </button>
+        <>
+          <button
+            data-testid="relationship-type-picker"
+            type="button"
+            onClick={() => onSelect('broader')}>
+            {sourceLabel} {targetLabel}
+          </button>
+          <button
+            data-testid="relationship-type-picker-cancel"
+            type="button"
+            onClick={onCancel}
+          />
+        </>
       );
     }
 );
 
 const RECT = {
-  bottom: 420,
+  bottom: 480,
   height: 400,
-  left: 10,
-  right: 610,
+  left: 200,
+  right: 800,
   toJSON: () => ({}),
-  top: 20,
+  top: 80,
   width: 600,
-  x: 10,
-  y: 20,
+  x: 200,
+  y: 80,
 };
 
 interface HarnessProps {
+  isEditMode?: boolean;
   onCreateRelation: (
     fromId: string,
     toId: string,
@@ -55,28 +75,24 @@ interface HarnessProps {
   ) => Promise<void>;
 }
 
-function Harness({ onCreateRelation }: HarnessProps) {
+function Harness({ isEditMode = true, onCreateRelation }: HarnessProps) {
   const containerRef = useRef<HTMLDivElement>(null);
 
   useLayoutEffect(() => {
-    const container = containerRef.current;
-    if (container) {
-      container.dataset.graphZoom = '1';
-      container.dataset.nodePositions = JSON.stringify({
-        source: { x: 110, y: 120 },
-        target: { x: 310, y: 120 },
-      });
-      container.getBoundingClientRect = () => RECT;
+    const overlay = document.querySelector<HTMLElement>(
+      '[data-testid="ontology-port-overlay"]'
+    );
+    if (overlay) {
+      overlay.getBoundingClientRect = () => RECT;
     }
   }, []);
 
   return (
     <div>
-      <div ref={containerRef} />
+      <div data-testid="graph-container" ref={containerRef} />
       <PortOverlay
-        isEditMode
         containerRef={containerRef}
-        isolatedNodeIds={new Set()}
+        isEditMode={isEditMode}
         nodeLabels={{ source: 'Remittance', target: 'Settlement' }}
         onCreateRelation={onCreateRelation}
       />
@@ -84,25 +100,66 @@ function Harness({ onCreateRelation }: HarnessProps) {
   );
 }
 
+function dispatchNodeClick(
+  detail: OntologyEditNodeClickDetail
+): CustomEvent<OntologyEditNodeClickDetail> {
+  const event = new CustomEvent(ONTOLOGY_EDIT_NODE_CLICK_EVENT, {
+    cancelable: true,
+    detail,
+  });
+  act(() => {
+    screen.getByTestId('graph-container').dispatchEvent(event);
+  });
+
+  return event;
+}
+
 describe('PortOverlay', () => {
-  it('arms a source port, selects a target, and creates the typed relation', async () => {
+  it('creates a typed relation from G6 port and node clicks', async () => {
     const onCreateRelation = jest.fn().mockResolvedValue(undefined);
     render(<Harness onCreateRelation={onCreateRelation} />);
 
-    const sourcePort = await screen.findByTestId('ontology-port-source');
+    const sourceEvent = dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
 
-    expect(sourcePort).toHaveStyle({ left: '166px', top: '91px' });
-
-    fireEvent.click(sourcePort);
-
+    expect(sourceEvent.defaultPrevented).toBe(true);
     expect(
       screen.getByTestId('ontology-connect-instruction')
     ).toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-port-source')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-target-target')
+    ).not.toBeInTheDocument();
 
-    fireEvent.click(screen.getByTestId('ontology-target-target'));
+    const targetEvent = dispatchNodeClick({
+      clientX: 780,
+      clientY: 180,
+      isPort: false,
+      nodeId: 'target',
+    });
 
+    expect(targetEvent.defaultPrevented).toBe(true);
     expect(screen.getByTestId('relationship-type-picker')).toHaveTextContent(
       'Remittance Settlement'
+    );
+    expect(screen.getByTestId('ontology-relation-picker-anchor')).toHaveStyle({
+      left: '490px',
+      top: '100px',
+      transform: 'translate(-50%, 16px)',
+    });
+    expect(screen.getByTestId('ontology-connection-line')).toHaveAttribute(
+      'x1',
+      '400'
+    );
+    expect(screen.getByTestId('ontology-connection-line')).toHaveAttribute(
+      'x2',
+      '580'
     );
 
     fireEvent.click(screen.getByTestId('relationship-type-picker'));
@@ -114,5 +171,56 @@ describe('PortOverlay', () => {
         'broader'
       )
     );
+  });
+
+  it('uses the latest G6 port position after a node moves', () => {
+    render(<Harness onCreateRelation={jest.fn()} />);
+
+    dispatchNodeClick({
+      clientX: 320,
+      clientY: 280,
+      isPort: true,
+      nodeId: 'source',
+    });
+
+    expect(screen.getByTestId('ontology-connection-line')).toHaveAttribute(
+      'x1',
+      '120'
+    );
+    expect(screen.getByTestId('ontology-connection-line')).toHaveAttribute(
+      'y1',
+      '200'
+    );
+  });
+
+  it('cancels an active connection when G6 starts a transform', () => {
+    render(<Harness onCreateRelation={jest.fn()} />);
+
+    dispatchNodeClick({
+      clientX: 600,
+      clientY: 180,
+      isPort: true,
+      nodeId: 'source',
+    });
+    act(() => {
+      screen
+        .getByTestId('graph-container')
+        .dispatchEvent(new Event(ONTOLOGY_EDIT_CANCEL_EVENT));
+    });
+
+    expect(
+      screen.queryByTestId('ontology-connect-instruction')
+    ).not.toBeInTheDocument();
+    expect(
+      screen.queryByTestId('ontology-connection-line')
+    ).not.toBeInTheDocument();
+  });
+
+  it('does not render edit controls outside edit mode', () => {
+    render(<Harness isEditMode={false} onCreateRelation={jest.fn()} />);
+
+    expect(
+      screen.queryByTestId('ontology-port-overlay')
+    ).not.toBeInTheDocument();
   });
 });

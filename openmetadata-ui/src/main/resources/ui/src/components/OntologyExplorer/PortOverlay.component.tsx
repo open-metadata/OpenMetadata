@@ -11,154 +11,121 @@
  *  limitations under the License.
  */
 
-import { Check, Plus } from '@untitledui/icons';
+import { Check } from '@untitledui/icons';
 import classNames from 'classnames';
-import React, { useCallback, useEffect, useState } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Point, useOntologyGraphEdit } from './hooks/useOntologyGraphEdit';
-import { PortOverlayProps } from './PortOverlay.interface';
+import {
+  OntologyEditNodeClickDetail,
+  ONTOLOGY_EDIT_CANCEL_EVENT,
+  ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+  PortOverlayProps,
+} from './PortOverlay.interface';
 import RelationshipTypePicker from './RelationshipTypePicker.component';
-import { MODEL_NODE_MAX_WIDTH, NODE_HEIGHT } from './utils/graphConfig';
-
-const PORT_SIZE = 18;
-
-interface OverlayViewport {
-  height: number;
-  width: number;
-}
-
-const readClientPositions = (
-  container: HTMLDivElement | null
-): Record<string, Point> => {
-  if (!container?.dataset.nodePositions) {
-    return {};
-  }
-  try {
-    return JSON.parse(container.dataset.nodePositions) as Record<string, Point>;
-  } catch {
-    return {};
-  }
-};
 
 /**
- * Click-to-connect overlay for Ontology Studio Edit mode. Renders a DOM/SVG layer
- * over the read-only G6 canvas: a "+" port per node, selectable target surfaces,
- * a provisional line, and a relation-type picker. It only reads node positions
- * (client coords the graph already emits to `container.dataset.nodePositions` on
- * every layout/pan/zoom) and converts them to container-local coords — no G6 edge
- * manipulation, so it stays decoupled from the graph internals.
+ * Relationship-editing presentation layer. Node ports and target hit areas are
+ * owned by G6 so they share the node transform; this layer only renders the
+ * connection instruction, provisional line, and relationship picker.
  */
 const PortOverlay: React.FC<PortOverlayProps> = ({
   containerRef,
   isEditMode,
-  isolatedNodeIds,
   nodeLabels,
   onCreateRelation,
 }) => {
   const { t } = useTranslation();
-  const [centers, setCenters] = useState<Record<string, Point>>({});
-  const [zoom, setZoom] = useState(1);
-  const [viewport, setViewport] = useState<OverlayViewport>({
-    height: 0,
-    width: 0,
-  });
+  const overlayRef = useRef<HTMLDivElement>(null);
 
   const toLocalPoint = useCallback(
     (clientX: number, clientY: number): Point | null => {
-      const rect = containerRef.current?.getBoundingClientRect();
+      const rect = overlayRef.current?.getBoundingClientRect();
 
       return rect ? { x: clientX - rect.left, y: clientY - rect.top } : null;
     },
-    [containerRef]
+    []
   );
 
-  const sync = useCallback(() => {
-    const container = containerRef.current;
-    const rect = container?.getBoundingClientRect();
-    if (!container || !rect) {
-      return;
-    }
-    const raw = readClientPositions(container);
-    const next: Record<string, Point> = {};
-    Object.entries(raw).forEach(([id, p]) => {
-      next[id] = { x: p.x - rect.left, y: p.y - rect.top };
-    });
-    setCenters(next);
-    const graphZoom = Number(container.dataset.graphZoom);
-    setZoom(Number.isFinite(graphZoom) && graphZoom > 0 ? graphZoom : 1);
-    setViewport({ height: rect.height, width: rect.width });
-  }, [containerRef]);
-
   const {
+    armedAt,
     armedFromId,
-    cursor,
-    candidateTargetId,
-    pendingRelation,
-    startArm,
-    selectTarget,
-    setCandidateTarget,
+    cancel,
     confirmRelationType,
+    cursor,
     dismissPending,
+    pendingRelation,
+    selectTarget,
+    startArm,
   } = useOntologyGraphEdit({
     isEditMode,
-    nodePositions: centers,
+    nodePositions: {},
     toLocalPoint,
     onCreateRelation,
   });
 
   useEffect(() => {
-    if (!isEditMode) {
-      setCenters({});
-
+    const container = containerRef.current;
+    if (!isEditMode || !container) {
       return undefined;
     }
-    sync();
-    const container = containerRef.current;
-    const observer = new MutationObserver(sync);
-    if (container) {
-      observer.observe(container, {
-        attributes: true,
-        attributeFilter: ['data-node-positions'],
-      });
-    }
-    // Zoom/pan re-emit positions to the dataset, but as a safety net also poll so
-    // the ports never drift from their nodes during a long-running transform.
-    const interval = window.setInterval(sync, 400);
-    window.addEventListener('resize', sync);
+
+    const handleNodeClick = (event: Event) => {
+      const editEvent = event as CustomEvent<OntologyEditNodeClickDetail>;
+      const { clientX, clientY, isPort, nodeId } = editEvent.detail;
+      const point = toLocalPoint(clientX, clientY);
+      if (!point) {
+        return;
+      }
+      if (armedFromId !== null && nodeId !== armedFromId) {
+        editEvent.preventDefault();
+        selectTarget(nodeId, point);
+
+        return;
+      }
+      if (isPort) {
+        editEvent.preventDefault();
+        startArm(nodeId, point);
+      }
+    };
+    const handleCancel = () => {
+      cancel();
+      dismissPending();
+    };
+
+    container.addEventListener(ONTOLOGY_EDIT_NODE_CLICK_EVENT, handleNodeClick);
+    container.addEventListener(ONTOLOGY_EDIT_CANCEL_EVENT, handleCancel);
 
     return () => {
-      observer.disconnect();
-      window.clearInterval(interval);
-      window.removeEventListener('resize', sync);
+      container.removeEventListener(
+        ONTOLOGY_EDIT_NODE_CLICK_EVENT,
+        handleNodeClick
+      );
+      container.removeEventListener(ONTOLOGY_EDIT_CANCEL_EVENT, handleCancel);
     };
-  }, [isEditMode, sync, containerRef]);
+  }, [
+    armedFromId,
+    cancel,
+    containerRef,
+    dismissPending,
+    isEditMode,
+    selectTarget,
+    startArm,
+    toLocalPoint,
+  ]);
 
   if (!isEditMode) {
     return null;
   }
 
-  const armedCenter = armedFromId ? centers[armedFromId] : null;
-  const candidateCenter = candidateTargetId ? centers[candidateTargetId] : null;
-  const lineEnd = candidateCenter ?? cursor;
-  const nodeWidth = MODEL_NODE_MAX_WIDTH * zoom;
-  const nodeHeight = NODE_HEIGHT * zoom;
-  const pickerX = pendingRelation
-    ? Math.min(
-        Math.max(pendingRelation.at.x, 142),
-        Math.max(142, viewport.width - 142)
-      )
-    : 0;
-  const pickerY = pendingRelation
-    ? Math.min(
-        Math.max(pendingRelation.at.y, 8),
-        Math.max(8, viewport.height - 330)
-      )
-    : 0;
+  const lineStart = pendingRelation?.from ?? armedAt;
+  const lineEnd = pendingRelation?.to ?? cursor;
 
   return (
     <div
       className="tw:pointer-events-none tw:absolute tw:inset-0 tw:z-5"
-      data-testid="ontology-port-overlay">
+      data-testid="ontology-port-overlay"
+      ref={overlayRef}>
       {armedFromId ? (
         <div
           className={classNames(
@@ -178,105 +145,30 @@ const PortOverlay: React.FC<PortOverlayProps> = ({
         </div>
       ) : null}
 
-      {armedCenter && lineEnd ? (
+      {lineStart && lineEnd ? (
         <svg
           className="tw:absolute tw:inset-0 tw:h-full tw:w-full"
           style={{ overflow: 'visible' }}>
           <line
-            stroke="#1570EF"
-            strokeDasharray="5 4"
-            strokeWidth={2}
-            x1={armedCenter.x}
+            data-testid="ontology-connection-line"
+            stroke="var(--color-bg-brand-solid)"
+            strokeDasharray="6 5"
+            strokeWidth={2.4}
+            x1={lineStart.x}
             x2={lineEnd.x}
-            y1={armedCenter.y}
+            y1={lineStart.y}
             y2={lineEnd.y}
           />
         </svg>
       ) : null}
 
-      {armedFromId
-        ? Object.entries(centers).map(([id, center]) => {
-            const isSource = id === armedFromId;
-            const isCandidate = id === candidateTargetId;
-            const isIsolated = isolatedNodeIds.has(id);
-            const isStrong = isSource || isCandidate;
-
-            return (
-              <button
-                aria-label={t('label.select-entity', {
-                  entity: t('label.term'),
-                })}
-                className={classNames(
-                  'tw:absolute tw:rounded-[9px] tw:bg-transparent',
-                  isSource
-                    ? 'tw:pointer-events-none'
-                    : 'tw:pointer-events-auto tw:cursor-pointer'
-                )}
-                data-testid={`ontology-target-${id}`}
-                key={id}
-                style={{
-                  borderColor: isStrong
-                    ? '#1570EF'
-                    : isIsolated
-                    ? '#FEDF89'
-                    : '#B2DDFF',
-                  borderStyle: 'solid',
-                  borderWidth: isStrong ? 2 : 1.5,
-                  boxShadow: isStrong
-                    ? '0 0 0 4px rgba(21, 112, 239, 0.14)'
-                    : 'none',
-                  height: nodeHeight,
-                  left: center.x - nodeWidth / 2,
-                  top: center.y - nodeHeight / 2,
-                  width: nodeWidth,
-                }}
-                type="button"
-                onClick={(event) => {
-                  event.preventDefault();
-                  event.stopPropagation();
-                  selectTarget(id);
-                }}
-                onMouseEnter={() => setCandidateTarget(id)}
-                onMouseLeave={() => setCandidateTarget(null)}
-              />
-            );
-          })
-        : pendingRelation
-        ? null
-        : Object.entries(centers).map(([id, center]) => (
-            <button
-              aria-label={t('label.add-entity', {
-                entity: t('label.relationship'),
-              })}
-              className={classNames(
-                'tw:pointer-events-auto tw:absolute tw:flex tw:items-center tw:justify-center',
-                'tw:rounded-full tw:border-0 tw:bg-brand-solid tw:text-white',
-                'tw:shadow-[0_2px_5px_rgba(21,112,239,0.4)] tw:transition-transform tw:hover:scale-110'
-              )}
-              data-testid={`ontology-port-${id}`}
-              key={id}
-              style={{
-                height: PORT_SIZE,
-                left: center.x + nodeWidth / 2 - PORT_SIZE / 2,
-                top: center.y - PORT_SIZE / 2,
-                width: PORT_SIZE,
-              }}
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                startArm(id, center);
-              }}>
-              <Plus aria-hidden="true" className="tw:size-[11px]" />
-            </button>
-          ))}
-
       {pendingRelation ? (
         <div
           className="tw:pointer-events-auto tw:absolute tw:z-10"
+          data-testid="ontology-relation-picker-anchor"
           style={{
-            left: pickerX,
-            top: pickerY,
+            left: pendingRelation.at.x,
+            top: pendingRelation.at.y,
             transform: 'translate(-50%, 16px)',
           }}>
           <RelationshipTypePicker

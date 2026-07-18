@@ -83,6 +83,39 @@ describe('getStudioNodeAccentColor', () => {
   });
 });
 
+describe('studio edit ports', () => {
+  it('renders the relationship port as part of the G6 node', () => {
+    const { result } = renderHook(() =>
+      useGraphDataBuilder({
+        clickedEdgeId: null,
+        explorationMode: 'model',
+        glossaries: [],
+        glossaryColorMap: {},
+        inputEdges: [],
+        inputNodes: [studioNode({})],
+        isEditMode: true,
+        layoutType: LayoutEngine.Dagre,
+        selectedNodeId: null,
+        settings: { layout: LayoutType.Hierarchical, showEdgeLabels: true },
+        studioMode: true,
+      })
+    );
+
+    expect(result.current.graphData.nodes?.[0]).toMatchObject({
+      style: {
+        port: true,
+        ports: [
+          expect.objectContaining({
+            key: 'ontology-edit',
+            placement: 'right',
+          }),
+        ],
+        studioEditMode: true,
+      },
+    });
+  });
+});
+
 // Mirrors the subset of GlossaryTermRelationSettings the backend seeds via the
 // 1.13.0 migration that the tests below exercise.
 const seededRelationTypes: GlossaryTermRelationType[] = [

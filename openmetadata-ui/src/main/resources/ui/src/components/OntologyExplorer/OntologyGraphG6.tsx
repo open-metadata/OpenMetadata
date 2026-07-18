@@ -32,15 +32,6 @@ import {
 } from './OntologyExplorer.interface';
 import PortOverlay from './PortOverlay.component';
 
-function writeNodePositions(
-  container: HTMLDivElement | null,
-  positions: Record<string, { x: number; y: number }>
-) {
-  if (container) {
-    container.dataset.nodePositions = JSON.stringify(positions);
-  }
-}
-
 function writeSearchHighlightIds(
   container: HTMLDivElement | null,
   ids: readonly string[] | null
@@ -122,15 +113,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         ),
       [inputNodes]
     );
-    const isolatedNodeIds = useMemo(
-      () =>
-        new Set(
-          inputNodes
-            .filter((node) => node.type === 'glossaryTermIsolated')
-            .map((node) => node.id)
-        ),
-      [inputNodes]
-    );
     const hierarchicalRelationTypes = useMemo(
       () =>
         new Set(
@@ -168,49 +150,39 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
       glossaryColorMap,
       hierarchyCombos: hierarchyCombos ?? [],
       graphSearchHighlight,
+      isEditMode,
       layoutType,
       nodePositions,
       relationTypes,
       studioMode,
     });
 
-    const {
-      graphRef,
-      extractNodePositions,
-      suppressEdgeCheck,
-      emitPagePositions,
-    } = useOntologyGraph({
-      containerRef,
-      graphData,
-      inputNodes,
-      mergedEdgesList,
-      explorationMode,
-      settings,
-      layoutType,
-      focusNodeId,
-      selectedNodeId,
-      expandedTermIds,
-      dataSignature,
-      onNodeClick,
-      onNodeDoubleClick,
-      onPaneClick,
-      onScrollNearEdge,
-      setClickedEdgeId,
-      neighborSet,
-      glossaryColorMap,
-      computeNodeColor,
-      assetToTermMap,
-      hierarchicalRelationTypes,
-      studioMode,
-      onPositionsReady: (positions) => {
-        writeNodePositions(containerRef.current, positions);
-        if (containerRef.current && graphRef.current) {
-          containerRef.current.dataset.graphZoom = String(
-            graphRef.current.getZoom()
-          );
-        }
-      },
-    });
+    const { graphRef, extractNodePositions, suppressEdgeCheck } =
+      useOntologyGraph({
+        containerRef,
+        graphData,
+        inputNodes,
+        mergedEdgesList,
+        explorationMode,
+        settings,
+        layoutType,
+        focusNodeId,
+        selectedNodeId,
+        expandedTermIds,
+        dataSignature,
+        onNodeClick,
+        onNodeDoubleClick,
+        onPaneClick,
+        onScrollNearEdge,
+        setClickedEdgeId,
+        neighborSet,
+        glossaryColorMap,
+        computeNodeColor,
+        assetToTermMap,
+        hierarchicalRelationTypes,
+        isEditMode,
+        studioMode,
+      });
 
     useImperativeHandle(
       ref,
@@ -220,10 +192,8 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
           if (!graph) {
             return;
           }
-          writeNodePositions(containerRef.current, {});
           suppressEdgeCheck(800);
           await fitViewWithMinZoom(graph, 300);
-          emitPagePositions(graph);
         },
         zoomIn: () => {
           suppressEdgeCheck();
@@ -310,7 +280,6 @@ const OntologyGraph = forwardRef<OntologyGraphHandle, OntologyGraphProps>(
         <PortOverlay
           containerRef={containerRef}
           isEditMode={Boolean(isEditMode)}
-          isolatedNodeIds={isolatedNodeIds}
           nodeLabels={nodeLabels}
           onCreateRelation={onCreateRelation ?? (() => Promise.resolve())}
         />

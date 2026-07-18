@@ -13,11 +13,20 @@
 
 import { RefObject } from 'react';
 
+export const ONTOLOGY_EDIT_CANCEL_EVENT = 'ontology-edit-cancel';
+export const ONTOLOGY_EDIT_NODE_CLICK_EVENT = 'ontology-edit-node-click';
+
+export interface OntologyEditNodeClickDetail {
+  clientX: number;
+  clientY: number;
+  isPort: boolean;
+  nodeId: string;
+}
+
 export interface PortOverlayProps {
-  /** The G6 graph container; the overlay positions itself over it and reads node positions from its dataset. */
+  /** The G6 graph container; canvas edit events are dispatched from this element. */
   containerRef: RefObject<HTMLDivElement>;
   isEditMode: boolean;
-  isolatedNodeIds: ReadonlySet<string>;
   nodeLabels: Record<string, string>;
   /** Persist a new typed relation between two glossary terms (ids are term UUIDs = graph node ids). */
   onCreateRelation: (
