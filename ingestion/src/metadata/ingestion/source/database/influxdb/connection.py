@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.influxdbConnection import (
-    InfluxdbConnection,
+    InfluxDBConnection,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -111,7 +111,7 @@ class InfluxDBClient:
         self._session.close()
 
 
-class InfluxDBConnection(BaseConnection[InfluxdbConnection, InfluxDBClient]):
+class InfluxDBConnection(BaseConnection[InfluxDBConnection, InfluxDBClient]):
     """Connection class that builds an InfluxDB 3 HTTP client.
 
     Since InfluxDB 3 has no SQLAlchemy dialect, the client returned by

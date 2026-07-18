@@ -186,6 +186,7 @@ export const BETA_SERVICES = [
   DriveServiceType.SFTP,
   DriveServiceType.GoogleDrive,
   DatabaseServiceType.Informix,
+  DatabaseServiceType.InfluxDB,
   DatabaseServiceType.MicrosoftAccess,
   DatabaseServiceType.QuestDB,
   DashboardServiceType.SapS4Hana,

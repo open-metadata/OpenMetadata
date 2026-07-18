@@ -32,7 +32,7 @@ from metadata.generated.schema.entity.data.table import (
     TableType,
 )
 from metadata.generated.schema.entity.services.connections.database.influxdbConnection import (
-    InfluxdbConnection,
+    InfluxDBConnection,
 )
 from metadata.generated.schema.metadataIngestion.databaseServiceMetadataPipeline import (
     DatabaseServiceMetadataPipeline,
@@ -84,9 +84,9 @@ class InfluxDBSource(CommonNoSQLSource):
         pipeline_name: str | None = None,
     ) -> "InfluxDBSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: InfluxdbConnection = config.serviceConnection.root.config
-        if not isinstance(connection, InfluxdbConnection):
-            raise InvalidSourceException(f"Expected InfluxdbConnection, but got {type(connection).__name__}")
+        connection: InfluxDBConnection = config.serviceConnection.root.config
+        if not isinstance(connection, InfluxDBConnection):
+            raise InvalidSourceException(f"Expected InfluxDBConnection, but got {type(connection).__name__}")
         return cls(config, metadata)
 
     def get_schema_name_list(self) -> list[str]:

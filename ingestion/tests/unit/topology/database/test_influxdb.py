@@ -16,7 +16,7 @@ import pytest
 
 from metadata.generated.schema.entity.data.table import DataType
 from metadata.generated.schema.entity.services.connections.database.influxdbConnection import (
-    InfluxdbConnection,
+    InfluxDBConnection as InfluxDBConnectionConfig,
 )
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.source.database.influxdb.connection import (
@@ -127,7 +127,7 @@ class TestInfluxDBConnectionClass:
     """Test the BaseConnection subclass."""
 
     def test_creates_client_with_url_and_token(self):
-        config = InfluxdbConnection(
+        config = InfluxDBConnectionConfig(
             type="InfluxDB",
             hostPort="https://cluster.example.com",
             token="secret-token",
@@ -187,7 +187,7 @@ class TestInfluxDBSource:
             },
         }
 
-        with pytest.raises(InvalidSourceException, match="Expected InfluxdbConnection"):
+        with pytest.raises(InvalidSourceException, match="Expected InfluxDBConnection"):
             InfluxDBSource.create(config_dict, MagicMock(), pipeline_name="test-pipeline")
 
     def test_get_table_columns_adds_time_column(self):

@@ -219,6 +219,10 @@ const databaseSchemaLoaders: Partial<
     import(
       '../jsons/connectionSchemas/connections/database/iometeConnection.json'
     ),
+  [DatabaseServiceType.InfluxDB]: () =>
+    import(
+      '../jsons/connectionSchemas/connections/database/influxdbConnection.json'
+    ),
 };
 
 const resolveSchemaModule = (mod: SchemaModule): Record<string, unknown> => {

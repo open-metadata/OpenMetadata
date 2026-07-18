@@ -1,0 +1,21 @@
+{
+  "name": "InfluxDB",
+  "fullyQualifiedName": "InfluxDB",
+  "displayName": "InfluxDB Test Connection",
+  "description": "Validates access to the InfluxDB 3 instance and basic metadata extraction.",
+  "steps": [
+    {
+      "name": "CheckAccess",
+      "description": "Validate that we can properly reach the InfluxDB 3 /health endpoint and authenticate with the given credentials.",
+      "errorMessage": "Failed to connect to InfluxDB 3, please validate the host and port.",
+      "shortCircuit": true,
+      "mandatory": true
+    },
+    {
+      "name": "GetDatabases",
+      "description": "List all the databases available to the user.",
+      "errorMessage": "Failed to fetch databases, please validate if the token has enough privilege to fetch databases.",
+      "mandatory": true
+    }
+  ]
+}

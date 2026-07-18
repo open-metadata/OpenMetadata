@@ -51,7 +51,7 @@ export interface InfluxdbConnection {
     /**
      * Service Type
      */
-    type?: InfluxdbType;
+    type?: InfluxDBType;
 }
 
 /**
@@ -79,6 +79,6 @@ export interface FilterPattern {
  *
  * Service type.
  */
-export enum InfluxdbType {
+export enum InfluxDBType {
     InfluxDB = "InfluxDB",
 }
