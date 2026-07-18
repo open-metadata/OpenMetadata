@@ -39,6 +39,7 @@ import org.openmetadata.schema.tests.type.TestSummary;
 import org.openmetadata.schema.type.AIContext;
 import org.openmetadata.schema.type.Column;
 import org.openmetadata.schema.type.ColumnJoin;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.ColumnProfile;
 import org.openmetadata.schema.type.Edge;
 import org.openmetadata.schema.type.EntityLineage;
@@ -46,6 +47,7 @@ import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.EntityStatus;
 import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.JoinedWith;
+import org.openmetadata.schema.type.LineageDetails;
 import org.openmetadata.schema.type.MetadataOperation;
 import org.openmetadata.schema.type.PartitionColumnDetails;
 import org.openmetadata.schema.type.Relationship;
@@ -61,6 +63,7 @@ import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.utils.JsonUtils;
@@ -90,6 +93,7 @@ public class AIContextBuilder {
   private static final int MAX_KNOWLEDGE_ITEMS = 50;
   private static final int MAX_ARTICLES = 20;
   private static final int MAX_JOIN_HINTS = 25;
+  static final int MAX_COLUMN_MAPPINGS_PER_EDGE = 25;
   private static final String TABLE_FIELDS =
       "columns,tableConstraints,joins,tablePartition,tags,testSuite";
   private static final String DEFAULT_FIELDS = "tags";
@@ -164,8 +168,11 @@ public class AIContextBuilder {
 
   AIContext buildForEntity(EntityInterface entity) {
     EntityLineage lineage = fetchLineage(entity);
+    List<LineageEdgeContext> upstreamEdges = edgeContexts(lineage, true);
+    List<LineageEdgeContext> downstreamEdges = edgeContexts(lineage, false);
     AIContext context =
         new AIContext()
+            .withId(entity.getId())
             .withFullyQualifiedName(entity.getFullyQualifiedName())
             .withEntityType(entityType)
             .withDisplayName(entity.getDisplayName())
@@ -175,8 +182,10 @@ public class AIContextBuilder {
             .withGlossaryTerms(resolveGlossaryTerms(entity))
             .withArticles(resolveArticles(entity))
             .withMetrics(resolveMetrics(entity))
-            .withUpstream(edgeFqns(lineage, true))
-            .withDownstream(edgeFqns(lineage, false))
+            .withUpstream(edgeFqns(upstreamEdges))
+            .withUpstreamEdges(upstreamEdges)
+            .withDownstream(edgeFqns(downstreamEdges))
+            .withDownstreamEdges(downstreamEdges)
             .withAssetContext(buildAssetContext(entity))
             .withObservability(resolveObservability(entity))
             .withGeneratedAt(System.currentTimeMillis());
@@ -433,8 +442,8 @@ public class AIContextBuilder {
     return lineage;
   }
 
-  private static List<String> edgeFqns(EntityLineage lineage, boolean upstream) {
-    List<String> fqns = new ArrayList<>();
+  static List<LineageEdgeContext> edgeContexts(EntityLineage lineage, boolean upstream) {
+    List<LineageEdgeContext> contexts = new ArrayList<>();
     if (lineage != null) {
       Map<UUID, String> nodeFqn = nodeFqnMap(lineage);
       List<Edge> edges = upstream ? lineage.getUpstreamEdges() : lineage.getDownstreamEdges();
@@ -442,11 +451,33 @@ public class AIContextBuilder {
         String nodeFullyQualifiedName =
             nodeFqn.get(upstream ? edge.getFromEntity() : edge.getToEntity());
         if (nodeFullyQualifiedName != null) {
-          fqns.add(nodeFullyQualifiedName);
+          contexts.add(edgeContext(nodeFullyQualifiedName, edge));
         }
       }
     }
-    return fqns;
+    return contexts;
+  }
+
+  private static LineageEdgeContext edgeContext(String fullyQualifiedName, Edge edge) {
+    List<ColumnLineage> columns = edgeColumns(edge);
+    boolean columnsTruncated = columns != null && columns.size() > MAX_COLUMN_MAPPINGS_PER_EDGE;
+    return new LineageEdgeContext()
+        .withFullyQualifiedName(fullyQualifiedName)
+        .withColumns(columns == null ? null : capList(columns, MAX_COLUMN_MAPPINGS_PER_EDGE))
+        .withColumnsTruncated(columnsTruncated ? Boolean.TRUE : null);
+  }
+
+  private static List<String> edgeFqns(List<LineageEdgeContext> edges) {
+    return listOrEmpty(edges).stream().map(LineageEdgeContext::getFullyQualifiedName).toList();
+  }
+
+  private static List<ColumnLineage> edgeColumns(Edge edge) {
+    List<ColumnLineage> columns = null;
+    LineageDetails lineageDetails = edge.getLineageDetails();
+    if (lineageDetails != null && !nullOrEmpty(lineageDetails.getColumnsLineage())) {
+      columns = lineageDetails.getColumnsLineage();
+    }
+    return columns;
   }
 
   private static Map<UUID, String> nodeFqnMap(EntityLineage lineage) {
@@ -575,6 +606,7 @@ public class AIContextBuilder {
       if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
         item =
             new KnowledgeItem()
+                .withId(term.getId())
                 .withType(KnowledgeItem.Type.GLOSSARY_TERM)
                 .withName(term.getName())
                 .withDisplayName(term.getDisplayName())
@@ -638,6 +670,7 @@ public class AIContextBuilder {
       if (canViewPill(pill)) {
         item =
             new KnowledgeItem()
+                .withId(pill.getId())
                 .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
                 .withName(pill.getName())
                 .withDisplayName(pill.getDisplayName())
@@ -688,6 +721,7 @@ public class AIContextBuilder {
       if (canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName())) {
         item =
             new KnowledgeItem()
+                .withId(metric.getId())
                 .withType(KnowledgeItem.Type.METRIC)
                 .withName(metric.getName())
                 .withDisplayName(metric.getDisplayName())
@@ -751,6 +785,7 @@ public class AIContextBuilder {
       if (canViewKnowledge(Entity.PAGE, page.getFullyQualifiedName())) {
         item =
             new KnowledgeItem()
+                .withId(page.getId())
                 .withType(KnowledgeItem.Type.PAGE)
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())

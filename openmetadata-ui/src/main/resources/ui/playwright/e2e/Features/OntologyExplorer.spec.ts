@@ -620,7 +620,14 @@ test.describe('Ontology Explorer', () => {
       await waitForGraphLoaded(page);
       await page.getByTestId('fit-view').click();
 
-      await clickFirstGraphNode(page);
+      const positions = await readNodePositions(page);
+      const term1Pos = positions[term1.responseData.id];
+
+      expect(
+        term1Pos,
+        'term1 node must be present in graph positions after glossary filter'
+      ).toBeDefined();
+      await page.mouse.click(term1Pos.x, term1Pos.y);
 
       await expect(
         page.getByTestId('entity-summary-panel-container')

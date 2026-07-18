@@ -34,7 +34,9 @@ describe('withLanguageHeader', () => {
     ({ headers: {} } as InternalAxiosRequestConfig);
 
   it('sets the language header to the active UI language', () => {
-    mockI18next.resolvedLanguage = 'fr-FR';
+    // resolvedLanguage may sit at the fallback while language holds the real selection — the header
+    // must use language.
+    mockI18next.resolvedLanguage = 'en-US';
     mockI18next.language = 'fr-FR';
     const config = createMockConfig();
 

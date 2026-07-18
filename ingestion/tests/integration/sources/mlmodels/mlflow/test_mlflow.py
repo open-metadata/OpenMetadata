@@ -57,6 +57,7 @@ MODEL_HYPERPARAMS = {
 }
 
 MODEL_NAME = "ElasticnetWineModel"
+MODEL_DESCRIPTION = "ElasticNet model predicting wine quality"
 
 
 def eval_metrics(actual, pred):
@@ -140,12 +141,18 @@ def create_data(mlflow_environment):
                 else:
                     mlflow.sklearn.log_model(lr, "model")
                 break
-            except Exception:
+            except Exception as exc:
                 if attempt < 4:
-                    logging.getLogger(__name__).warning("Retry %d/5: S3 upload failed, retrying...", attempt + 1)
+                    logging.getLogger(__name__).warning(
+                        "Retry %d/5: log_model failed (%s: %s), retrying...", attempt + 1, type(exc).__name__, exc
+                    )
                     time.sleep(5 * (attempt + 1))
                 else:
                     raise
+
+    # Describing the model bumps RegisteredModel.last_updated_timestamp past the
+    # version's, which must not hide the version from the registry listing.
+    mlflow.MlflowClient().update_registered_model(MODEL_NAME, description=MODEL_DESCRIPTION)
 
 
 @pytest.fixture(scope="module")
@@ -201,6 +208,8 @@ def test_mlflow(ingest_mlflow, metadata, service):
 
     # Assert name is as expected
     assert model.name.root == MODEL_NAME
+
+    assert model.description.root == MODEL_DESCRIPTION
 
     # Assert HyperParameters are as expected
     assert len(model.mlHyperParameters) == 2
