@@ -40,8 +40,6 @@ import java.util.Locale;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.SneakyThrows;
@@ -121,9 +119,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   private static final String PATCH_FIELDS =
       "owners,entityLink,testSuite,testSuites,testDefinition,computePassedFailedRowCount,useDynamicAssertion,dimensionColumns,topDimensions";
   public static final String FAILED_ROWS_SAMPLE_EXTENSION = "testCase.failedRowsSample";
-  private final ExecutorService asyncExecutor =
-      Executors.newFixedThreadPool(
-          1, java.lang.Thread.ofPlatform().name("om-test-case-async").factory());
 
   public TestCaseRepository() {
     super(
@@ -996,18 +991,12 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     if (hardDelete) {
-      for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
-        LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
-            entityRelationshipRecord.getType(),
-            entityRelationshipRecord.getId());
-        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        for (CollectionDAO.EntityRelationshipRecord child : children) {
-          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-        }
+      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+          (TestCaseResolutionStatusRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+      for (CollectionDAO.EntityRelationshipRecord child : children) {
+        LOG.info("Hard deleting {} {}", child.getType(), child.getId());
+        testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
       }
     }
   }
@@ -1021,14 +1010,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
-    asyncExecutor.submit(
-        () -> {
-          try {
-            testCaseResultRepository.deleteAllTestCaseResults(fqn);
-          } catch (Exception e) {
-            LOG.error("Error deleting test case results for test case {}", fqn, e);
-          }
-        });
   }
 
   @SneakyThrows
