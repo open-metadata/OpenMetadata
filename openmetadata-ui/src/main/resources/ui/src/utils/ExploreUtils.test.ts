@@ -890,10 +890,18 @@ describe('fetchEntityData', () => {
   });
 
   it('uses NLQ search and surfaces applied filters when NLP is enabled', async () => {
-    mockNlqSearch.mockResolvedValueOnce(COUNT_RESPONSE).mockResolvedValueOnce({
-      ...RESULTS_RESPONSE,
-      applied_quick_filters: { fieldList: ['owner'] },
-    });
+    mockNlqSearch
+      .mockResolvedValueOnce({
+        ...COUNT_RESPONSE,
+        hits: {
+          ...COUNT_RESPONSE.hits,
+          hits: [{ _id: 'source-less-hit' }],
+        },
+      })
+      .mockResolvedValueOnce({
+        ...RESULTS_RESPONSE,
+        applied_quick_filters: { fieldList: ['owner'] },
+      });
     const params = buildParams({
       searchQueryParam: 'customer',
       isNLPRequestEnabled: true,
@@ -901,7 +909,7 @@ describe('fetchEntityData', () => {
 
     await fetchEntityData(params);
 
-    expect(mockNlqSearch).toHaveBeenCalled();
+    expect(mockNlqSearch).toHaveBeenCalledTimes(2);
     expect(mockSearchQuery).not.toHaveBeenCalled();
     expect(params.onNlqAppliedFilters).toHaveBeenCalledWith({
       fieldList: ['owner'],

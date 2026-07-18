@@ -249,7 +249,7 @@ export const fetchEntityData = async ({
         });
         setSearchHitCounts(counts as SearchHitCounts);
 
-        const topHitEntityType = res.hits.hits[0]?._source.entityType;
+        const topHitEntityType = res.hits.hits[0]?._source?.entityType;
         const topHitSearchIndex = topHitEntityType
           ? EntityTypeSearchIndexMapping[topHitEntityType as EntityType]
           : undefined;
