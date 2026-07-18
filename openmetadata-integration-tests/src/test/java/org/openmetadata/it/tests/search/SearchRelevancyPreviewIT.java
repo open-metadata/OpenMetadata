@@ -193,7 +193,7 @@ class SearchRelevancyPreviewIT {
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table exactTable =
         RelevancyFixtures.createTable(schema, exactName, "plaindescription", null);
-    RelevancyFixtures.createTable(schema, exactName + "extra", "plaindescription", null);
+    RelevancyFixtures.createTable(schema, exactName + "_extra", "plaindescription", null);
     awaitIndexed(exactName, 2);
 
     final SearchSettings base = currentSettings();
