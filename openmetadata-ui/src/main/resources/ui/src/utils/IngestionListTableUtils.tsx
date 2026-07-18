@@ -88,14 +88,14 @@ const ScheduleFieldCell = ({
         <Row className="line-height-16">
           <Col span={24}>
             <Typography.Text
-              className="font-medium"
+              className="font-medium whitespace-nowrap"
               data-testid="schedule-primary-details">
               {descriptionFirstPart}
             </Typography.Text>
           </Col>
           <Col span={24}>
             <Typography.Text
-              className="text-xs text-grey-muted"
+              className="text-xs text-grey-muted whitespace-nowrap"
               data-testid="schedule-secondary-details">
               {descriptionSecondPart}
             </Typography.Text>
