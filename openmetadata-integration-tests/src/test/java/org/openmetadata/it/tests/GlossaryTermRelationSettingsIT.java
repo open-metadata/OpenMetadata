@@ -479,6 +479,12 @@ public class GlossaryTermRelationSettingsIT {
       value = SharedResourceLocks.GLOSSARY_TERM_RELATION_SETTINGS,
       mode = ResourceAccessMode.READ_WRITE)
   void test_systemDefinedRelationTypeCannotBeDeleted() throws Exception {
+    int deleteStatus = deleteRelationTypeAndGetStatus("relatedTo");
+    assertTrue(
+        deleteStatus >= 400,
+        "The relation-type DELETE endpoint must reject system-defined relation types. Got: "
+            + deleteStatus);
+
     JsonNode currentSettings = getSettings();
     ArrayNode relationTypes = (ArrayNode) currentSettings.get("config_value").get("relationTypes");
 

@@ -53,6 +53,44 @@ class GlossaryTermRelationSettingsUtilTest {
     assertNull(relationType.getTargetMax());
   }
 
+  @Test
+  void validateSystemDefinedRelationTypesRejectsDeletion() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(
+                List.of(
+                    relationType("relatedTo").withIsSystemDefined(true),
+                    relationType("dependsOn").withIsSystemDefined(false)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(List.of(relationType("dependsOn").withIsSystemDefined(false)));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () ->
+                GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                    current, updated));
+
+    assertEquals("Cannot delete system-defined relation types: relatedTo", exception.getMessage());
+  }
+
+  @Test
+  void validateSystemDefinedRelationTypesRejectsDowngrade() {
+    GlossaryTermRelationSettings current =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(List.of(relationType("relatedTo").withIsSystemDefined(true)));
+    GlossaryTermRelationSettings updated =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(List.of(relationType("relatedTo").withIsSystemDefined(false)));
+
+    assertThrows(
+        SystemSettingsException.class,
+        () ->
+            GlossaryTermRelationSettingsUtil.validateSystemDefinedRelationTypesPreserved(
+                current, updated));
+  }
+
   private GlossaryTermRelationType relationType(String name) {
     return new GlossaryTermRelationType().withName(name);
   }

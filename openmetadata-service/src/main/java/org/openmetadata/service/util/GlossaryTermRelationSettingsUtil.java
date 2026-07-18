@@ -14,6 +14,7 @@
 package org.openmetadata.service.util;
 
 import java.util.HashSet;
+import java.util.List;
 import java.util.Locale;
 import java.util.Set;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -81,6 +82,34 @@ public final class GlossaryTermRelationSettingsUtil {
         throw new SystemSettingsException(
             String.format("Relation type '%s' already exists.", relationType.getName()));
       }
+    }
+  }
+
+  public static void validateSystemDefinedRelationTypesPreserved(
+      GlossaryTermRelationSettings current, GlossaryTermRelationSettings updated) {
+    if (current == null || current.getRelationTypes() == null) {
+      return;
+    }
+
+    Set<String> updatedSystemDefinedNames = new HashSet<>();
+    if (updated != null && updated.getRelationTypes() != null) {
+      for (GlossaryTermRelationType relationType : updated.getRelationTypes()) {
+        if (relationType != null && Boolean.TRUE.equals(relationType.getIsSystemDefined())) {
+          updatedSystemDefinedNames.add(relationType.getName());
+        }
+      }
+    }
+
+    List<String> missingSystemDefinedNames =
+        current.getRelationTypes().stream()
+            .filter(relationType -> Boolean.TRUE.equals(relationType.getIsSystemDefined()))
+            .map(GlossaryTermRelationType::getName)
+            .filter(name -> !updatedSystemDefinedNames.contains(name))
+            .toList();
+    if (!missingSystemDefinedNames.isEmpty()) {
+      throw new SystemSettingsException(
+          "Cannot delete system-defined relation types: "
+              + String.join(", ", missingSystemDefinedNames));
     }
   }
 

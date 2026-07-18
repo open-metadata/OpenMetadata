@@ -13,7 +13,11 @@
 
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { RelationCategory } from '../../generated/configuration/glossaryTermRelationSettings';
-import { getGlossaryTermRelationTypes } from '../../rest/glossaryAPI';
+import {
+  createGlossaryTermRelationType,
+  deleteGlossaryTermRelationType,
+  getGlossaryTermRelationTypes,
+} from '../../rest/glossaryAPI';
 import GlossaryTermRelationSettingsPage from './GlossaryTermRelationSettings';
 
 jest.mock('@openmetadata/ui-core-components', () => ({
@@ -62,6 +66,14 @@ const mockGetGlossaryTermRelationTypes =
   getGlossaryTermRelationTypes as jest.MockedFunction<
     typeof getGlossaryTermRelationTypes
   >;
+const mockCreateGlossaryTermRelationType =
+  createGlossaryTermRelationType as jest.MockedFunction<
+    typeof createGlossaryTermRelationType
+  >;
+const mockDeleteGlossaryTermRelationType =
+  deleteGlossaryTermRelationType as jest.MockedFunction<
+    typeof deleteGlossaryTermRelationType
+  >;
 
 describe('GlossaryTermRelationSettingsPage', () => {
   beforeEach(() => {
@@ -97,5 +109,61 @@ describe('GlossaryTermRelationSettingsPage', () => {
     );
 
     expect(await screen.findByText('relation15')).toBeInTheDocument();
+  });
+
+  it('does not allow deleting a system-defined relation type', async () => {
+    mockGetGlossaryTermRelationTypes.mockResolvedValueOnce({
+      data: [
+        {
+          name: 'relatedTo',
+          displayName: 'Related To',
+          category: RelationCategory.Associative,
+          isSystemDefined: true,
+        },
+      ],
+      paging: { limit: 15, offset: 0, total: 1 },
+    });
+
+    render(<GlossaryTermRelationSettingsPage />);
+
+    const deleteButton = await screen.findByTestId('delete-relatedTo-btn');
+
+    expect(deleteButton).toBeDisabled();
+
+    fireEvent.click(deleteButton);
+
+    expect(mockDeleteGlossaryTermRelationType).not.toHaveBeenCalled();
+  });
+
+  it('shows an off-page duplicate error on the name field', async () => {
+    const duplicateError = "Relation type 'relation30' already exists.";
+    mockCreateGlossaryTermRelationType.mockRejectedValueOnce({
+      response: {
+        status: 400,
+        data: { message: duplicateError },
+      },
+    });
+
+    render(<GlossaryTermRelationSettingsPage />);
+
+    expect(await screen.findByText('relation0')).toBeInTheDocument();
+
+    fireEvent.click(screen.getByTestId('add-relation-type-btn'));
+    fireEvent.change(screen.getByRole('textbox', { name: /label\.name/ }), {
+      target: { value: 'relation30' },
+    });
+    fireEvent.change(
+      screen.getByRole('textbox', { name: /label\.display-name/ }),
+      {
+        target: { value: 'Relation 30' },
+      }
+    );
+    fireEvent.click(screen.getByTestId('save-btn'));
+
+    await waitFor(() =>
+      expect(mockCreateGlossaryTermRelationType).toHaveBeenCalled()
+    );
+
+    expect(await screen.findByText(duplicateError)).toBeInTheDocument();
   });
 });

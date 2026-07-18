@@ -360,10 +360,14 @@ function GlossaryTermRelationSettingsPage() {
   }, []);
 
   const handleDelete = useCallback(
-    async (relationName: string) => {
+    async (relationType: GlossaryTermRelationType) => {
+      if (relationType.isSystemDefined) {
+        return;
+      }
+
       try {
         setSaving(true);
-        await deleteGlossaryTermRelationType(relationName);
+        await deleteGlossaryTermRelationType(relationType.name);
         showSuccessToast(
           t('server.entity-deleted-success', {
             entity: t('label.relation-type'),
@@ -428,12 +432,21 @@ function GlossaryTermRelationSettingsPage() {
         await fetchRelationTypes();
       }
     } catch (error) {
-      showErrorToast(
-        error as AxiosError,
-        t('server.update-entity-error', {
-          entity: t('label.relation-type'),
-        })
-      );
+      const apiError = error as AxiosError<{ message?: string }>;
+      const errorMessage = apiError.response?.data?.message;
+      if (!editingRelation && errorMessage?.includes('already exists')) {
+        setFormErrors((previousErrors) => ({
+          ...previousErrors,
+          name: errorMessage,
+        }));
+      } else {
+        showErrorToast(
+          apiError,
+          t('server.update-entity-error', {
+            entity: t('label.relation-type'),
+          })
+        );
+      }
     } finally {
       setSaving(false);
     }
@@ -603,7 +616,9 @@ function GlossaryTermRelationSettingsPage() {
                 <Table.Body items={relationTypes}>
                   {(record: GlossaryTermRelationType) => {
                     let deleteTooltip = t('label.delete');
-                    if (!isAdminUser) {
+                    if (record.isSystemDefined) {
+                      deleteTooltip = t('label.system-defined');
+                    } else if (!isAdminUser) {
                       deleteTooltip = t('message.no-permission-for-action');
                     }
 
@@ -706,7 +721,7 @@ function GlossaryTermRelationSettingsPage() {
                               }
                               size="sm"
                               tooltip={deleteTooltip}
-                              onClick={() => handleDelete(record.name)}
+                              onClick={() => handleDelete(record)}
                             />
                           </div>
                         </Table.Cell>
