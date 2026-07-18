@@ -401,6 +401,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
         await userPage.reload();
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
+        await redirectToHomePage(userPage);
       });
 
       await test.step('Changing default persona', async () => {
