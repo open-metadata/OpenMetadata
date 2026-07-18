@@ -17,7 +17,11 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.ArgumentMatchers.argThat;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -44,6 +48,7 @@ class SeedDataGateTest {
     gate.configure(new StartupConfiguration(), repository);
 
     assertTrue(gate.shouldSeed());
+    verify(repository, never()).hasRequiredSeedRows(anyList(), anyList(), anyList());
     gate.stampIfClean();
 
     ArgumentCaptor<Settings> settingCaptor = ArgumentCaptor.forClass(Settings.class);
@@ -55,9 +60,56 @@ class SeedDataGateTest {
     SystemRepository warmBootRepository = mock(SystemRepository.class);
     when(warmBootRepository.getConfigWithKey(SettingsType.STARTUP_CHECKSUMS.toString()))
         .thenReturn(stampedSetting);
+    when(warmBootRepository.hasRequiredSeedRows(anyList(), anyList(), anyList())).thenReturn(true);
     gate.configure(new StartupConfiguration(), warmBootRepository);
 
     assertFalse(gate.shouldSeed());
+    assertFalse(gate.shouldSeed());
+    verify(warmBootRepository, times(1))
+        .hasRequiredSeedRows(
+            argThat(names -> names.size() > 50 && names.contains("table")),
+            argThat(
+                names ->
+                    names.size() > 10
+                        && names.contains("OrganizationPolicy")
+                        && !names.contains("DomainOnlyAccessPolicy")),
+            argThat(
+                names ->
+                    names.size() > 10
+                        && names.contains("DataConsumer")
+                        && !names.contains("DomainOnlyAccessRole")));
+  }
+
+  @Test
+  void matchingFingerprintWithMissingRequiredSeedRowReseeds() {
+    Settings stampedSetting = stampCurrentSeedFingerprint();
+    SystemRepository warmBootRepository = mock(SystemRepository.class);
+    when(warmBootRepository.getConfigWithKey(SettingsType.STARTUP_CHECKSUMS.toString()))
+        .thenReturn(stampedSetting);
+    when(warmBootRepository.hasRequiredSeedRows(anyList(), anyList(), anyList())).thenReturn(false);
+
+    SeedDataGate gate = SeedDataGate.getInstance();
+    gate.configure(new StartupConfiguration(), warmBootRepository);
+
+    assertTrue(gate.shouldSeed());
+    assertTrue(gate.shouldSeed());
+    verify(warmBootRepository, times(1)).hasRequiredSeedRows(anyList(), anyList(), anyList());
+  }
+
+  @Test
+  void requiredSeedDataProbeFailureFailsOpen() {
+    Settings stampedSetting = stampCurrentSeedFingerprint();
+    SystemRepository warmBootRepository = mock(SystemRepository.class);
+    when(warmBootRepository.getConfigWithKey(SettingsType.STARTUP_CHECKSUMS.toString()))
+        .thenReturn(stampedSetting);
+    when(warmBootRepository.hasRequiredSeedRows(anyList(), anyList(), anyList()))
+        .thenThrow(new IllegalStateException("database unavailable"));
+
+    SeedDataGate gate = SeedDataGate.getInstance();
+    gate.configure(new StartupConfiguration(), warmBootRepository);
+
+    assertTrue(gate.shouldSeed());
+    verify(warmBootRepository, times(1)).hasRequiredSeedRows(anyList(), anyList(), anyList());
   }
 
   @Test
@@ -143,5 +195,16 @@ class SeedDataGateTest {
     verify(forcedBootRepository).updateSetting(failedStampCaptor.capture());
     StartupChecksums checksums = (StartupChecksums) failedStampCaptor.getValue().getConfigValue();
     assertNull(checksums.getSeedDataFingerprint());
+  }
+
+  private Settings stampCurrentSeedFingerprint() {
+    SystemRepository repository = mock(SystemRepository.class);
+    SeedDataGate gate = SeedDataGate.getInstance();
+    gate.configure(new StartupConfiguration(), repository);
+    gate.stampIfClean();
+
+    ArgumentCaptor<Settings> settingCaptor = ArgumentCaptor.forClass(Settings.class);
+    verify(repository).updateSetting(settingCaptor.capture());
+    return settingCaptor.getValue();
   }
 }

@@ -793,8 +793,9 @@ bulkOperation:
 
 startupConfiguration:
   # Compares bundled seed files and the server version with the last successful startup.
-  # It does not detect seed rows changed directly in the database. Set
-  # STARTUP_FORCE_SEED_DATA=true for one restart, or disable this gate, to reconcile DB drift.
+  # Warm starts also verify rows for every bundled type and non-deletable policy and role. This
+  # does not validate soft deletions, row content, relationships, or other seed categories. Use
+  # STARTUP_FORCE_SEED_DATA=true to rerun all loaders; direct DB changes may need manual repair.
   seedDataGateEnabled: ${STARTUP_SEED_DATA_GATE_ENABLED:-true}
   forceSeedData: ${STARTUP_FORCE_SEED_DATA:-false}
   searchTemplateGateEnabled: ${STARTUP_SEARCH_TEMPLATE_GATE_ENABLED:-true}

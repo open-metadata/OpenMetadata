@@ -202,6 +202,15 @@ public class SystemRepository {
     return null;
   }
 
+  public boolean hasRequiredSeedRows(
+      List<String> typeNames, List<String> policyNames, List<String> roleNames) {
+    if (typeNames.isEmpty() || policyNames.isEmpty() || roleNames.isEmpty()) {
+      return false;
+    }
+    long expectedCount = typeNames.size() + policyNames.size() + roleNames.size();
+    return dao.countRequiredSeedData(typeNames, policyNames, roleNames) == expectedCount;
+  }
+
   private Settings prepareFetchedSettings(Settings fetchedSettings) {
     if (fetchedSettings.getConfigType() == SettingsType.EMAIL_CONFIGURATION) {
       SmtpSettings emailConfig = (SmtpSettings) fetchedSettings.getConfigValue();

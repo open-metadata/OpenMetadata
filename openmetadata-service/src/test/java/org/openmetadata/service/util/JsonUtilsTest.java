@@ -35,6 +35,7 @@ import java.io.IOException;
 import java.io.StringReader;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.nio.charset.StandardCharsets;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -59,6 +60,34 @@ import org.openmetadata.schema.utils.JsonUtils;
 /** This test provides examples of how to use applyPatch */
 @Slf4j
 class JsonUtilsTest {
+  @Test
+  void typeNameExtractionMatchesSchemaAnnotations() {
+    String fieldSchema =
+        """
+        {
+          "definitions": {
+            "seedField": {"$comment": "@om-field-type"},
+            "ordinaryField": {"type": "string"}
+          }
+        }
+        """;
+    String entitySchema = "{\"$comment\":\"@om-entity-type\"}";
+
+    assertEquals(
+        List.of("seedField"),
+        JsonUtils.getTypeNames(
+            "json/schema/type/example.json", fieldSchema.getBytes(StandardCharsets.UTF_8)));
+    assertEquals(
+        List.of("exampleEntity"),
+        JsonUtils.getTypeNames(
+            "json/schema/entity/data/exampleEntity.json",
+            entitySchema.getBytes(StandardCharsets.UTF_8)));
+    assertTrue(
+        JsonUtils.getTypeNames(
+                "json/schema/entity/data/unannotated.json", "{}".getBytes(StandardCharsets.UTF_8))
+            .isEmpty());
+  }
+
   @ParameterizedTest
   @MethodSource("patchConversionCases")
   void applyPatchConversionMatchesTheStringBridge(String originalJson, String patchJson) {

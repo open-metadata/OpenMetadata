@@ -10685,6 +10685,15 @@ public interface CollectionDAO {
   }
 
   interface SystemDAO {
+    @SqlQuery(
+        "SELECT (SELECT COUNT(*) FROM type_entity WHERE nameHash IN (<typeHashes>)) + "
+            + "(SELECT COUNT(*) FROM policy_entity WHERE fqnHash IN (<policyHashes>)) + "
+            + "(SELECT COUNT(*) FROM role_entity WHERE nameHash IN (<roleHashes>))")
+    long countRequiredSeedData(
+        @BindListFQN("typeHashes") List<String> typeNames,
+        @BindListFQN("policyHashes") List<String> policyNames,
+        @BindListFQN("roleHashes") List<String> roleNames);
+
     @ConnectionAwareSqlQuery(
         value =
             "SELECT (SELECT COUNT(fqnHash) FROM table_entity <cond>) as tableCount, "

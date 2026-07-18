@@ -49,6 +49,7 @@ import jakarta.validation.Validator;
 import jakarta.validation.ValidatorFactory;
 import java.io.IOException;
 import java.io.StringReader;
+import java.nio.charset.StandardCharsets;
 import java.nio.file.Paths;
 import java.text.DateFormat;
 import java.text.SimpleDateFormat;
@@ -571,6 +572,31 @@ public final class JsonUtils {
     return types;
   }
 
+  public static List<String> getTypeNames(String jsonSchemaFile, byte[] jsonSchema) {
+    boolean fieldTypeSchema = jsonSchemaFile.contains("json/schema/type/");
+    boolean entityTypeSchema = jsonSchemaFile.contains("json/schema/entity/");
+    if (!fieldTypeSchema && !entityTypeSchema) {
+      return Collections.emptyList();
+    }
+
+    String annotation = fieldTypeSchema ? FIELD_TYPE_ANNOTATION : ENTITY_TYPE_ANNOTATION;
+    if (!new String(jsonSchema, StandardCharsets.UTF_8).contains(annotation)) {
+      return Collections.emptyList();
+    }
+
+    JsonNode node;
+    try {
+      node = OBJECT_MAPPER.readTree(jsonSchema);
+    } catch (IOException e) {
+      throw new JsonParsingException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
+    }
+    if (fieldTypeSchema) {
+      return getFieldTypeNames(node);
+    }
+    String entityTypeName = getEntityTypeName(jsonSchemaFile, node);
+    return entityTypeName == null ? Collections.emptyList() : List.of(entityTypeName);
+  }
+
   /**
    * Get all the fields types from the `definitions` section of a JSON schema file that are annotated with "$comment"
    * field set to "@om-field-type".
@@ -592,24 +618,19 @@ public final class JsonUtils {
     String jsonNamespace = getSchemaName(jsonSchemaFile);
 
     List<Type> types = new ArrayList<>();
-    Iterator<Entry<String, JsonNode>> definitions = node.get("definitions").fields();
-    while (definitions != null && definitions.hasNext()) {
-      Entry<String, JsonNode> entry = definitions.next();
-      String typeName = entry.getKey();
-      JsonNode value = entry.getValue();
-      if (JsonUtils.hasAnnotation(value, JsonUtils.FIELD_TYPE_ANNOTATION)) {
-        String description = String.valueOf(value.get("description"));
-        Type type =
-            new Type()
-                .withName(typeName)
-                .withCategory(Category.Field)
-                .withFullyQualifiedName(typeName)
-                .withNameSpace(jsonNamespace)
-                .withDescription(description)
-                .withDisplayName(entry.getKey())
-                .withSchema(value.toPrettyString());
-        types.add(type);
-      }
+    for (String typeName : getFieldTypeNames(node)) {
+      JsonNode value = node.get("definitions").get(typeName);
+      String description = String.valueOf(value.get("description"));
+      Type type =
+          new Type()
+              .withName(typeName)
+              .withCategory(Category.Field)
+              .withFullyQualifiedName(typeName)
+              .withNameSpace(jsonNamespace)
+              .withDescription(description)
+              .withDisplayName(typeName)
+              .withSchema(value.toPrettyString());
+      types.add(type);
     }
     return types;
   }
@@ -628,11 +649,11 @@ public final class JsonUtils {
     } catch (IOException e) {
       throw new JsonParsingException("Failed to read jsonSchemaFile " + jsonSchemaFile, e);
     }
-    if (!JsonUtils.hasAnnotation(node, JsonUtils.ENTITY_TYPE_ANNOTATION)) {
+    String entityName = getEntityTypeName(jsonSchemaFile, node);
+    if (entityName == null) {
       return null;
     }
 
-    String entityName = getSchemaName(jsonSchemaFile);
     String namespace = getSchemaGroup(jsonSchemaFile);
 
     String description = String.valueOf(node.get("description"));
@@ -644,6 +665,28 @@ public final class JsonUtils {
         .withDescription(description)
         .withDisplayName(entityName)
         .withSchema(node.toPrettyString());
+  }
+
+  private static List<String> getFieldTypeNames(JsonNode node) {
+    JsonNode definitionsNode = node.get("definitions");
+    if (definitionsNode == null) {
+      return Collections.emptyList();
+    }
+    List<String> typeNames = new ArrayList<>();
+    Iterator<Entry<String, JsonNode>> definitions = definitionsNode.fields();
+    while (definitions.hasNext()) {
+      Entry<String, JsonNode> entry = definitions.next();
+      if (JsonUtils.hasAnnotation(entry.getValue(), JsonUtils.FIELD_TYPE_ANNOTATION)) {
+        typeNames.add(entry.getKey());
+      }
+    }
+    return typeNames;
+  }
+
+  private static String getEntityTypeName(String jsonSchemaFile, JsonNode node) {
+    return JsonUtils.hasAnnotation(node, JsonUtils.ENTITY_TYPE_ANNOTATION)
+        ? getSchemaName(jsonSchemaFile)
+        : null;
   }
 
   /** Given a json schema file name .../json/schema/entity/data/table.json - return table */
