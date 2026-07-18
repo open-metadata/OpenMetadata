@@ -1,0 +1,59 @@
+/*
+ *  Copyright 2026 Collate.
+ *  Licensed under the Apache License, Version 2.0 (the "License");
+ *  you may not use this file except in compliance with the License.
+ *  You may obtain a copy of the License at
+ *  http://www.apache.org/licenses/LICENSE-2.0
+ *  Unless required by applicable law or agreed to in writing, software
+ *  distributed under the License is distributed on an "AS IS" BASIS,
+ *  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ *  See the License for the specific language governing permissions and
+ *  limitations under the License.
+ */
+
+package org.openmetadata.service.util;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+
+import java.util.List;
+import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
+import org.openmetadata.schema.configuration.GlossaryTermRelationType;
+import org.openmetadata.schema.configuration.RelationCardinality;
+import org.openmetadata.service.exception.SystemSettingsException;
+
+class GlossaryTermRelationSettingsUtilTest {
+  @Test
+  void validateUniqueNamesRejectsCaseInsensitiveDuplicates() {
+    GlossaryTermRelationSettings settings =
+        new GlossaryTermRelationSettings()
+            .withRelationTypes(List.of(relationType("dependsOn"), relationType("DEPENDSON")));
+
+    SystemSettingsException exception =
+        assertThrows(
+            SystemSettingsException.class,
+            () -> GlossaryTermRelationSettingsUtil.validateUniqueNames(settings));
+
+    assertEquals("Relation type 'DEPENDSON' already exists.", exception.getMessage());
+  }
+
+  @Test
+  void normalizeAppliesPresetCardinalityLimits() {
+    GlossaryTermRelationType relationType =
+        relationType("dependsOn")
+            .withCardinality(RelationCardinality.ONE_TO_MANY)
+            .withSourceMax(9)
+            .withTargetMax(9);
+
+    GlossaryTermRelationSettingsUtil.normalize(relationType);
+
+    assertEquals(1, relationType.getSourceMax());
+    assertNull(relationType.getTargetMax());
+  }
+
+  private GlossaryTermRelationType relationType(String name) {
+    return new GlossaryTermRelationType().withName(name);
+  }
+}

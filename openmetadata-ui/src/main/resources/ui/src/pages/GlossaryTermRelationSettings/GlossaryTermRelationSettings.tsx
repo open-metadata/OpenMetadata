@@ -19,6 +19,7 @@ import {
   Checkbox,
   Divider,
   Input,
+  PaginationCardWithControls,
   Select,
   SelectItemType,
   SlideoutMenu,
@@ -40,18 +41,23 @@ import {
   RELATION_META,
 } from '../../components/OntologyExplorer/OntologyExplorer.constants';
 import PageLayoutV1 from '../../components/PageLayoutV1/PageLayoutV1';
+import {
+  PAGE_SIZE_BASE,
+  PAGE_SIZE_LARGE,
+  PAGE_SIZE_MEDIUM,
+} from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
 import {
-  GlossaryTermRelationSettings,
   GlossaryTermRelationType,
   RelationCardinality,
   RelationCategory,
 } from '../../generated/configuration/glossaryTermRelationSettings';
 import { useAuth } from '../../hooks/authHooks';
 import {
-  getGlossaryTermRelationSettings,
-  getRelationTypeUsageCounts,
-  updateGlossaryTermRelationSettings,
+  createGlossaryTermRelationType,
+  deleteGlossaryTermRelationType,
+  getGlossaryTermRelationTypes,
+  updateGlossaryTermRelationType,
 } from '../../rest/glossaryAPI';
 import { getSettingPageEntityBreadCrumb } from '../../utils/GlobalSettingsUtils';
 import { deriveCardinality } from '../../utils/Glossary/glossaryTermRelationUtils';
@@ -130,10 +136,12 @@ function GlossaryTermRelationSettingsPage() {
   const { isAdminUser } = useAuth();
   const [loading, setLoading] = useState<boolean>(false);
   const [saving, setSaving] = useState<boolean>(false);
-  const [settings, setSettings] = useState<GlossaryTermRelationSettings | null>(
-    null
-  );
-  const [usageCounts, setUsageCounts] = useState<Record<string, number>>({});
+  const [relationTypes, setRelationTypes] = useState<
+    GlossaryTermRelationType[]
+  >([]);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(PAGE_SIZE_BASE);
+  const [totalRelationTypes, setTotalRelationTypes] = useState(0);
   const [isModalOpen, setIsModalOpen] = useState<boolean>(false);
   const [editingRelation, setEditingRelation] =
     useState<GlossaryTermRelationType | null>(null);
@@ -251,7 +259,7 @@ function GlossaryTermRelationSettingsPage() {
 
   const rdfPredicateUsage = useMemo(() => {
     const usageMap = new Map<string, string[]>();
-    (settings?.relationTypes ?? []).forEach((relationType) => {
+    relationTypes.forEach((relationType) => {
       const predicate = relationType.rdfPredicate?.trim();
       if (!predicate) {
         return;
@@ -261,7 +269,7 @@ function GlossaryTermRelationSettingsPage() {
     });
 
     return usageMap;
-  }, [settings]);
+  }, [relationTypes]);
 
   const rdfPredicateDuplicates = useMemo(() => {
     const predicate = formValues.rdfPredicate?.trim();
@@ -284,6 +292,16 @@ function GlossaryTermRelationSettingsPage() {
       errors.name = t('label.field-required', { field: t('label.name') });
     } else if (!/^[a-zA-Z][a-zA-Z0-9]*$/.test(formValues.name)) {
       errors.name = t('message.must-start-with-letter-alphanumeric');
+    } else if (
+      !editingRelation &&
+      relationTypes.some(
+        (relationType) =>
+          relationType.name.toLowerCase() === formValues.name?.toLowerCase()
+      )
+    ) {
+      errors.name = t('message.entity-already-exists', {
+        entity: t('label.relation-type'),
+      });
     }
 
     if (!formValues.displayName) {
@@ -301,17 +319,17 @@ function GlossaryTermRelationSettingsPage() {
     setFormErrors(errors);
 
     return Object.keys(errors).length === 0;
-  }, [formValues, t]);
+  }, [editingRelation, formValues, relationTypes, t]);
 
-  const fetchSettings = useCallback(async () => {
+  const fetchRelationTypes = useCallback(async () => {
     try {
       setLoading(true);
-      const [settingsData, usageData] = await Promise.all([
-        getGlossaryTermRelationSettings(),
-        getRelationTypeUsageCounts(),
-      ]);
-      setSettings(settingsData as GlossaryTermRelationSettings);
-      setUsageCounts(usageData);
+      const response = await getGlossaryTermRelationTypes({
+        limit: pageSize,
+        offset: (currentPage - 1) * pageSize,
+      });
+      setRelationTypes(response.data);
+      setTotalRelationTypes(response.paging.total);
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -322,7 +340,7 @@ function GlossaryTermRelationSettingsPage() {
     } finally {
       setLoading(false);
     }
-  }, [t]);
+  }, [currentPage, pageSize, t]);
 
   const handleAddNew = useCallback(() => {
     setEditingRelation(null);
@@ -343,24 +361,24 @@ function GlossaryTermRelationSettingsPage() {
 
   const handleDelete = useCallback(
     async (relationName: string) => {
-      if (!settings) {
-        return;
-      }
-
       try {
         setSaving(true);
-        const updatedRelationTypes = (settings.relationTypes ?? []).filter(
-          (r) => r.name !== relationName
-        );
-        await updateGlossaryTermRelationSettings({
-          relationTypes: updatedRelationTypes,
-        });
-        setSettings({ relationTypes: updatedRelationTypes });
+        await deleteGlossaryTermRelationType(relationName);
         showSuccessToast(
           t('server.entity-deleted-success', {
             entity: t('label.relation-type'),
           })
         );
+
+        const lastPage = Math.max(
+          Math.ceil((totalRelationTypes - 1) / pageSize),
+          1
+        );
+        if (currentPage > lastPage) {
+          setCurrentPage(lastPage);
+        } else {
+          await fetchRelationTypes();
+        }
       } catch (error) {
         showErrorToast(
           error as AxiosError,
@@ -372,7 +390,7 @@ function GlossaryTermRelationSettingsPage() {
         setSaving(false);
       }
     },
-    [settings, t]
+    [currentPage, fetchRelationTypes, pageSize, t, totalRelationTypes]
   );
 
   const handleModalOk = useCallback(async () => {
@@ -388,29 +406,27 @@ function GlossaryTermRelationSettingsPage() {
         isSystemDefined: false,
       });
 
-      let updatedRelationTypes: GlossaryTermRelationType[];
-
       if (editingRelation) {
-        updatedRelationTypes = (settings?.relationTypes || []).map((r) =>
-          r.name === editingRelation.name ? newRelation : r
-        );
+        await updateGlossaryTermRelationType(newRelation);
       } else {
-        updatedRelationTypes = [
-          ...(settings?.relationTypes || []),
-          newRelation,
-        ];
+        await createGlossaryTermRelationType(newRelation);
       }
 
-      await updateGlossaryTermRelationSettings({
-        relationTypes: updatedRelationTypes,
-      });
-      setSettings({ relationTypes: updatedRelationTypes });
       setIsModalOpen(false);
       showSuccessToast(
         t('server.update-entity-success', {
           entity: t('label.relation-type'),
         })
       );
+
+      const destinationPage = editingRelation
+        ? currentPage
+        : Math.max(Math.ceil((totalRelationTypes + 1) / pageSize), 1);
+      if (destinationPage !== currentPage) {
+        setCurrentPage(destinationPage);
+      } else {
+        await fetchRelationTypes();
+      }
     } catch (error) {
       showErrorToast(
         error as AxiosError,
@@ -421,7 +437,16 @@ function GlossaryTermRelationSettingsPage() {
     } finally {
       setSaving(false);
     }
-  }, [validateForm, formValues, editingRelation, settings, t]);
+  }, [
+    currentPage,
+    editingRelation,
+    fetchRelationTypes,
+    formValues,
+    pageSize,
+    t,
+    totalRelationTypes,
+    validateForm,
+  ]);
 
   const handleModalCancel = useCallback(() => {
     setIsModalOpen(false);
@@ -450,8 +475,8 @@ function GlossaryTermRelationSettingsPage() {
   );
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    fetchRelationTypes();
+  }, [fetchRelationTypes]);
 
   return (
     <PageLayoutV1 pageTitle={t('label.glossary-term-relation-plural')}>
@@ -489,9 +514,11 @@ function GlossaryTermRelationSettingsPage() {
             </div>
           ) : (
             <TableCard.Root size="sm">
-              <Table data-testid="relation-types-table">
+              <Table
+                aria-label={t('label.glossary-term-relation-plural')}
+                data-testid="relation-types-table">
                 <Table.Header>
-                  <Table.Head id="col-name">
+                  <Table.Head isRowHeader id="col-name">
                     <Typography
                       as="span"
                       className="tw:text-gray-500 tw:whitespace-nowrap"
@@ -573,18 +600,11 @@ function GlossaryTermRelationSettingsPage() {
                     </Typography>
                   </Table.Head>
                 </Table.Header>
-                <Table.Body items={settings?.relationTypes || []}>
+                <Table.Body items={relationTypes}>
                   {(record: GlossaryTermRelationType) => {
-                    const count = usageCounts[record.name] || 0;
-                    const isInUse = count > 0;
                     let deleteTooltip = t('label.delete');
                     if (!isAdminUser) {
                       deleteTooltip = t('message.no-permission-for-action');
-                    } else if (isInUse) {
-                      deleteTooltip = t(
-                        'message.cannot-delete-relation-type-in-use',
-                        { count }
-                      );
                     }
 
                     return (
@@ -695,6 +715,23 @@ function GlossaryTermRelationSettingsPage() {
                   }}
                 </Table.Body>
               </Table>
+              {totalRelationTypes > PAGE_SIZE_BASE && (
+                <PaginationCardWithControls
+                  page={currentPage}
+                  pageSize={pageSize}
+                  pageSizeOptions={[
+                    PAGE_SIZE_BASE,
+                    PAGE_SIZE_MEDIUM,
+                    PAGE_SIZE_LARGE,
+                  ]}
+                  total={Math.max(Math.ceil(totalRelationTypes / pageSize), 1)}
+                  onPageChange={setCurrentPage}
+                  onPageSizeChange={(newPageSize) => {
+                    setPageSize(newPageSize);
+                    setCurrentPage(1);
+                  }}
+                />
+              )}
             </TableCard.Root>
           )}
         </div>
