@@ -365,6 +365,31 @@ class OracleUnitTest(TestCase):
         assert "SAMPLE_SCHEMA" in executed_query
         assert "sample_schema" not in executed_query
 
+    def test_get_columns_with_constraints_handles_no_pk_nosuchtableerror(self):
+        """
+        OracleSource._get_columns_with_constraints: get_pk_constraint raising
+        NoSuchTableError (Oracle under SQLAlchemy >= 2.0, for tables without a
+        primary key) should not abort column extraction — it should be treated
+        as "no PK constraint" instead of propagating the error. This override is
+        scoped to Oracle only; the shared SqlColumnHandlerMixin implementation
+        used by other connectors is intentionally left unchanged, since for most
+        other dialects NoSuchTableError reliably means the table itself is gone.
+        """
+        from sqlalchemy.exc import NoSuchTableError
+
+        mock_inspector = MagicMock()
+        mock_inspector.get_pk_constraint.side_effect = NoSuchTableError("test_schema.test_no_pk")
+        mock_inspector.get_unique_constraints.return_value = []
+        mock_inspector.get_foreign_keys.return_value = []
+
+        pk_columns, unique_columns, foreign_columns = self.oracle._get_columns_with_constraints(
+            "test_schema", "test_no_pk", mock_inspector
+        )
+
+        self.assertEqual(pk_columns, [])
+        self.assertEqual(unique_columns, [])
+        self.assertEqual(foreign_columns, [])
+
 
 class TestOraclePreserveIdentifierCase:
     """Test Oracle source behavior when preserveIdentifierCase=True."""
@@ -467,32 +492,6 @@ class TestOraclePreserveIdentifierCase:
         assert result[0]["name"] == "IDX_EMPLOYEE_ID"
         assert result[0]["column_names"] == ["EmployeeId", "DeptId"]
         assert result[0]["unique"] is True
-
-    def test_get_columns_with_constraints_handles_no_pk_nosuchtableerror(self):
-        """
-        get_pk_constraint raising NoSuchTableError (e.g. Oracle under SQLAlchemy >= 2.0
-        for tables without a primary key) should not abort column extraction — the table
-        is already known to exist at this point, so it should be treated as having no
-        PK constraint instead of propagating the error.
-        """
-        from sqlalchemy.exc import NoSuchTableError
-
-        from metadata.ingestion.source.database.sql_column_handler import (
-            SqlColumnHandlerMixin,
-        )
-
-        mock_inspector = MagicMock()
-        mock_inspector.get_pk_constraint.side_effect = NoSuchTableError("test_schema.test_no_pk")
-        mock_inspector.get_unique_constraints.return_value = []
-        mock_inspector.get_foreign_keys.return_value = []
-
-        pk_columns, unique_columns, foreign_columns = SqlColumnHandlerMixin._get_columns_with_constraints(
-            "test_schema", "test_no_pk", mock_inspector
-        )
-
-        assert pk_columns == []
-        assert unique_columns == []
-        assert foreign_columns == []
 
     def test_get_indexes_preserve_case_lowercase_row_keys(self):
         """get_indexes_preserve_case handles thin-mode lowercase result row keys (e.g. index_name)."""
