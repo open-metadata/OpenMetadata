@@ -134,11 +134,8 @@ def test_get_records_by_tql_sends_wallet_header_when_configured():
     assert mock_req.call_args.kwargs["headers"]["biq_system_wallet_id"] == WALLET_ID
 
 
-def test_get_records_by_tql_no_wallet_no_header():
-    """TQL queries must not include wallet header when biqSystemWalletId is absent."""
+def test_get_records_by_tql_no_wallet_raises():
     client = _build_client(wallet_id=None)
 
-    with patch.object(client, "_make_request", return_value=[]) as mock_req:
+    with pytest.raises(client_module.WorkflowFatalError):
         client.get_records_by_tql("mychain", limit=1)
-
-    assert "biq_system_wallet_id" not in mock_req.call_args.kwargs.get("headers", {})

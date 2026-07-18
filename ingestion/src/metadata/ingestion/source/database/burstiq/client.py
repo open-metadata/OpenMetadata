@@ -17,10 +17,13 @@ from datetime import datetime, timedelta
 from typing import Any, Dict, List, Optional  # noqa: UP035
 
 import requests
+from requests.adapters import HTTPAdapter
+from urllib3.util.retry import Retry
 
 from metadata.generated.schema.entity.services.connections.database.burstIQConnection import (
     BurstIQConnection,
 )
+from metadata.ingestion.api.step import WorkflowFatalError
 from metadata.ingestion.source.database.burstiq.models import (
     BurstIQDictionary,
     BurstIQEdge,
@@ -33,7 +36,7 @@ from metadata.utils.logger import ingestion_logger
 logger = ingestion_logger()
 
 AUTH_TIMEOUT = (10, 30)
-API_TIMEOUT = (10, 120)
+API_TIMEOUT = (30, 120)  # (connect, read); connect was 10s — TLS handshakes to a loaded BurstIQ API timed out
 
 AUTH_SERVER_BASE = "https://auth.burstiq.com"
 API_BASE_URL = "https://api.burstiq.com"
@@ -52,6 +55,17 @@ class BurstIQClient:
         self.access_token: Optional[str] = None  # noqa: UP045
         self.token_expires_at: Optional[datetime] = None  # noqa: UP045
         self._chain_metrics: Optional[Dict[str, int]] = None  # noqa: UP006, UP045
+
+        self.session = requests.Session()
+        retry = Retry(
+            total=3,
+            connect=3,
+            read=3,
+            backoff_factor=1,  # sleeps 1s, 2s, 4s between tries
+            status_forcelist=(502, 503, 504),
+            allowed_methods=None,  # retry POST too — TQL queries are read-only
+        )
+        self.session.mount("https://", HTTPAdapter(max_retries=retry))
 
     def test_authenticate(self):
         """
@@ -167,7 +181,7 @@ class BurstIQClient:
 
         try:
             start_time = time.time()
-            response = requests.request(method, url, headers=headers, timeout=API_TIMEOUT, **kwargs)
+            response = self.session.request(method, url, headers=headers, timeout=API_TIMEOUT, **kwargs)
             elapsed_time = time.time() - start_time
 
             logger.debug(f"Request completed in {elapsed_time:.2f}s - Status: {response.status_code}")
@@ -346,13 +360,25 @@ class BurstIQClient:
         tql = f"FROM {chain} SKIP {skip} LIMIT {limit} SELECT data.*"
         logger.info(f"Fetching records for chain '{chain}' via TQL (limit={limit})")
         system_wallet_id = getattr(self.config, "biqSystemWalletId", None)
-        wallet_header = {"biq_system_wallet_id": system_wallet_id} if system_wallet_id else {}
+        if not system_wallet_id:
+            raise WorkflowFatalError(
+                "biqSystemWalletId is required to profile BurstIQ data. "
+                "Without it BurstIQ returns HTTP 200 with zero rows and profiles are silently empty."
+            )
         try:
-            raw = self._make_request("POST", "/api/graphchain/query", json={"query": tql}, headers=wallet_header)
-        except Exception as exc:
-            logger.warning(f"TQL query failed for chain '{chain}': {exc}")
-            return []
-
+            raw = self._make_request(
+                "POST",
+                "/api/graphchain/query",
+                json={"query": tql},
+                headers={"biq_system_wallet_id": system_wallet_id},
+            )
+        except requests.exceptions.HTTPError as exc:
+            body = getattr(getattr(exc, "response", None), "text", "") or ""
+            if "system wallet" in body.lower():
+                raise WorkflowFatalError(
+                    f"BurstIQ system wallet '{system_wallet_id}' is invalid: {body[:200]}"
+                ) from exc
+            raise
         if not isinstance(raw, list):
             return []
 
