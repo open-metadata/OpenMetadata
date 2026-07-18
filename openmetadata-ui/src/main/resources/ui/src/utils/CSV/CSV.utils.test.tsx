@@ -50,8 +50,8 @@ import {
 import {
   convertCustomPropertyStringToEntityExtension,
   convertEntityExtensionToCustomPropertyString,
-  getCSVStringFromColumnsAndDataSource,
   getCsvGridRowHeight,
+  getCSVStringFromColumnsAndDataSource,
   splitCSV,
 } from './CSVPureUtils';
 
