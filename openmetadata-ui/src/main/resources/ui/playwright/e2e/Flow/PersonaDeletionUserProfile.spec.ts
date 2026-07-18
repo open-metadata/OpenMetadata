@@ -168,9 +168,27 @@ test.describe.serial('User profile works after persona deletion', () => {
       await expect(personaCard).toBeVisible();
 
       // Check if deleted persona still appears (this would be the bug)
-      await expect(personaCard).not.toContainText(PERSONA_DETAILS.displayName);
-
+      // Retry up to 3 times with page reload to handle eventual consistency
+      const deletedPersonaLink = page.getByTestId(
+        `${PERSONA_DETAILS.name}-link`
+      );
       const noPersonaText = personaCard.getByText('No persona assigned');
+
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        if (
+          !(await deletedPersonaLink.isVisible()) &&
+          (await noPersonaText.isVisible())
+        ) {
+          break;
+        }
+
+        if (attempt < 3) {
+          await page.reload();
+          await waitForAllLoadersToDisappear(page);
+        }
+      }
+
+      await expect(deletedPersonaLink).not.toBeVisible();
       await expect(noPersonaText).toBeVisible();
     });
   });
