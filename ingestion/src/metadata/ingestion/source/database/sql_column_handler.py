@@ -17,6 +17,7 @@ import traceback
 from typing import Dict, List, Optional, Tuple  # noqa: UP035
 
 from sqlalchemy.engine.reflection import Inspector
+from sqlalchemy.exc import NoSuchTableError
 
 from metadata.generated.schema.entity.data.table import (
     Column,
@@ -162,7 +163,15 @@ class SqlColumnHandlerMixin:
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:  # noqa: UP006
-        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        try:
+            pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        except NoSuchTableError:
+            # Some dialects (e.g. Oracle under SQLAlchemy >= 2.0) raise NoSuchTableError
+            # instead of returning an empty constraint dict when a table has no primary
+            # key. At this point the table itself is already known to exist, so treat
+            # this as "no PK constraint" rather than aborting ingestion for the table.
+            logger.debug(f"Cannot obtain pk constraints for table [{schema_name}.{table_name}]: NoSuchTableError")
+            pk_constraints = {}
         try:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
