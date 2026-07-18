@@ -4925,7 +4925,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       notFoundCache.markNotFoundById(entityType, entity.getId());
     }
     if (entity.getFullyQualifiedName() != null) {
-      notFoundCache.markNotFoundByName(entityType, entity.getFullyQualifiedName());
+      notFoundCache.markNotFoundByName(
+          entityType, cacheNameKey(entityType, entity.getFullyQualifiedName()).getRight());
     }
   }
 
