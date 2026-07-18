@@ -12,13 +12,17 @@
  */
 package org.openmetadata.service.aicontext;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
+import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.type.AIContext;
+import org.openmetadata.schema.type.ColumnLineage;
 import org.openmetadata.schema.type.aicontext.AssetContext;
 import org.openmetadata.schema.type.aicontext.ColumnProfileSummary;
 import org.openmetadata.schema.type.aicontext.DataQuality;
@@ -26,6 +30,7 @@ import org.openmetadata.schema.type.aicontext.FieldContext;
 import org.openmetadata.schema.type.aicontext.ForeignKey;
 import org.openmetadata.schema.type.aicontext.JoinHint;
 import org.openmetadata.schema.type.aicontext.KnowledgeItem;
+import org.openmetadata.schema.type.aicontext.LineageEdgeContext;
 import org.openmetadata.schema.type.aicontext.Observability;
 import org.openmetadata.schema.type.aicontext.TableContext;
 import org.openmetadata.schema.type.personaContext.ContextSection;
@@ -123,8 +128,34 @@ class AIContextMarkdownTest {
     String markdown = render();
     assertTrue(markdown.contains("# Schema"), "missing schema heading");
     assertTrue(markdown.contains("| id | BIGINT | PRIMARY_KEY |"), "missing id column row");
+    assertTrue(
+        markdown.contains("| customer_id | bigint | -- |  |"),
+        "missing constraint must render as --");
     assertTrue(markdown.contains("**Primary key:** id"), "missing primary key line");
     assertTrue(markdown.contains("**Partitioned by:** created_at"), "missing partition line");
+  }
+
+  @Test
+  void render_keepsExplicitNullConstraintVerbatim() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withAssetContext(
+                new AssetContext()
+                    .withTable(
+                        new TableContext()
+                            .withColumns(
+                                List.of(
+                                    new FieldContext()
+                                        .withName("nullable_value")
+                                        .withDataType("string")
+                                        .withConstraint("NULL")))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(markdown.contains("| nullable_value | string | NULL |  |"));
+    assertFalse(markdown.contains("| nullable_value | string | -- |  |"));
   }
 
   @Test
@@ -170,6 +201,224 @@ class AIContextMarkdownTest {
     assertTrue(markdown.contains("An order placed by a customer."), "missing glossary definition");
     assertTrue(markdown.contains("# Lineage"), "missing lineage heading");
     assertTrue(markdown.contains("**Upstream:** `svc.db.sch.raw_orders`"), "missing upstream");
+  }
+
+  @Test
+  void render_emitsNestedUpstreamColumnLineage() {
+    String upstreamFqn = "svc.db.raw.orders";
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withUpstream(List.of(upstreamFqn))
+            .withDownstream(List.of("svc.db.analytics.orders"))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName(upstreamFqn)
+                        .withColumns(
+                            List.of(
+                                new ColumnLineage()
+                                    .withFromColumns(List.of(upstreamFqn + ".account_id"))
+                                    .withToColumn("svc.db.sch.orders.account_id"),
+                                new ColumnLineage()
+                                    .withFromColumns(
+                                        List.of(upstreamFqn + ".balance", upstreamFqn + ".fee"))
+                                    .withToColumn("svc.db.sch.orders.amount")
+                                    .withFunction("SUM")))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains(
+            "**Upstream:**\n"
+                + "- `svc.db.raw.orders`\n"
+                + "  - `account_id → account_id`\n"
+                + "  - `balance, fee → amount (SUM)`\n\n"
+                + "**Downstream:** `svc.db.analytics.orders`"));
+  }
+
+  @Test
+  void render_preservesFlatLineageWhenEdgesHaveNoColumnMappings() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withUpstream(List.of("svc.db.raw.orders"))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName("svc.db.raw.orders")
+                        .withColumns(null)));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(markdown.contains("**Upstream:** `svc.db.raw.orders`\n"));
+    assertFalse(markdown.contains("**Upstream:**\n- `svc.db.raw.orders`"));
+  }
+
+  @Test
+  void render_flipsPrefixesForDownstreamColumnLineage() {
+    String downstreamFqn = "svc.db.analytics.enriched_orders";
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDownstream(List.of(downstreamFqn))
+            .withDownstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName(downstreamFqn)
+                        .withColumns(
+                            List.of(
+                                new ColumnLineage()
+                                    .withFromColumns(List.of("svc.db.sch.orders.gross"))
+                                    .withToColumn(downstreamFqn + ".net")))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains(
+            "**Downstream:**\n"
+                + "- `svc.db.analytics.enriched_orders`\n"
+                + "  - `gross → net`\n"));
+  }
+
+  @Test
+  void shortName_stripsOnlyAnExactEntityPrefix() {
+    assertEquals(
+        "amount", AIContextMarkdown.shortName("svc.db.sch.orders.amount", "svc.db.sch.orders"));
+    assertEquals(
+        "other.db.sch.orders.amount",
+        AIContextMarkdown.shortName("other.db.sch.orders.amount", "svc.db.sch.orders"));
+    assertEquals(
+        "svc.db.sch.ordersX.amount",
+        AIContextMarkdown.shortName("svc.db.sch.ordersX.amount", "svc.db.sch.orders"));
+    assertEquals(
+        "svc.db.sch.orders.amount", AIContextMarkdown.shortName("svc.db.sch.orders.amount", null));
+  }
+
+  @Test
+  void render_doesNotNoteUntruncatedColumnMappingsAtTheCap() {
+    List<ColumnLineage> mappings = new ArrayList<>();
+    for (int index = 0; index < AIContextBuilder.MAX_COLUMN_MAPPINGS_PER_EDGE; index++) {
+      mappings.add(
+          new ColumnLineage()
+              .withFromColumns(List.of("svc.db.raw.orders.source_" + index))
+              .withToColumn("svc.db.sch.orders.target_" + index));
+    }
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withUpstream(List.of("svc.db.raw.orders"))
+            .withDownstream(List.of("svc.db.analytics.orders"))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName("svc.db.raw.orders")
+                        .withColumns(mappings)));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertFalse(
+        markdown.contains(
+            "_Column mappings are capped at 25 per edge — fetch the full lineage graph with "
+                + "get_entity_lineage(entityType=`table`, fqn=`svc.db.sch.orders`)._"));
+  }
+
+  @Test
+  void render_notesOnlyWhenColumnMappingsWereTruncated() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withDownstream(List.of("svc.db.analytics.orders"))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName("svc.db.raw.orders")
+                        .withColumns(
+                            List.of(
+                                new ColumnLineage()
+                                    .withFromColumns(List.of("svc.db.raw.orders.source"))
+                                    .withToColumn("svc.db.sch.orders.target")))
+                        .withColumnsTruncated(true)));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains(
+            "_Column mappings are capped at 25 per edge — fetch the full lineage graph with "
+                + "get_entity_lineage(entityType=`table`, fqn=`svc.db.sch.orders`)._"));
+    assertTrue(
+        markdown.contains(
+            "**Downstream:** `svc.db.analytics.orders`\n\n_Column mappings are capped"));
+  }
+
+  @Test
+  void render_sanitizesDelimiterSensitiveLineageValues() {
+    String upstreamFqn = "svc.db.raw.or`ders\nv2";
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withUpstream(List.of(upstreamFqn))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName(upstreamFqn)
+                        .withColumns(
+                            List.of(
+                                new ColumnLineage()
+                                    .withFromColumns(List.of(upstreamFqn + ".source`_amount\nraw"))
+                                    .withToColumn("svc.db.sch.orders.target`_amount\r\nnet")
+                                    .withFunction("coalesce(`amount`,\n0)")))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(
+        markdown.contains(
+            "- `svc.db.raw.orders v2`\n"
+                + "  - `source_amount raw → target_amount net (coalesce(amount, 0))`\n"));
+    assertFalse(markdown.contains("or`ders"));
+  }
+
+  @Test
+  void render_skipsBlankTargetsAndRendersMappingsWithoutSources() {
+    AIContext context =
+        new AIContext()
+            .withEntityType("table")
+            .withFullyQualifiedName("svc.db.sch.orders")
+            .withUpstream(List.of("svc.db.raw.orders"))
+            .withUpstreamEdges(
+                List.of(
+                    new LineageEdgeContext()
+                        .withFullyQualifiedName("svc.db.raw.orders")
+                        .withColumns(
+                            List.of(
+                                new ColumnLineage()
+                                    .withFromColumns(List.of("svc.db.raw.orders.ignored"))
+                                    .withToColumn(" "),
+                                new ColumnLineage()
+                                    .withFromColumns(List.of())
+                                    .withToColumn("svc.db.sch.orders.x"),
+                                new ColumnLineage()
+                                    .withFromColumns(
+                                        Arrays.asList(
+                                            "svc.db.raw.orders.a",
+                                            null,
+                                            "",
+                                            " ",
+                                            "svc.db.raw.orders.b"))
+                                    .withToColumn("svc.db.sch.orders.y")))));
+
+    String markdown = AIContextMarkdown.render(context);
+
+    assertTrue(markdown.contains("  - `→ x`\n"));
+    assertTrue(markdown.contains("  - `a, b → y`\n"));
+    assertFalse(markdown.contains("ignored"));
+    assertFalse(markdown.contains("a, , b"));
   }
 
   @Test
