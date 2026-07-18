@@ -43,6 +43,10 @@ export const renderQueryBuilderFilterButtons: RenderSettings['renderButton'] = (
   if (type === 'addRule') {
     return (
       <Button
+        // Explicit label: RAQB nests this inside its own action markup and
+        // name-from-contents can compute empty there, making the button
+        // unfindable by role for tests and assistive tech alike.
+        aria-label={t('label.add-entity', { entity: t('label.condition') })}
         className="action action--ADD-RULE"
         color="secondary"
         data-testid="add-condition-button"
@@ -84,6 +88,9 @@ export const renderJSONLogicQueryBuilderButtons: RenderSettings['renderButton'] 
     if (type === 'addRule') {
       return (
         <Button
+          // Icon-only button: without a label it has no accessible name at
+          // all — invisible to role queries and assistive tech.
+          aria-label={t('label.add-entity', { entity: t('label.condition') })}
           className="action action--ADD-RULE"
           color="secondary"
           data-testid="add-condition-button"
