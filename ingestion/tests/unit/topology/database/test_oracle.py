@@ -368,8 +368,9 @@ class OracleUnitTest(TestCase):
     def test_get_columns_with_constraints_handles_no_pk_nosuchtableerror(self):
         """
         get_pk_constraint raising NoSuchTableError (Oracle under SQLAlchemy >= 2.0,
-        for tables without a primary key) should not abort column extraction — it
-        should be treated as "no PK constraint" instead of propagating the error.
+        for tables without a primary key) should not abort column extraction when
+        the table is confirmed (via inspector.has_table) to still exist — it should
+        be treated as "no PK constraint" instead of propagating the error.
         OracleSource only overrides _get_pk_constraint (the small helper extracted
         from SqlColumnHandlerMixin._get_columns_with_constraints); the rest of the
         constraint-handling logic is inherited unchanged from the shared mixin used
@@ -380,6 +381,7 @@ class OracleUnitTest(TestCase):
 
         mock_inspector = MagicMock()
         mock_inspector.get_pk_constraint.side_effect = NoSuchTableError("test_schema.test_no_pk")
+        mock_inspector.has_table.return_value = True
         mock_inspector.get_unique_constraints.return_value = []
         mock_inspector.get_foreign_keys.return_value = []
 
@@ -390,6 +392,24 @@ class OracleUnitTest(TestCase):
         self.assertEqual(pk_columns, [])
         self.assertEqual(unique_columns, [])
         self.assertEqual(foreign_columns, [])
+        mock_inspector.has_table.assert_called_once_with("test_no_pk", schema="test_schema")
+
+    def test_get_columns_with_constraints_reraises_when_table_truly_missing(self):
+        """
+        If get_pk_constraint raises NoSuchTableError AND inspector.has_table confirms
+        the table no longer exists (e.g. dropped/renamed between table listing and
+        per-table reflection), the error must propagate rather than be swallowed as
+        "no PK" — otherwise the table would silently end up with empty columns and
+        no PK instead of being reported as a failed/missing table.
+        """
+        from sqlalchemy.exc import NoSuchTableError
+
+        mock_inspector = MagicMock()
+        mock_inspector.get_pk_constraint.side_effect = NoSuchTableError("test_schema.dropped_table")
+        mock_inspector.has_table.return_value = False
+
+        with self.assertRaises(NoSuchTableError):
+            self.oracle._get_columns_with_constraints("test_schema", "dropped_table", mock_inspector)
 
 
 class TestOraclePreserveIdentifierCase:

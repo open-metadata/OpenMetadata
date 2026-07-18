@@ -145,18 +145,23 @@ class OracleSource(CommonDbSourceService):
         API, which simply omits any table that has no PK-constraint row from its
         result. The wrapper then raises NoSuchTableError for "absent from result",
         even when the table exists and just has no primary key (previously it
-        returned an empty dict for this case). We only swallow the error here,
-        scoped to Oracle: this dialect's specific PK-lookup query is the one
-        confirmed to conflate "no PK" with "absent from result", so a
-        NoSuchTableError from Oracle's get_pk_constraint at this call site is
-        expected to mean "no PK", not "table missing" (a genuinely missing table
-        will still fail later during column reflection). For other dialects this
-        override does not apply, so a NoSuchTableError there continues to
-        propagate as a real "table not found" signal.
+        returned an empty dict for this case).
+
+        That "absent from result" signal is ambiguous by itself: it's also what
+        happens if the table was dropped/renamed after the initial table listing
+        but before this per-table reflection ran. So before swallowing the error,
+        we disambiguate with inspector.has_table(), which for Oracle runs a
+        dedicated existence check against the data dictionary rather than the
+        bulk PK-lookup query above. Only if the table is confirmed to still exist
+        do we treat NoSuchTableError as "no PK"; otherwise we re-raise so the
+        caller reports a real "table not found" failure instead of silently
+        emitting empty metadata for a table that no longer exists.
         """
         try:
             return inspector.get_pk_constraint(table_name, schema_name)
         except NoSuchTableError:
+            if not inspector.has_table(table_name, schema=schema_name):
+                raise
             logger.debug(f"No primary key constraint found for table [{schema_name}.{table_name}]")
             return {}
 
