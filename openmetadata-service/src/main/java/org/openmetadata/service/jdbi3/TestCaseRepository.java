@@ -956,6 +956,13 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void postDelete(TestCase testCase, boolean hardDelete) {
     super.postDelete(testCase, hardDelete);
     updateTestSuite(testCase);
+    if (hardDelete) {
+      // Delete test case results and resolution statuses
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESULT)
+          .delete(testCase.getFullyQualifiedName());
+      Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS)
+          .delete(testCase.getFullyQualifiedName());
+    }
   }
 
   @Override
@@ -996,18 +1003,15 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
   protected void deleteChildren(
       List<CollectionDAO.EntityRelationshipRecord> children, boolean hardDelete, String updatedBy) {
     if (hardDelete) {
+      TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
+          (TestCaseResolutionStatusRepository)
+              Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
       for (CollectionDAO.EntityRelationshipRecord entityRelationshipRecord : children) {
         LOG.info(
-            "Recursively {} deleting {} {}",
-            hardDelete ? "hard" : "soft",
+            "Recursively hard deleting {} {}",
             entityRelationshipRecord.getType(),
             entityRelationshipRecord.getId());
-        TestCaseResolutionStatusRepository testCaseResolutionStatusRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        for (CollectionDAO.EntityRelationshipRecord child : children) {
-          testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
-        }
+        testCaseResolutionStatusRepository.deleteById(entityRelationshipRecord.getId(), hardDelete);
       }
     }
   }
@@ -1021,14 +1025,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     TestCaseResultRepository testCaseResultRepository =
         (TestCaseResultRepository) Entity.getEntityTimeSeriesRepository(TEST_CASE_RESULT);
     testCaseResultRepository.deleteAllTestCaseResults(fqn);
-    asyncExecutor.submit(
-        () -> {
-          try {
-            testCaseResultRepository.deleteAllTestCaseResults(fqn);
-          } catch (Exception e) {
-            LOG.error("Error deleting test case results for test case {}", fqn, e);
-          }
-        });
   }
 
   @SneakyThrows

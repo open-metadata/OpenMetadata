@@ -47,6 +47,33 @@ For connector-specific development, see [skills/README.md](skills/README.md).
 - Run `mvn spotless:apply` before every commit
 - Every new REST endpoint needs a corresponding `*IT.java` in `openmetadata-integration-tests/`
 
+---
+
+## Development with Dev Containers
+
+OpenMetadata provides two Dev Container configurations to streamline your development environment setup.
+
+### 1. Standard Development (`.devcontainer/dev`)
+- **Purpose**: Optimized for backend or frontend development.
+- **Includes**: Java 21, Maven, Python 3.11, Node.js 22.
+- **Setup**: Uses `post-create.sh` to install ANTLR4, yarn dependencies, and set up the ingestion virtual environment.
+- **Note**: You must start external services (MySQL, Elasticsearch) separately using `docker/development/docker-compose.yml`.
+
+### 2. Full Stack Development (`.devcontainer/full-stack`)
+- **Purpose**: Starts the entire OpenMetadata stack (Server, Ingestion/Airflow, MySQL, Elasticsearch) within the container environment.
+- **Setup**: Uses the same `post-create.sh` for environment initialization.
+- **Note**: Services are orchestrated via Docker Compose and are available as soon as the container is ready.
+
+### Environment Initialization
+The `post-create.sh` script (located in `.devcontainer/dev/`) is used by both configurations to:
+1. Install ANTLR4 complete JAR.
+2. Run `yarn install` for the UI.
+3. Create a dedicated Python virtual environment (`.venv-devcontainer`) and run `make install_dev generate`.
+
+Do NOT look for a `post-start` script; all initialization logic is consolidated in `post-create.sh` to ensure it only runs once during container creation.
+
+---
+
 ### React/TypeScript Frontend
 
 ```
