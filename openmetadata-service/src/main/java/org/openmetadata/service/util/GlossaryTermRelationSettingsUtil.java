@@ -13,6 +13,7 @@
 
 package org.openmetadata.service.util;
 
+import jakarta.ws.rs.core.Response;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
@@ -80,6 +81,7 @@ public final class GlossaryTermRelationSettingsUtil {
       String normalizedName = relationType.getName().toLowerCase(Locale.ROOT);
       if (!relationTypeNames.add(normalizedName)) {
         throw new SystemSettingsException(
+            Response.Status.CONFLICT,
             String.format("Relation type '%s' already exists.", relationType.getName()));
       }
     }

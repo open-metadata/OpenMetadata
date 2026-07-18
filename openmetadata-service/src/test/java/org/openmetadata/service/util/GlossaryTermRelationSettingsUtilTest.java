@@ -17,6 +17,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import jakarta.ws.rs.core.Response;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.configuration.GlossaryTermRelationSettings;
@@ -37,6 +38,7 @@ class GlossaryTermRelationSettingsUtilTest {
             () -> GlossaryTermRelationSettingsUtil.validateUniqueNames(settings));
 
     assertEquals("Relation type 'DEPENDSON' already exists.", exception.getMessage());
+    assertEquals(Response.Status.CONFLICT.getStatusCode(), exception.getResponse().getStatus());
   }
 
   @Test

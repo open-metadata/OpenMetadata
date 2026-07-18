@@ -115,6 +115,7 @@ class SystemRepositoryPatchSettingTest {
             () -> systemRepository.patchSetting(SETTING_NAME, duplicateRelationTypePatch()));
 
     assertTrue(failure.getMessage().contains("already exists"));
+    assertEquals(Response.Status.CONFLICT.getStatusCode(), failure.getResponse().getStatus());
     verify(systemDAO, never())
         .updateGlossaryTermRelationSettingsIfCurrent(anyString(), anyString());
     settingsCacheMock.verifyNoInteractions();

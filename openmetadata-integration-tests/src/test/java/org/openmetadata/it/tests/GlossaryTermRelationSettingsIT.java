@@ -187,8 +187,9 @@ public class GlossaryTermRelationSettingsIT {
           201,
           createRelationTypeAndGetStatus(relationTypeName),
           "Creating a relation type should return 201");
-      assertTrue(
-          createRelationTypeAndGetStatus(relationTypeName.toUpperCase()) >= 400,
+      assertEquals(
+          409,
+          createRelationTypeAndGetStatus(relationTypeName.toUpperCase()),
           "Relation type names should be unique regardless of case");
 
       HttpResponse<String> listResponse =

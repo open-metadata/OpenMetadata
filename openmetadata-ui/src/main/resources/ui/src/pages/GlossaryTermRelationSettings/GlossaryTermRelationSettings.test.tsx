@@ -136,11 +136,9 @@ describe('GlossaryTermRelationSettingsPage', () => {
   });
 
   it('shows an off-page duplicate error on the name field', async () => {
-    const duplicateError = "Relation type 'relation30' already exists.";
     mockCreateGlossaryTermRelationType.mockRejectedValueOnce({
       response: {
-        status: 400,
-        data: { message: duplicateError },
+        status: 409,
       },
     });
 
@@ -164,6 +162,8 @@ describe('GlossaryTermRelationSettingsPage', () => {
       expect(mockCreateGlossaryTermRelationType).toHaveBeenCalled()
     );
 
-    expect(await screen.findByText(duplicateError)).toBeInTheDocument();
+    expect(
+      await screen.findByText('message.entity-already-exists')
+    ).toBeInTheDocument();
   });
 });

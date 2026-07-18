@@ -47,6 +47,7 @@ import {
   PAGE_SIZE_MEDIUM,
 } from '../../constants/constants';
 import { GlobalSettingsMenuCategory } from '../../constants/GlobalSettings.constants';
+import { ClientErrors } from '../../enums/Axios.enum';
 import {
   GlossaryTermRelationType,
   RelationCardinality,
@@ -432,12 +433,16 @@ function GlossaryTermRelationSettingsPage() {
         await fetchRelationTypes();
       }
     } catch (error) {
-      const apiError = error as AxiosError<{ message?: string }>;
-      const errorMessage = apiError.response?.data?.message;
-      if (!editingRelation && errorMessage?.includes('already exists')) {
+      const apiError = error as AxiosError;
+      if (
+        !editingRelation &&
+        apiError.response?.status === ClientErrors.CONFLICT
+      ) {
         setFormErrors((previousErrors) => ({
           ...previousErrors,
-          name: errorMessage,
+          name: t('message.entity-already-exists', {
+            entity: t('label.relation-type'),
+          }),
         }));
       } else {
         showErrorToast(
