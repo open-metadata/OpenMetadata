@@ -670,7 +670,8 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
-    String displayName = "PW Classification " + ns.uniqueShortId();
+    String searchToken = "xqz" + ns.uniqueShortId().substring(0, 5);
+    String displayName = "PW Classification " + searchToken;
 
     Classification classification =
         client
@@ -694,7 +695,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .untilAsserted(
             () -> {
               String response =
-                  client.search().query(displayName).index("tag_search_index").size(25).execute();
+                  client.search().query(searchToken).index("tag_search_index").size(25).execute();
               JsonNode root = mapper.readTree(response);
               JsonNode hits = root.path("hits").path("hits");
               boolean found =
