@@ -161,11 +161,6 @@ export default defineConfig({
         storageState: 'playwright/.auth/admin.json',
       },
       dependencies: ['setup'],
-      // Increased timeouts and reduced workers to improve stability
-      timeout: 180000,               // 3 minutes per test (was 60s)
-      expect: { timeout: 30000 },    // 30 seconds per assertion (was 15s)
-      workers: 2,                    // Reduce parallel load on search index
-      retries: 3,                    // Override global retries for flaky search tests
     },
     {
       name: 'entity-data-teardown',

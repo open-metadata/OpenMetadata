@@ -15,7 +15,6 @@ from a configured secrets' manager.
 """
 import glob
 import os
-import re
 
 from datamodel_code_generator.imports import Import
 from datamodel_code_generator.model import pydantic as pydantic_model
@@ -67,6 +66,18 @@ for file_path in MISSING_IMPORTS:
 # -------------------------------------------------------------------------
 # REMOVE UNSUPPORTED REGEX PATTERN FROM ALL GENERATED FILES
 # -------------------------------------------------------------------------
+# pydantic-core's regex engine does not support the negative-lookahead
+# pattern used in the JSON Schema (`(?!::)...`) that blocks reserved FQN
+# separator characters. The actual enforcement of that rule lives in the
+# JSON Schema itself (validated server-side by the Java backend) and in
+# metadata.ingestion.models.custom_basemodel_validation.transform_entity_names,
+# which deliberately allows these characters through the Python model layer
+# so it can encode them (e.g. "::" -> "__reserved__colon__") on Create/Store
+# models and decode them back on Fetch models. Do NOT add a client-side
+# Pydantic field_validator here that rejects these characters at
+# construction time -- that would make it impossible to ever construct the
+# raw-named object that transform_entity_names is meant to encode, breaking
+# tests in tests/unit/models/test_custom_basemodel_validation.py.
 generated_files = glob.glob(f"{ingestion_path}src/metadata/generated/schema/**/*.py", recursive=True)
 
 patterns_to_remove = [
@@ -85,183 +96,6 @@ for file_path in generated_files:
         content = content.replace(pat, "")
     with open(file_path, "w", encoding=UTF_8) as f:
         f.write(content)
-
-
-def replace_class(content: str, class_name: str, new_class_def: str) -> str:
-    """Find and replace a Pydantic RootModel class definition."""
-    pattern = re.compile(
-        r'class ' + re.escape(class_name) + r'\(RootModel\[str\]\):.*?(?=\nclass |\Z)',
-        re.DOTALL
-    )
-    return pattern.sub(new_class_def, content)
-
-
-# -------------------------------------------------------------------------
-# INJECT CUSTOM VALIDATORS FOR SPECIFIC CLASSES
-# -------------------------------------------------------------------------
-
-# ---- basic.py: EntityName & TestCaseEntityName ----
-BASIC_TYPE_FILE_PATH = f"{ingestion_path}src/metadata/generated/schema/type/basic.py"
-with open(BASIC_TYPE_FILE_PATH, "r", encoding=UTF_8) as f:
-    content = f.read()
-
-# Add field_validator import if missing
-if "from pydantic import" in content and "field_validator" not in content:
-    content = content.replace(
-        "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel",
-        "from pydantic import AnyUrl, ConfigDict, EmailStr, Field, RootModel, field_validator"
-    )
-
-entity_name_validator = '''
-
-    @field_validator('root', mode='after')
-    @classmethod
-    def validate_entity_name(cls, value: str) -> str:
-        """Validate entity name: disallow ::, special characters, and control characters."""
-        if "::" in value:
-            raise ValueError('Entity name cannot contain "::"')
-        forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
-        if any(c in forbidden_chars for c in value):
-            raise ValueError('Entity name contains invalid characters: ><"|, or control characters')
-        return value
-'''
-
-test_case_entity_name_validator = '''
-
-    @field_validator('root', mode='after')
-    @classmethod
-    def validate_test_case_entity_name(cls, value: str) -> str:
-        """Validate test case entity name: disallow ::, special characters, and control characters."""
-        if "::" in value:
-            raise ValueError('Test case entity name cannot contain "::"')
-        forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
-        if any(c in forbidden_chars for c in value):
-            raise ValueError('Test case entity name contains invalid characters: ><"|, or control characters')
-        return value
-'''
-
-if 'class EntityName(RootModel[str]):' in content and entity_name_validator not in content:
-    content = content.replace(
-        'class EntityName(RootModel[str]):\n    root: Annotated[\n        str,\n        Field(\n            description=\'Name that identifies an entity.\',\n            max_length=256,\n            min_length=1,\n        ),\n    ]',
-        'class EntityName(RootModel[str]):\n    root: Annotated[\n        str,\n        Field(\n            description=\'Name that identifies an entity.\',\n            max_length=256,\n            min_length=1,\n        ),\n    ]' + entity_name_validator
-    )
-
-if 'class TestCaseEntityName(RootModel[str]):' in content and test_case_entity_name_validator not in content:
-    content = content.replace(
-        'class TestCaseEntityName(RootModel[str]):\n    root: Annotated[\n        str,\n        Field(\n            description=\'Name that identifies a test definition and test case.\',\n            min_length=1,\n        ),\n    ]',
-        'class TestCaseEntityName(RootModel[str]):\n    root: Annotated[\n        str,\n        Field(\n            description=\'Name that identifies a test definition and test case.\',\n            min_length=1,\n        ),\n    ]' + test_case_entity_name_validator
-    )
-
-with open(BASIC_TYPE_FILE_PATH, "w", encoding=UTF_8) as f:
-    f.write(content)
-
-
-# ---- table.py: Column2 & ColumnName ----
-TABLE_FILE_PATH = f"{ingestion_path}src/metadata/generated/schema/entity/data/table.py"
-with open(TABLE_FILE_PATH, "r", encoding=UTF_8) as f:
-    content = f.read()
-
-if "from pydantic import" in content and "field_validator" not in content:
-    def add_field_validator_import(match):
-        imports = match.group(1)
-        if 'field_validator' not in imports:
-            if 'RootModel' in imports:
-                parts = [p.strip() for p in imports.split(',')]
-                for i, p in enumerate(parts):
-                    if 'RootModel' in p:
-                        parts.insert(i+1, 'field_validator')
-                        break
-                new_imports = ', '.join(parts)
-            else:
-                new_imports = imports + ', field_validator'
-            return f'from pydantic import {new_imports}'
-        return match.group(0)
-    content = re.sub(r'from pydantic import (.*)', add_field_validator_import, content)
-
-new_col2 = '''class Column2(RootModel[str]):
-    root: str
-
-    @field_validator('root', mode='after')
-    @classmethod
-    def validate_column2_name(cls, value: str) -> str:
-        """Validate column2 name: disallow ::, special characters, and control characters."""
-        if "::" in value:
-            raise ValueError('Column2 name cannot contain "::"')
-        forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
-        if any(c in forbidden_chars for c in value):
-            raise ValueError('Column2 name contains invalid characters: ><"|, or control characters')
-        return value
-'''
-
-new_colname = '''class ColumnName(RootModel[str]):
-    root: Annotated[
-        str,
-        Field(
-            description='Local name (not fully qualified name) of the column. ColumnName is `-` when the column is not named in struct dataType. For example, BigQuery supports struct with unnamed fields.',
-            min_length=1,
-        ),
-    ]
-
-    @field_validator('root', mode='after')
-    @classmethod
-    def validate_column_name(cls, value: str) -> str:
-        """Validate column name: disallow ::, special characters, and control characters."""
-        if "::" in value:
-            raise ValueError('Column name cannot contain "::"')
-        forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
-        if any(c in forbidden_chars for c in value):
-            raise ValueError('Column name contains invalid characters: ><"|, or control characters')
-        return value
-'''
-
-content = replace_class(content, 'Column2', new_col2)
-content = replace_class(content, 'ColumnName', new_colname)
-
-with open(TABLE_FILE_PATH, "w", encoding=UTF_8) as f:
-    f.write(content)
-
-
-# ---- schema.py: FieldName ----
-SCHEMA_FILE_PATH = f"{ingestion_path}src/metadata/generated/schema/type/schema.py"
-with open(SCHEMA_FILE_PATH, "r", encoding=UTF_8) as f:
-    content = f.read()
-
-if "from pydantic import" in content and "field_validator" not in content:
-    def add_field_validator_import_schema(match):
-        imports = match.group(1)
-        if 'field_validator' not in imports:
-            if 'RootModel' in imports:
-                parts = [p.strip() for p in imports.split(',')]
-                for i, p in enumerate(parts):
-                    if 'RootModel' in p:
-                        parts.insert(i+1, 'field_validator')
-                        break
-                new_imports = ', '.join(parts)
-            else:
-                new_imports = imports + ', field_validator'
-            return f'from pydantic import {new_imports}'
-        return match.group(0)
-    content = re.sub(r'from pydantic import (.*)', add_field_validator_import_schema, content)
-
-new_fieldname = '''class FieldName(RootModel[str]):
-    root: str
-
-    @field_validator('root', mode='after')
-    @classmethod
-    def validate_field_name(cls, value: str) -> str:
-        """Validate field name: disallow ::, special characters, and control characters."""
-        if "::" in value:
-            raise ValueError('Field name cannot contain "::"')
-        forbidden_chars = set('><"|') | set(chr(c) for c in range(0x20))
-        if any(c in forbidden_chars for c in value):
-            raise ValueError('Field name contains invalid characters: ><"|, or control characters')
-        return value
-'''
-
-content = replace_class(content, 'FieldName', new_fieldname)
-
-with open(SCHEMA_FILE_PATH, "w", encoding=UTF_8) as f:
-    f.write(content)
 
 
 # -------------------------------------------------------------------------
