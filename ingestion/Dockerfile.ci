@@ -124,6 +124,14 @@ RUN pip install --no-deps "sqlalchemy-redshift==0.8.14" "sqlalchemy-ibmi==0.9.3"
 RUN pip install "datamodel-code-generator==0.25.6"
 RUN mkdir -p /home/airflow/ingestion/src/metadata/generated
 RUN python /home/airflow/scripts/datamodel_generation.py
+RUN wget -q https://repo1.maven.org/maven2/org/antlr/antlr4/4.9.2/antlr4-4.9.2-complete.jar -O /tmp/antlr.jar \
+  && echo "bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd  /tmp/antlr.jar" | sha256sum -c - \
+  && mkdir -p /home/airflow/ingestion/src/metadata/generated/antlr \
+  && java -jar /tmp/antlr.jar -Dlanguage=Python3 -Xexact-output-dir \
+    -o /home/airflow/ingestion/src/metadata/generated/antlr \
+    /home/airflow/openmetadata-spec/src/main/antlr4/org/openmetadata/schema/*.g4 \
+  && touch /home/airflow/ingestion/src/metadata/generated/antlr/__init__.py \
+  && rm -f /tmp/antlr.jar
 
 # Argument to provide for Ingestion Dependencies to install. Defaults to all
 ARG INGESTION_DEPENDENCY="all"
