@@ -314,7 +314,7 @@ public final class SeedDataGate {
     Settings emailSettings =
         systemRepository.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.toString());
     if (emailSettings == null || emailSettings.getConfigValue() == null) {
-      return null;
+      return OPENMETADATA_EMAIL_TEMPLATE_PROVIDER;
     }
     SmtpSettings smtpSettings =
         JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
@@ -539,13 +539,15 @@ public final class SeedDataGate {
       if (framework.isMissingNode()) {
         throw new IOException("Seed resource has no framework: " + resource);
       }
-      rows.get(SeedTable.AI_GOVERNANCE_FRAMEWORK).add(quotedName(resource, framework));
+      String frameworkFqn = quotedName(resource, framework);
+      rows.get(SeedTable.AI_GOVERNANCE_FRAMEWORK).add(frameworkFqn);
       JsonNode controls = seed.path("controls");
       if (!controls.isArray()) {
         throw new IOException("Seed resource has no controls array: " + resource);
       }
       for (JsonNode control : controls) {
-        rows.get(SeedTable.AI_FRAMEWORK_CONTROL).add(quotedName(resource, control));
+        rows.get(SeedTable.AI_FRAMEWORK_CONTROL)
+            .add(FullyQualifiedName.add(frameworkFqn, requiredText(resource, control, "name")));
       }
     }
 

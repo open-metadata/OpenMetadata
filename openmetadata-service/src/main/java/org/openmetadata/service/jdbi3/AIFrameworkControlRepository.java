@@ -19,6 +19,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.resources.ai.AIFrameworkControlResource;
 import org.openmetadata.service.util.EntityUtil.Fields;
 import org.openmetadata.service.util.EntityUtil.RelationIncludes;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 @Repository
@@ -37,11 +38,23 @@ public class AIFrameworkControlRepository extends EntityRepository<AIFrameworkCo
   }
 
   @Override
+  public void setFullyQualifiedName(AIFrameworkControl control) {
+    control.setFullyQualifiedName(
+        FullyQualifiedName.add(control.getFramework().getFullyQualifiedName(), control.getName()));
+  }
+
+  @Override
   public void setFields(
       AIFrameworkControl control, Fields fields, RelationIncludes relationIncludes) {}
 
   @Override
   public void clearFields(AIFrameworkControl control, Fields fields) {}
+
+  @Override
+  public void restorePatchAttributes(AIFrameworkControl original, AIFrameworkControl updated) {
+    super.restorePatchAttributes(original, updated);
+    updated.withFramework(original.getFramework());
+  }
 
   @Override
   public void prepare(AIFrameworkControl control, boolean update) {}

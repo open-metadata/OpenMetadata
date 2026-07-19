@@ -101,7 +101,7 @@ class SeedDataGateTest {
     assertTrue(seedRows.identities(SeedTable.TAG).contains("Tier.Tier1"));
     assertTrue(seedRows.identities(SeedTable.AI_GOVERNANCE_POLICY).contains("drift_threshold"));
     assertTrue(seedRows.identities(SeedTable.AI_GOVERNANCE_FRAMEWORK).contains("canada_aida"));
-    assertTrue(seedRows.identities(SeedTable.AI_FRAMEWORK_CONTROL).contains("aida-1"));
+    assertTrue(seedRows.identities(SeedTable.AI_FRAMEWORK_CONTROL).contains("canada_aida.aida-1"));
     assertTrue(seedRows.identities(SeedTable.AI_APPLICATION).contains("claims-triage-copilot"));
     assertTrue(seedRows.identities(SeedTable.LLM_SERVICE).contains("ai_governance_llm"));
     assertTrue(
@@ -146,7 +146,7 @@ class SeedDataGateTest {
   }
 
   @Test
-  void missingEmailConfigurationChecksEveryTemplateProvider() {
+  void missingEmailConfigurationDefaultsToOpenMetadataProvider() {
     RequiredSeedRows requiredSeedRows =
         new RequiredSeedRows(
             Map.of(SeedTable.DOCUMENT, List.of("shared-document")),
@@ -156,9 +156,8 @@ class SeedDataGateTest {
     List<String> documents =
         requiredSeedRows.selectEmailDocuments(null).identities(SeedTable.DOCUMENT);
 
-    assertTrue(
-        documents.containsAll(
-            List.of("shared-document", "openmetadata-email-document", "collate-email-document")));
+    assertTrue(documents.containsAll(List.of("shared-document", "openmetadata-email-document")));
+    assertFalse(documents.contains("collate-email-document"));
   }
 
   @Test

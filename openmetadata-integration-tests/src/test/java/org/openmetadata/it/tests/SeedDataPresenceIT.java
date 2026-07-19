@@ -71,7 +71,7 @@ class SeedDataPresenceIT {
     rows.put(SeedTable.TAG, List.of("Tier.Tier1"));
     rows.put(SeedTable.AI_GOVERNANCE_POLICY, List.of("drift_threshold"));
     rows.put(SeedTable.AI_GOVERNANCE_FRAMEWORK, List.of("canada_aida"));
-    rows.put(SeedTable.AI_FRAMEWORK_CONTROL, List.of("aida-1"));
+    rows.put(SeedTable.AI_FRAMEWORK_CONTROL, List.of("canada_aida.aida-1"));
     rows.put(SeedTable.AI_APPLICATION, List.of("claims-triage-copilot"));
     rows.put(SeedTable.LLM_SERVICE, List.of("ai_governance_llm"));
     rows.put(SeedTable.LLM_MODEL, List.of("ai_governance_llm.gpt_4o_claims_prod"));

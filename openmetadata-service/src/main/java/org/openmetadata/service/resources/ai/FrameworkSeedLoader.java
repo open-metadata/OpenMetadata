@@ -89,9 +89,17 @@ final class FrameworkSeedLoader {
       return;
     }
     EntityReference frameworkRef = saved.getEntityReference();
+    seedControls(controlsNode, frameworkRef, controlRepository);
+  }
+
+  static void seedControls(
+      JsonNode controlsNode,
+      EntityReference frameworkRef,
+      AIFrameworkControlRepository controlRepository)
+      throws Exception {
     for (JsonNode controlNode : controlsNode) {
       AIFrameworkControl control = JsonUtils.treeToValue(controlNode, AIFrameworkControl.class);
-      String fqn = FullyQualifiedName.build(control.getName());
+      String fqn = FullyQualifiedName.add(frameworkRef.getFullyQualifiedName(), control.getName());
       AIFrameworkControl existingControl = controlRepository.findByNameOrNull(fqn, Include.ALL);
       if (existingControl != null) {
         continue;

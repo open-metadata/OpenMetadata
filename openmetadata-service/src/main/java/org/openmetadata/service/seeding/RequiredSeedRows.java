@@ -55,13 +55,8 @@ public record RequiredSeedRows(
   public RequiredSeedRows selectEmailDocuments(String templateProvider) {
     EnumMap<SeedTable, List<String>> selectedRows = new EnumMap<>(rows);
     List<String> documents = new ArrayList<>(identities(SeedTable.DOCUMENT));
-    if (templateProvider == null) {
-      documents.addAll(openMetadataEmailDocuments);
-      documents.addAll(collateEmailDocuments);
-    } else {
-      documents.addAll(
-          "collate".equals(templateProvider) ? collateEmailDocuments : openMetadataEmailDocuments);
-    }
+    documents.addAll(
+        "collate".equals(templateProvider) ? collateEmailDocuments : openMetadataEmailDocuments);
     selectedRows.put(SeedTable.DOCUMENT, documents.stream().distinct().sorted().toList());
     return new RequiredSeedRows(selectedRows, List.of(), List.of());
   }
