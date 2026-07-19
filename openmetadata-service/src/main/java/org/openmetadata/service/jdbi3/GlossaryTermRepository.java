@@ -2027,6 +2027,9 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
         entity.getParent() != null
             ? entity.getParent().getFullyQualifiedName()
             : entity.getGlossary().getFullyQualifiedName();
+    // parentFqn is passed twice intentionally: the DAO method concatenates it with two different
+    // wildcard suffixes to build the LIKE/NOT LIKE bounds for "direct children only" (see its
+    // Javadoc) — this is not a mistaken duplicate argument.
     int count =
         daoCollection
             .glossaryTermDAO()
