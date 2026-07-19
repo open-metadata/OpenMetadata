@@ -57,12 +57,14 @@ jest.mock('../../../utils/ServiceUtils', () => ({
 }));
 
 jest.mock('../RichTextEditor/RichTextEditorPreviewerV1', () =>
-  jest.fn(({ markdown }: { markdown: string }) => (
-    <div
-      className="service-doc-content"
-      dangerouslySetInnerHTML={{ __html: markdown }}
-    />
-  ))
+  jest.fn(
+    ({ markdown, className }: { markdown: string; className?: string }) => (
+      <div
+        className={className ?? 'service-doc-content'}
+        dangerouslySetInnerHTML={{ __html: markdown }}
+      />
+    )
+  )
 );
 
 let mockLanguage = 'en-US';
@@ -252,7 +254,7 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should render focused field docs without carrying requirements forward', async () => {
+    it('should render section docs, requirements and the focused field docs for a connection field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Snowflake',
@@ -270,7 +272,7 @@ describe('ServiceDocPanel Component', () => {
         ].join('\n')
       );
 
-      render(
+      const { container } = render(
         <ServiceDocPanel
           {...defaultProps}
           focusedMode
@@ -279,11 +281,17 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
+        expect(
+          container.querySelector('.focused-service-docs-intro')
+        ).toHaveTextContent('message.connection-doc-title');
+        expect(
+          container.querySelector('.focused-service-docs-intro')
+        ).toHaveTextContent('message.connection-doc-description');
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
         expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('Database guidance.')
-        );
-        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
-          expect.stringContaining('Grant metadata privileges.')
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
           expect.stringContaining('Warehouse guidance.')
@@ -342,7 +350,7 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should show the dedicated service-name guidance for the service name focused field', async () => {
+    it('should show the identity section docs for the service name focused field', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Snowflake',
@@ -365,10 +373,12 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('label.name-this-service')).toBeInTheDocument();
-        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
-          expect.stringContaining('label.service-name')
-        );
+        expect(
+          screen.getByText('message.identity-doc-title')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('message.identity-doc-description')
+        ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
           expect.stringContaining('Grant metadata privileges.')
         );
@@ -378,7 +388,7 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should show a generic fallback card when a focused field has no matching docs section or schema metadata', async () => {
+    it('should show section docs without synthesizing field docs when a focused field has no matching docs section', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Salesforce',
@@ -403,11 +413,11 @@ describe('ServiceDocPanel Component', () => {
       await waitFor(() => {
         expect(
           container.querySelector('.focused-service-docs-intro')
-        ).toHaveTextContent('Account');
+        ).toHaveTextContent('message.connection-doc-title');
         expect(
-          container.querySelector('.focused-service-docs-intro')
-        ).toHaveTextContent('message.openmetadata-docs-description');
-        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          container.querySelector('.focused-service-docs-field-markdown')
+        ).not.toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
           expect.stringContaining('Grant metadata privileges.')
         );
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
@@ -416,7 +426,7 @@ describe('ServiceDocPanel Component', () => {
       });
     });
 
-    it('should show schema field metadata when a focused field has no matching docs section but schema metadata is available', async () => {
+    it('should ignore schema field metadata and keep the section docs when a focused field has no matching docs section', async () => {
       mockFetchMarkdownFile.mockResolvedValue(
         [
           '# Salesforce',
@@ -443,12 +453,351 @@ describe('ServiceDocPanel Component', () => {
       );
 
       await waitFor(() => {
-        expect(screen.getByText('Account Name')).toBeInTheDocument();
+        expect(screen.queryByText('Account Name')).not.toBeInTheDocument();
         expect(
-          screen.getByText('The Snowflake account identifier.')
+          screen.queryByText('The Snowflake account identifier.')
+        ).not.toBeInTheDocument();
+        expect(
+          screen.getByText('message.connection-doc-title')
+        ).toBeInTheDocument();
+      });
+    });
+
+    it('should show scope section docs without requirements for a scope field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# MySQL',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database Filter Pattern $(id="databaseFilterPattern")',
+          'Database filter pattern guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/databaseFilterPattern"
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('message.scope-doc-title')).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Database filter pattern guidance.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+      });
+    });
+
+    it('should show the auth section docs with guidance cards for the authType field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Connection Details',
+          '$$section',
+          '### Password $(id="password")',
+          'Password guidance.',
+          '$$',
+          '$$section',
+          '### Private Key $(id="privateKey")',
+          'Private key guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/authType"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.authentication-doc-title')
+        ).toBeInTheDocument();
+        expect(
+          container.querySelector('.focused-doc-auth-grid')
+        ).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Password guidance.')
+        );
+      });
+    });
+
+    it('should show guidance cards for any auth field when the connector offers password and key pair', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Connection Details',
+          '$$section',
+          '### Password $(id="password")',
+          'Password guidance.',
+          '$$',
+          '$$section',
+          '### Private Key $(id="privateKey")',
+          'Private key guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/authType/password"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          container.querySelector('.focused-doc-auth-grid')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('message.password-auth-doc-description')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('message.key-pair-auth-doc-description')
+        ).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Password guidance.')
+        );
+      });
+    });
+
+    it('should not show guidance cards when the connector has no key-pair option', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Mysql',
+          '## Connection Details',
+          '$$section',
+          '### Password $(id="password")',
+          'Password guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/authType"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.authentication-doc-title')
+        ).toBeInTheDocument();
+        expect(
+          container.querySelector('.focused-doc-auth-grid')
+        ).not.toBeInTheDocument();
+      });
+    });
+
+    it('should show the auth section docs without guidance cards for other auth fields when key pair is unavailable', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Connection Details',
+          '$$section',
+          '### Password $(id="password")',
+          'Password guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/password"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.authentication-doc-title')
+        ).toBeInTheDocument();
+        expect(
+          container.querySelector('.focused-doc-auth-grid')
+        ).not.toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Password guidance.')
+        );
+      });
+    });
+
+    it('should show advanced section docs without requirements for a lineage field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '### Usage & Lineage',
+          'Lineage guidance.',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/useAccessHistory"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.advanced-doc-title')
+        ).toBeInTheDocument();
+        expect(
+          screen.getByText('message.advanced-doc-description')
+        ).toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Lineage guidance.')
+        );
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+      });
+    });
+
+    it('should show the identity section docs for the service description focused field', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        ['# Snowflake', '## Requirements', 'Grant metadata privileges.'].join(
+          '\n'
+        )
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="serviceDescription"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.identity-doc-title')
         ).toBeInTheDocument();
         expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
           expect.stringContaining('Grant metadata privileges.')
+        );
+      });
+    });
+
+    it('should render the requirements block before the focused field docs', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Database $(id="database")',
+          'Database guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/database"
+        />
+      );
+
+      await waitFor(() => {
+        const requirementsBlock = container.querySelector(
+          '.focused-service-docs-section'
+        );
+        const fieldBlock = container.querySelector(
+          '.focused-service-docs-field-markdown'
+        );
+
+        expect(requirementsBlock).toBeInTheDocument();
+        expect(fieldBlock).toBeInTheDocument();
+        expect(
+          requirementsBlock?.compareDocumentPosition(fieldBlock as Node) &
+            Node.DOCUMENT_POSITION_FOLLOWING
+        ).toBeTruthy();
+      });
+    });
+
+    it('should not render requirements for the authType focused field even when the markdown has them', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Snowflake',
+          '## Requirements',
+          'Grant metadata privileges.',
+          '## Connection Details',
+          '$$section',
+          '### Password $(id="password")',
+          'Password guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      const { container } = render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          activeField="root/authType"
+        />
+      );
+
+      await waitFor(() => {
+        expect(
+          screen.getByText('message.authentication-doc-title')
+        ).toBeInTheDocument();
+        expect(
+          container.querySelector('.focused-service-docs-section')
+        ).not.toBeInTheDocument();
+        expect(mockProcessDocMarkdown).not.toHaveBeenCalledWith(
+          expect.stringContaining('Grant metadata privileges.')
+        );
+      });
+    });
+
+    it('should keep the legacy field-title docs for workflow pages', async () => {
+      mockFetchMarkdownFile.mockResolvedValue(
+        [
+          '# Metadata Workflow',
+          '$$section',
+          '### Enable Debug Log $(id="enableDebugLog")',
+          'Debug log guidance.',
+          '$$',
+        ].join('\n')
+      );
+
+      render(
+        <ServiceDocPanel
+          {...defaultProps}
+          focusedMode
+          isWorkflow
+          activeField="root/enableDebugLog"
+          workflowType={PipelineType.Metadata}
+        />
+      );
+
+      await waitFor(() => {
+        expect(screen.getByText('Enable Debug Log')).toBeInTheDocument();
+        expect(
+          screen.queryByText('message.connection-doc-title')
+        ).not.toBeInTheDocument();
+        expect(mockProcessDocMarkdown).toHaveBeenCalledWith(
+          expect.stringContaining('Debug log guidance.')
         );
       });
     });

@@ -15,17 +15,22 @@ import { QueryClientProvider } from '@tanstack/react-query';
 import { FC, useEffect } from 'react';
 import AppRouter from './components/AppRouter/AppRouter';
 import { AuthProvider } from './components/Auth/AuthProviders/AuthProvider';
+import { useApplicationStore } from './hooks/useApplicationStore';
 import { queryClient } from './queryClient';
 import { idlePrefetchRoutes } from './utils/idlePrefetchRoutes';
 
 const App: FC = () => {
-  // After first paint, warm the chunk cache for Explore / Settings / EntityRouter
-  // during browser idle. Most users land on /my-data and click into Explore or an
-  // entity link next; pre-fetching those route chunks turns the click into a cache
-  // hit (~5ms) instead of a network round-trip (~200–500ms).
+  const isAuthenticated = useApplicationStore((state) => state.isAuthenticated);
+
+  // Warm route chunks during idle, only when authenticated — the unauth shell
+  // (SignIn etc.) never reaches these routes and would needlessly pull Explore's
+  // import graph (TourProvider, tour.enum, …).
   useEffect(() => {
+    if (!isAuthenticated) {
+      return;
+    }
     idlePrefetchRoutes();
-  }, []);
+  }, [isAuthenticated]);
 
   // QueryClientProvider sits ABOVE AuthProvider so that the singleton is available everywhere
   // — including AuthProvider's onLogout handler, which needs to clear the query cache so a

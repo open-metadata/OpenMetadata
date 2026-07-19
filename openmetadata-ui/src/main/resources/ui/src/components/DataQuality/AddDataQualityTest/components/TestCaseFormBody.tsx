@@ -32,7 +32,7 @@ import { FC, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useWatch } from 'react-hook-form';
 import { useTranslation } from 'react-i18next';
 import { ReactComponent as DimensionIcon } from '../../../../assets/svg/data-observability/dimension.svg';
-import { ReactComponent as ColumnIcon } from '../../../../assets/svg/ic-column.svg';
+import { ReactComponent as ColumnIcon } from '../../../../assets/svg/entity/column.svg';
 import { ReactComponent as TableIcon } from '../../../../assets/svg/ic-table-test.svg';
 import {
   MAX_NAME_LENGTH,

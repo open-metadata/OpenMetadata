@@ -31,6 +31,8 @@ import org.openmetadata.schema.api.search.RankingConfiguration;
 import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.entity.activity.ActivityEvent;
+import org.openmetadata.schema.entity.app.App;
+import org.openmetadata.schema.entity.app.ScheduleTimeline;
 import org.openmetadata.schema.entity.feed.Announcement;
 import org.openmetadata.schema.entity.feed.Thread;
 import org.openmetadata.schema.entity.policies.Policy;
@@ -84,6 +86,9 @@ public class MigrationUtil {
   private static final String DATA_CONSUMER_POLICY = "DataConsumerPolicy";
   private static final String TASK_AUTHOR_POLICY = "TaskAuthorPolicy";
   private static final String CREATE_TASK_RULE_NAME = "DataConsumerPolicy-CreateTask-Rule";
+  private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
+  private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
+  private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -108,6 +113,33 @@ public class MigrationUtil {
       };
 
   private MigrationUtil() {}
+
+  public static void migrateRdfIndexAppScheduleToWeekly(CollectionDAO collectionDAO) {
+    try {
+      List<String> applications =
+          collectionDAO
+              .applicationDAO()
+              .listAfter(new ListFilter(Include.ALL), Integer.MAX_VALUE, "", "");
+      for (String applicationJson : applications) {
+        try {
+          App application = JsonUtils.readValue(applicationJson, App.class);
+          if (RDF_INDEX_APP_NAME.equals(application.getName())
+              && application.getAppSchedule() != null
+              && application.getAppSchedule().getScheduleTimeline() == ScheduleTimeline.CUSTOM
+              && RDF_OLD_DAILY_CRON.equals(application.getAppSchedule().getCronExpression())) {
+            application.getAppSchedule().setCronExpression(RDF_WEEKLY_CRON);
+            collectionDAO.applicationDAO().update(application);
+            LOG.info("Migrated {} schedule from daily to weekly", RDF_INDEX_APP_NAME);
+          }
+        } catch (Exception e) {
+          LOG.warn(
+              "Skipping malformed application while migrating RDF schedule: {}", e.getMessage());
+        }
+      }
+    } catch (Exception e) {
+      LOG.error("Failed to migrate the RDF indexing schedule; continuing upgrade", e);
+    }
+  }
 
   public static void backfillSearchRankingSettings() {
     Settings searchSettings = SearchSettingsMergeUtil.getSearchSettingsFromDatabase();

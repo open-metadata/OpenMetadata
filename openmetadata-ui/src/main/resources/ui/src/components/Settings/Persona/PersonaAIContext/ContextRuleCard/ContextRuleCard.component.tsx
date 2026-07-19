@@ -10,21 +10,41 @@
  *  See the License for the specific language governing permissions and
  *  limitations under the License.
  */
-import { DeleteOutlined, EditOutlined } from '@ant-design/icons';
-import { Button, Popconfirm, Tooltip, Typography } from 'antd';
-import { useMemo } from 'react';
+import {
+  Badge,
+  BadgeWithDot,
+  BadgeWithIcon,
+  Box,
+  Button,
+  Card,
+  Typography,
+} from '@openmetadata/ui-core-components';
+import {
+  BarChartSquare02,
+  Check,
+  File02,
+  FilterLines,
+  Hexagon01,
+  Table,
+  Trash01,
+} from '@untitledui/icons';
+import { FC, useMemo, useState } from 'react';
 import { useTranslation } from 'react-i18next';
+import { ReactComponent as EditIcon } from '../../../../../assets/svg/edit-new.svg';
 import {
   DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
   HEAVY_PERSONA_CONTEXT_SECTIONS,
   PERSONA_CONTEXT_ENTITY_LABEL_KEYS,
+  PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS,
   PERSONA_CONTEXT_SECTION_LABEL_KEYS,
 } from '../../../../../constants/PersonaAIContext.constants';
+import { EntityType } from '../../../../../enums/entity.enum';
 import { ContextRule } from '../../../../../generated/type/personaContextDefinition';
 import {
   getRuleConditionCount,
-  getRuleConditionSummary,
+  getRuleConditionParts,
 } from '../../../../../utils/PersonaAIContextUtils';
+import { DeleteModal } from '../../../../common/DeleteModal/DeleteModal';
 
 interface ContextRuleCardProps {
   canEdit: boolean;
@@ -34,6 +54,14 @@ interface ContextRuleCardProps {
   onEdit: () => void;
 }
 
+const MAX_VISIBLE_SECTIONS = 5;
+
+const ENTITY_TYPE_ICONS: Record<string, FC<{ className?: string }>> = {
+  [EntityType.TABLE]: Table,
+  [EntityType.KNOWLEDGE_PAGE]: File02,
+  [EntityType.METRIC]: BarChartSquare02,
+};
+
 export const ContextRuleCard = ({
   canEdit,
   matched,
@@ -42,126 +70,187 @@ export const ContextRuleCard = ({
   onEdit,
 }: ContextRuleCardProps) => {
   const { t } = useTranslation();
-  const conditionSummary = useMemo(() => getRuleConditionSummary(rule), [rule]);
+  const [confirmOpen, setConfirmOpen] = useState(false);
+
+  const conditionParts = useMemo(() => getRuleConditionParts(rule), [rule]);
   const conditionCount = getRuleConditionCount(
     rule.filterJsonTree,
     rule.queryFilter
   );
   const matchedCount = matched ?? rule.matchedCount;
-  const conditionLabel =
-    conditionSummary ||
-    (conditionCount > 0
-      ? t('message.persona-context-condition-count', {
-          count: conditionCount,
-        })
-      : t('label.all-entities'));
+
+  const entityLabel = t(
+    PERSONA_CONTEXT_ENTITY_LABEL_KEYS[rule.entityType] ?? 'label.entity'
+  );
+  const entityLabelPlural = t(
+    PERSONA_CONTEXT_ENTITY_PLURAL_LABEL_KEYS[rule.entityType] ??
+      'label.entity-plural'
+  );
+  const EntityIcon = ENTITY_TYPE_ICONS[rule.entityType] ?? Hexagon01;
+  const visibleSections = rule.sections?.slice(0, MAX_VISIBLE_SECTIONS) ?? [];
+  const extraSections = (rule.sections?.length ?? 0) - visibleSections.length;
+
+  const handleConfirmDelete = () => {
+    setConfirmOpen(false);
+    onDelete();
+  };
 
   return (
-    <div
-      className="persona-ai-context-rule-card"
+    <Card
+      className="tw:flex tw:gap-4 tw:rounded-[10px] tw:px-4.5 tw:py-4 tw:shadow-xs"
       data-testid="context-rule-card">
-      <div className="persona-ai-context-rule-main">
-        <div className="persona-ai-context-rule-title-row">
-          <Typography.Text strong className="persona-ai-context-rule-title">
+      <Box className="tw:min-w-0 tw:flex-1" direction="col" gap={3}>
+        <Box align="center" className="tw:gap-2.5" wrap="wrap">
+          <Typography
+            as="span"
+            className="tw:text-[15px] tw:text-primary"
+            weight="semibold">
             {rule.name}
-          </Typography.Text>
-          <span className="persona-ai-context-type-tag">
-            {t(
-              PERSONA_CONTEXT_ENTITY_LABEL_KEYS[rule.entityType] ??
-                'label.entity'
-            )}
-          </span>
-        </div>
+          </Typography>
+          <BadgeWithIcon color="gray" iconLeading={EntityIcon} size="sm">
+            {entityLabel}
+          </BadgeWithIcon>
+        </Box>
 
-        <div className="persona-ai-context-condition-row">
-          <span
-            className={`persona-ai-context-condition ${
-              conditionCount === 0
-                ? 'persona-ai-context-condition--match-all'
-                : 'persona-ai-context-condition--filtered'
-            }`}>
-            {conditionLabel}
-          </span>
-        </div>
-
-        <div className="persona-ai-context-section-pills">
-          {rule.fullyRendered ? (
-            <span className="persona-ai-context-section-pill persona-ai-context-section-pill--rendered">
-              {t('label.fully-rendered')}
-            </span>
-          ) : (
-            rule.sections?.slice(0, 5).map((section) => (
-              <span className="persona-ai-context-section-pill" key={section}>
-                {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
-                {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
-                  <span className="persona-ai-context-heavy-suffix">
-                    {t('label.heavy')}
-                  </span>
-                )}
-              </span>
-            ))
-          )}
-          {!rule.fullyRendered && (rule.sections?.length ?? 0) > 5 && (
-            <span className="persona-ai-context-section-pill">
-              {t('message.persona-context-more-sections', {
-                count: (rule.sections?.length ?? 0) - 5,
+        <Box align="center" gap={2} wrap="wrap">
+          {conditionParts ? (
+            <>
+              <Typography
+                as="span"
+                className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
+                size="text-xs"
+                weight="medium">
+                {conditionParts.field}
+              </Typography>
+              <Typography
+                as="span"
+                className="tw:text-quaternary"
+                size="text-xs"
+                weight="semibold">
+                {conditionParts.operator}
+              </Typography>
+              {conditionParts.value && (
+                <Typography
+                  as="span"
+                  className="tw:rounded-md tw:border tw:border-brand tw:bg-brand-primary tw:px-2 tw:py-0.5 tw:font-mono tw:text-brand-secondary"
+                  size="text-xs"
+                  weight="medium">
+                  {conditionParts.value}
+                </Typography>
+              )}
+            </>
+          ) : conditionCount > 0 ? (
+            <Typography
+              as="span"
+              className="tw:rounded-md tw:bg-secondary tw:px-2 tw:py-0.5 tw:font-mono tw:text-secondary"
+              size="text-xs"
+              weight="medium">
+              {t('message.persona-context-condition-count', {
+                count: conditionCount,
               })}
-            </span>
+            </Typography>
+          ) : (
+            <Typography
+              as="span"
+              className="tw:inline-flex tw:items-center tw:gap-1.5 tw:rounded-md tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-tertiary"
+              size="text-xs"
+              weight="medium">
+              <FilterLines className="tw:size-3.5 tw:text-quaternary" />
+              {t('label.all-entity', {
+                entity: entityLabelPlural,
+              })}
+            </Typography>
+          )}
+        </Box>
+
+        <Box align="center" className="tw:gap-1.5" wrap="wrap">
+          {rule.fullyRendered ? (
+            <BadgeWithIcon color="brand" iconLeading={Check} size="sm">
+              {t('label.fully-rendered')}
+            </BadgeWithIcon>
+          ) : (
+            <>
+              {visibleSections.map((section) => (
+                <Badge color="gray" key={section} size="sm">
+                  <Typography as="span">
+                    {t(PERSONA_CONTEXT_SECTION_LABEL_KEYS[section])}
+                  </Typography>
+                  {HEAVY_PERSONA_CONTEXT_SECTIONS.has(section) && (
+                    <Typography
+                      as="span"
+                      className="tw:ml-1 tw:text-quaternary"
+                      size="text-xs">
+                      {t('label.heavy')}
+                    </Typography>
+                  )}
+                </Badge>
+              ))}
+              {extraSections > 0 && (
+                <Typography
+                  as="span"
+                  className="tw:rounded-full tw:border tw:border-dashed tw:border-primary tw:px-2.5 tw:py-0.5 tw:text-quaternary"
+                  size="text-xs"
+                  weight="medium">
+                  {t('message.persona-context-more-sections', {
+                    count: extraSections,
+                  })}
+                </Typography>
+              )}
+            </>
           )}
           {rule.alwaysInContext && (
-            <span className="persona-ai-context-section-pill persona-ai-context-section-pill--always">
+            <Badge color="gray" size="sm">
               {t('label.always-in-context')}
-            </span>
+            </Badge>
           )}
-        </div>
+        </Box>
 
-        <Typography.Text
-          className="persona-ai-context-rule-footnote"
-          type="secondary">
+        <Typography as="p" className="tw:m-0 tw:text-quaternary" size="text-xs">
           {t('message.persona-context-max-assets', {
             count: rule.maxAssets ?? DEFAULT_PERSONA_CONTEXT_MAX_ASSETS,
           })}
-        </Typography.Text>
-      </div>
+        </Typography>
+      </Box>
 
       {(matchedCount !== undefined || canEdit) && (
-        <div className="persona-ai-context-rule-aside">
+        <Box align="end" className="tw:shrink-0 tw:gap-3.5" direction="col">
           {matchedCount !== undefined && (
-            <span className="persona-ai-context-matched-badge">
-              <span aria-hidden className="persona-ai-context-matched-dot" />
-              {t('message.persona-context-matched-count', {
+            <BadgeWithDot color="success" size="md">
+              {t('message.persona-context-entity-matched', {
                 count: matchedCount,
+                entity: entityLabelPlural,
               })}
-            </span>
+            </BadgeWithDot>
           )}
           {canEdit && (
-            <div className="persona-ai-context-rule-actions">
-              <Tooltip title={t('label.edit')}>
-                <Button
-                  aria-label={t('label.edit')}
-                  data-testid="edit-context-rule"
-                  icon={<EditOutlined />}
-                  onClick={onEdit}
-                />
-              </Tooltip>
-              <Popconfirm
-                cancelText={t('label.cancel')}
-                okText={t('label.delete')}
-                title={t('message.delete-persona-context-rule-confirmation')}
-                onConfirm={onDelete}>
-                <Tooltip title={t('label.delete')}>
-                  <Button
-                    aria-label={t('label.delete')}
-                    className="persona-ai-context-delete-rule"
-                    data-testid="delete-context-rule"
-                    icon={<DeleteOutlined />}
-                  />
-                </Tooltip>
-              </Popconfirm>
-            </div>
+            <Box align="center" className="tw:mt-auto tw:gap-1.5">
+              <Button
+                aria-label={t('label.edit')}
+                color="secondary"
+                data-testid="edit-context-rule"
+                iconLeading={EditIcon}
+                size="xs"
+                onClick={onEdit}
+              />
+              <Button
+                aria-label={t('label.delete')}
+                color="secondary-destructive"
+                data-testid="delete-context-rule"
+                iconLeading={Trash01}
+                size="xs"
+                onClick={() => setConfirmOpen(true)}
+              />
+            </Box>
           )}
-        </div>
+        </Box>
       )}
-    </div>
+      <DeleteModal
+        entityTitle={rule.name}
+        message={t('message.delete-persona-context-rule-confirmation')}
+        open={confirmOpen}
+        onCancel={() => setConfirmOpen(false)}
+        onDelete={handleConfirmDelete}
+      />
+    </Card>
   );
 };

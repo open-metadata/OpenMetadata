@@ -16,6 +16,7 @@ import { PagingResponse } from 'Models';
 import axiosClient from '.';
 import { CreatePersona } from '../generated/api/teams/createPersona';
 import { Persona } from '../generated/entity/teams/persona';
+import { EntityHistory } from '../generated/type/entityHistory';
 import {
   CacheState,
   ContextRule,
@@ -169,6 +170,14 @@ export const updatePersona = async (id: string, data: Operation[]) => {
   const response = await axiosClient.patch<Operation[], AxiosResponse<Persona>>(
     `${BASE_URL}/${id}`,
     data
+  );
+
+  return response.data;
+};
+
+export const getPersonaVersions = async (id: string) => {
+  const response = await axiosClient.get<EntityHistory>(
+    `${BASE_URL}/${id}/versions`
   );
 
   return response.data;

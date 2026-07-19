@@ -42,7 +42,7 @@ const ColumnBulkOperations = () => {
                 showHome={false}
               />
             }
-            className="tw:mb-4"
+            className="tw:mb-5"
             subtitle={t('message.column-bulk-operations-subtitle')}
             title={t('label.column-bulk-operations')}
             variant="gradient"

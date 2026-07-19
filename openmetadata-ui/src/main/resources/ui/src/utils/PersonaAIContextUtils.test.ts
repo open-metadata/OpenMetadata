@@ -14,6 +14,7 @@ import { PERSONA_CONTEXT_ASSET_TYPES } from '../constants/PersonaAIContext.const
 import { EntityType } from '../enums/entity.enum';
 import { ContextSection } from '../generated/type/personaContextDefinition';
 import {
+  buildPersonaContextVersionHistory,
   getDefaultPersonaContextSections,
   getPersonaContextSections,
   getRuleConditionCount,
@@ -22,6 +23,19 @@ import {
   normalizePersonaContextDefinition,
   parseRuleFilterTree,
 } from './PersonaAIContextUtils';
+
+const versionSnapshot = (
+  version: number,
+  contextDefinition: unknown,
+  updatedBy = 'harsha'
+) =>
+  JSON.stringify({
+    id: 'p1',
+    version,
+    updatedBy,
+    updatedAt: version * 1000,
+    contextDefinition,
+  });
 
 describe('PersonaAIContextUtils', () => {
   it('applies schema defaults without sharing mutable rule arrays', () => {
@@ -145,5 +159,87 @@ describe('PersonaAIContextUtils', () => {
     });
 
     expect(definition.rules?.[0].fullyRendered).toBe(true);
+  });
+
+  describe('buildPersonaContextVersionHistory', () => {
+    it('returns empty list when there is no history', () => {
+      expect(buildPersonaContextVersionHistory()).toEqual([]);
+      expect(
+        buildPersonaContextVersionHistory({ versions: [] } as never)
+      ).toEqual([]);
+    });
+
+    it('sorts newest-first, flags current and describes rule/setting diffs', () => {
+      const rule = {
+        id: 'r1',
+        name: 'KPI metrics',
+        entityType: EntityType.TABLE,
+      };
+      const history = {
+        entityType: 'persona',
+        versions: [
+          versionSnapshot(1.1, { characterBudget: 120000, rules: [] }),
+          versionSnapshot(1.2, { characterBudget: 150000, rules: [rule] }),
+          versionSnapshot(1.3, {
+            characterBudget: 150000,
+            rules: [{ ...rule, alwaysInContext: true }],
+          }),
+        ],
+      };
+
+      const entries = buildPersonaContextVersionHistory(history as never);
+
+      expect(entries.map((entry) => entry.version)).toEqual([
+        '1.3',
+        '1.2',
+        '1.1',
+      ]);
+      expect(entries[0].isCurrent).toBe(true);
+      expect(entries[2].isCurrent).toBe(false);
+      expect(entries[0].changes).toEqual([
+        {
+          key: 'message.persona-context-history-rule-always',
+          values: { name: 'KPI metrics' },
+        },
+      ]);
+      expect(entries[1].changes).toEqual([
+        {
+          key: 'message.persona-context-history-rule-added',
+          values: { name: 'KPI metrics' },
+        },
+        {
+          key: 'message.persona-context-history-budget',
+          values: {
+            from: (120000).toLocaleString(),
+            to: (150000).toLocaleString(),
+          },
+        },
+      ]);
+      expect(entries[2].changes).toEqual([
+        { key: 'message.persona-context-history-created' },
+      ]);
+    });
+
+    it('detects reverts to an earlier identical definition', () => {
+      const base = { characterBudget: 120000, rules: [] };
+      const history = {
+        entityType: 'persona',
+        versions: [
+          versionSnapshot(2.2, base),
+          versionSnapshot(2.3, { characterBudget: 150000, rules: [] }),
+          versionSnapshot(2.4, base),
+        ],
+      };
+
+      const entries = buildPersonaContextVersionHistory(history as never);
+
+      expect(entries[0].version).toBe('2.4');
+      expect(entries[0].changes).toEqual([
+        {
+          key: 'message.persona-context-history-reverted',
+          values: { version: '2.2' },
+        },
+      ]);
+    });
   });
 });
