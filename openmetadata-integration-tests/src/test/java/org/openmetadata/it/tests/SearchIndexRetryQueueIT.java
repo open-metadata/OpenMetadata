@@ -130,6 +130,36 @@ class SearchIndexRetryQueueIT {
   }
 
   @Test
+  void testPlainUpsertPreservesExistingPropagationContext(TestNamespace ns) {
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = ns.prefix("rq") + ".entity";
+    String propagationContext =
+        "\n" + SearchIndexRetryQueueDAO.PROPAGATION_CONTEXT_TOKEN + "eyJwcmV2aW91c1ZlcnNpb24iOjF9";
+
+    retryQueueDAO.upsert(
+        entityId,
+        entityFqn,
+        "propagation failure" + propagationContext,
+        SearchIndexRetryQueue.STATUS_COMPLETED,
+        "table");
+    retryQueueDAO.upsert(
+        entityId,
+        entityFqn,
+        "new indexing failure",
+        SearchIndexRetryQueue.STATUS_COMPLETED,
+        "table");
+
+    SearchIndexRetryRecord record =
+        retryQueueDAO.findByStatus(SearchIndexRetryQueue.STATUS_COMPLETED, 1000).stream()
+            .filter(r -> r.getEntityId().equals(entityId))
+            .findFirst()
+            .orElseThrow();
+    assertEquals("new indexing failure" + propagationContext, record.getFailureReason());
+
+    retryQueueDAO.deleteByEntity(entityId, entityFqn);
+  }
+
+  @Test
   void testFindByStatuses(TestNamespace ns) {
     String id1 = UUID.randomUUID().toString();
     String id2 = UUID.randomUUID().toString();

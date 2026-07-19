@@ -13462,6 +13462,8 @@ public interface CollectionDAO {
   /** DAO for incremental search retry queue records. */
   interface SearchIndexRetryQueueDAO {
 
+    String PROPAGATION_CONTEXT_TOKEN = "__OPENMETADATA_SEARCH_PROPAGATION_V1__:";
+
     @lombok.Getter
     @lombok.AllArgsConstructor
     class SearchIndexRetryRecord {
@@ -13490,7 +13492,20 @@ public interface CollectionDAO {
         value =
             "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
                 + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
-                + "ON DUPLICATE KEY UPDATE failureReason = VALUES(failureReason), "
+                + "ON DUPLICATE KEY UPDATE failureReason = CASE "
+                + "WHEN LOCATE('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "', "
+                + "COALESCE(VALUES(failureReason), '')) > 0 "
+                + "OR LOCATE('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "', "
+                + "COALESCE(failureReason, '')) = 0 THEN VALUES(failureReason) "
+                + "ELSE CONCAT(COALESCE(VALUES(failureReason), ''), CHAR(10), "
+                + "SUBSTRING(failureReason, LOCATE('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "', "
+                + "failureReason))) END, "
                 + "status = VALUES(status), entityType = VALUES(entityType), retryCount = 0, "
                 + "claimedAt = NULL, claimToken = NULL",
         connectionType = MYSQL)
@@ -13499,7 +13514,23 @@ public interface CollectionDAO {
             "INSERT INTO search_index_retry_queue (entityId, entityFqn, failureReason, status, entityType) "
                 + "VALUES (:entityId, :entityFqn, :failureReason, :status, :entityType) "
                 + "ON CONFLICT (entityId, entityFqn) DO UPDATE SET "
-                + "failureReason = EXCLUDED.failureReason, status = EXCLUDED.status, "
+                + "failureReason = CASE "
+                + "WHEN POSITION('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "' IN "
+                + "COALESCE(EXCLUDED.failureReason, '')) > 0 "
+                + "OR POSITION('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "' IN "
+                + "COALESCE(search_index_retry_queue.failureReason, '')) = 0 "
+                + "THEN EXCLUDED.failureReason "
+                + "ELSE COALESCE(EXCLUDED.failureReason, '') || CHR(10) || "
+                + "SUBSTRING(search_index_retry_queue.failureReason FROM "
+                + "POSITION('"
+                + PROPAGATION_CONTEXT_TOKEN
+                + "' IN "
+                + "search_index_retry_queue.failureReason)) END, "
+                + "status = EXCLUDED.status, "
                 + "entityType = EXCLUDED.entityType, retryCount = 0, claimedAt = NULL, "
                 + "claimToken = NULL",
         connectionType = POSTGRES)

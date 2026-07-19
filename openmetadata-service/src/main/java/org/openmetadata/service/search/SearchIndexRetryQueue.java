@@ -26,7 +26,7 @@ public final class SearchIndexRetryQueue {
   // The retry table is already deployed without a payload column. Keep the durable context in its
   // TEXT failureReason while hiding this suffix from the queue API.
   private static final String PROPAGATION_CONTEXT_MARKER =
-      "\n__OPENMETADATA_SEARCH_PROPAGATION_V1__:";
+      "\n" + CollectionDAO.SearchIndexRetryQueueDAO.PROPAGATION_CONTEXT_TOKEN;
 
   private SearchIndexRetryQueue() {}
 
