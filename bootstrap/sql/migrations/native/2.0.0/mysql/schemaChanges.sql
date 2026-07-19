@@ -372,7 +372,9 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
 
-SET @ddl = (
+-- Migration statements are deduplicated by checksum. Use a block-specific prepared statement
+-- name so earlier PREPARE/EXECUTE helpers in this file cannot suppress this ALTER.
+SET @search_index_retry_claim_token_ddl = (
   SELECT IF(
     EXISTS (
       SELECT 1
@@ -385,9 +387,9 @@ SET @ddl = (
     'ALTER TABLE search_index_retry_queue ADD COLUMN claimToken VARCHAR(36) DEFAULT NULL'
   )
 );
-PREPARE stmt FROM @ddl;
-EXECUTE stmt;
-DEALLOCATE PREPARE stmt;
+PREPARE search_index_retry_claim_token_stmt FROM @search_index_retry_claim_token_ddl;
+EXECUTE search_index_retry_claim_token_stmt;
+DEALLOCATE PREPARE search_index_retry_claim_token_stmt;
 
 -- ContextMemory entity - reusable Context Center memory.
 CREATE TABLE IF NOT EXISTS context_memory (
