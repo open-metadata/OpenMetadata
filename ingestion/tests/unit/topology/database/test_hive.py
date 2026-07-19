@@ -379,18 +379,20 @@ class HiveUnitTest(TestCase):
             ("data", "struct<a:struct<b:decimal(20,0)>>", ""),
             ("data2", "struct<colll:decimal(20,0)>", ""),
         ]
-        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
-            lambda connection, table_name, schema_name: table_columns
-        )
-
-        col_list = list(
-            hive_dialect.get_columns(
-                self=hive_dialect,
-                connection=mock_hive_config["source"],
-                table_name="sample_table",
-                schema="sample_schema",
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = list(
+                hive_dialect.get_columns(
+                    self=hive_dialect,
+                    connection=mock_hive_config["source"],
+                    table_name="sample_table",
+                    schema="sample_schema",
+                )
             )
-        )
         for _, (expected, original) in enumerate(zip(EXPECTED_COMPLEX_COL_TYPE, col_list)):  # noqa: B905
 
             def custom_eq(self, __value: object) -> bool:
@@ -474,16 +476,18 @@ class HiveUnitTest(TestCase):
             ("streaming", "boolean", None),
             ("process_date", "string", None),  # partition key repeated, no sentinel
         ]
-        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
-            lambda connection, table_name, schema_name: table_columns
-        )
-
-        col_list = hive_dialect.get_columns(
-            self=hive_dialect,
-            connection=mock_hive_config["source"],
-            table_name="partitioned_table",
-            schema="test_schema",
-        )
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+            )
 
         col_names = [col["name"] for col in col_list]
 
@@ -519,16 +523,18 @@ class HiveUnitTest(TestCase):
             ("# col_name", "data_type", "comment"),
             ("dt", "string", None),  # partition key repeated after sentinel
         ]
-        hive_dialect._get_table_columns = (  # pylint: disable=protected-access
-            lambda connection, table_name, schema_name: table_columns
-        )
-
-        col_list = hive_dialect.get_columns(
-            self=hive_dialect,
-            connection=mock_hive_config["source"],
-            table_name="partitioned_table",
-            schema="test_schema",
-        )
+        with patch.object(
+            hive_dialect,
+            "_get_table_columns",
+            lambda connection, table_name, schema_name: table_columns,
+            create=True,
+        ):
+            col_list = hive_dialect.get_columns(
+                self=hive_dialect,
+                connection=mock_hive_config["source"],
+                table_name="partitioned_table",
+                schema="test_schema",
+            )
 
         col_names = [col["name"] for col in col_list]
 
