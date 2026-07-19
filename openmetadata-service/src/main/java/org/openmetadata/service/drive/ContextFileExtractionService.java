@@ -250,7 +250,26 @@ public class ContextFileExtractionService {
     if (updated == null) {
       return;
     }
+    // The file may have been soft-deleted between the getFile() read above and this
+    // write. repository.update(...) trusts the passed-in "current" snapshot as-is and
+    // never re-reads the row, so a stale non-deleted snapshot would silently flip the
+    // row's deleted flag back to false. Re-check right before writing and drop the
+    // async status update if a concurrent delete won the race.
+    if (isDeleted(fileId)) {
+      LOG.debug("Skipping async update for file {} because it was deleted concurrently", fileId);
+      return;
+    }
     repository.update(null, current, updated, ADMIN_USER_NAME);
+  }
+
+  private boolean isDeleted(UUID fileId) {
+    try {
+      ContextFile file =
+          repository.get(null, fileId, repository.getFields(""), Include.ALL, false);
+      return file == null || Boolean.TRUE.equals(file.getDeleted());
+    } catch (Exception e) {
+      return true;
+    }
   }
 
   private void updateContent(

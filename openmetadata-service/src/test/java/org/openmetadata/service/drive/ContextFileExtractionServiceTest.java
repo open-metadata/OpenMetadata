@@ -87,6 +87,12 @@ class ContextFileExtractionServiceTest {
     lenient().when(repository.getAssetRepository()).thenReturn(assetRepository);
     when(repository.get(isNull(), eq(fileId), any(), eq(Include.NON_DELETED), eq(false)))
         .thenReturn(file);
+    // updateFile() re-checks deleted state via Include.ALL right before writing; the file
+    // is not deleted for the vast majority of tests, so default this to the live (non-deleted)
+    // file everywhere, and let individual tests override with a soft-deleted snapshot.
+    lenient()
+        .when(repository.get(isNull(), eq(fileId), any(), eq(Include.ALL), eq(false)))
+        .thenReturn(file);
     lenient().when(contentRepository.getById(contentId)).thenReturn(content);
     lenient().when(assetRepository.getById("asset-1")).thenReturn(asset);
   }
@@ -158,6 +164,56 @@ class ContextFileExtractionServiceTest {
     verify(repository, never()).update(any(), any(), any(), anyString());
     verify(contentRepository, never()).update(any(), any(), any(), anyString());
     verify(assetService, never()).read(any());
+  }
+
+  @Test
+  void processSkipsWritingTerminalStatusWhenFileWasDeletedConcurrently() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    ContextFile deletedFile = new ContextFile().withId(fileId).withDeleted(true);
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.ALL), eq(false)))
+        .thenReturn(file) // first updateFile() call (Analyzing) - not yet deleted
+        .thenReturn(deletedFile); // second updateFile() call (Processed) - deleted concurrently
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    // Only the first (Analyzing) write should have gone through; the terminal write is dropped.
+    verify(repository, times(1))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(ProcessingStatus.Analyzing, updatedFileCaptor.getValue().getProcessingStatus());
+
+    // updateContent() has no deleted-guard (content has no independent deleted field), so
+    // both content writes still land even though the file's terminal write was dropped.
+    verify(contentRepository, times(2))
+        .update(isNull(), same(content), updatedContentCaptor.capture(), anyString());
+    assertEquals(
+        ProcessingStatus.Processed,
+        updatedContentCaptor.getAllValues().get(1).getProcessingStatus());
+  }
+
+  @Test
+  void processSkipsWritingWhenFileNoLongerExists() throws Exception {
+    when(assetService.read(asset))
+        .thenReturn(
+            CompletableFuture.completedFuture(
+                new ByteArrayInputStream("Quarterly results".getBytes())));
+    when(textExtractor.extract(any(InputStream.class), same(file)))
+        .thenReturn(ContextFileTextExtractor.ExtractionResult.processed("Quarterly results", 3));
+
+    when(repository.get(isNull(), eq(fileId), any(), eq(Include.ALL), eq(false)))
+        .thenReturn(file)
+        .thenReturn(null);
+
+    service(Runnable::run, () -> assetService).process(fileId, contentId);
+
+    verify(repository, times(1))
+        .update(isNull(), same(file), updatedFileCaptor.capture(), anyString());
+    assertEquals(ProcessingStatus.Analyzing, updatedFileCaptor.getValue().getProcessingStatus());
   }
 
   @Test

@@ -5,7 +5,10 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.sql.SQLException;
+import java.util.UUID;
 import org.junit.jupiter.api.Test;
+import org.openmetadata.schema.entity.data.ContextFile;
+import org.openmetadata.schema.entity.data.ProcessingStatus;
 
 class ContextFileResourceTest {
 
@@ -146,5 +149,68 @@ class ContextFileResourceTest {
   @Test
   void testClampExpiry_intMaxClampedToMax() {
     assertEquals(3600, ContextFileResource.clampExpiry(Integer.MAX_VALUE));
+  }
+
+  // ------------------------------------------------------------------
+  // shouldResubmitExtraction
+  //
+  // A file soft-deleted while extraction was in flight (or before it even started) can be
+  // restored with processingStatus stuck at a non-terminal value, because the async
+  // extraction thread's write is silently dropped once it detects the concurrent delete
+  // (see ContextFileExtractionService.updateFile). Restore must re-submit extraction in
+  // that case so the file doesn't get permanently stuck.
+  // ------------------------------------------------------------------
+
+  @Test
+  void testShouldResubmitExtraction_stuckAtUploaded() {
+    ContextFile file = restoredFileWith(ProcessingStatus.Uploaded);
+
+    assertTrue(ContextFileResource.shouldResubmitExtraction(file));
+  }
+
+  @Test
+  void testShouldResubmitExtraction_stuckAtAnalyzing() {
+    ContextFile file = restoredFileWith(ProcessingStatus.Analyzing);
+
+    assertTrue(ContextFileResource.shouldResubmitExtraction(file));
+  }
+
+  @Test
+  void testShouldResubmitExtraction_terminalProcessed() {
+    ContextFile file = restoredFileWith(ProcessingStatus.Processed);
+
+    assertFalse(ContextFileResource.shouldResubmitExtraction(file));
+  }
+
+  @Test
+  void testShouldResubmitExtraction_terminalFailed() {
+    ContextFile file = restoredFileWith(ProcessingStatus.Failed);
+
+    assertFalse(ContextFileResource.shouldResubmitExtraction(file));
+  }
+
+  @Test
+  void testShouldResubmitExtraction_terminalUnsupported() {
+    ContextFile file = restoredFileWith(ProcessingStatus.Unsupported);
+
+    assertFalse(ContextFileResource.shouldResubmitExtraction(file));
+  }
+
+  @Test
+  void testShouldResubmitExtraction_noHeadContentIdNeverResubmits() {
+    ContextFile file =
+        new ContextFile()
+            .withId(UUID.randomUUID())
+            .withProcessingStatus(ProcessingStatus.Analyzing);
+    file.setHeadContentId(null);
+
+    assertFalse(ContextFileResource.shouldResubmitExtraction(file));
+  }
+
+  private static ContextFile restoredFileWith(ProcessingStatus processingStatus) {
+    return new ContextFile()
+        .withId(UUID.randomUUID())
+        .withProcessingStatus(processingStatus)
+        .withHeadContentId(UUID.randomUUID().toString());
   }
 }

@@ -675,7 +675,33 @@ public class ContextFileResource extends EntityResource<ContextFile, ContextFile
       @Context UriInfo uriInfo,
       @Context SecurityContext securityContext,
       @Valid RestoreEntity restore) {
-    return restoreEntity(uriInfo, securityContext, restore.getId());
+    Response response = restoreEntity(uriInfo, securityContext, restore.getId());
+    resubmitExtractionIfNotTerminal(uriInfo, securityContext, restore.getId());
+    return response;
+  }
+
+  private static final Set<ProcessingStatus> TERMINAL_PROCESSING_STATUSES =
+      Set.of(ProcessingStatus.Processed, ProcessingStatus.Failed, ProcessingStatus.Unsupported);
+
+  /**
+   * A file soft-deleted while extraction was still in flight (or before it even started)
+   * can be restored with processingStatus permanently stuck at Uploaded or Analyzing: the
+   * async extraction thread's status write is dropped (see
+   * ContextFileExtractionService.updateFile) once it detects the file was deleted, and
+   * nothing else ever re-submits the job. Re-kick extraction here so the pipeline picks up
+   * where it left off instead of leaving the restored file stuck.
+   */
+  private void resubmitExtractionIfNotTerminal(
+      UriInfo uriInfo, SecurityContext securityContext, UUID id) {
+    ContextFile file = getInternal(uriInfo, securityContext, id, "", Include.NON_DELETED);
+    if (shouldResubmitExtraction(file)) {
+      extractionService.submit(file.getId(), UUID.fromString(file.getHeadContentId()));
+    }
+  }
+
+  static boolean shouldResubmitExtraction(ContextFile file) {
+    return !TERMINAL_PROCESSING_STATUSES.contains(file.getProcessingStatus())
+        && file.getHeadContentId() != null;
   }
 
   @PUT
