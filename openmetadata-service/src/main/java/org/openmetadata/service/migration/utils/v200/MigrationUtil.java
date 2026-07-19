@@ -70,6 +70,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
@@ -1961,11 +1962,34 @@ public class MigrationUtil {
               task.getId().toString(),
               variables);
           backfilled++;
+
+          // Incident workflows start at NewStage. Replay the test case's pre-upgrade resolution
+          // state (Ack/Assigned + assignee) onto the just-started instance so a migrated incident
+          // is not reset to New / No Owners.
+          if (task.getCategory() == TaskCategory.Incident) {
+            replayMigratedIncidentState(task);
+          }
         }
       } catch (Exception e) {
         LOG.error("Failed to backfill open tasks to workflow instances", e);
       }
       return backfilled;
+    }
+
+    private void replayMigratedIncidentState(Task task) {
+      try {
+        TestCaseResolutionStatusRepository incidentRepository =
+            (TestCaseResolutionStatusRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+        if (incidentRepository.backfillMigratedIncidentTaskStage(task)) {
+          LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to replay pre-migration incident state for task {}: {}",
+            task.getId(),
+            e.getMessage());
+      }
     }
 
     private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
