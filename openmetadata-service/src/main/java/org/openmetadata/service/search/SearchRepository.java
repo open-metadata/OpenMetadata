@@ -1470,6 +1470,7 @@ public class SearchRepository {
             SearchIndexRetryQueue.enqueue(
                 entity.getId() != null ? entity.getId().toString() : null,
                 entity.getFullyQualifiedName(),
+                entityType,
                 "createEntitiesIndex: Search client unavailable");
           }
           return;
@@ -4071,7 +4072,8 @@ public class SearchRepository {
   private boolean shouldSkipStreamingIndexing(
       String entityType, String entityId, String entityFqn, String operation) {
     if (!getSearchClient().isClientAvailable()) {
-      SearchIndexRetryQueue.enqueue(entityId, entityFqn, operation + ": Search client unavailable");
+      SearchIndexRetryQueue.enqueue(
+          entityId, entityFqn, entityType, operation + ": Search client unavailable");
       return true;
     }
     return false;

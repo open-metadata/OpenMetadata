@@ -14,7 +14,11 @@ package org.openmetadata.service.search;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.mockito.Answers.CALLS_REAL_METHODS;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
@@ -22,6 +26,8 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_FAILED;
+import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_IN_PROGRESS;
+import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_1;
 import static org.openmetadata.service.search.SearchIndexRetryQueue.STATUS_PENDING_RETRY_2;
 
@@ -39,9 +45,13 @@ import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.FieldChange;
+import org.openmetadata.schema.type.Include;
+import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.BulkSink;
 import org.openmetadata.service.jdbi3.CollectionDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO;
+import org.openmetadata.service.jdbi3.CollectionDAO.SearchIndexRetryQueueDAO.SearchIndexRetryRecord;
 import org.openmetadata.service.workflows.searchIndex.ReindexingUtil;
 
 class SearchIndexRetryWorkerTest {
@@ -77,6 +87,118 @@ class SearchIndexRetryWorkerTest {
     ElasticsearchException serverError = mock(ElasticsearchException.class);
     when(serverError.status()).thenReturn(503);
     assertTrue(worker.isRetryable(serverError), "5xx is a transient cluster error");
+  }
+
+  @Test
+  void claimPendingReturnsTheClaimTokenThatOwnsTheRow() {
+    SearchIndexRetryQueueDAO retryQueueDAO =
+        mock(SearchIndexRetryQueueDAO.class, CALLS_REAL_METHODS);
+    String entityId = UUID.randomUUID().toString();
+    String entityFqn = "service.database.table";
+    SearchIndexRetryRecord candidate =
+        new SearchIndexRetryRecord(
+            entityId, entityFqn, "bulk failure", STATUS_PENDING, "table", 0, null);
+    when(retryQueueDAO.findRetryCandidates(10, 20, 5)).thenReturn(List.of(candidate));
+    when(retryQueueDAO.claimRecord(eq(entityId), eq(entityFqn), eq(STATUS_PENDING), anyString()))
+        .thenReturn(1);
+
+    List<SearchIndexRetryRecord> claimed = retryQueueDAO.claimPending(1, 10, 20);
+
+    assertEquals(1, claimed.size());
+    SearchIndexRetryRecord claimedRecord = claimed.getFirst();
+    assertEquals(STATUS_IN_PROGRESS, claimedRecord.getStatus());
+    assertNotNull(claimedRecord.getClaimToken());
+    assertFalse(claimedRecord.getClaimToken().isBlank());
+    verify(retryQueueDAO)
+        .claimRecord(entityId, entityFqn, STATUS_PENDING, claimedRecord.getClaimToken());
+  }
+
+  @Test
+  void completedStaleClaimDoesNotDeleteNewerQueueWork() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchIndexRetryQueueDAO retryQueueDAO = mock(SearchIndexRetryQueueDAO.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueueDAO);
+    SearchIndexRetryWorker retryWorker =
+        new SearchIndexRetryWorker(collectionDAO, mock(SearchRepository.class));
+    SearchIndexRetryRecord staleClaim = retryRecordWithClaimToken("stale-claim-token");
+    when(retryQueueDAO.deleteClaimed(
+            staleClaim.getEntityId(), staleClaim.getEntityFqn(), staleClaim.getClaimToken()))
+        .thenReturn(0);
+
+    assertFalse(retryWorker.completeClaim(staleClaim));
+
+    verify(retryQueueDAO)
+        .deleteClaimed(staleClaim.getEntityId(), staleClaim.getEntityFqn(), "stale-claim-token");
+  }
+
+  @Test
+  void failedStaleClaimDoesNotOverwriteNewerQueueWork() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchIndexRetryQueueDAO retryQueueDAO = mock(SearchIndexRetryQueueDAO.class);
+    when(collectionDAO.searchIndexRetryQueueDAO()).thenReturn(retryQueueDAO);
+    SearchIndexRetryWorker retryWorker =
+        new SearchIndexRetryWorker(collectionDAO, mock(SearchRepository.class));
+    SearchIndexRetryRecord staleClaim = retryRecordWithClaimToken("stale-claim-token");
+    when(retryQueueDAO.updateFailureAndRetryCount(
+            staleClaim.getEntityId(),
+            staleClaim.getEntityFqn(),
+            "retry failed",
+            STATUS_PENDING_RETRY_1,
+            staleClaim.getClaimToken()))
+        .thenReturn(0);
+
+    assertFalse(retryWorker.recordRetryFailure(staleClaim, "retry failed", STATUS_PENDING_RETRY_1));
+
+    verify(retryQueueDAO)
+        .updateFailureAndRetryCount(
+            staleClaim.getEntityId(),
+            staleClaim.getEntityFqn(),
+            "retry failed",
+            STATUS_PENDING_RETRY_1,
+            "stale-claim-token");
+  }
+
+  @Test
+  void transientEntityLoadFailureKeepsTheRetryClaim() {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchIndexRetryWorker retryWorker =
+        new SearchIndexRetryWorker(collectionDAO, searchRepository);
+    EntityReference root = new EntityReference().withId(UUID.randomUUID()).withType(Entity.TOPIC);
+    when(searchRepository.checkIfIndexingIsSupported(Entity.TOPIC)).thenReturn(true);
+
+    try (MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntity(eq(root), anyString(), eq(Include.ALL)))
+          .thenThrow(new RuntimeException("database unavailable"));
+
+      RuntimeException failure =
+          assertThrows(RuntimeException.class, () -> retryWorker.reindexEntityCascade(root));
+
+      assertEquals("database unavailable", failure.getMessage());
+    }
+  }
+
+  @Test
+  void staleDeleteReachesCurrentAndStagedIndexes() throws Exception {
+    CollectionDAO collectionDAO = mock(CollectionDAO.class);
+    SearchRepository searchRepository = mock(SearchRepository.class);
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping indexMapping = mock(IndexMapping.class);
+    SearchIndexRetryWorker retryWorker =
+        new SearchIndexRetryWorker(collectionDAO, searchRepository);
+    String entityId = UUID.randomUUID().toString();
+    when(searchRepository.getIndexMapping(Entity.TOPIC)).thenReturn(indexMapping);
+    when(searchRepository.getClusterAlias()).thenReturn("openmetadata");
+    when(indexMapping.getIndexName("openmetadata")).thenReturn("openmetadata_topic_search_index");
+    when(searchRepository.getWriteFanoutTargets("openmetadata_topic_search_index"))
+        .thenReturn(List.of("openmetadata_topic_search_index", "topic_search_index_staged"));
+    when(searchRepository.getSearchClient()).thenReturn(searchClient);
+
+    retryWorker.removeStaleEntityById(entityId, Entity.TOPIC);
+
+    verify(searchClient).deleteEntity("openmetadata_topic_search_index", entityId);
+    verify(searchClient).deleteEntity("topic_search_index_staged", entityId);
   }
 
   @Test
@@ -197,5 +319,17 @@ class SearchIndexRetryWorkerTest {
         "Old Service", changeCaptor.getValue().getFieldsUpdated().getFirst().getOldValue());
     assertEquals(
         "New Service", changeCaptor.getValue().getFieldsUpdated().getFirst().getNewValue());
+  }
+
+  private SearchIndexRetryRecord retryRecordWithClaimToken(String claimToken) {
+    return new SearchIndexRetryRecord(
+        UUID.randomUUID().toString(),
+        "service.database.table",
+        "original failure",
+        STATUS_IN_PROGRESS,
+        "table",
+        0,
+        null,
+        claimToken);
   }
 }

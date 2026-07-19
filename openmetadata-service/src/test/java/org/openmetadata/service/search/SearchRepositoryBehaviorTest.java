@@ -538,6 +538,27 @@ class SearchRepositoryBehaviorTest {
   }
 
   @Test
+  void createEntityIndexPreservesEntityTypeWhenSearchIsUnavailable() throws IOException {
+    UUID entityId = UUID.randomUUID();
+    EntityInterface entity = mockEntity(Entity.TABLE, entityId, "orders");
+    when(searchClient.isClientAvailable()).thenReturn(false);
+
+    try (MockedStatic<SearchIndexRetryQueue> retryQueue = mockStatic(SearchIndexRetryQueue.class)) {
+      repository.createEntityIndex(entity);
+
+      retryQueue.verify(
+          () ->
+              SearchIndexRetryQueue.enqueue(
+                  entityId.toString(),
+                  entity.getFullyQualifiedName(),
+                  Entity.TABLE,
+                  "createEntityIndex: Search client unavailable"));
+      verify(searchClient, never())
+          .createEntity(any(String.class), any(String.class), any(String.class));
+    }
+  }
+
+  @Test
   void createEntitiesIndexBulkWritesDocumentsOfTheSameType() throws IOException {
     EntityInterface first = mockEntity(Entity.TABLE, UUID.randomUUID(), "orders");
     EntityInterface second = mockEntity(Entity.TABLE, UUID.randomUUID(), "customers");

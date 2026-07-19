@@ -182,20 +182,14 @@ public class SearchIndexRetryWorker implements Managed {
       if (root != null) {
         EntityInterface rootEntity = reindexEntityCascade(root);
         propagateAfterRetry(rootEntity, record.getFailureReason());
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        Metrics.counter("search.retry.processed", "result", "success").increment();
+        completeClaim(record);
         return;
       }
 
       String entityId = normalize(record.getEntityId());
       if (!entityId.isEmpty()) {
-        removeStaleEntityById(entityId);
-        collectionDAO
-            .searchIndexRetryQueueDAO()
-            .deleteByEntity(record.getEntityId(), record.getEntityFqn());
-        Metrics.counter("search.retry.processed", "result", "success").increment();
+        removeStaleEntityById(entityId, record.getEntityType());
+        completeClaim(record);
         return;
       }
 
@@ -212,7 +206,9 @@ public class SearchIndexRetryWorker implements Managed {
     String reason = SearchIndexRetryQueue.failureReason("retryFailed", e);
     if (isRetryable(e)) {
       String nextStatus = retryableNextStatus(record.getRetryCount());
-      recordRetryFailure(record, reason, nextStatus);
+      if (!recordRetryFailure(record, reason, nextStatus)) {
+        return;
+      }
       if (STATUS_FAILED.equals(nextStatus)) {
         Metrics.counter("search.retry.processed", "result", "exhausted").increment();
         LOG.warn(
@@ -231,7 +227,9 @@ public class SearchIndexRetryWorker implements Managed {
             e.getMessage());
       }
     } else {
-      recordRetryFailure(record, reason, STATUS_FAILED);
+      if (!recordRetryFailure(record, reason, STATUS_FAILED)) {
+        return;
+      }
       Metrics.counter("search.retry.processed", "result", "non_retryable").increment();
       LOG.warn(
           "Non-retryable error for entityId={} entityFqn={}, marking as FAILED: {}",
@@ -241,14 +239,45 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private void recordRetryFailure(SearchIndexRetryRecord record, String reason, String status) {
+  boolean recordRetryFailure(SearchIndexRetryRecord record, String reason, String status) {
     String retainedReason =
         SearchIndexRetryQueue.preservePropagationContext(record.getFailureReason(), reason);
-    collectionDAO
-        .searchIndexRetryQueueDAO()
-        .updateFailureAndRetryCount(
-            record.getEntityId(), record.getEntityFqn(), retainedReason, status);
+    int updated =
+        collectionDAO
+            .searchIndexRetryQueueDAO()
+            .updateFailureAndRetryCount(
+                record.getEntityId(),
+                record.getEntityFqn(),
+                retainedReason,
+                status,
+                record.getClaimToken());
+    if (updated == 0) {
+      recordSuperseded(record);
+      return false;
+    }
     Metrics.counter("search.retry.processed", "result", "failure").increment();
+    return true;
+  }
+
+  boolean completeClaim(SearchIndexRetryRecord record) {
+    int deleted =
+        collectionDAO
+            .searchIndexRetryQueueDAO()
+            .deleteClaimed(record.getEntityId(), record.getEntityFqn(), record.getClaimToken());
+    if (deleted == 0) {
+      recordSuperseded(record);
+      return false;
+    }
+    Metrics.counter("search.retry.processed", "result", "success").increment();
+    return true;
+  }
+
+  private void recordSuperseded(SearchIndexRetryRecord record) {
+    Metrics.counter("search.retry.processed", "result", "superseded").increment();
+    LOG.debug(
+        "Search retry claim was superseded for entityId={} entityFqn={}",
+        record.getEntityId(),
+        record.getEntityFqn());
   }
 
   // ---------------------------------------------------------------------------
@@ -386,7 +415,7 @@ public class SearchIndexRetryWorker implements Managed {
   // Reindexing
   // ---------------------------------------------------------------------------
 
-  private EntityInterface reindexEntityCascade(EntityReference root) throws Exception {
+  EntityInterface reindexEntityCascade(EntityReference root) throws Exception {
     ArrayDeque<EntityReference> queue = new ArrayDeque<>();
     Set<String> visited = new HashSet<>();
     List<EntityInterface> entitiesToIndex = new ArrayList<>();
@@ -414,17 +443,16 @@ public class SearchIndexRetryWorker implements Managed {
       try {
         snapshot = loadStableEntitySnapshot(current);
       } catch (EntityNotFoundException ex) {
+        removeStaleEntityById(current.getId().toString(), current.getType());
         continue;
       } catch (Exception ex) {
-        if (isRelationshipRevisionEntityType(current.getType())) {
-          throw ex;
-        }
-        continue;
+        throw ex;
       }
 
       EntityInterface entity = snapshot.entity();
       if (entity == null) {
-        continue;
+        throw new IllegalStateException(
+            "Loaded an empty entity while processing search retry for " + current.getId());
       }
       if (root.getId().equals(current.getId()) && root.getType().equals(current.getType())) {
         rootEntity = entity;
@@ -659,18 +687,31 @@ public class SearchIndexRetryWorker implements Managed {
     }
   }
 
-  private void removeStaleEntityById(String entityId) {
-    for (String entityType : searchRepository.getSearchEntities()) {
+  void removeStaleEntityById(String entityId, String entityTypeHint) throws Exception {
+    String normalizedEntityType = normalize(entityTypeHint);
+    Set<String> entityTypes =
+        normalizedEntityType.isEmpty()
+                || searchRepository.getIndexMapping(normalizedEntityType) == null
+            ? searchRepository.getSearchEntities()
+            : Set.of(normalizedEntityType);
+    for (String entityType : entityTypes) {
       IndexMapping indexMapping = searchRepository.getIndexMapping(entityType);
       if (indexMapping == null) {
         continue;
       }
-      try {
-        searchRepository
-            .getSearchClient()
-            .deleteEntity(indexMapping.getIndexName(searchRepository.getClusterAlias()), entityId);
-      } catch (Exception ignored) {
-        // Ignore not-found / index mismatch and continue best-effort cleanup.
+      String canonicalIndex = indexMapping.getIndexName(searchRepository.getClusterAlias());
+      for (String targetIndex : searchRepository.getWriteFanoutTargets(canonicalIndex)) {
+        try {
+          searchRepository.getSearchClient().deleteEntity(targetIndex, entityId);
+        } catch (ElasticsearchException e) {
+          if (e.status() != 404) {
+            throw e;
+          }
+        } catch (OpenSearchException e) {
+          if (e.status() != 404) {
+            throw e;
+          }
+        }
       }
     }
   }
