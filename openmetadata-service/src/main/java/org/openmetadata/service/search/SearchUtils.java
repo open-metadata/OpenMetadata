@@ -683,6 +683,8 @@ public final class SearchUtils {
           Entity.SPREADSHEET,
           "file_search_index",
           Entity.FILE,
+          "context_file_search_index",
+          Entity.CONTEXT_FILE,
           "metric_search_index",
           Entity.METRIC -> true;
       default -> false;

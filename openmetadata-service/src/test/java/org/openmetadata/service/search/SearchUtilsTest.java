@@ -552,7 +552,9 @@ class SearchUtilsTest {
         "directory_search_index",
         Entity.DIRECTORY,
         "file_search_index",
-        Entity.FILE
+        Entity.FILE,
+        "context_file_search_index",
+        Entity.CONTEXT_FILE
       })
   void isDataAssetIndexRecognizesDataAssetIndices(String index) {
     assertTrue(SearchUtils.isDataAssetIndex(index));

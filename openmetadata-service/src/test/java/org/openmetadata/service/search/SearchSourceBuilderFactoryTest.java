@@ -44,6 +44,7 @@ public class SearchSourceBuilderFactoryTest {
   private SearchSettings searchSettings;
   private AssetTypeConfiguration tableConfig;
   private AssetTypeConfiguration topicConfig;
+  private AssetTypeConfiguration contextFileConfig;
   private AssetTypeConfiguration defaultConfig;
 
   @BeforeEach
@@ -91,6 +92,13 @@ public class SearchSourceBuilderFactoryTest {
     topicFields.add(createFieldBoost("description", 2.0, "standard"));
     topicConfig.setSearchFields(topicFields);
 
+    contextFileConfig = new AssetTypeConfiguration();
+    contextFileConfig.setAssetType(Entity.CONTEXT_FILE);
+    contextFileConfig.setSearchFields(
+        List.of(
+            createFieldBoost("name.ngram", 1.0, "fuzzy"),
+            createFieldBoost("extractedText", 3.0, "standard")));
+
     // Default configuration
     defaultConfig = new AssetTypeConfiguration();
     defaultConfig.setAssetType("default");
@@ -109,6 +117,7 @@ public class SearchSourceBuilderFactoryTest {
     List<AssetTypeConfiguration> assetConfigs = new ArrayList<>();
     assetConfigs.add(tableConfig);
     assetConfigs.add(topicConfig);
+    assetConfigs.add(contextFileConfig);
     searchSettings.setAssetTypeConfigurations(assetConfigs);
     searchSettings.setDefaultConfiguration(defaultConfig);
   }
@@ -152,6 +161,23 @@ public class SearchSourceBuilderFactoryTest {
 
     assertNotNull(osAllBuilder, "OpenSearch all builder should not be null");
     assertNotNull(esAllBuilder, "ElasticSearch all builder should not be null");
+  }
+
+  @Test
+  public void testContextFileSearchUsesExtractedTextConfiguration() {
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    OpenSearchRequestBuilder osBuilder =
+        osFactory.getSearchSourceBuilderV2("context_file_search_index", "needle", 0, 10);
+    ElasticSearchRequestBuilder esBuilder =
+        esFactory.getSearchSourceBuilderV2("context_file_search_index", "needle", 0, 10);
+
+    String osQuery = osBuilder.query().toJsonString();
+    String esQuery = esBuilder.query().toString();
+    assertTrue(osQuery.contains("extractedText"), osQuery);
+    assertTrue(esQuery.contains("extractedText"), esQuery);
   }
 
   @Test
