@@ -18,6 +18,8 @@ import logging
 from types import SimpleNamespace
 from unittest.mock import MagicMock, patch
 
+import pytest
+
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source import connections as connections_module
 
@@ -94,6 +96,23 @@ def test_first_build_does_not_log_reopen(caplog):
     with caplog.at_level(logging.INFO):
         _ = conn.client
     assert not any("opening a new client" in r.message for r in caplog.records)
+
+
+def test_failed_build_releases_what_get_client_registered():
+    """A ``_get_client`` that raises after registering a teardown still unwinds:
+    the caller never receives a client, so nothing is left for it to close."""
+    released = []
+
+    class HalfBuiltConnection(BaseConnection):
+        def _get_client(self):
+            self._on_close(lambda: released.append("engine"))
+            raise RuntimeError("client construction failed")
+
+    conn = HalfBuiltConnection(_service_connection())
+    with pytest.raises(RuntimeError):
+        _ = conn.client
+
+    assert released == ["engine"]
 
 
 def test_create_connection_returns_owner():

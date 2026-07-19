@@ -18,9 +18,9 @@ import {
   waitFor,
 } from '@testing-library/react';
 import { MemoryRouter } from 'react-router-dom';
-import { MOCK_KNOWLEDGE_PAGE_LIST } from '../../../pages/KnowledgeCenterListPage/KnowledgeCenterListPage.mock';
 import { getListKnowledgePages } from '../../../rest/knowledgeCenterAPI';
 import KnowledgeCenterWidget from './KnowledgeCenterWidget';
+import { MOCK_KNOWLEDGE_PAGE_LIST } from './KnowledgeCenterWidget.mock';
 
 const mockHandleRemoveWidget = jest.fn();
 

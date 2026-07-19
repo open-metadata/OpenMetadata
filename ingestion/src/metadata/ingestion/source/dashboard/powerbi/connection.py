@@ -25,12 +25,13 @@ from metadata.core.connections.test_connection import (
     check,
     when,
 )
-from metadata.core.connections.test_connection.checks.dashboard import (
-    DashboardStep,
+from metadata.core.connections.test_connection.checks.dashboard import DashboardStep
+from metadata.core.connections.test_connection.checks.rest import (
     fetch_list,
+    http_status,
     verify_access,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.classifier import chain_text
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.dashboard.powerBIConnection import (
     PowerBIConnection as PowerBIConnectionConfig,
@@ -44,32 +45,9 @@ from metadata.ingestion.source.dashboard.powerbi.client import (
 from metadata.ingestion.source.dashboard.powerbi.file_client import PowerBiFileClient
 
 if TYPE_CHECKING:
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
-
-
-def _http_status(*codes: int) -> Matcher:
-    """Match a PowerBI REST error by HTTP status.
-
-    The status is the stable signal - the message body varies by tenant and
-    endpoint. Two shapes carry it: the client's ``APIError`` exposes it on a
-    top-level ``.status_code`` property, but when the error body has no ``code``
-    field the client re-raises the raw ``requests.HTTPError`` unchanged, which
-    carries the status at ``.response.status_code``. We consult both, across the
-    cause chain."""
-    wanted = frozenset(codes)
-
-    def match(error: BaseException) -> bool:
-        for current in exception_chain(error):
-            code = getattr(current, "status_code", None)
-            if code is None:
-                response = getattr(current, "response", None)
-                code = getattr(response, "status_code", None)
-            if isinstance(code, int) and code in wanted:
-                return True
-        return False
-
-    return match
 
 
 def _contains_any(*tokens: str) -> Matcher:
@@ -81,7 +59,7 @@ def _contains_any(*tokens: str) -> Matcher:
     lowered = tuple(token.lower() for token in tokens)
 
     def match(error: BaseException) -> bool:
-        chain = " ".join(str(current) for current in exception_chain(error)).lower()
+        chain = chain_text(error)
         return any(token in chain for token in lowered)
 
     return match
@@ -100,20 +78,20 @@ POWERBI_ERRORS = ErrorPack(
         fix="Could not acquire an OAuth token. Check the Client ID, Client Secret, and Tenant ID, "
         "and that the app registration is allowed to request the configured scope.",
     ),
-    when(_http_status(401)).diagnose(
+    when(http_status(401)).diagnose(
         "Power BI did not authorize the service principal",
         fix="The token was accepted but Power BI rejected the call (401). In the Fabric admin "
         "portal enable 'Allow service principals to use Power BI APIs' (and the read-only admin "
         "APIs setting when Use Admin APIs is on), add the service principal to the allowed "
         "security group, and grant the app registration the required API permission.",
     ),
-    when(_http_status(403)).diagnose(
+    when(http_status(403)).diagnose(
         "Insufficient permissions",
         fix="The service principal is authenticated but not authorized for this resource (403). "
         "Add it as a member (or admin) of the target workspace and grant the permissions the "
         "call needs.",
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404)).diagnose(
         "Resource not found",
         fix="The requested resource was not found (404). Check the API URL and that the configured "
         "tenant/workspace exists and is visible to the service principal.",
@@ -136,28 +114,17 @@ class PowerBIChecks:
     principal fails fast before any list endpoint is dialled. ``GetDashboards``
     then exercises list access.
 
-    The REST client is built lazily inside the first check, never at
-    construction: the underlying MSAL client performs authority/instance
-    discovery over the network in its constructor, so building it eagerly would
-    run before the runner's gate and surface as a raw workflow error instead of a
-    classified ``CheckAccess`` failure.
+    ``CheckAccess`` is the gate: reading the borrowed client does MSAL discovery
+    and acquires the token, so a bad service principal fails there.
     """
 
     errors = POWERBI_ERRORS
 
-    def __init__(self, connection: PowerBIConnectionConfig) -> None:
-        self._connection = connection
-        self._api_client: PowerBiApiClient | None = None
+    def __init__(self, powerbi: Borrowed[PowerBiClient]) -> None:
+        self._powerbi = powerbi
 
     def _client(self) -> PowerBiApiClient:
-        """Build (once) and return the REST client. Built directly rather than via
-        ``get_connection`` so the file client (unused by the checks) is never
-        constructed. The MSAL client it wraps does authority/instance discovery
-        over the network in its constructor, so this is only ever called from
-        inside a check - never at construction."""
-        if self._api_client is None:
-            self._api_client = PowerBiApiClient(self._connection)
-        return self._api_client
+        return self._powerbi.client.api_client
 
     @check(DashboardStep.CheckAccess)
     def check_access(self) -> Evidence:
@@ -195,4 +162,4 @@ class PowerBIConnection(BaseConnection[PowerBIConnectionConfig, PowerBiClient]):
         )
 
     def checks(self) -> ChecksProvider:
-        return PowerBIChecks(connection=self.service_connection)
+        return PowerBIChecks(powerbi=self.borrow())

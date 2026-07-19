@@ -15,8 +15,22 @@ import { render } from '@testing-library/react';
 import React from 'react';
 import App from './App';
 import AppRouter from './components/AppRouter/AppRouter';
+import { useApplicationStore } from './hooks/useApplicationStore';
+import { idlePrefetchRoutes } from './utils/idlePrefetchRoutes';
 
 const mockAuthProvider = jest.fn();
+
+let mockIsAuthenticated = false;
+
+jest.mock('./utils/idlePrefetchRoutes', () => ({
+  idlePrefetchRoutes: jest.fn(),
+}));
+
+jest.mock('./hooks/useApplicationStore', () => ({
+  useApplicationStore: jest.fn((selector) =>
+    selector({ isAuthenticated: mockIsAuthenticated })
+  ),
+}));
 
 jest.mock('./components/AppRouter/AppRouter', () => ({
   __esModule: true,
@@ -50,6 +64,7 @@ jest.mock('./components/Auth/AuthProviders/AuthProvider', () => ({
 describe('App', () => {
   beforeEach(() => {
     jest.clearAllMocks();
+    mockIsAuthenticated = false;
   });
 
   it('should render AuthProvider wrapping AppRouter', () => {
@@ -65,5 +80,27 @@ describe('App', () => {
     expect(mockAuthProvider).toHaveBeenCalledWith({
       childComponentType: AppRouter,
     });
+  });
+
+  it('should not prefetch route chunks on the unauthenticated shell', () => {
+    mockIsAuthenticated = false;
+
+    render(React.createElement(App));
+
+    expect(idlePrefetchRoutes).not.toHaveBeenCalled();
+  });
+
+  it('should prefetch route chunks once authenticated', () => {
+    mockIsAuthenticated = true;
+
+    render(React.createElement(App));
+
+    expect(idlePrefetchRoutes).toHaveBeenCalledTimes(1);
+  });
+
+  it('should read isAuthenticated from the application store', () => {
+    render(React.createElement(App));
+
+    expect(useApplicationStore).toHaveBeenCalled();
   });
 });

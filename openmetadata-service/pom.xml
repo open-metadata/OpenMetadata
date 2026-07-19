@@ -26,8 +26,8 @@
     <socket.io-client.version>2.1.1</socket.io-client.version>
     <json-smart.version>2.5.2</json-smart.version>
     <jetty.version>12.1.7</jetty.version>
-    <logback-core.version>1.5.25</logback-core.version>
-    <logback-classic.version>1.5.25</logback-classic.version>
+    <logback-core.version>1.5.36</logback-core.version>
+    <logback-classic.version>1.5.36</logback-classic.version>
     <resilience4j-ratelimiter.version>2.3.0</resilience4j-ratelimiter.version>
     <kubernetes-client.version>24.0.0</kubernetes-client.version>
     <tika.version>3.2.3</tika.version>
@@ -864,10 +864,12 @@
       <version>${quartz.version}</version>
     </dependency>
     <!-- Needed for Quartz -->
+    <!-- 0.14.1 natively depends on mchange-commons-java 0.6.1 (clears
+         SNYK-JAVA-COMMCHANGE-17796416); avoids the 0.12.0-under-0.6.1 API mismatch. -->
     <dependency>
       <groupId>com.mchange</groupId>
       <artifactId>c3p0</artifactId>
-      <version>0.12.0</version>
+      <version>0.14.1</version>
     </dependency>
     <dependency>
       <groupId>com.fasterxml.woodstox</groupId>
@@ -1014,7 +1016,7 @@
     <dependency>
       <groupId>org.eclipse.parsson</groupId>
       <artifactId>parsson</artifactId>
-      <version>1.1.5</version>
+      <version>1.1.8</version>
     </dependency>
     <dependency>
       <groupId>javax.servlet</groupId>
@@ -1059,7 +1061,7 @@
     <dependency>
       <groupId>org.apache.calcite</groupId>
       <artifactId>calcite-core</artifactId>
-      <version>1.36.0</version>
+      <version>1.42.0</version>
       <exclusions>
         <exclusion>
           <groupId>commons-lang</groupId>

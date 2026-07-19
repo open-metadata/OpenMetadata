@@ -16,7 +16,6 @@ import { MemoryRouter } from 'react-router-dom';
 import { OperationPermission } from '../../../../../context/PermissionProvider/PermissionProvider.interface';
 import { Column, DataType } from '../../../../../generated/entity/data/table';
 import { Operation } from '../../../../../generated/entity/policies/accessControl/resourcePermission';
-import '../../../../../test/unit/mocks/mui.mock';
 import TabFilters from './TabFilters';
 
 jest.mock('@openmetadata/ui-core-components', () => {

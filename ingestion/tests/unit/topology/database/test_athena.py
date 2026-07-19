@@ -16,6 +16,7 @@ import hashlib
 import unittest
 from copy import deepcopy
 from datetime import datetime
+from types import SimpleNamespace
 from unittest.mock import MagicMock, PropertyMock, patch
 from uuid import UUID
 
@@ -62,6 +63,7 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.source.database.athena.metadata import AthenaSource
 from metadata.ingestion.source.database.athena.models import AthenaStatus
 from metadata.ingestion.source.database.athena.usage import AthenaUsageSource
+from metadata.ingestion.source.database.athena.utils import get_columns
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
 
 EXPECTED_DATABASE_NAMES = ["mydatabase"]
@@ -840,6 +842,127 @@ class TestQueryTableNamesAndTypesCatalogId:
 
         assert result == EXPECTED_QUERY_TABLE_NAMES_TYPES
         mock_inspector.get_table_names.assert_called_once_with(MOCK_DATABASE_SCHEMA.name.root)
+
+
+class TestAthenaColumnDeduplication:
+    @staticmethod
+    def _column(name, type_="string", comment=None):
+        return SimpleNamespace(name=name, type=type_, comment=comment)
+
+    @staticmethod
+    def _dialect(metadata):
+        dialect = SimpleNamespace()
+        dialect._get_table = MagicMock(return_value=metadata)
+        dialect._get_column_type = MagicMock(return_value="string")
+        dialect._raw_connection = MagicMock(return_value=SimpleNamespace(schema_name="sample_schema"))
+        return dialect
+
+    def test_standard_get_columns_preserves_partition_for_exact_duplicate(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("time_period")],
+            columns=[
+                self._column("event_id"),
+                self._column("time_period"),
+            ],
+            parameters={},
+        )
+
+        result = get_columns(self._dialect(metadata), MagicMock(), "sample_table")
+
+        assert [col["name"] for col in result] == ["time_period", "event_id"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+
+    def test_standard_get_columns_logs_dropped_duplicate(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("time_period", "date")],
+            columns=[
+                self._column("time_period", "string"),
+            ],
+            parameters={},
+        )
+
+        with patch("metadata.ingestion.source.database.athena.utils.logger.warning") as warning:
+            get_columns(self._dialect(metadata), MagicMock(), "sample_table")
+
+        warning.assert_called_once_with(
+            "Table '%s': dropping duplicate Athena column '%s' (type %s); keeping the first definition",
+            "sample_table",
+            "time_period",
+            "string",
+        )
+
+    def test_standard_get_columns_keeps_case_distinct_regular_column(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("dt")],
+            columns=[
+                self._column("DT"),
+            ],
+            parameters={},
+        )
+
+        result = get_columns(self._dialect(metadata), MagicMock(), "sample_table")
+
+        assert [col["name"] for col in result] == ["dt", "DT"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+        assert result[1]["dialect_options"]["awsathena_partition"] is None
+
+    def test_iceberg_get_columns_preserves_partition_for_exact_duplicate(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("time_period")],
+            columns=[],
+            parameters={"table_type": "ICEBERG"},
+        )
+        glue_client = MagicMock()
+        glue_client.get_table.return_value = {
+            "Table": {
+                "StorageDescriptor": {
+                    "Columns": [
+                        {"Name": "event_id", "Type": "string"},
+                        {"Name": "time_period", "Type": "string"},
+                    ]
+                }
+            }
+        }
+
+        result = get_columns(
+            self._dialect(metadata),
+            MagicMock(),
+            "sample_table",
+            schema="sample_schema",
+            glue_client=glue_client,
+        )
+
+        assert [col["name"] for col in result] == ["time_period", "event_id"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+
+    def test_iceberg_get_columns_keeps_case_distinct_physical_column(self):
+        metadata = SimpleNamespace(
+            partition_keys=[self._column("ts_day")],
+            columns=[],
+            parameters={"table_type": "ICEBERG"},
+        )
+        glue_client = MagicMock()
+        glue_client.get_table.return_value = {
+            "Table": {
+                "StorageDescriptor": {
+                    "Columns": [
+                        {"Name": "TS_DAY", "Type": "string"},
+                    ]
+                }
+            }
+        }
+
+        result = get_columns(
+            self._dialect(metadata),
+            MagicMock(),
+            "sample_table",
+            schema="sample_schema",
+            glue_client=glue_client,
+        )
+
+        assert [col["name"] for col in result] == ["ts_day", "TS_DAY"]
+        assert result[0]["dialect_options"]["awsathena_partition"] is True
+        assert result[1]["dialect_options"]["awsathena_partition"] is None
 
 
 class TestIncludeCustomPropertiesSchema:

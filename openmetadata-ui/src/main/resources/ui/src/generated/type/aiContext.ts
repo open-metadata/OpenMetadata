@@ -35,6 +35,11 @@ export interface AIContext {
      */
     downstream?: string[];
     /**
+     * Immediate downstream lineage edges with optional column mappings. Supplements the
+     * downstream fully qualified name list.
+     */
+    downstreamEdges?: LineageEdgeContext[];
+    /**
      * Entity type of the asset (table, dashboard, pipeline, topic, ...).
      */
     entityType?: string;
@@ -56,6 +61,10 @@ export interface AIContext {
      */
     glossaryTerms?: KnowledgeItem[];
     /**
+     * Unique identifier of the asset this context describes.
+     */
+    id?: string;
+    /**
      * Metrics associated with the asset.
      */
     metrics?: KnowledgeItem[];
@@ -65,9 +74,17 @@ export interface AIContext {
      */
     observability?: Observability;
     /**
+     * Owners (users/teams) of the asset.
+     */
+    owners?: EntityReference[];
+    /**
      * Canonical URI of the asset this context describes (the OKF `resource` frontmatter key).
      */
     resource?: string;
+    /**
+     * Service type of the asset's service (e.g. Snowflake, BigQuery).
+     */
+    serviceType?: string;
     /**
      * Classification tags and tier applied to the asset (tag fully qualified names).
      */
@@ -76,6 +93,11 @@ export interface AIContext {
      * Immediate upstream lineage (fully qualified names).
      */
     upstream?: string[];
+    /**
+     * Immediate upstream lineage edges with optional column mappings. Supplements the upstream
+     * fully qualified name list.
+     */
+    upstreamEdges?: LineageEdgeContext[];
 }
 
 /**
@@ -96,7 +118,11 @@ export interface KnowledgeItem {
     contentTruncated?:   boolean;
     displayName?:        string;
     fullyQualifiedName?: string;
-    name?:               string;
+    /**
+     * Unique identifier of the knowledge entity.
+     */
+    id?:   string;
+    name?: string;
     /**
      * The entity type of the knowledge item.
      */
@@ -268,6 +294,46 @@ export interface TopicContext {
 }
 
 /**
+ * One immediate lineage edge of the asset: the neighboring asset's fully qualified name
+ * plus the column-level mappings recorded on the edge, when available.
+ */
+export interface LineageEdgeContext {
+    /**
+     * Column-level lineage recorded on this edge, capped server-side; fetch the full graph with
+     * the get_entity_lineage tool.
+     */
+    columns?: ColumnLineage[];
+    /**
+     * True when column-level lineage was truncated at the server-side per-edge cap; fetch the
+     * full graph with the get_entity_lineage tool.
+     */
+    columnsTruncated?: boolean;
+    /**
+     * Fully qualified name of the neighboring upstream or downstream asset.
+     */
+    fullyQualifiedName?: string;
+}
+
+export interface ColumnLineage {
+    /**
+     * One or more source columns identified by fully qualified column name used by
+     * transformation function to create destination column.
+     */
+    fromColumns?: string[];
+    /**
+     * Transformation function applied to source columns to create destination column. That is
+     * `function(fromColumns) -> toColumn`.
+     */
+    function?: string;
+    /**
+     * Destination column identified by fully qualified column name created by the
+     * transformation of source columns.
+     */
+    toColumn?: string;
+    [property: string]: any;
+}
+
+/**
  * Runtime signals (profiled shape + data-quality standing) for query construction and
  * answer qualification.
  *
@@ -325,4 +391,53 @@ export interface DataQuality {
     openIncidents?: number;
     passed?:        number;
     total?:         number;
+}
+
+/**
+ * This schema defines the EntityReference type used for referencing an entity.
+ * EntityReference is used for capturing relationships from one entity to another. For
+ * example, a table has an attribute called database of type EntityReference that captures
+ * the relationship of a table `belongs to a` database.
+ */
+export interface EntityReference {
+    /**
+     * If true the entity referred to has been soft-deleted.
+     */
+    deleted?: boolean;
+    /**
+     * Optional description of entity.
+     */
+    description?: string;
+    /**
+     * Display Name that identifies this entity.
+     */
+    displayName?: string;
+    /**
+     * Fully qualified name of the entity instance. For entities such as tables, databases
+     * fullyQualifiedName is returned in this field. For entities that don't have name hierarchy
+     * such as `user` and `team` this will be same as the `name` field.
+     */
+    fullyQualifiedName?: string;
+    /**
+     * Link to the entity resource.
+     */
+    href?: string;
+    /**
+     * Unique identifier that identifies an entity instance.
+     */
+    id: string;
+    /**
+     * If true the relationship indicated by this entity reference is inherited from the parent
+     * entity.
+     */
+    inherited?: boolean;
+    /**
+     * Name of the entity instance.
+     */
+    name?: string;
+    /**
+     * Entity type/class name - Examples: `database`, `table`, `metrics`, `databaseService`,
+     * `dashboardService`...
+     */
+    type: string;
 }

@@ -118,6 +118,9 @@ interface RunHistoryDrawerProps {
   agent: Agent;
   open: boolean;
   initialRunId?: string;
+  // Must be a stable reference (memoize with `useCallback`) — it feeds
+  // `useAgentRuns`' effect deps, so an inline function re-fetches every render.
+  fetchRuns?: () => Promise<AgentRun[]>;
   onClose: () => void;
   onOpenLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
@@ -127,12 +130,13 @@ const RunHistoryDrawer: FC<RunHistoryDrawerProps> = ({
   agent,
   open,
   initialRunId,
+  fetchRuns,
   onClose,
   onOpenLogs,
   onRun,
 }) => {
   const { t } = useTranslation();
-  const { runs, isLoading } = useAgentRuns(agent.fqn, true);
+  const { runs, isLoading } = useAgentRuns(agent.fqn, true, fetchRuns);
   const [selId, setSelId] = useState<string | undefined>();
   const Icon = AGENT_TYPE_ICON[agent.type] ?? (() => null);
 
