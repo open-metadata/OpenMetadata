@@ -622,11 +622,8 @@ public class DataProductRepository extends EntityRepository<DataProduct> {
     return getPaginatedOutputPorts(dataProduct.getId(), fields, limit, offset);
   }
 
-  // A port exposes/consumes a data asset: an entity that can itself belong to a data product
-  // (i.e. its schema declares a `dataProducts` field). Derived from the entity's own
-  // capabilities, so it stays correct as new asset types are added — no list to maintain.
-  // Time-series-only types are excluded because entityHasField resolves via the standard
-  // repository map and throws for them.
+  // A port must reference a data asset: a real, non-time-series entity whose schema declares a
+  // dataProducts field (same rule the assets API uses). Excludes pseudo-types like tableColumn.
   private static boolean isPortEligibleType(String entityType) {
     return entityType != null
         && Entity.hasEntityRepository(entityType)
