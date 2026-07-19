@@ -12,10 +12,10 @@ from xml.etree import ElementTree
 
 HANG_EXIT_CODES = {124}
 HANG_PATTERN = re.compile(
-    r"(?:fork(?:ed)?(?:\s+(?:process|vm))?|test process|command|process)"
-    r".{0,80}(?:timed out|timeout)|"
-    r"(?:timed out|timeout).{0,80}"
-    r"(?:fork(?:ed)?(?:\s+(?:process|vm))?|test process|command|process)",
+    r"(?:\bfork(?:ed)?(?:\s+(?:process|vm))?\b|\btest process\b|\bcommand\b|\bprocess\b)"
+    r".{0,80}\b(?:timed out|timeout)\b|"
+    r"\b(?:timed out|timeout)\b.{0,80}"
+    r"(?:\bfork(?:ed)?(?:\s+(?:process|vm))?\b|\btest process\b|\bcommand\b|\bprocess\b)",
     re.IGNORECASE | re.DOTALL,
 )
 
@@ -122,7 +122,9 @@ def classify_outcome(
     if step_outcome == "cancelled":
         classification = "cancelled"
         reasons.append("The test step was cancelled.")
-    elif exit_code in HANG_EXIT_CODES or _contains_process_timeout(diagnostic_files):
+    elif exit_code in HANG_EXIT_CODES or (
+        step_outcome != "success" and _contains_process_timeout(diagnostic_files)
+    ):
         classification = "hung_test"
         reasons.append("The test process exceeded its bounded execution time.")
     elif tests["failures"] + tests["errors"] > 0:

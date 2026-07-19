@@ -93,6 +93,24 @@ def test_passing_report_is_passed(tmp_path: Path) -> None:
     assert result["tests"]["skipped"] == 1
 
 
+def test_timeout_configuration_does_not_mark_successful_run_as_hung(
+    tmp_path: Path,
+) -> None:
+    report = write_report(
+        tmp_path / "TEST-pass.xml",
+        '<testsuite tests="1" failures="0" errors="0" skipped="0">'
+        '<testcase name="passes"/></testsuite>',
+    )
+    diagnostic = write_report(
+        tmp_path / "maven.log",
+        "Redis cache provider initialized (commandTimeoutMs=1000)",
+    )
+
+    result = CLASSIFIER.classify_outcome("success", 0, [report], [diagnostic])
+
+    assert result["classification"] == "passed"
+
+
 def test_success_without_reports_fails_closed() -> None:
     result = CLASSIFIER.classify_outcome("success", 0, [], [])
 
