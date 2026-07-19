@@ -16,7 +16,4 @@ from metadata.ingestion.source.dashboard.omni.connection import OmniConnection
 from metadata.ingestion.source.dashboard.omni.metadata import OmniSource
 from metadata.utils.service_spec import BaseSpec
 
-ServiceSpec = BaseSpec(
-    metadata_source_class=OmniSource,
-    connection_class=OmniConnection,  # pyright: ignore[reportArgumentType]
-)
+ServiceSpec = BaseSpec(metadata_source_class=OmniSource, connection_class=OmniConnection)  # pyright: ignore[reportArgumentType]

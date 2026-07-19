@@ -20,6 +20,7 @@ rather than one call per topic.
 import re
 import traceback
 from collections.abc import Iterable
+from typing import cast
 
 import yaml
 
@@ -149,7 +150,10 @@ class OmniApiClient:
         which keeps us well within the API rate limit.
         """
         try:
-            payload = self.client.get(f"/models/{model.id}/yaml", data={"fullyResolved": "true"})
+            payload = cast(
+                "dict | None",
+                self.client.get(f"/models/{model.id}/yaml", data={"fullyResolved": "true"}),
+            )
             files = (payload or {}).get("files") or {}
             return self._parse_model_yaml(model, files)
         except Exception as exc:  # pylint: disable=broad-except
@@ -309,7 +313,7 @@ class OmniApiClient:
         """
         tiles = []
         try:
-            payload = self.client.get(f"/documents/{document_id}/queries")
+            payload = cast("dict | None", self.client.get(f"/documents/{document_id}/queries"))
             for query in (payload or {}).get("queries") or []:
                 query_obj = query.get("query") or {}
                 tiles.append(

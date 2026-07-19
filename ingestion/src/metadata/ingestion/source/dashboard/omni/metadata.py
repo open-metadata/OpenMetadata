@@ -111,7 +111,7 @@ class OmniSource(DashboardServiceSource):
         pipeline_name: str | None = None,
     ):
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: OmniConnection = config.serviceConnection.root.config
+        connection: OmniConnection = config.serviceConnection.root.config  # pyright: ignore[reportAssignmentType,reportOptionalMemberAccess]
         if not isinstance(connection, OmniConnection):
             raise InvalidSourceException(f"Expected OmniConnection, but got {connection}")
         return cls(config, metadata)
