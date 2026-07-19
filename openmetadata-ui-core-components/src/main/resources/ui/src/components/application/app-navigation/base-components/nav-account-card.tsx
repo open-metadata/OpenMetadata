@@ -246,6 +246,10 @@ export const NavAccountCard = ({
             <ChevronSelectorVertical className="tw:size-4 tw:shrink-0" />
           </AriaButton>
           <AriaPopover
+            // Non-modal: modal popovers apply aria-hidden to the rest of the
+            // page and leak it permanently on abrupt unmount — see
+            // base/select/popover.tsx.
+            isNonModal
             className={({ isEntering, isExiting }) =>
               cx(
                 'tw:origin-(--trigger-anchor-point) tw:will-change-transform',
