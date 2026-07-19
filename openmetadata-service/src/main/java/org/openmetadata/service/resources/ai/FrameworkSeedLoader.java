@@ -28,6 +28,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIFrameworkControlRepository;
 import org.openmetadata.service.jdbi3.AIGovernanceFrameworkRepository;
 import org.openmetadata.service.seeding.SeedDataGate;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 @Slf4j
 final class FrameworkSeedLoader {
@@ -90,7 +91,7 @@ final class FrameworkSeedLoader {
     EntityReference frameworkRef = saved.getEntityReference();
     for (JsonNode controlNode : controlsNode) {
       AIFrameworkControl control = JsonUtils.treeToValue(controlNode, AIFrameworkControl.class);
-      String fqn = saved.getName() + "." + control.getName();
+      String fqn = FullyQualifiedName.build(control.getName());
       AIFrameworkControl existingControl = controlRepository.findByNameOrNull(fqn, Include.ALL);
       if (existingControl != null) {
         continue;

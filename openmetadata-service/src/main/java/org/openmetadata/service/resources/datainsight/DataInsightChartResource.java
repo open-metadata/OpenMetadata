@@ -91,7 +91,7 @@ public class DataInsightChartResource
     }
     // Find the existing webAnalyticEventTypes and add them from json files
     List<DataInsightChart> dataInsightCharts =
-        repository.getEntitiesFromSeedData(".*json/data/dataInsight/.*\\.json$");
+        repository.getEntitiesFromSeedData(".*json/data/dataInsight/(?!custom/).*\\.json$");
     for (DataInsightChart dataInsightChart : dataInsightCharts) {
       repository.initializeEntity(dataInsightChart);
     }

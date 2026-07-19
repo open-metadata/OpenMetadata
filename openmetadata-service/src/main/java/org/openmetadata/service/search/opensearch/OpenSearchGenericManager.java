@@ -127,6 +127,12 @@ public class OpenSearchGenericManager implements GenericClient {
   }
 
   @Override
+  public String indexTemplateFingerprint(String indexPattern, String mappingContent) {
+    return GenericClient.calculateIndexTemplateFingerprint(
+        indexPattern, OsUtils.enrichIndexMappingForOpenSearch(mappingContent));
+  }
+
+  @Override
   public void createOrUpdateIndexTemplate(
       String templateName, String indexPattern, String mappingContent) throws IOException {
     if (!isClientAvailable) {
@@ -137,7 +143,11 @@ public class OpenSearchGenericManager implements GenericClient {
       ObjectMapper mapper = new ObjectMapper();
       ObjectNode body = mapper.createObjectNode();
       body.putArray("index_patterns").add(indexPattern);
-      body.put("priority", 100);
+      body.put("priority", GenericClient.INDEX_TEMPLATE_PRIORITY);
+      body.putObject("_meta")
+          .put(
+              GenericClient.INDEX_TEMPLATE_FINGERPRINT_KEY,
+              GenericClient.calculateIndexTemplateFingerprint(indexPattern, transformedContent));
       body.set("template", mapper.readTree(transformedContent));
       String bodyStr = mapper.writeValueAsString(body);
       OpenSearchGenericClient genericClient = client.generic();
@@ -174,6 +184,46 @@ public class OpenSearchGenericManager implements GenericClient {
     } catch (Exception e) {
       LOG.error("Failed to create/update index template {}", templateName, e);
       throw new IOException("Failed to create/update index template: " + e.getMessage(), e);
+    }
+  }
+
+  @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("OpenSearch client is not available. Cannot read index templates.");
+    }
+    try {
+      Map<String, String> fingerprints = new HashMap<>();
+      client
+          .withTransportOptions(
+              client
+                  ._transportOptions()
+                  .with(
+                      options ->
+                          options.setParameter(
+                              "filter_path", GenericClient.INDEX_TEMPLATE_FINGERPRINT_FILTER_PATH)))
+          .indices()
+          .getIndexTemplate(g -> g.name(templateNamePattern))
+          .indexTemplates()
+          .forEach(
+              item -> {
+                JsonData fingerprint =
+                    item.indexTemplate().meta().get(GenericClient.INDEX_TEMPLATE_FINGERPRINT_KEY);
+                if (fingerprint != null) {
+                  fingerprints.put(item.name(), fingerprint.to(String.class));
+                }
+              });
+      return Map.copyOf(fingerprints);
+    } catch (OpenSearchException e) {
+      if (e.status() == 404) {
+        return Map.of();
+      }
+      LOG.error("Failed to read index templates matching {}", templateNamePattern, e);
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to read index templates matching {}", templateNamePattern, e);
+      throw new IOException("Failed to read index templates: " + e.getMessage(), e);
     }
   }
 

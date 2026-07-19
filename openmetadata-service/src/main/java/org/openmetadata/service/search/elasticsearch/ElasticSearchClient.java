@@ -908,6 +908,12 @@ public class ElasticSearchClient implements SearchClient {
   }
 
   @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    return genericManager.getIndexTemplateFingerprints(templateNamePattern);
+  }
+
+  @Override
   public void deleteIndexTemplate(String templateName) throws IOException {
     genericManager.deleteIndexTemplate(templateName);
   }

@@ -123,7 +123,10 @@ public class ElasticSearchGenericManager implements GenericClient {
                   p ->
                       p.name(templateName)
                           .indexPatterns(List.of(indexPattern))
-                          .priority(100L)
+                          .priority(GenericClient.INDEX_TEMPLATE_PRIORITY)
+                          .meta(
+                              GenericClient.INDEX_TEMPLATE_FINGERPRINT_KEY,
+                              JsonData.of(indexTemplateFingerprint(indexPattern, mappingContent)))
                           .template(t -> t.withJson(new StringReader(mappingContent))));
       if (!response.acknowledged()) {
         throw new IOException("Index template update was not acknowledged: " + templateName);
@@ -134,6 +137,46 @@ public class ElasticSearchGenericManager implements GenericClient {
       throw e;
     } catch (Exception e) {
       LOG.error("Failed to create/update index template {}", templateName, e);
+      throw e;
+    }
+  }
+
+  @Override
+  public Map<String, String> getIndexTemplateFingerprints(String templateNamePattern)
+      throws IOException {
+    if (!isClientAvailable) {
+      throw new IOException("ElasticSearch client is not available. Cannot read index templates.");
+    }
+    try {
+      Map<String, String> fingerprints = new HashMap<>();
+      client
+          .withTransportOptions(
+              client
+                  ._transportOptions()
+                  .with(
+                      options ->
+                          options.setParameter(
+                              "filter_path", GenericClient.INDEX_TEMPLATE_FINGERPRINT_FILTER_PATH)))
+          .indices()
+          .getIndexTemplate(g -> g.name(templateNamePattern))
+          .indexTemplates()
+          .forEach(
+              item -> {
+                JsonData fingerprint =
+                    item.indexTemplate().meta().get(GenericClient.INDEX_TEMPLATE_FINGERPRINT_KEY);
+                if (fingerprint != null) {
+                  fingerprints.put(item.name(), fingerprint.to(String.class));
+                }
+              });
+      return Map.copyOf(fingerprints);
+    } catch (ElasticsearchException e) {
+      if (e.status() == 404) {
+        return Map.of();
+      }
+      LOG.error("Failed to read index templates matching {}", templateNamePattern, e);
+      throw e;
+    } catch (Exception e) {
+      LOG.error("Failed to read index templates matching {}", templateNamePattern, e);
       throw e;
     }
   }

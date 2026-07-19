@@ -10688,11 +10688,59 @@ public interface CollectionDAO {
     @SqlQuery(
         "SELECT (SELECT COUNT(*) FROM type_entity WHERE nameHash IN (<typeHashes>)) + "
             + "(SELECT COUNT(*) FROM policy_entity WHERE fqnHash IN (<policyHashes>)) + "
-            + "(SELECT COUNT(*) FROM role_entity WHERE nameHash IN (<roleHashes>))")
+            + "(SELECT COUNT(*) FROM role_entity WHERE nameHash IN (<roleHashes>)) + "
+            + "(SELECT COUNT(*) FROM task_form_schema_entity WHERE fqnHash IN (<taskFormSchemaHashes>)) + "
+            + "(SELECT COUNT(*) FROM doc_store WHERE fqnHash IN (<documentHashes>)) + "
+            + "(SELECT COUNT(*) FROM workflow_definition_entity WHERE fqnHash IN (<workflowDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM event_subscription_entity WHERE nameHash IN (<eventSubscriptionHashes>)) + "
+            + "(SELECT COUNT(*) FROM notification_template_entity WHERE fqnHash IN (<notificationTemplateHashes>)) + "
+            + "(SELECT COUNT(*) FROM learning_resource_entity WHERE fqnHash IN (<learningResourceHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_definition WHERE nameHash IN (<testDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM test_connection_definition WHERE nameHash IN (<testConnectionDefinitionHashes>)) + "
+            + "(SELECT COUNT(*) FROM web_analytic_event WHERE fqnHash IN (<webAnalyticEventHashes>)) + "
+            + "(SELECT COUNT(*) FROM data_insight_chart WHERE fqnHash IN (<dataInsightChartHashes>)) + "
+            + "(SELECT COUNT(*) FROM di_chart_entity WHERE name IN (<dataInsightCustomChartNames>)) + "
+            + "(SELECT COUNT(*) FROM bot_entity WHERE nameHash IN (<botHashes>)) + "
+            + "(SELECT COUNT(*) FROM classification WHERE nameHash IN (<classificationHashes>)) + "
+            + "(SELECT COUNT(*) FROM tag WHERE fqnHash IN (<tagHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_entity WHERE nameHash IN (<glossaryHashes>)) + "
+            + "(SELECT COUNT(*) FROM glossary_term_entity WHERE fqnHash IN (<glossaryTermHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_policy_entity WHERE fqnHash IN (<aiGovernancePolicyHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_governance_framework_entity WHERE fqnHash IN (<aiGovernanceFrameworkHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_framework_control_entity WHERE fqnHash IN (<aiFrameworkControlHashes>)) + "
+            + "(SELECT COUNT(*) FROM ai_application_entity WHERE fqnHash IN (<aiApplicationHashes>)) + "
+            + "(SELECT COUNT(*) FROM llm_service_entity WHERE nameHash IN (<llmServiceHashes>)) + "
+            + "(SELECT COUNT(*) FROM llm_model_entity WHERE fqnHash IN (<llmModelHashes>)) + "
+            + "(SELECT COUNT(*) FROM mcp_service_entity WHERE nameHash IN (<mcpServiceHashes>)) + "
+            + "(SELECT COUNT(*) FROM mcp_server_entity WHERE fqnHash IN (<mcpServerHashes>))")
     long countRequiredSeedData(
         @BindListFQN("typeHashes") List<String> typeNames,
         @BindListFQN("policyHashes") List<String> policyNames,
-        @BindListFQN("roleHashes") List<String> roleNames);
+        @BindListFQN("roleHashes") List<String> roleNames,
+        @BindListFQN("taskFormSchemaHashes") List<String> taskFormSchemaNames,
+        @BindListFQN("documentHashes") List<String> documentNames,
+        @BindListFQN("workflowDefinitionHashes") List<String> workflowDefinitionNames,
+        @BindListFQN("eventSubscriptionHashes") List<String> eventSubscriptionNames,
+        @BindListFQN("notificationTemplateHashes") List<String> notificationTemplateNames,
+        @BindListFQN("learningResourceHashes") List<String> learningResourceNames,
+        @BindListFQN("testDefinitionHashes") List<String> testDefinitionNames,
+        @BindListFQN("testConnectionDefinitionHashes") List<String> testConnectionDefinitionNames,
+        @BindListFQN("webAnalyticEventHashes") List<String> webAnalyticEventNames,
+        @BindListFQN("dataInsightChartHashes") List<String> dataInsightChartNames,
+        @BindList("dataInsightCustomChartNames") List<String> dataInsightCustomChartNames,
+        @BindListFQN("botHashes") List<String> botNames,
+        @BindListFQN("classificationHashes") List<String> classificationNames,
+        @BindListFQN("tagHashes") List<String> tagNames,
+        @BindListFQN("glossaryHashes") List<String> glossaryNames,
+        @BindListFQN("glossaryTermHashes") List<String> glossaryTermNames,
+        @BindListFQN("aiGovernancePolicyHashes") List<String> aiGovernancePolicyNames,
+        @BindListFQN("aiGovernanceFrameworkHashes") List<String> aiGovernanceFrameworkNames,
+        @BindListFQN("aiFrameworkControlHashes") List<String> aiFrameworkControlNames,
+        @BindListFQN("aiApplicationHashes") List<String> aiApplicationNames,
+        @BindListFQN("llmServiceHashes") List<String> llmServiceNames,
+        @BindListFQN("llmModelHashes") List<String> llmModelNames,
+        @BindListFQN("mcpServiceHashes") List<String> mcpServiceNames,
+        @BindListFQN("mcpServerHashes") List<String> mcpServerNames);
 
     @ConnectionAwareSqlQuery(
         value =

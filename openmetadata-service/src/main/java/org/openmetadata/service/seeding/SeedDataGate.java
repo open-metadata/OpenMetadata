@@ -13,11 +13,14 @@
 
 package org.openmetadata.service.seeding;
 
+import com.fasterxml.jackson.databind.JsonNode;
 import java.io.IOException;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
+import java.util.EnumMap;
+import java.util.EnumSet;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
@@ -29,12 +32,17 @@ import java.util.regex.Pattern;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.common.utils.CommonUtil;
 import org.openmetadata.schema.configuration.StartupChecksums;
+import org.openmetadata.schema.email.SmtpSettings;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.settings.SettingsType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.schema.utils.VersionUtils;
 import org.openmetadata.service.config.StartupConfiguration;
 import org.openmetadata.service.jdbi3.SystemRepository;
+import org.openmetadata.service.seeding.RequiredSeedRows.SeedTable;
+import org.openmetadata.service.util.FullyQualifiedName;
+import org.openmetadata.service.util.resourcepath.ResourcePathResolver;
+import org.openmetadata.service.util.resourcepath.providers.NotificationTemplateResourcePathProvider;
 
 @Slf4j
 public final class SeedDataGate {
@@ -44,6 +52,39 @@ public final class SeedDataGate {
   private static final String ENTITY_SCHEMA_PATH = "json/schema/entity/";
   private static final String POLICY_SEED_PATH = "json/data/policy/";
   private static final String ROLE_SEED_PATH = "json/data/role/";
+  private static final String TASK_FORM_SCHEMA_PATH = "json/data/taskFormSchemas/";
+  private static final String DOCUMENT_DOCS_PATH = "json/data/document/docs/";
+  private static final String OPENMETADATA_EMAIL_DOCUMENT_PATH =
+      "json/data/document/emailTemplates/openmetadata/";
+  private static final String COLLATE_EMAIL_DOCUMENT_PATH =
+      "json/data/document/emailTemplates/collate/";
+  private static final String WORKFLOW_DEFINITION_PATH = "json/data/governance/workflows/";
+  private static final String EVENT_SUBSCRIPTION_PATH = "json/data/eventsubscription/";
+  private static final String LEARNING_RESOURCE_PATH = "json/data/learningResource/";
+  private static final String TEST_DEFINITION_PATH = "json/data/tests/";
+  private static final String TEST_CONNECTION_DEFINITION_PATH = "json/data/testConnections/";
+  private static final String WEB_ANALYTIC_EVENT_PATH = "json/data/analytics/webAnalyticEvents/";
+  private static final String DATA_INSIGHT_CUSTOM_CHART_PATH = "json/data/dataInsight/custom/";
+  private static final Pattern DATA_INSIGHT_CHART_SEED_RESOURCES =
+      Pattern.compile(".*json/data/dataInsight/(?!custom/).*\\.json$");
+  private static final String BOT_PATH = "json/data/bot/";
+  private static final String TAG_PATH = "json/data/tags/";
+  private static final Pattern GLOSSARY_SEED_RESOURCES =
+      Pattern.compile(".*json/data/glossary/.*Glossary\\.json$");
+  private static final String AI_POLICY_PATH = "json/data/aiGovernance/policies/";
+  private static final String AI_FRAMEWORK_PATH = "json/data/aiGovernance/frameworks/";
+  private static final String AI_APPLICATION_PATH = "json/data/aiGovernance/applications/";
+  private static final String AI_SHADOW_APPLICATION_PATH = "json/data/aiGovernance/shadow/";
+  private static final String LLM_SERVICE_PATH = "json/data/aiGovernance/services/llm/";
+  private static final String LLM_MODEL_PATH = "json/data/aiGovernance/llmModels/";
+  private static final String MCP_SERVICE_PATH = "json/data/aiGovernance/services/mcp/";
+  private static final String MCP_SERVER_PATH = "json/data/aiGovernance/mcpServers/";
+  private static final String OPENMETADATA_EMAIL_TEMPLATE_PROVIDER = "openmetadata";
+  private static final String COLLATE_EMAIL_TEMPLATE_PROVIDER = "collate";
+  private static final Set<SeedTable> REQUIRED_SEED_TABLES =
+      EnumSet.complementOf(
+          EnumSet.of(
+              SeedTable.DATA_INSIGHT_CUSTOM_CHART, SeedTable.GLOSSARY, SeedTable.GLOSSARY_TERM));
   private static final String VERSION_RESOURCE = "/catalog/VERSION";
   private static final SeedDataGate INSTANCE = new SeedDataGate();
 
@@ -59,7 +100,7 @@ public final class SeedDataGate {
   private boolean searchTemplateFailure;
   private boolean forceSeedData;
   private boolean seedDataDriftDetected;
-  private RequiredSeedNames requiredSeedNames = RequiredSeedNames.empty();
+  private RequiredSeedRows requiredSeedRows = RequiredSeedRows.empty();
 
   private SeedDataGate() {}
 
@@ -80,7 +121,7 @@ public final class SeedDataGate {
     searchTemplateFailure = false;
     forceSeedData = false;
     seedDataDriftDetected = false;
-    requiredSeedNames = RequiredSeedNames.empty();
+    requiredSeedRows = RequiredSeedRows.empty();
   }
 
   public synchronized void configure(
@@ -101,9 +142,9 @@ public final class SeedDataGate {
     detectSeedDataDrift();
     if (!shouldSeed()) {
       LOG.info(
-          "Bundled seed fingerprint is unchanged and every bundled type and non-deletable policy "
-              + "and role has a database row; skipping seed reconciliation. Soft deletions, "
-              + "modified row content, relationships, and other seed categories are not validated. "
+          "Bundled seed fingerprint is unchanged and every required bundled seed entity has a "
+              + "database row; skipping seed reconciliation. Soft-deleted rows count as present; "
+              + "modified row content and relationships are not validated. "
               + "Set STARTUP_FORCE_SEED_DATA=true or STARTUP_SEED_DATA_GATE_ENABLED=false to rerun "
               + "all loaders; unsupported direct DB changes may require manual repair.");
     }
@@ -116,11 +157,11 @@ public final class SeedDataGate {
   /**
    * Returns whether bundled seed resources need reconciliation.
    *
-   * <p>A fingerprint match is supplemented by one indexed hard-row presence query for every bundled
-   * type and non-deletable bundled policy and role. The query does not validate soft deletions, row
-   * content, relationships, or other seed categories. {@code STARTUP_FORCE_SEED_DATA=true} or
-   * {@code STARTUP_SEED_DATA_GATE_ENABLED=false} reruns all loaders, but unsupported direct database
-   * changes may still require manual repair.
+   * <p>A fingerprint match is supplemented by one indexed hard-row presence query for required
+   * bundled seed entities. Soft-deleted rows count as present, and policies or roles explicitly
+   * marked as deletable are excluded. The query does not validate row content or relationships.
+   * {@code STARTUP_FORCE_SEED_DATA=true} or {@code STARTUP_SEED_DATA_GATE_ENABLED=false} reruns all
+   * loaders, but unsupported direct database changes may still require manual repair.
    */
   public boolean shouldSeed() {
     return !configuration.isSeedDataGateEnabled()
@@ -203,11 +244,10 @@ public final class SeedDataGate {
   private String calculateSeedDataFingerprint() {
     try {
       MessageDigest digest = sha256Digest();
-      Set<String> typeNames = new TreeSet<>();
-      Set<String> policyNames = new TreeSet<>();
-      Set<String> roleNames = new TreeSet<>();
-      List<String> resources =
-          CommonUtil.getResources(SEED_RESOURCES).stream().distinct().sorted().toList();
+      SeedManifestAccumulator manifest = new SeedManifestAccumulator();
+      Set<String> seedResources = new TreeSet<>(CommonUtil.getResources(SEED_RESOURCES));
+      seedResources.addAll(manifest.notificationTemplateResources());
+      List<String> resources = List.copyOf(seedResources);
       for (String resource : resources) {
         updateDigest(digest, resource.getBytes(StandardCharsets.UTF_8));
         try (InputStream input =
@@ -217,14 +257,14 @@ public final class SeedDataGate {
           }
           byte[] content = input.readAllBytes();
           updateDigest(digest, content);
-          collectRequiredSeedNames(resource, content, typeNames, policyNames, roleNames);
+          manifest.collect(resource, content);
         }
       }
-      requiredSeedNames = requiredSeedNames(typeNames, policyNames, roleNames);
+      requiredSeedRows = manifest.build();
       updateDigest(digest, serverVersion.getBytes(StandardCharsets.UTF_8));
       return HexFormat.of().formatHex(digest.digest());
     } catch (Exception exception) {
-      requiredSeedNames = RequiredSeedNames.empty();
+      requiredSeedRows = RequiredSeedRows.empty();
       LOG.warn("Unable to fingerprint seed data; seed gate will fail open", exception);
       return null;
     }
@@ -257,11 +297,9 @@ public final class SeedDataGate {
       return;
     }
     try {
-      seedDataDriftDetected =
-          !systemRepository.hasRequiredSeedRows(
-              requiredSeedNames.typeNames(),
-              requiredSeedNames.policyNames(),
-              requiredSeedNames.roleNames());
+      RequiredSeedRows selectedSeedRows =
+          requiredSeedRows.selectEmailDocuments(getEmailTemplateProvider());
+      seedDataDriftDetected = !systemRepository.hasRequiredSeedRows(selectedSeedRows);
       if (seedDataDriftDetected) {
         LOG.warn(
             "Required seed rows are missing despite an unchanged fingerprint; running seed loaders");
@@ -272,32 +310,22 @@ public final class SeedDataGate {
     }
   }
 
-  private static void collectRequiredSeedNames(
-      String resource,
-      byte[] content,
-      Set<String> typeNames,
-      Set<String> policyNames,
-      Set<String> roleNames)
-      throws IOException {
-    if (resource.contains(TYPE_SCHEMA_PATH) || resource.contains(ENTITY_SCHEMA_PATH)) {
-      typeNames.addAll(JsonUtils.getTypeNames(resource, content));
-    } else if (resource.contains(POLICY_SEED_PATH)) {
-      String policyName = readRequiredSeedName(resource, content, true);
-      if (policyName != null) {
-        policyNames.add(policyName);
-      }
-    } else if (resource.contains(ROLE_SEED_PATH)) {
-      String roleName = readRequiredSeedName(resource, content, false);
-      if (roleName != null) {
-        roleNames.add(roleName);
-      }
+  private String getEmailTemplateProvider() {
+    Settings emailSettings =
+        systemRepository.getConfigWithKey(SettingsType.EMAIL_CONFIGURATION.toString());
+    if (emailSettings == null || emailSettings.getConfigValue() == null) {
+      return null;
     }
+    SmtpSettings smtpSettings =
+        JsonUtils.convertValue(emailSettings.getConfigValue(), SmtpSettings.class);
+    return smtpSettings.getTemplates() == null
+        ? OPENMETADATA_EMAIL_TEMPLATE_PROVIDER
+        : smtpSettings.getTemplates().value();
   }
 
-  private static String readRequiredSeedName(String resource, byte[] content, boolean preferFqn)
+  private static String readRequiredSeedName(String resource, JsonNode seed, boolean preferFqn)
       throws IOException {
-    var seed = JsonUtils.readTree(new String(content, StandardCharsets.UTF_8));
-    var allowDelete = seed.get("allowDelete");
+    JsonNode allowDelete = seed.get("allowDelete");
     if (allowDelete == null || !allowDelete.isBoolean()) {
       throw new IOException("Seed resource has no allowDelete flag: " + resource);
     }
@@ -314,13 +342,248 @@ public final class SeedDataGate {
     return name;
   }
 
-  private static RequiredSeedNames requiredSeedNames(
-      Set<String> typeNames, Set<String> policyNames, Set<String> roleNames) throws IOException {
-    if (typeNames.isEmpty() || policyNames.isEmpty() || roleNames.isEmpty()) {
-      throw new IOException("Required type, policy, or role seed resources are missing");
+  private static String requiredText(String resource, JsonNode node, String field)
+      throws IOException {
+    String value = node.path(field).asText(null);
+    if (value == null || value.isBlank()) {
+      throw new IOException("Seed resource has no " + field + ": " + resource);
     }
-    return new RequiredSeedNames(
-        List.copyOf(typeNames), List.copyOf(policyNames), List.copyOf(roleNames));
+    return value;
+  }
+
+  private static String quotedName(String resource, JsonNode node) throws IOException {
+    return FullyQualifiedName.build(requiredText(resource, node, "name"));
+  }
+
+  private static final class SeedManifestAccumulator {
+    private final EnumMap<SeedTable, Set<String>> rows = new EnumMap<>(SeedTable.class);
+    private final Set<String> openMetadataEmailDocuments = new TreeSet<>();
+    private final Set<String> collateEmailDocuments = new TreeSet<>();
+    private final Set<String> llmModelNames = new TreeSet<>();
+    private final Set<String> mcpServerNames = new TreeSet<>();
+    private final Pattern notificationTemplatePattern;
+
+    private SeedManifestAccumulator() {
+      for (SeedTable table : SeedTable.values()) {
+        rows.put(table, new TreeSet<>());
+      }
+      notificationTemplatePattern =
+          Pattern.compile(
+              ResourcePathResolver.getResourcePath(NotificationTemplateResourcePathProvider.class));
+    }
+
+    private List<String> notificationTemplateResources() throws IOException {
+      return CommonUtil.getResources(notificationTemplatePattern);
+    }
+
+    private void collect(String resource, byte[] content) throws IOException {
+      if (resource.contains(TYPE_SCHEMA_PATH) || resource.contains(ENTITY_SCHEMA_PATH)) {
+        rows.get(SeedTable.TYPE).addAll(JsonUtils.getTypeNames(resource, content));
+        return;
+      }
+
+      SeedTable simpleTable = simpleSeedTable(resource);
+      if (simpleTable != null) {
+        JsonNode seed = readSeed(resource, content);
+        if (simpleTable == SeedTable.POLICY || simpleTable == SeedTable.ROLE) {
+          String identity = readRequiredSeedName(resource, seed, simpleTable == SeedTable.POLICY);
+          if (identity != null) {
+            rows.get(simpleTable).add(identity);
+          }
+        } else {
+          rows.get(simpleTable).add(simpleIdentity(resource, seed, simpleTable));
+        }
+        return;
+      }
+
+      if (resource.contains(DOCUMENT_DOCS_PATH)) {
+        JsonNode seed = readSeed(resource, content);
+        rows.get(SeedTable.DOCUMENT).add(requiredText(resource, seed, "fullyQualifiedName"));
+      } else if (resource.contains(OPENMETADATA_EMAIL_DOCUMENT_PATH)) {
+        openMetadataEmailDocuments.add(
+            requiredText(resource, readSeed(resource, content), "fullyQualifiedName"));
+      } else if (resource.contains(COLLATE_EMAIL_DOCUMENT_PATH)) {
+        collateEmailDocuments.add(
+            requiredText(resource, readSeed(resource, content), "fullyQualifiedName"));
+      } else if (resource.contains(TAG_PATH)) {
+        collectTags(resource, readSeed(resource, content));
+      } else if (GLOSSARY_SEED_RESOURCES.matcher(resource).matches()) {
+        collectGlossary(resource, readSeed(resource, content));
+      } else if (resource.contains(AI_FRAMEWORK_PATH) && !resource.endsWith("/_index.json")) {
+        collectAiFramework(resource, readSeed(resource, content));
+      } else if (resource.contains(LLM_MODEL_PATH)) {
+        llmModelNames.add(requiredText(resource, readSeed(resource, content), "name"));
+      } else if (resource.contains(MCP_SERVER_PATH)) {
+        mcpServerNames.add(requiredText(resource, readSeed(resource, content), "name"));
+      }
+    }
+
+    private SeedTable simpleSeedTable(String resource) {
+      if (resource.contains(POLICY_SEED_PATH)) {
+        return SeedTable.POLICY;
+      }
+      if (resource.contains(ROLE_SEED_PATH)) {
+        return SeedTable.ROLE;
+      }
+      if (resource.contains(TASK_FORM_SCHEMA_PATH)) {
+        return SeedTable.TASK_FORM_SCHEMA;
+      }
+      if (resource.contains(WORKFLOW_DEFINITION_PATH)) {
+        return SeedTable.WORKFLOW_DEFINITION;
+      }
+      if (resource.contains(EVENT_SUBSCRIPTION_PATH)) {
+        return SeedTable.EVENT_SUBSCRIPTION;
+      }
+      if (notificationTemplatePattern.matcher(resource).matches()) {
+        return SeedTable.NOTIFICATION_TEMPLATE;
+      }
+      if (resource.contains(LEARNING_RESOURCE_PATH)) {
+        return SeedTable.LEARNING_RESOURCE;
+      }
+      if (resource.contains(TEST_DEFINITION_PATH)) {
+        return SeedTable.TEST_DEFINITION;
+      }
+      if (resource.contains(TEST_CONNECTION_DEFINITION_PATH)) {
+        return SeedTable.TEST_CONNECTION_DEFINITION;
+      }
+      if (resource.contains(WEB_ANALYTIC_EVENT_PATH)) {
+        return SeedTable.WEB_ANALYTIC_EVENT;
+      }
+      if (resource.contains(DATA_INSIGHT_CUSTOM_CHART_PATH)) {
+        return SeedTable.DATA_INSIGHT_CUSTOM_CHART;
+      }
+      if (DATA_INSIGHT_CHART_SEED_RESOURCES.matcher(resource).matches()) {
+        return SeedTable.DATA_INSIGHT_CHART;
+      }
+      if (resource.contains(BOT_PATH)) {
+        return SeedTable.BOT;
+      }
+      if (resource.contains(AI_POLICY_PATH)) {
+        return SeedTable.AI_GOVERNANCE_POLICY;
+      }
+      if (resource.contains(AI_APPLICATION_PATH)
+          || (resource.contains(AI_SHADOW_APPLICATION_PATH)
+              && !resource.endsWith("/_service.json")
+              && !resource.endsWith("/_model.json"))) {
+        return SeedTable.AI_APPLICATION;
+      }
+      if (resource.contains(LLM_SERVICE_PATH)) {
+        return SeedTable.LLM_SERVICE;
+      }
+      if (resource.contains(MCP_SERVICE_PATH)) {
+        return SeedTable.MCP_SERVICE;
+      }
+      return null;
+    }
+
+    private static String simpleIdentity(String resource, JsonNode seed, SeedTable seedTable)
+        throws IOException {
+      if (seedTable == SeedTable.TEST_CONNECTION_DEFINITION) {
+        return requiredText(resource, seed, "name") + ".testConnectionDefinition";
+      }
+      if (seedTable == SeedTable.DATA_INSIGHT_CUSTOM_CHART) {
+        return requiredText(resource, seed, "name");
+      }
+      if (seedTable == SeedTable.LEARNING_RESOURCE) {
+        String fullyQualifiedName = seed.path("fullyQualifiedName").asText(null);
+        if (fullyQualifiedName != null && !fullyQualifiedName.isBlank()) {
+          return fullyQualifiedName;
+        }
+      }
+      return quotedName(resource, seed);
+    }
+
+    private void collectTags(String resource, JsonNode seed) throws IOException {
+      JsonNode classification = seed.path("createClassification");
+      String classificationName = requiredText(resource, classification, "name");
+      rows.get(SeedTable.CLASSIFICATION).add(FullyQualifiedName.build(classificationName));
+      JsonNode tags = seed.path("createTags");
+      if (!tags.isArray()) {
+        throw new IOException("Seed resource has no createTags array: " + resource);
+      }
+      for (JsonNode tag : tags) {
+        String name = requiredText(resource, tag, "name");
+        String parent = tag.path("parent").asText(null);
+        rows.get(SeedTable.TAG)
+            .add(
+                parent == null || parent.isBlank()
+                    ? FullyQualifiedName.build(classificationName, name)
+                    : FullyQualifiedName.add(parent, name));
+      }
+    }
+
+    private void collectGlossary(String resource, JsonNode seed) throws IOException {
+      JsonNode createGlossary = seed.path("createGlossary");
+      if (createGlossary.isMissingNode()) {
+        return;
+      }
+      String glossaryName = requiredText(resource, createGlossary, "name");
+      rows.get(SeedTable.GLOSSARY).add(FullyQualifiedName.build(glossaryName));
+      JsonNode terms = seed.path("createTerms");
+      if (!terms.isArray()) {
+        throw new IOException("Seed resource has no createTerms array: " + resource);
+      }
+      for (JsonNode term : terms) {
+        String name = requiredText(resource, term, "name");
+        String parent = term.path("parent").asText(null);
+        rows.get(SeedTable.GLOSSARY_TERM)
+            .add(
+                parent == null || parent.isBlank()
+                    ? FullyQualifiedName.build(glossaryName, name)
+                    : FullyQualifiedName.add(parent, name));
+      }
+    }
+
+    private void collectAiFramework(String resource, JsonNode seed) throws IOException {
+      JsonNode framework = seed.path("framework");
+      if (framework.isMissingNode()) {
+        throw new IOException("Seed resource has no framework: " + resource);
+      }
+      rows.get(SeedTable.AI_GOVERNANCE_FRAMEWORK).add(quotedName(resource, framework));
+      JsonNode controls = seed.path("controls");
+      if (!controls.isArray()) {
+        throw new IOException("Seed resource has no controls array: " + resource);
+      }
+      for (JsonNode control : controls) {
+        rows.get(SeedTable.AI_FRAMEWORK_CONTROL).add(quotedName(resource, control));
+      }
+    }
+
+    private RequiredSeedRows build() throws IOException {
+      qualifyChildren(SeedTable.LLM_SERVICE, SeedTable.LLM_MODEL, llmModelNames);
+      qualifyChildren(SeedTable.MCP_SERVICE, SeedTable.MCP_SERVER, mcpServerNames);
+      for (SeedTable requiredTable : REQUIRED_SEED_TABLES) {
+        if (rows.get(requiredTable).isEmpty()) {
+          throw new IOException("Required seed resources are missing for " + requiredTable);
+        }
+      }
+      EnumMap<SeedTable, List<String>> sortedRows = new EnumMap<>(SeedTable.class);
+      rows.forEach((table, identities) -> sortedRows.put(table, List.copyOf(identities)));
+      return new RequiredSeedRows(
+          sortedRows, List.copyOf(openMetadataEmailDocuments), List.copyOf(collateEmailDocuments));
+    }
+
+    private void qualifyChildren(
+        SeedTable serviceTable, SeedTable childTable, Set<String> childNames) throws IOException {
+      if (childNames.isEmpty()) {
+        return;
+      }
+      Set<String> services = rows.get(serviceTable);
+      if (services.size() != 1) {
+        throw new IOException("Expected one seed service for " + childTable);
+      }
+      String service = services.iterator().next();
+      childNames.forEach(
+          childName -> rows.get(childTable).add(FullyQualifiedName.add(service, childName)));
+    }
+
+    private static JsonNode readSeed(String resource, byte[] content) throws IOException {
+      try {
+        return JsonUtils.readTree(new String(content, StandardCharsets.UTF_8));
+      } catch (Exception exception) {
+        throw new IOException("Unable to parse seed resource " + resource, exception);
+      }
+    }
   }
 
   private static MessageDigest sha256Digest() {
@@ -334,12 +597,5 @@ public final class SeedDataGate {
   private static void updateDigest(MessageDigest digest, byte[] bytes) {
     digest.update(bytes);
     digest.update((byte) 0);
-  }
-
-  private record RequiredSeedNames(
-      List<String> typeNames, List<String> policyNames, List<String> roleNames) {
-    private static RequiredSeedNames empty() {
-      return new RequiredSeedNames(List.of(), List.of(), List.of());
-    }
   }
 }

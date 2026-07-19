@@ -603,9 +603,14 @@ public class SearchRepository {
         && buildResult.failures() == 0
         && !SeedDataGate.getInstance()
             .shouldUpdateSearchTemplates(fingerprint, createdIndexCount)) {
-      LOG.info("Index templates are unchanged; skipping {} template updates", templates.size());
-      SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
-      return;
+      if (indexTemplatesMatch(templates)) {
+        LOG.info(
+            "Index template fingerprint markers match; skipping {} template updates",
+            templates.size());
+        SeedDataGate.getInstance().recordSearchTemplateFingerprint(fingerprint);
+        return;
+      }
+      LOG.info("Index template drift detected in the search cluster; rebuilding templates");
     }
 
     LOG.info("Creating/updating index templates for all entities...");
@@ -677,6 +682,31 @@ public class SearchRepository {
       Map<String, IndexTemplateDefinition> templates, int failures) {}
 
   private record IndexTemplateDefinition(String indexPattern, String mappingContent) {}
+
+  private boolean indexTemplatesMatch(Map<String, IndexTemplateDefinition> templates) {
+    try {
+      Map<String, String> expectedFingerprints =
+          templates.entrySet().stream()
+              .collect(
+                  Collectors.toMap(
+                      Map.Entry::getKey,
+                      entry ->
+                          searchClient.indexTemplateFingerprint(
+                              entry.getValue().indexPattern(), entry.getValue().mappingContent()),
+                      (left, right) -> left,
+                      TreeMap::new));
+      Map<String, String> liveFingerprints = searchClient.getIndexTemplateFingerprints("om_*");
+      return expectedFingerprints.entrySet().stream()
+          .allMatch(
+              expected ->
+                  Objects.equals(liveFingerprints.get(expected.getKey()), expected.getValue()));
+    } catch (Exception exception) {
+      LOG.warn(
+          "Unable to verify index template fingerprints; templates will be rebuilt: {}",
+          exception.getMessage());
+      return false;
+    }
+  }
 
   public void createOrUpdateIndexTemplate(String entityType) throws IOException {
     IndexMapping indexMapping = entityIndexMap.get(entityType);

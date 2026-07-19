@@ -13,12 +13,16 @@
 
 package org.openmetadata.service.search;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockStatic;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -42,6 +46,7 @@ import org.openmetadata.service.events.lifecycle.EntityLifecycleEventDispatcher;
 import org.openmetadata.service.jdbi3.SystemRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchGenericManager;
 import org.openmetadata.service.search.opensearch.OpenSearchGenericManager;
+import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.seeding.SeedDataGate;
 
 class IndexTemplateManagerTest {
@@ -61,6 +66,112 @@ class IndexTemplateManagerTest {
     assertThrows(
         IOException.class,
         () -> opensearch.createOrUpdateIndexTemplate("template", "index*", "{}"));
+    assertThrows(IOException.class, () -> elasticsearch.getIndexTemplateFingerprints("om_*"));
+    assertThrows(IOException.class, () -> opensearch.getIndexTemplateFingerprints("om_*"));
+  }
+
+  @Test
+  void openSearchFingerprintUsesTheEffectiveMapping() {
+    OpenSearchGenericManager opensearch = new OpenSearchGenericManager(null, null);
+    String mapping =
+        """
+        {"mappings":{"properties":{"metadata":{"type":"flattened"}}}}
+        """;
+    String transformedMapping = OsUtils.enrichIndexMappingForOpenSearch(mapping);
+
+    assertNotEquals(mapping.strip(), transformedMapping);
+    assertEquals(
+        GenericClient.calculateIndexTemplateFingerprint("index*", transformedMapping),
+        opensearch.indexTemplateFingerprint("index*", mapping));
+  }
+
+  @Test
+  void matchingLiveTemplateFingerprintSkipsTemplateUpdate() throws IOException {
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping mapping = indexMapping("current_search_index");
+    TestSearchRepository repository =
+        newRepository(new LinkedHashMap<>(Map.of("current", mapping)), searchClient);
+    repository.setMappingContent(mapping, "{}");
+    configureMatchingStoredFingerprint("om_current_search_index", "{}");
+    when(searchClient.getIndexTemplateFingerprints("om_*"))
+        .thenReturn(
+            Map.of(
+                "om_current_search_index",
+                GenericClient.calculateIndexTemplateFingerprint("current_search_index*", "{}")));
+
+    repository.createOrUpdateIndexTemplates(0);
+
+    verify(searchClient).getIndexTemplateFingerprints("om_*");
+    verify(searchClient, never())
+        .createOrUpdateIndexTemplate(anyString(), anyString(), anyString());
+  }
+
+  @Test
+  void missingLiveTemplateIsRebuilt() throws IOException {
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping mapping = indexMapping("missing_search_index");
+    TestSearchRepository repository =
+        newRepository(new LinkedHashMap<>(Map.of("missing", mapping)), searchClient);
+    repository.setMappingContent(mapping, "{}");
+    configureMatchingStoredFingerprint("om_missing_search_index", "{}");
+    when(searchClient.getIndexTemplateFingerprints("om_*")).thenReturn(Map.of());
+
+    repository.createOrUpdateIndexTemplates(0);
+
+    verify(searchClient)
+        .createOrUpdateIndexTemplate("om_missing_search_index", "missing_search_index*", "{}");
+  }
+
+  @Test
+  void staleLiveTemplateIsRebuilt() throws IOException {
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping mapping = indexMapping("stale_search_index");
+    TestSearchRepository repository =
+        newRepository(new LinkedHashMap<>(Map.of("stale", mapping)), searchClient);
+    repository.setMappingContent(mapping, "{}");
+    configureMatchingStoredFingerprint("om_stale_search_index", "{}");
+    when(searchClient.getIndexTemplateFingerprints("om_*"))
+        .thenReturn(Map.of("om_stale_search_index", "stale-fingerprint"));
+
+    repository.createOrUpdateIndexTemplates(0);
+
+    verify(searchClient)
+        .createOrUpdateIndexTemplate("om_stale_search_index", "stale_search_index*", "{}");
+  }
+
+  @Test
+  void failedLiveTemplateVerificationRebuildsTemplates() throws IOException {
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping mapping = indexMapping("unverified_search_index");
+    TestSearchRepository repository =
+        newRepository(new LinkedHashMap<>(Map.of("unverified", mapping)), searchClient);
+    repository.setMappingContent(mapping, "{}");
+    configureMatchingStoredFingerprint("om_unverified_search_index", "{}");
+    when(searchClient.getIndexTemplateFingerprints("om_*"))
+        .thenThrow(new IOException("template read failed"));
+
+    repository.createOrUpdateIndexTemplates(0);
+
+    verify(searchClient)
+        .createOrUpdateIndexTemplate(
+            "om_unverified_search_index", "unverified_search_index*", "{}");
+  }
+
+  @Test
+  void failedExpectedFingerprintCalculationRebuildsTemplates() throws IOException {
+    SearchClient searchClient = mock(SearchClient.class);
+    IndexMapping mapping = indexMapping("invalid_search_index");
+    TestSearchRepository repository =
+        newRepository(new LinkedHashMap<>(Map.of("invalid", mapping)), searchClient);
+    repository.setMappingContent(mapping, "{}");
+    configureMatchingStoredFingerprint("om_invalid_search_index", "{}");
+    when(searchClient.indexTemplateFingerprint("invalid_search_index*", "{}"))
+        .thenThrow(new IllegalArgumentException("fingerprint failed"));
+
+    repository.createOrUpdateIndexTemplates(0);
+
+    verify(searchClient)
+        .createOrUpdateIndexTemplate("om_invalid_search_index", "invalid_search_index*", "{}");
   }
 
   @Test
@@ -159,8 +270,28 @@ class IndexTemplateManagerTest {
     return IndexMapping.builder().indexName(indexName).build();
   }
 
+  private static void configureMatchingStoredFingerprint(
+      String templateName, String mappingContent) {
+    SystemRepository systemRepository = mock(SystemRepository.class);
+    StartupChecksums storedChecksums =
+        new StartupChecksums()
+            .withSearchTemplateFingerprint(
+                SeedDataGate.fingerprint(Map.of(templateName, mappingContent)));
+    when(systemRepository.getConfigWithKey(SettingsType.STARTUP_CHECKSUMS.toString()))
+        .thenReturn(
+            new Settings()
+                .withConfigType(SettingsType.STARTUP_CHECKSUMS)
+                .withConfigValue(storedChecksums));
+    SeedDataGate.getInstance().configure(new StartupConfiguration(), systemRepository);
+  }
+
   private static TestSearchRepository newRepository(
       Map<String, IndexMapping> indexMappings, SearchClient searchClient) {
+    when(searchClient.indexTemplateFingerprint(anyString(), anyString()))
+        .thenAnswer(
+            invocation ->
+                GenericClient.calculateIndexTemplateFingerprint(
+                    invocation.getArgument(0), invocation.getArgument(1)));
     ElasticSearchConfiguration configuration = new ElasticSearchConfiguration();
     configuration.setClusterAlias("");
     IndexMappingLoader mappingLoader = mock(IndexMappingLoader.class);
