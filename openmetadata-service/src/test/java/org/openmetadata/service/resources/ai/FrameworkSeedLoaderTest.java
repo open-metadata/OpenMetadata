@@ -34,6 +34,7 @@ import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.jdbi3.AIFrameworkControlRepository;
+import org.openmetadata.service.util.FullyQualifiedName;
 
 class FrameworkSeedLoaderTest {
 
@@ -53,17 +54,22 @@ class FrameworkSeedLoaderTest {
     JsonNode controls = JsonUtils.readTree("[{\"name\":\"shared-control\"}]");
     EntityReference firstFramework = framework("framework-one");
     EntityReference secondFramework = framework("framework-two");
+    EntityReference dottedFramework = framework("framework.with.dot");
 
     FrameworkSeedLoader.seedControls(controls, firstFramework, repository);
     FrameworkSeedLoader.seedControls(controls, firstFramework, repository);
     FrameworkSeedLoader.seedControls(controls, secondFramework, repository);
+    FrameworkSeedLoader.seedControls(controls, dottedFramework, repository);
 
-    assertEquals(2, persistedControls.size());
+    assertEquals(3, persistedControls.size());
     assertEquals(
         firstFramework, persistedControls.get("framework-one.shared-control").getFramework());
     assertEquals(
         secondFramework, persistedControls.get("framework-two.shared-control").getFramework());
-    verify(repository, times(2)).create(isNull(), any(AIFrameworkControl.class));
+    assertEquals(
+        dottedFramework,
+        persistedControls.get("\"framework.with.dot\".shared-control").getFramework());
+    verify(repository, times(3)).create(isNull(), any(AIFrameworkControl.class));
   }
 
   private EntityReference framework(String name) {
@@ -71,6 +77,6 @@ class FrameworkSeedLoaderTest {
         .withId(UUID.randomUUID())
         .withType(Entity.AI_GOVERNANCE_FRAMEWORK)
         .withName(name)
-        .withFullyQualifiedName(name);
+        .withFullyQualifiedName(FullyQualifiedName.build(name));
   }
 }

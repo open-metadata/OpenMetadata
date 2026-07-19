@@ -68,13 +68,14 @@ final class FrameworkSeedLoader {
     }
     AIGovernanceFramework framework =
         JsonUtils.treeToValue(frameworkNode, AIGovernanceFramework.class);
+    String frameworkFqn = FullyQualifiedName.build(framework.getName());
 
     AIGovernanceFramework existing =
-        frameworkRepository.findByNameOrNull(framework.getName(), Include.ALL);
+        frameworkRepository.findByNameOrNull(frameworkFqn, Include.ALL);
     AIGovernanceFramework saved;
     if (existing == null) {
       framework.setId(UUID.randomUUID());
-      framework.setFullyQualifiedName(framework.getName());
+      framework.setFullyQualifiedName(frameworkFqn);
       framework.setUpdatedBy(ADMIN_USER_NAME);
       framework.setUpdatedAt(System.currentTimeMillis());
       saved = frameworkRepository.create(null, framework);

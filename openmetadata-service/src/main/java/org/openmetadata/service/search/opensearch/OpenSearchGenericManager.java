@@ -198,7 +198,8 @@ public class OpenSearchGenericManager implements GenericClient {
       client
           .withTransportOptions(
               client
-                  ._transportOptions()
+                  ._transport()
+                  .options()
                   .with(
                       options ->
                           options.setParameter(

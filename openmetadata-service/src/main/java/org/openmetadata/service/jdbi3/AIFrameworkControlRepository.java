@@ -12,6 +12,8 @@
  */
 package org.openmetadata.service.jdbi3;
 
+import static org.openmetadata.schema.type.Include.NON_DELETED;
+
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.ai.AIFrameworkControl;
 import org.openmetadata.schema.type.change.ChangeSource;
@@ -57,7 +59,9 @@ public class AIFrameworkControlRepository extends EntityRepository<AIFrameworkCo
   }
 
   @Override
-  public void prepare(AIFrameworkControl control, boolean update) {}
+  public void prepare(AIFrameworkControl control, boolean update) {
+    control.setFramework(Entity.getEntityReference(control.getFramework(), NON_DELETED));
+  }
 
   @Override
   public void storeEntity(AIFrameworkControl control, boolean update) {

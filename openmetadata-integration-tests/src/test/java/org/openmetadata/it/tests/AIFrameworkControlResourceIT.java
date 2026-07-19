@@ -35,7 +35,8 @@ public class AIFrameworkControlResourceIT {
 
   @Test
   void controlsWithTheSameNameAreScopedByFramework(TestNamespace namespace) throws Exception {
-    AIGovernanceFramework firstFramework = createFramework(namespace.prefix("first_framework"));
+    String dottedFrameworkName = namespace.prefix("first_framework") + ".v1";
+    AIGovernanceFramework firstFramework = createFramework(dottedFrameworkName);
     AIGovernanceFramework secondFramework = createFramework(namespace.prefix("second_framework"));
     String controlName = namespace.prefix("shared_control");
 
@@ -45,6 +46,7 @@ public class AIFrameworkControlResourceIT {
         createControl(controlName, secondFramework.getFullyQualifiedName());
 
     assertNotEquals(firstControl.getId(), secondControl.getId());
+    assertEquals("\"" + dottedFrameworkName + "\"", firstFramework.getFullyQualifiedName());
     assertEquals(
         firstFramework.getFullyQualifiedName() + "." + controlName,
         firstControl.getFullyQualifiedName());
