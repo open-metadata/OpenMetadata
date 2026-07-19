@@ -88,6 +88,7 @@ class DriveFileUploadIT {
   private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
+  private static final int SEARCH_RESULT_SIZE = 100;
   private static final int DIAGNOSTIC_BODY_LIMIT = 4000;
   private static String serverBaseUrl;
   private static Client multipartClient;
@@ -266,7 +267,10 @@ class DriveFileUploadIT {
     RestClient rest = RestClient.admin();
     String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
     String searchPath =
-        "v1/search/query?q=" + encodedQuery + "&index=context_file_search_index&from=0&size=10";
+        "v1/search/query?q="
+            + encodedQuery
+            + "&index=context_file_search_index&from=0&size="
+            + SEARCH_RESULT_SIZE;
 
     try {
       await()
