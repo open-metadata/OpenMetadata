@@ -1103,6 +1103,82 @@ public class GlossaryResourceIT extends BaseEntityIT<Glossary, CreateGlossary> {
     }
   }
 
+  @Test
+  void test_createGlossaryTerm_sameNameUnderDifferentParents_succeeds(TestNamespace ns) {
+    // Regression test: two glossary terms sharing the same leaf name but living under different
+    // parents have distinct FQNs and must both be creatable. Previously the duplicate-name check
+    // run on create matched any term with the same name anywhere in the glossary, regardless of
+    // parent, causing the second term ("Loan.Balance") to be rejected as a duplicate of the
+    // already-persisted "Account.Balance".
+    OpenMetadataClient client = SdkClients.adminClient();
+
+    CreateGlossary createGlossary = createMinimalRequest(ns);
+    Glossary glossary = createEntity(createGlossary);
+    String glossaryFqn = glossary.getFullyQualifiedName();
+
+    GlossaryTerm account =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("account"))
+                    .withGlossary(glossaryFqn)
+                    .withDescription("Account parent term"));
+    GlossaryTerm loan =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName(ns.prefix("loan"))
+                    .withGlossary(glossaryFqn)
+                    .withDescription("Loan parent term"));
+
+    GlossaryTerm accountBalance =
+        client
+            .glossaryTerms()
+            .create(
+                new CreateGlossaryTerm()
+                    .withName("Balance")
+                    .withGlossary(glossaryFqn)
+                    .withParent(account.getFullyQualifiedName())
+                    .withDescription("Account balance definition"));
+    assertNotNull(accountBalance, "Account.Balance term should have been created");
+
+    GlossaryTerm loanBalance;
+    try {
+      loanBalance =
+          client
+              .glossaryTerms()
+              .create(
+                  new CreateGlossaryTerm()
+                      .withName("Balance")
+                      .withGlossary(glossaryFqn)
+                      .withParent(loan.getFullyQualifiedName())
+                      .withDescription("Loan balance definition"));
+    } catch (Exception e) {
+      fail(
+          "Creating 'Balance' under a different parent ('"
+              + loan.getFullyQualifiedName()
+              + "') should not be rejected as a duplicate of the existing '"
+              + accountBalance.getFullyQualifiedName()
+              + "': "
+              + e.getMessage());
+      return;
+    }
+
+    assertNotNull(loanBalance, "Loan.Balance term should have been created");
+    assertEquals("Balance", accountBalance.getName());
+    assertEquals("Balance", loanBalance.getName());
+    assertEquals(
+        org.openmetadata.service.util.FullyQualifiedName.add(
+            account.getFullyQualifiedName(), "Balance"),
+        accountBalance.getFullyQualifiedName());
+    assertEquals(
+        org.openmetadata.service.util.FullyQualifiedName.add(
+            loan.getFullyQualifiedName(), "Balance"),
+        loanBalance.getFullyQualifiedName());
+  }
+
   /**
    * Helper method to create CSV content for glossary terms import.
    * Returns CSV with header and 3 glossary terms with all required columns.

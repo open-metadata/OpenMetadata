@@ -2020,11 +2020,17 @@ public class GlossaryTermRepository extends EntityRepository<GlossaryTerm> {
   }
 
   private void checkDuplicateTerms(GlossaryTerm entity) {
+    // Term names only need to be unique among siblings sharing the same parent (or, for
+    // top-level terms, among the glossary's direct children) since the FQN already
+    // disambiguates terms with the same name under different parents.
+    String parentFqn =
+        entity.getParent() != null
+            ? entity.getParent().getFullyQualifiedName()
+            : entity.getGlossary().getFullyQualifiedName();
     int count =
         daoCollection
             .glossaryTermDAO()
-            .getGlossaryTermCountIgnoreCase(
-                entity.getGlossary().getFullyQualifiedName(), entity.getName());
+            .getGlossaryTermCountIgnoreCaseUnderParent(parentFqn, parentFqn, entity.getName());
     if (count > 0) {
       throw new IllegalArgumentException(
           CatalogExceptionMessage.duplicateGlossaryTerm(
