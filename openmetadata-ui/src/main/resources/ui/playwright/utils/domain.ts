@@ -45,7 +45,11 @@ import {
   redirectToHomePage,
   uuid,
 } from './common';
-import { addOwner, waitForAllLoadersToDisappear } from './entity';
+import {
+  addOwner,
+  forceFreshTableReads,
+  waitForAllLoadersToDisappear,
+} from './entity';
 import { sidebarClick } from './sidebar';
 
 const waitForSearchDebounce = async (page: Page) => {
@@ -854,6 +858,9 @@ export const addAssetsToDataProduct = async (
   dataProductFqn: string,
   assets: EntityClass[]
 ) => {
+  // Avoid stale 304 reads before verifying the new asset link.
+  await forceFreshTableReads(page);
+
   await page.getByTestId('assets').click();
   await checkAssetsCount(page, 0);
 
