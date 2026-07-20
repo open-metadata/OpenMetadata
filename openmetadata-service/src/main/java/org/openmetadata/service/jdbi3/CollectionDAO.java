@@ -7236,7 +7236,14 @@ public interface CollectionDAO {
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
       }
       return listBefore(
-          getTableName(), mySqlCondition, postgresCondition, limit, beforeName, beforeId, groupBy);
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          beforeName,
+          beforeId,
+          groupBy);
     }
 
     @Override
@@ -7263,7 +7270,14 @@ public interface CollectionDAO {
             String.format("%s %s", postgresCondition, filter.getCondition(getTableName()));
       }
       return listAfter(
-          getTableName(), mySqlCondition, postgresCondition, limit, afterName, afterId, groupBy);
+          getTableName(),
+          filter.getQueryParams(),
+          mySqlCondition,
+          postgresCondition,
+          limit,
+          afterName,
+          afterId,
+          groupBy);
     }
 
     @SqlQuery(
