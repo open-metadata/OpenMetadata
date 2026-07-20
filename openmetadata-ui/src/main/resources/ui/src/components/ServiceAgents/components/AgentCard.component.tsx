@@ -281,7 +281,7 @@ const AgentCard: FC<AgentCardProps> = ({
               {t('label.log-plural')}
             </Button>
           )}
-          {!isRunning && permissions.trigger && (
+          {!isRunning && !isQueued && permissions.trigger && (
             <Button
               className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
               color="secondary"

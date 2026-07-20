@@ -44,9 +44,12 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   const { t } = useTranslation();
   const isActive = status === 'running' || status === 'queued';
 
-  const pauseResumeOption: MenuItem = enabled
-    ? { id: 'pause', label: t('label.pause'), testId: 'pause-button' }
-    : { id: 'resume', label: t('label.resume'), testId: 'resume-button' };
+  // `enabled` defaults to true in the IngestionPipeline schema, so an absent
+  // flag means the agent is running and only an explicit false means paused.
+  const pauseResumeOption: MenuItem =
+    enabled === false
+      ? { id: 'resume', label: t('label.resume'), testId: 'resume-button' }
+      : { id: 'pause', label: t('label.pause'), testId: 'pause-button' };
 
   const allItems: MenuItem[] = [
     pauseResumeOption,

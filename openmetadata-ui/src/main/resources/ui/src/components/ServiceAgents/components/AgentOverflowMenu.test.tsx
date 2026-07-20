@@ -86,11 +86,11 @@ describe('AgentOverflowMenu', () => {
     expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
   });
 
-  it('should render resume when the enabled flag is not yet known', () => {
+  it('should render pause when the enabled flag is absent, since it defaults to true', () => {
     renderMenu('success', FULL_PERMISSIONS);
 
-    expect(screen.getByTestId('resume-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pause-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('resume-button')).not.toBeInTheDocument();
   });
 
   it('should render pause, kill, edit and delete for an enabled active agent', () => {

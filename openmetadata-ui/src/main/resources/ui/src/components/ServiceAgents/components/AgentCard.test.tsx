@@ -221,4 +221,22 @@ describe('AgentCard', () => {
 
     expect(screen.getByTestId('run-agent-button')).toBeInTheDocument();
   });
+
+  it('should hide the run button for a running agent', () => {
+    renderCard(
+      { ...baseAgent, status: 'running' },
+      { trigger: true, edit: false, delete: false }
+    );
+
+    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
+  });
+
+  it('should hide the run button for a queued agent to avoid a duplicate run', () => {
+    renderCard(
+      { ...baseAgent, status: 'queued' },
+      { trigger: true, edit: false, delete: false }
+    );
+
+    expect(screen.queryByTestId('run-agent-button')).not.toBeInTheDocument();
+  });
 });
