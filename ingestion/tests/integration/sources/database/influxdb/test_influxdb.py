@@ -116,12 +116,17 @@ class TestInfluxDBIntegration:
         assert "temperature" in rows[0]
         assert "time" in rows[0]
 
-    def test_system_table_blocklist(self):
-        """Verify system tables from information_schema are present and need filtering."""
-        rows = _query("testdb", "SELECT table_name FROM information_schema.tables")
-        all_tables = {r["table_name"] for r in rows}
-        known_system = {"tables", "columns", "schemata"}
-        assert any(t in all_tables for t in known_system), f"No system tables found in {all_tables}"
+    def test_system_schema_detection(self):
+        """Verify system schemas are present and need exclusion."""
+        rows = _query(
+            "_internal",
+            "SELECT table_name, table_schema FROM information_schema.tables",
+        )
+        schemas = {r["table_schema"] for r in rows}
+        assert {"system", "information_schema"}.issubset(schemas), f"Got schemas: {schemas}"
+        # Verify user tables not found in system schemas
+        system_table_names = {r["table_name"] for r in rows if r["table_schema"] in {"system", "information_schema"}}
+        assert system_table_names, "Expected system tables in system/information_schema"
 
     def test_type_mapping_timestamp_ns(self):
         """Verify Core returns Timestamp(ns) type."""
