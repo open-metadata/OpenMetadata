@@ -75,26 +75,50 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
   // after any field holding its doc as a local constant, so the map can open
   // with a field from the bottom of the form.
   const [firstName, setFirstName] = useState<string>();
-  // Re-read on every commit rather than only when `entries` changes. A form
-  // can reorder documented fields it has already mounted — same names, same
-  // docs — which leaves the registry untouched while the field at the top of
-  // the form is now a different one. Keying off `entries` would hold the old
-  // answer. Re-running costs one scoped querySelector, and setting the same
-  // name back is a no-op in React.
+  // Watch the form for structural changes rather than recomputing per commit
+  // or keying off `entries`. Neither of those is right: a form can reorder
+  // documented fields it has already mounted — same names, same docs — which
+  // leaves the registry untouched while a different field is now first on
+  // screen, and re-running on every render is what the exhaustive-deps rule
+  // warns about. The DOM is the thing that actually changed, so observe it.
   useLayoutEffect(() => {
-    // Scope the lookup to the surface this panel belongs to; a bare document
-    // query would reach into any other documented form that happens to be
-    // mounted.
-    let scope = rootRef.current?.parentElement ?? null;
-    while (scope && !scope.querySelector('[data-field-doc]')) {
-      scope = scope.parentElement;
+    // Climb to whatever encloses this panel and the fields it describes,
+    // accepting either a documented field or the form itself: docs can arrive
+    // asynchronously, so at mount there may be no `[data-field-doc]` yet, and
+    // the panel is exported for use outside a form, where there is no `form`
+    // to find. Scoping at all is what stops a second documented form elsewhere
+    // on the page from being read.
+    const start = rootRef.current?.parentElement ?? null;
+    let ancestor = start;
+    while (ancestor && !ancestor.querySelector('[data-field-doc], form')) {
+      ancestor = ancestor.parentElement;
     }
-    setFirstName(
-      scope
-        ?.querySelector('[data-field-doc]')
-        ?.getAttribute('data-field-doc') ?? undefined
-    );
-  });
+
+    const scope = ancestor ?? start;
+
+    if (!scope) {
+      return undefined;
+    }
+    const readFirst = () =>
+      setFirstName(
+        scope
+          .querySelector('[data-field-doc]')
+          ?.getAttribute('data-field-doc') ?? undefined
+      );
+
+    readFirst();
+
+    // `data-field-doc` is set and cleared on existing elements as docs load,
+    // so attributes matter as much as added and removed nodes.
+    const observer = new MutationObserver(readFirst);
+    observer.observe(scope, {
+      attributeFilter: ['data-field-doc'],
+      childList: true,
+      subtree: true,
+    });
+
+    return () => observer.disconnect();
+  }, []);
   const firstEntry = firstName ? entries.get(firstName) : undefined;
   // Remembering the last entry is idempotent, so writing it during render is
   // safe under StrictMode's double-invoke.

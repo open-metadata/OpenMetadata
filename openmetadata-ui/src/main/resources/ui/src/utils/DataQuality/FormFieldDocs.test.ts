@@ -204,6 +204,7 @@ describe('loadFormFieldDocs', () => {
     failFirst(new Error('404 not found'));
 
     await expect(failing).resolves.toEqual({});
+
     // The re-fetch stays cached: a third call reuses it rather than refetching.
     const callsBefore = mockFetchMarkdownFile.mock.calls.length;
     const third = await loadFormFieldDocs('SampleFormF');
