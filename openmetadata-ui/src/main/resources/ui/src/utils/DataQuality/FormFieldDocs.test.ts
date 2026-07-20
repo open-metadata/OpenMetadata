@@ -139,4 +139,18 @@ describe('loadFormFieldDocs', () => {
 
     expect(docs).toEqual({});
   });
+
+  it('retries after a failure instead of caching the empty map', async () => {
+    mockFetchMarkdownFile.mockRejectedValueOnce(new Error('404 not found'));
+    mockFetchMarkdownFile.mockResolvedValueOnce(SAMPLE_MD);
+
+    const failed = await loadFormFieldDocs('SampleFormE');
+    const retried = await loadFormFieldDocs('SampleFormE');
+
+    // Pinning the miss would leave the form permanently hint-less for the
+    // lifetime of the page, with a reload as the only way back.
+    expect(failed).toEqual({});
+    expect(mockFetchMarkdownFile).toHaveBeenCalledTimes(2);
+    expect(retried.table).toContain('Select the table');
+  });
 });

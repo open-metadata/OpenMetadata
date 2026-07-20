@@ -67,6 +67,13 @@ const cacheFormDocs = (
  * `{ fieldId: sectionMarkdown }` map. English-only (matching the classic doc
  * panel) and cached per form — concurrent callers share the same in-flight
  * request, so the file is fetched at most once per form.
+ *
+ * Successes are cached; failures are not. A fetch can fail for reasons that do
+ * not outlive the request — a dev server restart, a deploy swapping assets
+ * mid-flight, a dropped connection — and caching the empty result would pin
+ * that transient miss for the lifetime of the page. The form then renders
+ * hint-less with no way to recover short of a reload, which reads as "this
+ * form has no docs" rather than "one fetch failed".
  */
 export const loadFormFieldDocs = (
   formName: string
@@ -84,6 +91,10 @@ export const loadFormFieldDocs = (
 
       return parseFormFieldDocs(markdown);
     } catch {
+      // Runs after cacheFormDocs below (this await already suspended), so the
+      // eviction lands on the entry that was stored, not ahead of it.
+      docsCache.delete(formName);
+
       return {};
     }
   })();
