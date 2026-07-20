@@ -347,6 +347,10 @@ class REST:
         except Exception as exc:
             logger.debug(traceback.format_exc())
             logger.warning(f"Unexpected error calling [{url}] with method [{method}]: {exc}")
+            # A raw caller asked for the response; swallowing to None would strand it
+            # with an AttributeError. Re-raise so the real cause reaches the caller.
+            if raw:
+                raise
 
         return None
 
@@ -370,16 +374,19 @@ class REST:
         data: Any = None,
         headers: Optional[dict] = None,  # noqa: UP045
         retry_wait: Optional[int] = None,  # noqa: UP045
+        retries: Optional[int] = None,  # noqa: UP045
     ) -> requests.Response:
         """GET returning the raw ``Response`` so the caller can read its status.
 
         ``get`` drops the status and returns ``None`` for an error body it cannot
         classify; a caller that needs the status uses this instead. Same pipeline as
-        ``get`` (auth, retries); ``retry_wait`` overrides the between-retry sleep.
+        ``get`` (auth, retries); ``retries`` and ``retry_wait`` override the client's
+        retry count and between-retry sleep - the sleep grows per attempt, so a
+        caller on a budget must bound both.
         """
         return cast(
             "requests.Response",
-            self._request("GET", path, data, headers=headers, retry_wait=retry_wait, raw=True),
+            self._request("GET", path, data, headers=headers, retry_wait=retry_wait, retries=retries, raw=True),
         )
 
     def post(

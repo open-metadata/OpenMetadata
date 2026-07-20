@@ -12,10 +12,20 @@
  */
 import type { FC, ReactNode } from 'react';
 import { useRef } from 'react';
+import type { PopoverProps } from 'react-aria-components';
 import { Popover } from 'react-aria-components';
+import { cx } from '@/utils/cx';
 import { useActiveFieldDoc } from './field-doc-context';
 
-export interface FieldDocPopoverProps {
+// Everything the underlying Popover accepts is forwarded, except the bits this
+// component owns: its open behaviour and the field it anchors to.
+export interface FieldDocPopoverProps
+  extends Omit<
+    PopoverProps,
+    'children' | 'className' | 'isOpen' | 'isNonModal' | 'triggerRef'
+  > {
+  /** Extra classes merged onto the card's own styling. */
+  className?: string;
   renderDoc?: (doc: string) => ReactNode;
   /** Optional card header (e.g. an icon + "Form Hint"); hidden when omitted. */
   header?: ReactNode;
@@ -47,8 +57,13 @@ const escapeFieldName = (name: string): string =>
 export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
   renderDoc,
   header,
+  className,
+  // Defaulted here rather than in the JSX below: consumers (e.g. HookForm)
+  // forward these unconditionally, so an undefined value would otherwise land
+  // in the spread and clobber the default.
   offset = 16,
   maxHeight = 480,
+  ...popoverProps
 }) => {
   const { entry, name } = useActiveFieldDoc();
   const anchorRef = useRef<HTMLElement | null>(null);
@@ -69,14 +84,18 @@ export const FieldDocPopover: FC<FieldDocPopoverProps> = ({
     <Popover
       isNonModal
       isOpen
-      className="tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg"
+      className={cx(
+        'tw:flex tw:w-75 tw:flex-col tw:overflow-hidden tw:rounded-xl tw:border tw:border-secondary tw:bg-primary tw:shadow-lg',
+        className
+      )}
+      placement="right top"
+      {...popoverProps}
       // react-aria sets its own inline maxHeight from available space, which
       // overrides any CSS max-h-* class; use the prop so the hint card stays a
       // fixed, bounded height and scrolls internally instead of growing to the
       // full page height.
       maxHeight={maxHeight}
       offset={offset}
-      placement="right top"
       triggerRef={anchorRef}>
       {/* A plain container, not a Dialog — the doc popover must never take
           focus, or it would steal it from the field being edited. */}
