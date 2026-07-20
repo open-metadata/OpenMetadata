@@ -594,6 +594,24 @@ def isolated_parse_query_cache():
             "DELETE FROM my_table; SELECT * FROM rest",
             "my_table",
         ),
+        # --- Trailing parenthesised column list stripped ---
+        (
+            "INSERT INTO my_table(col1, col2) VALUES (1, 2)",
+            "my_table",
+        ),
+        (
+            "UPDATE my_schema.my_table(col1) SET col1 = 1 WHERE id = 2",
+            "my_schema.my_table",
+        ),
+        # --- Block comments inside qualified identifiers ---
+        (
+            "INSERT INTO my_schema./*inline*/my_table VALUES (1)",
+            "my_schema.my_table",
+        ),
+        (
+            "DELETE FROM db./*comment*/schema./*comment*/my_table WHERE id = 1",
+            "db.schema.my_table",
+        ),
         # --- None / empty input ---
         (None, None),
         ("", None),

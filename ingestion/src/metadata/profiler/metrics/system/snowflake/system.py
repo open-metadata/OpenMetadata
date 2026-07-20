@@ -79,7 +79,10 @@ def _normalize_dml_sql(query: str) -> str:
     """
     query = re.sub(r"/\*.*?\*/", " ", query, flags=re.DOTALL)
     query = re.sub(r"--[^\n]*", "", query)
-    return query.strip()
+    query = query.strip()
+    # Clean up whitespace inserted by block-comment removal inside qualified names,
+    # e.g. "my_schema./*c*/my_table" → "my_schema. my_table" → "my_schema.my_table"
+    return re.sub(r"\.\s+", ".", query)
 
 
 def _parse_query(query: Optional[str]) -> Optional[str]:  # noqa: UP045
@@ -98,7 +101,7 @@ def _parse_query(query: Optional[str]) -> Optional[str]:  # noqa: UP045
     return _parse_cached(_normalize_dml_sql(query))
 
 
-@_cache.wrap(key_func=sha256_hash)
+@_cache.wrap(key_func=lambda *a, **kw: sha256_hash(a[0]))
 def _parse_cached(normalized: str) -> Optional[str]:  # noqa: UP045
     match = re.match(QUERY_PATTERN, normalized, re.IGNORECASE)
     try:
@@ -110,6 +113,12 @@ def _parse_cached(normalized: str) -> Optional[str]:  # noqa: UP045
         internal_identifier = match_internal_identifier.group(2) if match_internal_identifier else None
         if internal_identifier:
             return internal_identifier
+
+        # Strip trailing parenthesised column list if the regex captured it,
+        # e.g. "my_table(col1)" -> "my_table", but keep IDENTIFIER(...) intact.
+        paren_idx = identifier.find("(")
+        if paren_idx != -1:
+            identifier = identifier[:paren_idx]
 
         return identifier  # noqa: TRY300
     except (IndexError, AttributeError):
