@@ -196,13 +196,15 @@ class SearchRelevancyPreviewIT {
 
   @Test
   void matchTypeExactRequiresTheFullKeyword(final TestNamespace ns) {
-    final String exactName = RelevancyFixtures.uniqueToken("ex");
+    final String namePrefix = RelevancyFixtures.uniqueToken("ex");
+    final String exactName = namePrefix + "a";
+    final String nearMatchName = namePrefix + "b";
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table exactTable =
         RelevancyFixtures.createTable(schema, exactName, "plaindescription", null);
-    final Table prefixedTable =
-        RelevancyFixtures.createTable(schema, exactName + "extra", "plaindescription", null);
-    awaitIndexed(exactName, 2);
+    final Table nearMatchTable =
+        RelevancyFixtures.createTable(schema, nearMatchName, "plaindescription", null);
+    awaitIndexed(namePrefix, 2);
 
     final SearchSettings base = currentSettings();
 
@@ -211,7 +213,7 @@ class SearchRelevancyPreviewIT {
         exact, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.EXACT);
     exact = SearchSettingsTestHelper.withRankingDisabled(exact, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, exact, 10))
-        .as("matchType=exact must match only the whole-keyword name, not the prefixed sibling")
+        .as("matchType=exact must match only the whole-keyword name, not the one-edit sibling")
         .containsExactly(exactTable.getId().toString());
 
     SearchSettings standard = SearchSettingsTestHelper.copyOf(base);
@@ -223,8 +225,8 @@ class SearchRelevancyPreviewIT {
     // an exact size (mirrors maxResultHitsClampsTheReturnedHits), which such a foreign hit
     // inflates.
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, standard, 10))
-        .as("matchType=standard must match both the exact and the prefixed name")
-        .contains(exactTable.getId().toString(), prefixedTable.getId().toString());
+        .as("matchType=standard must match both the exact and one-edit names")
+        .contains(exactTable.getId().toString(), nearMatchTable.getId().toString());
   }
 
   @Test

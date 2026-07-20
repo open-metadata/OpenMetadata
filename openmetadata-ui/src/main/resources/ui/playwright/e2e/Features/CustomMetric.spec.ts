@@ -17,10 +17,7 @@ import {
   createCustomMetric,
   deleteCustomMetric,
 } from '../../utils/customMetric';
-import {
-  forceFreshTableReads,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 // use the admin user to login
 test.use({ storageState: 'playwright/.auth/admin.json' });
@@ -28,7 +25,6 @@ test.use({ storageState: 'playwright/.auth/admin.json' });
 test('Table custom metric', async ({ page }) => {
   const table = new TableClass();
   await redirectToHomePage(page);
-  await forceFreshTableReads(page);
   const { afterAction, apiContext } = await getApiContext(page);
   await table.create(apiContext);
 
@@ -70,7 +66,6 @@ test('Table custom metric', async ({ page }) => {
 test('Column custom metric', async ({ page }) => {
   const table = new TableClass();
   await redirectToHomePage(page);
-  await forceFreshTableReads(page);
   const { afterAction, apiContext } = await getApiContext(page);
   await table.create(apiContext);
 
