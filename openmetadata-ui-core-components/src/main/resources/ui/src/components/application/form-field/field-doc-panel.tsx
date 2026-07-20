@@ -20,13 +20,13 @@ export interface FieldDocPanelProps {
   /** Pinned card header (e.g. an icon + "Form Hint"); hidden when omitted. */
   header?: ReactNode;
   /**
-   * Shown until the first documented field is focused. Rendered into a
-   * `relative`, non-scrolling container that fills the remaining column
-   * height, so an `EmptyPlaceholder` can be passed straight in and will centre
-   * itself.
+   * Shown only when the form has no documented fields at all — for example a
+   * read-only view that suppresses its docs. A form that has docs opens on the
+   * first one (see below), so this is not the normal opening state.
    *
-   * Once a doc has been shown the panel keeps it (see below), so this is an
-   * initial state rather than a recurring one.
+   * Rendered into a `relative`, non-scrolling container that fills the
+   * remaining column height, so an `EmptyPlaceholder` can be passed straight in
+   * and will centre itself.
    *
    * Pass `width="100%"` to an EmptyPlaceholder here — its 300px default is
    * wider than this column's 260px minimum and would overflow when the column
@@ -62,7 +62,16 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
   emptyState,
 }) => {
   const { entry } = useActiveFieldDoc();
-  const { enabled } = useFieldDocRegistry();
+  const { enabled, entries } = useFieldDocRegistry();
+  // A form opens with focus nowhere, so falling back to the empty state would
+  // leave the column advertising that hints exist while showing none — at the
+  // moment the user has read least. Opening on the first field's doc costs
+  // nothing and explains the form's starting point.
+  //
+  // `entries` is insertion-ordered by mount order, and useFieldDoc only
+  // registers fields that actually have a doc, so this is the first documented
+  // field in visual order. Empty only when the form has no docs at all.
+  const firstEntry = entries.values().next().value;
   // Remembering the last entry is idempotent, so writing it during render is
   // safe under StrictMode's double-invoke.
   const lastEntry = useRef(entry);
@@ -76,7 +85,9 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
   if (!enabled) {
     lastEntry.current = undefined;
   }
-  const shownEntry = enabled ? entry ?? lastEntry.current : undefined;
+  const shownEntry = enabled
+    ? entry ?? lastEntry.current ?? firstEntry
+    : undefined;
 
   return (
     <div

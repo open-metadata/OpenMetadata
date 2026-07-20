@@ -606,25 +606,11 @@ describe('TestCaseFormDrawer', () => {
       ).not.toBeInTheDocument();
     });
 
-    it('shows the empty state in the hint panel before any field is focused', async () => {
+    it('opens on the first field doc rather than an empty panel', async () => {
       renderDrawer({ variant: 'modal' });
 
-      // Assert on EmptyPlaceholder's testid rather than the copy, so rewording
-      // the hint does not break this test.
-      expect(
-        await screen.findByTestId('empty-placeholder')
-      ).toBeInTheDocument();
-    });
-
-    it('replaces the empty state with the focused field doc', async () => {
-      renderDrawer({ variant: 'modal' });
-
-      const testType = await screen.findByLabelText(/test type/i);
-
-      await act(async () => {
-        testType.focus();
-      });
-
+      // Nothing has focus yet on open, so the panel would otherwise advertise
+      // that hints exist while showing none.
       expect(
         await screen.findByText(/kind of validation to run/i)
       ).toBeInTheDocument();
