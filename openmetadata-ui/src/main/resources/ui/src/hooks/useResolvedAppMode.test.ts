@@ -22,10 +22,7 @@ import {
 import { AppMode } from '../generated/type/personaPreferences';
 import { usePersistentStorage } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
-import {
-  readAppModeSession,
-  useAppModeStore,
-} from './useAppMode';
+import { readAppModeSession, useAppModeStore } from './useAppMode';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
 import { useResolvedAppMode } from './useResolvedAppMode';
 
@@ -181,6 +178,7 @@ describe('useResolvedAppMode', () => {
     await waitFor(() => {
       expect(getDocumentByFQN).toHaveBeenCalled();
     });
+
     // Should not have written anything, sessionStorage still empty
     expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
     expect(readAppModeSession()).toBeNull();
@@ -217,6 +215,7 @@ describe('useResolvedAppMode', () => {
     await waitFor(() => {
       expect(getDocumentByFQN).toHaveBeenCalled();
     });
+
     // Tuple matches persona snapshot — session sticks, mode unchanged.
     expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
     expect(readAppModeSession()).toEqual({

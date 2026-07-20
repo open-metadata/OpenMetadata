@@ -22,14 +22,10 @@ import {
 } from '../generated/system/ui/uiCustomization';
 import { AppMode } from '../generated/type/personaPreferences';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
-import { useApplicationStore } from './useApplicationStore';
-import {
-  clearAppMode,
-  readAppModeSession,
-  writeAppMode,
-} from './useAppMode';
-import { useAppRoutesRegistry } from './useAppRoutesRegistry';
 import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStore';
+import { useApplicationStore } from './useApplicationStore';
+import { clearAppMode, readAppModeSession, writeAppMode } from './useAppMode';
+import { useAppRoutesRegistry } from './useAppRoutesRegistry';
 
 const PERSONA_APP_MODE_QUERY_KEY = 'persona-app-mode-doc';
 
@@ -99,21 +95,25 @@ export const useResolvedAppMode = (): void => {
     (state) => state.currentUser?.defaultPersona?.name
   );
   const currentUser = useApplicationStore((state) => state.currentUser);
-  const isAuthenticated = useApplicationStore(
-    (state) => state.isAuthenticated
-  );
+  const isAuthenticated = useApplicationStore((state) => state.isAuthenticated);
   const registeredRoutes = useAppRoutesRegistry((state) => state.routes);
   const { preferences } = useCurrentUserPreferences();
 
   const hasDefaultPersona = Boolean(defaultPersonaId && defaultPersonaName);
 
+  // Persona docs are edited server-side (admin UI). If we cached forever,
+  // an admin flipping the persona's appMode wouldn't take effect until the
+  // user closed and re-opened the tab. A 5-min stale window + refetch on
+  // window focus keeps edits reasonably fresh without turning the resolver
+  // into a chatty consumer.
   const { data: personaDoc, isPending: isPersonaPending } = useQuery({
     queryKey: [PERSONA_APP_MODE_QUERY_KEY, defaultPersonaName],
     queryFn: () =>
       getDocumentByFQN(`${EntityType.PERSONA}.${defaultPersonaName}`),
     enabled: hasDefaultPersona,
-    staleTime: Infinity,
+    staleTime: 5 * 60 * 1000,
     gcTime: Infinity,
+    refetchOnWindowFocus: true,
     retry: false,
   });
 
@@ -145,10 +145,7 @@ export const useResolvedAppMode = (): void => {
       clearAppMode();
     }
 
-    if (
-      validSession &&
-      validSession.personaAppMode === currentPersonaAppMode
-    ) {
+    if (validSession && validSession.personaAppMode === currentPersonaAppMode) {
       return;
     }
 

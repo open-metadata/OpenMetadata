@@ -33,11 +33,20 @@ export interface AppModeSession {
 
 const hasWindow = (): boolean => !isUndefined(globalThis.window);
 
+// sessionStorage access can throw (Safari Private Mode blocks it entirely;
+// quota-exceeded on writes; storage disabled by browser policy). Treat any
+// failure as "no persistence available" and degrade to the in-memory store
+// — the app still works, refreshes just don't remember the tab's mode.
 const readSession = (): AppModeSession | null => {
   if (!hasWindow()) {
     return null;
   }
-  const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+  let raw: string | null = null;
+  try {
+    raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+  } catch {
+    return null;
+  }
   if (raw === null) {
     return null;
   }
@@ -66,17 +75,29 @@ const writeSession = (tuple: AppModeSession): void => {
   if (!hasWindow()) {
     return;
   }
-  globalThis.window.sessionStorage.setItem(
-    APP_MODE_SESSION_KEY,
-    JSON.stringify(tuple)
-  );
+  try {
+    globalThis.window.sessionStorage.setItem(
+      APP_MODE_SESSION_KEY,
+      JSON.stringify(tuple)
+    );
+  } catch {
+    // Storage disabled / quota exceeded — the in-memory store still holds
+    // the mode, so the tab keeps working; only cross-refresh persistence is
+    // lost. Swallow silently to keep the write path safe for the resolver
+    // and the switcher.
+  }
 };
 
 const removeSession = (): void => {
   if (!hasWindow()) {
     return;
   }
-  globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
+  try {
+    globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
+  } catch {
+    // Same rationale as writeSession — a failed clear is not worth
+    // surfacing; the in-memory reset in `clearAppMode` still applies.
+  }
 };
 
 interface AppModeStore {
