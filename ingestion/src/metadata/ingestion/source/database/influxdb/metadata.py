@@ -84,7 +84,7 @@ class InfluxDBSource(CommonNoSQLSource):
         pipeline_name: str | None = None,
     ) -> "InfluxDBSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: InfluxDBConnection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
+        connection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess, reportAssignmentType]
         if not isinstance(connection, InfluxDBConnection):
             raise InvalidSourceException(f"Expected InfluxDBConnection, but got {type(connection).__name__}")
         return cls(config, metadata)
