@@ -12,6 +12,7 @@
  */
 
 import { RecentlySearchedData, RecentlyViewedData } from 'Models';
+import { useCallback, useMemo } from 'react';
 import { create } from 'zustand';
 import { createJSONStorage, persist } from 'zustand/middleware';
 import { PAGE_SIZE_BASE } from '../../constants/constants';
@@ -98,21 +99,31 @@ export const usePersistentStorage = create<Store>()(
 export const useCurrentUserPreferences = () => {
   const currentUser = useApplicationStore((state) => state.currentUser);
   const { preferences, setUserPreference } = usePersistentStorage();
+  const userName = currentUser?.name;
 
-  if (!currentUser?.name) {
-    return {
-      preferences: defaultPreferences,
-      setPreference: () => {
-        // update the user name in the local storage
-      },
-    };
-  }
+  // Memoized (deps: userName, stable store action) so consumers such as
+  // usePaging, which capture setPreference in the dependency array of
+  // handlePageChange, don't get a fresh callback every render — an unstable
+  // identity would recreate those callbacks and cancel debounced work.
+  const setPreference = useCallback(
+    (newPreferences: Partial<UserPreferences>) => {
+      if (userName) {
+        setUserPreference(userName, newPreferences);
+      }
+    },
+    [userName, setUserPreference]
+  );
+
+  const resolvedPreferences = useMemo(
+    () =>
+      userName && preferences[userName]
+        ? { ...defaultPreferences, ...preferences[userName] }
+        : defaultPreferences,
+    [userName, preferences]
+  );
 
   return {
-    preferences: preferences[currentUser.name]
-      ? { ...defaultPreferences, ...preferences[currentUser.name] }
-      : defaultPreferences,
-    setPreference: (newPreferences: Partial<UserPreferences>) =>
-      setUserPreference(currentUser.name, newPreferences),
+    preferences: resolvedPreferences,
+    setPreference,
   };
 };

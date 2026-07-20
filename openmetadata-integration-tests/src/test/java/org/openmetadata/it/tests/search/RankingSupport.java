@@ -33,8 +33,8 @@ final class RankingSupport {
   private static final Duration INDEX_WAIT = Duration.ofSeconds(30);
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-  /** A hit's name + fqn + score — enough to assert relative ranking. */
-  record Hit(String name, String fqn, double score) {
+  /** A hit's identifying and ranking fields. */
+  record Hit(String name, String fqn, double score, String tier) {
     boolean matches(String token) {
       return contains(name, token) || contains(fqn, token);
     }
@@ -82,7 +82,8 @@ final class RankingSupport {
           new Hit(
               text(source, "name"),
               text(source, "fullyQualifiedName"),
-              hit.path("_score").asDouble(0.0)));
+              hit.path("_score").asDouble(0.0),
+              text(source.path("tier"), "tagFQN")));
     }
     return new SearchResult(hits);
   }
