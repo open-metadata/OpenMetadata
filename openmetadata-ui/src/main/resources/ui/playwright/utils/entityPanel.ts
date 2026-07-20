@@ -160,10 +160,6 @@ export async function navigateToExploreAndSelectTable(
 
   await waitForAllLoadersToDisappear(page);
 
-  const permissionsResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/permissions')
-  );
-
   await openEntitySummaryPanel({
     page,
     entityName,
@@ -172,16 +168,20 @@ export async function navigateToExploreAndSelectTable(
     fullyQualifiedName,
   });
 
-  const permissionsResponse = await permissionsResponsePromise;
-  expect(permissionsResponse.status()).toBe(200);
-
-  // Ensure all the component for right panel are rendered
-  const loaders = page.locator(
-    '[data-testid="entity-summary-panel-container"] [data-testid="loader"]'
-  );
+  // Opening the panel triggers a permissions fetch, but that response is often
+  // served from the client cache (the entity's permissions were already loaded
+  // by the preceding Set/Update steps), so no network request fires and waiting
+  // on the /permissions response hangs until the test times out. Assert the
+  // panel opened and finished loading via the DOM instead — the panel only
+  // renders when permissions resolve, so this covers the same outcome without
+  // depending on a network round-trip.
+  const summaryPanel = page.getByTestId('entity-summary-panel-container');
+  await summaryPanel.waitFor({ state: 'visible' });
 
   // Wait for the loader elements count to become 0
-  await expect(loaders).toHaveCount(0, { timeout: 30000 });
+  await expect(summaryPanel.getByTestId('loader')).toHaveCount(0, {
+    timeout: 30000,
+  });
 }
 
 export const waitForPatchResponse = async (page: Page) => {
