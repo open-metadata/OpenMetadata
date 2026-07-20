@@ -205,10 +205,13 @@ public class IndexMappingVersionTracker {
   private record MappingEntry(String hash, JsonNode json) {}
 
   /**
-   * Drift is computed against the bundled classpath mapping resources (all languages) each index is
-   * built from, so a shipped mapping change surfaces as a reindex-required drift until the entity is
-   * reindexed. {@link IndexMappingLoader} is the source of truth for entity types and file paths,
-   * covering camelCase types (e.g. {@code glossaryTerm}) without hand-built paths.
+   * Drift is computed against the field-safety-hardened bundled mapping (all languages) each index is
+   * actually built from — the same {@link SearchIndexSettings#harden} pass {@code
+   * SearchRepository.readIndexMapping} applies at index-creation time — so both a shipped mapping
+   * change and a change to the configured {@link SearchFieldLimits} surface as a reindex-required
+   * drift until the entity is reindexed. {@link IndexMappingLoader} is the source of truth for entity
+   * types and file paths, covering camelCase types (e.g. {@code glossaryTerm}) without hand-built
+   * paths.
    */
   private Map<String, MappingEntry> computeCurrentMappings() throws IOException {
     Map<String, MappingEntry> mappings = new HashMap<>();
@@ -256,7 +259,9 @@ public class IndexMappingVersionTracker {
         try (var stream = getClass().getResourceAsStream(mappingPath)) {
           if (stream != null) {
             String mappingContent = new String(stream.readAllBytes(), StandardCharsets.UTF_8);
-            allLanguageMappings.put(lang, MAPPER.readTree(mappingContent));
+            String hardened =
+                SearchIndexSettings.harden(mappingContent, SearchFieldLimits.active());
+            allLanguageMappings.put(lang, MAPPER.readTree(hardened));
           }
         }
       }
