@@ -2631,6 +2631,86 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
   }
 
   @Test
+  void test_searchListIncidentIdClearedAfterResolve(TestNamespace ns) {
+    OpenMetadataClient client = SdkClients.adminClient();
+    Table table = createTable(ns);
+
+    TestCase testCase =
+        TestCaseBuilder.create(client)
+            .name(ns.prefix("incident_search_resolve"))
+            .forTable(table)
+            .testDefinition("tableRowCountToEqual")
+            .parameter("value", "100")
+            .create();
+
+    client
+        .testCaseResults()
+        .create(
+            testCase.getFullyQualifiedName(),
+            new CreateTestCaseResult()
+                .withTimestamp(System.currentTimeMillis())
+                .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Failed)
+                .withResult("Test failed - trigger incident"));
+
+    RequestOptions options =
+        RequestOptions.builder()
+            .queryParam("fields", "*")
+            .queryParam("entityLink", "<#E::table::" + table.getFullyQualifiedName() + ">")
+            .queryParam("includeAllTests", "true")
+            .queryParam("limit", "100")
+            .queryParam("offset", "0")
+            .build();
+
+    // The failure materializes the incident into the search document (compute-at-index).
+    Awaitility.await("search/list shows the open incident")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertNotNull(searchListIncidentId(client, table, testCase, options)));
+
+    // Acknowledge then resolve: pure status transitions, no new test result.
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Ack));
+    client
+        .testCaseResolutionStatuses()
+        .create(
+            new CreateTestCaseResolutionStatus()
+                .withTestCaseReference(testCase.getFullyQualifiedName())
+                .withTestCaseResolutionStatusType(TestCaseResolutionStatusTypes.Resolved)
+                .withTestCaseResolutionStatusDetails(
+                    new org.openmetadata.schema.tests.type.Resolved()));
+
+    // A resolve carries no test result, so only the targeted search update can clear the pointer.
+    Awaitility.await("search/list incidentId cleared after resolve")
+        .atMost(180, TimeUnit.SECONDS)
+        .pollInterval(Duration.ofSeconds(2))
+        .ignoreExceptions()
+        .untilAsserted(() -> assertNull(searchListIncidentId(client, table, testCase, options)));
+  }
+
+  private UUID searchListIncidentId(
+      OpenMetadataClient client, Table table, TestCase testCase, RequestOptions options) {
+    String responseJson =
+        client
+            .getHttpClient()
+            .executeForString(
+                HttpMethod.GET, "/v1/dataQuality/testCases/search/list", null, options);
+    TestCaseResource.TestCaseList result =
+        JsonUtils.readValue(responseJson, TestCaseResource.TestCaseList.class);
+    TestCase matching =
+        result.getData().stream()
+            .filter(tc -> testCase.getId().equals(tc.getId()))
+            .findFirst()
+            .orElse(null);
+    assertNotNull(matching, "Expected created test case in search/list response");
+    return matching.getIncidentId();
+  }
+
+  @Test
   void test_searchListReturnsIncidentIdWhenFieldsIncludeAll(TestNamespace ns) {
     OpenMetadataClient client = SdkClients.adminClient();
     Table table = createTable(ns);

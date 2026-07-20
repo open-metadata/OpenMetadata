@@ -2344,6 +2344,31 @@ public class SearchRepository {
   }
 
   /**
+   * Targeted partial update of a single field in an entity's search document via a Painless script,
+   * without rebuilding the whole document. Used to keep a derived denormalized field fresh when a
+   * related entity changes.
+   */
+  public void updateEntityFieldInSearch(
+      String entityType, String entityId, String field, Object value) {
+    if (!checkIfIndexingIsSupported(entityType)) {
+      return;
+    }
+    try {
+      IndexMapping indexMapping = entityIndexMap.get(entityType);
+      Map<String, Object> params = new HashMap<>();
+      params.put(field, value);
+      searchClient.updateEntity(
+          getWriteIndexName(indexMapping),
+          entityId,
+          params,
+          String.format("ctx._source.%s = params.%s;", field, field));
+    } catch (Exception e) {
+      LOG.error(
+          "Failed to update field {} in search doc for {} {}", field, entityType, entityId, e);
+    }
+  }
+
+  /**
    * Determines if changes require propagation to child entities.
    * Only propagate when fields that actually affect children have been modified.
    */

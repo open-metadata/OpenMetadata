@@ -175,6 +175,12 @@ public class TestCaseResolutionStatusRepository
             .equals(TestCaseResolutionStatusTypes.Resolved);
   }
 
+  /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
+  public UUID getOngoingIncidentStateId(String testCaseFqn) {
+    TestCaseResolutionStatus latest = getLatestRecord(testCaseFqn);
+    return Boolean.TRUE.equals(unresolvedIncident(latest)) ? latest.getStateId() : null;
+  }
+
   private static boolean isReopeningStatus(TestCaseResolutionStatus recordEntity) {
     TestCaseResolutionStatusTypes statusType = recordEntity.getTestCaseResolutionStatusType();
     return statusType == TestCaseResolutionStatusTypes.Ack

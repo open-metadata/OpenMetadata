@@ -20,23 +20,19 @@ import java.util.Objects;
 import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.entity.tasks.Task;
-import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.Assigned;
 import org.openmetadata.schema.tests.type.Resolved;
 import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.type.EntityReference;
-import org.openmetadata.schema.type.Include;
 import org.openmetadata.schema.type.TaskCategory;
 import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.type.TaskResolution;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.TestCaseRepository;
 import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
-import org.openmetadata.service.jdbi3.TestCaseResultRepository;
 import org.openmetadata.service.util.EntityUtil;
 
 /**
@@ -167,7 +163,7 @@ public final class IncidentTcrsSyncHandler {
 
       String testCaseFqn = task.getAbout().getFullyQualifiedName();
       repo.syncFromTask(record, testCaseFqn);
-      updateTestCaseRowIncident(task, tcrsType);
+      updateSearchIncidentId(task);
 
       LOG.debug(
           "[TCRS Sync] Wrote {} record for task {} (stateId={})", tcrsType, task.getId(), stateId);
@@ -183,27 +179,21 @@ public final class IncidentTcrsSyncHandler {
   }
 
   /**
-   * Keep the denormalized {@code TestCase.incidentId} row aligned with the ongoing incident (task
-   * id while active, null once resolved) so no-fields reads don't return a stale frozen value.
+   * Keep the test case's search document in sync with the ongoing incident: a targeted single-field
+   * update of the derived incidentId (state id while active, null once resolved), avoiding a full
+   * document rebuild on every status transition.
    */
-  private static void updateTestCaseRowIncident(Task task, TestCaseResolutionStatusTypes tcrsType) {
-    UUID rowIncidentId = tcrsType == TestCaseResolutionStatusTypes.Resolved ? null : task.getId();
-    TestCase original =
-        Entity.getEntityByName(
+  private static void updateSearchIncidentId(Task task) {
+    TestCaseResolutionStatusRepository tcrsRepo =
+        (TestCaseResolutionStatusRepository)
+            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+    UUID stateId = tcrsRepo.getOngoingIncidentStateId(task.getAbout().getFullyQualifiedName());
+    Entity.getSearchRepository()
+        .updateEntityFieldInSearch(
             Entity.TEST_CASE,
-            task.getAbout().getFullyQualifiedName(),
-            TestCaseResultRepository.TEST_CASE_INDEX_FIELDS,
-            Include.ALL);
-    if (Objects.equals(original.getIncidentId(), rowIncidentId)) {
-      return;
-    }
-    TestCase updated = JsonUtils.deepCopy(original, TestCase.class);
-    updated.setIncidentId(rowIncidentId);
-    TestCaseRepository testCaseRepository =
-        (TestCaseRepository) Entity.getEntityRepository(Entity.TEST_CASE);
-    testCaseRepository
-        .getUpdater(original, updated, EntityRepository.Operation.PATCH, null)
-        .update();
+            task.getAbout().getId().toString(),
+            TestCaseRepository.INCIDENTS_FIELD,
+            stateId != null ? stateId.toString() : null);
   }
 
   private static Object buildDetailsForStage(TestCaseResolutionStatusTypes type, Task task) {

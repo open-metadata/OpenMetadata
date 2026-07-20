@@ -22,7 +22,6 @@ import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.tests.ResultSummary;
 import org.openmetadata.schema.tests.TestCase;
 import org.openmetadata.schema.tests.type.TestCaseDimensionResult;
-import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResult;
 import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.EntityReference;
@@ -317,23 +316,10 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
     }
     updated.setTestCaseStatus(
         testCaseResult != null ? testCaseResult.getTestCaseStatus() : original.getTestCaseStatus());
-    updated.setIncidentId(resolveOngoingIncidentId(original));
 
     EntityRepository.EntityUpdater entityUpdater =
         testCaseRepository.getUpdater(original, updated, EntityRepository.Operation.PATCH, null);
     entityUpdater.update();
-  }
-
-  /**
-   * Ongoing incident for the row, read from the resolution-status timeseries — not the incidentId
-   * stamped on the result at ingestion, which a concurrent resolution could make stale.
-   */
-  private UUID resolveOngoingIncidentId(TestCase testCase) {
-    TestCaseResolutionStatusRepository tcrsRepo =
-        (TestCaseResolutionStatusRepository)
-            Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-    TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(testCase.getFullyQualifiedName());
-    return Boolean.TRUE.equals(tcrsRepo.unresolvedIncident(latest)) ? latest.getStateId() : null;
   }
 
   @Override
