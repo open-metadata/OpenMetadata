@@ -230,7 +230,10 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                     compressed, or the label wraps mid-phrase when the modal
                     narrows. whitespace-nowrap on the label for the same
                     reason. */}
-                <Box align="center" className="tw:shrink-0 tw:gap-4" direction="row">
+                <Box
+                  align="center"
+                  className="tw:shrink-0 tw:gap-4"
+                  direction="row">
                   {headerActions}
                   {onHintToggle && (
                     <Box align="center" className="tw:gap-2" direction="row">
