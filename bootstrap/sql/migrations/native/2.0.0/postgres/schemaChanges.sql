@@ -317,8 +317,10 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INTEGER NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL,
+  claimToken VARCHAR(36) NULL,
   PRIMARY KEY (entityId, entityFqn)
 );
+ALTER TABLE search_index_retry_queue ADD COLUMN IF NOT EXISTS claimToken VARCHAR(36) NULL;
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_status
   ON search_index_retry_queue (status);
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_claimed_at
