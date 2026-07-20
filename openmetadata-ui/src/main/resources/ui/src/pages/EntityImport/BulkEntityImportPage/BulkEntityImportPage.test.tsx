@@ -539,7 +539,8 @@ describe('BulkEntityImportPage', () => {
         { user: true, team: true },
         true,
         false,
-        true
+        true,
+        expect.any(Function)
       );
 
       const bulkEditEntityMock = BulkEditEntity as jest.Mock;

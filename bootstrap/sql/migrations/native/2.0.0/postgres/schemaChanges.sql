@@ -442,3 +442,14 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+    json #- '{connection,config,token}',
+    '{connection,config,authType}',
+    jsonb_build_object('token', json #> '{connection,config,token}')
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND json #> '{connection,config,token}' IS NOT NULL
+  AND NOT jsonb_exists(json #> '{connection,config}', 'authType');

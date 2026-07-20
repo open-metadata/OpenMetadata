@@ -92,6 +92,7 @@ import {
 } from '../../../utils/CSV/CSV.utils';
 import {
   COLUMNS_WIDTH,
+  getCsvGridRowHeight,
   getCSVStringFromColumnsAndDataSource,
 } from '../../../utils/CSV/CSVPureUtils';
 import csvUtilsClassBase from '../../../utils/CSV/CSVUtilsClassBase';
@@ -239,7 +240,18 @@ const BulkEntityImportPage = () => {
   const [csvJobs, setCsvJobs] = useState<CsvAsyncJob[]>([]);
   const [isCancellingJob, setIsCancellingJob] = useState(false);
   const [selectedCsvFile, setSelectedCsvFile] = useState<SelectedCsvFile>();
+  const [editingRowHeight, setEditingRowHeight] = useState<{
+    rowIdx: number;
+    height: number;
+  } | null>(null);
   const [activeImportLogLines, setActiveImportLogLines] = useState<string[]>(
+    []
+  );
+
+  const handleEditCellHeightChange = useCallback(
+    (rowIdx: number, height: number | null) => {
+      setEditingRowHeight(height === null ? null : { rowIdx, height });
+    },
     []
   );
   const [bulkEditLoadState, setBulkEditLoadState] = useState({
@@ -706,7 +718,8 @@ const BulkEntityImportPage = () => {
         },
         cellEditable,
         isBulkEdit,
-        shouldUseRichEditorGrid
+        shouldUseRichEditorGrid,
+        handleEditCellHeightChange
       );
 
       const filteredDataSource =
@@ -725,6 +738,7 @@ const BulkEntityImportPage = () => {
     [
       entityType,
       handleActiveStepChange,
+      handleEditCellHeightChange,
       importedEntityType,
       isBulkEdit,
       entityRules,
@@ -1175,6 +1189,45 @@ const BulkEntityImportPage = () => {
     return dataSource;
   }, [dataSource, rowFilter]);
 
+  const editableRowIndexMap = useMemo(
+    () => new Map(editableDataSource.map((row, index) => [row, index])),
+    [editableDataSource]
+  );
+
+  // Content-based height per row, precomputed once per data/column change.
+  // react-data-grid invokes the `rowHeight` function for every row (not just
+  // visible ones) whenever its identity changes, and the identity changes on
+  // every ResizeObserver tick while a multi-select cell is being edited. Keeping
+  // the base heights in a map makes each of those ticks an O(1) lookup per row
+  // instead of re-scanning every column/chip of every row.
+  const contentRowHeights = useMemo(
+    () =>
+      new Map(
+        editableDataSource.map((row) => [
+          row,
+          getCsvGridRowHeight(row, filterColumns),
+        ])
+      ),
+    [editableDataSource, filterColumns]
+  );
+
+  const getEditableRowHeight = useCallback(
+    (row: Record<string, string>) => {
+      const baseHeight =
+        contentRowHeights.get(row) ?? getCsvGridRowHeight(row, filterColumns);
+
+      if (
+        editingRowHeight &&
+        editableRowIndexMap.get(row) === editingRowHeight.rowIdx
+      ) {
+        return Math.max(baseHeight, editingRowHeight.height);
+      }
+
+      return baseHeight;
+    },
+    [contentRowHeights, editableRowIndexMap, editingRowHeight, filterColumns]
+  );
+
   const editDataGrid = useMemo(() => {
     return (
       <div className="om-rdg" ref={setGridContainer}>
@@ -1186,6 +1239,7 @@ const BulkEntityImportPage = () => {
               unknown
             >[]
           }
+          rowHeight={getEditableRowHeight}
           rows={editableDataSource}
           onCopy={handleCopy}
           onPaste={handlePaste}
@@ -1196,6 +1250,7 @@ const BulkEntityImportPage = () => {
   }, [
     columns,
     editableDataSource,
+    getEditableRowHeight,
     handleCopy,
     handlePaste,
     handleOnRowsChange,
@@ -1820,6 +1875,9 @@ const BulkEntityImportPage = () => {
                                 className="rdg-light"
                                 columns={importResultColumns}
                                 rowClass={getImportOperationRowClass}
+                                rowHeight={(row: Record<string, string>) =>
+                                  getCsvGridRowHeight(row, importResultColumns)
+                                }
                                 rows={validateCSVData.dataSource}
                               />
                             </div>

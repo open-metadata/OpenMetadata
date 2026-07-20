@@ -586,12 +586,22 @@ const clickMetricAction = async (page: Page, actionName: string) => {
     .click();
 };
 
-const waitForMetricBulkEditGrid = async (page: Page, metricName: string) => {
+const waitForMetricBulkEditGrid = async (page: Page, metricName?: string) => {
   await expect(page).toHaveURL(/\/bulk\/edit\/metric\/\*/);
   await expect(page.locator('.rdg-header-row')).toBeVisible({
     timeout: 90000,
   });
-  await expect(page.getByText(metricName)).toBeVisible();
+
+  if (metricName) {
+    await expect(
+      page
+        .locator('.bulk-edit-name-value')
+        .filter({ hasText: metricName })
+        .first()
+    ).toBeVisible();
+  } else {
+    await expect(page.locator('.rdg-row').first()).toBeVisible();
+  }
 };
 
 const editFirstDisplayNameCell = async (page: Page, value: string) => {
@@ -1298,9 +1308,6 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await waitForMetricsPage(page);
     const { metric: selectedMetric, row } =
       await getFirstVisibleFixtureMetricRow(page);
-    const unselectedMetric =
-      fixtures.metrics.find((metric) => metric.name !== selectedMetric.name) ??
-      fixtures.metrics[0];
 
     // eslint-disable-next-line playwright/no-force-option -- styled checkbox control intercepts the native input.
     await row.getByRole('checkbox').check({ force: true });
@@ -1310,8 +1317,9 @@ test.describe('Metrics bulk import, export, and edit', () => {
     await waitForMetricBulkEditGrid(page, selectedMetric.name);
 
     await expect.poll(() => exportRequestCount).toBe(0);
-    await expect(page.getByText(selectedMetric.name)).toBeVisible();
-    await expect(page.getByText(unselectedMetric.name)).not.toBeVisible();
+    await expect(page.locator('.bulk-edit-name-value')).toHaveText([
+      selectedMetric.name,
+    ]);
   });
 
   test('Cancel from metric bulk edit returns to the metrics listing', async ({
@@ -1319,9 +1327,9 @@ test.describe('Metrics bulk import, export, and edit', () => {
   }) => {
     await redirectToHomePage(page);
     await waitForMetricsPage(page);
-    const { metric } = await getFirstVisibleFixtureMetricRow(page);
+    await getFirstVisibleFixtureMetricRow(page);
     await page.getByTestId('bulk-edit-metric').click();
-    await waitForMetricBulkEditGrid(page, metric.name);
+    await waitForMetricBulkEditGrid(page);
 
     await page.getByRole('button', { name: 'Cancel' }).click();
     await expect(page).toHaveURL(/\/metrics/);
