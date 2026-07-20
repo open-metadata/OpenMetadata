@@ -19,6 +19,8 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
 import es.co.elastic.clients.util.NamedValue;
+import jakarta.json.stream.JsonGenerator;
+import java.io.StringWriter;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
@@ -31,6 +33,8 @@ import org.openmetadata.schema.api.search.FieldBoost;
 import org.openmetadata.schema.api.search.FieldValueBoost;
 import org.openmetadata.schema.api.search.GlobalSettings;
 import org.openmetadata.schema.api.search.Range;
+import org.openmetadata.schema.api.search.RankingConfiguration;
+import org.openmetadata.schema.api.search.RankingStage;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.api.search.TermBoost;
 import org.openmetadata.service.Entity;
@@ -38,6 +42,7 @@ import org.openmetadata.service.search.elasticsearch.ElasticSearchRequestBuilder
 import org.openmetadata.service.search.elasticsearch.ElasticSearchSourceBuilderFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchRequestBuilder;
 import org.openmetadata.service.search.opensearch.OpenSearchSourceBuilderFactory;
+import os.org.opensearch.client.json.jackson.JacksonJsonpMapper;
 
 public class SearchSourceBuilderFactoryTest {
 
@@ -221,11 +226,108 @@ public class SearchSourceBuilderFactoryTest {
             "name:test AND type:table",
             "description:\"exact phrase\"",
             "[a TO z]",
-            "*PII*")
+            "-deprecated",
+            "(-deprecated)",
+            "(+certified)",
+            "name:-deprecated",
+            "status:+active",
+            "customer -orders",
+            "*PII*",
+            "\\\\".repeat(5000) + "*")
         .forEach(query -> assertTrue(osFactory.containsQuerySyntax(query)));
 
-    List.of("customer order", "[".repeat(5000), "[a TO " + " ".repeat(5000), "a".repeat(5000))
+    List.of(
+            "customer order",
+            "customer-orders",
+            "\"customer orders\"",
+            "[".repeat(5000),
+            "[a TO " + " ".repeat(5000),
+            "a".repeat(5000),
+            "\\\\".repeat(5000),
+            "\\\\".repeat(5000) + "\\*")
         .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
+
+    List.of(
+            "customer\\-orders",
+            "name\\:test",
+            "name\\:-deprecated",
+            "\\\"customer orders\\\"",
+            "orders\\(daily\\)",
+            "\\(-deprecated",
+            "\\[a TO z\\]")
+        .forEach(query -> assertFalse(osFactory.containsQuerySyntax(query)));
+  }
+
+  @Test
+  public void testRankedQueriesUseUnescapedPlainText() {
+    defaultConfig.setRanking(
+        new RankingConfiguration()
+            .withEnabled(true)
+            .withStages(
+                List.of(
+                    new RankingStage()
+                        .withName("exactName")
+                        .withFields(List.of("fullyQualifiedName"))
+                        .withMatchType(RankingStage.MatchType.EXACT)
+                        .withWeight(32.0))));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+    String escapedFqn = "pw\\-ml\\-model\\-service.pw\\-mlmodel";
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false));
+    String esQuery =
+        esFactory
+            .buildDataAssetSearchBuilderV2("all", escapedFqn, 0, 10, false, false)
+            .query()
+            .toString();
+
+    assertTrue(osQuery.contains("pw-ml-model-service.pw-mlmodel"), osQuery);
+    assertTrue(esQuery.contains("pw-ml-model-service.pw-mlmodel"), esQuery);
+    assertFalse(osQuery.contains("\\\\-"), osQuery);
+    assertFalse(esQuery.contains("\\\\-"), esQuery);
+  }
+
+  @Test
+  public void testTokenCoverageRequiresAllAnalyzedSubTermsWithinEachQueryToken() {
+    defaultConfig.setRanking(
+        new RankingConfiguration()
+            .withEnabled(true)
+            .withStages(
+                List.of(
+                    new RankingStage()
+                        .withName("closeName")
+                        .withFields(List.of("name.compound"))
+                        .withMatchType(RankingStage.MatchType.TOKEN_COVERAGE)
+                        .withMinimumShouldMatch("2<70%"))));
+
+    OpenSearchSourceBuilderFactory osFactory = new OpenSearchSourceBuilderFactory(searchSettings);
+    ElasticSearchSourceBuilderFactory esFactory =
+        new ElasticSearchSourceBuilderFactory(searchSettings);
+
+    String osQuery =
+        serializeOpenSearchRequest(
+            osFactory.buildDataAssetSearchBuilderV2("table", "N0NExistent", 0, 10, false, false));
+    String esQuery =
+        esFactory
+            .buildDataAssetSearchBuilderV2("table", "N0NExistent", 0, 10, false, false)
+            .query()
+            .toString();
+
+    assertTrue(osQuery.contains("\"operator\":\"and\""), osQuery);
+    assertTrue(esQuery.contains("\"operator\":\"and\""), esQuery);
+  }
+
+  private static String serializeOpenSearchRequest(OpenSearchRequestBuilder requestBuilder) {
+    JacksonJsonpMapper mapper = new JacksonJsonpMapper();
+    StringWriter writer = new StringWriter();
+    JsonGenerator generator = mapper.jsonProvider().createGenerator(writer);
+    requestBuilder.build("table_search_index").serialize(generator, mapper);
+    generator.close();
+    return writer.toString();
   }
 
   @Test

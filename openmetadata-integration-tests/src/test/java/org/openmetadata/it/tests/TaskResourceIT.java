@@ -1842,7 +1842,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
             .withAccessType(DataAccessType.FullAccess)
             .withRequestedAccess(DataAccessPermission.Read)
             .withReason("integration-test")
-            .withDuration("P14D");
+            .withExpirationDate(System.currentTimeMillis() + 14L * 24 * 60 * 60 * 1000);
 
     Task darTask =
         SdkClients.adminClient()
