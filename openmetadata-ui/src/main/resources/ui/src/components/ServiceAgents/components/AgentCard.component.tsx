@@ -35,6 +35,7 @@ import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import {
   AGENT_ICON_CLASS,
   AGENT_TYPE_ICON,
+  canRunAgent,
   fmtNum,
   formatEtaLong,
   getAgentTypeLabelKey,
@@ -281,7 +282,7 @@ const AgentCard: FC<AgentCardProps> = ({
               {t('label.log-plural')}
             </Button>
           )}
-          {!isRunning && !isQueued && permissions.trigger && (
+          {canRunAgent(agent, permissions) && (
             <Button
               className="tw:font-semibold tw:text-brand-tertiary tw:ring-secondary"
               color="secondary"
