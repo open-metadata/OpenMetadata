@@ -585,6 +585,7 @@ public interface EntityDAO<T extends EntityInterface> {
       connectionType = POSTGRES)
   List<String> listBefore(
       @Define("table") String table,
+      @BindMap Map<String, String> params,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
@@ -618,6 +619,7 @@ public interface EntityDAO<T extends EntityInterface> {
       connectionType = POSTGRES)
   List<String> listAfter(
       @Define("table") String table,
+      @BindMap Map<String, String> params,
       @Define("mysqlCond") String mysqlCond,
       @Define("postgresCond") String postgresCond,
       @Bind("limit") int limit,
