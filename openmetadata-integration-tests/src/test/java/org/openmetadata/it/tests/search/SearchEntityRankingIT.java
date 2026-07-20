@@ -107,17 +107,17 @@ class SearchEntityRankingIT {
       String parent,
       Case testCase,
       List<String> failures) {
-    String term = RankingSupport.uniqueTerm(ns);
+    String term = RankingSupport.uniqueTerm();
     String high = seeder.seed(client, ns, parent, term, testCase.high(), testCase.tierHigh());
     String low = seeder.seed(client, ns, parent, term, testCase.low(), testCase.tierLow());
-    boolean bothIndexed =
-        RankingSupport.awaitTrue(
+    String notIndexed =
+        RankingSupport.awaitOrReason(
             () -> {
               SearchResult polled = RankingSupport.search(client, seeder.index(), term);
               return polled.contains(high) && polled.contains(low);
             });
-    if (!bothIndexed) {
-      failures.add(testCase.label() + ": both documents were not indexed in time");
+    if (notIndexed != null) {
+      failures.add(testCase.label() + ": both documents were not indexed — " + notIndexed);
       return;
     }
     SearchResult result = RankingSupport.search(client, seeder.index(), term);
@@ -148,16 +148,18 @@ class SearchEntityRankingIT {
       EntitySeeder seeder,
       String parent,
       List<String> failures) {
-    String term = RankingSupport.uniqueTerm(ns);
+    String term = RankingSupport.uniqueTerm();
     String name = seeder.seed(client, ns, parent, term, Placement.DISTINCTIVE, false);
-    boolean found =
-        RankingSupport.awaitTrue(
+    String notFound =
+        RankingSupport.awaitOrReason(
             () -> RankingSupport.search(client, seeder.index(), term).contains(name));
-    if (!found) {
+    if (notFound != null) {
       failures.add(
           "distinctive field: ["
               + name
-              + "] not found by its nested-field token -> "
+              + "] not found by its nested-field token ("
+              + notFound
+              + ") -> "
               + RankingSupport.search(client, seeder.index(), term).names());
     }
   }
