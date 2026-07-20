@@ -14,6 +14,7 @@
 import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
 import { redirectToHomePage } from '../../utils/common';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 
 const inputCronExpression = async (page: Page, cron: string) => {
   await page
@@ -47,6 +48,7 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
 
     // Navigate to Settings > Applications > Search Indexing Application
     await page.goto('/settings/apps/SearchIndexingApplication');
+    await waitForAllLoadersToDisappear(page);
 
     await page
       .locator(
