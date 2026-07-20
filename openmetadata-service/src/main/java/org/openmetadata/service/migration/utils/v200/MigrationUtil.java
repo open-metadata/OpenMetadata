@@ -2204,66 +2204,74 @@ public class MigrationUtil {
 
     private int backfillOpenTasksToWorkflowInstances() {
       int backfilled = 0;
+      int failedIncidentReplays = 0;
       try {
         ListFilter filter = new ListFilter(Include.NON_DELETED);
         filter.addQueryParam("taskStatusGroup", "open");
         List<Task> openTasks =
             listOrEmpty(taskRepository.listAll(taskRepository.getFields("about,payload"), filter));
         for (Task task : openTasks) {
-          if (task.getWorkflowInstanceId() != null || task.getAbout() == null) {
+          if (task.getAbout() == null) {
             continue;
           }
-
-          var workflowBinding =
-              TaskWorkflowLifecycleResolver.resolveBinding(
-                  task.getType(), task.getCategory(), task.getPayload());
-          if (workflowBinding.isEmpty()) {
-            continue;
+          if (task.getWorkflowInstanceId() == null && startWorkflowInstanceForTask(task)) {
+            backfilled++;
           }
-
-          WorkflowDefinition workflowDefinition =
-              workflowDefinitionRepository.findByNameOrNull(
-                  workflowBinding.get().workflowDefinitionRef(), Include.NON_DELETED);
-          if (workflowDefinition == null) {
-            continue;
-          }
-
-          Map<String, Object> variables = new LinkedHashMap<>();
-          variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
-          variables.put(
-              getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-              EntityUtil.buildEntityLink(
-                  task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
-          variables.put(
-              getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE),
-              task.getUpdatedBy());
-          variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
-          if (workflowBinding.get().schema() != null
-              && workflowBinding.get().schema().getId() != null) {
-            variables.put("taskFormSchemaId", workflowBinding.get().schema().getId().toString());
-            variables.put("taskFormSchemaVersion", workflowBinding.get().schema().getVersion());
-          }
-
-          workflowHandler.triggerByKey(
-              getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
-              task.getId().toString(),
-              variables);
-          backfilled++;
-
-          // Incident workflows start at NewStage. Replay the test case's pre-upgrade resolution
-          // state (Ack/Assigned + assignee) onto the just-started instance so a migrated incident
-          // is not reset to New / No Owners.
-          if (task.getCategory() == TaskCategory.Incident) {
-            replayMigratedIncidentState(task);
+          // Replay is idempotent (no-ops once the task is at its recorded stage), so re-attempt it
+          // on every migration run until it succeeds. The workflowInstanceId guard above only skips
+          // the one-shot instance creation, not the state replay, so a transient replay failure is
+          // recoverable by re-running the migration.
+          if (task.getCategory() == TaskCategory.Incident && !replayMigratedIncidentState(task)) {
+            failedIncidentReplays++;
           }
         }
       } catch (Exception e) {
         LOG.error("Failed to backfill open tasks to workflow instances", e);
       }
+      if (failedIncidentReplays > 0) {
+        LOG.warn(
+            "{} migrated incident task(s) could not replay their pre-upgrade state; re-run the migration or remediate manually",
+            failedIncidentReplays);
+      }
       return backfilled;
     }
 
-    private void replayMigratedIncidentState(Task task) {
+    private boolean startWorkflowInstanceForTask(Task task) {
+      boolean started = false;
+      var workflowBinding =
+          TaskWorkflowLifecycleResolver.resolveBinding(
+              task.getType(), task.getCategory(), task.getPayload());
+      WorkflowDefinition workflowDefinition =
+          workflowBinding.isEmpty()
+              ? null
+              : workflowDefinitionRepository.findByNameOrNull(
+                  workflowBinding.get().workflowDefinitionRef(), Include.NON_DELETED);
+      if (workflowDefinition != null) {
+        Map<String, Object> variables = new LinkedHashMap<>();
+        variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+            EntityUtil.buildEntityLink(
+                task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
+        variables.put(
+            getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
+        variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
+        if (workflowBinding.get().schema() != null
+            && workflowBinding.get().schema().getId() != null) {
+          variables.put("taskFormSchemaId", workflowBinding.get().schema().getId().toString());
+          variables.put("taskFormSchemaVersion", workflowBinding.get().schema().getVersion());
+        }
+        workflowHandler.triggerByKey(
+            getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
+            task.getId().toString(),
+            variables);
+        started = true;
+      }
+      return started;
+    }
+
+    private boolean replayMigratedIncidentState(Task task) {
+      boolean succeeded = true;
       try {
         TestCaseResolutionStatusRepository incidentRepository =
             (TestCaseResolutionStatusRepository)
@@ -2276,7 +2284,9 @@ public class MigrationUtil {
             "Failed to replay pre-migration incident state for task {}: {}",
             task.getId(),
             e.getMessage());
+        succeeded = false;
       }
+      return succeeded;
     }
 
     private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
