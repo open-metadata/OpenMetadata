@@ -746,26 +746,36 @@ public class MigrationUtil {
         if (createdByUserId != null) {
           taskJson.put("createdById", createdByUserId);
         }
+        ObjectNode createdByRef = lookupUserRef(handle, createdByName);
 
         taskJson.put("createdAt", createdAt);
         taskJson.put("updatedAt", updatedAt);
         taskJson.put("updatedBy", updatedBy);
         taskJson.put("deleted", false);
         taskJson.put("version", 0.1);
-        taskJson.set("comments", JsonUtils.getObjectNode().arrayNode());
-        taskJson.put("commentCount", 0);
+        ArrayNode migratedComments = buildCommentsFromPosts(handle, threadJson, createdByRef);
+        taskJson.set("comments", migratedComments);
+        taskJson.put("commentCount", migratedComments.size());
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         // Set resolution details for closed tasks
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
-          resolution.put("type", newStatus.equals("Approved") ? "Approved" : "Completed");
-          if (taskDetails.has("closedBy")) {
-            resolution.put("comment", "Migrated from thread-based task system");
+          resolution.put("type", resolveMigratedResolutionType(oldType, taskDetails));
+          ObjectNode resolvedByRef = null;
+          if (taskDetails.has("closedBy") && !taskDetails.get("closedBy").isNull()) {
+            resolvedByRef = lookupUserRef(handle, taskDetails.get("closedBy").asText());
           }
-          if (taskDetails.has("closedAt")) {
-            resolution.put("resolvedAt", taskDetails.get("closedAt").asLong());
+          if (resolvedByRef == null) {
+            resolvedByRef = createdByRef;
           }
+          if (resolvedByRef != null) {
+            resolution.set("resolvedBy", resolvedByRef.deepCopy());
+          }
+          resolution.put(
+              "resolvedAt",
+              taskDetails.has("closedAt") ? taskDetails.get("closedAt").asLong() : updatedAt);
+          resolution.put("comment", "Migrated from legacy thread task");
           if (taskDetails.has("newValue")) {
             resolution.put("newValue", taskDetails.get("newValue").asText());
           }
@@ -1469,6 +1479,88 @@ public class MigrationUtil {
       LOG.debug("Could not look up user '{}': {}", userName, e.getMessage());
       return null;
     }
+  }
+
+  private static ObjectNode lookupUserRef(Handle handle, String userName) {
+    if (userName == null || "system".equals(userName)) {
+      return null;
+    }
+    try {
+      String nameHash = FullyQualifiedName.buildHash(userName);
+      return handle
+          .createQuery("SELECT id, name FROM user_entity WHERE nameHash = :nameHash")
+          .bind("nameHash", nameHash)
+          .map(
+              (rs, ctx) -> {
+                ObjectNode ref = JsonUtils.getObjectNode();
+                ref.put("id", rs.getString("id"));
+                ref.put("type", Entity.USER);
+                ref.put("name", rs.getString("name"));
+                ref.put("fullyQualifiedName", rs.getString("name"));
+                return ref;
+              })
+          .findOne()
+          .orElse(null);
+    } catch (Exception e) {
+      LOG.debug("Could not look up user ref '{}': {}", userName, e.getMessage());
+      return null;
+    }
+  }
+
+  /**
+   * Convert a legacy thread's {@code posts} (replies) into {@code task_entity.comments}, preserving
+   * each reply's author, timestamp and reactions. Mirrors {@code TaskWorkflow.convertPostsToComments}
+   * so the reliable bulk-insert path retains the conversation the workflow cutover path would build.
+   */
+  private static ArrayNode buildCommentsFromPosts(
+      Handle handle, JsonNode threadJson, JsonNode fallbackAuthorRef) {
+    ArrayNode comments = JsonUtils.getObjectNode().arrayNode();
+    JsonNode posts = threadJson.get("posts");
+    if (posts == null || !posts.isArray()) {
+      return comments;
+    }
+    long fallbackTs = threadJson.has("updatedAt") ? threadJson.get("updatedAt").asLong() : 0;
+    for (JsonNode post : posts) {
+      String message = post.has("message") ? post.get("message").asText() : null;
+      if (message == null || message.isEmpty()) {
+        continue;
+      }
+      JsonNode authorRef = null;
+      if (post.has("from") && !post.get("from").isNull()) {
+        authorRef = lookupUserRef(handle, post.get("from").asText());
+      }
+      if (authorRef == null) {
+        authorRef = fallbackAuthorRef;
+      }
+      if (authorRef == null) {
+        continue;
+      }
+      ObjectNode comment = JsonUtils.getObjectNode();
+      comment.put(
+          "id",
+          post.has("id") && !post.get("id").isNull()
+              ? post.get("id").asText()
+              : UUID.randomUUID().toString());
+      comment.put("message", message);
+      comment.set("author", authorRef.deepCopy());
+      comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : fallbackTs);
+      if (post.has("reactions") && post.get("reactions").isArray()) {
+        comment.set("reactions", post.get("reactions"));
+      }
+      comments.add(comment);
+    }
+    return comments;
+  }
+
+  private static String resolveMigratedResolutionType(String oldType, JsonNode taskDetails) {
+    if ("RequestApproval".equals(oldType) || "RecognizerFeedbackApproval".equals(oldType)) {
+      boolean hasNewValue =
+          taskDetails.has("newValue")
+              && !taskDetails.get("newValue").isNull()
+              && !taskDetails.get("newValue").asText().isEmpty();
+      return hasNewValue ? "Approved" : "Rejected";
+    }
+    return "Completed";
   }
 
   /**
