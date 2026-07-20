@@ -99,11 +99,12 @@ class SnowflakeTableResovler:
         self.session = session
 
     def show_tables(self, db, schema, table):
-        # Escape LIKE wildcards so _ and % are treated as literal characters
-        escaped = table.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%")
-        return self.session.execute(
-            text(f'SHOW TABLES LIKE \'{escaped}\' IN SCHEMA "{db}"."{schema}" LIMIT 1')
+        result = self.session.execute(
+            text(f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT 1')
         ).fetchone()
+        # ponytail: SHOW LIKE uses SQL wildcards (_/%), so exact-match the
+        # returned name column to avoid false positives from LIKE patterns.
+        return result if result and result[1] == table else None
 
     def table_exists(self, db, schema, table):
         """Return True if the table exists in Snowflake. Uses cache to store the results.
