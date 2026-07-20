@@ -200,11 +200,19 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 because every token in it casts downward and the footer has to
                 cast up; keeping both literal keeps the pair symmetrical.
 
+                Alpha is raised from the drawer's 0.04 to 0.1. At 0.04 over a
+                white form column the shadow peaks at rgb(245,245,246) — about
+                1.04:1, which is not visible. The drawer gets away with it
+                because its body is grey behind a white header, so the
+                background does the separating; here both sides are near-white
+                and the shadow is all there is. Offsets and blur are the
+                drawer's, so it still reads as the same chrome.
+
                 `relative z-10` lifts the header over the scrolling body, which
                 would otherwise paint across the shadow — the footer already
                 carries z-10 for that reason. Dialog.Header ships no bottom
                 padding, so `pb` keeps the subtitle off it. */}
-            <Dialog.Header className="tw:relative tw:z-10 tw:pb-4 tw:shadow-[0px_9px_16px_-4px_rgba(10,13,18,0.04)]">
+            <Dialog.Header className="tw:relative tw:z-10 tw:pb-4 tw:shadow-[0px_9px_16px_-4px_rgba(10,13,18,0.1)]">
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
@@ -294,7 +302,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 header, which has no rule. */}
             <Dialog.Footer
               className={classNames(
-                'tw:border-t-0 tw:shadow-[0px_-13px_16px_-4px_rgba(10,13,18,0.04),0px_-4px_6px_-2px_rgba(10,13,18,0.04)]',
+                'tw:border-t-0 tw:shadow-[0px_-13px_16px_-4px_rgba(10,13,18,0.1),0px_-4px_6px_-2px_rgba(10,13,18,0.1)]',
                 { 'tw:mt-0 tw:sm:mt-0': hasHintColumn }
               )}>
               <Button
