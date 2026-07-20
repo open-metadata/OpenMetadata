@@ -331,10 +331,12 @@ test.describe('Glossary — Relations Graph tab', () => {
       .locator('input');
     await searchInput.fill('__nonexistent_pw_term_xyz__');
 
-    await expect(page.getByTestId('ontology-graph-empty')).toBeVisible();
+    await expect(page.getByTestId('ontology-graph-search-empty')).toBeVisible();
 
     await searchInput.clear();
-    await expect(page.getByTestId('ontology-graph-empty')).not.toBeVisible();
+    await expect(
+      page.getByTestId('ontology-graph-search-empty')
+    ).not.toBeVisible();
   });
 
   test('global filter toolbar is NOT shown in glossary scope', async ({

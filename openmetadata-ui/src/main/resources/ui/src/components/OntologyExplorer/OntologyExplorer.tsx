@@ -19,12 +19,7 @@ import {
   Tabs,
   Typography,
 } from '@openmetadata/ui-core-components';
-import {
-  GitBranch01,
-  Hexagon01,
-  LayoutGrid01,
-  SearchMd,
-} from '@untitledui/icons';
+import { Cube02, CubeOutline, LayoutGrid01, SearchMd } from '@untitledui/icons';
 import classNames from 'classnames';
 import React, { useEffect, useRef, useState } from 'react';
 import { ErrorBoundary } from 'react-error-boundary';
@@ -32,6 +27,10 @@ import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
 import { GlossaryTerm } from '../../generated/entity/data/glossaryTerm';
 import { getGlossaryPath } from '../../utils/RouterUtils';
+import {
+  NoFilteredResultsPlaceholder,
+  NoSearchResultsPlaceholder,
+} from '../common/EmptyPlaceholder';
 import { useGenericContext } from '../Customization/GenericProvider/GenericContext';
 import { buildOntologySlideoutEntityDetails } from './buildOntologySlideoutEntityDetails';
 import ExportGraphPanel from './ExportGraphPanel';
@@ -101,13 +100,13 @@ function OntologyOnboardingEmptyState() {
           },
           {
             key: 'the-graph',
-            icon: <Hexagon01 className="tw:text-fg-warning-primary" />,
+            icon: <Cube02 className="tw:text-fg-warning-primary" />,
             title: t('label.the-graph'),
             description: t('message.ontology-graph-feature-description'),
           },
           {
             key: 'what-it-unlocks',
-            icon: <GitBranch01 className="tw:text-fg-success-primary" />,
+            icon: <CubeOutline className="tw:text-fg-success-primary" />,
             title: t('label.what-it-unlocks'),
             description: t('message.ontology-unlocks-feature-description'),
           },
@@ -123,6 +122,32 @@ function OntologyOnboardingEmptyState() {
         title={t('message.ontology-empty-title')}
         variant="features"
       />
+    </div>
+  );
+}
+
+function FilteredGraphEmptyState({
+  description,
+  testId,
+}: {
+  readonly description: string;
+  readonly testId: string;
+}) {
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid={testId}>
+      <NoFilteredResultsPlaceholder description={description} />
+    </div>
+  );
+}
+
+function SearchGraphEmptyState() {
+  return (
+    <div
+      className="tw:absolute tw:inset-0 tw:z-3 tw:bg-primary"
+      data-testid="ontology-graph-search-empty">
+      <NoSearchResultsPlaceholder />
     </div>
   );
 }
@@ -277,18 +302,22 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
       hierarchyGraphData.edges.length === 0
     ) {
       return (
-        <GraphEmptyState
-          message={t('message.no-hierarchical-relations-found')}
+        <FilteredGraphEmptyState
+          description={t('message.no-hierarchical-relations-found')}
           testId="ontology-graph-hierarchy-empty"
         />
       );
     }
 
     if (hasNoVisibleNodes && !loading && graphDataToShow !== null) {
+      if (filters.searchQuery.trim().length > 0) {
+        return <SearchGraphEmptyState />;
+      }
+
       if (hasRelationFilter) {
         return (
-          <GraphEmptyState
-            message={t('message.no-relations-for-selected-filter')}
+          <FilteredGraphEmptyState
+            description={t('message.no-relations-for-selected-filter')}
             testId="ontology-graph-no-relations"
           />
         );
@@ -296,12 +325,12 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
       const hasActiveFilter =
         withoutOntologyAutocompleteAll(filters.glossaryIds).length > 0 ||
-        filters.searchQuery.trim().length > 0;
+        filters.viewMode !== 'overview';
 
       if (hasActiveFilter) {
         return (
-          <GraphEmptyState
-            message={t('message.no-data-available-for-selected-filter')}
+          <FilteredGraphEmptyState
+            description={t('message.no-data-available-for-selected-filter')}
             testId="ontology-graph-empty"
           />
         );
@@ -325,8 +354,8 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
 
     if (hasNoMatchingRelationEdges && !loading) {
       return (
-        <GraphEmptyState
-          message={t('message.no-relations-for-selected-filter')}
+        <FilteredGraphEmptyState
+          description={t('message.no-relations-for-selected-filter')}
           testId="ontology-graph-no-relations"
         />
       );
@@ -429,6 +458,7 @@ const OntologyExplorer: React.FC<OntologyExplorerProps> = ({
     graphDataToShow.nodes.length === 0 &&
     withoutOntologyAutocompleteAll(filters.relationTypes).length === 0 &&
     withoutOntologyAutocompleteAll(filters.glossaryIds).length === 0 &&
+    filters.viewMode === 'overview' &&
     !filters.searchQuery.trim();
 
   return (
