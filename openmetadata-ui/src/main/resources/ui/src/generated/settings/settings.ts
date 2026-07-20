@@ -28,7 +28,6 @@ export interface Settings {
  * This schema defines all possible filters enum in OpenMetadata.
  */
 export enum SettingType {
-    AISettings = "aiSettings",
     AirflowConfiguration = "airflowConfiguration",
     AssetCertificationSettings = "assetCertificationSettings",
     AuthenticationConfiguration = "authenticationConfiguration",
@@ -110,9 +109,6 @@ export enum SettingType {
  *
  * This schema defines the Glossary Term Relation Settings for configuring typed semantic
  * relations between glossary terms.
- *
- * Configuration for AI features: memory extraction, the Memory Agent, and tunable LLM
- * system prompts.
  *
  * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
  * by language and entity type. The stored mapping is the effective mapping used when an
@@ -560,6 +556,11 @@ export interface PipelineServiceClientConfiguration {
      */
     historyCleanUpConfiguration?: HistoryCleanUpConfiguration;
     /**
+     * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+     * grants into a single ingestion run per pipeline.
+     */
+    policyAgentConfiguration?: PolicyAgentConfiguration;
+    /**
      * Used to set up the History CleanUp Settings.
      */
     runTimeCleanUpConfiguration?: RunTimeCleanUpConfiguration;
@@ -646,11 +647,7 @@ export interface PipelineServiceClientConfiguration {
     /**
      * List of configured glossary term relation types.
      */
-    relationTypes?:    GlossaryTermRelationType[];
-    mcpChat?:          MCPChat;
-    memoryAgent?:      MemoryAgent;
-    memoryExtraction?: MemoryExtraction;
-    prompts?:          Prompts;
+    relationTypes?: GlossaryTermRelationType[];
     /**
      * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
      * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
@@ -1372,6 +1369,11 @@ export interface LDAPConfiguration {
      * Port of the server
      */
     port: number;
+    /**
+     * Enable transitive group membership resolution for Active Directory nested groups using
+     * LDAP_MATCHING_RULE_IN_CHAIN.
+     */
+    recursiveGroupMembership?: boolean;
     /**
      * Admin role name
      */
@@ -2197,33 +2199,6 @@ export enum LogStorageConfigurationType {
 }
 
 /**
- * MCP Chat assistant. The LLM provider and credentials are configured at the platform level
- * via llmConfiguration; this only governs chat enablement and behavior.
- */
-export interface MCPChat {
-    enabled?:      boolean;
-    systemPrompt?: string;
-}
-
-export interface MemoryAgent {
-    deletionPolicy?:      DeletionPolicy;
-    deriveGlossaryTerms?: boolean;
-    deriveMetrics?:       boolean;
-    enabled?:             boolean;
-}
-
-export enum DeletionPolicy {
-    Cascade = "cascade",
-    Deprecate = "deprecate",
-    Orphan = "orphan",
-}
-
-export interface MemoryExtraction {
-    fromFiles?: boolean;
-    fromPages?: boolean;
-}
-
-/**
  * This schema defines the parameters that can be passed for a Test Case.
  */
 export interface MetricConfigurationDefinition {
@@ -2389,6 +2364,12 @@ export interface NaturalLanguageSearch {
      * Weight for BM25 keyword search results in hybrid RRF pipeline (0.0-1.0)
      */
     keywordWeight?: number;
+    /**
+     * Multiplier applied to k when computing num_candidates for Elasticsearch kNN vector
+     * search. num_candidates = max(k * multiplier, 100). Higher values improve recall at the
+     * cost of latency. Defaults to 2.
+     */
+    knnNumCandidatesMultiplier?: number;
     /**
      * Fully qualified class name of the NLQService implementation to use
      */
@@ -2618,13 +2599,37 @@ export enum PipelineViewMode {
     Node = "Node",
 }
 
-export interface Prompts {
-    memoryAgent?:      PromptConfig;
-    memoryExtraction?: PromptConfig;
-}
-
-export interface PromptConfig {
-    systemPrompt?: string;
+/**
+ * Settings for the Policy Agent batch coordinator that clubs concurrent Data Access Request
+ * grants into a single ingestion run per pipeline.
+ */
+export interface PolicyAgentConfiguration {
+    /**
+     * Maximum number of policies clubbed into a single Policy Agent ingestion run. Pending
+     * requests beyond this are picked up by the next window.
+     */
+    batchMaxSize?: number;
+    /**
+     * The batch window: how often (in seconds) the scheduler triggers the Policy Agent
+     * coordinator to drain accumulated grant requests and fire one clubbed ingestion run per
+     * pipeline. Typically 60-300 (1-5 minutes). All Data Access Requests that arrive within a
+     * window are clubbed into the next run. Lower = lower latency but more Argo runs; higher =
+     * fewer runs, more clubbing.
+     */
+    batchWindowSeconds?: number;
+    /**
+     * Size of the worker pool that runs clubbed Policy Agent batches. Each in-flight batch (one
+     * per distinct pipeline) holds one worker while it polls its run to completion, so this
+     * bounds how many distinct services can provision concurrently. Raise it for deployments
+     * with many services receiving Data Access Requests at once.
+     */
+    batchWorkerThreads?: number;
+    /**
+     * Interval (seconds) at which the batch coordinator polls a Policy Agent ingestion run for
+     * completion. The Data Access Request workflow node itself does not poll — it is signalled
+     * (pushed) when the run finishes, with a safety timer as the fallback.
+     */
+    pollingIntervalSeconds?: number;
 }
 
 /**

@@ -60,6 +60,9 @@ public class SearchIndexRetryWorker implements Managed {
   private static final int MAX_CASCADE_REINDEX = 5000;
   private static final int CASCADE_BATCH_SIZE = 200;
   private static final int MAX_BACKOFF_SECONDS = 60;
+  private static final int FIRST_RETRY_BACKOFF_SECONDS = 10;
+  private static final int SECOND_RETRY_BACKOFF_SECONDS = 20;
+  private static final int MAX_PROCESSING_ATTEMPTS = 3;
   private static final int CANDIDATE_TYPES_REFRESH_INTERVAL_MS = 60000;
   private static final long STALE_RECOVERY_INTERVAL_MS = 60_000;
   private static final long STALE_THRESHOLD_MS = 10 * 60 * 1000;
@@ -142,7 +145,10 @@ public class SearchIndexRetryWorker implements Managed {
         }
 
         List<SearchIndexRetryRecord> claimed =
-            collectionDAO.searchIndexRetryQueueDAO().claimPending(CLAIM_BATCH_SIZE);
+            collectionDAO
+                .searchIndexRetryQueueDAO()
+                .claimPending(
+                    CLAIM_BATCH_SIZE, FIRST_RETRY_BACKOFF_SECONDS, SECOND_RETRY_BACKOFF_SECONDS);
         if (claimed.isEmpty()) {
           sleep(POLL_INTERVAL_SECONDS);
           continue;
@@ -199,14 +205,25 @@ public class SearchIndexRetryWorker implements Managed {
   private void handleProcessingError(SearchIndexRetryRecord record, Exception e) {
     String reason = SearchIndexRetryQueue.failureReason("retryFailed", e);
     if (isRetryable(e)) {
-      String nextStatus = nextRetryStatus(record.getRetryCount());
+      String nextStatus = retryableNextStatus(record.getRetryCount());
       recordRetryFailure(record, reason, nextStatus);
-      LOG.debug(
-          "Retry failed for entityId={} entityFqn={} nextStatus={}: {}",
-          record.getEntityId(),
-          record.getEntityFqn(),
-          nextStatus,
-          e.getMessage());
+      if (STATUS_FAILED.equals(nextStatus)) {
+        Metrics.counter("search.retry.processed", "result", "exhausted").increment();
+        LOG.warn(
+            "Retryable failures hit the {}-attempt ceiling for entityId={} entityFqn={}; "
+                + "dead-lettering to FAILED: {}",
+            MAX_PROCESSING_ATTEMPTS,
+            record.getEntityId(),
+            record.getEntityFqn(),
+            e.getMessage());
+      } else {
+        LOG.debug(
+            "Retry failed for entityId={} entityFqn={} nextStatus={}: {}",
+            record.getEntityId(),
+            record.getEntityFqn(),
+            nextStatus,
+            e.getMessage());
+      }
     } else {
       recordRetryFailure(record, reason, STATUS_FAILED);
       Metrics.counter("search.retry.processed", "result", "non_retryable").increment();
@@ -586,7 +603,7 @@ public class SearchIndexRetryWorker implements Managed {
    *   <li>No status code found → defaults to retryable (conservative)
    * </ul>
    */
-  private boolean isRetryable(Throwable t) {
+  boolean isRetryable(Throwable t) {
     if (t instanceof IOException) {
       return true;
     }
@@ -663,5 +680,21 @@ public class SearchIndexRetryWorker implements Managed {
       case 1 -> STATUS_PENDING_RETRY_2;
       default -> STATUS_FAILED;
     };
+  }
+
+  /**
+   * Next status for a transient failure, capped at three processing attempts. Retry claims are
+   * delayed by the queue DAO before the second and third attempts.
+   */
+  String retryableNextStatus(int retryCount) {
+    String status;
+    if (retryCount == 0) {
+      status = STATUS_PENDING_RETRY_1;
+    } else if (retryCount < MAX_PROCESSING_ATTEMPTS - 1) {
+      status = STATUS_PENDING_RETRY_2;
+    } else {
+      status = STATUS_FAILED;
+    }
+    return status;
   }
 }

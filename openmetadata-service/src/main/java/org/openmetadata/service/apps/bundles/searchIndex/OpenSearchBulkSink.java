@@ -454,7 +454,13 @@ public class OpenSearchBulkSink implements BulkSink {
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
-        json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
+        // Run-scoped chunk routing: the staged chunk generation (when this run created one) is
+        // carried in the ReindexContext, so writes target exactly this run's generation — partial
+        // recreates and normal runs carry none and write to the live index.
+        String stagedChunkTarget =
+            reindexContext != null ? reindexContext.getStagedChunkIndex().orElse(null) : null;
+        json =
+            enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker, stagedChunkTarget);
       }
 
       String finalJson = json;
@@ -950,7 +956,8 @@ public class OpenSearchBulkSink implements BulkSink {
       EntityInterface entity,
       String json,
       Map<String, JsonNode> existingEmbeddingsById,
-      StageStatsTracker tracker) {
+      StageStatsTracker tracker,
+      String stagedChunkTarget) {
     try {
       OpenSearchVectorService vectorService = OpenSearchVectorService.getInstance();
       if (vectorService == null) {
@@ -965,10 +972,8 @@ public class OpenSearchBulkSink implements BulkSink {
         return json;
       }
 
-      int expectedDimension =
-          vectorService.getEmbeddingClient() != null
-              ? vectorService.getEmbeddingClient().getDimension()
-              : -1;
+      var embeddingClient = vectorService.getEmbeddingClient();
+      int expectedDimension = embeddingClient != null ? embeddingClient.getDimension() : -1;
       JsonNode cached = existingEmbeddingsById.get(entity.getId().toString());
       if (canReuseCachedEmbedding(cached, expectedDimension)) {
         // Splices chunkIndex/chunkCount/parentId along with embedding — safe because the
@@ -980,19 +985,20 @@ public class OpenSearchBulkSink implements BulkSink {
         // shipped). The call is fingerprint-guarded, so it is a cheap no-op once chunks exist;
         // chunk docs reflect committed entity state, so writing them mid-reindex is safe even if
         // the staged index is never promoted.
-        vectorService.updateEntityEmbeddingChunks(entity);
-      } else {
+        vectorService.backfillEntityChunks(entity, stagedChunkTarget);
+      } else if (embeddingClient != null && embeddingClient.isAvailable()) {
         // Build the chunk docs once (one embedding call per chunk): chunk 0's embedding fields
-        // are spliced into the staged entity doc for hybrid search, and the full set is written
-        // to the dedicated chunk index for the semantic vector path (issue #4789).
-        List<Map<String, Object>> chunkDocs =
-            VectorDocBuilder.fromEntity(entity, vectorService.getEmbeddingClient());
+        // are spliced into the staged entity doc for hybrid search, and the full set is written to
+        // the dedicated chunk index for the semantic vector path (issue #4789). Skipped when the
+        // provider circuit is open so a transient outage indexes without embeddings (self-heals on
+        // the next reindex) instead of failing every entity.
+        List<Map<String, Object>> chunkDocs = VectorDocBuilder.fromEntity(entity, embeddingClient);
         if (!chunkDocs.isEmpty()) {
           doc.setAll(
               (ObjectNode)
                   OBJECT_MAPPER.valueToTree(
                       OpenSearchVectorService.legacyEmbeddingFields(chunkDocs.get(0))));
-          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs);
+          vectorService.writeEntityChunks(entity.getId().toString(), chunkDocs, stagedChunkTarget);
         }
       }
 
@@ -1297,6 +1303,11 @@ public class OpenSearchBulkSink implements BulkSink {
         if (!buffer.isEmpty() && !closed) {
           flushInternal();
         }
+      } catch (Exception e) {
+        // An exception escaping here would cancel the scheduled task permanently
+        // (ScheduledExecutorService contract), silently disabling periodic flushing so trailing
+        // buffers only ship on an explicit flush/close. Log and continue to the next interval.
+        LOG.error("Scheduled flush failed; will retry on the next interval", e);
       } finally {
         lock.unlock();
       }

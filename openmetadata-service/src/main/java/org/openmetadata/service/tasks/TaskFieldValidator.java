@@ -120,6 +120,32 @@ public final class TaskFieldValidator {
     }
   }
 
+  /**
+   * Require a Data Access Request to carry a future {@code expirationDate}. Every approved DAR
+   * reaches an {@code expiryTimer} boundary node, so a missing or expired timestamp would leave that
+   * boundary timer unschedulable and fail the task mid-workflow. Validating at creation turns that
+   * latent failure into a clean 400. No-op for non-DAR tasks.
+   */
+  public static void validateDataAccessRequestExpiry(Task task) {
+    if (task.getType() != TaskEntityType.DataAccessRequest) {
+      return;
+    }
+    DataAccessRequestPayload payload = readDataAccessPayload(task.getPayload());
+    if (payload == null) {
+      return;
+    }
+    Long expirationDate = payload.getExpirationDate();
+    if (expirationDate == null) {
+      throw new IllegalArgumentException(
+          "A Data Access Request requires an access expirationDate timestamp.");
+    }
+    if (expirationDate <= System.currentTimeMillis()) {
+      throw new IllegalArgumentException(
+          "Data Access Request expirationDate must be a future timestamp: '%s'."
+              .formatted(expirationDate));
+    }
+  }
+
   private static DataAccessRequestPayload readDataAccessPayload(Object payload) {
     DataAccessRequestPayload result = null;
     if (payload != null) {

@@ -427,35 +427,6 @@ CREATE INDEX IF NOT EXISTS asset_entity_name_index ON asset_entity (name);
 CREATE INDEX IF NOT EXISTS context_file_name_index ON context_file (name);
 CREATE INDEX IF NOT EXISTS context_memory_name_index ON context_memory (name);
 
--- MCP conversation table for MCP Client message tracking
-CREATE TABLE IF NOT EXISTS mcp_conversation (
-  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-  json JSONB NOT NULL,
-  userId VARCHAR(256) GENERATED ALWAYS AS ((json -> 'user') ->> 'id') STORED NOT NULL,
-  createdAt BIGINT GENERATED ALWAYS AS ((json ->> 'createdAt')::bigint) STORED NOT NULL,
-  updatedAt BIGINT GENERATED ALWAYS AS ((json ->> 'updatedAt')::bigint) STORED NOT NULL,
-  createdBy VARCHAR(50) GENERATED ALWAYS AS (json ->> 'createdBy') STORED NOT NULL,
-  updatedBy VARCHAR(50) GENERATED ALWAYS AS (json ->> 'updatedBy') STORED NOT NULL,
-  messageCount INT GENERATED ALWAYS AS ((json ->> 'messageCount')::int) STORED,
-
-  PRIMARY KEY (id)
-);
-CREATE INDEX IF NOT EXISTS idx_mcp_conversation_user_updated ON mcp_conversation (userId, updatedAt DESC);
-
--- MCP message table for MCP Client message tracking
-CREATE TABLE IF NOT EXISTS mcp_message (
-  id VARCHAR(36) GENERATED ALWAYS AS (json ->> 'id') STORED NOT NULL,
-  json JSONB NOT NULL,
-  conversationId VARCHAR(36) GENERATED ALWAYS AS (json ->> 'conversationId') STORED NOT NULL,
-  sender VARCHAR(10) GENERATED ALWAYS AS (json ->> 'sender') STORED NOT NULL,
-  messageIndex INT GENERATED ALWAYS AS ((json ->> 'index')::int) STORED,
-  timestamp BIGINT GENERATED ALWAYS AS ((json ->> 'timestamp')::bigint) STORED NOT NULL,
-
-  PRIMARY KEY (id),
-  CONSTRAINT fk_mcp_message_conversation FOREIGN KEY (conversationId) REFERENCES mcp_conversation(id) ON DELETE CASCADE
-);
-CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_index ON mcp_message (conversationId, messageIndex);
-CREATE INDEX IF NOT EXISTS idx_mcp_message_conversation_created ON mcp_message (conversationId, timestamp);
 -- Task workflow cutover support - OpenMetadata 2.0.0 (moved from 2.0.1)
 -- Maps legacy thread task IDs to new task entity IDs for migration traceability and redirects.
 
@@ -469,3 +440,14 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+    json #- '{connection,config,token}',
+    '{connection,config,authType}',
+    jsonb_build_object('token', json #> '{connection,config,token}')
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND json #> '{connection,config,token}' IS NOT NULL
+  AND NOT jsonb_exists(json #> '{connection,config}', 'authType');

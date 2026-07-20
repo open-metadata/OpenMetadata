@@ -21,6 +21,7 @@ import pytest
 from google.api_core.exceptions import Forbidden, NotFound
 from google.auth.exceptions import DefaultCredentialsError, RefreshError
 
+from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
 from metadata.core.connections.test_connection.check import collect_checks
 from metadata.core.connections.test_connection.checks.database import DatabaseStep
@@ -31,7 +32,6 @@ from metadata.generated.schema.entity.services.connections.database.bigQueryConn
 from metadata.ingestion.source.database.bigquery.connection import (
     BIGQUERY_ERRORS,
     BigQueryChecks,
-    _enumerated,
     probe_table_view_enumeration,
 )
 from metadata.utils.credentials import InvalidPrivateKeyException
@@ -132,7 +132,7 @@ def test_malformed_private_key_is_classified():
 
 def _checks(service_connection, client=None) -> BigQueryChecks:
     engine = client if client is not None else MagicMock()
-    return BigQueryChecks(get_client=lambda: engine, service_connection=service_connection)
+    return BigQueryChecks(db=Borrowed.of(engine), service_connection=service_connection)
 
 
 def test_checks_cover_exactly_the_wired_steps():
@@ -152,13 +152,13 @@ def test_construction_does_not_build_the_client():
     # The engine is built lazily inside CheckAccess, never at construction - so
     # credential parsing (and any connect) happens behind the gate, not before it.
     get_client = MagicMock()
-    BigQueryChecks(get_client=get_client, service_connection=_config())
+    BigQueryChecks(db=Borrowed(get_client), service_connection=_config())
     get_client.assert_not_called()
 
 
 def test_check_access_builds_client_lazily_and_pings():
     get_client = MagicMock()
-    checks = BigQueryChecks(get_client=get_client, service_connection=_config())
+    checks = BigQueryChecks(db=Borrowed(get_client), service_connection=_config())
     with patch(f"{_CONNECTION_MODULE}.ping", return_value=Evidence(summary="connection established")) as mock_ping:
         evidence = checks.check_access()
     get_client.assert_called_once_with()
@@ -171,7 +171,7 @@ def test_check_access_surfaces_malformed_key_error():
     # inside CheckAccess, the error reaches the runner (here: the caller) to be
     # classified, instead of escaping before the test starts.
     error = InvalidPrivateKeyException("Cannot serialise key: Unable to load PEM file.")
-    checks = BigQueryChecks(get_client=MagicMock(side_effect=error), service_connection=_config())
+    checks = BigQueryChecks(db=Borrowed(MagicMock(side_effect=error)), service_connection=_config())
     with pytest.raises(InvalidPrivateKeyException):
         checks.check_access()
 
@@ -236,9 +236,3 @@ def test_probe_table_view_enumeration_tolerates_deleted_dataset():
     bq_client.list_tables.side_effect = NotFound("404 Not found: Dataset was deleted")
     evidence = probe_table_view_enumeration(engine)
     assert evidence.summary == "1 dataset enumerated"
-
-
-def test_enumerated_pluralizes_by_count():
-    assert _enumerated(1, "dataset") == "1 dataset enumerated"
-    assert _enumerated(3, "dataset") == "3 datasets enumerated"
-    assert _enumerated(1, "policy tag") == "1 policy tag enumerated"
