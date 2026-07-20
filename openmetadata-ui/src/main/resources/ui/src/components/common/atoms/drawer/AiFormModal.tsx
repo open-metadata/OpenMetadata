@@ -189,19 +189,22 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 : WIDTH_NO_HINT_COLUMN
             }
             onClose={onClose}>
-            {/* Shadow rather than a rule, per design: the same treatment the
-                classic form used, mirrored onto the header so the body is
-                bounded top and bottom. `relative z-10` lifts the header over
-                the scrolling body, otherwise the body paints across the shadow
-                (the footer already carries z-10 for the same reason).
+            {/* Shadow rather than a rule, per design. Values are the drawer
+                chrome's from `styles/components/drawer.less`
+                (`.custom-drawer-style`), so this modal is bounded the same way
+                the classic drawer is — that file also sets
+                `.ant-drawer-header { border-bottom: none }`, i.e. the shadow
+                replaces the rule rather than joining it.
 
-                Spelled out rather than taken from the shadow scale because
-                every token in it casts downward, and the footer needs to cast
-                up. Keeping both spelled out keeps the pair symmetrical.
+                Spelled out rather than taken from the `--shadow-*` scale
+                because every token in it casts downward and the footer has to
+                cast up; keeping both literal keeps the pair symmetrical.
 
-                Dialog.Header ships no bottom padding, so `pb` is what keeps the
-                subtitle off the shadow. */}
-            <Dialog.Header className="tw:relative tw:z-10 tw:pb-4 tw:shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
+                `relative z-10` lifts the header over the scrolling body, which
+                would otherwise paint across the shadow — the footer already
+                carries z-10 for that reason. Dialog.Header ships no bottom
+                padding, so `pb` keeps the subtitle off it. */}
+            <Dialog.Header className="tw:relative tw:z-10 tw:pb-4 tw:shadow-[0px_9px_16px_-4px_rgba(10,13,18,0.04)]">
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
@@ -291,7 +294,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 header, which has no rule. */}
             <Dialog.Footer
               className={classNames(
-                'tw:border-t-0 tw:shadow-[0_-2px_8px_rgba(0,0,0,0.1)]',
+                'tw:border-t-0 tw:shadow-[0px_-13px_16px_-4px_rgba(10,13,18,0.04),0px_-4px_6px_-2px_rgba(10,13,18,0.04)]',
                 { 'tw:mt-0 tw:sm:mt-0': hasHintColumn }
               )}>
               <Button
