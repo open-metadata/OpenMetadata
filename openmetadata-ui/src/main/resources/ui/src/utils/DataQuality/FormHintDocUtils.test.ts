@@ -109,6 +109,24 @@ describe('monospaceParameterNames', () => {
     }
   });
 
+  it('does not let a bullet span lines', () => {
+    // The parts of a parameter bullet are always on one line. Pinning that is
+    // also what keeps the pattern linear: matching gaps with `\s` would let
+    // them absorb blank lines and backtrack over the ways to divide them.
+    const acrossLines = [
+      '- **Threshold**',
+      '(NUMBER, Optional) - Number to compare against',
+    ].join('\n');
+
+    expect(monospaceParameterNames(acrossLines)).toBe(acrossLines);
+  });
+
+  it('does not treat a blank-line run as the gap before a bullet', () => {
+    const blankRun = `-\n\n\n**Threshold** (NUMBER, Optional) - Number`;
+
+    expect(monospaceParameterNames(blankRun)).toBe(blankRun);
+  });
+
   it('still rejects a capitalised word that is not a type', () => {
     // `(Optional)` starts with a capital, so the type body must stop at the
     // lowercase letter rather than run to the closing bracket.

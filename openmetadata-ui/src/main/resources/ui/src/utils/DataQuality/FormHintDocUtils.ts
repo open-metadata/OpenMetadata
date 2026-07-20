@@ -37,8 +37,17 @@
  * be a letter keeps the prose parentheticals out — `(Optional)` stops at the
  * lowercase `p` before reaching the closing bracket, `(see the guide)` never
  * starts.
+ *
+ * Every gap is `[ \t]`, never `\s`, and the name excludes line breaks. A
+ * parameter bullet lives on one line, so this is what the pattern always
+ * meant — but `\s` matches newlines in JavaScript, which let the two
+ * whitespace runs swallow blank lines and split them between each other in
+ * many ways. That backtracking is super-linear: over a long run of blank
+ * lines ending in an unterminated `**`, the `\s` form took 86ms where this
+ * one takes none.
  */
-const PARAMETER_BULLET = /^(\s*[-*]\s+)\*\*([^*]+)\*\*(\s*\([A-Z][A-Z0-9_]*[,)])/gm;
+const PARAMETER_BULLET =
+  /^([ \t]*[-*][ \t]+)\*\*([^*\r\n]+)\*\*([ \t]*\([A-Z][A-Z0-9_]*[,)])/gm;
 
 /**
  * Renders parameter NAMES as code so they pick up the hint panel's mono
