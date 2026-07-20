@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import type { FC, ReactNode } from 'react';
-import { useRef } from 'react';
+import { useLayoutEffect, useRef, useState } from 'react';
 import { useActiveFieldDoc, useFieldDocRegistry } from './field-doc-context';
 
 export interface FieldDocPanelProps {
@@ -63,15 +63,33 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
 }) => {
   const { entry } = useActiveFieldDoc();
   const { enabled, entries } = useFieldDocRegistry();
+  const rootRef = useRef<HTMLDivElement>(null);
   // A form opens with focus nowhere, so falling back to the empty state would
   // leave the column advertising that hints exist while showing none — at the
   // moment the user has read least. Opening on the first field's doc costs
   // nothing and explains the form's starting point.
   //
-  // `entries` is insertion-ordered by mount order, and useFieldDoc only
-  // registers fields that actually have a doc, so this is the first documented
-  // field in visual order. Empty only when the form has no docs at all.
-  const firstEntry = entries.values().next().value;
+  // "First" has to mean first on screen, which is why this reads the DOM rather
+  // than taking the head of `entries`. Registration order is not visual order:
+  // a form whose docs arrive asynchronously (fetched markdown) registers them
+  // after any field holding its doc as a local constant, so the map can open
+  // with a field from the bottom of the form.
+  const [firstName, setFirstName] = useState<string>();
+  useLayoutEffect(() => {
+    // Scope the lookup to the surface this panel belongs to; a bare document
+    // query would reach into any other documented form that happens to be
+    // mounted.
+    let scope = rootRef.current?.parentElement ?? null;
+    while (scope && !scope.querySelector('[data-field-doc]')) {
+      scope = scope.parentElement;
+    }
+    setFirstName(
+      scope
+        ?.querySelector('[data-field-doc]')
+        ?.getAttribute('data-field-doc') ?? undefined
+    );
+  }, [entries]);
+  const firstEntry = firstName ? entries.get(firstName) : undefined;
   // Remembering the last entry is idempotent, so writing it during render is
   // safe under StrictMode's double-invoke.
   const lastEntry = useRef(entry);
@@ -93,6 +111,7 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
     <div
       aria-label="Field documentation"
       className="tw:flex tw:h-full tw:min-h-0 tw:flex-col"
+      ref={rootRef}
       role="note">
       {header != null && <div className="tw:px-4 tw:pt-4">{header}</div>}
       {shownEntry ? (
