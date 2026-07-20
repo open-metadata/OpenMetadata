@@ -18,6 +18,11 @@ the intended diagnosis).
 from unittest.mock import MagicMock, patch
 
 import pytest
+from snowflake.connector.errorcode import (
+    ER_FAILED_TO_CONNECT_TO_DB,
+    ER_HTTP_GENERAL_ERROR,
+)
+from snowflake.connector.errors import ForbiddenError
 
 from metadata.core.connections.lifetime import Borrowed
 from metadata.core.connections.test_connection import Evidence
@@ -69,14 +74,40 @@ def test_auth_failure_message_is_classified():
     assert SNOWFLAKE_ERRORS.classify(error).title == "Authentication failed"
 
 
-def test_bad_account_login_404_is_classified():
-    error = _SqlAlchemyError(
-        _SnowflakeError(
-            "None: 404 Not Found: post nope99999.us-east-1.snowflakecomputing.com:443/session/v1/login-request",
-            errno=290404,
-        )
+def _bad_account_error() -> ForbiddenError:
+    """A login-endpoint 403, reproducing snowflake/connector/auth/_auth.py's
+    `except ForbiddenError` re-raise verbatim (message + errno)."""
+    return ForbiddenError(
+        msg=(
+            "Failed to connect to DB. Verify the account name is correct: "
+            "nope99999.us-east-1.snowflakecomputing.com:443. 403 Forbidden: "
+            "post nope99999.us-east-1.snowflakecomputing.com:443/session/v1/login-request"
+        ),
+        errno=ER_FAILED_TO_CONNECT_TO_DB,
+        sqlstate="08001",
     )
-    assert SNOWFLAKE_ERRORS.classify(error).title == "Snowflake account not found"
+
+
+def test_a_login_endpoint_403_is_classified():
+    assert (
+        SNOWFLAKE_ERRORS.classify(_SqlAlchemyError(_bad_account_error())).title
+        == "Snowflake rejected the login endpoint request"
+    )
+
+
+def test_the_bad_account_errno_is_not_290404():
+    """Pins why the rule is keyed on the message: 290404 appears nowhere in the
+    connector, and this path's errno is 540001 only because ForbiddenError.__init__
+    adds ER_HTTP_GENERAL_ERROR to the errno it is passed."""
+    error = _bad_account_error()
+    assert error.errno != 290404
+    assert error.errno == ER_HTTP_GENERAL_ERROR + ER_FAILED_TO_CONNECT_TO_DB == 540001
+
+
+def test_a_login_endpoint_403_is_not_read_as_a_generic_auth_failure():
+    """The 403 path carries errno 540001, not the overloaded 250001, but the
+    message rule must still win regardless of ordering."""
+    assert SNOWFLAKE_ERRORS.classify(_SqlAlchemyError(_bad_account_error())).title != "Authentication failed"
 
 
 def test_mfa_required_beats_generic_auth():
