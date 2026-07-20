@@ -36,6 +36,7 @@ import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryLineagePipe
 import org.openmetadata.schema.metadataIngestion.DatabaseServiceQueryUsagePipeline;
 import org.openmetadata.schema.metadataIngestion.FilterPattern;
 import org.openmetadata.schema.metadataIngestion.LogLevels;
+import org.openmetadata.schema.metadataIngestion.MessagingServiceAutoClassificationPipeline;
 import org.openmetadata.schema.metadataIngestion.MessagingServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.MlmodelServiceMetadataPipeline;
 import org.openmetadata.schema.metadataIngestion.PipelineServiceMetadataPipeline;
@@ -90,6 +91,17 @@ public class CreateIngestionPipelineImpl {
     STORAGE_PIPELINE_MAP.put(
         PipelineType.AUTO_CLASSIFICATION,
         CreateIngestionPipelineImpl::getStorageServiceAutoClassificationPipeline);
+  }
+
+  private static final Map<PipelineType, Function<Map<String, FilterPattern>, Object>>
+      MESSAGING_PIPELINE_MAP = new HashMap<>();
+
+  static {
+    MESSAGING_PIPELINE_MAP.put(
+        PipelineType.METADATA, CreateIngestionPipelineImpl::getMessagingServiceMetadataPipeline);
+    MESSAGING_PIPELINE_MAP.put(
+        PipelineType.AUTO_CLASSIFICATION,
+        CreateIngestionPipelineImpl::getMessagingServiceAutoClassificationPipeline);
   }
 
   private static final Map<String, Function<Map<String, FilterPattern>, Object>>
@@ -333,6 +345,16 @@ public class CreateIngestionPipelineImpl {
                 pipelineType, STORAGE_PIPELINE_MAP.keySet()));
       }
       return mapper.apply(serviceDefaultFilters);
+    } else if (entityType.equals(MESSAGING_SERVICE)) {
+      Function<Map<String, FilterPattern>, Object> mapper =
+          MESSAGING_PIPELINE_MAP.get(pipelineType);
+      if (mapper == null) {
+        throw new IllegalArgumentException(
+            String.format(
+                "Messaging service does not support pipeline type '%s'. Supported types: %s",
+                pipelineType, MESSAGING_PIPELINE_MAP.keySet()));
+      }
+      return mapper.apply(serviceDefaultFilters);
     } else if (pipelineType.equals(PipelineType.METADATA)) {
       return SERVICE_TO_PIPELINE_MAP.get(entityType).apply(serviceDefaultFilters);
     } else {
@@ -394,6 +416,14 @@ public class CreateIngestionPipelineImpl {
       Map<String, FilterPattern> defaultFilters) {
     return new MessagingServiceMetadataPipeline()
         .withTopicFilterPattern(defaultFilters.get(TOPIC_FILTER_PATTERN));
+  }
+
+  private static MessagingServiceAutoClassificationPipeline
+      getMessagingServiceAutoClassificationPipeline(Map<String, FilterPattern> defaultFilters) {
+    return new MessagingServiceAutoClassificationPipeline()
+        .withTopicFilterPattern(defaultFilters.get(TOPIC_FILTER_PATTERN))
+        .withEnableAutoClassification(true)
+        .withStoreSampleData(false);
   }
 
   private static DashboardServiceMetadataPipeline getDashboardServiceMetadataPipeline(
