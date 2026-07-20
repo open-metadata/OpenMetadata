@@ -357,13 +357,13 @@ def get_stage_names(self, connection, schema, **kw):
 
 
 def get_semantic_view_names(self, connection, schema, **kw):
-    """Return all semantic view names in schema."""
+    """Return all semantic view names in schema from INFORMATION_SCHEMA.SEMANTIC_VIEWS."""
     parameters = {"schema": fqn.unquote_name(schema)}
     cursor = connection.execute(text(SNOWFLAKE_GET_SEMANTIC_VIEWS.format(**parameters)))
     result = SnowflakeTableList(
         tables=[
             SnowflakeTable(
-                name=self.normalize_name(row[1]),
+                name=self.normalize_name(row[0]),
                 deleted=None,
                 type_=TableType.SemanticView,
             )

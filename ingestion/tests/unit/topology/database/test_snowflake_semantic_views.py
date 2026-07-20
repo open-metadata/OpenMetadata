@@ -13,12 +13,17 @@
 
 from unittest.mock import Mock
 
+from sqlalchemy.sql.sqltypes import NullType
+
 from metadata.generated.schema.entity.data.table import TableType
 from metadata.generated.schema.entity.services.connections.database.snowflakeConnection import (
     SnowflakeConnection,
 )
 from metadata.ingestion.source.database.common_db_source import TableNameAndType
-from metadata.ingestion.source.database.snowflake.metadata import SnowflakeSource
+from metadata.ingestion.source.database.snowflake.metadata import (
+    SnowflakeSource,
+    _resolve_semantic_column_type,
+)
 from metadata.ingestion.source.database.snowflake.utils import (
     get_semantic_view_definition,
     get_semantic_view_names,
@@ -35,17 +40,17 @@ def test_include_semantic_views_defaults_to_false():
 
 
 def test_get_semantic_view_names_maps_rows_to_semantic_view_type():
-    # SHOW SEMANTIC VIEWS returns rows shaped (created_on, name, database, schema, ...)
+    # INFORMATION_SCHEMA.SEMANTIC_VIEWS discovery selects a single NAME column.
     rows = [
-        ("2026-01-01", "SALES_SEMANTIC", "DB", "PUBLIC"),
-        ("2026-01-02", "ORDERS_SEMANTIC", "DB", "PUBLIC"),
+        ("SALES_SEMANTIC",),
+        ("ORDERS_SEMANTIC",),
     ]
     connection = Mock()
     connection.execute.return_value = iter(rows)
 
     dialect = Mock()
     # get_semantic_view_names(dialect, ...) binds `dialect` as `self`, so
-    # `self.normalize_name(row[1])` calls this single-arg lambda with the name.
+    # `self.normalize_name(row[0])` calls this single-arg lambda with the name.
     dialect.normalize_name = lambda name: name
 
     result = get_semantic_view_names(dialect, connection, schema="PUBLIC")
@@ -75,11 +80,13 @@ def test_get_schema_definition_uses_semantic_view_definition():
     assert result == "CREATE SEMANTIC VIEW SALES_SEMANTIC ..."
 
 
-def test_semantic_view_has_no_columns():
+def test_semantic_view_columns_come_from_dimensions_facts_metrics():
     inspector = Mock()
+    self_mock = Mock()
+    self_mock._get_semantic_view_columns.return_value = [{"name": "CUSTOMER_NAME"}]
 
     result = SnowflakeSource._get_columns_internal(
-        Mock(),
+        self_mock,
         schema_name="PUBLIC",
         table_name="SALES_SEMANTIC",
         db_name="DB",
@@ -87,8 +94,61 @@ def test_semantic_view_has_no_columns():
         table_type=TableType.SemanticView,
     )
 
-    assert result == []
+    self_mock._get_semantic_view_columns.assert_called_once_with("PUBLIC", "SALES_SEMANTIC")
+    assert result == [{"name": "CUSTOMER_NAME"}]
     assert inspector.get_columns.call_count == 0
+
+
+def test_fetch_semantic_view_columns_merges_kinds_and_maps_types():
+    self_mock = Mock()
+    # (TABLE_NAME, NAME, DATA_TYPE, EXPRESSION, COMMENT, SYNONYMS)
+    dimension_rows = [
+        ("CUSTOMERS", "CUSTOMER_NAME", "VARCHAR(100)", "customers.c_name", "the name", None),
+    ]
+    fact_rows = [
+        ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "orders.o_totalprice", None, None),
+    ]
+    metric_rows = [
+        # same name as the fact -> kinds must merge onto one column
+        ("ORDERS", "LINE_AMOUNT", "NUMBER(12,2)", "SUM(orders.line_amount)", None, None),
+        ("ORDERS", "ORDER_COUNT", "NUMBER", "COUNT(orders.o_orderkey)", None, None),
+    ]
+    self_mock.connection.execute.side_effect = [
+        iter(dimension_rows),
+        iter(fact_rows),
+        iter(metric_rows),
+    ]
+
+    columns = SnowflakeSource._fetch_semantic_view_columns(self_mock, "PUBLIC", "SALES_SEMANTIC")
+
+    by_name = {c["name"]: c for c in columns}
+    assert set(by_name) == {"CUSTOMER_NAME", "LINE_AMOUNT", "ORDER_COUNT"}
+
+    dimension = by_name["CUSTOMER_NAME"]
+    assert dimension["comment"].startswith("[Dimension]")
+    assert "Logical table: CUSTOMERS." in dimension["comment"]
+    assert "Expression: customers.c_name." in dimension["comment"]
+    assert dimension["system_data_type"] == "VARCHAR(100)"
+
+    # LINE_AMOUNT appears as both a fact and a metric -> both kinds on one column
+    assert by_name["LINE_AMOUNT"]["comment"].startswith("[Fact, Metric]")
+
+
+def test_get_semantic_view_columns_swallows_errors():
+    self_mock = Mock()
+    self_mock._fetch_semantic_view_columns.side_effect = Exception("SEMANTIC_DIMENSIONS not found")
+
+    result = SnowflakeSource._get_semantic_view_columns(self_mock, "PUBLIC", "SALES_SEMANTIC")
+
+    assert result == []
+
+
+def test_resolve_semantic_column_type_maps_known_and_falls_back():
+    assert _resolve_semantic_column_type("NUMBER(38,0)").__class__.__name__ != "NullType"
+    assert _resolve_semantic_column_type("VARCHAR(100)").__class__.__name__ != "NullType"
+    # Unknown/exotic base types fall back to NullType (OpenMetadata -> UNKNOWN)
+    assert isinstance(_resolve_semantic_column_type("SOME_EXOTIC_TYPE"), NullType)
+    assert isinstance(_resolve_semantic_column_type(None), NullType)
 
 
 def test_query_table_names_includes_semantic_views_when_enabled():
