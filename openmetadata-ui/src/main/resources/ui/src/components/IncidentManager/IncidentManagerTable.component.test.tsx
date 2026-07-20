@@ -77,6 +77,13 @@ jest.mock('@openmetadata/ui-core-components', () => {
   );
 
   return {
+    Box: jest.fn().mockImplementation(({ children }) => <div>{children}</div>),
+    EmptyPlaceholder: jest.fn().mockImplementation(({ title, description }) => (
+      <div data-testid="empty-placeholder">
+        <span>{title}</span>
+        <span>{description}</span>
+      </div>
+    )),
     Skeleton: jest
       .fn()
       .mockImplementation(() => <div data-testid="skeleton" />),
@@ -224,7 +231,8 @@ describe('IncidentManagerTable', () => {
       testCaseListData: { data: [], isLoading: false },
     });
 
-    expect(screen.getByTestId('filter-table-placeholder')).toBeInTheDocument();
+    expect(screen.getByTestId('empty-placeholder')).toBeInTheDocument();
+    expect(screen.getByText('message.no-active-incidents')).toBeInTheDocument();
     expect(
       screen.queryByTestId('test-case-test_case_1')
     ).not.toBeInTheDocument();
@@ -239,9 +247,7 @@ describe('IncidentManagerTable', () => {
     });
 
     expect(screen.getAllByTestId('skeleton').length).toBeGreaterThan(0);
-    expect(
-      screen.queryByTestId('filter-table-placeholder')
-    ).not.toBeInTheDocument();
+    expect(screen.queryByTestId('empty-placeholder')).not.toBeInTheDocument();
   });
 
   it('should render NextPrevious when showPagination is true', () => {

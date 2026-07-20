@@ -1,6 +1,11 @@
 package org.openmetadata.service.rdf.semantic;
 
-import java.util.*;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.stream.Collectors;
 import lombok.Getter;
@@ -170,6 +175,7 @@ public class SemanticSearchEngine {
         String sparql =
             """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
           SELECT ?predicate ?object ?objectType
           WHERE {
             <%s> ?predicate ?object .
@@ -180,7 +186,8 @@ public class SemanticSearchEngine {
           """
                 .formatted(getEntityUri(result.getEntity()));
 
-        List<Map<String, String>> relationships = rdfRepository.executeSparqlQueryAsJson(sparql);
+        List<Map<String, String>> relationships =
+            rdfRepository.executeSparqlQueryDirectAsJson(sparql);
 
         // Boost score based on relevant relationships
         double contextBoost = calculateContextBoost(relationships, query);
@@ -213,18 +220,38 @@ public class SemanticSearchEngine {
         String sparql =
             """
           PREFIX om: <https://open-metadata.org/ontology/>
+          PREFIX prov: <http://www.w3.org/ns/prov#>
           SELECT ?related ?type ?relationship
           WHERE {
-            <%s> ?relationship ?related .
+            {
+              <%s> ?relationship ?related .
+              FILTER(?relationship IN (om:relatedTo, om:similarTo))
+            } UNION {
+              <%s> (prov:wasDerivedFrom|^om:UPSTREAM)+ ?related .
+              BIND(prov:wasDerivedFrom AS ?relationship)
+            } UNION {
+              <%s> (om:UPSTREAM|^prov:wasDerivedFrom)+ ?related .
+              BIND(om:UPSTREAM AS ?relationship)
+            } UNION {
+              <%s> (om:belongsTo/om:inDomain|om:belongsTo/om:hasGlossaryTerm) ?related .
+              BIND(om:relatedTo AS ?relationship)
+            } UNION {
+              <%s> (^om:owns|^prov:used) ?related .
+              BIND(om:relatedTo AS ?relationship)
+            }
             ?related a ?type .
-            FILTER(?relationship IN (om:relatedTo, om:similarTo, om:derivedFrom))
           }
+          LIMIT 100
           """
-                .formatted(getEntityUri(result.getEntity()));
+                .formatted(
+                    getEntityUri(result.getEntity()),
+                    getEntityUri(result.getEntity()),
+                    getEntityUri(result.getEntity()),
+                    getEntityUri(result.getEntity()),
+                    getEntityUri(result.getEntity()));
 
-        // Execute with custom inference rules
         List<Map<String, String>> inferenceResults =
-            rdfRepository.executeSparqlQueryWithInferenceAsJson(sparql, "custom");
+            rdfRepository.executeSparqlQueryDirectAsJson(sparql);
 
         for (Map<String, String> row : inferenceResults) {
           String relatedUri = row.get("related");
@@ -232,7 +259,8 @@ public class SemanticSearchEngine {
 
           if (relatedUri != null && relationType != null) {
             // Extract relationship type from URI
-            String relationName = relationType.substring(relationType.lastIndexOf("#") + 1);
+            int separator = Math.max(relationType.lastIndexOf('#'), relationType.lastIndexOf('/'));
+            String relationName = relationType.substring(separator + 1);
 
             // Create inferred result
             EntityReference related = getEntityFromUri(relatedUri);
