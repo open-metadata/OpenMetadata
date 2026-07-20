@@ -756,11 +756,9 @@ public class MigrationUtil {
         taskJson.put("updatedBy", updatedBy);
         taskJson.put("deleted", false);
         taskJson.put("version", 0.1);
-        // Migrate posts -> comments and carry over thread reactions.
+        // Migrate posts -> comments (per-post reactions ride along in taskComment.reactions).
+        // Task has no top-level reactions field, so thread-level reactions are not carried over.
         migrateThreadPostsToComments(threadJson, taskJson);
-        if (threadJson.has("reactions") && threadJson.get("reactions").isArray()) {
-          taskJson.set("reactions", threadJson.get("reactions"));
-        }
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         // Resolution for closed tasks: keep resolvedBy from the legacy closedBy.
