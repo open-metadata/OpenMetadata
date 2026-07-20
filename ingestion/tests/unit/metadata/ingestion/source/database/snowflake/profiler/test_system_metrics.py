@@ -596,6 +596,10 @@ def isolated_parse_query_cache():
         ),
         # --- Trailing parenthesised column list stripped ---
         (
+            "INSERT INTO my_table(col1) VALUES (1)",
+            "my_table",
+        ),
+        (
             "INSERT INTO my_table(col1, col2) VALUES (1, 2)",
             "my_table",
         ),

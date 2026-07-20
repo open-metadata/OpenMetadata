@@ -43,7 +43,7 @@ RESULT_SCAN = """
     SELECT *
     FROM TABLE(RESULT_SCAN('{query_id}'));
     """
-QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'()]+)(?=\s|;|$)"  # pylint: disable=line-too-long
+QUERY_PATTERN = r"(?:(INSERT\s*INTO\s*|INSERT\s*OVERWRITE\s*INTO\s*|UPDATE\s*|MERGE\s*INTO\s*|DELETE\s*FROM\s*))([\w._\"\'(),]+)(?=\s|;|$)"  # pylint: disable=line-too-long
 IDENTIFIER_PATTERN = r"(IDENTIFIER\(\')([\w._\"]+)(\'\))"
 
 
