@@ -2290,11 +2290,15 @@ public class MigrationUtil {
       boolean succeeded = true;
       try {
         String recordFQN = task.getAbout() == null ? null : task.getAbout().getFullyQualifiedName();
-        if (recordFQN != null) {
+        UUID stateId = incidentStateIdFromPayload(task);
+        if (recordFQN != null && stateId != null) {
           TestCaseResolutionStatusRepository incidentRepository =
               (TestCaseResolutionStatusRepository)
                   Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-          TestCaseResolutionStatus latest = incidentRepository.getLatestRecord(recordFQN);
+          // Key off the incident's own stateId, not the test case's global latest: the migration
+          // starts a fresh workflow that writes a newer "New" record for the same test case, which
+          // would otherwise mask the pre-upgrade Ack/Assigned state we need to replay.
+          TestCaseResolutionStatus latest = incidentRepository.getLatestRecordForStateId(stateId);
           if (latest != null
               && incidentRepository.applyLegacyStatusToIncidentTask(latest, recordFQN)) {
             LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
@@ -2308,6 +2312,18 @@ public class MigrationUtil {
         succeeded = false;
       }
       return succeeded;
+    }
+
+    private UUID incidentStateIdFromPayload(Task task) {
+      UUID stateId = null;
+      if (task.getPayload() != null) {
+        Map<String, Object> payload = JsonUtils.readOrConvertValue(task.getPayload(), Map.class);
+        Object rawId = payload == null ? null : payload.get("testCaseResolutionStatusId");
+        if (rawId != null) {
+          stateId = UUID.fromString(rawId.toString());
+        }
+      }
+      return stateId;
     }
 
     private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
