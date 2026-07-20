@@ -459,28 +459,40 @@ public class TaskRepository extends EntityRepository<Task> {
   }
 
   private List<EntityReference> expandTeamsToUsers(List<EntityReference> refs) {
-    List<EntityReference> result = new ArrayList<>();
+    List<EntityReference> expanded = new ArrayList<>();
     for (EntityReference ref : refs) {
-      if (!Entity.TEAM.equals(ref.getType())) {
-        result.add(ref);
-        continue;
-      }
-      try {
-        Team team = Entity.getEntity(Entity.TEAM, ref.getId(), "users", Include.NON_DELETED);
-        if (!nullOrEmpty(team.getUsers())) {
-          result.addAll(team.getUsers());
-        }
-        // A team with no members intentionally contributes no assignees: for workflow-managed tasks
-        // (e.g. Data Access Requests) an empty assignee list triggers the node's
-        // emptyAssigneeStrategy
-        // (assignAdmins) in SetApprovalAssigneesImpl, so it routes to platform admins rather than
-        // being pinned to a member-less team.
-      } catch (Exception e) {
-        LOG.debug(
-            "Failed to expand team {} to users: {}", ref.getFullyQualifiedName(), e.getMessage());
+      if (Entity.TEAM.equals(ref.getType())) {
+        appendTeamMembers(ref, expanded);
+      } else {
+        expanded.add(ref);
       }
     }
-    return result;
+    return dedupById(expanded);
+  }
+
+  private void appendTeamMembers(EntityReference teamRef, List<EntityReference> expanded) {
+    try {
+      Team team = Entity.getEntity(Entity.TEAM, teamRef.getId(), "users", Include.NON_DELETED);
+      if (!nullOrEmpty(team.getUsers())) {
+        expanded.addAll(team.getUsers());
+      }
+      // A team with no members intentionally contributes no assignees: for workflow-managed tasks
+      // (e.g. Data Access Requests) an empty assignee list triggers the node's
+      // emptyAssigneeStrategy (assignAdmins) in SetApprovalAssigneesImpl, so it routes to
+      // platform admins rather than being pinned to a member-less team.
+    } catch (Exception e) {
+      LOG.debug(
+          "Failed to expand team {} to users: {}", teamRef.getFullyQualifiedName(), e.getMessage());
+    }
+  }
+
+  // Dedup by id so a user who is both a direct owner and a member of an owning team — or a member
+  // of two owning teams — appears once in the task's assignees. LinkedHashMap preserves insertion
+  // order so the original owner-list order carries through.
+  static List<EntityReference> dedupById(List<EntityReference> refs) {
+    Map<UUID, EntityReference> byId = new LinkedHashMap<>();
+    refs.forEach(ref -> byId.putIfAbsent(ref.getId(), ref));
+    return new ArrayList<>(byId.values());
   }
 
   /**
