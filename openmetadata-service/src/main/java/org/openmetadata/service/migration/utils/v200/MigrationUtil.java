@@ -1487,26 +1487,37 @@ public class MigrationUtil {
   }
 
   /**
-   * Resolve a legacy username to a user {@code entityReference} (as JSON), mirroring
-   * {@link TaskWorkflow#resolveUserReference} instead of reinventing the lookup:
-   * {@code getEntityReferenceByName(..., Include.ALL)} preserves a soft-deleted user's real id, and
-   * the unresolvable case (hard-deleted / "system" / missing name) falls back to the real admin
-   * user — never a fabricated id. Returns null only if even admin cannot be resolved.
+   * Canonical legacy-username -&gt; user {@link EntityReference} resolver, shared by both migration
+   * paths (the raw-SQL static path via {@link #buildUserRef}, and {@code TaskWorkflow} which
+   * delegates here). {@code getEntityReferenceByName(..., Include.ALL)} keeps a soft-deleted user's
+   * real id; the unresolvable case (hard-deleted / "system" / missing name) falls back to the real
+   * admin user — never a fabricated id. Throws only if even admin cannot be resolved.
    */
-  private static ObjectNode buildUserRef(String userName) {
-    if (userName != null && !userName.isEmpty() && !"system".equals(userName)) {
-      try {
-        return userRefToJson(Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL));
-      } catch (Exception e) {
-        LOG.debug(
-            "Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
-      }
+  static EntityReference resolveUserReference(String userName) {
+    if (nullOrEmpty(userName)) {
+      return resolveAdminReference();
     }
     try {
-      return userRefToJson(
-          Entity.getEntityReferenceByName(Entity.USER, "admin", Include.NON_DELETED));
+      return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
     } catch (Exception e) {
-      LOG.warn("Could not resolve admin user for migration author fallback: {}", e.getMessage());
+      LOG.debug("Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
+      return resolveAdminReference();
+    }
+  }
+
+  private static EntityReference resolveAdminReference() {
+    return Entity.getEntityReferenceByName(Entity.USER, "admin", Include.ALL);
+  }
+
+  /**
+   * JSON-shaped {@link #resolveUserReference} for the static path (which builds task JSON, not
+   * POJOs). Returns null only if even the admin fallback cannot be resolved.
+   */
+  private static ObjectNode buildUserRef(String userName) {
+    try {
+      return userRefToJson(resolveUserReference(userName));
+    } catch (Exception e) {
+      LOG.warn("Could not resolve a user reference for '{}': {}", userName, e.getMessage());
       return null;
     }
   }
@@ -2317,20 +2328,7 @@ public class MigrationUtil {
     }
 
     private EntityReference resolveUserReference(String userName) {
-      if (nullOrEmpty(userName)) {
-        return getAdminReference();
-      }
-
-      try {
-        return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
-      } catch (Exception e) {
-        LOG.debug("Unable to resolve user '{}': {}", userName, e.getMessage());
-        return getAdminReference();
-      }
-    }
-
-    private EntityReference getAdminReference() {
-      return Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+      return MigrationUtil.resolveUserReference(userName);
     }
 
     private void upsertTaskMigrationMapping(UUID oldThreadId, UUID newTaskId) {
