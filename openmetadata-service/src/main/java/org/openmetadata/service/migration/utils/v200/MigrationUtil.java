@@ -1628,15 +1628,16 @@ public class MigrationUtil {
    * falls back to the admin user, never a fabricated id. Throws only if admin is also unresolvable.
    */
   static EntityReference resolveUserReference(String userName) {
-    if (nullOrEmpty(userName)) {
-      return resolveAdminReference();
+    EntityReference reference = null;
+    if (!nullOrEmpty(userName)) {
+      try {
+        reference = Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+      } catch (Exception e) {
+        LOG.debug(
+            "Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
+      }
     }
-    try {
-      return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
-    } catch (Exception e) {
-      LOG.debug("Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
-      return resolveAdminReference();
-    }
+    return reference != null ? reference : resolveAdminReference();
   }
 
   private static EntityReference resolveAdminReference() {
@@ -1648,12 +1649,13 @@ public class MigrationUtil {
    * POJOs). Returns null only if even the admin fallback cannot be resolved.
    */
   private static ObjectNode buildUserRef(String userName) {
+    ObjectNode ref = null;
     try {
-      return userRefToJson(resolveUserReference(userName));
+      ref = userRefToJson(resolveUserReference(userName));
     } catch (Exception e) {
       LOG.warn("Could not resolve a user reference for '{}': {}", userName, e.getMessage());
-      return null;
     }
+    return ref;
   }
 
   private static ObjectNode userRefToJson(EntityReference ref) {
@@ -1672,26 +1674,34 @@ public class MigrationUtil {
     ArrayNode comments = JsonUtils.getObjectNode().arrayNode();
     if (posts != null && posts.isArray()) {
       for (JsonNode post : posts) {
-        if (!post.has("message")) {
-          continue;
+        ObjectNode comment = buildTaskComment(post);
+        if (comment != null) {
+          comments.add(comment);
         }
-        ObjectNode author = buildUserRef(post.path("from").asText(null));
-        if (author == null) {
-          continue;
-        }
-        ObjectNode comment = JsonUtils.getObjectNode();
-        comment.put("id", post.has("id") ? post.get("id").asText() : UUID.randomUUID().toString());
-        comment.put("message", post.get("message").asText());
-        comment.set("author", author);
-        comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : 0);
-        if (post.has("reactions") && post.get("reactions").isArray()) {
-          comment.set("reactions", post.get("reactions"));
-        }
-        comments.add(comment);
       }
     }
     taskJson.set("comments", comments);
     taskJson.put("commentCount", comments.size());
+  }
+
+  /**
+   * Build a {@code taskComment} from a legacy post, or {@code null} to skip it (no message, or an
+   * author that cannot be resolved even to the admin fallback). Per-post reactions are carried over.
+   */
+  private static ObjectNode buildTaskComment(JsonNode post) {
+    ObjectNode comment = null;
+    ObjectNode author = post.has("message") ? buildUserRef(post.path("from").asText(null)) : null;
+    if (author != null) {
+      comment = JsonUtils.getObjectNode();
+      comment.put("id", post.has("id") ? post.get("id").asText() : UUID.randomUUID().toString());
+      comment.put("message", post.get("message").asText());
+      comment.set("author", author);
+      comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : 0);
+      if (post.has("reactions") && post.get("reactions").isArray()) {
+        comment.set("reactions", post.get("reactions"));
+      }
+    }
+    return comment;
   }
 
   /**
@@ -2239,36 +2249,43 @@ public class MigrationUtil {
 
     private boolean startWorkflowInstanceForTask(Task task) {
       boolean started = false;
-      var workflowBinding =
+      var binding =
           TaskWorkflowLifecycleResolver.resolveBinding(
               task.getType(), task.getCategory(), task.getPayload());
-      WorkflowDefinition workflowDefinition =
-          workflowBinding.isEmpty()
+      WorkflowDefinition definition =
+          binding.isEmpty()
               ? null
               : workflowDefinitionRepository.findByNameOrNull(
-                  workflowBinding.get().workflowDefinitionRef(), Include.NON_DELETED);
-      if (workflowDefinition != null) {
-        Map<String, Object> variables = new LinkedHashMap<>();
-        variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
-        variables.put(
-            getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
-            EntityUtil.buildEntityLink(
-                task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
-        variables.put(
-            getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
-        variables.put("workflowDefinitionId", workflowDefinition.getId().toString());
-        if (workflowBinding.get().schema() != null
-            && workflowBinding.get().schema().getId() != null) {
-          variables.put("taskFormSchemaId", workflowBinding.get().schema().getId().toString());
-          variables.put("taskFormSchemaVersion", workflowBinding.get().schema().getVersion());
-        }
+                  binding.get().workflowDefinitionRef(), Include.NON_DELETED);
+      if (definition != null) {
         workflowHandler.triggerByKey(
-            getTriggerWorkflowId(workflowDefinition.getFullyQualifiedName()),
+            getTriggerWorkflowId(definition.getFullyQualifiedName()),
             task.getId().toString(),
-            variables);
+            buildBackfillWorkflowVariables(task, binding.get(), definition));
         started = true;
       }
       return started;
+    }
+
+    private Map<String, Object> buildBackfillWorkflowVariables(
+        Task task,
+        TaskWorkflowLifecycleResolver.TaskWorkflowBinding binding,
+        WorkflowDefinition definition) {
+      Map<String, Object> variables = new LinkedHashMap<>();
+      variables.putAll(TaskWorkflowLifecycleResolver.buildWorkflowStartVariables(task));
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, RELATED_ENTITY_VARIABLE),
+          EntityUtil.buildEntityLink(
+              task.getAbout().getType(), task.getAbout().getFullyQualifiedName()));
+      variables.put(
+          getNamespacedVariableName(GLOBAL_NAMESPACE, UPDATED_BY_VARIABLE), task.getUpdatedBy());
+      variables.put("workflowDefinitionId", definition.getId().toString());
+      var schema = binding.schema();
+      if (schema != null && schema.getId() != null) {
+        variables.put("taskFormSchemaId", schema.getId().toString());
+        variables.put("taskFormSchemaVersion", schema.getVersion());
+      }
+      return variables;
     }
 
     private boolean replayMigratedIncidentState(Task task) {
