@@ -190,7 +190,12 @@ export const ENDPOINT_TO_EXPLORE_TAB_MAP: Record<string, string> = {
   [EntityTypeEndpoint.DataModel]: 'Dashboard Data Models',
   [EntityTypeEndpoint.DATA_PRODUCT]: 'Data Products',
   [EntityTypeEndpoint.GlossaryTerm]: 'Glossary Terms',
-  [EntityTypeEndpoint.Chart]: 'Charts',
+  // Chart is intentionally omitted: unlike every other entry here it is not a
+  // global-search scope (absent from ENDPOINT_TO_FILTER_MAP and the global
+  // search selector / getGlobalSearchOptions), so openEntitySummaryPanel cannot
+  // force-select a "Charts" Explore tab for it. Leaving it out makes the helper
+  // locate the chart by its FQN result card instead, which does not depend on a
+  // Charts tab being present.
   [EntityTypeEndpoint.METRIC]: 'Metrics',
   [EntityTypeEndpoint.Tag]: 'Tags',
 };
