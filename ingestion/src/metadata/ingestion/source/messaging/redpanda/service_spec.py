@@ -4,7 +4,7 @@ from metadata.sampler.messaging.redpanda.sampler import RedpandaSampler
 from metadata.utils.service_spec import BaseSpec
 
 ServiceSpec = BaseSpec(
-    metadata_source_class=RedpandaSource,
-    connection_class=RedpandaConnection,
-    sampler_class=RedpandaSampler,
-)  # pyright: ignore[reportArgumentType]
+    metadata_source_class=RedpandaSource,  # pyright: ignore[reportArgumentType]
+    connection_class=RedpandaConnection,  # pyright: ignore[reportArgumentType]
+    sampler_class=RedpandaSampler,  # pyright: ignore[reportArgumentType]
+)
