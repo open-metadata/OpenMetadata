@@ -264,7 +264,7 @@ export const getAgentRunningStatusMessage = (
       break;
   }
 
-  if (!isLoading && isEmpty(agentsInfo)) {
+  if (!isLoading && isEmpty(agentsInfo) && !status) {
     message = t('message.auto-pilot-no-agents-message');
   }
 

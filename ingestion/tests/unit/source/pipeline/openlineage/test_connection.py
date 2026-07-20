@@ -25,13 +25,15 @@ def test_openlineage_connection_is_base_connection():
     assert issubclass(OpenLineageConnection, BaseConnection)
 
 
-def test_get_client_delegates_to_get_connection():
-    with patch(f"{CONNECTION_MODULE}.get_connection") as mock_get:
-        conn = OpenLineageConnection(MagicMock())
+def test_get_client_builds_client():
+    service_connection = MagicMock()
+    service_connection.brokerConfig = MagicMock(spec=KafkaBrokerConfig)
+    with patch(f"{CONNECTION_MODULE}._get_kafka_connection") as mock_kafka:
+        conn = OpenLineageConnection(service_connection)
         client = conn.client
 
-    assert client is mock_get.return_value
-    mock_get.assert_called_once_with(conn.service_connection)
+    assert client is mock_kafka.return_value
+    mock_kafka.assert_called_once_with(service_connection.brokerConfig)
 
 
 def test_test_connection_runs_steps():

@@ -133,7 +133,13 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
   default: jest
     .fn()
     .mockImplementation(
-      ({ testCases, isLoading, onTestUpdate, tableHeader }) => (
+      ({
+        testCases,
+        isLoading,
+        onTestUpdate,
+        tableHeader,
+        emptyStateAction,
+      }) => (
         <div data-testid="data-quality-tab">
           {tableHeader}
           <span data-testid="test-case-count">{testCases?.length ?? 0}</span>
@@ -151,6 +157,13 @@ jest.mock('../../Database/Profiler/DataQualityTab/DataQualityTab', () => ({
             }>
             Update Test
           </button>
+          {emptyStateAction && (
+            <button
+              data-testid={`empty-state-action-${emptyStateAction.key}`}
+              onClick={emptyStateAction.onPress}>
+              {emptyStateAction.label}
+            </button>
+          )}
         </div>
       )
     ),
@@ -167,6 +180,8 @@ jest.mock('../../common/ErrorWithPlaceholder/ErrorPlaceHolder', () => ({
     )),
 }));
 
+const mockOnAddTestCase = jest.fn();
+
 const mockDataQualityContext = {
   isTestCaseSummaryLoading: false,
   testCaseSummary: {
@@ -176,6 +191,10 @@ const mockDataQualityContext = {
     aborted: 2,
   },
   activeTab: DataQualityPageTabs.TEST_CASES,
+  createActions: {
+    canCreateTestCase: true,
+    onAddTestCase: mockOnAddTestCase,
+  },
 };
 
 jest.mock('../../../pages/DataQuality/DataQualityProvider', () => {
@@ -694,6 +713,20 @@ describe('TestCases component', () => {
       await waitFor(() => {
         expect(screen.getByTestId('test-case-count')).toHaveTextContent('3');
       });
+    });
+
+    it('should wire the New Test Case empty-state action from DataQualityContext to DataQualityTab', async () => {
+      render(<TestCases />);
+
+      const actionButton = await screen.findByTestId(
+        'empty-state-action-new-test-case'
+      );
+
+      expect(actionButton).toHaveTextContent('label.new-entity');
+
+      fireEvent.click(actionButton);
+
+      expect(mockOnAddTestCase).toHaveBeenCalledTimes(1);
     });
   });
 

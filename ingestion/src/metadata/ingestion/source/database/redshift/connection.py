@@ -38,7 +38,8 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.checks.summary import count
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
@@ -227,17 +228,12 @@ def _sqlstate(*codes: str) -> Matcher:
     return lambda error: _pgcode(error) in wanted
 
 
-def _message(error: BaseException) -> str:
-    """The lower-cased text of the error and its cause chain."""
-    return " ".join(str(current) for current in exception_chain(error)).lower()
-
-
 def _database_not_found(error: BaseException) -> bool:
     """Redshift reports a missing database at connect time as
     ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
     ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
     a missing relation) is not misread as a missing database."""
-    text_ = _message(error)
+    text_ = chain_text(error)
     return 'database "' in text_ and "does not exist" in text_
 
 
@@ -256,10 +252,9 @@ REDSHIFT_ERRORS = ErrorPack(
         "Authentication failed",
         fix="Check the username and password, and that the user is allowed to connect.",
     ),
-    when(_sqlstate("28000", "28P01")).diagnose(  # invalid_authorization / invalid_password
-        "Authentication failed",
-        fix="Check the username and password, and that the user is allowed to connect.",
-    ),
+    # No _sqlstate("28000", "28P01") rule: those are connect-phase codes, and libpq
+    # reports a failed connection with no PGresult, so .pgcode is None (verified on
+    # PostgreSQL 15). The message rule above is what catches auth failures.
     when(_database_not_found).diagnose(
         "Database not found",
         fix="Verify the configured database exists and the user is allowed to connect to it.",
@@ -303,11 +298,13 @@ def _summarize_queries(instance_type: RedshiftInstanceType, rows: Sequence[Row])
 
 
 def _summarize_databases(rows: Sequence[Row]) -> str:
-    """``N databases reachable`` - suffixed ``+`` when the row sample is capped, so a
-    cluster with more than ``DEFAULT_SAMPLE_ROWS`` databases is not reported as an
-    exact total (``run_sql`` only fetches up to that many rows)."""
-    suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
-    return f"{len(rows)}{suffix} databases reachable"
+    """``N databases reachable`` - ``N+`` when the row sample is capped, so a cluster
+    with more than ``DEFAULT_SAMPLE_ROWS`` databases is not reported as an exact
+    total (``run_sql`` only fetches up to that many rows).
+
+    Redshift says "reachable" rather than "enumerated": the probe proves the
+    cluster answers for each database, which is the thing in doubt here."""
+    return f"{count(len(rows), 'database', DEFAULT_SAMPLE_ROWS)} reachable"
 
 
 class RedshiftChecks:
