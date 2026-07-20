@@ -83,10 +83,10 @@ generated_files = glob.glob(f"{ingestion_path}src/metadata/generated/schema/**/*
 patterns_to_remove = [
     "pattern='^((?!::).)*$',",
     "pattern='^((?!::).)*$'",
-    "pattern='^((?!::)[^><\"|\\\\x00-\\\\x1f])*$',",
-    "pattern='^((?!::)[^><\"|\\\\x00-\\\\x1f])*$'",
-    r"pattern='^((?!::)[^><\"|\\x00-\\x1f])*$',",
-    r"pattern='^((?!::)[^><\"|\\x00-\\x1f])*$'",
+    "pattern='^((?!::)[^>\"\\\\x00-\\\\x1f])*$',",
+    "pattern='^((?!::)[^>\"\\\\x00-\\\\x1f])*$'",
+    r"pattern='^((?!::)[^>\"\\x00-\\x1f])*$',",
+    r"pattern='^((?!::)[^>\"\\x00-\\x1f])*$'",
 ]
 
 for file_path in generated_files:

@@ -24,11 +24,11 @@ export const UrlEntityCharRegEx = /[#.%;?/\\]/g;
 export const EMAIL_REG_EX = /^\S+@\S+\.\S+$/;
 
 /**
- * Validates entity names. Blocks reserved FQN separator characters (::, >, <, ", |)
+ * Validates entity names. Blocks reserved FQN separator characters (::, >, ")
  * and ASCII control characters. Supports Unicode characters.
  */
 // eslint-disable-next-line no-control-regex
-export const ENTITY_NAME_REGEX = /^((?!::)[^><"|\u0000-\u001f])*$/;
+export const ENTITY_NAME_REGEX = /^((?!::)[^>"\u0000-\u001f])*$/;
 
 /**
  * Custom property name validation:
@@ -43,7 +43,7 @@ export const CUSTOM_PROPERTY_NAME_REGEX =
 
 /**
  * Validates test case names. Reuses ENTITY_NAME_REGEX to stay in sync
- * with the backend's testCaseEntityName pattern (blocks ::, ><"|, and
+ * with the backend's testCaseEntityName pattern (blocks ::, >", and
  * ASCII control characters).
  */
 export const TEST_CASE_NAME_REGEX = ENTITY_NAME_REGEX;
