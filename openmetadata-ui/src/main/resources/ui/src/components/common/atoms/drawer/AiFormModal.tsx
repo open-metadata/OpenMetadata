@@ -21,7 +21,6 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle, Lightbulb05 } from '@untitledui/icons';
-import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -189,30 +188,18 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 : WIDTH_NO_HINT_COLUMN
             }
             onClose={onClose}>
-            {/* Shadow rather than a rule, per design. Values are the drawer
-                chrome's from `styles/components/drawer.less`
-                (`.custom-drawer-style`), so this modal is bounded the same way
-                the classic drawer is — that file also sets
-                `.ant-drawer-header { border-bottom: none }`, i.e. the shadow
-                replaces the rule rather than joining it.
+            {/* No separator between header and body. A 1px rule in
+                border-secondary was too faint to read against the near-white
+                form column, and the drawer's shadow either vanished at its own
+                0.04 alpha or, raised to 0.1, spread as a smudge across two
+                columns with different backgrounds. Left plain pending a call
+                with design against the Figma.
 
-                Spelled out rather than taken from the `--shadow-*` scale
-                because every token in it casts downward and the footer has to
-                cast up; keeping both literal keeps the pair symmetrical.
-
-                Alpha is raised from the drawer's 0.04 to 0.1. At 0.04 over a
-                white form column the shadow peaks at rgb(245,245,246) — about
-                1.04:1, which is not visible. The drawer gets away with it
-                because its body is grey behind a white header, so the
-                background does the separating; here both sides are near-white
-                and the shadow is all there is. Offsets and blur are the
-                drawer's, so it still reads as the same chrome.
-
-                `relative z-10` lifts the header over the scrolling body, which
-                would otherwise paint across the shadow — the footer already
-                carries z-10 for that reason. Dialog.Header ships no bottom
-                padding, so `pb` keeps the subtitle off it. */}
-            <Dialog.Header className="tw:relative tw:z-10 tw:pb-4 tw:shadow-[0px_9px_16px_-4px_rgba(10,13,18,0.1)]">
+                Dialog.Header ships no bottom padding, so the body would sit
+                flush against the title. Just enough to separate them — the
+                body's own top padding provides the rest of the breathing
+                room. */}
+            <Dialog.Header className={hasHintColumn ? 'tw:pb-1' : undefined}>
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
@@ -297,14 +284,8 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 columns and the footer here — the hint column visibly stops
                 short of it. The columns already run to the modal's edges, so
                 the footer sits directly against them. */}
-            {/* border-t-0 drops Dialog's own rule: the shadow is doing that job
-                now, and leaving both would read as a double edge against the
-                header, which has no rule. */}
             <Dialog.Footer
-              className={classNames(
-                'tw:border-t-0 tw:shadow-[0px_-13px_16px_-4px_rgba(10,13,18,0.1),0px_-4px_6px_-2px_rgba(10,13,18,0.1)]',
-                { 'tw:mt-0 tw:sm:mt-0': hasHintColumn }
-              )}>
+              className={hasHintColumn ? 'tw:mt-0 tw:sm:mt-0' : undefined}>
               <Button
                 color="secondary"
                 data-testid={cancelTestId}
