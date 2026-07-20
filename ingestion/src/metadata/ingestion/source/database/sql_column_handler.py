@@ -162,7 +162,6 @@ class SqlColumnHandlerMixin:
     def _get_columns_with_constraints(
         schema_name: str, table_name: str, inspector: Inspector
     ) -> Tuple[List, List, List]:  # noqa: UP006
-        pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
         try:
             unique_constraints = inspector.get_unique_constraints(table_name, schema_name)
         except NotImplementedError:
@@ -174,9 +173,16 @@ class SqlColumnHandlerMixin:
             foreign_constraints = inspector.get_foreign_keys(table_name, schema_name)
         except NotImplementedError:
             logger.debug(
-                "Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+                f"Cannot obtain foreign constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
             foreign_constraints = []
+        try:
+            pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
+        except (NotImplementedError, KeyError):
+            logger.debug(
+                f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
+            )
+            pk_constraints = {}
 
         pk_columns = (
             pk_constraints.get("constrained_columns")
