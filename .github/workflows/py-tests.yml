@@ -97,7 +97,6 @@ jobs:
     if: ${{ needs.changes.outputs.python == 'true' }}
     timeout-minutes: 60
     runs-on: ubuntu-latest
-    environment: ${{ github.event.pull_request.head.repo.fork && 'fork-pr-ci' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -106,8 +105,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-          allow-unsafe-pr-checkout: true
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup Openmetadata Test Environment
         uses: ./.github/actions/setup-openmetadata-test-environment
@@ -181,7 +179,6 @@ jobs:
     if: ${{ needs.changes.outputs.python == 'true' }}
     timeout-minutes: 180
     runs-on: ubuntu-latest
-    environment: ${{ github.event.pull_request.head.repo.fork && 'fork-pr-ci' || '' }}
     strategy:
       fail-fast: false
       matrix:
@@ -218,8 +215,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-          allow-unsafe-pr-checkout: true
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Use runner data disk for Docker
         if: matrix.shard.name == 'shard-2'
@@ -388,8 +384,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-          allow-unsafe-pr-checkout: true
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
 

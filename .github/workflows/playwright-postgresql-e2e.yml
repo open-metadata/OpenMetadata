@@ -81,7 +81,6 @@ jobs:
   build:
     needs: check-changes
     runs-on: ubuntu-latest
-    environment: ${{ github.event.pull_request.head.repo.fork && 'fork-pr-ci' || '' }}
     if: |
       !github.event.pull_request.draft &&
       (github.event_name == 'merge_group' || github.event_name == 'workflow_dispatch' ||
@@ -115,8 +114,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-          allow-unsafe-pr-checkout: true
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -246,8 +244,7 @@ jobs:
         id: checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-          allow-unsafe-pr-checkout: true
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Download Maven build artifact
         id: download-build
@@ -535,7 +532,7 @@ jobs:
         env:
           EXPECTED_MATRIX: ${{ needs.detect-changes.outputs.matrix }}
           MATRIX_OUTCOME: ${{ needs.playwright-ci-postgresql.result }}
-          SOURCE_SHA: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/playwright-results-json-*/results.json' \
