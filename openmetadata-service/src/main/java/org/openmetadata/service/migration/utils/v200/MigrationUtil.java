@@ -2276,7 +2276,7 @@ public class MigrationUtil {
         TestCaseResolutionStatusRepository incidentRepository =
             (TestCaseResolutionStatusRepository)
                 Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        if (incidentRepository.backfillMigratedIncidentTaskStage(task)) {
+        if (incidentRepository.reconcileIncidentTaskToLatestStatus(task)) {
           LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
         }
       } catch (Exception e) {
