@@ -342,12 +342,7 @@ test.describe('Domain Filter - User Behavior Tests', () => {
       await waitForAllLoadersToDisappear(page);
 
       await expect(
-        page
-          .getByTestId('group-table')
-          .getByTestId('data-name')
-          .filter({
-            hasText: domainTable.entityResponseData.fullyQualifiedName ?? '',
-          })
+        page.getByText(domainTable.entityResponseData.fullyQualifiedName ?? '')
       ).toBeVisible();
 
       const nonDomainTableName = get(

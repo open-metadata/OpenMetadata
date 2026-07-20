@@ -14,14 +14,8 @@ package org.openmetadata.service.cache;
 
 import com.google.common.util.concurrent.Striped;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.Collection;
 import java.util.Collections;
-import java.util.LinkedHashSet;
-import java.util.List;
-import java.util.Objects;
 import java.util.Optional;
-import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.locks.Lock;
 import java.util.function.Supplier;
@@ -52,7 +46,6 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 public final class CachedLineage implements Invalidatable {
-  private static final int INVALIDATION_BATCH_SIZE = 500;
   private final CacheProvider cache;
   private final CacheKeys keys;
   private final int ttlSeconds;
@@ -133,24 +126,6 @@ public final class CachedLineage implements Invalidatable {
       LOG.debug("Lineage cache invalidated rootId={}", rootId);
     } catch (Exception e) {
       LOG.debug("Lineage invalidate failed for rootId={}", rootId, e);
-    }
-  }
-
-  public void invalidateAll(Collection<UUID> rootIds) {
-    if (!enabled() || rootIds == null || rootIds.isEmpty()) return;
-    try {
-      Set<String> uniqueKeys = new LinkedHashSet<>(rootIds.size());
-      rootIds.stream()
-          .filter(Objects::nonNull)
-          .map(keys::lineageGraphHash)
-          .forEach(uniqueKeys::add);
-      List<String> cacheKeys = new ArrayList<>(uniqueKeys);
-      for (int offset = 0; offset < cacheKeys.size(); offset += INVALIDATION_BATCH_SIZE) {
-        int end = Math.min(offset + INVALIDATION_BATCH_SIZE, cacheKeys.size());
-        cache.del(cacheKeys.subList(offset, end).toArray(String[]::new));
-      }
-    } catch (Exception e) {
-      LOG.debug("Lineage batch invalidate failed count={}", rootIds.size(), e);
     }
   }
 

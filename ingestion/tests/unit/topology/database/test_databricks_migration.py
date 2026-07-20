@@ -95,9 +95,6 @@ class TestDatabricksPipelineConnectionUrl:
     """Verify pipeline connection URL uses new scheme"""
 
     def test_url_scheme(self):
-        from metadata.generated.schema.entity.services.connections.database.databricks.personalAccessToken import (
-            PersonalAccessToken,
-        )
         from metadata.generated.schema.entity.services.connections.pipeline.databricksPipelineConnection import (
             DatabricksPipelineConnection,
         )
@@ -107,9 +104,9 @@ class TestDatabricksPipelineConnectionUrl:
 
         conn = DatabricksPipelineConnection(
             hostPort="workspace.cloud.databricks.com:443",
-            authType=PersonalAccessToken(token="dapi123"),
+            token="dapi123",
         )
         url = get_connection_url(conn)
         assert url.startswith("databricks://")
         assert "databricks+connector" not in url
-        assert url == "databricks://workspace.cloud.databricks.com:443"
+        assert "dapi123" in url

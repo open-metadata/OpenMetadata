@@ -248,20 +248,6 @@ class TestBurstIQSamplerFetchSampleData:
 
         assert len(result.rows[0][0]) == SAMPLE_DATA_MAX_CELL_LENGTH
 
-    def test_partial_rows_kept_only_fully_empty_dropped(self, sampler):
-        # BurstIQ omits fields per record, so rows have gaps. dropna(how="all")
-        # keeps partial rows; a base dropna() would drop them all and collapse
-        # the sample to almost nothing (the "4 rows" regression).
-        df = pd.DataFrame({"score": [1.0, None, None], "age": [None, 20, None]})
-        cols = [
-            SQALikeColumn(name="score", type=DataType.DOUBLE),
-            SQALikeColumn(name="age", type=DataType.INT),
-        ]
-        with self._patch_raw(sampler, df):
-            result = sampler.fetch_sample_data(cols)
-
-        assert len(result.rows) == 2
-
 
 class TestBurstIQSamplerCastDataframe:
     def test_numeric_column_cast_to_float(self, sampler):

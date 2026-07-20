@@ -57,7 +57,7 @@ class TestBurstIQConnection(TestCase):
         self.assertEqual(client.config.realmName, "test_realm")
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
     def test_connection_check_access_success(self, mock_request, mock_post):
         """Test connection check for dictionary access"""
         # Mock authentication
@@ -85,7 +85,7 @@ class TestBurstIQConnection(TestCase):
         self.assertEqual(dictionaries[0].name, "test_dict")
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
     def test_connection_check_access_failure(self, mock_request, mock_post):
         """Test connection check fails when dictionary access fails"""
         # Mock authentication
@@ -112,7 +112,7 @@ class TestBurstIQConnection(TestCase):
         self.assertEqual(len(dictionaries), 0)
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
     def test_connection_check_edges_success(self, mock_request, mock_post):
         """Test connection check for edge access"""
         # Mock authentication

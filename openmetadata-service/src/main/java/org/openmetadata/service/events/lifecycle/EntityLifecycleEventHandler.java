@@ -43,14 +43,6 @@ public interface EntityLifecycleEventHandler {
     // Default empty implementation
   }
 
-  default void onEntityUpdated(
-      EntityInterface entity,
-      ChangeDescription changeDescription,
-      SubjectContext subjectContext,
-      EntityUpdateContext updateContext) {
-    onEntityUpdated(entity, changeDescription, subjectContext);
-  }
-
   /**
    * Called after multiple entities are updated. Default implementation delegates to
    * the single-entity onEntityUpdated for backward compatibility.
@@ -68,14 +60,6 @@ public interface EntityLifecycleEventHandler {
           entity.getChangeDescription() != null ? entity.getChangeDescription() : changeDescription,
           subjectContext);
     }
-  }
-
-  default void onEntitiesUpdated(
-      List<? extends EntityInterface> entities,
-      ChangeDescription changeDescription,
-      SubjectContext subjectContext,
-      EntityUpdateContext updateContext) {
-    onEntitiesUpdated(entities, changeDescription, subjectContext);
   }
 
   /**

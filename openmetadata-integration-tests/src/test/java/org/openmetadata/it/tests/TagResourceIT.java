@@ -15,13 +15,11 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
-import java.util.Locale;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.TimeUnit;
 import java.util.stream.IntStream;
 import java.util.stream.StreamSupport;
-import org.apache.commons.lang3.RandomStringUtils;
 import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.Test;
@@ -672,8 +670,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
     OpenMetadataClient client = SdkClients.adminClient();
     ObjectMapper mapper = new ObjectMapper();
     String uniqueSuffix = java.util.UUID.randomUUID().toString().substring(0, 8);
-    String searchToken = ("xqz" + RandomStringUtils.randomAlphabetic(16)).toLowerCase(Locale.ROOT);
-    String displayName = "PW Classification " + searchToken;
+    String displayName = "PW Classification " + ns.uniqueShortId();
 
     Classification classification =
         client
@@ -697,7 +694,7 @@ public class TagResourceIT extends BaseEntityIT<Tag, CreateTag> {
         .untilAsserted(
             () -> {
               String response =
-                  client.search().query(searchToken).index("tag_search_index").size(25).execute();
+                  client.search().query(displayName).index("tag_search_index").size(25).execute();
               JsonNode root = mapper.readTree(response);
               JsonNode hits = root.path("hits").path("hits");
               boolean found =

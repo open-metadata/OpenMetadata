@@ -208,14 +208,6 @@ public class EntityLifecycleEventDispatcher {
       List<? extends EntityInterface> entities,
       ChangeDescription changeDescription,
       SubjectContext subjectContext) {
-    onEntitiesUpdated(entities, changeDescription, subjectContext, EntityUpdateContext.empty());
-  }
-
-  public void onEntitiesUpdated(
-      List<? extends EntityInterface> entities,
-      ChangeDescription changeDescription,
-      SubjectContext subjectContext,
-      EntityUpdateContext updateContext) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
@@ -225,13 +217,7 @@ public class EntityLifecycleEventDispatcher {
         "Dispatching bulk entity updated event for {} ({} entities)", entityType, entities.size());
     Map<UUID, Supplier<EntityInterface>> snapshots = buildSnapshots(entities, OP_UPDATED);
     for (EntityLifecycleEventHandler handler : getApplicableHandlers(entityType)) {
-      dispatchBulkUpdate(
-          handler,
-          entities,
-          snapshots,
-          changeDescription,
-          subjectContext,
-          updateContext == null ? EntityUpdateContext.empty() : updateContext);
+      dispatchBulkUpdate(handler, entities, snapshots, changeDescription, subjectContext);
     }
   }
 
@@ -246,8 +232,7 @@ public class EntityLifecycleEventDispatcher {
       List<? extends EntityInterface> entities,
       Map<UUID, Supplier<EntityInterface>> snapshots,
       ChangeDescription changeDescription,
-      SubjectContext subjectContext,
-      EntityUpdateContext updateContext) {
+      SubjectContext subjectContext) {
     if (handler.isAsync()) {
       for (EntityInterface entity : entities) {
         ChangeDescription change =
@@ -258,16 +243,12 @@ public class EntityLifecycleEventDispatcher {
             entity,
             snapshots.get(entity.getId()),
             OP_UPDATED,
-            e ->
-                handler.onEntityUpdated(
-                    e, change, subjectContext, updateContext.forEntity(entity.getId())),
+            e -> handler.onEntityUpdated(e, change, subjectContext),
             handler);
       }
     } else {
       runInline(
-          () ->
-              handler.onEntitiesUpdated(entities, changeDescription, subjectContext, updateContext),
-          handler);
+          () -> handler.onEntitiesUpdated(entities, changeDescription, subjectContext), handler);
     }
   }
 

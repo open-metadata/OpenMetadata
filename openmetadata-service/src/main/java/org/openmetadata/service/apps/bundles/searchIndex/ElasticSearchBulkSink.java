@@ -1,23 +1,18 @@
 package org.openmetadata.service.apps.bundles.searchIndex;
 
-import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY;
-import static org.openmetadata.service.apps.bundles.searchIndex.BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.ENTITY_TYPE_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.RECREATE_CONTEXT;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.TARGET_INDEX_KEY;
 import static org.openmetadata.service.workflows.searchIndex.ReindexingUtil.isStaleReferenceMessage;
 
-import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import es.co.elastic.clients.elasticsearch.ElasticsearchAsyncClient;
 import es.co.elastic.clients.elasticsearch._types.Refresh;
-import es.co.elastic.clients.elasticsearch._types.ScriptLanguage;
 import es.co.elastic.clients.elasticsearch.core.BulkResponse;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
 import es.co.elastic.clients.elasticsearch.core.bulk.BulkResponseItem;
-import es.co.elastic.clients.json.JsonData;
 import es.co.elastic.clients.json.jackson.JacksonJsonpMapper;
 import jakarta.json.stream.JsonGenerator;
 import java.io.StringWriter;
@@ -289,8 +284,6 @@ public class ElasticSearchBulkSink implements BulkSink {
         contextData.containsKey(RECREATE_CONTEXT)
             ? (ReindexContext) contextData.get(RECREATE_CONTEXT)
             : null;
-    boolean scriptedPartialUpdates =
-        Boolean.TRUE.equals(contextData.get(SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY));
 
     // Extract StageStatsTracker from context for stats recording
     StageStatsTracker tracker = extractTracker(contextData);
@@ -362,10 +355,6 @@ public class ElasticSearchBulkSink implements BulkSink {
         Map<UUID, DocBuildContext> docBuildContexts =
             (Map<UUID, DocBuildContext>)
                 contextData.getOrDefault(DOC_BUILD_CONTEXT_KEY, Collections.emptyMap());
-        Map<UUID, Long> relationshipRevisions =
-            (Map<UUID, Long>)
-                contextData.getOrDefault(
-                    RELATIONSHIP_REVISIONS_CONTEXT_KEY, Collections.emptyMap());
 
         // Add entities to search index in parallel
         List<CompletableFuture<Void>> futures =
@@ -381,9 +370,7 @@ public class ElasticSearchBulkSink implements BulkSink {
                                     tracker,
                                     embeddingsEnabled,
                                     finalEmbeddingsById,
-                                    docBuildContexts,
-                                    scriptedPartialUpdates,
-                                    relationshipRevisions),
+                                    docBuildContexts),
                             DOC_BUILD_EXECUTOR))
                 .toList();
         CompletableFuture.allOf(futures.toArray(CompletableFuture[]::new)).join();
@@ -436,23 +423,18 @@ public class ElasticSearchBulkSink implements BulkSink {
       StageStatsTracker tracker,
       boolean embeddingsEnabled,
       Map<String, JsonNode> existingEmbeddingsById,
-      Map<UUID, DocBuildContext> docBuildContexts,
-      boolean scriptedPartialUpdates,
-      Map<UUID, Long> relationshipRevisions) {
+      Map<UUID, DocBuildContext> docBuildContexts) {
     try {
       String entityType = Entity.getEntityTypeFromObject(entity);
-      String docId = entity.getId().toString();
       DocBuildContext ctx = docBuildContexts.getOrDefault(entity.getId(), DocBuildContext.empty());
-      Map<String, Object> searchIndexDoc =
-          new HashMap<>(Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx));
-      Long relationshipRevision = relationshipRevisions.get(entity.getId());
-      SearchRepository.applyRelationshipRevision(entity, searchIndexDoc, relationshipRevision);
+      Object searchIndexDoc = Entity.buildSearchIndex(entityType, entity).buildSearchIndexDoc(ctx);
       String json = JsonUtils.pojoToJson(searchIndexDoc);
 
       if (embeddingsEnabled) {
         json = enrichWithEmbedding(entity, json, existingEmbeddingsById, tracker);
       }
 
+      String docId = entity.getId().toString();
       long rawDocSize = (long) json.getBytes(StandardCharsets.UTF_8).length;
       long estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
 
@@ -469,36 +451,6 @@ public class ElasticSearchBulkSink implements BulkSink {
         json = SearchIndexUtils.stripLineageForSize(json, sizeLimit, docId, entityType);
         rawDocSize = json.getBytes(StandardCharsets.UTF_8).length;
         estimatedSize = rawDocSize + BULK_OPERATION_METADATA_OVERHEAD;
-      }
-
-      if (scriptedPartialUpdates) {
-        SearchRepository.ScriptedPartialUpdate partialUpdate =
-            searchRepository.buildBulkScriptedPartialUpdate(entity, relationshipRevision);
-        if (relationshipRevision != null && partialUpdate == null) {
-          throw new IllegalStateException(
-              "Missing fenced relationship update for " + entityType + " " + docId);
-        }
-        if (partialUpdate != null) {
-          addScriptedPartialUpdate(indexName, docId, entityType, partialUpdate, json, tracker);
-          processSuccess.incrementAndGet();
-          if (tracker != null) {
-            tracker.recordProcess(StatsResult.SUCCESS);
-          }
-          return;
-        }
-      }
-
-      SearchRepository.ScriptedPartialUpdate relationshipDocumentUpdate =
-          searchRepository.buildRelationshipDocumentUpdate(
-              entity, JsonUtils.readValue(json, new TypeReference<Map<String, Object>>() {}));
-      if (relationshipDocumentUpdate != null) {
-        addScriptedPartialUpdate(
-            indexName, docId, entityType, relationshipDocumentUpdate, json, tracker);
-        processSuccess.incrementAndGet();
-        if (tracker != null) {
-          tracker.recordProcess(StatsResult.SUCCESS);
-        }
-        return;
       }
 
       if (estimatedSize > maxPayloadSizeBytes) {
@@ -559,137 +511,6 @@ public class ElasticSearchBulkSink implements BulkSink {
             entity.getFullyQualifiedName(),
             e.getMessage(),
             IndexingFailureRecorder.FailureStage.PROCESS);
-      }
-    }
-  }
-
-  private void addScriptedPartialUpdate(
-      String indexName,
-      String docId,
-      String entityType,
-      SearchRepository.ScriptedPartialUpdate partialUpdate,
-      String upsertDocument,
-      StageStatsTracker tracker) {
-    String effectiveUpsertDocument = partialUpdate.scriptedUpsert() ? "{}" : upsertDocument;
-    Map<String, Object> scriptParameters = partialUpdate.parametersForIndexing();
-    long estimatedSize =
-        (long) effectiveUpsertDocument.getBytes(StandardCharsets.UTF_8).length
-            + JsonUtils.pojoToJson(scriptParameters).getBytes(StandardCharsets.UTF_8).length
-            + partialUpdate.script().getBytes(StandardCharsets.UTF_8).length
-            + BULK_OPERATION_METADATA_OVERHEAD;
-    Map<String, JsonData> params = new HashMap<>();
-    scriptParameters.forEach(
-        (key, value) -> {
-          if (value != null) {
-            params.put(key, JsonData.of(value, JACKSON_JSONP_MAPPER));
-          }
-        });
-    if (estimatedSize > maxPayloadSizeBytes) {
-      LOG.warn(
-          "Scripted update {} of type {} is too large for bulk ({} bytes), sending directly",
-          docId,
-          entityType,
-          estimatedSize);
-      totalSubmitted.incrementAndGet();
-      if (tracker != null) {
-        tracker.incrementPendingSink();
-      }
-      updateScriptedDocumentDirectly(
-          indexName,
-          docId,
-          entityType,
-          partialUpdate,
-          effectiveUpsertDocument,
-          params,
-          tracker,
-          estimatedSize);
-      return;
-    }
-    BulkOperation operation =
-        BulkOperation.of(
-            op ->
-                op.update(
-                    update ->
-                        update
-                            .index(indexName)
-                            .id(docId)
-                            .retryOnConflict(3)
-                            .action(
-                                action ->
-                                    action
-                                        .scriptedUpsert(partialUpdate.scriptedUpsert())
-                                        .upsert(EsUtils.toJsonData(effectiveUpsertDocument))
-                                        .script(
-                                            script ->
-                                                script
-                                                    .source(
-                                                        source ->
-                                                            source.scriptString(
-                                                                partialUpdate.script()))
-                                                    .lang(ScriptLanguage.Painless)
-                                                    .params(params)))));
-    if (tracker != null) {
-      tracker.incrementPendingSink();
-    }
-    bulkProcessor.add(operation, docId, entityType, tracker, estimatedSize);
-  }
-
-  private void updateScriptedDocumentDirectly(
-      String indexName,
-      String docId,
-      String entityType,
-      SearchRepository.ScriptedPartialUpdate partialUpdate,
-      String upsertDocument,
-      Map<String, JsonData> params,
-      StageStatsTracker tracker,
-      long estimatedSize) {
-    try {
-      Map<String, Object> upsert =
-          JsonUtils.readValue(upsertDocument, new TypeReference<Map<String, Object>>() {});
-      searchClient
-          .getNewClient()
-          .update(
-              update ->
-                  update
-                      .index(indexName)
-                      .id(docId)
-                      .refresh(Refresh.False)
-                      .retryOnConflict(3)
-                      .scriptedUpsert(partialUpdate.scriptedUpsert())
-                      .upsert(upsert)
-                      .script(
-                          script ->
-                              script
-                                  .source(source -> source.scriptString(partialUpdate.script()))
-                                  .lang(ScriptLanguage.Painless)
-                                  .params(params)),
-              Map.class);
-      totalSuccess.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordSink(StatsResult.SUCCESS);
-      }
-    } catch (Exception e) {
-      LOG.error(
-          "Direct scripted update failed for document {} of type {}: {}",
-          docId,
-          entityType,
-          e.getMessage(),
-          e);
-      totalFailed.incrementAndGet();
-      updateStats();
-      if (tracker != null) {
-        tracker.recordSink(StatsResult.FAILED);
-      }
-      if (failureCallback != null) {
-        failureCallback.onFailure(
-            entityType,
-            docId,
-            null,
-            String.format(
-                "Scripted update too large for bulk (%d bytes); direct update failed: %s",
-                estimatedSize, e.getMessage()),
-            IndexingFailureRecorder.FailureStage.SINK);
       }
     }
   }

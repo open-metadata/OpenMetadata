@@ -19,7 +19,6 @@ import {
   removeSingleSelectDomain,
   uuid,
   verifyDomainLinkInCard,
-  waitForSearchResult,
 } from '../../utils/common';
 import {
   addMultiOwner,
@@ -261,26 +260,28 @@ export class DatabaseClass extends EntityClass {
   }
 
   async verifyOwnerChangeInES(page: Page, owner: string) {
+    // Verify owner change in ES
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
-    const ownerLink = page
-      .getByTestId(`table-data-card_${searchTerm}`)
-      .getByTestId('owner-label')
-      .getByTestId('owner-link')
-      .getByTestId(owner);
+    await page.getByTestId('searchBox').fill(searchTerm);
+    await page.getByTestId('searchBox').press('Enter');
 
-    await waitForSearchResult(page, searchTerm, ownerLink);
-    await expect(ownerLink).toBeVisible();
+    await expect(
+      page
+        .getByTestId(`table-data-card_${searchTerm}`)
+        .getByTestId('owner-label')
+        .getByTestId('owner-link')
+        .getByTestId(owner)
+    ).toBeVisible();
   }
 
   async verifyDomainChangeInES(page: Page, domains: Domain['responseData'][]) {
     const searchTerm = this.tableResponseData?.['fullyQualifiedName'];
+    await page.getByTestId('searchBox').fill(searchTerm);
+    await page.getByTestId('searchBox').press('Enter');
+
     const entityCard = page.getByTestId(`table-data-card_${searchTerm}`);
 
     for (const domain of domains) {
-      const domainLink = entityCard
-        .getByTestId('domain-link')
-        .filter({ hasText: domain.displayName });
-      await waitForSearchResult(page, searchTerm, domainLink);
       await verifyDomainLinkInCard(entityCard, domain);
     }
 

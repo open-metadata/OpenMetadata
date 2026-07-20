@@ -67,27 +67,17 @@ export class GlossaryTerm extends EntityClass {
     const glossaryDisplayName =
       this.responseData.glossary?.displayName ?? this.glossary.data.displayName;
     await visitGlossaryPage(page, glossaryDisplayName);
-    const glossaryTerm = page.getByTestId(this.data.displayName);
-    const expandCollapseButton = page.getByTestId('expand-collapse-all-button');
-    await expect
-      .poll(async () => {
-        if (await glossaryTerm.isVisible()) {
-          return 'term-visible';
-        }
-
-        return (await expandCollapseButton.textContent())?.trim();
-      })
-      .toMatch(/^(term-visible|.*Expand All.*)$/);
-    if (!(await glossaryTerm.isVisible())) {
+    const expandCollapseButtonText = await page
+      .locator('[data-testid="expand-collapse-all-button"]')
+      .textContent();
+    const isExpanded = expandCollapseButtonText?.includes('Expand All');
+    if (isExpanded) {
       const glossaryId =
         this.responseData.glossary?.id ?? this.glossary.responseData.id;
       const glossaryTermListResponse = page.waitForResponse(
-        (response) =>
-          response.url().includes('/api/v1/glossaryTerms?') &&
-          response.url().includes(`glossary=${glossaryId}`) &&
-          response.status() === 200
+        `/api/v1/glossaryTerms?*glossary=${glossaryId}*`
       );
-      await expandCollapseButton.click();
+      await page.click('[data-testid="expand-collapse-all-button"]');
       await glossaryTermListResponse;
     }
     const glossaryTermResponse = page.waitForResponse(
@@ -95,7 +85,7 @@ export class GlossaryTerm extends EntityClass {
         this.responseData.fullyQualifiedName
       )}?*`
     );
-    await glossaryTerm.click();
+    await page.getByTestId(this.data.displayName).click();
     await glossaryTermResponse;
 
     await expect(page.getByTestId('entity-header-display-name')).toHaveText(

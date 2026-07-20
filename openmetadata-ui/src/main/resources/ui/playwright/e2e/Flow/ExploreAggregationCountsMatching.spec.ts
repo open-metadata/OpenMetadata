@@ -59,9 +59,6 @@ async function runSearchValidation(page: Page): Promise<void> {
   ]);
   const countResponseBody = await apiCountRes.json();
   const initialTabSearchBody = await initialTabSearchRes.json();
-  const initialTabSearchIndex = new URL(
-    initialTabSearchRes.url()
-  ).searchParams.get('index');
 
   // Wait for the explore left panel to appear after search
   await page.getByTestId('explore-left-panel').waitFor({ state: 'visible' });
@@ -98,6 +95,8 @@ async function runSearchValidation(page: Page): Promise<void> {
   });
 
   await test.step('Click each tab and verify search results match entity type', async () => {
+    let isFirstTab = true;
+
     for (const bucket of entityTypeBuckets) {
       const tabTestId = ENTITY_TYPE_TO_TAB_TESTID[bucket.key];
 
@@ -119,8 +118,9 @@ async function runSearchValidation(page: Page): Promise<void> {
         };
       };
 
-      if (bucket.key === initialTabSearchIndex) {
+      if (isFirstTab) {
         tabSearchBody = initialTabSearchBody;
+        isFirstTab = false;
       } else {
         const tabSearchResPromise = page.waitForResponse(
           (response) =>

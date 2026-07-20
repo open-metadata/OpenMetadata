@@ -31,6 +31,7 @@ import greenplum from '../assets/img/service-icon-greenplum.webp';
 import hive from '../assets/img/service-icon-hive.webp';
 import ibmdb2 from '../assets/img/service-icon-ibmdb2.webp';
 import impala from '../assets/img/service-icon-impala.webp';
+import influxdb from '../assets/img/service-icon-influxdb.webp';
 import iomete from '../assets/img/service-icon-iomete.webp';
 import mariadb from '../assets/img/service-icon-mariadb.webp';
 import mongodb from '../assets/img/service-icon-mongodb.webp';
@@ -144,6 +145,7 @@ const SERVICE_ICON_LOADERS: Record<string, string> = {
   bigtable: bigtable,
   hive: hive,
   impala: impala,
+  influxdb: influxdb,
   postgres: postgres,
   oracle: oracle,
   snowflake: snowflake,

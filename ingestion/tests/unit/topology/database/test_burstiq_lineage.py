@@ -179,7 +179,7 @@ class TestBurstIQLineage(TestCase):
             self.assertIsNone(result)
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
     def test_lineage_iteration_success(self, mock_request, mock_post):
         """Test successful lineage iteration from edges"""
         # Mock authentication
@@ -229,7 +229,7 @@ class TestBurstIQLineage(TestCase):
             mock_request.assert_called_once()
 
     @patch("metadata.ingestion.source.database.burstiq.client.requests.post")
-    @patch("metadata.ingestion.source.database.burstiq.client.requests.Session.request")
+    @patch("metadata.ingestion.source.database.burstiq.client.requests.request")
     def test_lineage_iteration_error_handling(self, mock_request, mock_post):
         """Test error handling during lineage iteration"""
         # Mock authentication

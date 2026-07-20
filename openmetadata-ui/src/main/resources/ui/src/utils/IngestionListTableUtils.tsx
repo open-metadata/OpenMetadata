@@ -81,24 +81,22 @@ const ScheduleFieldCell = ({
 
   return (
     <Row gutter={[8, 8]} wrap={false}>
-      <Col flex="none">
+      <Col>
         <TimeDateIcon className="m-t-xss" height={20} width={20} />
       </Col>
-      <Col className="tw:min-w-0" flex="auto">
+      <Col>
         <Row className="line-height-16">
           <Col span={24}>
             <Typography.Text
               className="font-medium"
-              data-testid="schedule-primary-details"
-              ellipsis={{ tooltip: descriptionFirstPart }}>
+              data-testid="schedule-primary-details">
               {descriptionFirstPart}
             </Typography.Text>
           </Col>
           <Col span={24}>
             <Typography.Text
               className="text-xs text-grey-muted"
-              data-testid="schedule-secondary-details"
-              ellipsis={{ tooltip: descriptionSecondPart }}>
+              data-testid="schedule-secondary-details">
               {descriptionSecondPart}
             </Typography.Text>
           </Col>

@@ -60,37 +60,10 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 	$(MAKE) install
 
 .PHONY: install_antlr_cli
-ANTLR_VERSION := 4.9.2
-ANTLR_COMPLETE_JAR_URL := https://repo1.maven.org/maven2/org/antlr/antlr4/$(ANTLR_VERSION)/antlr4-$(ANTLR_VERSION)-complete.jar
-ANTLR_COMPLETE_JAR_SHA256 := bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd
-ANTLR_INSTALL_DIR ?= /usr/local/bin
-
 install_antlr_cli:  ## Install antlr CLI locally
-	@set -eu; \
-	jar_file=$$(mktemp); \
-	cli_file=$$(mktemp "$(ANTLR_INSTALL_DIR)/.antlr4.XXXXXX"); \
-	trap 'rm -f "$$jar_file" "$$cli_file"' EXIT; \
-	attempt=1; \
-	while :; do \
-		if curl --fail --location --silent --show-error \
-			--retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-			--connect-timeout 15 --max-time 60 \
-			--output "$$jar_file" "$(ANTLR_COMPLETE_JAR_URL)" \
-			&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | shasum -a 256 --check \
-			&& jar tf "$$jar_file" > /dev/null; then \
-			break; \
-		fi; \
-		if [ "$$attempt" -ge 3 ]; then \
-			echo "Failed to download a valid ANTLR $(ANTLR_VERSION) CLI after $$attempt attempts" >&2; \
-			exit 1; \
-		fi; \
-		attempt=$$((attempt + 1)); \
-		sleep 2; \
-	done; \
-	printf '%s\n' '#!/usr/bin/java -jar' > "$$cli_file"; \
-	cat "$$jar_file" >> "$$cli_file"; \
-	chmod 755 "$$cli_file"; \
-	mv "$$cli_file" "$(ANTLR_INSTALL_DIR)/antlr4"
+	echo '#!/usr/bin/java -jar' > /usr/local/bin/antlr4
+	curl https://www.antlr.org/download/antlr-4.9.2-complete.jar >> /usr/local/bin/antlr4
+	chmod 755 /usr/local/bin/antlr4
 
 ## SNYK
 SNYK_ARGS := --severity-threshold=high

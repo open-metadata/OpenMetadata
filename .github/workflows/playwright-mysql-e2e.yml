@@ -40,13 +40,11 @@ concurrency:
 
 jobs:
   playwright-ci-mysql:
-    name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-ci-mysql (ignored label)' || 'playwright-ci-mysql' }}
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
     environment: test
     permissions:
       contents: read
-      pull-requests: read
       id-token: write # Required for GitHub OIDC (Flakiness.io reporter)
     env:
       # Playwright logs the admin user in many times (performAdminLogin per test, parallel
@@ -60,12 +58,6 @@ jobs:
         shardIndex: [1, 2]
         shardTotal: [2]
     steps:
-      - name: Verify PR merge commit is available
-        if: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha == '' }}
-        run: |
-          echo "The PR has no merge commit to test. Resolve merge conflicts and rerun the workflow."
-          exit 1
-
       - name: Free Disk Space (Ubuntu)
         uses: jlumbroso/free-disk-space@main
         with:
@@ -97,20 +89,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
-
-      - name: Detect ingestion-only changes
-        id: changes
-        if: ${{ github.event_name == 'pull_request_target' }}
-        uses: dorny/paths-filter@v4
-        with:
-          predicate-quantifier: 'every'
-          filters: |
-            ingestion:
-              - 'ingestion/**'
-            non-ingestion:
-              - '**'
-              - '!ingestion/**'
+          ref: ${{ github.event.pull_request.head.sha }}
 
       - name: Cache Maven Dependencies
         id: cache-output
@@ -141,7 +120,7 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [[ "${{ steps.changes.outputs.ingestion }}" == "true" && "${{ steps.changes.outputs.non-ingestion }}" != "true" ]]; then
+          if [[ "${{ contains(github.event.pull_request.changed_files, 'ingestion/') }}" == "true" ]]; then
             npx playwright test --grep @ingestion --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
           else
             npx playwright test --shard=${{ matrix.shardIndex }}/${{ matrix.shardTotal }}
@@ -154,6 +133,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
           PLAYWRIGHT_SNOWFLAKE_PASSPHRASE: ${{ secrets.TEST_SNOWFLAKE_PASSPHRASE }}
+          PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
@@ -197,47 +177,15 @@ jobs:
           # determine the unique run id necessary to re-run the checks
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Playwright HTML report
-        uses: actions/upload-artifact@v4
-        if: always()
-        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: playwright-report--${{ matrix.shardIndex }}
-          path: |
-            openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
-            openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
-          if-no-files-found: ignore
-
-      - name: Collect failure diagnostics
-        if: failure() || cancelled()
-        continue-on-error: true
-        run: |
-          DIAGNOSTICS_DIR="${RUNNER_TEMP}/playwright-ci-diagnostics"
-          mkdir -p "$DIAGNOSTICS_DIR"
-          df -h > "$DIAGNOSTICS_DIR/disk-usage.txt" 2>&1 || true
-          docker system df > "$DIAGNOSTICS_DIR/docker-disk-usage.txt" 2>&1 || true
-          if [ -f docker/development/docker-compose.yml ]; then
-            docker compose -f docker/development/docker-compose.yml ps --all \
-              > "$DIAGNOSTICS_DIR/docker-compose-ps.txt" 2>&1 || true
-            docker compose -f docker/development/docker-compose.yml logs --no-color --tail 5000 \
-              > "$DIAGNOSTICS_DIR/docker-compose.log" 2>&1 || true
-          fi
-
-      - name: Upload failure diagnostics
-        uses: actions/upload-artifact@v4
-        if: failure() || cancelled()
-        continue-on-error: true
-        with:
-          name: playwright-ci-diagnostics-mysql-${{ matrix.shardIndex }}
-          path: ${{ runner.temp }}/playwright-ci-diagnostics
-          retention-days: 5
-          if-no-files-found: ignore
 
       - name: Clean Up
-        if: always()
-        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf "${PWD}/docker-volume"
+          sudo rm -rf ${PWD}/docker-volume

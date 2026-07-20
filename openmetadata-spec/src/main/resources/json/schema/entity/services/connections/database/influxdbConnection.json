@@ -1,0 +1,72 @@
+{
+  "$id": "https://open-metadata.org/schema/entity/services/connections/database/influxdbConnection.json",
+  "$schema": "http://json-schema.org/draft-07/schema#",
+  "title": "InfluxDBConnection",
+  "description": "InfluxDB 3 Connection Config",
+  "type": "object",
+  "javaType": "org.openmetadata.schema.services.connections.database.InfluxDBConnection",
+  "definitions": {
+    "influxDBType": {
+      "description": "Service type.",
+      "type": "string",
+      "enum": ["InfluxDB"],
+      "default": "InfluxDB"
+    }
+  },
+  "properties": {
+    "type": {
+      "title": "Service Type",
+      "description": "Service Type",
+      "$ref": "#/definitions/influxDBType",
+      "default": "InfluxDB"
+    },
+    "hostPort": {
+      "title": "Host and Port",
+      "description": "InfluxDB 3 HTTP API URL (e.g. https://cluster.influxdata.com or http://localhost:8086).",
+      "type": "string"
+    },
+    "token": {
+      "title": "API Token",
+      "description": "InfluxDB 3 API token for authentication.",
+      "type": "string",
+      "format": "password"
+    },
+    "databaseName": {
+      "title": "Database Name",
+      "description": "Optional name to give to the database in OpenMetadata. If left blank, we will use default as the database name.",
+      "type": "string"
+    },
+    "databaseSchema": {
+      "title": "Database Schema",
+      "description": "Database Schema of the data source. This is optional parameter, if you would like to restrict the metadata reading to a single schema. When left blank, OpenMetadata Ingestion attempts to scan all the schemas.",
+      "type": "string"
+    },
+    "connectionOptions": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionOptions"
+    },
+    "connectionArguments": {
+      "$ref": "../connectionBasicType.json#/definitions/connectionArguments"
+    },
+    "schemaFilterPattern": {
+      "title": "Default Schema Filter Pattern",
+      "description": "Regex to only fetch tables or databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "tableFilterPattern": {
+      "title": "Default Table Filter Pattern",
+      "description": "Regex exclude tables or databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "databaseFilterPattern": {
+      "title": "Default Database Filter Pattern",
+      "description": "Regex to only fetch databases that matches the pattern.",
+      "$ref": "../../../../type/filterPattern.json#/definitions/filterPattern"
+    },
+    "supportsMetadataExtraction": {
+      "title": "Supports Metadata Extraction",
+      "$ref": "../connectionBasicType.json#/definitions/supportsMetadataExtraction"
+    }
+  },
+  "additionalProperties": false,
+  "required": ["hostPort", "token"]
+}

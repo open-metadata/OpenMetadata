@@ -38,11 +38,10 @@ def _package_of(item) -> str | None:
 def _prune_docker_images() -> None:
     import docker
     from docker.errors import DockerException
-    from requests.exceptions import RequestException
 
     try:
         reclaimed = docker.from_env().images.prune(filters={"dangling": False}).get("SpaceReclaimed", 0)
-    except (DockerException, RequestException):
+    except DockerException:
         logging.exception("Failed to prune docker images")
         return
     logging.info(

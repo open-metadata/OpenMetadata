@@ -18,7 +18,6 @@ import static org.mockito.Mockito.*;
 
 import java.io.IOException;
 import java.util.List;
-import java.util.Map;
 import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,7 +28,6 @@ import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.service.Entity;
-import org.openmetadata.service.events.lifecycle.EntityUpdateContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.security.policyevaluator.SubjectContext;
 
@@ -132,7 +130,7 @@ class SearchIndexHandlerTest {
 
     searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of());
+    verify(mockSearchRepository).updateEntitiesIndex(entities);
     verifyNoMoreInteractions(mockSearchRepository);
   }
 
@@ -141,42 +139,13 @@ class SearchIndexHandlerTest {
     List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
     doThrow(new RuntimeException("Bulk update failed"))
         .when(mockSearchRepository)
-        .updateEntitiesIndex(entities, Map.of());
+        .updateEntitiesIndex(entities);
 
     searchIndexHandler.onEntitiesUpdated(entities, mockChangeDescription, mockSubjectContext);
 
-    verify(mockSearchRepository).updateEntitiesIndex(entities, Map.of());
+    verify(mockSearchRepository).updateEntitiesIndex(entities);
     verify(mockSearchRepository).updateEntityIndex(mockEntity);
     verify(mockSearchRepository).updateEntityIndex(mockEntity2);
-    verifyNoMoreInteractions(mockSearchRepository);
-  }
-
-  @Test
-  void testOnEntitiesUpdatedForwardsRelationshipRevisions() {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
-    Map<UUID, Long> revisions = Map.of(mockEntity.getId(), 11L, mockEntity2.getId(), 12L);
-
-    searchIndexHandler.onEntitiesUpdated(
-        entities, mockChangeDescription, mockSubjectContext, new EntityUpdateContext(revisions));
-
-    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions);
-    verifyNoMoreInteractions(mockSearchRepository);
-  }
-
-  @Test
-  void testOnEntitiesUpdatedRetainsRelationshipRevisionsInFallback() {
-    List<EntityInterface> entities = List.of(mockEntity, mockEntity2);
-    Map<UUID, Long> revisions = Map.of(mockEntity.getId(), 11L, mockEntity2.getId(), 12L);
-    doThrow(new RuntimeException("Bulk update failed"))
-        .when(mockSearchRepository)
-        .updateEntitiesIndex(entities, revisions);
-
-    searchIndexHandler.onEntitiesUpdated(
-        entities, mockChangeDescription, mockSubjectContext, new EntityUpdateContext(revisions));
-
-    verify(mockSearchRepository).updateEntitiesIndex(entities, revisions);
-    verify(mockSearchRepository).updateEntityIndex(mockEntity, 11L);
-    verify(mockSearchRepository).updateEntityIndex(mockEntity2, 12L);
     verifyNoMoreInteractions(mockSearchRepository);
   }
 

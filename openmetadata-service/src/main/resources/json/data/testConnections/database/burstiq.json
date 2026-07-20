@@ -12,13 +12,6 @@
       "mandatory": true
     },
     {
-      "name": "ValidateSystemWallet",
-      "description": "Validate that the configured BurstIQ System Wallet ID exists and can be elevated to. Only affects profiling — metadata ingestion works without a valid wallet.",
-      "errorMessage": "biqSystemWalletId is missing or invalid. Metadata ingestion will work, but profiling data will not be accessible.",
-      "shortCircuit": false,
-      "mandatory": false
-    },
-    {
       "name": "GetDictionaries",
       "description": "Validate that we can fetch dictionaries (tables) from BurstIQ LifeGraph API.",
       "errorMessage": "Failed to fetch dictionaries from BurstIQ LifeGraph. Please validate that the user has sufficient privileges to read metadata.",

@@ -9,7 +9,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -20,13 +19,9 @@ import static org.mockito.Mockito.when;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import es.co.elastic.clients.elasticsearch.ElasticsearchClient;
-import es.co.elastic.clients.elasticsearch.core.bulk.BulkOperation;
-import es.co.elastic.clients.json.JsonData;
 import java.lang.reflect.Field;
 import java.lang.reflect.Method;
 import java.util.Collections;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -34,13 +29,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -49,7 +42,6 @@ import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.search.ReindexContext;
 import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
-import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.vector.ElasticSearchVectorService;
@@ -142,8 +134,6 @@ class ElasticSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class,
             Map.class
           },
           entity,
@@ -152,8 +142,6 @@ class ElasticSearchBulkSinkBehaviorTest {
           tracker,
           false,
           Map.of(),
-          Map.of(),
-          false,
           Map.of());
 
       verify(processor)
@@ -162,242 +150,6 @@ class ElasticSearchBulkSinkBehaviorTest {
       verify(tracker).recordProcess(StatsResult.SUCCESS);
       assertEquals(1, sink.getProcessStats().getSuccessRecords());
       assertEquals(0, sink.getProcessStats().getFailedRecords());
-    }
-  }
-
-  @Test
-  void relationshipPartialUpdateUsesFullDocumentUpsertWithoutRewritingOtherFields()
-      throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
-    UUID entityId = UUID.randomUUID();
-    when(entity.getId()).thenReturn(entityId);
-    when(entity.getEntityReference())
-        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TEST_CASE));
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        new SearchRepository.ScriptedPartialUpdate(
-            "ctx._source.testSuites = params.testSuites;",
-            Map.of("testSuites", List.of(Map.of("id", "suite-id"))));
-    when(searchRepository.buildBulkScriptedPartialUpdate(entity, 17L)).thenReturn(partialUpdate);
-
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
-      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
-      entityMock
-          .when(() -> Entity.buildSearchIndex(Entity.TEST_CASE, entity))
-          .thenReturn(
-              new StubSearchIndex(Map.of("name", "current", "description", "current description")));
-
-      invokePrivate(
-          sink,
-          "addEntity",
-          new Class<?>[] {
-            EntityInterface.class,
-            String.class,
-            ReindexContext.class,
-            StageStatsTracker.class,
-            boolean.class,
-            Map.class,
-            Map.class,
-            boolean.class,
-            Map.class
-          },
-          entity,
-          "table_index",
-          null,
-          null,
-          false,
-          Map.of(),
-          Collections.emptyMap(),
-          true,
-          Map.of(entityId, 17L));
-
-      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
-      verify(processor)
-          .add(
-              operationCaptor.capture(),
-              eq(entityId.toString()),
-              eq(Entity.TEST_CASE),
-              isNull(),
-              anyLong());
-      BulkOperation operation = operationCaptor.getValue();
-      assertTrue(operation.isUpdate());
-      assertFalse(Boolean.TRUE.equals(operation.update().action().scriptedUpsert()));
-      assertEquals(
-          "current description",
-          EsUtils.jsonDataToMap((JsonData) operation.update().action().upsert())
-              .get("description"));
-      assertEquals(
-          17L,
-          ((Number)
-                  EsUtils.jsonDataToMap((JsonData) operation.update().action().upsert())
-                      .get("testSuitesRevision"))
-              .longValue());
-      assertEquals(
-          "ctx._source.testSuites = params.testSuites;",
-          operation.update().action().script().source().scriptString());
-    }
-  }
-
-  @Test
-  void scriptedUpsertConvertsNullFieldsIntoExplicitRemovals() throws Exception {
-    Map<String, Object> parameters = new HashMap<>();
-    parameters.put("name", "current");
-    parameters.put("description", null);
-    parameters.put("fieldsToRemove", List.of("displayName"));
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        new SearchRepository.ScriptedPartialUpdate("remove-null-fields", parameters, true);
-
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-
-      invokePrivate(
-          sink,
-          "addScriptedPartialUpdate",
-          new Class<?>[] {
-            String.class,
-            String.class,
-            String.class,
-            SearchRepository.ScriptedPartialUpdate.class,
-            String.class,
-            StageStatsTracker.class
-          },
-          "test_case_index",
-          "test-case-id",
-          Entity.TEST_CASE,
-          partialUpdate,
-          "{\"name\":\"current\"}",
-          null);
-
-      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
-      verify(processorConstruction.constructed().getFirst())
-          .add(
-              operationCaptor.capture(),
-              eq("test-case-id"),
-              eq(Entity.TEST_CASE),
-              isNull(),
-              anyLong());
-      Map<String, JsonData> scriptParameters =
-          operationCaptor.getValue().update().action().script().params();
-      assertFalse(scriptParameters.containsKey("description"));
-      assertEquals("current", scriptParameters.get("name").to(String.class));
-      assertEquals(
-          List.of("description", "displayName"),
-          scriptParameters.get("fieldsToRemove").to(List.class));
-    }
-  }
-
-  @Test
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  void oversizedScriptedUpdateIsSentDirectlyInsteadOfPoisoningTheBulkBatch() throws Exception {
-    ElasticsearchClient rawClient = mock(ElasticsearchClient.class);
-    StageStatsTracker tracker = mock(StageStatsTracker.class);
-    when(searchClient.getNewClient()).thenReturn(rawClient);
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        new SearchRepository.ScriptedPartialUpdate(
-            "ctx._source.tests = params.tests;", Map.of("tests", "x".repeat(2048)));
-
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class)) {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 128L);
-
-      invokePrivate(
-          sink,
-          "addScriptedPartialUpdate",
-          new Class<?>[] {
-            String.class,
-            String.class,
-            String.class,
-            SearchRepository.ScriptedPartialUpdate.class,
-            String.class,
-            StageStatsTracker.class
-          },
-          "test_suite_index",
-          "suite-id",
-          Entity.TEST_SUITE,
-          partialUpdate,
-          "{\"name\":\"suite\"}",
-          tracker);
-
-      verify(processorConstruction.constructed().getFirst(), never())
-          .add(any(), any(), any(), any(), anyLong());
-      verify(rawClient).update(any(java.util.function.Function.class), eq(Map.class));
-      verify(tracker).incrementPendingSink();
-      verify(tracker).recordSink(StatsResult.SUCCESS);
-      assertEquals(1, sink.getStats().getTotalRecords());
-      assertEquals(1, sink.getStats().getSuccessRecords());
-    }
-  }
-
-  @Test
-  void fullTestCaseDocumentUsesRelationshipPreservingUpdate() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
-    UUID entityId = UUID.randomUUID();
-    when(entity.getId()).thenReturn(entityId);
-    SearchRepository.ScriptedPartialUpdate documentUpdate =
-        new SearchRepository.ScriptedPartialUpdate(
-            "preserve-test-suites", Map.of("name", "current"), true);
-    when(searchRepository.buildRelationshipDocumentUpdate(eq(entity), any()))
-        .thenReturn(documentUpdate);
-
-    try (MockedConstruction<ElasticSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(ElasticSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      ElasticSearchBulkSink sink = new ElasticSearchBulkSink(searchRepository, 10, 2, 1000L);
-      ElasticSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
-      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
-      entityMock
-          .when(() -> Entity.buildSearchIndex(Entity.TEST_CASE, entity))
-          .thenReturn(new StubSearchIndex(Map.of("name", "current")));
-
-      invokePrivate(
-          sink,
-          "addEntity",
-          new Class<?>[] {
-            EntityInterface.class,
-            String.class,
-            ReindexContext.class,
-            StageStatsTracker.class,
-            boolean.class,
-            Map.class,
-            Map.class,
-            boolean.class,
-            Map.class
-          },
-          entity,
-          "test_case_index",
-          null,
-          null,
-          false,
-          Map.of(),
-          Collections.emptyMap(),
-          false,
-          Map.of());
-
-      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
-      verify(processor)
-          .add(
-              operationCaptor.capture(),
-              eq(entityId.toString()),
-              eq(Entity.TEST_CASE),
-              isNull(),
-              anyLong());
-      assertTrue(operationCaptor.getValue().isUpdate());
-      assertTrue(
-          Boolean.TRUE.equals(operationCaptor.getValue().update().action().scriptedUpsert()));
-      assertTrue(
-          EsUtils.jsonDataToMap((JsonData) operationCaptor.getValue().update().action().upsert())
-              .isEmpty());
-      assertEquals(
-          "preserve-test-suites",
-          operationCaptor.getValue().update().action().script().source().scriptString());
     }
   }
 
@@ -431,8 +183,6 @@ class ElasticSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class,
             Map.class
           },
           entity,
@@ -441,8 +191,6 @@ class ElasticSearchBulkSinkBehaviorTest {
           tracker,
           false,
           Map.of(),
-          Collections.emptyMap(),
-          false,
           Map.of());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
@@ -637,8 +385,6 @@ class ElasticSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class,
             Map.class
           },
           entity,
@@ -647,9 +393,7 @@ class ElasticSearchBulkSinkBehaviorTest {
           null,
           false,
           Map.of(),
-          docBuildContexts,
-          false,
-          Map.of());
+          docBuildContexts);
 
       assertSame(ctxForEntity, ContextCapturingIndex.observedContext);
       assertSame(edges, ContextCapturingIndex.observedContext.prefetchedUpstreamLineage());
@@ -682,8 +426,6 @@ class ElasticSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class,
             Map.class
           },
           entity,
@@ -692,9 +434,7 @@ class ElasticSearchBulkSinkBehaviorTest {
           null,
           false,
           Map.of(),
-          Collections.emptyMap(),
-          false,
-          Map.of());
+          Collections.emptyMap());
 
       assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
     }

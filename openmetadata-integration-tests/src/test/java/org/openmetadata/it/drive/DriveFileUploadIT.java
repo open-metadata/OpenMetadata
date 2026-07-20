@@ -46,7 +46,6 @@ import org.apache.pdfbox.pdmodel.PDPageContentStream;
 import org.apache.pdfbox.pdmodel.font.PDType1Font;
 import org.apache.poi.ss.usermodel.Workbook;
 import org.apache.poi.xssf.usermodel.XSSFWorkbook;
-import org.awaitility.core.ConditionTimeoutException;
 import org.glassfish.jersey.client.ClientProperties;
 import org.glassfish.jersey.media.multipart.FormDataMultiPart;
 import org.glassfish.jersey.media.multipart.MultiPartFeature;
@@ -88,8 +87,6 @@ class DriveFileUploadIT {
   private static final Duration EXTRACTION_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration SEARCH_VISIBLE_TIMEOUT = Duration.ofSeconds(60);
   private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
-  private static final int SEARCH_RESULT_SIZE = 100;
-  private static final int DIAGNOSTIC_BODY_LIMIT = 4000;
   private static String serverBaseUrl;
   private static Client multipartClient;
   private static WebTarget uploadTarget;
@@ -266,56 +263,21 @@ class DriveFileUploadIT {
   private void assertSearchContainsFile(String query, UUID fileId) {
     RestClient rest = RestClient.admin();
     String encodedQuery = URLEncoder.encode(query, StandardCharsets.UTF_8);
-    String searchPath =
-        "v1/search/query?q="
-            + encodedQuery
-            + "&index=context_file_search_index&from=0&size="
-            + SEARCH_RESULT_SIZE;
 
-    try {
-      await()
-          .pollInterval(POLL_INTERVAL)
-          .atMost(SEARCH_VISIBLE_TIMEOUT)
-          .untilAsserted(
-              () -> {
-                try (Response searchResponse = rest.rawGet(searchPath)) {
-                  String responseBody = searchResponse.readEntity(String.class);
-                  assertEquals(200, searchResponse.getStatus(), responseBody);
-                  assertTrue(responseBody.contains(fileId.toString()));
-                }
-              });
-    } catch (ConditionTimeoutException e) {
-      throw new AssertionError(searchFailureDiagnostics(rest, searchPath, query, fileId), e);
-    }
-  }
-
-  private String searchFailureDiagnostics(
-      RestClient rest, String searchPath, String query, UUID fileId) {
-    String searchResponse = readDiagnosticResponse(rest, searchPath);
-    String indexedDocument =
-        readDiagnosticResponse(
-            rest, "v1/search/get/context_file_search_index/doc/" + fileId.toString());
-    return "Context file "
-        + fileId
-        + " was not searchable for query "
-        + query
-        + ". Search response: "
-        + searchResponse
-        + ". Indexed document: "
-        + indexedDocument;
-  }
-
-  private String readDiagnosticResponse(RestClient rest, String path) {
-    try (Response response = rest.rawGet(path)) {
-      String body = response.readEntity(String.class);
-      String truncatedBody =
-          body.length() <= DIAGNOSTIC_BODY_LIMIT
-              ? body
-              : body.substring(0, DIAGNOSTIC_BODY_LIMIT) + "...[truncated]";
-      return "status=" + response.getStatus() + ", body=" + truncatedBody;
-    } catch (Exception e) {
-      return "request failed: " + e.getMessage();
-    }
+    await()
+        .pollInterval(POLL_INTERVAL)
+        .atMost(SEARCH_VISIBLE_TIMEOUT)
+        .untilAsserted(
+            () -> {
+              try (Response searchResponse =
+                  rest.rawGet(
+                      "v1/search/query?q="
+                          + encodedQuery
+                          + "&index=context_file_search_index&from=0&size=10")) {
+                assertEquals(200, searchResponse.getStatus());
+                assertTrue(searchResponse.readEntity(String.class).contains(fileId.toString()));
+              }
+            });
   }
 
   private ContextFile awaitProcessed(UUID fileId, String expectedText) {
@@ -478,12 +440,7 @@ class DriveFileUploadIT {
             .getBytes(StandardCharsets.UTF_8);
 
     ContextFile file;
-    try (Response response =
-        uploadFile(
-            uniqueUploadedFileName(ns, "search-fixture.txt"),
-            content,
-            ns.shortPrefix("Search Fixture"),
-            null)) {
+    try (Response response = uploadFile("search-fixture.txt", content, "Search Fixture", null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
@@ -501,11 +458,7 @@ class DriveFileUploadIT {
 
     ContextFile file;
     try (Response response =
-        uploadFile(
-            uniqueUploadedFileName(ns, "search-fixture.pdf"),
-            content,
-            ns.shortPrefix("PDF Search"),
-            null)) {
+        uploadFile("search-fixture.pdf", content, ns.shortPrefix("PDF Search"), null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
@@ -523,11 +476,7 @@ class DriveFileUploadIT {
 
     ContextFile file;
     try (Response response =
-        uploadFile(
-            uniqueUploadedFileName(ns, "search-fixture.xlsx"),
-            content,
-            ns.shortPrefix("Spreadsheet Search"),
-            null)) {
+        uploadFile("search-fixture.xlsx", content, ns.shortPrefix("Spreadsheet Search"), null)) {
       String body = response.readEntity(String.class);
       assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
       file = JsonUtils.readValue(body, ContextFile.class);
@@ -552,11 +501,7 @@ class DriveFileUploadIT {
 
       ContextFile file;
       try (Response response =
-          uploadFile(
-              uniqueUploadedFileName(ns, "search-fixture.png"),
-              content,
-              ns.shortPrefix("Image Search"),
-              null)) {
+          uploadFile("search-fixture.png", content, ns.shortPrefix("Image Search"), null)) {
         String body = response.readEntity(String.class);
         assertEquals(CREATED.getStatusCode(), response.getStatus(), "Upload failed: " + body);
         file = JsonUtils.readValue(body, ContextFile.class);

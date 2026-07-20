@@ -500,7 +500,7 @@ const TestSuitePipelineTab = ({
                       />
                     </Table.Cell>
 
-                    <Table.Cell className="tw:align-middle tw:w-44 tw:max-w-44">
+                    <Table.Cell className="tw:align-middle tw:w-44">
                       {renderScheduleField(record.name, record)}
                     </Table.Cell>
 

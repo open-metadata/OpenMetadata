@@ -15,9 +15,7 @@ EXASOL_SQL_STATEMENT = textwrap.dedent(
     WHERE s.sql_text NOT LIKE '/* {{"app": "OpenMetadata", %%}} */%%'
     AND s.success = TRUE
     AND s.sql_text NOT LIKE '/* {{"app": "dbt", %%}} */%%'
-    AND s.start_time between
-      CONVERT_TZ(TO_TIMESTAMP('{start_time}'), 'UTC', DBTIMEZONE)
-      AND CONVERT_TZ(TO_TIMESTAMP('{end_time}'), 'UTC', DBTIMEZONE)
+    AND s.start_time between TO_TIMESTAMP('{start_time}') and TO_TIMESTAMP('{end_time}')
     {filters}
     LIMIT {result_limit}
     """

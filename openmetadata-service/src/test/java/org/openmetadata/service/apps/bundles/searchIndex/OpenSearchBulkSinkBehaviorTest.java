@@ -10,7 +10,6 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.mockConstruction;
 import static org.mockito.Mockito.mockStatic;
@@ -32,13 +31,11 @@ import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicLong;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
-import org.mockito.ArgumentCaptor;
 import org.mockito.MockedConstruction;
 import org.mockito.MockedStatic;
 import org.openmetadata.schema.EntityInterface;
 import org.openmetadata.schema.EntityTimeSeriesInterface;
 import org.openmetadata.schema.api.lineage.EsLineageData;
-import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.search.IndexMapping;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.apps.bundles.searchIndex.stats.StageStatsTracker;
@@ -49,13 +46,9 @@ import org.openmetadata.service.search.SearchRepository;
 import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
-import org.openmetadata.service.search.opensearch.OsUtils;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorDocBuilder;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
-import os.org.opensearch.client.json.JsonData;
-import os.org.opensearch.client.opensearch._types.Script;
-import os.org.opensearch.client.opensearch.core.bulk.BulkOperation;
 
 class OpenSearchBulkSinkBehaviorTest {
 
@@ -145,8 +138,7 @@ class OpenSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class
+            Map.class
           },
           entity,
           "table_index",
@@ -154,8 +146,7 @@ class OpenSearchBulkSinkBehaviorTest {
           tracker,
           false,
           Collections.emptyMap(),
-          Collections.emptyMap(),
-          false);
+          Collections.emptyMap());
 
       verify(processor)
           .add(any(), eq(entityId.toString()), eq(ENTITY_TYPE), eq(tracker), anyLong());
@@ -163,250 +154,6 @@ class OpenSearchBulkSinkBehaviorTest {
       verify(tracker).recordProcess(StatsResult.SUCCESS);
       assertEquals(1, sink.getProcessStats().getSuccessRecords());
       assertEquals(0, sink.getProcessStats().getFailedRecords());
-    }
-  }
-
-  @Test
-  void relationshipPartialUpdateUsesVectorEnrichedFullUpsertWithoutRewritingOtherFields()
-      throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
-    UUID entityId = UUID.randomUUID();
-    when(entity.getId()).thenReturn(entityId);
-    when(entity.getEntityReference())
-        .thenReturn(new EntityReference().withId(entityId).withType(Entity.TEST_CASE));
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        new SearchRepository.ScriptedPartialUpdate(
-            "ctx._source.testSuites = params.testSuites;",
-            Map.of("testSuites", List.of(Map.of("id", "suite-id"))));
-    when(searchRepository.buildBulkScriptedPartialUpdate(entity, 17L)).thenReturn(partialUpdate);
-    JsonNode cachedEmbedding =
-        new ObjectMapper()
-            .readTree(
-                "{\"fingerprint\":\"fp\",\"embedding\":[0.1,0.2],"
-                    + "\"textToEmbed\":\"text\",\"textToLLMContext\":\"context\","
-                    + "\"chunkIndex\":0,\"chunkCount\":1,\"parentId\":\""
-                    + entityId
-                    + "\"}");
-    OpenSearchVectorService vectorService = mock(OpenSearchVectorService.class);
-    EmbeddingClient embeddingClient = mock(EmbeddingClient.class);
-    when(vectorService.getEmbeddingClient()).thenReturn(embeddingClient);
-    when(embeddingClient.getDimension()).thenReturn(2);
-
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<Entity> entityMock = mockStatic(Entity.class);
-        MockedStatic<OpenSearchVectorService> vectorServiceMock =
-            mockStatic(OpenSearchVectorService.class)) {
-      vectorServiceMock.when(OpenSearchVectorService::getInstance).thenReturn(vectorService);
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 2000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
-      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
-      entityMock
-          .when(() -> Entity.buildSearchIndex(Entity.TEST_CASE, entity))
-          .thenReturn(
-              new StubSearchIndex(Map.of("name", "current", "description", "current description")));
-
-      invokePrivate(
-          sink,
-          "addEntity",
-          new Class<?>[] {
-            EntityInterface.class,
-            String.class,
-            ReindexContext.class,
-            StageStatsTracker.class,
-            boolean.class,
-            Map.class,
-            Map.class,
-            boolean.class,
-            Map.class
-          },
-          entity,
-          "table_index",
-          null,
-          null,
-          true,
-          Map.of(entityId.toString(), cachedEmbedding),
-          Collections.emptyMap(),
-          true,
-          Map.of(entityId, 17L));
-
-      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
-      verify(processor)
-          .add(
-              operationCaptor.capture(),
-              eq(entityId.toString()),
-              eq(Entity.TEST_CASE),
-              isNull(),
-              anyLong());
-      BulkOperation operation = operationCaptor.getValue();
-      assertTrue(operation.isUpdate());
-      Object operationData = getPrivateField(operation.update(), "data");
-      assertFalse(Boolean.TRUE.equals(getPrivateField(operationData, "scriptedUpsert")));
-      Map<String, Object> upsert =
-          OsUtils.jsonDataToMap((JsonData) getPrivateField(operationData, "upsert"));
-      assertEquals("current description", upsert.get("description"));
-      assertEquals(17L, ((Number) upsert.get("testSuitesRevision")).longValue());
-      assertNotNull(upsert.get("embedding"));
-      Script script = (Script) getPrivateField(operationData, "script");
-      assertEquals("ctx._source.testSuites = params.testSuites;", script.inline().source());
-    }
-  }
-
-  @Test
-  void scriptedUpsertConvertsNullFieldsIntoExplicitRemovals() throws Exception {
-    Map<String, Object> parameters = new HashMap<>();
-    parameters.put("name", "current");
-    parameters.put("description", null);
-    parameters.put("fieldsToRemove", List.of("displayName"));
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        new SearchRepository.ScriptedPartialUpdate("remove-null-fields", parameters, true);
-
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-
-      invokePrivate(
-          sink,
-          "addScriptedPartialUpdate",
-          new Class<?>[] {
-            String.class,
-            String.class,
-            String.class,
-            SearchRepository.ScriptedPartialUpdate.class,
-            String.class,
-            StageStatsTracker.class
-          },
-          "test_case_index",
-          "test-case-id",
-          Entity.TEST_CASE,
-          partialUpdate,
-          "{\"name\":\"current\"}",
-          null);
-
-      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
-      verify(processorConstruction.constructed().getFirst())
-          .add(
-              operationCaptor.capture(),
-              eq("test-case-id"),
-              eq(Entity.TEST_CASE),
-              isNull(),
-              anyLong());
-      Object operationData = getPrivateField(operationCaptor.getValue().update(), "data");
-      Script script = (Script) getPrivateField(operationData, "script");
-      Map<String, JsonData> scriptParameters = script.inline().params();
-      assertFalse(scriptParameters.containsKey("description"));
-      assertEquals("current", scriptParameters.get("name").to(String.class));
-      assertEquals(
-          List.of("description", "displayName"),
-          scriptParameters.get("fieldsToRemove").to(List.class));
-    }
-  }
-
-  @Test
-  @SuppressWarnings({"rawtypes", "unchecked"})
-  void oversizedScriptedUpdateIsSentDirectlyInsteadOfPoisoningTheBulkBatch() throws Exception {
-    os.org.opensearch.client.opensearch.OpenSearchClient rawClient =
-        mock(os.org.opensearch.client.opensearch.OpenSearchClient.class);
-    StageStatsTracker tracker = mock(StageStatsTracker.class);
-    when(searchClient.getNewClient()).thenReturn(rawClient);
-    SearchRepository.ScriptedPartialUpdate partialUpdate =
-        new SearchRepository.ScriptedPartialUpdate(
-            "ctx._source.tests = params.tests;", Map.of("tests", "x".repeat(2048)));
-
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-        mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class)) {
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 128L);
-
-      invokePrivate(
-          sink,
-          "addScriptedPartialUpdate",
-          new Class<?>[] {
-            String.class,
-            String.class,
-            String.class,
-            SearchRepository.ScriptedPartialUpdate.class,
-            String.class,
-            StageStatsTracker.class
-          },
-          "test_suite_index",
-          "suite-id",
-          Entity.TEST_SUITE,
-          partialUpdate,
-          "{\"name\":\"suite\"}",
-          tracker);
-
-      verify(processorConstruction.constructed().getFirst(), never())
-          .add(any(), any(), any(), any(), anyLong());
-      verify(rawClient).update(any(java.util.function.Function.class), eq(Map.class));
-      verify(tracker).incrementPendingSink();
-      verify(tracker).recordSink(StatsResult.SUCCESS);
-      assertEquals(1, sink.getStats().getTotalRecords());
-      assertEquals(1, sink.getStats().getSuccessRecords());
-    }
-  }
-
-  @Test
-  void fullTestCaseDocumentUsesRelationshipPreservingUpdate() throws Exception {
-    EntityInterface entity = mock(EntityInterface.class);
-    UUID entityId = UUID.randomUUID();
-    when(entity.getId()).thenReturn(entityId);
-    SearchRepository.ScriptedPartialUpdate documentUpdate =
-        new SearchRepository.ScriptedPartialUpdate(
-            "preserve-test-suites", Map.of("name", "current"), true);
-    when(searchRepository.buildRelationshipDocumentUpdate(eq(entity), any()))
-        .thenReturn(documentUpdate);
-
-    try (MockedConstruction<OpenSearchBulkSink.CustomBulkProcessor> processorConstruction =
-            mockConstruction(OpenSearchBulkSink.CustomBulkProcessor.class);
-        MockedStatic<Entity> entityMock = mockStatic(Entity.class)) {
-      OpenSearchBulkSink sink = new OpenSearchBulkSink(searchRepository, 10, 2, 1000L);
-      OpenSearchBulkSink.CustomBulkProcessor processor =
-          processorConstruction.constructed().getFirst();
-      entityMock.when(Entity::getSearchRepository).thenReturn(searchRepository);
-      entityMock.when(() -> Entity.getEntityTypeFromObject(entity)).thenReturn(Entity.TEST_CASE);
-      entityMock
-          .when(() -> Entity.buildSearchIndex(Entity.TEST_CASE, entity))
-          .thenReturn(new StubSearchIndex(Map.of("name", "current")));
-
-      invokePrivate(
-          sink,
-          "addEntity",
-          new Class<?>[] {
-            EntityInterface.class,
-            String.class,
-            ReindexContext.class,
-            StageStatsTracker.class,
-            boolean.class,
-            Map.class,
-            Map.class,
-            boolean.class
-          },
-          entity,
-          "test_case_index",
-          null,
-          null,
-          false,
-          Collections.emptyMap(),
-          Collections.emptyMap(),
-          false);
-
-      ArgumentCaptor<BulkOperation> operationCaptor = ArgumentCaptor.forClass(BulkOperation.class);
-      verify(processor)
-          .add(
-              operationCaptor.capture(),
-              eq(entityId.toString()),
-              eq(Entity.TEST_CASE),
-              isNull(),
-              anyLong());
-      assertTrue(operationCaptor.getValue().isUpdate());
-      Object operationData = getPrivateField(operationCaptor.getValue().update(), "data");
-      assertTrue(Boolean.TRUE.equals(getPrivateField(operationData, "scriptedUpsert")));
-      assertTrue(
-          OsUtils.jsonDataToMap((JsonData) getPrivateField(operationData, "upsert")).isEmpty());
-      Script script = (Script) getPrivateField(operationData, "script");
-      assertEquals("preserve-test-suites", script.inline().source());
     }
   }
 
@@ -440,8 +187,7 @@ class OpenSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class
+            Map.class
           },
           entity,
           "table_index",
@@ -449,8 +195,7 @@ class OpenSearchBulkSinkBehaviorTest {
           tracker,
           false,
           Collections.emptyMap(),
-          Collections.emptyMap(),
-          false);
+          Collections.emptyMap());
 
       verify(processorConstruction.constructed().getFirst()).setFailureCallback(failureCallback);
       verify(tracker).recordProcess(StatsResult.WARNING);
@@ -623,8 +368,7 @@ class OpenSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class
+            Map.class
           },
           entity,
           "table_index",
@@ -632,8 +376,7 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           false,
           Collections.emptyMap(),
-          docBuildContexts,
-          false);
+          docBuildContexts);
 
       assertSame(ctxForEntity, ContextCapturingIndex.observedContext);
       assertSame(edges, ContextCapturingIndex.observedContext.prefetchedUpstreamLineage());
@@ -723,8 +466,7 @@ class OpenSearchBulkSinkBehaviorTest {
             StageStatsTracker.class,
             boolean.class,
             Map.class,
-            Map.class,
-            boolean.class
+            Map.class
           },
           entity,
           "table_index",
@@ -732,8 +474,7 @@ class OpenSearchBulkSinkBehaviorTest {
           null,
           false,
           Collections.emptyMap(),
-          Collections.emptyMap(),
-          false);
+          Collections.emptyMap());
 
       assertSame(DocBuildContext.empty(), ContextCapturingIndex.observedContext);
     }
@@ -1065,12 +806,6 @@ class OpenSearchBulkSinkBehaviorTest {
     } else {
       throw new IllegalStateException("Unsupported atomic field " + fieldName);
     }
-  }
-
-  private Object getPrivateField(Object target, String fieldName) throws Exception {
-    Field field = target.getClass().getDeclaredField(fieldName);
-    field.setAccessible(true);
-    return field.get(target);
   }
 
   private static class StubSearchIndex implements SearchIndex {

@@ -207,7 +207,7 @@ const SearchPreview = ({
 
   return (
     <div className="search-preview">
-      <Row className="d-flex justify-between items-center m-b-sm search-preview-header">
+      <Row className="d-flex justify-between items-center m-b-sm">
         <Col>
           <Typography.Text
             className="header-title"
@@ -215,18 +215,17 @@ const SearchPreview = ({
             {t('label.preview')}
           </Typography.Text>
         </Col>
-        <Col className="search-preview-actions">
-          <span className="ranking-details-control">
-            <Typography.Text>
-              {t('label.ranking-detail-plural')}
-            </Typography.Text>
-            <Toggle
-              aria-label={t('label.ranking-detail-plural')}
-              data-testid="ranking-details-switch"
-              isSelected={showRankingDetails}
-              onChange={setShowRankingDetails}
-            />
-          </span>
+        <Col>
+          <Typography.Text className="m-r-xs">
+            {t('label.ranking-detail-plural')}
+          </Typography.Text>
+          <Toggle
+            aria-label={t('label.ranking-detail-plural')}
+            className="m-r-md"
+            data-testid="ranking-details-switch"
+            isSelected={showRankingDetails}
+            onChange={setShowRankingDetails}
+          />
           <Button
             className="restore-defaults-btn font-semibold"
             data-testid="restore-defaults-btn"
@@ -234,7 +233,7 @@ const SearchPreview = ({
             {t('label.restore-default-plural')}
           </Button>
           <Button
-            className="save-btn font-semibold"
+            className="save-btn font-semibold m-l-md"
             data-testid="save-btn"
             disabled={disabledSave}
             loading={isSaving}

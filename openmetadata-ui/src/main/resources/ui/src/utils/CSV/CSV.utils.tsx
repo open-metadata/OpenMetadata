@@ -511,8 +511,7 @@ export const getColumnConfig = (
   },
   editable = false,
   isBulkEdit = false,
-  useMetricRichGrid = isBulkEdit,
-  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
+  useMetricRichGrid = isBulkEdit
 ): Column<Record<string, string>> => {
   const colType = column.split('.').pop() ?? '';
   const bulkEditConfig = entityBulkEditConfigClassBase.getConfig(entityType);
@@ -549,7 +548,6 @@ export const getColumnConfig = (
       multipleOwner,
       {
         usePlainTextEditor: shouldUsePlainTextEditor,
-        onEditCellHeightChange,
       }
     ),
     renderCell: (data: RenderCellProps<Record<string, string>>) =>
@@ -577,8 +575,7 @@ export const getEntityColumnsAndDataSourceFromCSV = (
   },
   cellEditable: boolean,
   isBulkEdit: boolean,
-  useMetricRichGrid = isBulkEdit,
-  onEditCellHeightChange?: (rowIdx: number, height: number | null) => void
+  useMetricRichGrid = isBulkEdit
 ) => {
   const [cols, ...rows] = csv;
 
@@ -590,8 +587,7 @@ export const getEntityColumnsAndDataSourceFromCSV = (
         multipleOwner,
         cellEditable,
         isBulkEdit,
-        useMetricRichGrid,
-        onEditCellHeightChange
+        useMetricRichGrid
       )
     ) ?? [];
 

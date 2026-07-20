@@ -71,6 +71,7 @@
         "MicrosoftFabric",
         "BurstIQ",
         "Informix",
+        "InfluxDB",
         "Iomete",
         "QuestDB",
         "SapBw4Hana"
@@ -243,6 +244,9 @@
         },
         {
           "name": "Informix"
+        },
+        {
+          "name": "InfluxDB"
         },
         {
           "name": "Iomete"
@@ -423,6 +427,9 @@
             },
             {
               "$ref": "./connections/database/burstIQConnection.json"
+            },
+            {
+              "$ref": "./connections/database/influxdbConnection.json"
             },
             {
               "$ref": "./connections/database/informixConnection.json"

@@ -245,16 +245,17 @@ test.describe('Table pagination sorting search scenarios ', () => {
 
     await expect(page.getByTestId('databaseSchema-tables')).toBeVisible();
 
-    const pageSizeDropdown = page.getByTestId('page-size-selection-dropdown');
-    await pageSizeDropdown.scrollIntoViewIfNeeded();
-    await expect(pageSizeDropdown).toBeVisible();
-    await pageSizeDropdown.hover();
+    await page
+      .getByTestId('page-size-selection-dropdown')
+      .scrollIntoViewIfNeeded();
+    await page.getByTestId('page-size-selection-dropdown').click();
+    await page.locator('.ant-dropdown').waitFor({ state: 'visible' });
 
-    const pageSizeOption = page
-      .locator('.ant-dropdown:not(.ant-dropdown-hidden)')
-      .getByRole('menuitem', { name: '15 / Page' });
-    await expect(pageSizeOption).toBeVisible();
-    await pageSizeOption.click();
+    await expect(
+      page.getByRole('menuitem', { name: '15 / Page' })
+    ).toBeVisible();
+
+    await page.getByRole('menuitem', { name: '15 / Page' }).click();
     await waitForAllLoadersToDisappear(page);
 
     const linkInColumn = getFirstRowColumnLink(page);

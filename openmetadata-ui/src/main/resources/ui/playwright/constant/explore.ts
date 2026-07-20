@@ -170,7 +170,6 @@ export const ENDPOINT_TO_FILTER_MAP: Record<string, string> = {
   [EntityTypeEndpoint.DataModel]: 'Data Model',
   [EntityTypeEndpoint.DATA_PRODUCT]: 'Data Product',
   [EntityTypeEndpoint.GlossaryTerm]: 'Glossary',
-  [EntityTypeEndpoint.METRIC]: 'Metric',
   [EntityTypeEndpoint.Tag]: 'Tag',
 };
 
@@ -190,7 +189,5 @@ export const ENDPOINT_TO_EXPLORE_TAB_MAP: Record<string, string> = {
   [EntityTypeEndpoint.DataModel]: 'Dashboard Data Models',
   [EntityTypeEndpoint.DATA_PRODUCT]: 'Data Products',
   [EntityTypeEndpoint.GlossaryTerm]: 'Glossary Terms',
-  [EntityTypeEndpoint.Chart]: 'Charts',
-  [EntityTypeEndpoint.METRIC]: 'Metrics',
   [EntityTypeEndpoint.Tag]: 'Tags',
 };

@@ -156,22 +156,15 @@ class TestExasolUsage(ExasolTestBase):
                     )
                 )
 
-            target_query_filter = f"""
-                UPPER(s.sql_text) LIKE '%FROM {SCHEMA_NAME}.{TABLE_NAME}%'
-                OR UPPER(s.sql_text) LIKE '%FROM {SCHEMA_NAME}.{VIEW_NAME}%'
-            """
             wait_for_system_table(
                 self.engine,
                 EXASOL_SQL_STATEMENT.format(
                     start_time="2000-01-01 00:00:00",
                     end_time="2999-01-01 00:00:00",
-                    filters=f"""
-                        AND s.command_name = 'SELECT'
-                        AND ({target_query_filter})
-                    """,
+                    filters="",
                     result_limit=10,
                 ),
-                expected_count=2,
+                expected_count=3,
                 timeout_seconds=120,
             )
 
@@ -185,7 +178,6 @@ class TestExasolUsage(ExasolTestBase):
                             "type": DatabaseUsageConfigType.DatabaseUsage.value,
                             "queryLogDuration": 1,
                             "resultLimit": 10000,
-                            "filterCondition": target_query_filter,
                         }
                     },
                 },
@@ -216,7 +208,7 @@ class TestExasolUsage(ExasolTestBase):
 
             usage_counts = {table: value.count for (table, _), value in table_usage.items()}
             assert any(TABLE_NAME.lower() in table.lower() for table in usage_counts)
-            assert sum(usage_counts.values()) >= 2
+            assert sum(usage_counts.values()) >= 3
 
             recorded_queries = [
                 query for queries in table_queries.values() for query in queries if query.query and query.query.root

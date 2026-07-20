@@ -90,7 +90,7 @@ jobs:
       - name: Run Playwright tests
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
-          if [ "${{ matrix.shardIndex }}" = "1" ]; then
+          if [ "${{ matrix.shardIndex }}" -eq "1" ]; then
             echo "🔹 Running DataAssetRules-only tests on shard 1"
 
             # The testMatch pattern ensures only DataAssetRules*.spec.ts files run
@@ -99,7 +99,7 @@ jobs:
               --project=DataAssetRulesEnabled \
               --project=DataAssetRulesDisabled
 
-          elif [ "${{ matrix.shardIndex }}" = "2" ]; then
+          elif [ "${{ matrix.shardIndex }}" -eq "2" ]; then
             echo "🔹 Running search relevance tests on shard 2"
 
             npx playwright test \
@@ -124,6 +124,7 @@ jobs:
           PLAYWRIGHT_SNOWFLAKE_ACCOUNT: ${{ secrets.TEST_SNOWFLAKE_ACCOUNT }}
           PLAYWRIGHT_SNOWFLAKE_DATABASE: ${{ secrets.TEST_SNOWFLAKE_DATABASE }}
           PLAYWRIGHT_SNOWFLAKE_WAREHOUSE: ${{ secrets.TEST_SNOWFLAKE_WAREHOUSE }}
+          PLAYWRIGHT_PROJECT_ID: ${{ steps.cypress-project-id.outputs.CYPRESS_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY: ${{ secrets.TEST_BQ_PRIVATE_KEY }}
           PLAYWRIGHT_BQ_PROJECT_ID: ${{ secrets.PLAYWRIGHT_BQ_PROJECT_ID }}
           PLAYWRIGHT_BQ_PRIVATE_KEY_ID: ${{ secrets.TEST_BQ_PRIVATE_KEY_ID }}
@@ -172,7 +173,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: blob-report-${{ matrix.shardIndex }}
-          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/blob-report
           retention-days: 1
 
@@ -181,23 +181,20 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: playwright-HTML-report-${{ matrix.shardIndex }}
-          overwrite: true
           path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 1
           compression-level: 9
 
       - name: Clean Up
-        if: always()
-        continue-on-error: true
         run: |
           cd ./docker/development
           docker compose down --remove-orphans
-          sudo rm -rf "${PWD}/docker-volume"
+          sudo rm -rf ${PWD}/docker-volume
 
   merge-reports:
     needs: pw-ci-mysql-branch
     runs-on: ubuntu-latest
-    if: ${{ always() }}
+    if: ${{ !failure() || !cancelled() }}
     env:
       # Recommended: pass the GitHub token lets this action correctly
       # determine the unique run id necessary to re-run the checks
@@ -225,28 +222,6 @@ jobs:
         working-directory: openmetadata-ui/src/main/resources/ui/
         run: |
           npx playwright merge-reports --reporter json ./blob-reports > merged_tests_results.json
-
-      - name: Evaluate zero-retry gate in shadow mode
-        if: always()
-        continue-on-error: true
-        env:
-          MATRIX_OUTCOME: ${{ needs.pw-ci-mysql-branch.result }}
-        run: |
-          python3 .github/scripts/classify_playwright_outcome.py \
-            --report-glob 'openmetadata-ui/src/main/resources/ui/merged_tests_results.json' \
-            --matrix-outcome "$MATRIX_OUTCOME" \
-            --profile mysql-nightly \
-            --output "$RUNNER_TEMP/playwright-shadow-gate/outcome.json"
-
-      - name: Upload Playwright shadow-gate ledger
-        if: always()
-        continue-on-error: true
-        uses: actions/upload-artifact@v4
-        with:
-          name: playwright-shadow-gate-mysql-nightly-${{ github.run_id }}-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/playwright-shadow-gate/outcome.json
-          if-no-files-found: warn
-          retention-days: 30
 
       - name: Generate Slack Notification
         if: ${{ inputs.send_slack_notification }}

@@ -810,7 +810,7 @@ export class OverviewPageObject extends RightPanelBase {
    * Verify owners section is visible
    */
   async shouldShowOwner(ownerName: string): Promise<void> {
-    await this.container.getByTestId(ownerName).waitFor({ state: 'visible' });
+    await this.page.getByTestId(`${ownerName}`).waitFor({ state: 'visible' });
   }
 
   /**

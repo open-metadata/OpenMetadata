@@ -92,5 +92,5 @@ class ExasolUsageTest(TestCase):
         assert "EXA_STATISTICS.EXA_DBA_AUDIT_SQL" in sql
         assert '"aborted"' not in sql
         assert "LIMIT 250" in sql
-        assert "CONVERT_TZ(TO_TIMESTAMP('2025-01-01 00:00:00'), 'UTC', DBTIMEZONE)" in sql
-        assert "CONVERT_TZ(TO_TIMESTAMP('2025-01-02 00:00:00'), 'UTC', DBTIMEZONE)" in sql
+        assert "TO_TIMESTAMP('2025-01-01 00:00:00')" in sql
+        assert "TO_TIMESTAMP('2025-01-02 00:00:00')" in sql

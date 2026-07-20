@@ -26,7 +26,6 @@ def test_get_client_builds_client():
     with (
         patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_engine,
         patch(f"{CONNECTION_MODULE}.DatabricksClient") as mock_client,
-        patch(f"{CONNECTION_MODULE}.get_auth_config", return_value={}),
     ):
         conn = DatabricksPipelineConnection(MagicMock())
         client = conn.client
@@ -39,7 +38,6 @@ def test_close_disposes_the_engine():
     with (
         patch(f"{CONNECTION_MODULE}.create_generic_db_connection") as mock_engine,
         patch(f"{CONNECTION_MODULE}.DatabricksClient"),
-        patch(f"{CONNECTION_MODULE}.get_auth_config", return_value={}),
     ):
         conn = DatabricksPipelineConnection(MagicMock())
         _ = conn.client

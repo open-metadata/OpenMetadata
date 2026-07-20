@@ -169,7 +169,6 @@ export const fetchEntityData = async ({
   TABS_SEARCH_INDEXES,
   EntityTypeSearchIndexMapping,
   setSearchHitCounts,
-  setAutoSelectedSearchIndex,
   setSearchResults,
   setUpdatedAggregations,
   setShowIndexNotFoundAlert,
@@ -191,9 +190,6 @@ export const fetchEntityData = async ({
   TABS_SEARCH_INDEXES: ExploreSearchIndex[];
   EntityTypeSearchIndexMapping: Record<EntityType, ExploreSearchIndex>;
   setSearchHitCounts: (counts: SearchHitCounts) => void;
-  setAutoSelectedSearchIndex: (
-    searchIndex: ExploreSearchIndex | undefined
-  ) => void;
   setSearchResults: (results: SearchResponse<ExploreSearchIndex>) => void;
   setUpdatedAggregations: (aggs: Aggregations) => void;
   setShowIndexNotFoundAlert: (show: boolean) => void;
@@ -205,28 +201,21 @@ export const fetchEntityData = async ({
     queryFilter as QueryFilterInterface
   );
 
-  const isNlqSearch = isNLPRequestEnabled && !isEmpty(searchQueryParam);
-  const searchRequest = isNlqSearch ? nlqSearch : searchQuery;
+  const searchRequest =
+    isNLPRequestEnabled && !isEmpty(searchQueryParam) ? nlqSearch : searchQuery;
 
   try {
     if (searchQueryParam) {
       const countPayload = {
         query: escapeESReservedCharacters(searchQueryParam),
-        pageNumber: 1,
-        pageSize: 1,
+        pageNumber: 0,
+        pageSize: 0,
         queryFilter: combinedQueryFilter,
-        searchIndex: SearchIndex.DATA_ASSET as const,
+        searchIndex: SearchIndex.DATA_ASSET,
         includeDeleted: showDeleted,
+        fetchSource: false,
         filters: '',
       };
-      const runCountSearch = () =>
-        isNlqSearch
-          ? nlqSearch({ ...countPayload, fetchSource: false })
-          : searchQuery({
-              ...countPayload,
-              fetchSource: true,
-              includeFields: ['entityType'],
-            });
 
       const handleSearchError = (error: unknown) => {
         if (isElasticsearchError(error)) {
@@ -249,18 +238,7 @@ export const fetchEntityData = async ({
         });
         setSearchHitCounts(counts as SearchHitCounts);
 
-        const topHitEntityType = res.hits.hits[0]?._source?.entityType;
-        const topHitSearchIndex = topHitEntityType
-          ? EntityTypeSearchIndexMapping[topHitEntityType as EntityType]
-          : undefined;
-
-        return {
-          counts: counts as SearchHitCounts,
-          topHitSearchIndex:
-            topHitSearchIndex && TABS_SEARCH_INDEXES.includes(topHitSearchIndex)
-              ? topHitSearchIndex
-              : undefined,
-        };
+        return counts as SearchHitCounts;
       };
 
       const runResultsSearch = async (
@@ -315,7 +293,7 @@ export const fetchEntityData = async ({
         // round-trips. Each leg handles its own error (a failed count still
         // lets results render, and vice-versa).
         await Promise.all([
-          runCountSearch()
+          searchRequest(countPayload)
             .then((res) =>
               applyHitCounts(res as SearchResponse<ExploreSearchIndex>)
             )
@@ -326,13 +304,13 @@ export const fetchEntityData = async ({
         // No tab: the count decides which index actually has results, so the
         // count must complete before the results query can be issued.
         try {
-          const { counts, topHitSearchIndex } = applyHitCounts(
-            (await runCountSearch()) as SearchResponse<ExploreSearchIndex>
+          const counts = applyHitCounts(
+            (await searchRequest(
+              countPayload
+            )) as SearchResponse<ExploreSearchIndex>
           );
           const effectiveSearchIndex =
-            findActiveSearchIndex(counts, tabsInfo, topHitSearchIndex) ||
-            searchIndex;
-          setAutoSelectedSearchIndex(effectiveSearchIndex);
+            findActiveSearchIndex(counts, tabsInfo) || searchIndex;
           await runResultsSearch(effectiveSearchIndex);
         } catch (error) {
           handleSearchError(error);

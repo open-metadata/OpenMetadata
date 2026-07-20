@@ -34,7 +34,6 @@ import org.openmetadata.schema.type.ChangeEvent;
 import org.openmetadata.schema.utils.ResultList;
 import org.openmetadata.service.events.errors.EventPublisherException;
 import org.openmetadata.service.events.subscription.AlertUtil;
-import org.openmetadata.service.jdbi3.CollectionDAO.ChangeEventDAO.ChangeEventRecord;
 import org.openmetadata.service.notifications.recipients.RecipientResolver;
 import org.openmetadata.service.notifications.recipients.context.EmailRecipient;
 import org.openmetadata.service.notifications.recipients.context.Recipient;
@@ -213,7 +212,6 @@ class AbstractEventConsumerTest {
   void testConstants() {
     assertEquals("SubscriptionMapKey", AbstractEventConsumer.DESTINATION_MAP_KEY);
     assertEquals("alertOffsetKey", AbstractEventConsumer.ALERT_OFFSET_KEY);
-    assertEquals("alertPendingGapSinceKey", AbstractEventConsumer.ALERT_PENDING_GAP_SINCE_KEY);
     assertEquals("alertInfoKey", AbstractEventConsumer.ALERT_INFO_KEY);
     assertEquals("eventSubscription.Offset", AbstractEventConsumer.OFFSET_EXTENSION);
     assertEquals("eventSubscription.metrics", AbstractEventConsumer.METRICS_EXTENSION);
@@ -225,80 +223,6 @@ class AbstractEventConsumerTest {
     assertEquals(2, AbstractEventConsumer.FailureTowards.values().length);
     assertEquals("SUBSCRIBER", AbstractEventConsumer.FailureTowards.SUBSCRIBER.name());
     assertEquals("PUBLISHER", AbstractEventConsumer.FailureTowards.PUBLISHER.name());
-  }
-
-  @Test
-  void testCursorPlanAdvancesAcrossContiguousOffsets() {
-    List<ChangeEventRecord> records =
-        List.of(new ChangeEventRecord(11, "{}"), new ChangeEventRecord(12, "{}"));
-
-    AbstractEventConsumer.CursorPlan plan =
-        AbstractEventConsumer.planCursor(10, 0L, records, 1_000L);
-
-    assertEquals(12, plan.offset());
-    assertEquals(0L, plan.pendingGapSince());
-    assertEquals(2, plan.recordCount());
-    assertFalse(plan.skippedGap());
-  }
-
-  @Test
-  void testCursorPlanWaitsAtNewHeadGap() {
-    List<ChangeEventRecord> records =
-        List.of(new ChangeEventRecord(12, "{}"), new ChangeEventRecord(13, "{}"));
-
-    AbstractEventConsumer.CursorPlan plan =
-        AbstractEventConsumer.planCursor(10, 0L, records, 1_000L);
-
-    assertEquals(10, plan.offset());
-    assertEquals(1_000L, plan.pendingGapSince());
-    assertEquals(0, plan.recordCount());
-    assertFalse(plan.skippedGap());
-  }
-
-  @Test
-  void testCursorPlanConsumesGapWhenLowerOffsetCommits() {
-    List<ChangeEventRecord> records =
-        List.of(
-            new ChangeEventRecord(11, "{}"),
-            new ChangeEventRecord(12, "{}"),
-            new ChangeEventRecord(13, "{}"));
-
-    AbstractEventConsumer.CursorPlan plan =
-        AbstractEventConsumer.planCursor(10, 500L, records, 1_000L);
-
-    assertEquals(13, plan.offset());
-    assertEquals(0L, plan.pendingGapSince());
-    assertEquals(3, plan.recordCount());
-    assertFalse(plan.skippedGap());
-  }
-
-  @Test
-  void testCursorPlanSkipsGapOnlyAfterTimeout() {
-    List<ChangeEventRecord> records =
-        List.of(new ChangeEventRecord(12, "{}"), new ChangeEventRecord(13, "{}"));
-    long now = AbstractEventConsumer.GAP_RESOLVE_TIMEOUT_MS + 1_000L;
-
-    AbstractEventConsumer.CursorPlan plan =
-        AbstractEventConsumer.planCursor(10, 1_000L, records, now);
-
-    assertEquals(11, plan.offset());
-    assertEquals(0L, plan.pendingGapSince());
-    assertEquals(0, plan.recordCount());
-    assertTrue(plan.skippedGap());
-  }
-
-  @Test
-  void testCursorPlanStopsAtGapAfterContiguousPrefix() {
-    List<ChangeEventRecord> records =
-        List.of(new ChangeEventRecord(11, "{}"), new ChangeEventRecord(13, "{}"));
-
-    AbstractEventConsumer.CursorPlan plan =
-        AbstractEventConsumer.planCursor(10, 500L, records, 1_000L);
-
-    assertEquals(11, plan.offset());
-    assertEquals(0L, plan.pendingGapSince());
-    assertEquals(1, plan.recordCount());
-    assertFalse(plan.skippedGap());
   }
 
   @Test

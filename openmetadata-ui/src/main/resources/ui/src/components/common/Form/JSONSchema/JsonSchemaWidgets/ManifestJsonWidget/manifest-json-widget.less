@@ -15,8 +15,6 @@
 .manifest-json-widget {
   .manifest-json-widget-resize-wrapper {
     position: relative;
-    display: flex;
-    flex-direction: column;
     resize: vertical;
     overflow: auto;
     min-height: 180px;
@@ -25,30 +23,10 @@
     border: 1px solid @grey-22;
     border-radius: 4px;
 
-    // Flex-fill the wrapper so the editor container keeps its full height even
-    // when empty. `.manifest-json-widget-editor` (schema-editor-container) is
-    // position:relative, so the CodeMirror below can absolutely fill it.
-    .manifest-json-widget-editor {
-      flex: 1 1 auto;
-      min-height: 0;
-    }
-
-    // CodeMirror defaults to 300px and a `height: 100%` won't resolve against a
-    // flex item, so it collapses to its content (~1 line) when empty. Absolutely
-    // filling the relative container pins it to the real box height instead.
+    .manifest-json-widget-editor,
+    .manifest-json-widget-editor > div,
     .CodeMirror {
-      position: absolute;
-      inset: 0;
-      height: auto !important;
-    }
-
-    // The sample manifest is shown only as a placeholder: keep its line breaks
-    // so it fills the editor, and mute the colour with the global placeholder
-    // token so it reads as a hint. !important overrides CodeMirror's white-space.
-    .CodeMirror-placeholder,
-    .CodeMirror-placeholder.CodeMirror-line-like {
-      color: var(--tw-color-text-placeholder);
-      white-space: pre-wrap !important;
+      height: 100% !important;
     }
   }
 

@@ -534,21 +534,21 @@ class TestTagProcessorMultiClassification:
             ],
         )
 
-        score_tags_for_column = Mock()
+        # Create TagProcessor
         processor = TagProcessor(
             config=workflow_config,
             metadata=metadata,
             classification_manager=classification_manager,
-            score_tags_for_column=score_tags_for_column,
             max_tags_per_column=10,
         )
 
+        # Process column
         tag_labels = processor.create_column_tag_labels(column=column_with_tag, sample_data=sample_email_password_data)
 
+        # Should return empty list (tag already applied)
         assert len(tag_labels) == 0, (
             f"Should not re-suggest existing tags, got {len(tag_labels)}: {[l.tagFQN for l in tag_labels]}"  # noqa: E741
         )
-        score_tags_for_column.assert_not_called()
 
     def test_idempotent_mutually_exclusive_tags(
         self,

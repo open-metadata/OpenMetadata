@@ -731,7 +731,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
           </Col>
           <Col className="d-flex items-center justify-end gap-3" flex={410}>
             <Button
-              aria-label={t('label.sort-order')}
+              aria-label="Sort order"
               className="tw:p-0"
               color="tertiary"
               data-testid="sort-order-button"
@@ -769,7 +769,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                 {t('label.tool-plural')}
               </Button>
               <Dropdown.Popover>
-                <Dropdown.Menu aria-label={t('label.action-plural')}>
+                <Dropdown.Menu aria-label="Actions">
                   <Dropdown.Item
                     icon={Download01}
                     label={t('label.export')}
@@ -782,13 +782,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     onPress={() => onChangeShowDeleted(!showDeleted)}>
                     <Box justify="between">
                       {t('label.show-deleted')}
-                      <Toggle
-                        excludeFromTabOrder
-                        isReadOnly
-                        aria-label={t('label.show-deleted')}
-                        className="tw:pointer-events-none"
-                        isSelected={showDeleted}
-                      />
+                      <Toggle isSelected={showDeleted} />
                     </Box>
                   </Dropdown.Item>
 
@@ -806,13 +800,7 @@ const ExploreV1: React.FC<ExploreProps> = ({
                     }>
                     <Box justify="between">
                       {t('label.ranking-detail-plural')}
-                      <Toggle
-                        excludeFromTabOrder
-                        isReadOnly
-                        aria-label={t('label.ranking-detail-plural')}
-                        className="tw:pointer-events-none"
-                        isSelected={showRankingDetails}
-                      />
+                      <Toggle isSelected={showRankingDetails} />
                     </Box>
                   </Dropdown.Item>
                 </Dropdown.Menu>

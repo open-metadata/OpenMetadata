@@ -53,7 +53,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Setup JDK 21
         uses: actions/setup-java@v4
@@ -79,7 +79,6 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: openmetadata-build
-          overwrite: true
           path: openmetadata-dist/target/openmetadata-*.tar.gz
           retention-days: 1
 
@@ -103,7 +102,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.sha }}
+          ref: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
 
       - name: Prepare temporary directory for Maven build artifact
         run: mkdir -p "${{ runner.temp }}/openmetadata-build-artifact"
@@ -161,22 +160,16 @@ jobs:
           PLAYWRIGHT_IS_OSS: true
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-      - name: Upload Playwright diagnostics
-        uses: actions/upload-artifact@v4
-        if: failure() || cancelled()
-        continue-on-error: true
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
         with:
           name: playwright-ontology-rdf-report
-          path: |
-            openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
-            openmetadata-ui/src/main/resources/ui/playwright/output/test-results
+          path: openmetadata-ui/src/main/resources/ui/playwright/output/playwright-report
           retention-days: 5
-          if-no-files-found: ignore
 
       - name: Clean Up
         if: always()
-        continue-on-error: true
         run: |
           docker compose -f docker/development/docker-compose-postgres.yml -f docker/development/docker-compose-fuseki.yml down --remove-orphans || true
           docker compose -f docker/development/docker-compose-postgres.yml down --remove-orphans || true
-          sudo rm -rf "${PWD}/docker/development/docker-volume"
+          sudo rm -rf ${PWD}/docker/development/docker-volume

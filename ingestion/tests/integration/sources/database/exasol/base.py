@@ -20,9 +20,6 @@ DB_VERSION = "2025.1.8"
 DB_PORT = 8563
 CONTAINER_SUFFIX = "exasolquery"
 CONTAINER_NAME = f"db_container_{CONTAINER_SUFFIX}"
-DOCKER_IMAGE = f"exasol/docker-db:{DB_VERSION}"
-DOCKER_PULL_ATTEMPTS = 3
-DOCKER_PULL_RETRY_SECONDS = 10
 SCHEMA_NAME = "OPENMETADATA_QUERY_TEST"
 TABLE_NAME = "DATATYPES"
 SIMILAR_TABLE_NAME = f"{TABLE_NAME}_EXTRA"
@@ -104,31 +101,12 @@ def _prepare_exasol_objects(engine: Engine) -> None:
             connection.execute(text(statement))
 
 
-def _ensure_exasol_image() -> None:
-    image_inspect = subprocess.run(
-        ["docker", "image", "inspect", DOCKER_IMAGE],
-        check=False,
-        stdout=subprocess.DEVNULL,
-        stderr=subprocess.DEVNULL,
-    )
-    if image_inspect.returncode == 0:
-        return
-
-    for attempt in range(1, DOCKER_PULL_ATTEMPTS + 1):
-        pull_result = subprocess.run(["docker", "pull", DOCKER_IMAGE], check=False)
-        if pull_result.returncode == 0:
-            return
-        if attempt == DOCKER_PULL_ATTEMPTS:
-            pull_result.check_returncode()
-        sleep(DOCKER_PULL_RETRY_SECONDS)
-
-
 class ExasolTestBase:
     engine: ClassVar[Engine]
 
     @classmethod
     def setup_class(cls):
-        _ensure_exasol_image()
+        subprocess.run(["docker", "pull", f"exasol/docker-db:{DB_VERSION}"], check=True)
         subprocess.run(
             [
                 "itde",

@@ -56,14 +56,9 @@ public final class RelevancyFixtures {
         .execute(HttpMethod.POST, "/v1/usage/table/" + table.getId(), usage, EntityUsage.class);
   }
 
-  /** An alphabetic token that remains whole under the search word-delimiter analyzer. */
+  /** A short token with no shared substring across calls — safe to use as a search query marker. */
   public static String uniqueToken(final String prefix) {
-    final String hexSuffix = UUID.randomUUID().toString().replace("-", "").substring(0, 12);
-    final StringBuilder token = new StringBuilder(prefix);
-    hexSuffix
-        .chars()
-        .forEach(character -> token.append((char) ('g' + Character.digit(character, 16))));
-    return token.toString();
+    return prefix + UUID.randomUUID().toString().replace("-", "").substring(0, 12);
   }
 
   public static TagLabel tierLabel(final String tierFqn) {

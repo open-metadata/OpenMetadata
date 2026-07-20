@@ -19,7 +19,6 @@ import { TableClass } from '../../support/entity/TableClass';
 import { UserClass } from '../../support/user/UserClass';
 import { performAdminLogin } from '../../utils/admin';
 import { uuid } from '../../utils/common';
-import { waitForSearchIndexed } from '../../utils/polling';
 import {
   enableDisableSearchRBAC,
   exploreShouldShowEntity,
@@ -42,11 +41,6 @@ for (const entity of searchRBACEntities) {
     test.beforeAll(async ({ browser }) => {
       const { apiContext, afterAction } = await performAdminLogin(browser);
       await entityObj.create(apiContext);
-      await waitForSearchIndexed(
-        apiContext,
-        entityObj.entityResponseData?.fullyQualifiedName,
-        'all'
-      );
 
       await enableDisableSearchRBAC(apiContext, true);
 
@@ -128,9 +122,7 @@ for (const entity of searchRBACEntities) {
 
       await searchForEntityShouldWork(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
-        entityObj.entityResponseData?.displayName ??
-          entityObj.entityResponseData?.name ??
-          '',
+        entityObj.entityResponseData?.displayName ?? '',
         userWithPermissionPage
       );
     });
@@ -142,9 +134,7 @@ for (const entity of searchRBACEntities) {
 
       await searchForEntityShouldWorkShowNoResult(
         entityObj.entityResponseData?.fullyQualifiedName ?? '',
-        entityObj.entityResponseData?.displayName ??
-          entityObj.entityResponseData?.name ??
-          '',
+        entityObj.entityResponseData?.displayName ?? '',
         userWithoutPermissionPage
       );
     });

@@ -75,21 +75,19 @@ class TestSuiteDetailsPageReindexUIIT {
     reindex.awaitIndexed("testCase", java.util.List.of(tc1, tc2));
 
     final String suiteName = "ts_bd_" + UUID.randomUUID().toString().substring(0, 8);
-    final BundleTestSuitePage suitePage =
-        BundleTestSuitePage.openCreateForm(ui)
-            .fillNameDescriptionAndAttach(suiteName, "bundle suite e2e", tc1.getName());
+    BundleTestSuitePage.openCreateForm(ui)
+        .fillNameDescriptionAndAttach(suiteName, "bundle suite e2e", tc1.getName());
 
-    runDetailModalFlow(suitePage, suiteName);
+    runDetailModalFlow(ui, suiteName);
 
     // Reindex the seeded testCases — verify the modal still functions after rebuild.
     reindex.recreateAndAwait("testCase", java.util.List.of(tc1, tc2));
 
-    runDetailModalFlow(suitePage, suiteName);
+    runDetailModalFlow(ui, suiteName);
   }
 
-  private static void runDetailModalFlow(
-      final BundleTestSuitePage suitePage, final String suiteName) {
-    suitePage
+  private static void runDetailModalFlow(final UiSession ui, final String suiteName) {
+    BundleTestSuitePage.openCreateForm(ui)
         .openDetail(suiteName)
         .openAddTestCaseModal()
         .assertModalFilterDropdownsVisible()

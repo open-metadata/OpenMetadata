@@ -43,6 +43,7 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.CollectionDAO;
 import org.openmetadata.service.resources.settings.SettingsCache;
+import org.openmetadata.service.search.SearchClient;
 import org.openmetadata.service.search.SearchIndexUtils;
 import org.openmetadata.service.util.FullyQualifiedName;
 import org.slf4j.Logger;
@@ -76,6 +77,7 @@ public interface SearchIndex {
           "certification",
           "dataProducts");
 
+  SearchClient searchClient = Entity.getSearchRepository().getSearchClient();
   Logger LOG = LoggerFactory.getLogger(SearchIndex.class);
 
   default Map<String, Object> buildSearchIndexDoc() {

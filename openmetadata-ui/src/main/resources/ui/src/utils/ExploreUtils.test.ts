@@ -759,7 +759,6 @@ describe('fetchEntityData', () => {
       TABS_SEARCH_INDEXES: [SearchIndex.TABLE],
       EntityTypeSearchIndexMapping: { [EntityType.TABLE]: SearchIndex.TABLE },
       setSearchHitCounts: jest.fn(),
-      setAutoSelectedSearchIndex: jest.fn(),
       setSearchResults: jest.fn(),
       setUpdatedAggregations: jest.fn(),
       setShowIndexNotFoundAlert: jest.fn(),
@@ -799,58 +798,13 @@ describe('fetchEntityData', () => {
     expect(mockSearchQuery.mock.calls[0][0]).toEqual(
       expect.objectContaining({
         searchIndex: SearchIndex.DATA_ASSET,
-        pageNumber: 1,
-        pageSize: 1,
-        fetchSource: true,
-        includeFields: ['entityType'],
+        pageSize: 0,
       })
     );
     expect(params.setSearchHitCounts).toHaveBeenCalledWith({
       [SearchIndex.TABLE]: 42,
     });
     expect(params.setSearchResults).toHaveBeenCalledWith(RESULTS_RESPONSE);
-  });
-
-  it('selects the index of the top ranked hit instead of the largest bucket', async () => {
-    const countResponse = {
-      aggregations: {
-        entityType: {
-          buckets: [
-            { key: 'dashboard', doc_count: 20 },
-            { key: 'chart', doc_count: 1 },
-          ],
-        },
-      },
-      hits: {
-        hits: [{ _source: { entityType: EntityType.CHART } }],
-        total: { value: 21 },
-      },
-    };
-    mockSearchQuery
-      .mockResolvedValueOnce(countResponse)
-      .mockResolvedValueOnce(RESULTS_RESPONSE);
-    const params = buildParams({
-      searchQueryParam: 'revenue chart',
-      tab: '',
-      tabsInfo: {
-        [SearchIndex.DASHBOARD]: {},
-        [SearchIndex.CHART]: {},
-      },
-      TABS_SEARCH_INDEXES: [SearchIndex.DASHBOARD, SearchIndex.CHART],
-      EntityTypeSearchIndexMapping: {
-        [EntityType.DASHBOARD]: SearchIndex.DASHBOARD,
-        [EntityType.CHART]: SearchIndex.CHART,
-      },
-    });
-
-    await fetchEntityData(params);
-
-    expect(mockSearchQuery.mock.calls[1][0]).toEqual(
-      expect.objectContaining({ searchIndex: SearchIndex.CHART })
-    );
-    expect(params.setAutoSelectedSearchIndex).toHaveBeenCalledWith(
-      SearchIndex.CHART
-    );
   });
 
   it('ANDs the browse/filter scope into the query_filter sent to search', async () => {
@@ -890,18 +844,10 @@ describe('fetchEntityData', () => {
   });
 
   it('uses NLQ search and surfaces applied filters when NLP is enabled', async () => {
-    mockNlqSearch
-      .mockResolvedValueOnce({
-        ...COUNT_RESPONSE,
-        hits: {
-          ...COUNT_RESPONSE.hits,
-          hits: [{ _id: 'source-less-hit' }],
-        },
-      })
-      .mockResolvedValueOnce({
-        ...RESULTS_RESPONSE,
-        applied_quick_filters: { fieldList: ['owner'] },
-      });
+    mockNlqSearch.mockResolvedValueOnce(COUNT_RESPONSE).mockResolvedValueOnce({
+      ...RESULTS_RESPONSE,
+      applied_quick_filters: { fieldList: ['owner'] },
+    });
     const params = buildParams({
       searchQueryParam: 'customer',
       isNLPRequestEnabled: true,
@@ -909,7 +855,7 @@ describe('fetchEntityData', () => {
 
     await fetchEntityData(params);
 
-    expect(mockNlqSearch).toHaveBeenCalledTimes(2);
+    expect(mockNlqSearch).toHaveBeenCalled();
     expect(mockSearchQuery).not.toHaveBeenCalled();
     expect(params.onNlqAppliedFilters).toHaveBeenCalledWith({
       fieldList: ['owner'],

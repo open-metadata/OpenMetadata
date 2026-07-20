@@ -693,7 +693,9 @@ const TestConnection: FC<TestConnectionProps> = ({
       {showDetails ? (
         <Alert
           iconOutlined
-          className={cx('tw:mt-3.5')}
+          className={cx('tw:mt-3.5', {
+            'tw:shadow-[0_0_0_6px_#e8f4ff]': isReadyToTestCard,
+          })}
           data-testid={`test-connection-card-${testStatus ?? 'ready-to-test'}`}
           icon={alertIcon}
           iconBgColor="white"

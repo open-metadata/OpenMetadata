@@ -173,15 +173,8 @@ export class DashboardDataModelClass extends EntityClass {
     this.serviceResponseData = await serviceResponse.json();
     this.entityResponseData = await entityResponse.json();
 
-    const dataModelFqn = this.entityResponseData.fullyQualifiedName;
-    if (!dataModelFqn) {
-      throw new Error(
-        'Dashboard data model response is missing its fully qualified name'
-      );
-    }
     this.childrenSelectorId =
-      this.entityResponseData.columns?.[0]?.fullyQualifiedName ??
-      `${dataModelFqn}.${this.children[0].name}`;
+      this.entityResponseData.columns[0].fullyQualifiedName ?? '';
 
     return {
       service: serviceResponse.body,

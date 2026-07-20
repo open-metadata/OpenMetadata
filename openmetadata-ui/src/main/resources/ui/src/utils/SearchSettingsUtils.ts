@@ -151,19 +151,6 @@ const deriveCloseNameFields = (
   return withFallbackFields(fields, fallbackFields);
 };
 
-const deriveNgramNameFields = (
-  configuredFields: string[],
-  fallbackFields: string[]
-) => {
-  const fields = new Set(
-    configuredFields.filter(
-      (field) => field.endsWith('.ngram') && isPrimaryNameField(field)
-    )
-  );
-
-  return withFallbackFields(fields, fallbackFields);
-};
-
 const deriveDescriptionFields = (
   configuredFields: string[],
   fallbackFields: string[]
@@ -203,9 +190,6 @@ const deriveRankingStageFields = (
 
   if (stageName.includes('exact')) {
     return deriveExactNameFields(configuredFields, fallbackFields);
-  }
-  if (stageName.includes('partial') || stageName.includes('ngram')) {
-    return deriveNgramNameFields(configuredFields, fallbackFields);
   }
   if (stageName.includes('close') || stageName.includes('name')) {
     return deriveCloseNameFields(configuredFields, fallbackFields);

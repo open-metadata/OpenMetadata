@@ -126,17 +126,6 @@ public class ContextFileRepository extends EntityRepository<ContextFile> {
   }
 
   @Override
-  protected void storeEntityWithVersion(ContextFile file, boolean update, Double expectedVersion) {
-    EntityReference folder = file.getFolder();
-    file.withFolder(null);
-    try {
-      store(file, update, expectedVersion);
-    } finally {
-      file.withFolder(folder);
-    }
-  }
-
-  @Override
   public void storeRelationships(ContextFile file) {
     if (file.getFolder() != null) {
       addRelationship(

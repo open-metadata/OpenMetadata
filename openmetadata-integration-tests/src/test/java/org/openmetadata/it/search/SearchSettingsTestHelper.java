@@ -1,6 +1,7 @@
 package org.openmetadata.it.search;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -209,23 +210,22 @@ public final class SearchSettingsTestHelper {
 
   public static SearchSettings withRankingDisabled(
       final SearchSettings settings, final String assetType) {
-    final SearchSettings copy = copyOf(settings);
-    disableRanking(copy.getDefaultConfiguration());
+    final JsonNode root = JsonUtils.readTree(JsonUtils.pojoToJson(settings));
+    disableRankingNode(root.path("defaultConfiguration"));
 
-    if (copy.getAssetTypeConfigurations() != null) {
-      for (AssetTypeConfiguration config : copy.getAssetTypeConfigurations()) {
-        if (assetType.equalsIgnoreCase(config.getAssetType())) {
-          disableRanking(config);
-        }
+    for (JsonNode config : root.path("assetTypeConfigurations")) {
+      if (assetType.equalsIgnoreCase(config.path("assetType").asText())) {
+        disableRankingNode(config);
       }
     }
 
-    return copy;
+    return JsonUtils.treeToValue(root, SearchSettings.class);
   }
 
-  private static void disableRanking(final AssetTypeConfiguration config) {
-    if (config != null && config.getRanking() != null) {
-      config.getRanking().setEnabled(false);
+  private static void disableRankingNode(final JsonNode config) {
+    if (config instanceof ObjectNode configNode
+        && configNode.path("ranking") instanceof ObjectNode rankingNode) {
+      rankingNode.put("enabled", false);
     }
   }
 

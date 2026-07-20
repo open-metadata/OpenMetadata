@@ -2,15 +2,15 @@ import os.path
 import random
 import uuid
 from pathlib import Path
+from time import sleep
 
 import docker
 import pandas as pd
 import pytest
 import testcontainers.core.network
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine, insert, text
 from sqlalchemy.engine import Engine, make_url
-from sqlalchemy.exc import OperationalError
-from tenacity import retry, retry_if_exception_type, stop_after_delay, wait_fixed
+from tenacity import retry, stop_after_delay, wait_fixed
 from testcontainers.core.container import DockerContainer
 from testcontainers.core.generic import DbContainer
 from testcontainers.minio import MinioContainer
@@ -30,14 +30,6 @@ from metadata.generated.schema.entity.services.databaseService import (
 )
 
 from ..conftest import ingestion_config as base_ingestion_config  # noqa: F401, TID252
-
-HIVE_METASTORE_IMAGE = (
-    "bitsondatadev/hive-metastore@sha256:b44a186b6dcffafc6a72327aaa5912a5824feecb50718aaf661727ff6aef011b"
-)
-
-
-class TrinoTableNotReadyError(RuntimeError):
-    pass
 
 
 class TrinoContainer(DbContainer):
@@ -175,7 +167,7 @@ def mysql_container(docker_network):
 @pytest.fixture(scope="package")
 def hive_metastore_container(mysql_container, minio_container, docker_network):
     with (
-        HiveMetaStoreContainer(HIVE_METASTORE_IMAGE)
+        HiveMetaStoreContainer("bitsondatadev/hive-metastore:latest")
         .with_network(docker_network)
         .with_network_aliases("metastore")
         .with_env("METASTORE_DB_HOSTNAME", "mariadb")
@@ -221,50 +213,17 @@ def create_test_data(trino_container):
         file_path = Path(os.path.join(data_dir, file))  # noqa: PTH118
 
         if file_path.suffix == ".sql":
-            expected_rows = create_test_data_from_sql(engine, file_path)
+            create_test_data_from_sql(engine, file_path)
         else:
-            expected_rows = create_test_data_from_parquet(engine, file_path)
+            create_test_data_from_parquet(engine, file_path)
 
-        wait_for_table_data(engine, file_path.stem, expected_rows)
+        sleep(1)
         _execute_with_connect("ANALYZE " + f'minio."my_schema"."{file_path.stem}"')
-    engine.dispose()
+    _execute_with_connect("CALL system.drop_stats(schema_name => 'my_schema', table_name => 'empty')")
     return
 
 
-@pytest.fixture(scope="package")
-def reset_trino_table_statistics(trino_container, create_test_data):
-    engine = create_engine(make_url(trino_container.get_connection_url()).set(database="minio"))
-
-    def reset(table_name: str) -> None:
-        with engine.connect() as conn:
-            conn.execute(text(f"CALL system.drop_stats(schema_name => 'my_schema', table_name => '{table_name}')"))
-            conn.commit()
-
-        with engine.connect() as conn:
-            conn.execute(
-                text(f"CALL system.flush_metadata_cache(schema_name => 'my_schema', table_name => '{table_name}')")
-            )
-            conn.commit()
-
-        with engine.connect() as conn:
-            rows = conn.execute(text(f'SHOW STATS FOR "my_schema"."{table_name}"'))
-            table_statistics = [row._asdict() for row in rows if row._asdict().get("column_name") is None]
-
-        if len(table_statistics) != 1:
-            raise AssertionError(
-                f"Expected one table statistics row for [my_schema.{table_name}], got [{len(table_statistics)}]"
-            )
-        if table_statistics[0].get("row_count") is not None:
-            raise AssertionError(
-                f"Expected missing row-count statistics for [my_schema.{table_name}], "
-                f"got [{table_statistics[0].get('row_count')}]"
-            )
-
-    yield reset
-    engine.dispose()
-
-
-def create_test_data_from_parquet(engine: Engine, file_path: Path) -> int:
+def create_test_data_from_parquet(engine: Engine, file_path: Path):
     df = pd.read_parquet(file_path)
 
     # Convert data types
@@ -280,10 +239,9 @@ def create_test_data_from_parquet(engine: Engine, file_path: Path) -> int:
         index=False,
         method=custom_insert,
     )
-    return len(df.index)
 
 
-def create_test_data_from_sql(engine: Engine, file_path: Path) -> None:
+def create_test_data_from_sql(engine: Engine, file_path: Path):
     with open(file_path, "r") as f:  # noqa: PTH123
         sql = f.read()
 
@@ -296,51 +254,25 @@ def create_test_data_from_sql(engine: Engine, file_path: Path) -> None:
         conn.commit()
 
 
-@retry(
-    retry=retry_if_exception_type(TrinoTableNotReadyError),
-    wait=wait_fixed(1),
-    stop=stop_after_delay(30),
-    reraise=True,
-)
-def wait_for_table_data(engine: Engine, table_name: str, expected_rows: int | None) -> None:
-    try:
-        with engine.connect() as conn:
-            row_count = conn.execute(text(f'SELECT COUNT(*) FROM "my_schema"."{table_name}"')).scalar_one()
-    except OperationalError as exc:
-        error_message = str(exc)
-        if "HIVE_CANNOT_OPEN_SPLIT" not in error_message or "File does not exist" not in error_message:
-            raise
-        raise TrinoTableNotReadyError(f"Trino data files for [{table_name}] are not readable yet") from exc
-
-    if expected_rows is not None and row_count != expected_rows:
-        raise TrinoTableNotReadyError(
-            f"Trino table [{table_name}] contains [{row_count}] rows; expected [{expected_rows}]"
-        )
-
-
 def custom_insert(self, conn, keys: list[str], data_iter):
-    """Drain Trino DML results before SQLAlchemy can cancel the Hive write."""
-    rows = list(data_iter)
-    if not rows:
-        return 0
-
-    identifier_preparer = conn.dialect.identifier_preparer
-    table_name = identifier_preparer.format_table(self.table)
-    column_names = ", ".join(identifier_preparer.quote(key) for key in keys)
-    row_placeholders = f"({', '.join('?' for _ in keys)})"
-    values_clause = ", ".join(row_placeholders for _ in rows)
-    statement = f"INSERT INTO {table_name} ({column_names}) VALUES {values_clause}"
-    parameters = tuple(value for row in rows for value in row)
-    with conn.connection.driver_connection.cursor() as cursor:
-        cursor.execute(statement, parameters)
-        cursor.fetchall()
-        inserted_rows = cursor.rowcount
-
-    if inserted_rows != len(rows):
-        raise RuntimeError(
-            f"Trino inserted [{inserted_rows}] rows into [{self.schema}.{self.name}]; expected [{len(rows)}]"
-        )
-    return inserted_rows
+    """
+    Hack pandas.io.sql.SQLTable._execute_insert_multi to retry untill rows are inserted.
+    This is required becauase using trino with pd.to_sql in our setup us unreliable.
+    """
+    rowcount = 0
+    max_tries = 20
+    try_num = 0
+    data = [dict(zip(keys, row)) for row in data_iter]  # noqa: B905
+    while rowcount != len(data):
+        if try_num >= max_tries:
+            raise RuntimeError(f"Failed to insert data after {max_tries} tries")
+        if try_num > 0:
+            sleep(min(try_num, 5))
+        try_num += 1
+        stmt = insert(self.table).values(data)
+        conn.execute(stmt)
+        rowcount = conn.execute(text("SELECT COUNT(*) FROM " + f'"{self.schema}"."{self.name}"')).scalar()
+    return rowcount
 
 
 @pytest.fixture(scope="module")

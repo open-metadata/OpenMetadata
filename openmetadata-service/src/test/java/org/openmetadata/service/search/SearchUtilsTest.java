@@ -552,9 +552,7 @@ class SearchUtilsTest {
         "directory_search_index",
         Entity.DIRECTORY,
         "file_search_index",
-        Entity.FILE,
-        "context_file_search_index",
-        Entity.CONTEXT_FILE
+        Entity.FILE
       })
   void isDataAssetIndexRecognizesDataAssetIndices(String index) {
     assertTrue(SearchUtils.isDataAssetIndex(index));
@@ -682,8 +680,6 @@ class SearchUtilsTest {
         "metric_search_index | metric",
         "user_search_index | user",
         "team_search_index | team",
-        "context_file_search_index | contextFile",
-        "contextFile | contextFile",
         "dataAsset | dataAsset",
         // unknown values fall through to dataAsset (the catch-all default)
         "totally_unknown_index | dataAsset"

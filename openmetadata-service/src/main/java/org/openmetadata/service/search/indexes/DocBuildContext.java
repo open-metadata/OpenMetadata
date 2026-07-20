@@ -30,29 +30,18 @@ import org.openmetadata.schema.entity.type.Style;
  *   <li>{@link ServiceStylePrefetch#prefetched(Optional)} with a value — prefetched style to apply.
  * </ul>
  *
- * <p>{@code relationshipRevision} is {@code null} when it was not prefetched and a non-null
- * monotonic revision (including zero for no relationship changes yet) when the caller loaded it in
- * bulk.
- *
  * The context is passed by value down the doc-build call chain; nothing is stored in thread-local
  * state, so callers and mixins see the dependency in their method signatures.
  */
 public record DocBuildContext(
-    List<EsLineageData> prefetchedUpstreamLineage,
-    ServiceStylePrefetch serviceStylePrefetch,
-    Long relationshipRevision) {
+    List<EsLineageData> prefetchedUpstreamLineage, ServiceStylePrefetch serviceStylePrefetch) {
 
   private static final DocBuildContext EMPTY =
-      new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), null);
+      new DocBuildContext(null, ServiceStylePrefetch.notPrefetched());
 
   public DocBuildContext {
     serviceStylePrefetch =
         serviceStylePrefetch == null ? ServiceStylePrefetch.notPrefetched() : serviceStylePrefetch;
-  }
-
-  public DocBuildContext(
-      List<EsLineageData> prefetchedUpstreamLineage, ServiceStylePrefetch serviceStylePrefetch) {
-    this(prefetchedUpstreamLineage, serviceStylePrefetch, null);
   }
 
   public static DocBuildContext empty() {
@@ -60,23 +49,12 @@ public record DocBuildContext(
   }
 
   public static DocBuildContext withUpstreamLineage(List<EsLineageData> upstreamLineage) {
-    return new DocBuildContext(upstreamLineage, ServiceStylePrefetch.notPrefetched(), null);
-  }
-
-  public static DocBuildContext withRelationshipRevision(long relationshipRevision) {
-    return new DocBuildContext(null, ServiceStylePrefetch.notPrefetched(), relationshipRevision);
+    return new DocBuildContext(upstreamLineage, ServiceStylePrefetch.notPrefetched());
   }
 
   public static DocBuildContext of(
       List<EsLineageData> upstreamLineage, ServiceStylePrefetch serviceStylePrefetch) {
-    return new DocBuildContext(upstreamLineage, serviceStylePrefetch, null);
-  }
-
-  public static DocBuildContext of(
-      List<EsLineageData> upstreamLineage,
-      ServiceStylePrefetch serviceStylePrefetch,
-      Long relationshipRevision) {
-    return new DocBuildContext(upstreamLineage, serviceStylePrefetch, relationshipRevision);
+    return new DocBuildContext(upstreamLineage, serviceStylePrefetch);
   }
 
   public record ServiceStylePrefetch(boolean prefetched, Optional<Style> style) {

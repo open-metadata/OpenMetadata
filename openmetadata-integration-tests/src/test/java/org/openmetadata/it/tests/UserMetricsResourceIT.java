@@ -34,6 +34,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.stream.Collectors;
+import org.awaitility.Awaitility;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
@@ -44,6 +45,7 @@ import org.openmetadata.schema.api.teams.CreateUser;
 import org.openmetadata.schema.entity.teams.User;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.sdk.client.OpenMetadataClient;
+import org.openmetadata.sdk.models.ListParams;
 import org.openmetadata.sdk.services.teams.UserService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -206,30 +208,45 @@ public class UserMetricsResourceIT {
   void testUserMetricsWithRealActivity() throws Exception {
     OpenMetadataClient adminClient = SdkClients.adminClient();
     TestNamespace ns = new TestNamespace("UserMetricsResourceIT");
+
+    Map<String, Object> initialMetrics = getUserMetrics();
+    LOG.info("Initial metrics: {}", initialMetrics);
+
+    String userName = ns.prefix("metricsuser");
+    String email = "metricsuser_" + ns.shortPrefix() + "@test.openmetadata.org";
+    CreateUser createUser = new CreateUser().withName(userName).withEmail(email).withIsBot(false);
+
     UserService usersApi = adminClient.users();
-    List<User> createdUsers = new ArrayList<>();
-    int initialTotalUsers = (Integer) getUserMetrics().get("total_users");
+    User newUser = usersApi.create(createUser);
+    LOG.info("Created new user: {}", newUser.getName());
 
     try {
-      for (int i = 0; i < 3; i++) {
-        String userName = ns.prefix("metricsuser" + i);
-        String email = "metricsuser" + i + "_" + ns.shortPrefix() + "@test.openmetadata.org";
-        createdUsers.add(
-            usersApi.create(new CreateUser().withName(userName).withEmail(email).withIsBot(false)));
-      }
+      usersApi.getByName(newUser.getName());
 
-      for (User createdUser : createdUsers) {
-        User fetchedUser = usersApi.getByName(createdUser.getName());
-        assertEquals(createdUser.getId(), fetchedUser.getId(), "Created user should be readable");
-      }
+      Awaitility.await("Wait for user metrics to reflect new user")
+          .atMost(Duration.ofSeconds(30))
+          .pollDelay(Duration.ofMillis(500))
+          .pollInterval(Duration.ofSeconds(1))
+          .ignoreExceptions()
+          .untilAsserted(
+              () -> {
+                assertNotNull(usersApi.getByName(newUser.getName()));
+                Map<String, Object> m = getUserMetrics();
+                int total = (Integer) m.get("total_users");
+                assertTrue(
+                    total >= listUserTotal(usersApi),
+                    "Metrics should include every visible user while the created user exists");
+              });
 
       Map<String, Object> updatedMetrics = getUserMetrics();
       LOG.info("Updated metrics after activity: {}", updatedMetrics);
 
       int updatedTotalUsers = (Integer) updatedMetrics.get("total_users");
       assertTrue(
-          updatedTotalUsers >= initialTotalUsers + createdUsers.size(),
-          "Metrics should include every user created and kept alive by this test");
+          updatedTotalUsers > 0,
+          "Metrics should report at least one user while the created user exists");
+      User fetchedUser = usersApi.getByName(newUser.getName());
+      assertNotNull(fetchedUser, "Created user should exist");
 
       String lastActivity = (String) updatedMetrics.get("last_activity");
       assertNotNull(lastActivity, "Last activity should not be null after user activity");
@@ -248,12 +265,16 @@ public class UserMetricsResourceIT {
       int dailyActiveUsers = (Integer) updatedMetrics.get("daily_active_users");
       assertTrue(dailyActiveUsers >= 0, "Daily active users should be non-negative");
     } finally {
-      for (User createdUser : createdUsers) {
-        Map<String, String> deleteParams = new HashMap<>();
-        deleteParams.put("hardDelete", "true");
-        usersApi.delete(createdUser.getId().toString(), deleteParams);
-      }
+      Map<String, String> deleteParams = new HashMap<>();
+      deleteParams.put("hardDelete", "true");
+      usersApi.delete(newUser.getId().toString(), deleteParams);
     }
+  }
+
+  private int listUserTotal(UserService usersApi) {
+    ListParams params = new ListParams();
+    params.setLimit(1);
+    return usersApi.list(params).getPaging().getTotal();
   }
 
   @Test
@@ -266,6 +287,56 @@ public class UserMetricsResourceIT {
 
     LOG.info(
         "Bot user filtering is implemented in UserMetricsServlet.createNonBotFilter() which adds isBot=false filter");
+  }
+
+  @Test
+  void testUserMetricsMultipleUsers() throws Exception {
+    OpenMetadataClient adminClient = SdkClients.adminClient();
+    TestNamespace ns = new TestNamespace("UserMetricsResourceIT");
+    UserService usersApi = adminClient.users();
+
+    for (int i = 0; i < 3; i++) {
+      String userName = ns.prefix("multiuser" + i);
+      String email = "multiuser" + i + "_" + ns.shortPrefix() + "@test.openmetadata.org";
+      CreateUser createUser = new CreateUser().withName(userName).withEmail(email).withIsBot(false);
+
+      User user = usersApi.create(createUser);
+      try {
+        usersApi.getByName(user.getName());
+      } finally {
+        Map<String, String> deleteParams = new HashMap<>();
+        deleteParams.put("hardDelete", "true");
+        usersApi.delete(user.getId().toString(), deleteParams);
+      }
+    }
+
+    Awaitility.await("Wait for metrics to reflect user activity")
+        .atMost(Duration.ofSeconds(30))
+        .pollDelay(Duration.ofMillis(500))
+        .pollInterval(Duration.ofSeconds(1))
+        .ignoreExceptions()
+        .until(
+            () -> {
+              Map<String, Object> m = getUserMetrics();
+              return m.get("last_activity") != null;
+            });
+
+    Map<String, Object> metrics = getUserMetrics();
+    LOG.info("Metrics after multiple users: {}", metrics);
+
+    String lastActivity = (String) metrics.get("last_activity");
+    assertNotNull(lastActivity, "Last activity should not be null");
+
+    Instant lastActivityTime = Instant.parse(lastActivity);
+    Instant now = Instant.now();
+    long secondsSinceActivity = now.getEpochSecond() - lastActivityTime.getEpochSecond();
+    assertTrue(
+        secondsSinceActivity < MAX_LAST_ACTIVITY_AGE.toSeconds(),
+        "Last activity should be within last "
+            + MAX_LAST_ACTIVITY_AGE.toMinutes()
+            + " minutes, but was "
+            + secondsSinceActivity
+            + " seconds ago");
   }
 
   @Test

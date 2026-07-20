@@ -138,7 +138,7 @@ class SearchEntityRankingIT {
               + " vs "
               + rankLow
               + " -> "
-              + result.hits());
+              + result.names());
     }
   }
 

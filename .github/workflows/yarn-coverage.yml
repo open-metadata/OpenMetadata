@@ -129,7 +129,7 @@ jobs:
           badge-title: Coverage
       - name: yarn add sonarqube-scanner
         working-directory: ${{ env.UI_WORKING_DIRECTORY }}
-        run: npm install -g sonarqube-scanner@^4.3.0
+        run: npm install -g sonarqube-scanner
         id: npm_install_sonar_scanner
       - name: SonarCloud Scan On PR
         if: github.event_name == 'pull_request_target' && steps.npm_install_sonar_scanner.outcome == 'success'
