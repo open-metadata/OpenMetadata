@@ -142,9 +142,7 @@ class TestUnityCatalogIncrementalSource:
 
         try:
             with (
-                patch(f"{UC_METADATA_MODULE}.get_connection", return_value=Mock()),
-                patch(f"{UC_METADATA_MODULE}.DatabricksClient", return_value=Mock()),
-                patch(f"{UC_METADATA_MODULE}.get_sqlalchemy_connection", return_value=Mock()),
+                patch(f"{UC_METADATA_MODULE}.create_connection", return_value=Mock()),
                 patch.object(UnitycatalogSource, "test_connection", return_value=None),
             ):
                 source = UnitycatalogSource(config, metadata, incremental)

@@ -38,7 +38,8 @@ from metadata.core.connections.test_connection.checks.database import (
     ping,
     run_sql,
 )
-from metadata.core.connections.test_connection.classifier import exception_chain
+from metadata.core.connections.test_connection.checks.summary import count
+from metadata.core.connections.test_connection.classifier import chain_text, exception_chain
 from metadata.core.connections.test_connection.network import NETWORK_ERRORS
 from metadata.generated.schema.entity.services.connections.database.common.iamAuthConfig import (
     IamAuthConfigurationSource,
@@ -67,6 +68,7 @@ if TYPE_CHECKING:
 
     from sqlalchemy.engine import Row
 
+    from metadata.core.connections.lifetime import Borrowed
     from metadata.core.connections.test_connection import ChecksProvider
     from metadata.core.connections.test_connection.classifier import Matcher
 
@@ -226,17 +228,12 @@ def _sqlstate(*codes: str) -> Matcher:
     return lambda error: _pgcode(error) in wanted
 
 
-def _message(error: BaseException) -> str:
-    """The lower-cased text of the error and its cause chain."""
-    return " ".join(str(current) for current in exception_chain(error)).lower()
-
-
 def _database_not_found(error: BaseException) -> bool:
     """Redshift reports a missing database at connect time as
     ``FATAL: database "x" does not exist`` with no SQLSTATE. Match the quoted token
     ``database "`` so a query error whose embedded SQL mentions ``pg_database`` (or
     a missing relation) is not misread as a missing database."""
-    text_ = _message(error)
+    text_ = chain_text(error)
     return 'database "' in text_ and "does not exist" in text_
 
 
@@ -255,10 +252,9 @@ REDSHIFT_ERRORS = ErrorPack(
         "Authentication failed",
         fix="Check the username and password, and that the user is allowed to connect.",
     ),
-    when(_sqlstate("28000", "28P01")).diagnose(  # invalid_authorization / invalid_password
-        "Authentication failed",
-        fix="Check the username and password, and that the user is allowed to connect.",
-    ),
+    # No _sqlstate("28000", "28P01") rule: those are connect-phase codes, and libpq
+    # reports a failed connection with no PGresult, so .pgcode is None (verified on
+    # PostgreSQL 15). The message rule above is what catches auth failures.
     when(_database_not_found).diagnose(
         "Database not found",
         fix="Verify the configured database exists and the user is allowed to connect to it.",
@@ -302,11 +298,13 @@ def _summarize_queries(instance_type: RedshiftInstanceType, rows: Sequence[Row])
 
 
 def _summarize_databases(rows: Sequence[Row]) -> str:
-    """``N databases reachable`` - suffixed ``+`` when the row sample is capped, so a
-    cluster with more than ``DEFAULT_SAMPLE_ROWS`` databases is not reported as an
-    exact total (``run_sql`` only fetches up to that many rows)."""
-    suffix = "+" if len(rows) >= DEFAULT_SAMPLE_ROWS else ""
-    return f"{len(rows)}{suffix} databases reachable"
+    """``N databases reachable`` - ``N+`` when the row sample is capped, so a cluster
+    with more than ``DEFAULT_SAMPLE_ROWS`` databases is not reported as an exact
+    total (``run_sql`` only fetches up to that many rows).
+
+    Redshift says "reachable" rather than "enumerated": the probe proves the
+    cluster answers for each database, which is the thing in doubt here."""
+    return f"{count(len(rows), 'database', DEFAULT_SAMPLE_ROWS)} reachable"
 
 
 class RedshiftChecks:
@@ -318,37 +316,37 @@ class RedshiftChecks:
     # keeps it cheap since the step only proves the read is permitted.
     _RELATIONS_PROBE = REDSHIFT_GET_ALL_RELATIONS.format(schema_clause="", table_clause="", limit_clause="LIMIT 1")
 
-    def __init__(self, client: Engine) -> None:
-        self.client = client
+    def __init__(self, db: Borrowed[Engine]) -> None:
+        self._db = db
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        return ping(self.client)
+        return ping(self._db.client)
 
     @check(DatabaseStep.GetDatabases)
     def get_databases(self) -> Evidence:
-        return run_sql(self.client, REDSHIFT_GET_DATABASE_NAMES, _summarize_databases)
+        return run_sql(self._db.client, REDSHIFT_GET_DATABASE_NAMES, _summarize_databases)
 
     @check(DatabaseStep.GetSchemas)
     def get_schemas(self) -> Evidence:
-        return list_schemas(self.client)
+        return list_schemas(self._db.client)
 
     @check(DatabaseStep.GetTables)
     def get_tables(self) -> Evidence:
-        return run_sql(self.client, self._RELATIONS_PROBE, lambda rows: f"{len(rows)} relations accessible")
+        return run_sql(self._db.client, self._RELATIONS_PROBE, lambda rows: f"{len(rows)} relations accessible")
 
     @check(DatabaseStep.GetViews)
     def get_views(self) -> Evidence:
-        return run_sql(self.client, self._RELATIONS_PROBE, lambda rows: f"{len(rows)} relations accessible")
+        return run_sql(self._db.client, self._RELATIONS_PROBE, lambda rows: f"{len(rows)} relations accessible")
 
     @check(DatabaseStep.GetQueries)
     def get_queries(self) -> Evidence:
         # Resolved here, not at construction, so the instance-type probe and the
         # privilege query run only after CheckAccess - never ahead of the gate.
-        instance_type = get_redshift_instance_type(self.client)
+        instance_type = get_redshift_instance_type(self._db.client)
         statement = REDSHIFT_TEST_GET_QUERIES_MAP[instance_type]
         try:
-            evidence = run_sql(self.client, statement, lambda rows: _summarize_queries(instance_type, rows))
+            evidence = run_sql(self._db.client, statement, lambda rows: _summarize_queries(instance_type, rows))
         except SourceConnectionException as missing_privilege:
             # The privilege probe raises from the summary callback, outside run_sql's
             # own CheckError wrapping - re-raise with the statement so the failed step
@@ -368,4 +366,4 @@ class RedshiftConnection(BaseConnection[RedshiftConnectionConfig, Engine]):
         return engine
 
     def checks(self) -> ChecksProvider:
-        return RedshiftChecks(client=self.client)
+        return RedshiftChecks(db=self.borrow())

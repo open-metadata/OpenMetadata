@@ -27,7 +27,7 @@ import { searchRoles } from '../../../../rest/rolesAPIV1';
 import { getEntityName } from '../../../../utils/EntityNameUtils';
 import { getSettingPath } from '../../../../utils/RouterUtils';
 import { showErrorToast } from '../../../../utils/ToastUtils';
-import DescriptionV1 from '../../../common/EntityDescription/DescriptionV1';
+import Description from '../../../common/EntityDescription/Description';
 import { EditIconButton } from '../../../common/IconButtons/EditIconButton';
 import InheritedRolesCard from '../../../common/InheritedRolesCard/InheritedRolesCard.component';
 import RolesCard from '../../../common/RolesCard/RolesCard.component';
@@ -202,7 +202,7 @@ const BotDetails: FC<BotsDetailProps> = ({
                     </Tag>
                   </Tooltip>
                 )}
-                <DescriptionV1
+                <Description
                   description={botData.description}
                   entityName={getEntityName(botData)}
                   entityType={EntityType.BOT}

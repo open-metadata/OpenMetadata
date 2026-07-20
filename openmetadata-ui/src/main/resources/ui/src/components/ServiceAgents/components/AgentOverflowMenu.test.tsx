@@ -47,10 +47,12 @@ const FULL_PERMISSIONS: AgentActionPermissions = {
 
 const renderMenu = (
   status: AgentStatus,
-  permissions?: AgentActionPermissions
+  permissions?: AgentActionPermissions,
+  allowedActions?: string[]
 ) =>
   render(
     <AgentOverflowMenu
+      allowedActions={allowedActions}
       permissions={permissions}
       status={status}
       onAction={mockOnAction}
@@ -118,5 +120,33 @@ describe('AgentOverflowMenu', () => {
     renderMenu('success');
 
     expect(screen.queryByTestId('more-actions')).not.toBeInTheDocument();
+  });
+
+  it('should only render whitelisted actions when allowedActions is provided', () => {
+    renderMenu('success', FULL_PERMISSIONS, ['run', 'edit']);
+
+    expect(screen.getByTestId('run-button')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('re-deploy-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
+  });
+
+  it('should apply allowedActions to active-state items too', () => {
+    renderMenu('running', FULL_PERMISSIONS, ['run', 'edit']);
+
+    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('kill-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
+  });
+
+  it('should still gate whitelisted actions behind permissions', () => {
+    renderMenu('success', { trigger: false, edit: true, delete: false }, [
+      'run',
+      'edit',
+    ]);
+
+    expect(screen.queryByTestId('run-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
   });
 });

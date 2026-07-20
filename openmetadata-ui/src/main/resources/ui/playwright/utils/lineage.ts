@@ -241,6 +241,11 @@ export const rearrangeNodes = async (page: Page) => {
   await page.getByRole('menuitem', { name: 'Rearrange Nodes' }).click();
 };
 
+export const fitToScreen = async (page: Page) => {
+  await page.getByTestId('fit-screen').click();
+  await page.getByRole('menuitem', { name: 'Fit to screen' }).click();
+};
+
 export const connectEdgeBetweenNodes = async (
   page: Page,
   fromNode: EntityClass,

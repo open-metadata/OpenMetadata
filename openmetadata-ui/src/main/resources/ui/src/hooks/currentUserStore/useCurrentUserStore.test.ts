@@ -180,5 +180,29 @@ describe('useCurrentUserStore', () => {
         marketplaceRecentSearches: [],
       });
     });
+
+    // Regression guard: usePaging captures setPreference in the dependency
+    // array of handlePageChange. An unstable setPreference identity recreates
+    // handlePageChange every render, which silently cancels debounced work such
+    // as the metrics list search box.
+    it('keeps setPreference referentially stable across re-renders', () => {
+      mockUseApplicationStore.mockImplementation((selector) => {
+        const mockState = {
+          currentUser: { name: 'stableUser' },
+        } as any;
+
+        return selector(mockState);
+      });
+
+      const { result, rerender } = renderHook(() =>
+        useCurrentUserPreferences()
+      );
+
+      const firstSetPreference = result.current.setPreference;
+
+      rerender();
+
+      expect(result.current.setPreference).toBe(firstSetPreference);
+    });
   });
 });

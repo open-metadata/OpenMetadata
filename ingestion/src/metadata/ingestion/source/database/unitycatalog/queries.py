@@ -144,3 +144,7 @@ UNITY_CATALOG_TABLE_CONSTRAINTS = textwrap.dedent(
     WHERE 1=1
     """
 )
+
+UNITY_CATALOG_GET_ALL_SCHEMAS = """
+SELECT catalog_name, schema_name FROM system.information_schema.schemata
+"""

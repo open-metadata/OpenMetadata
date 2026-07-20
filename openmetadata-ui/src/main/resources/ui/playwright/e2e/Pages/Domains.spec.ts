@@ -3167,7 +3167,7 @@ test.describe.fixme('Domain Tree View Functionality', () => {
 
     await expect(
       page
-        .getByRole('treeitem', {
+        .getByRole('row', {
           name: domainDisplayName,
         })
         .locator('div')
@@ -3175,14 +3175,14 @@ test.describe.fixme('Domain Tree View Functionality', () => {
     ).toBeVisible();
 
     await page
-      .getByRole('treeitem', { name: domainDisplayName })
+      .getByRole('row', { name: domainDisplayName })
       .locator('div')
       .nth(2)
       .click();
 
     await expect(
       page
-        .getByRole('treeitem', { name: subDomain.data.displayName })
+        .getByRole('row', { name: subDomain.data.displayName })
         .locator('div')
         .nth(2)
     ).toBeVisible();

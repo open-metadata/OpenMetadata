@@ -15,27 +15,32 @@ import {
   Badge,
   Box,
   Button,
-  Dialog,
-  DialogTrigger,
   Dropdown,
+  EmptyPlaceholder,
   Input,
-  Modal,
-  ModalOverlay,
 } from '@openmetadata/ui-core-components';
+import {
+  keepPreviousData,
+  useQuery,
+  useQueryClient,
+} from '@tanstack/react-query';
 import {
   AlertCircle,
   BarChartSquare02,
   Check,
   ChevronDown,
+  CursorClick01,
   Download01,
   Edit03,
   Eye,
   EyeOff,
+  FileCheck02,
   Plus,
   SearchLg,
   Settings01,
   Trash01,
   UploadCloud01,
+  User01,
   XClose,
 } from '@untitledui/icons';
 import { AxiosError } from 'axios';
@@ -50,6 +55,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { Link, useNavigate } from 'react-router-dom';
+import DeleteModal from '../../../components/common/DeleteModal/DeleteModal';
 import { CSV_JOBS_REFRESH_EVENT } from '../../../components/common/EntityImport/CsvJobsTray/CsvJobsTray.constants';
 import ErrorPlaceHolder from '../../../components/common/ErrorWithPlaceholder/ErrorPlaceHolder';
 import HeaderBreadcrumb from '../../../components/common/HeaderBreadcrumb/HeaderBreadcrumb.component';
@@ -66,10 +72,7 @@ import { INITIAL_PAGING_VALUE, ROUTES } from '../../../constants/constants';
 import { METRICS_DOCS } from '../../../constants/docs.constants';
 import { LEARNING_PAGE_IDS } from '../../../constants/Learning.constants';
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
-import {
-  OperationPermission,
-  ResourceEntity,
-} from '../../../context/PermissionProvider/PermissionProvider.interface';
+import { ResourceEntity } from '../../../context/PermissionProvider/PermissionProvider.interface';
 import { ERROR_PLACEHOLDER_TYPE } from '../../../enums/common.enum';
 import { EntityType } from '../../../enums/entity.enum';
 import { SearchIndex } from '../../../enums/search.enum';
@@ -138,9 +141,6 @@ const METRIC_COLUMN_LABEL_KEYS: Record<MetricColumnId, string> = {
   updatedAt: 'label.last-updated',
 };
 
-// The Status filter shows the distinct metric statuses (the design's
-// Approved / In review / Draft) — not every EntityStatus enum value, several
-// of which collapse to the same "Draft" label and render as duplicates.
 const METRIC_STATUS_FILTER_OPTIONS: EntityStatus[] = [
   EntityStatus.Approved,
   EntityStatus.InReview,
@@ -168,14 +168,10 @@ const MetricListPage = () => {
   } = usePaging();
 
   const { getResourcePermission } = usePermissionProvider();
-  const [permission, setPermission] = useState<OperationPermission>(
-    DEFAULT_ENTITY_PERMISSION
-  );
-  const [error, setError] = useState<string>('');
-  const [loading, setLoading] = useState(false);
-  const [loadingMore, setLoadingMore] = useState(false);
-  const [metrics, setMetrics] = useState<Metric[]>([]);
+  const queryClient = useQueryClient();
+
   const [searchText, setSearchText] = useState('');
+  const [debouncedSearch, setDebouncedSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<EntityStatus>();
   const [selectedMetricIds, setSelectedMetricIds] = useState<Key[]>([]);
   const [isExporting, setIsExporting] = useState(false);
@@ -192,154 +188,104 @@ const MetricListPage = () => {
     }
   });
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [deleteConfirmation, setDeleteConfirmation] = useState('');
   const [isDeletingMetrics, setIsDeletingMetrics] = useState(false);
 
-  // All filtering (search + status) and pagination is done server-side via the
-  // metric search index, so the Status filter and search stay consistent with
-  // pagination totals.
-  const fetchMetrics = useCallback(
-    async ({
-      page,
-      search,
-      status,
-      size,
-    }: {
-      page: number;
-      search: string;
-      status?: EntityStatus;
-      size: number;
-    }) => {
-      try {
-        setLoadingMore(true);
-        const response = await searchQuery({
-          query: search,
-          pageNumber: page,
-          pageSize: size,
-          searchIndex: SearchIndex.METRIC,
-          trackTotalHits: true,
-          queryFilter: status
-            ? getTermQuery({ entityStatus: status })
-            : undefined,
-        });
-        setMetrics(response.hits.hits.map((hit) => hit._source));
-        handlePagingChange({ total: response.hits.total.value });
-      } catch (error) {
-        const errorMessage = getErrorText(
-          error as AxiosError,
-          t('server.entity-fetch-error', {
-            entity: t('label.metric-plural'),
-          })
-        );
-        showErrorToast(errorMessage);
-        setError(errorMessage);
-      } finally {
-        setLoadingMore(false);
-      }
-    },
-    [handlePagingChange, t]
+  const debounceSetSearch = useMemo(
+    () => debounce(setDebouncedSearch, METRIC_SEARCH_DEBOUNCE_MS),
+    []
   );
 
-  const init = async () => {
-    try {
-      setLoading(true);
-      const permission = await getResourcePermission(ResourceEntity.METRIC);
-      setPermission(permission);
-      if (permission.ViewAll || permission.ViewBasic) {
-        await fetchMetrics({
-          page: currentPage,
-          search: searchText,
-          status: statusFilter,
-          size: pageSize,
-        });
-      }
-    } catch (error) {
-      const errorMessage = getErrorText(
-        error as AxiosError,
-        t('server.entity-fetch-error', {
-          entity: t('label.metric-plural'),
-        })
+  useEffect(() => () => debounceSetSearch.cancel(), [debounceSetSearch]);
+
+  const {
+    data: permission = DEFAULT_ENTITY_PERMISSION,
+    isPending: isPermissionPending,
+    error: permissionError,
+  } = useQuery({
+    queryKey: ['metric-list-permission', ResourceEntity.METRIC],
+    queryFn: () => getResourcePermission(ResourceEntity.METRIC),
+  });
+
+  const hasViewPermission = permission.ViewAll || permission.ViewBasic;
+
+  const {
+    data: searchResponse,
+    isPending: isMetricsPending,
+    isFetching: isMetricsFetching,
+    error: metricsError,
+  } = useQuery({
+    queryKey: [
+      'metric-listing',
+      {
+        search: debouncedSearch,
+        status: statusFilter,
+        page: currentPage,
+        size: pageSize,
+      },
+    ],
+    queryFn: () =>
+      searchQuery({
+        query: debouncedSearch,
+        pageNumber: currentPage,
+        pageSize,
+        searchIndex: SearchIndex.METRIC,
+        trackTotalHits: true,
+        queryFilter: statusFilter
+          ? getTermQuery({ entityStatus: statusFilter })
+          : undefined,
+      }),
+    enabled: hasViewPermission,
+    placeholderData: keepPreviousData,
+  });
+
+  const metrics = useMemo(
+    () => searchResponse?.hits.hits.map((hit) => hit._source) ?? [],
+    [searchResponse]
+  );
+
+  const isSearchPending = searchText.trim() !== debouncedSearch;
+
+  const totalMetrics = searchResponse?.hits.total.value ?? 0;
+
+  const listingError = permissionError ?? metricsError;
+  const listingErrorMessage = permissionError
+    ? t('server.fetch-entity-permissions-error', {
+        entity: t('label.metric-plural'),
+      })
+    : t('server.entity-fetch-error', { entity: t('label.metric-plural') });
+
+  useEffect(() => {
+    handlePagingChange({ total: totalMetrics });
+  }, [totalMetrics, handlePagingChange]);
+
+  useEffect(() => {
+    if (listingError) {
+      showErrorToast(
+        getErrorText(listingError as AxiosError, listingErrorMessage)
       );
-      showErrorToast(errorMessage);
-      setError(errorMessage);
-    } finally {
-      setLoading(false);
     }
-  };
+  }, [listingError, listingErrorMessage]);
 
-  // Search box changes debounce a fresh first-page query; filters and paging
-  // fetch immediately.
-  const debouncedSearchFetch = useMemo(
-    () =>
-      debounce(
-        (search: string, status: EntityStatus | undefined, size: number) => {
-          handlePageChange(INITIAL_PAGING_VALUE);
-          fetchMetrics({ page: INITIAL_PAGING_VALUE, search, status, size });
-        },
-        METRIC_SEARCH_DEBOUNCE_MS
-      ),
-    [fetchMetrics, handlePageChange]
-  );
-
-  useEffect(() => () => debouncedSearchFetch.cancel(), [debouncedSearchFetch]);
-
-  // Status/paging changes fetch immediately, so cancel any pending debounced
-  // search first — otherwise a search typed within the debounce window would
-  // fire later with its stale captured filters and clobber this result.
   const handleStatusFilterChange = useCallback(
     (status?: EntityStatus) => {
-      debouncedSearchFetch.cancel();
       setStatusFilter(status);
       handlePageChange(INITIAL_PAGING_VALUE);
-      fetchMetrics({
-        page: INITIAL_PAGING_VALUE,
-        search: searchText,
-        status,
-        size: pageSize,
-      });
     },
-    [debouncedSearchFetch, fetchMetrics, handlePageChange, pageSize, searchText]
+    [handlePageChange]
   );
 
   const onPageChange = useCallback(
     ({ currentPage: page }: PagingHandlerParams) => {
-      debouncedSearchFetch.cancel();
       handlePageChange(page);
-      fetchMetrics({
-        page,
-        search: searchText,
-        status: statusFilter,
-        size: pageSize,
-      });
     },
-    [
-      debouncedSearchFetch,
-      fetchMetrics,
-      handlePageChange,
-      pageSize,
-      searchText,
-      statusFilter,
-    ]
+    [handlePageChange]
   );
 
   const onShowSizeChange = useCallback(
     (size: number) => {
-      debouncedSearchFetch.cancel();
       handlePageSizeChange(size);
-      fetchMetrics({
-        page: INITIAL_PAGING_VALUE,
-        search: searchText,
-        status: statusFilter,
-        size,
-      });
     },
-    [
-      debouncedSearchFetch,
-      fetchMetrics,
-      handlePageSizeChange,
-      searchText,
-      statusFilter,
-    ]
+    [handlePageSizeChange]
   );
 
   const glossaryTerms = useCallback(
@@ -412,15 +358,6 @@ const MetricListPage = () => {
     [metrics, selectedMetricIds]
   );
 
-  const canConfirmDelete = useMemo(() => {
-    const confirmation = deleteConfirmation.trim().toLowerCase();
-
-    return (
-      confirmation === String(selectedMetricIds.length) ||
-      confirmation === 'delete'
-    );
-  }, [deleteConfirmation, selectedMetricIds.length]);
-
   const persistVisibleColumns = useCallback((columns: MetricColumnId[]) => {
     setVisibleColumns(columns);
     localStorage.setItem(METRIC_COLUMN_STORAGE_KEY, JSON.stringify(columns));
@@ -466,15 +403,12 @@ const MetricListPage = () => {
     (value: string | ChangeEvent<HTMLInputElement>) => {
       const text = getInputChangeValue(value);
       setSearchText(text);
-      debouncedSearchFetch(text, statusFilter, pageSize);
+      debounceSetSearch(text.trim());
+      if (currentPage !== INITIAL_PAGING_VALUE) {
+        handlePageChange(INITIAL_PAGING_VALUE);
+      }
     },
-    [debouncedSearchFetch, pageSize, statusFilter]
-  );
-
-  const handleDeleteConfirmationChange = useCallback(
-    (value: string | ChangeEvent<HTMLInputElement>) =>
-      setDeleteConfirmation(getInputChangeValue(value)),
-    []
+    [currentPage, debounceSetSearch, handlePageChange]
   );
 
   const handleBulkDelete = useCallback(async () => {
@@ -489,33 +423,15 @@ const MetricListPage = () => {
         })
       );
       setSelectedMetricIds([]);
-      setDeleteConfirmation('');
       setIsDeleteDialogOpen(false);
-      // Deletion can shrink the result set below the current page; return to the
-      // first page so the user never lands on an empty page.
-      debouncedSearchFetch.cancel();
       handlePageChange(INITIAL_PAGING_VALUE);
-      fetchMetrics({
-        page: INITIAL_PAGING_VALUE,
-        search: searchText,
-        status: statusFilter,
-        size: pageSize,
-      });
+      queryClient.invalidateQueries({ queryKey: ['metric-listing'] });
     } catch (error) {
       showErrorToast(error as AxiosError);
     } finally {
       setIsDeletingMetrics(false);
     }
-  }, [
-    debouncedSearchFetch,
-    fetchMetrics,
-    handlePageChange,
-    pageSize,
-    searchText,
-    selectedMetrics,
-    statusFilter,
-    t,
-  ]);
+  }, [handlePageChange, queryClient, selectedMetrics, t]);
 
   const columns = useMemo(() => {
     const emptyDash = (
@@ -713,18 +629,16 @@ const MetricListPage = () => {
     visibleColumns,
   ]);
 
-  useEffect(() => {
-    init();
-  }, []);
-
-  if (loading) {
+  if (isPermissionPending || (hasViewPermission && isMetricsPending)) {
     return <Loader />;
   }
 
-  if (error && !loading) {
+  if (listingError && !searchResponse) {
     return (
       <ErrorPlaceHolder>
-        <p className="text-center m-auto">{error}</p>
+        <p className="text-center m-auto">
+          {getErrorText(listingError as AxiosError, listingErrorMessage)}
+        </p>
       </ErrorPlaceHolder>
     );
   }
@@ -795,6 +709,56 @@ const MetricListPage = () => {
     </div>
   );
 
+  const isMetricListEmpty =
+    !isMetricsFetching &&
+    !isSearchPending &&
+    metrics.length === 0 &&
+    !searchText &&
+    !statusFilter;
+
+  const metricEmptyState = (
+    <Box className="tw:relative tw:min-h-[calc(100vh-180px)] tw:flex-1 tw:rounded-xl tw:border tw:border-border-secondary">
+      <EmptyPlaceholder
+        actions={
+          permission.Create
+            ? [
+                {
+                  key: 'new-metric',
+                  label: t('label.new-metric'),
+                  color: 'primary',
+                  iconLeading: Plus,
+                  onPress: () => navigate(ROUTES.ADD_METRIC),
+                },
+              ]
+            : undefined
+        }
+        description={t('message.metric-empty-state-description')}
+        features={[
+          {
+            key: 'define',
+            icon: <FileCheck02 className="tw:text-fg-brand-primary" />,
+            title: t('label.define-it'),
+            description: t('message.metric-define-it-description'),
+          },
+          {
+            key: 'action',
+            icon: <CursorClick01 className="tw:text-fg-warning-primary" />,
+            title: t('label.define-the-action'),
+            description: t('message.metric-define-action-description'),
+          },
+          {
+            key: 'owner',
+            icon: <User01 className="tw:text-fg-success-primary" />,
+            title: t('label.assign-an-owner'),
+            description: t('message.metric-assign-owner-description'),
+          },
+        ]}
+        title={t('message.metric-empty-state-title')}
+        variant="features"
+      />
+    </Box>
+  );
+
   return (
     <PageLayoutV1 pageTitle={t('label.metric-plural')}>
       <div className="p-b-md m-t-xs metric-list-page-stack">
@@ -833,267 +797,215 @@ const MetricListPage = () => {
         </div>
         <div>
           <div className="metric-list-table-card">
-            {selectedMetricIds.length ? (
-              <div className="metric-list-selection-bar">
-                <div className="metric-list-selection-left">
-                  <span className="metric-list-selection-count">
-                    {selectedMetricIds.length}
-                  </span>
-                  <span>{t('label.selected-lowercase')}</span>
-                  <Button
-                    className="metric-list-selection-clear"
-                    color="link-gray"
-                    iconLeading={XClose}
-                    onPress={() => setSelectedMetricIds([])}>
-                    {t('label.clear')}
-                  </Button>
-                </div>
-                <div className="metric-list-selection-actions">
-                  {permission.EditAll && (
-                    <Button
-                      className="metric-list-selection-action"
-                      color="link-color"
-                      data-testid="bulk-edit-metric"
-                      iconLeading={Edit03}
-                      onPress={handleBulkEdit}>
-                      {t('label.edit')}
-                    </Button>
-                  )}
-                  {permission.Delete && (
-                    <Button
-                      className="metric-list-selection-action metric-list-selection-delete"
-                      color="link-gray"
-                      iconLeading={Trash01}
-                      onPress={() => setIsDeleteDialogOpen(true)}>
-                      {t('label.delete')}
-                    </Button>
-                  )}
-                </div>
-              </div>
+            {isMetricListEmpty ? (
+              metricEmptyState
             ) : (
-              <div className="metric-list-toolbar">
-                <Input
-                  className="metric-list-search"
-                  data-testid="metric-search"
-                  icon={SearchLg}
-                  placeholder={t('label.search-entity', {
-                    entity: t('label.metric-plural'),
-                  })}
-                  value={searchText}
-                  wrapperClassName="metric-list-search-wrapper"
-                  onChange={handleSearchTextChange}
-                />
-                <div className="metric-list-toolbar-actions">
-                  <Dropdown.Root>
-                    <Button
-                      className="metric-list-toolbar-link metric-list-status-trigger"
-                      color="link-gray"
-                      iconTrailing={ChevronDown}>
-                      {statusFilter
-                        ? getMetricStatus(statusFilter).label
-                        : t('label.status')}
-                    </Button>
-                    <Dropdown.Popover>
-                      <Dropdown.Menu
-                        onAction={(key) =>
-                          handleStatusFilterChange(
-                            key === 'all' ? undefined : (key as EntityStatus)
-                          )
-                        }>
-                        <Dropdown.Item id="all" label={t('label.all')} />
-                        {METRIC_STATUS_FILTER_OPTIONS.map((status) => (
-                          <Dropdown.Item
-                            id={status}
-                            key={status}
-                            label={getMetricStatus(status).label}
-                          />
-                        ))}
-                      </Dropdown.Menu>
-                    </Dropdown.Popover>
-                  </Dropdown.Root>
-                  {permission.EditAll && (
-                    <Button
-                      className="metric-list-toolbar-link"
-                      color="link-color"
-                      data-testid="bulk-edit-metric"
-                      iconLeading={Edit03}
-                      onPress={handleBulkEdit}>
-                      {t('label.edit')}
-                    </Button>
-                  )}
-                  <span
-                    aria-hidden="true"
-                    className="metric-list-toolbar-divider"
-                  />
-                  <Dropdown.Root>
-                    <Button
-                      className="metric-list-toolbar-link"
-                      color="link-color"
-                      iconLeading={Settings01}>
-                      {t('label.customize')}
-                    </Button>
-                    <Dropdown.Popover className="metric-customize-menu">
-                      <div className="metric-customize-header">
-                        <span>{t('label.column')}</span>
-                        <button
-                          className="metric-customize-toggle"
-                          type="button"
-                          onClick={() =>
-                            persistVisibleColumns(
-                              visibleColumns.length ===
-                                METRIC_COLUMN_ORDER.length
-                                ? []
-                                : METRIC_COLUMN_ORDER
-                            )
-                          }>
-                          {visibleColumns.length === METRIC_COLUMN_ORDER.length
-                            ? t('label.hide-all')
-                            : t('label.view-all')}
-                        </button>
-                      </div>
-                      <div className="metric-customize-list">
-                        {METRIC_COLUMN_ORDER.map((columnId) => {
-                          const isVisible = visibleColumns.includes(columnId);
-
-                          return (
+              <>
+                {selectedMetricIds.length ? (
+                  <div className="metric-list-selection-bar">
+                    <div className="metric-list-selection-left">
+                      <span className="metric-list-selection-count">
+                        {selectedMetricIds.length}
+                      </span>
+                      <span>{t('label.selected-lowercase')}</span>
+                      <Button
+                        className="metric-list-selection-clear"
+                        color="link-gray"
+                        iconLeading={XClose}
+                        onPress={() => setSelectedMetricIds([])}>
+                        {t('label.clear')}
+                      </Button>
+                    </div>
+                    <div className="metric-list-selection-actions">
+                      {permission.EditAll && (
+                        <Button
+                          className="metric-list-selection-action"
+                          color="link-color"
+                          data-testid="bulk-edit-metric"
+                          iconLeading={Edit03}
+                          onPress={handleBulkEdit}>
+                          {t('label.edit')}
+                        </Button>
+                      )}
+                      {permission.Delete && (
+                        <Button
+                          className="metric-list-selection-action metric-list-selection-delete"
+                          color="link-gray"
+                          iconLeading={Trash01}
+                          onPress={() => setIsDeleteDialogOpen(true)}>
+                          {t('label.delete')}
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="metric-list-toolbar">
+                    <Input
+                      className="metric-list-search"
+                      data-testid="metric-search"
+                      icon={SearchLg}
+                      placeholder={t('label.search-entity', {
+                        entity: t('label.metric-plural'),
+                      })}
+                      value={searchText}
+                      wrapperClassName="metric-list-search-wrapper"
+                      onChange={handleSearchTextChange}
+                    />
+                    <div className="metric-list-toolbar-actions">
+                      <Dropdown.Root>
+                        <Button
+                          className="metric-list-toolbar-link metric-list-status-trigger"
+                          color="link-gray"
+                          iconTrailing={ChevronDown}>
+                          {statusFilter
+                            ? getMetricStatus(statusFilter).label
+                            : t('label.status')}
+                        </Button>
+                        <Dropdown.Popover>
+                          <Dropdown.Menu
+                            onAction={(key) =>
+                              handleStatusFilterChange(
+                                key === 'all'
+                                  ? undefined
+                                  : (key as EntityStatus)
+                              )
+                            }>
+                            <Dropdown.Item id="all" label={t('label.all')} />
+                            {METRIC_STATUS_FILTER_OPTIONS.map((status) => (
+                              <Dropdown.Item
+                                id={status}
+                                key={status}
+                                label={getMetricStatus(status).label}
+                              />
+                            ))}
+                          </Dropdown.Menu>
+                        </Dropdown.Popover>
+                      </Dropdown.Root>
+                      {permission.EditAll && (
+                        <Button
+                          className="metric-list-toolbar-link"
+                          color="link-color"
+                          data-testid="bulk-edit-metric"
+                          iconLeading={Edit03}
+                          onPress={handleBulkEdit}>
+                          {t('label.edit')}
+                        </Button>
+                      )}
+                      <span
+                        aria-hidden="true"
+                        className="metric-list-toolbar-divider"
+                      />
+                      <Dropdown.Root>
+                        <Button
+                          className="metric-list-toolbar-link"
+                          color="link-color"
+                          iconLeading={Settings01}>
+                          {t('label.customize')}
+                        </Button>
+                        <Dropdown.Popover className="metric-customize-menu">
+                          <div className="metric-customize-header">
+                            <span>{t('label.column')}</span>
                             <button
-                              className="metric-customize-row"
-                              key={columnId}
+                              className="metric-customize-toggle"
                               type="button"
-                              onClick={() => handleToggleColumn(columnId)}>
-                              <span className="metric-customize-grip">::</span>
-                              <span>
-                                {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
-                              </span>
-                              {isVisible ? (
-                                <Eye className="metric-customize-eye" />
-                              ) : (
-                                <EyeOff className="metric-customize-eye" />
-                              )}
+                              onClick={() =>
+                                persistVisibleColumns(
+                                  visibleColumns.length ===
+                                    METRIC_COLUMN_ORDER.length
+                                    ? []
+                                    : METRIC_COLUMN_ORDER
+                                )
+                              }>
+                              {visibleColumns.length ===
+                              METRIC_COLUMN_ORDER.length
+                                ? t('label.hide-all')
+                                : t('label.view-all')}
                             </button>
-                          );
-                        })}
-                      </div>
-                    </Dropdown.Popover>
-                  </Dropdown.Root>
-                </div>
-              </div>
+                          </div>
+                          <div className="metric-customize-list">
+                            {METRIC_COLUMN_ORDER.map((columnId) => {
+                              const isVisible =
+                                visibleColumns.includes(columnId);
+
+                              return (
+                                <button
+                                  className="metric-customize-row"
+                                  key={columnId}
+                                  type="button"
+                                  onClick={() => handleToggleColumn(columnId)}>
+                                  <span className="metric-customize-grip">
+                                    ::
+                                  </span>
+                                  <span>
+                                    {t(METRIC_COLUMN_LABEL_KEYS[columnId])}
+                                  </span>
+                                  {isVisible ? (
+                                    <Eye className="metric-customize-eye" />
+                                  ) : (
+                                    <EyeOff className="metric-customize-eye" />
+                                  )}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        </Dropdown.Popover>
+                      </Dropdown.Root>
+                    </div>
+                  </div>
+                )}
+                <Table
+                  columns={columns}
+                  customPaginationProps={{
+                    showPagination,
+                    currentPage,
+                    isLoading: isMetricsFetching,
+                    isNumberBased: true,
+                    pageSize,
+                    paging,
+                    pagingHandler: onPageChange,
+                    onShowSizeChange,
+                  }}
+                  dataSource={metrics}
+                  loading={isMetricsFetching}
+                  locale={{
+                    emptyText:
+                      isMetricsFetching || isSearchPending ? (
+                        <Loader />
+                      ) : (
+                        <ErrorPlaceHolder
+                          className="p-y-md border-none"
+                          doc={METRICS_DOCS}
+                          heading={t('label.metric')}
+                          permission={permission.Create}
+                          permissionValue={t('label.create-entity', {
+                            entity: t('label.metric'),
+                          })}
+                          type={ERROR_PLACEHOLDER_TYPE.CREATE}
+                          onClick={() => navigate(ROUTES.ADD_METRIC)}
+                        />
+                      ),
+                  }}
+                  pagination={false}
+                  rowKey="id"
+                  rowSelection={{
+                    selectedRowKeys: selectedMetricIds,
+                    onChange: setSelectedMetricIds,
+                  }}
+                  size="small"
+                />
+              </>
             )}
-            <Table
-              columns={columns}
-              customPaginationProps={{
-                showPagination,
-                currentPage,
-                isLoading: loadingMore,
-                isNumberBased: true,
-                pageSize,
-                paging,
-                pagingHandler: onPageChange,
-                onShowSizeChange,
-              }}
-              dataSource={metrics}
-              loading={loadingMore}
-              locale={{
-                emptyText: (
-                  <ErrorPlaceHolder
-                    className="p-y-md border-none"
-                    doc={METRICS_DOCS}
-                    heading={t('label.metric')}
-                    permission={permission.Create}
-                    permissionValue={t('label.create-entity', {
-                      entity: t('label.metric'),
-                    })}
-                    type={ERROR_PLACEHOLDER_TYPE.CREATE}
-                    onClick={() => navigate(ROUTES.ADD_METRIC)}
-                  />
-                ),
-              }}
-              pagination={false}
-              rowKey="id"
-              rowSelection={{
-                selectedRowKeys: selectedMetricIds,
-                onChange: setSelectedMetricIds,
-              }}
-              size="small"
-            />
           </div>
         </div>
       </div>
-      {isDeleteDialogOpen && (
-        <DialogTrigger
-          isOpen={isDeleteDialogOpen}
-          onOpenChange={(isOpen) => {
-            setIsDeleteDialogOpen(isOpen);
-            if (!isOpen) {
-              setDeleteConfirmation('');
-            }
-          }}>
-          <span />
-          <ModalOverlay>
-            <Modal className="metric-delete-modal">
-              <Dialog
-                showCloseButton
-                title={t('message.delete-metrics-title', {
-                  count: selectedMetricIds.length,
-                })}
-                onClose={() => setIsDeleteDialogOpen(false)}>
-                <div className="metric-delete-dialog">
-                  <div className="metric-delete-icon">
-                    <Trash01 size={22} />
-                  </div>
-                  <p className="metric-delete-description">
-                    {t('message.delete-metrics-warning')}
-                  </p>
-                  <div className="metric-delete-list">
-                    {selectedMetrics.slice(0, 3).map((metric) => (
-                      <div className="metric-delete-list-item" key={metric.id}>
-                        <span className="metric-delete-list-name">
-                          {metric.name}
-                        </span>
-                        <span className="metric-delete-list-display">
-                          {getEntityName(metric)}
-                        </span>
-                      </div>
-                    ))}
-                    {selectedMetrics.length > 3 && (
-                      <div className="metric-delete-list-item">
-                        {t('label.plus-count-more', {
-                          count: selectedMetrics.length - 3,
-                        })}
-                      </div>
-                    )}
-                  </div>
-                  <Input
-                    data-testid="metric-delete-confirmation"
-                    label={t('message.delete-metrics-type-to-confirm', {
-                      count: selectedMetricIds.length,
-                    })}
-                    value={deleteConfirmation}
-                    onChange={handleDeleteConfirmationChange}
-                  />
-                  <div className="metric-delete-actions">
-                    <Button
-                      color="secondary"
-                      onPress={() => setIsDeleteDialogOpen(false)}>
-                      {t('label.cancel')}
-                    </Button>
-                    <Button
-                      className="metric-delete-confirm-button"
-                      color="primary"
-                      iconLeading={Trash01}
-                      isDisabled={!canConfirmDelete || isDeletingMetrics}
-                      onPress={handleBulkDelete}>
-                      {t('message.delete-metrics-action', {
-                        count: selectedMetricIds.length,
-                      })}
-                    </Button>
-                  </div>
-                </div>
-              </Dialog>
-            </Modal>
-          </ModalOverlay>
-        </DialogTrigger>
-      )}
+      <DeleteModal
+        entityTitle={t('label.metric-plural')}
+        isDeleting={isDeletingMetrics}
+        message={t('message.delete-metrics-warning')}
+        open={isDeleteDialogOpen}
+        onCancel={() => setIsDeleteDialogOpen(false)}
+        onDelete={handleBulkDelete}
+      />
     </PageLayoutV1>
   );
 };

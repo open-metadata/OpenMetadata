@@ -8,7 +8,8 @@
       "description": "Validate that the API can properly reach the server",
       "errorMessage": "Failed to connect to tableau, please validate the credentials",
       "shortCircuit": true,
-      "mandatory": true
+      "mandatory": true,
+      "category": "ConnectionGate"
     },
     {
       "name": "ValidateApiVersion",

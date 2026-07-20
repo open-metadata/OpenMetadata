@@ -98,20 +98,17 @@ import tagClassBase from '../../../utils/TagClassBase';
 import { createTagObject } from '../../../utils/TagsPureUtils';
 import { showErrorToast } from '../../../utils/ToastUtils';
 import { useRequiredParams } from '../../../utils/useRequiredParams';
-import KnowledgeDetailPageHeader from '../KnowledgeDetailPageHeader/KnowledgeDetailPageHeader';
 import KnowledgePageDetailRightPanel from '../KnowledgePageDetailRightPanel/KnowledgePageDetailRightPanel';
 import { TitleComponent } from '../TitleComponent/TitleComponent';
 import KnowledgePageDetailSkeleton from './KnowledgePageDetailSkeleton';
 interface KnowledgePageDetailComponentProps {
   onPageChange: (page: Partial<KnowledgeCenterPageProps>) => void;
-  fetchKnowledgePageHierarchy?: (forceRefresh?: boolean) => Promise<void>;
   isRightPanelOpen?: boolean;
   onToggleRightPanel?: () => void;
 }
 
 const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
   onPageChange,
-  fetchKnowledgePageHierarchy,
   isRightPanelOpen = true,
   onToggleRightPanel,
 }) => {
@@ -828,33 +825,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     [contentChangeState]
   );
 
-  const getHeaderElement = useCallback(
-    () => (
-      <KnowledgeDetailPageHeader
-        contentChangeState={contentChangeState}
-        fetchKnowledgePageHierarchy={fetchKnowledgePageHierarchy}
-        isLoading={isLoading}
-        knowledgePage={knowledgePage}
-        permissions={permissions}
-        onFollowChange={handleFollowChange}
-        onSave={handleSave}
-        onSetThreadLink={setThreadLink}
-        onToggleDelete={handleToggleDelete}
-        onVoteChange={handleVoteChange}
-      />
-    ),
-    [
-      contentChangeState,
-      isLoading,
-      knowledgePage,
-      permissions,
-      setThreadLink,
-      handleToggleDelete,
-      handleVoteChange,
-      handleSave,
-    ]
-  );
-
   useEffect(() => {
     knowledgePageIdRef.current = knowledgePage?.id;
   }, [knowledgePage?.id]);
@@ -970,7 +940,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
         onUpdate: updatePage,
         onVoteChange: handleVoteChange,
       },
-      header: <div className="tw:mb-5 tw:rounded-xl">{getHeaderElement()}</div>,
       isRightPanelOpen,
       onTabChange: handleTabChange,
       onToggleRightPanel,
@@ -988,7 +957,6 @@ const KnowledgePageDetailComponent: FC<KnowledgePageDetailComponentProps> = ({
     feedCount,
     tags,
     tabs,
-    getHeaderElement,
   ]);
 
   useEffect(() => {
