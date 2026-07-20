@@ -358,7 +358,7 @@ public class TaskRepository extends EntityRepository<Task> {
     TaskFieldValidator.validateDataAccessCapabilities(task);
 
     if (!update) {
-      TaskFieldValidator.validateDataAccessRequestDuration(task);
+      TaskFieldValidator.validateDataAccessRequestExpiry(task);
       validateNoDuplicateActiveDataAccessRequest(task);
     }
 

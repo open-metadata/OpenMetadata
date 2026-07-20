@@ -93,6 +93,9 @@ import org.openmetadata.service.util.WebsocketNotificationHandler;
 @Slf4j
 public class TestSuiteRepository extends EntityRepository<TestSuite> {
   public static final String SUMMARY_FIELD = "summary";
+  public static final String TESTS_REVISION_EXTENSION = "internal.testSuite.testsRevision";
+  public static final String TESTS_REVISION_FIELD = "testsRevision";
+  private static final String TESTS_REVISION_SCHEMA = "testsRevision";
   private static final String UPDATE_FIELDS = "tests";
   private static final String PATCH_FIELDS = "tests";
   private static final int MAX_CONCURRENT_REPORT_QUERIES = 10;
@@ -151,6 +154,33 @@ public class TestSuiteRepository extends EntityRepository<TestSuite> {
     fieldFetchers.put(SUMMARY_FIELD, this::fetchAndSetTestCaseResultSummary);
     fieldFetchers.put("pipelines", this::fetchAndSetIngestionPipelines);
   }
+
+  public static Map<UUID, Long> getTestsRelationshipRevisions(List<UUID> testSuiteIds) {
+    if (nullOrEmpty(testSuiteIds)) {
+      return Map.of();
+    }
+    CollectionDAO collectionDAO = Entity.getCollectionDAO();
+    if (collectionDAO == null || collectionDAO.entityExtensionDAO() == null) {
+      return Map.of();
+    }
+    Map<UUID, Long> revisions = new HashMap<>();
+    for (CollectionDAO.ExtensionRecordWithId record :
+        collectionDAO
+            .entityExtensionDAO()
+            .getExtensionBatch(
+                testSuiteIds.stream().map(UUID::toString).toList(), TESTS_REVISION_EXTENSION)) {
+      TestsRelationshipRevision revision =
+          JsonUtils.readValue(record.extensionJson(), TestsRelationshipRevision.class);
+      revisions.put(record.id(), revision.revision());
+    }
+    return revisions;
+  }
+
+  static String getTestsRevisionSchema() {
+    return TESTS_REVISION_SCHEMA;
+  }
+
+  private record TestsRelationshipRevision(long revision) {}
 
   @Override
   public ResultList<TestSuite> listFromSearchWithOffset(

@@ -147,6 +147,19 @@ class TestCaseIndexTest {
   }
 
   @Test
+  void testBuildSearchIndexDocCarriesRelationshipRevisionFromContext() {
+    TestCase tc = createTestCaseWithDefinition();
+
+    Map<String, Object> result =
+        new TestCaseIndex(tc)
+            .buildSearchIndexDoc(
+                DocBuildContext.of(
+                    null, DocBuildContext.ServiceStylePrefetch.notPrefetched(), 42L));
+
+    assertEquals(42L, result.get(TestCaseRepository.TEST_SUITES_REVISION_FIELD));
+  }
+
+  @Test
   void testRequiredReindexFields_includesTestCaseResultAndIncidentId() {
     // Regression test for the 1.12.7 reindex bug: testCaseResult and incidentId
     // are stripped from the storage JSON and only loaded by

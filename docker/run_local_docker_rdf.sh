@@ -43,6 +43,9 @@ while [[ $# -gt 0 ]]; do
 done
 
 if [[ $startFuseki == "true" ]]; then
+  if [[ ",${COMPOSE_PROFILES:-}," != *",rdf,"* ]]; then
+    export COMPOSE_PROFILES="${COMPOSE_PROFILES:+${COMPOSE_PROFILES},}rdf"
+  fi
   export RDF_ENABLED=true
   export RDF_AUTO_REINDEX=true
   export RDF_STORAGE_TYPE="${RDF_STORAGE_TYPE:-FUSEKI}"
