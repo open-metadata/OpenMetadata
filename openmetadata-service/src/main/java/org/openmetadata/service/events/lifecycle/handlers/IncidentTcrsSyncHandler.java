@@ -192,6 +192,7 @@ public final class IncidentTcrsSyncHandler {
         .updateEntityFieldInSearch(
             Entity.TEST_CASE,
             task.getAbout().getId().toString(),
+            task.getAbout().getFullyQualifiedName(),
             TestCaseRepository.INCIDENTS_FIELD,
             stateId != null ? stateId.toString() : null);
   }
