@@ -40,15 +40,12 @@ from metadata.core.connections.test_connection import (
 )
 from metadata.core.connections.test_connection.check import CheckError
 from metadata.core.connections.test_connection.checks.database import run_sql
-from metadata.core.connections.test_connection.checks.pipeline import (
-    PipelineStep,
-    verify_access,
-)
+from metadata.core.connections.test_connection.checks.pipeline import PipelineStep
+from metadata.core.connections.test_connection.checks.rest import http_status, verify_access
 from metadata.core.connections.test_connection.classifier import exception_chain
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.mysqlConnection import (
     MysqlConnection as MysqlConnectionConfig,
@@ -251,10 +248,13 @@ def _test_task_detail_access(session) -> Optional[Any]:  # noqa: UP045
 
 def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # pyright: ignore[reportMissingParameterType]
     """
-    Call client.get_version(); on failure, attempt a managed-flavor-specific
+    Call client.test_get_version(); on failure, attempt a managed-flavor-specific
     diagnostic and raise SourceConnectionException with a combined message
     ("<original error>\\n\\n<hint>"). When no hint applies, the original
     exception is re-raised unchanged.
+
+    Uses the strict accessor, not get_version: the latter tolerates a reply it
+    cannot parse, which would pass the gate against any web server.
     """
     from metadata.ingestion.source.pipeline.airflow.api.diagnostics import (  # noqa: PLC0415
         diagnose,
@@ -262,26 +262,13 @@ def _decorated_check_access(client, host, auth_config, verify: bool) -> Any:  # 
 
     result = None
     try:
-        result = client.get_version()
+        result = client.test_get_version()
     except Exception as exc:
         hint = diagnose(host, auth_config, verify, exc)
         if hint:
             raise SourceConnectionException(f"{exc}\n\n{hint}") from exc
         raise
     return result
-
-
-def _http_status(*codes: int) -> Matcher:
-    """Match an Airflow REST error by HTTP status, across the cause chain."""
-    wanted = frozenset(codes)
-
-    def match(error: BaseException) -> bool:
-        return any(
-            getattr(getattr(current, "response", None), "status_code", None) in wanted
-            for current in exception_chain(error)
-        )
-
-    return match
 
 
 def _db_message(*tokens: str) -> Matcher:
@@ -306,18 +293,23 @@ def _db_message(*tokens: str) -> Matcher:
 # Only signals we exercised live or that follow directly from HTTP / driver
 # documentation are diagnosed here; everything else keeps its raw error log.
 AIRFLOW_ERRORS = ErrorPack(
-    when(_http_status(401)).diagnose(
+    when(http_status(401)).diagnose(
         "Authentication failed",
         fix="Airflow rejected the credentials. Check the username and password (or token) are correct and not expired.",
     ),
-    when(_http_status(403)).diagnose(
+    when(http_status(403)).diagnose(
         "Access denied",
         fix="The credentials are valid but lack access. Grant this user permission to read the Airflow REST API.",
     ),
-    when(_http_status(404)).diagnose(
+    when(http_status(404)).diagnose(
         "Endpoint not found",
         fix="Airflow returned 404 for this URL. Check the Host and Port point to the Airflow web "
         "server, not a UI or console page.",
+    ),
+    when(http_status(429)).diagnose(
+        "Rate limited",
+        fix="Airflow (or a gateway in front of it) is throttling the request. Retry in a few "
+        "minutes, or raise the rate limit for the account ingestion uses.",
     ),
     # A URL that is not the Airflow REST API (an SSO login page, the marketing
     # site) answers with HTML that fails to decode as JSON.
@@ -393,10 +385,7 @@ class AirflowChecks:
         parsed = urlparse(host)
         port = parsed.port or (443 if parsed.scheme == "https" else 80)
         if parsed.hostname:
-            try:
-                tcp_probe(parsed.hostname, port)
-            except NetworkUnreachableError as error:
-                raise CheckError(error, Evidence(command=f"TCP connect {parsed.hostname}:{port}")) from error
+            probe_or_fail(parsed.hostname, port)
 
     @staticmethod
     def _rest_context(client: AirflowApiClient) -> tuple[str | None, Any, bool]:
