@@ -17,6 +17,6 @@ from metadata.ingestion.source.database.influxdb.metadata import InfluxDBSource
 from metadata.utils.service_spec.default import DefaultDatabaseSpec
 
 ServiceSpec = DefaultDatabaseSpec(
-    metadata_source_class=InfluxDBSource,
-    connection_class=InfluxDBConnection,
+    metadata_source_class=InfluxDBSource,  # pyright: ignore[reportArgumentType]
+    connection_class=InfluxDBConnection,  # pyright: ignore[reportArgumentType]
 )

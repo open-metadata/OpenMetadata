@@ -21,7 +21,7 @@ from metadata.generated.schema.entity.automations.workflow import (
     Workflow as AutomationWorkflow,
 )
 from metadata.generated.schema.entity.services.connections.database.influxdbConnection import (
-    InfluxDBConnection,
+    InfluxDBConnection as InfluxDBConnectionConfig,
 )
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
@@ -111,7 +111,7 @@ class InfluxDBClient:
         self._session.close()
 
 
-class InfluxDBConnection(BaseConnection[InfluxDBConnection, InfluxDBClient]):
+class InfluxDBConnection(BaseConnection[InfluxDBConnectionConfig, InfluxDBClient]):
     """Connection class that builds an InfluxDB 3 HTTP client.
 
     Since InfluxDB 3 has no SQLAlchemy dialect, the client returned by
@@ -120,7 +120,7 @@ class InfluxDBConnection(BaseConnection[InfluxDBConnection, InfluxDBClient]):
     """
 
     def _get_client(self) -> InfluxDBClient:
-        conn = self.service_connection
+        conn: InfluxDBConnectionConfig = self.service_connection
         return InfluxDBClient(url=conn.hostPort, token=conn.token.get_secret_value())
 
     def test_connection(
@@ -130,7 +130,7 @@ class InfluxDBConnection(BaseConnection[InfluxDBConnection, InfluxDBClient]):
         timeout_seconds: int | None = THREE_MIN,
     ) -> TestConnectionResult:
         client = self.client
-        service_connection = self.service_connection
+        service_connection: InfluxDBConnectionConfig = self.service_connection
 
         def test_check_health():
             if not client.test_connection():

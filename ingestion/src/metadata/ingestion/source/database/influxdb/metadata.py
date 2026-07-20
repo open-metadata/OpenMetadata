@@ -84,7 +84,7 @@ class InfluxDBSource(CommonNoSQLSource):
         pipeline_name: str | None = None,
     ) -> "InfluxDBSource":
         config: WorkflowSource = WorkflowSource.model_validate(config_dict)
-        connection: InfluxDBConnection = config.serviceConnection.root.config
+        connection: InfluxDBConnection = config.serviceConnection.root.config  # pyright: ignore[reportOptionalMemberAccess]
         if not isinstance(connection, InfluxDBConnection):
             raise InvalidSourceException(f"Expected InfluxDBConnection, but got {type(connection).__name__}")
         return cls(config, metadata)
@@ -115,8 +115,8 @@ class InfluxDBSource(CommonNoSQLSource):
             Column(
                 name="time",
                 dataType=DataType.TIMESTAMP,
-                description="InfluxDB timestamp",
-            )
+                dataTypeDisplay="Timestamp",
+            )  # pyright: ignore[reportCallIssue]
         ]
 
         for col_info in columns_info:
@@ -125,14 +125,14 @@ class InfluxDBSource(CommonNoSQLSource):
                 continue
             influx_type = col_info.get("data_type", "Utf8")
             om_type = _INFLUX_TO_OM_TYPE.get(influx_type, DataType.VARCHAR)
-            columns.append(
-                Column(
-                    name=col_name,
-                    dataType=om_type,
-                    description=f"InfluxDB type: {influx_type}",
-                    dataLength=1 if om_type == DataType.VARCHAR else None,
-                )
-            )
+            col_def = {
+                "name": col_name,
+                "dataType": om_type,
+                "dataTypeDisplay": influx_type,
+            }
+            if om_type == DataType.VARCHAR:
+                col_def["dataLength"] = 1
+            columns.append(Column(**col_def))  # pyright: ignore[reportCallIssue]
 
         return columns
 
