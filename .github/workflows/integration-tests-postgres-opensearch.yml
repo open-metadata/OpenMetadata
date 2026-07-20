@@ -25,6 +25,7 @@ on:
       - "common/**"
       - "pom.xml"
       - "bootstrap/**"
+      - "conf/**"
   pull_request_target:
     types: [labeled, opened, synchronize, reopened, ready_for_review]
 
@@ -63,6 +64,7 @@ jobs:
               - 'common/**'
               - 'pom.xml'
               - 'bootstrap/**'
+              - 'conf/**'
 
   integration-tests-postgres-opensearch:
     needs: changes
