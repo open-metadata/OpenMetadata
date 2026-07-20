@@ -443,6 +443,13 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
 CREATE INDEX IF NOT EXISTS idx_task_migration_mapping_new_task_id
     ON task_migration_mapping (new_task_id);
 
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters).
+CREATE INDEX IF NOT EXISTS idx_wf_instance_state_execution_id
+    ON workflow_instance_state_time_series (workflowInstanceExecutionId);
+
 -- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
 UPDATE pipeline_service_entity
 SET json = jsonb_set(

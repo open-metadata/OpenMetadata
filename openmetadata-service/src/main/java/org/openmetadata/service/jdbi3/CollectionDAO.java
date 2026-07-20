@@ -11749,6 +11749,14 @@ public interface CollectionDAO {
             "SELECT json FROM workflow_instance_state_time_series "
                 + "WHERE workflowInstanceId = :workflowInstanceId ORDER BY timestamp ASC")
     List<String> listAllStatesForInstance(@Bind("workflowInstanceId") String workflowInstanceId);
+
+    @SqlQuery(
+        value =
+            "SELECT workflowInstanceId FROM workflow_instance_state_time_series "
+                + "WHERE workflowInstanceExecutionId = :workflowInstanceExecutionId "
+                + "ORDER BY timestamp ASC LIMIT 1")
+    String findWorkflowInstanceIdByExecutionId(
+        @Bind("workflowInstanceExecutionId") String workflowInstanceExecutionId);
   }
 
   interface RecognizerFeedbackDAO {
