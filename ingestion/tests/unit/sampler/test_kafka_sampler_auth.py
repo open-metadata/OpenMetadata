@@ -16,7 +16,7 @@ from metadata.generated.schema.entity.services.connections.messaging.kafkaConnec
     KafkaConnection,
 )
 from metadata.generated.schema.type.basic import FullyQualifiedEntityName
-from metadata.sampler.messaging.kafka.sampler import KafkaSampler
+from metadata.sampler.messaging.kafka.sampler import MAX_AVRO_INIT_ATTEMPTS, KafkaSampler
 
 
 def _expected_group_id(fqn: str) -> str:
@@ -190,3 +190,65 @@ def test_fetch_messages_skips_transient_error(mock_time, mock_consumer_class):
     assert len(messages) == 1
     assert messages[0] == {"test": "data"}
     mock_consumer.close.assert_called_once()
+
+
+def test_build_consumer_config_sasl_credentials_emit_security_protocol():
+    # SASL credentials provided but securityProtocol left at its PLAINTEXT default: the protocol
+    # must still be emitted so the SASL configuration is not silently dropped by librdkafka.
+    connection_config = KafkaConnection(
+        bootstrapServers="localhost:9092",
+        type="Kafka",
+        saslUsername="user",
+        saslPassword="pass",
+    )
+    entity = MagicMock()
+    entity.fullyQualifiedName = FullyQualifiedEntityName("kafka.test-topic")
+    sampler = KafkaSampler(
+        service_connection_config=connection_config,
+        entity=entity,
+        ometa_client=MagicMock(),
+    )
+    config = sampler._build_consumer_config()
+    assert config["sasl.username"] == "user"
+    assert config["security.protocol"] == "PLAINTEXT"
+
+
+def test_avro_deserializer_recovers_after_transient_failure():
+    connection_config = KafkaConnection(bootstrapServers="localhost:9092", type="Kafka")
+    entity = MagicMock()
+    entity.fullyQualifiedName = FullyQualifiedEntityName("kafka.test-topic")
+    sampler = KafkaSampler(
+        service_connection_config=connection_config,
+        entity=entity,
+        ometa_client=MagicMock(),
+    )
+
+    with patch.object(sampler, "get_client", side_effect=RuntimeError("transient")):
+        assert sampler._get_avro_deserializer() is None
+
+    client = MagicMock()
+    client.schema_registry_client = MagicMock()
+    with (
+        patch.object(sampler, "get_client", return_value=client),
+        patch(
+            "metadata.sampler.messaging.kafka.sampler.AvroDeserializer",
+            return_value="DESERIALIZER",
+        ),
+    ):
+        assert sampler._get_avro_deserializer() == "DESERIALIZER"
+
+
+def test_avro_deserializer_stops_after_max_attempts():
+    connection_config = KafkaConnection(bootstrapServers="localhost:9092", type="Kafka")
+    entity = MagicMock()
+    entity.fullyQualifiedName = FullyQualifiedEntityName("kafka.test-topic")
+    sampler = KafkaSampler(
+        service_connection_config=connection_config,
+        entity=entity,
+        ometa_client=MagicMock(),
+    )
+
+    with patch.object(sampler, "get_client", side_effect=RuntimeError("persistent")) as mock_get_client:
+        for _ in range(MAX_AVRO_INIT_ATTEMPTS + 3):
+            assert sampler._get_avro_deserializer() is None
+        assert mock_get_client.call_count == MAX_AVRO_INIT_ATTEMPTS

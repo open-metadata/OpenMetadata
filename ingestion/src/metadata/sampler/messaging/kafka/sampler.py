@@ -36,6 +36,11 @@ logger = sampler_logger()
 
 FETCH_TIMEOUT_SECONDS = 30
 
+# Bounded attempts to build the Avro deserializer so a transient Schema Registry failure on
+# the first message does not permanently disable Avro decoding, while still capping the number
+# of client creations to avoid exhausting connections/file descriptors on a persistent failure.
+MAX_AVRO_INIT_ATTEMPTS = 3
+
 
 class KafkaSampler(MessagingSampler):
     """Sampler for Kafka messaging service."""
@@ -77,14 +82,24 @@ class KafkaSampler(MessagingSampler):
             "session.timeout.ms": 10000,
         }
 
-        if self.service_connection_config.saslUsername:
-            config["sasl.username"] = self.service_connection_config.saslUsername
-        if self.service_connection_config.saslPassword:
-            config["sasl.password"] = self.service_connection_config.saslPassword.get_secret_value()
-        if self.service_connection_config.saslUsername and self.service_connection_config.saslMechanism:
-            config["sasl.mechanism"] = self.service_connection_config.saslMechanism.value
+        # saslMechanism carries a schema default (PLAIN), so SASL is "configured" only when
+        # actual credentials are supplied.
+        sasl_configured = bool(
+            self.service_connection_config.saslUsername or self.service_connection_config.saslPassword
+        )
+        if sasl_configured:
+            if self.service_connection_config.saslUsername:
+                config["sasl.username"] = self.service_connection_config.saslUsername
+            if self.service_connection_config.saslPassword:
+                config["sasl.password"] = self.service_connection_config.saslPassword.get_secret_value()
+            if self.service_connection_config.saslMechanism:
+                config["sasl.mechanism"] = self.service_connection_config.saslMechanism.value
+        # Emit security.protocol whenever SASL credentials are set (even for the PLAINTEXT default)
+        # or a non-default protocol is configured, mirroring the metadata-extraction connection
+        # builder. Otherwise supplying SASL credentials while leaving securityProtocol at its
+        # PLAINTEXT default would silently drop the SASL config and the fetch would time out empty.
         if self.service_connection_config.securityProtocol and (
-            self.service_connection_config.securityProtocol != SecurityProtocol.PLAINTEXT
+            sasl_configured or self.service_connection_config.securityProtocol != SecurityProtocol.PLAINTEXT
         ):
             config["security.protocol"] = self.service_connection_config.securityProtocol.value
 
@@ -111,20 +126,35 @@ class KafkaSampler(MessagingSampler):
 
         if AvroDeserializer and len(raw_value) > 4:
             try:
-                if not hasattr(self, "_avro_deserializer"):
-                    self._avro_deserializer = None
-                    client = self.get_client()
-                    schema_registry_client = getattr(client, "schema_registry_client", None) if client else None
-                    if schema_registry_client:
-                        self._avro_deserializer = AvroDeserializer(schema_registry_client)
-                if self._avro_deserializer:
-                    avro_obj = self._avro_deserializer(raw_value, None)
+                deserializer = self._get_avro_deserializer()
+                if deserializer:
+                    avro_obj = deserializer(raw_value, None)
                     if isinstance(avro_obj, dict):
                         return avro_obj
             except Exception as exc:
                 logger.debug(f"Failed to deserialize Avro message: {exc}")
 
         return {"message": str(raw_value)}
+
+    def _get_avro_deserializer(self):
+        """
+        Lazily build the Avro deserializer, retrying up to MAX_AVRO_INIT_ATTEMPTS times across
+        messages so a transient Schema Registry failure does not permanently disable Avro
+        decoding, while still bounding the number of client creations.
+        """
+        if getattr(self, "_avro_deserializer", None) is not None:
+            return self._avro_deserializer
+        if getattr(self, "_avro_init_attempts", 0) >= MAX_AVRO_INIT_ATTEMPTS:
+            return None
+        self._avro_init_attempts = getattr(self, "_avro_init_attempts", 0) + 1
+        try:
+            client = self.get_client()
+            schema_registry_client = getattr(client, "schema_registry_client", None) if client else None
+            if AvroDeserializer and schema_registry_client:
+                self._avro_deserializer = AvroDeserializer(schema_registry_client)
+        except Exception as exc:
+            logger.debug(f"Avro deserializer init attempt {self._avro_init_attempts} failed: {exc}")
+        return getattr(self, "_avro_deserializer", None)
 
     def _fetch_messages(self, count: int) -> List[dict]:  # noqa: UP006
         if not Consumer:
