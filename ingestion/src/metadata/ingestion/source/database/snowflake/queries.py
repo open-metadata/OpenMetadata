@@ -251,6 +251,20 @@ FROM information_schema.semantic_metrics
 WHERE SEMANTIC_VIEW_SCHEMA = '{schema}' AND SEMANTIC_VIEW_NAME = '{semantic_view}'
 """
 
+# Database-qualified batch queries used by the lineage workflow to resolve
+# semantic view -> base table (and column) lineage across every schema/view in
+# a database in a single round-trip.
+SNOWFLAKE_GET_SEMANTIC_TABLES_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, NAME,
+       BASE_TABLE_CATALOG, BASE_TABLE_SCHEMA, BASE_TABLE_NAME
+FROM "{database}".information_schema.semantic_tables
+"""
+
+SNOWFLAKE_GET_SEMANTIC_COLUMNS_IN_DB = """
+SELECT SEMANTIC_VIEW_SCHEMA, SEMANTIC_VIEW_NAME, TABLE_NAME, NAME, EXPRESSION
+FROM "{database}".information_schema.{catalog_view}
+"""
+
 SNOWFLAKE_GET_TRANSIENT_NAMES = """
 select TABLE_NAME, NULL from information_schema.tables
 where TABLE_SCHEMA = '{schema}'
