@@ -11,6 +11,8 @@
  *  limitations under the License.
  */
 import { BreadcrumbItemType } from '@openmetadata/ui-core-components';
+import type { ComponentType } from 'react';
+import type { DataAssetSummaryPanelProps } from '../components/DataAssetSummaryPanelV1/DataAssetSummaryPanelV1.interface';
 import { ExploreSearchIndex } from '../components/Explore/ExplorePage.interface';
 import { ExploreTreeNode } from '../components/Explore/ExploreTree/ExploreTree.interface';
 import { SourceType } from '../components/SearchedData/SearchedData.interface';
@@ -831,9 +833,15 @@ class SearchClassBase {
     return null;
   }
 
-  /** Lets product extensions reuse a supported summary layout for their entity type. */
   public getEntitySummaryPanelType(entityType: string): EntityType {
     return entityType as EntityType;
+  }
+
+  /** Lets product extensions register custom overviews without adding entity-specific code here. */
+  public getEntitySummaryPanelComponents(): Partial<
+    Record<string, ComponentType<DataAssetSummaryPanelProps>>
+  > {
+    return {};
   }
 
   public getEntitiesSuggestions(
