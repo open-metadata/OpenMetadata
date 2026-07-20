@@ -20,6 +20,8 @@ Requires a InfluxDB 3 Core container running without auth:
       --without-auth --object-store=memory --node-id=test
 """
 
+import time
+
 import requests
 
 INFLUXDB_URL = "http://localhost:8181"
@@ -52,6 +54,7 @@ def _seed_test_data():
 def _wait_for_data(db: str, table: str, retries: int = 10):
     """Poll until the table has at least one row."""
     for _ in range(retries):
+        time.sleep(0.5)
         try:
             rows = _query(db, f"SELECT * FROM {table}")
             if rows:
