@@ -37,6 +37,7 @@ import {
 } from 'react';
 import { useTranslation } from 'react-i18next';
 import { useNavigate } from 'react-router-dom';
+import { DEFAULT_APP_MODE } from '../../../constants/appMode.constants';
 import { UN_AUTHORIZED_EXCLUDED_PATHS } from '../../../constants/Auth.constants';
 import {
   APP_ROUTER_ROUTES as ROUTES,
@@ -54,7 +55,7 @@ import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
-import { clearAppMode } from '../../../hooks/useAppMode';
+import { clearAppMode, useAppModeStore } from '../../../hooks/useAppMode';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
 import { queryClient } from '../../../queryClient';
@@ -256,6 +257,21 @@ export const AuthProvider = ({
 
   const handledVerifiedUser = () => {
     if (!applicationRoutesClass.isProtectedRoute(location.pathname)) {
+      // Non-default app modes (e.g. AskCollate's 'ai') own their own
+      // shell and land pages — navigating to /my-data would drop the
+      // user on the Classic My Data page even though their tab is in
+      // AI mode. Route to `/` and let the mode-specific route tree
+      // render its own landing page. The mode value here comes from
+      // the useAppMode store, which is hydrated at module load from
+      // sessionStorage / the cross-tab hint (see useAppMode.ts) and
+      // then refined by useResolvedAppMode against persona / user pref.
+      const appMode = useAppModeStore.getState().currentMode;
+      if (appMode !== DEFAULT_APP_MODE) {
+        navigate(ROUTES.HOME);
+
+        return;
+      }
+
       // Check if provider uses OidcAuthenticator which has routing logic
       const usesOidcAuthenticator = [
         AuthProviderEnum.Google,
