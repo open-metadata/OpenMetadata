@@ -262,6 +262,22 @@ class TestBurstIQSamplerFetchSampleData:
 
         assert len(result.rows) == 2
 
+    def test_missing_cells_become_none_not_nan(self, sampler):
+        # BurstIQ gaps arrive as NaN; they must serialize as null, not "nan".
+        df = pd.DataFrame({"score": [1.0, None], "age": [None, 20]})
+        cols = [
+            SQALikeColumn(name="score", type=DataType.DOUBLE),
+            SQALikeColumn(name="age", type=DataType.INT),
+        ]
+        with self._patch_raw(sampler, df):
+            result = sampler.fetch_sample_data(cols)
+
+        assert result.rows[0][1] is None
+        assert result.rows[1][0] is None
+        flat = [cell for row in result.rows for cell in row]
+        assert not any(isinstance(c, float) and math.isnan(c) for c in flat)
+        assert "nan" not in [str(c).lower() for c in flat]
+
 
 class TestBurstIQSamplerCastDataframe:
     def test_numeric_column_cast_to_float(self, sampler):

@@ -139,8 +139,17 @@ class BurstIQSampler(DatalakeSampler):
         The base sampler uses ``dropna()`` which drops a row if *any* column is
         null. BurstIQ omits absent fields per record, so nearly every row has a
         gap — that would drop all rows and return an empty sample. ``how="all"``
-        keeps partially-filled rows (blanks show as empty cells)."""
-        return [[self._truncate_cell(cell) for cell in row] for row in data_frame.dropna(how="all").values.tolist()]
+        keeps partially-filled rows.
+
+        Reindexed gaps arrive as NaN/NaT; normalize them to None so the upload
+        sanitizer emits JSON null instead of the strings "nan"/"NaT". The
+        ``is_scalar`` guard skips list/dict cells, where ``pd.isna`` returns an
+        array and would raise on truthiness."""
+
+        def to_null(value):
+            return None if pd.api.types.is_scalar(value) and pd.isna(value) else self._truncate_cell(value)
+
+        return [[to_null(value) for value in row] for row in data_frame.dropna(how="all").values.tolist()]
 
     def _compute_total_limit(self, chain: str) -> Optional[int]:  # noqa: UP045
         """Compute the total record limit based on the sampling config.
