@@ -742,9 +742,7 @@ public class MigrationUtil {
         String updatedBy =
             threadJson.has("updatedBy") ? threadJson.get("updatedBy").asText() : createdByName;
 
-        // Look up createdBy user ID from user_entity by name. Store both the id (for the
-        // generated-column createdBy filter) and the entityReference (which the task drawer's
-        // "Created By" reads) so the original requester is preserved, not left blank.
+        // Preserve the original requester: createdBy ref + createdById for the filter.
         ObjectNode createdByRef = buildUserRef(createdByName);
         String createdByUserId = null;
         if (createdByRef != null && createdByRef.has("id")) {
@@ -758,17 +756,14 @@ public class MigrationUtil {
         taskJson.put("updatedBy", updatedBy);
         taskJson.put("deleted", false);
         taskJson.put("version", 0.1);
-        // Migrate the thread's posts (replies + resolve/close records) into task comments,
-        // and carry over thread-level emoji reactions — both were dropped previously.
+        // Migrate posts -> comments and carry over thread reactions.
         migrateThreadPostsToComments(threadJson, taskJson);
         if (threadJson.has("reactions") && threadJson.get("reactions").isArray()) {
           taskJson.set("reactions", threadJson.get("reactions"));
         }
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
-        // Set resolution details for closed tasks. Preserve who resolved/closed it
-        // (resolvedBy from the legacy closedBy) instead of a generic placeholder — the original
-        // close note survives as a migrated comment (see migrateThreadPostsToComments).
+        // Resolution for closed tasks: keep resolvedBy from the legacy closedBy.
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
           resolution.put("type", newStatus.equals("Approved") ? "Approved" : "Completed");
@@ -1487,11 +1482,9 @@ public class MigrationUtil {
   }
 
   /**
-   * Canonical legacy-username -&gt; user {@link EntityReference} resolver, shared by both migration
-   * paths (the raw-SQL static path via {@link #buildUserRef}, and {@code TaskWorkflow} which
-   * delegates here). {@code getEntityReferenceByName(..., Include.ALL)} keeps a soft-deleted user's
-   * real id; the unresolvable case (hard-deleted / "system" / missing name) falls back to the real
-   * admin user — never a fabricated id. Throws only if even admin cannot be resolved.
+   * Resolve a legacy username to a user {@link EntityReference}; shared by both migration paths.
+   * A soft-deleted user keeps its real id; anything unresolvable (hard-deleted / "system" / null)
+   * falls back to the admin user, never a fabricated id. Throws only if admin is also unresolvable.
    */
   static EntityReference resolveUserReference(String userName) {
     if (nullOrEmpty(userName)) {

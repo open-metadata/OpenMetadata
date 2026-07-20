@@ -1103,7 +1103,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             resolvedPayload,
             comment,
             userName);
-    // Emit a change event so task-resolved alerts fire (parity with 1.12.1 taskResolved).
+    // Change-event header so resolve fires task alerts.
     return Response.ok(resolvedTask)
         .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
         .build();
@@ -1279,7 +1279,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
     repository.checkPermissionsForResolveTask(authorizer, task, true, securityContext);
 
     Task closedTask = repository.closeTask(task, userName, comment);
-    // Emit a change event so task-closed alerts fire (parity with 1.12.1 taskClosed).
+    // Change-event header so close fires task alerts.
     return Response.ok(closedTask)
         .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
         .build();
@@ -1373,7 +1373,7 @@ public class TaskResource extends EntityResource<Task, TaskRepository> {
             null,
             null,
             userName);
-    // Emit a change event so task-resolved alerts fire (parity with 1.12.1 taskResolved).
+    // Change-event header so resolve fires task alerts.
     return Response.ok(resolvedTask)
         .header(RestUtil.CHANGE_CUSTOM_HEADER, EventType.ENTITY_UPDATED.value())
         .build();
