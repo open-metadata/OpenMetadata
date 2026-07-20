@@ -25,7 +25,6 @@ import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
 import {
-  clearAppMode,
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
@@ -143,12 +142,21 @@ export const useResolvedAppMode = (): void => {
     const isModeRegistered = (mode: string): boolean =>
       mode === DEFAULT_APP_MODE || mode in registeredRoutes;
 
-    // Stale-mode cleanup: a session pointing at a mode that isn't (any
-    // longer) registered is invalid. Drop it and fall through.
+    // If the session refers to a mode that isn't in the registry,
+    // WAIT — don't clear it. On refresh, the resolver's effect fires
+    // BEFORE App.tsx's route-registration effect (React commits
+    // child-of-child effects first), so a valid `mode: 'ai'` session
+    // would briefly look unregistered and get wiped, reverting the
+    // user's mode to Classic on every reload. This effect re-runs
+    // when `registeredRoutes` changes and finds the session valid
+    // then. If the mode never registers (plugin genuinely
+    // uninstalled), the session persists but AppRouter falls back to
+    // its default routes since the registry has no matching entry —
+    // visible but non-destructive.
     const validSession =
       session && isModeRegistered(session.mode) ? session : null;
     if (session && !validSession) {
-      clearAppMode();
+      return;
     }
 
     if (validSession && validSession.personaAppMode === currentPersonaAppMode) {

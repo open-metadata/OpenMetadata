@@ -265,21 +265,28 @@ describe('useResolvedAppMode', () => {
     });
   });
 
-  it('cleans up a stale session tuple whose mode is not registered', async () => {
+  it('preserves the session tuple across refresh even if the target mode is not yet registered', async () => {
+    // Refresh scenario: sessionStorage has `mode: 'ai'` from a previous
+    // switch. On boot, this resolver runs BEFORE App.tsx has registered
+    // the AI route (React flushes child effects before parent effects
+    // in the same commit). Old code called clearAppMode() here, which
+    // wiped the tuple and reset the tab to Classic on every refresh.
+    // New behavior: keep the session tuple, wait for the route to
+    // register, then find the tuple valid on the next re-run.
     seedUser({});
     seedRegistry(false);
-    // Prior AI session; AI has since been unregistered.
     seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
     useAppModeStore.setState({ currentMode: AI_APP_MODE });
 
-    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+    const { rerender } = renderHook(() => useResolvedAppMode(), {
+      wrapper: makeWrapper(),
+    });
+    rerender();
 
-    await waitFor(() => {
-      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
-      expect(readAppModeSession()).toEqual({
-        personaAppMode: null,
-        mode: DEFAULT_APP_MODE,
-      });
+    expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    expect(readAppModeSession()).toEqual({
+      personaAppMode: null,
+      mode: AI_APP_MODE,
     });
   });
 
