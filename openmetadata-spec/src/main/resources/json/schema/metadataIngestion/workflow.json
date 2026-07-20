@@ -11,6 +11,7 @@
       "type": "object",
       "properties": {
         "config": {
+          "required": ["type"],
           "oneOf": [
             {
               "$ref": "databaseServiceMetadataPipeline.json"
@@ -81,7 +82,8 @@
           ]
         }
       },
-      "additionalProperties": false
+      "additionalProperties": false,
+      "required": ["config"]
     },
     "source": {
       "description": "Configuration for Source component in OpenMetadata Ingestion Framework.",

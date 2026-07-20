@@ -79,6 +79,8 @@ class MigrationUtilTest {
     assertTrue(sql.contains("metadata_config_type.fromEntity = er.fromEntity"));
     assertTrue(sql.contains("metadata_config_type.configType"));
     assertTrue(sql.contains("i.json ->> '$.pipelineType' = 'metadata'"));
+    assertTrue(
+        sql.contains("JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config.type')) = 'NULL'"));
     assertTrue(sql.contains("JSON_TYPE(JSON_EXTRACT(i.json, '$.sourceConfig.config')) = 'OBJECT'"));
     assertTrue(!sql.contains("CASE er.fromEntity"));
   }
