@@ -28,8 +28,17 @@
  *
  * The trailing `[,)]` matters: an earlier version required a comma and silently
  * skipped the 20 `(INT)` parameters, leaving them bold amongst mono siblings.
+ *
+ * The type body is `[A-Z][A-Z0-9_]*` rather than `[A-Z]+` so that types
+ * carrying digits or underscores — `INT64`, `VARCHAR2`, `TIMESTAMP_NTZ` — are
+ * matched too. None appear in the docs today, but the failure mode is silent:
+ * an unmatched parameter simply stays bold next to its mono siblings, with
+ * nothing to indicate the regex declined it. Requiring the first character to
+ * be a letter keeps the prose parentheticals out — `(Optional)` stops at the
+ * lowercase `p` before reaching the closing bracket, `(see the guide)` never
+ * starts.
  */
-const PARAMETER_BULLET = /^(\s*[-*]\s+)\*\*([^*]+)\*\*(\s*\([A-Z]+[,)])/gm;
+const PARAMETER_BULLET = /^(\s*[-*]\s+)\*\*([^*]+)\*\*(\s*\([A-Z][A-Z0-9_]*[,)])/gm;
 
 /**
  * Renders parameter NAMES as code so they pick up the hint panel's mono

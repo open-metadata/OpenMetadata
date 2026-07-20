@@ -95,6 +95,28 @@ describe('monospaceParameterNames', () => {
     expect(monospaceParameterNames(prose)).toBe(prose);
   });
 
+  it('converts types carrying digits or underscores', () => {
+    // No such type is in the docs today, but an unmatched parameter fails
+    // silently — it just stays bold beside its mono siblings.
+    const cases: Array<[string, string]> = [
+      ['- **Row Count** (INT64) - Number of rows', '- `Row Count` (INT64)'],
+      ['- **Code** (VARCHAR2, Optional) - A code', '- `Code` (VARCHAR2,'],
+      ['- **Seen At** (TIMESTAMP_NTZ) - When', '- `Seen At` (TIMESTAMP_NTZ)'],
+    ];
+
+    for (const [input, expected] of cases) {
+      expect(monospaceParameterNames(input)).toContain(expected);
+    }
+  });
+
+  it('still rejects a capitalised word that is not a type', () => {
+    // `(Optional)` starts with a capital, so the type body must stop at the
+    // lowercase letter rather than run to the closing bracket.
+    const prose = '- **Some Label** (Optional) - not a parameter';
+
+    expect(monospaceParameterNames(prose)).toBe(prose);
+  });
+
   it('returns an empty string unchanged', () => {
     expect(monospaceParameterNames('')).toBe('');
   });
