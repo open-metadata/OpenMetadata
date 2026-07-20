@@ -131,7 +131,7 @@ def test_get_databases_warns_when_catalog_is_empty():
 
     evidence = _checks(client).get_databases()
 
-    assert evidence.summary == "0 databases enumerated"
+    assert evidence.summary == "no databases enumerated"
     assert evidence.caveat is not None
     assert "No databases visible" in evidence.caveat.title
 
