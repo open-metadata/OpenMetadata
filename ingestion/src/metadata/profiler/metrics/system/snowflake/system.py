@@ -99,8 +99,10 @@ class SnowflakeTableResovler:
         self.session = session
 
     def show_tables(self, db, schema, table):
+        # Escape LIKE wildcards so _ and % are treated as literal characters
+        escaped = table.replace("\\", "\\\\").replace("_", "\\_").replace("%", "\\%")
         return self.session.execute(
-            text(f'SHOW TABLES LIKE \'{table}\' IN SCHEMA "{db}"."{schema}" LIMIT 1;')
+            text(f'SHOW TABLES LIKE \'{escaped}\' IN SCHEMA "{db}"."{schema}" LIMIT 1')
         ).fetchone()
 
     def table_exists(self, db, schema, table):
