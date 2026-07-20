@@ -43,7 +43,7 @@ jobs:
     name: ${{ github.event_name == 'pull_request_target' && github.event.action == 'labeled' && github.event.label.name != 'safe to test' && 'playwright-ci-mysql (ignored label)' || 'playwright-ci-mysql' }}
     runs-on: ubuntu-latest
     if: ${{ !github.event.pull_request.draft && (github.event_name != 'pull_request_target' || github.event.action != 'labeled' || github.event.label.name == 'safe to test') }}
-    environment: test
+    environment: ${{ github.event.pull_request.head.repo.fork && 'fork-pr-ci' || 'test' }}
     permissions:
       contents: read
       pull-requests: read
@@ -98,6 +98,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Detect ingestion-only changes
         id: changes

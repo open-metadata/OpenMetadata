@@ -89,6 +89,7 @@ jobs:
     name: Build Integration Test Runtime
     needs: changes
     runs-on: ubuntu-latest
+    environment: ${{ github.event.pull_request.head.repo.fork && 'fork-pr-ci' || '' }}
     timeout-minutes: 60
     if: ${{ needs.changes.outputs.backend == 'true' }}
     steps:
@@ -114,6 +115,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Cache Maven dependencies
         uses: actions/cache@v4
@@ -218,6 +220,7 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          allow-unsafe-pr-checkout: true
 
       - name: Cache Maven dependencies
         uses: actions/cache@v4
