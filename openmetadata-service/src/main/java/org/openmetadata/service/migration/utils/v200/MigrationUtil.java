@@ -745,13 +745,12 @@ public class MigrationUtil {
         // Look up createdBy user ID from user_entity by name. Store both the id (for the
         // generated-column createdBy filter) and the entityReference (which the task drawer's
         // "Created By" reads) so the original requester is preserved, not left blank.
-        String createdByUserId = lookupUserId(handle, createdByName);
-        if (createdByUserId != null) {
+        ObjectNode createdByRef = buildUserRef(createdByName);
+        String createdByUserId = null;
+        if (createdByRef != null && createdByRef.has("id")) {
+          createdByUserId = createdByRef.get("id").asText();
           taskJson.put("createdById", createdByUserId);
-          ObjectNode createdByRef = buildUserRef(handle, createdByName);
-          if (createdByRef != null) {
-            taskJson.set("createdBy", createdByRef);
-          }
+          taskJson.set("createdBy", createdByRef);
         }
 
         taskJson.put("createdAt", createdAt);
@@ -761,7 +760,7 @@ public class MigrationUtil {
         taskJson.put("version", 0.1);
         // Migrate the thread's posts (replies + resolve/close records) into task comments,
         // and carry over thread-level emoji reactions — both were dropped previously.
-        migrateThreadPostsToComments(handle, threadJson, taskJson);
+        migrateThreadPostsToComments(threadJson, taskJson);
         if (threadJson.has("reactions") && threadJson.get("reactions").isArray()) {
           taskJson.set("reactions", threadJson.get("reactions"));
         }
@@ -774,7 +773,7 @@ public class MigrationUtil {
           ObjectNode resolution = JsonUtils.getObjectNode();
           resolution.put("type", newStatus.equals("Approved") ? "Approved" : "Completed");
           if (taskDetails.has("closedBy")) {
-            ObjectNode resolvedBy = buildUserRef(handle, taskDetails.get("closedBy").asText());
+            ObjectNode resolvedBy = buildUserRef(taskDetails.get("closedBy").asText());
             if (resolvedBy != null) {
               resolution.set("resolvedBy", resolvedBy);
             }
@@ -1488,31 +1487,42 @@ public class MigrationUtil {
   }
 
   /**
-   * Build a user {@code entityReference} ({id, type, name}) for a legacy username, resolving the id
-   * from user_entity. Returns null when the name is missing/system or the user cannot be resolved,
-   * so callers can omit the field rather than write a dangling reference.
+   * Resolve a legacy username to a user {@code entityReference} (as JSON), mirroring
+   * {@link TaskWorkflow#resolveUserReference} instead of reinventing the lookup:
+   * {@code getEntityReferenceByName(..., Include.ALL)} preserves a soft-deleted user's real id, and
+   * the unresolvable case (hard-deleted / "system" / missing name) falls back to the real admin
+   * user — never a fabricated id. Returns null only if even admin cannot be resolved.
    */
-  private static ObjectNode buildUserRef(Handle handle, String userName) {
-    String id = lookupUserId(handle, userName);
-    if (id == null) {
+  private static ObjectNode buildUserRef(String userName) {
+    if (userName != null && !userName.isEmpty() && !"system".equals(userName)) {
+      try {
+        return userRefToJson(Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL));
+      } catch (Exception e) {
+        LOG.debug(
+            "Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
+      }
+    }
+    try {
+      return userRefToJson(
+          Entity.getEntityReferenceByName(Entity.USER, "admin", Include.NON_DELETED));
+    } catch (Exception e) {
+      LOG.warn("Could not resolve admin user for migration author fallback: {}", e.getMessage());
       return null;
     }
-    ObjectNode ref = JsonUtils.getObjectNode();
-    ref.put("id", id);
-    ref.put("type", Entity.USER);
-    ref.put("name", userName);
-    return ref;
+  }
+
+  private static ObjectNode userRefToJson(EntityReference ref) {
+    return ref == null ? null : (ObjectNode) JsonUtils.readTree(JsonUtils.pojoToJson(ref));
   }
 
   /**
    * Migrate a legacy thread's {@code posts[]} (user replies + resolve/close records) into the new
    * task's {@code comments[]} so the task discussion history survives, and sets {@code commentCount}.
-   * Each post maps to a {@code taskComment} ({id, message, author, createdAt, reactions}); posts
-   * whose author cannot be resolved keep their message but fall back to a system author so no
-   * comment is silently dropped.
+   * Each post maps to a {@code taskComment} ({id, message, author, createdAt, reactions}). The author
+   * is resolved via {@link #buildUserRef} (soft-deleted users keep their real id; unresolvable ones
+   * fall back to the admin user) — never a synthetic id. A post is skipped only if even that fails.
    */
-  private static void migrateThreadPostsToComments(
-      Handle handle, JsonNode threadJson, ObjectNode taskJson) {
+  private static void migrateThreadPostsToComments(JsonNode threadJson, ObjectNode taskJson) {
     JsonNode posts = threadJson.get("posts");
     ArrayNode comments = JsonUtils.getObjectNode().arrayNode();
     if (posts != null && posts.isArray()) {
@@ -1520,17 +1530,13 @@ public class MigrationUtil {
         if (!post.has("message")) {
           continue;
         }
+        ObjectNode author = buildUserRef(post.path("from").asText(null));
+        if (author == null) {
+          continue;
+        }
         ObjectNode comment = JsonUtils.getObjectNode();
         comment.put("id", post.has("id") ? post.get("id").asText() : UUID.randomUUID().toString());
         comment.put("message", post.get("message").asText());
-        ObjectNode author = buildUserRef(handle, post.path("from").asText(null));
-        if (author == null) {
-          author = JsonUtils.getObjectNode();
-          author.put(
-              "id", UUID.nameUUIDFromBytes("system".getBytes(StandardCharsets.UTF_8)).toString());
-          author.put("type", Entity.USER);
-          author.put("name", "system");
-        }
         comment.set("author", author);
         comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : 0);
         if (post.has("reactions") && post.get("reactions").isArray()) {
