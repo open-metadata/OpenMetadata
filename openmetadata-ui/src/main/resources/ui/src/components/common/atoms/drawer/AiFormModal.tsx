@@ -21,6 +21,7 @@ import {
   Typography,
 } from '@openmetadata/ui-core-components';
 import { CheckCircle, Lightbulb05 } from '@untitledui/icons';
+import classNames from 'classnames';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -188,18 +189,19 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 : WIDTH_NO_HINT_COLUMN
             }
             onClose={onClose}>
-            {/* Divider under the header per the modal convention agreed in
-                #ui-devs: dividers belong on modals that scroll, and are dropped
-                on ones that do not. This body always scrolls — the columns
-                below own their own overflow, and the single-column variant
-                scrolls too — so it qualifies.
+            {/* Shadow rather than a rule, per design: the same treatment the
+                classic form used, mirrored onto the header so the body is
+                bounded top and bottom. `relative z-10` lifts the header over
+                the scrolling body, otherwise the body paints across the shadow
+                (the footer already carries z-10 for the same reason).
 
-                Dialog draws this divider itself, but only for its `title` prop.
-                This modal builds its own header (featured icon, subtitle,
-                Show Hint) as children, so that path never runs and the rule has
-                to be drawn here. Dialog.Header also ships no bottom padding, so
-                without `pb` the rule would sit against the title. */}
-            <Dialog.Header className="tw:border-b tw:border-secondary tw:pb-4">
+                Spelled out rather than taken from the shadow scale because
+                every token in it casts downward, and the footer needs to cast
+                up. Keeping both spelled out keeps the pair symmetrical.
+
+                Dialog.Header ships no bottom padding, so `pb` is what keeps the
+                subtitle off the shadow. */}
+            <Dialog.Header className="tw:relative tw:z-10 tw:pb-4 tw:shadow-[0_2px_8px_rgba(0,0,0,0.1)]">
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
@@ -284,8 +286,14 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 columns and the footer here — the hint column visibly stops
                 short of it. The columns already run to the modal's edges, so
                 the footer sits directly against them. */}
+            {/* border-t-0 drops Dialog's own rule: the shadow is doing that job
+                now, and leaving both would read as a double edge against the
+                header, which has no rule. */}
             <Dialog.Footer
-              className={hasHintColumn ? 'tw:mt-0 tw:sm:mt-0' : undefined}>
+              className={classNames(
+                'tw:border-t-0 tw:shadow-[0_-2px_8px_rgba(0,0,0,0.1)]',
+                { 'tw:mt-0 tw:sm:mt-0': hasHintColumn }
+              )}>
               <Button
                 color="secondary"
                 data-testid={cancelTestId}
