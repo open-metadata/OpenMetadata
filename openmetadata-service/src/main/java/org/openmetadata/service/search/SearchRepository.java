@@ -99,7 +99,6 @@ import org.openmetadata.schema.api.lineage.SearchLineageRequest;
 import org.openmetadata.schema.api.lineage.SearchLineageResult;
 import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -795,56 +794,15 @@ public class SearchRepository {
   }
 
   /**
-   * The effective index mapping for an entity. Prefers the admin-editable mapping persisted in the
-   * {@code searchIndexMappings} setting (already field-safety hardened at seed time); falls back to
-   * the hardened classpath resource when no stored slice exists (e.g. fresh-install first boot, or a
-   * newly added entity type not yet seeded).
+   * The effective index mapping for an entity: the bundled classpath resource, field-safety hardened
+   * on the fly by {@link SearchIndexSettings#harden} at index-creation time.
    */
   public String readIndexMapping(IndexMapping indexMapping) {
-    String mapping = getStoredMapping(indexMapping);
-    if (mapping == null) {
-      mapping = getHardenedResourceMapping(indexMapping);
-    }
+    String mapping = getHardenedResourceMapping(indexMapping);
     if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
       mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
     }
     return mapping;
-  }
-
-  private String getStoredMapping(IndexMapping indexMapping) {
-    String result = null;
-    String entityType = resolveEntityType(indexMapping);
-    if (entityType != null) {
-      Object mapping = lookupStoredMapping(language.toLowerCase(Locale.ROOT), entityType);
-      if (mapping != null) {
-        result = JsonUtils.pojoToJson(mapping);
-      }
-    }
-    return result;
-  }
-
-  private Object lookupStoredMapping(String mappingLanguage, String entityType) {
-    Object result = null;
-    SearchIndexMappings stored =
-        SettingsCache.getSettingOrDefault(
-            SettingsType.SEARCH_INDEX_MAPPINGS, null, SearchIndexMappings.class);
-    if (stored != null && stored.getLanguages() != null) {
-      Map<String, Object> byEntity = stored.getLanguages().get(mappingLanguage);
-      if (byEntity != null) {
-        result = byEntity.get(entityType);
-      }
-    }
-    return result;
-  }
-
-  private String resolveEntityType(IndexMapping indexMapping) {
-    return entityIndexMap == null || indexMapping == null
-        ? null
-        : entityIndexMap.entrySet().stream()
-            .filter(entry -> entry.getValue().getIndexName().equals(indexMapping.getIndexName()))
-            .map(Map.Entry::getKey)
-            .findFirst()
-            .orElse(null);
   }
 
   private String getHardenedResourceMapping(IndexMapping indexMapping) {
