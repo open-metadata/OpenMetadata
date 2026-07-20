@@ -155,11 +155,12 @@ class TestRedpandaAutoClassification:
         topic = metadata.get_by_name(
             entity=Topic,
             fqn=f"{redpanda_messaging_service.fullyQualifiedName.root}.{PII_TOPIC_NAME}",
-            fields=["sampleData"],
         )
         assert topic is not None
-        assert topic.sampleData is not None
-        assert len(topic.sampleData.messages) > 0
+        topic_with_sample = metadata.get_topic_sample_data(topic)
+        assert topic_with_sample is not None
+        assert topic_with_sample.sampleData is not None
+        assert len(topic_with_sample.sampleData.messages) > 0
 
     def test_redpanda_pii_field_tagged(
         self,
@@ -170,7 +171,7 @@ class TestRedpandaAutoClassification:
         topic = metadata.get_by_name(
             entity=Topic,
             fqn=f"{redpanda_messaging_service.fullyQualifiedName.root}.{PII_TOPIC_NAME}",
-            fields=["messageSchema"],
+            fields=["messageSchema", "tags"],
         )
         fields = topic.messageSchema.schemaFields
         email_field = next((f for f in fields if f.name.root == "email"), None)
