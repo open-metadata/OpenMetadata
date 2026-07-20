@@ -6,7 +6,9 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.OptionalInt;
+import java.util.UUID;
 import java.util.concurrent.Callable;
+import java.util.concurrent.atomic.AtomicReference;
 import org.awaitility.Awaitility;
 import org.awaitility.core.ConditionTimeoutException;
 import org.openmetadata.it.factories.DatabaseSchemaTestFactory;
@@ -31,6 +33,8 @@ final class RankingSupport {
 
   static final String TIER1_TAG = "Tier.Tier1";
   private static final Duration INDEX_WAIT = Duration.ofSeconds(30);
+  private static final Duration POLL_INTERVAL = Duration.ofMillis(500);
+  private static final int TERM_HEX_LENGTH = 16;
   private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
   /** A hit's name + fqn + score — enough to assert relative ranking. */
@@ -87,18 +91,48 @@ final class RankingSupport {
     return new SearchResult(hits);
   }
 
-  /** Poll (never sleep) until {@code condition} holds; returns {@code false} on timeout. */
-  static boolean awaitTrue(Callable<Boolean> condition) {
+  /**
+   * Poll (never sleep) until {@code condition} holds. Returns {@code null} once satisfied, or a
+   * description of why it never became true.
+   *
+   * <p>Transient errors while a document is still being indexed are expected, so polling keeps
+   * tolerating them — but the last one is retained and reported. Without that, a condition failing
+   * on every single poll (a 4xx, a bad index name, a deserialization error) is indistinguishable
+   * from genuine indexing lag: both surface only as "not indexed in time".
+   */
+  static String awaitOrReason(Callable<Boolean> condition) {
+    AtomicReference<Exception> lastError = new AtomicReference<>();
+    String reason = null;
     try {
       Awaitility.await()
           .atMost(INDEX_WAIT)
-          .pollInterval(Duration.ofMillis(500))
+          .pollInterval(POLL_INTERVAL)
           .ignoreExceptions()
-          .until(condition);
-      return true;
+          .until(() -> evaluate(condition, lastError));
     } catch (ConditionTimeoutException timeout) {
-      return false;
+      reason = describeTimeout(lastError.get());
     }
+    return reason;
+  }
+
+  private static boolean evaluate(Callable<Boolean> condition, AtomicReference<Exception> lastError)
+      throws Exception {
+    boolean satisfied;
+    try {
+      satisfied = Boolean.TRUE.equals(condition.call());
+    } catch (Exception pollFailure) {
+      lastError.set(pollFailure);
+      throw pollFailure;
+    }
+    return satisfied;
+  }
+
+  private static String describeTimeout(Exception lastError) {
+    String reason = "not satisfied within " + INDEX_WAIT;
+    if (lastError != null) {
+      reason = reason + "; last error: " + lastError;
+    }
+    return reason;
   }
 
   /** Create a database service + database + schema and return the schema FQN entities hang off. */
@@ -107,13 +141,20 @@ final class RankingSupport {
   }
 
   /**
-   * A unique, <b>hex-free</b> search term (letters g–v). OpenMetadata embeds a hex run-id in every
-   * entity name, so a hex query token ngram-matches those names and adds variable text score that
-   * breaks controlled score-ties. Mapping each hex digit into g–v yields a token that cannot collide
-   * with the hex names, keeping the text match exactly equal across seeded entities.
+   * A unique, <b>hex-free</b> search term (letters g–v), drawn from its own full-entropy source.
+   *
+   * <p>The token must avoid two different collisions, and needs both to keep a scored tie exact.
+   * OpenMetadata embeds a hex run-id in every entity name, so a hex token ngram-matches those names
+   * — hence the g–v mapping. The token must equally not collide with the <em>other</em> tokens
+   * minted for the same test, which is why the entropy is drawn here rather than from {@link
+   * TestNamespace#uniqueShortId()}: that varies only in its last 4 of 16 characters, so tokens
+   * derived from it shared a 14-character prefix. Seeders place a sibling token in every entity
+   * name, so that shared prefix leaked a variable {@code name.ngram} / {@code displayName.ngram}
+   * contribution into scores the ranking cases require to be exactly tied — measured at a ~12%
+   * inversion rate on the tier-boost tie case.
    */
-  static String uniqueTerm(TestNamespace ns) {
-    String hex = ns.uniqueShortId();
+  static String uniqueTerm() {
+    String hex = UUID.randomUUID().toString().replace("-", "").substring(0, TERM_HEX_LENGTH);
     StringBuilder term = new StringBuilder("zz");
     for (int i = 0; i < hex.length(); i++) {
       term.append((char) ('g' + Character.digit(hex.charAt(i), 16)));

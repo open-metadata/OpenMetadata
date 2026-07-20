@@ -62,27 +62,27 @@ interface EntitySeeder {
 
   /** Unique entity name; the token is the leading clean sub-token only for {@code NAME}. */
   static String nameFor(TestNamespace ns, String token, Placement placement) {
-    String lead = placement == Placement.NAME ? token : RankingSupport.uniqueTerm(ns);
+    String lead = placement == Placement.NAME ? token : RankingSupport.uniqueTerm();
     return ns.prefix(lead + "-" + ns.uniqueShortId());
   }
 
-  static String displayNameFor(TestNamespace ns, String token, Placement placement) {
+  static String displayNameFor(String token, Placement placement) {
     return switch (placement) {
       case DISPLAY_NAME_EXACT -> token;
       case DISPLAY_NAME_PHRASE -> token + " reporting warehouse";
-      default -> "gd " + RankingSupport.uniqueTerm(ns);
+      default -> "gd " + RankingSupport.uniqueTerm();
     };
   }
 
-  static String descriptionFor(TestNamespace ns, String token, Placement placement) {
+  static String descriptionFor(String token, Placement placement) {
     return placement == Placement.DESCRIPTION
         ? "this asset mentions " + token + " once in prose"
-        : "generic description body " + RankingSupport.uniqueTerm(ns);
+        : "generic description body " + RankingSupport.uniqueTerm();
   }
 
   /** The token to write into the distinctive nested field, or a generic value for other placements. */
-  static String distinctiveFor(TestNamespace ns, String token, Placement placement) {
-    return placement == Placement.DISTINCTIVE ? token : "generic_" + RankingSupport.uniqueTerm(ns);
+  static String distinctiveFor(String token, Placement placement) {
+    return placement == Placement.DISTINCTIVE ? token : "generic_" + RankingSupport.uniqueTerm();
   }
 
   static List<TagLabel> tierTags(boolean tier1) {
