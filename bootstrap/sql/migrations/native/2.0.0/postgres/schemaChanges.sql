@@ -447,6 +447,13 @@ CREATE INDEX IF NOT EXISTS idx_entity_relationship_pipeline_id
     ON entity_relationship ((json->'pipeline'->>'id'))
     WHERE (json->'pipeline'->>'id') IS NOT NULL;
 
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters).
+CREATE INDEX IF NOT EXISTS idx_wf_instance_state_execution_id
+    ON workflow_instance_state_time_series (workflowInstanceExecutionId);
+
 -- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
 UPDATE pipeline_service_entity
 SET json = jsonb_set(

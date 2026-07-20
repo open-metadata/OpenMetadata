@@ -507,6 +507,28 @@ ALTER TABLE entity_relationship
         GENERATED ALWAYS AS (JSON_UNQUOTE(JSON_EXTRACT(json, '$.pipeline.id'))) VIRTUAL;
 CREATE INDEX idx_entity_relationship_pipeline_id ON entity_relationship (pipelineId);
 
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters). MySQL has no `CREATE INDEX IF NOT EXISTS`, so guard via
+-- information_schema (mirrors the approvedById guard earlier in this file).
+SET @ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.statistics
+      WHERE table_schema = DATABASE()
+        AND table_name = 'workflow_instance_state_time_series'
+        AND index_name = 'idx_wf_instance_state_execution_id'
+    ),
+    'SELECT 1',
+    'CREATE INDEX idx_wf_instance_state_execution_id ON workflow_instance_state_time_series (workflowInstanceExecutionId)'
+  )
+);
+PREPARE stmt FROM @ddl;
+EXECUTE stmt;
+DEALLOCATE PREPARE stmt;
+
 -- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
 UPDATE pipeline_service_entity
 SET json = JSON_INSERT(
