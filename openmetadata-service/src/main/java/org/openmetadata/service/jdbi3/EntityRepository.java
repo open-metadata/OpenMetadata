@@ -383,12 +383,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
   }
 
   @VisibleForTesting
-  static long writeEpochById(String entityType, UUID id) {
+  static long readEpochById(String entityType, UUID id) {
     return readEpochById(new ImmutablePair<>(entityType, id));
   }
 
   @VisibleForTesting
-  static long writeEpochByName(String entityType, String fqn) {
+  static long readEpochByName(String entityType, String fqn) {
     return readEpochByName(cacheNameKey(entityType, fqn));
   }
 
@@ -4020,7 +4020,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         return;
       }
       String json =
-          storedJson != null && entity.getId().equals(storedJson.entityId())
+          storedJson != null
+                  && storedJson.json() != null
+                  && entity.getId().equals(storedJson.entityId())
               ? storedJson.json()
               : serializeForStorage(entity);
       writeJsonToRedis(cachedEntityDao, entity.getId(), entity.getFullyQualifiedName(), json);
@@ -4028,6 +4030,32 @@ public abstract class EntityRepository<T extends EntityInterface> {
       LOG.debug("Write-through cache failed: {} {}", entityType, entity.getId(), e);
     } finally {
       storedEntityJson.remove();
+    }
+  }
+
+  final void storeEntityAndCaptureJson(T entity, boolean update) {
+    captureStoredEntityJson(entity, () -> storeEntity(entity, update));
+  }
+
+  private void storeEntityWithVersionAndCaptureJson(
+      T entity, boolean update, Double expectedVersion) {
+    captureStoredEntityJson(entity, () -> storeEntityWithVersion(entity, update, expectedVersion));
+  }
+
+  private void captureStoredEntityJson(T entity, Runnable storeOperation) {
+    storedEntityJson.set(new StoredEntityJson(entity.getId(), null));
+    boolean storeCompleted = false;
+    try {
+      storeOperation.run();
+      storeCompleted = true;
+    } finally {
+      StoredEntityJson storedJson = storedEntityJson.get();
+      if (!storeCompleted
+          || storedJson == null
+          || storedJson.json() == null
+          || !Objects.equals(entity.getId(), storedJson.entityId())) {
+        storedEntityJson.remove();
+      }
     }
   }
 
@@ -5068,7 +5096,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   private void createNewEntityFlushBody(T entity) {
     try (var ignored = phase("createStoreEntity")) {
-      storeEntity(entity, false);
+      storeEntityAndCaptureJson(entity, false);
       storeExtension(entity);
       storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
     }
@@ -5397,7 +5425,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       dao.insert(dao.getTableName(), dao.getNameHashColumn(), entity.getFullyQualifiedName(), json);
       LOG.info("Created {}:{}:{}", entityType, entity.getId(), entity.getFullyQualifiedName());
     }
-    storedEntityJson.set(new StoredEntityJson(entity.getId(), json));
+    StoredEntityJson pendingCapture = storedEntityJson.get();
+    if (pendingCapture != null
+        && pendingCapture.json() == null
+        && Objects.equals(entity.getId(), pendingCapture.entityId())) {
+      storedEntityJson.set(new StoredEntityJson(entity.getId(), json));
+    }
   }
 
   protected void storeMany(List<T> entities) {
@@ -10249,14 +10282,15 @@ public abstract class EntityRepository<T extends EntityInterface> {
           entityType,
           updated.getId(),
           updated.getChangeDescription());
-      EntityRepository.this.storeEntity(updated, true);
+      EntityRepository.this.storeEntityAndCaptureJson(updated, true);
       entityStored = true;
     }
 
     private void storeNewVersionWithOptimisticLocking() {
       // Pass the original version to enable optimistic locking
       // This ensures no other process has modified the entity between read and write
-      EntityRepository.this.storeEntityWithVersion(updated, true, original.getVersion());
+      EntityRepository.this.storeEntityWithVersionAndCaptureJson(
+          updated, true, original.getVersion());
       entityStored = true;
     }
 

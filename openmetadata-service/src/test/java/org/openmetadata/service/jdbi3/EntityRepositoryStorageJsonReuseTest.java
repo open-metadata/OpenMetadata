@@ -40,7 +40,7 @@ class EntityRepositoryStorageJsonReuseTest {
     CountingPipelineRepository repository = new CountingPipelineRepository(dao);
     Pipeline pipeline = pipeline("before");
 
-    repository.storeForTest(pipeline);
+    repository.storeForCacheForTest(pipeline);
     pipeline.setName("after");
 
     try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
@@ -57,14 +57,13 @@ class EntityRepositoryStorageJsonReuseTest {
   }
 
   @Test
-  void requestBoundaryCleanupDiscardsUnconsumedStoredJson() {
+  void directStoreDoesNotRetainJson() {
     CollectionDAO.PipelineDAO dao = mock(CollectionDAO.PipelineDAO.class);
     CachedEntityDao cachedEntityDao = mock(CachedEntityDao.class);
     CountingPipelineRepository repository = new CountingPipelineRepository(dao);
     Pipeline pipeline = pipeline("before");
 
-    repository.storeForTest(pipeline);
-    repository.clearParentCache();
+    repository.storeDirectlyForTest(pipeline);
     pipeline.setName("after");
 
     try (MockedStatic<CacheBundle> cacheBundle = mockStatic(CacheBundle.class)) {
@@ -90,8 +89,12 @@ class EntityRepositoryStorageJsonReuseTest {
       super("pipelines", Entity.PIPELINE, Pipeline.class, dao, "", "", Set.of(), false);
     }
 
-    private void storeForTest(Pipeline pipeline) {
-      store(pipeline, false);
+    private void storeForCacheForTest(Pipeline pipeline) {
+      storeEntityAndCaptureJson(pipeline, false);
+    }
+
+    private void storeDirectlyForTest(Pipeline pipeline) {
+      storeEntity(pipeline, false);
     }
 
     private void writeThroughCacheForTest(Pipeline pipeline) {
@@ -114,7 +117,9 @@ class EntityRepositoryStorageJsonReuseTest {
     protected void prepare(Pipeline entity, boolean update) {}
 
     @Override
-    protected void storeEntity(Pipeline entity, boolean update) {}
+    protected void storeEntity(Pipeline entity, boolean update) {
+      store(entity, update);
+    }
 
     @Override
     protected void storeRelationships(Pipeline entity) {}
