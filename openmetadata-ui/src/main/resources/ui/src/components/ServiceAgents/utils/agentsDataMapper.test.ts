@@ -175,6 +175,24 @@ describe('agentsDataMapper', () => {
       sourceConfig: {},
     };
 
+    it('should carry the enabled flag through for an enabled pipeline', () => {
+      const agent = mapPipelineToAgent({ ...basePipeline, enabled: true });
+
+      expect(agent.enabled).toBe(true);
+    });
+
+    it('should carry the enabled flag through for a paused pipeline', () => {
+      const agent = mapPipelineToAgent({ ...basePipeline, enabled: false });
+
+      expect(agent.enabled).toBe(false);
+    });
+
+    it('should leave enabled undefined when the pipeline does not define it', () => {
+      const agent = mapPipelineToAgent(basePipeline);
+
+      expect(agent.enabled).toBeUndefined();
+    });
+
     it('should aggregate progress for a running pipeline', () => {
       const pipeline: IngestionPipeline = {
         ...basePipeline,

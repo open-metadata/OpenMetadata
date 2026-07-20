@@ -294,6 +294,7 @@ const AgentCard: FC<AgentCardProps> = ({
           )}
           <AgentOverflowMenu
             allowedActions={allowedActions}
+            enabled={agent.enabled}
             permissions={permissions}
             status={agent.status}
             onAction={(action) => onAction(action, agent)}

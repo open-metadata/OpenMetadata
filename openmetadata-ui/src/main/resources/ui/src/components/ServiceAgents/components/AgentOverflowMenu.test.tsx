@@ -48,11 +48,13 @@ const FULL_PERMISSIONS: AgentActionPermissions = {
 const renderMenu = (
   status: AgentStatus,
   permissions?: AgentActionPermissions,
-  allowedActions?: string[]
+  allowedActions?: string[],
+  enabled?: boolean
 ) =>
   render(
     <AgentOverflowMenu
       allowedActions={allowedActions}
+      enabled={enabled}
       permissions={permissions}
       status={status}
       onAction={mockOnAction}
@@ -64,50 +66,109 @@ describe('AgentOverflowMenu', () => {
     jest.clearAllMocks();
   });
 
-  it('should render run, redeploy, edit and delete for an inactive agent', () => {
-    renderMenu('success', FULL_PERMISSIONS);
+  it('should render pause, redeploy, edit and delete for an enabled inactive agent', () => {
+    renderMenu('success', FULL_PERMISSIONS, undefined, true);
 
     expect(screen.getByTestId('more-actions')).toBeInTheDocument();
-    expect(screen.getByTestId('run-button')).toBeInTheDocument();
+    expect(screen.getByTestId('pause-button')).toBeInTheDocument();
     expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('resume-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('kill-button')).not.toBeInTheDocument();
   });
 
-  it('should render pause, kill, edit and delete for an active agent', () => {
-    renderMenu('running', FULL_PERMISSIONS);
+  it('should render resume instead of pause for a disabled agent', () => {
+    renderMenu('success', FULL_PERMISSIONS, undefined, false);
+
+    expect(screen.getByTestId('resume-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
+  });
+
+  it('should render resume when the enabled flag is not yet known', () => {
+    renderMenu('success', FULL_PERMISSIONS);
+
+    expect(screen.getByTestId('resume-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
+  });
+
+  it('should render pause, kill, edit and delete for an enabled active agent', () => {
+    renderMenu('running', FULL_PERMISSIONS, undefined, true);
 
     expect(screen.getByTestId('pause-button')).toBeInTheDocument();
     expect(screen.getByTestId('kill-button')).toBeInTheDocument();
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.getByTestId('delete-button')).toBeInTheDocument();
-    expect(screen.queryByTestId('run-button')).not.toBeInTheDocument();
-  });
-
-  it('should only render run when the user has trigger permission alone', () => {
-    renderMenu('success', { trigger: true, edit: false, delete: false });
-
-    expect(screen.getByTestId('run-button')).toBeInTheDocument();
     expect(screen.queryByTestId('re-deploy-button')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
   });
 
-  it('should hide run but keep edit actions for edit-only permission', () => {
-    renderMenu('success', { trigger: false, edit: true, delete: false });
+  it('should render resume and kill for a disabled active agent', () => {
+    renderMenu('queued', FULL_PERMISSIONS, undefined, false);
+
+    expect(screen.getByTestId('resume-button')).toBeInTheDocument();
+    expect(screen.getByTestId('kill-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('re-deploy-button')).not.toBeInTheDocument();
+  });
+
+  it('should never render a run action, which lives on the agent card', () => {
+    renderMenu('success', FULL_PERMISSIONS, undefined, true);
 
     expect(screen.queryByTestId('run-button')).not.toBeInTheDocument();
+  });
+
+  it('should render nothing when the user only has trigger permission', () => {
+    renderMenu(
+      'success',
+      { trigger: true, edit: false, delete: false },
+      [],
+      true
+    );
+
+    expect(screen.queryByTestId('more-actions')).not.toBeInTheDocument();
+  });
+
+  it('should keep pause, redeploy and edit for edit-only permission', () => {
+    renderMenu(
+      'success',
+      { trigger: false, edit: true, delete: false },
+      undefined,
+      true
+    );
+
+    expect(screen.getByTestId('pause-button')).toBeInTheDocument();
     expect(screen.getByTestId('re-deploy-button')).toBeInTheDocument();
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
   });
 
-  it('should gate pause and kill behind edit permission for an active agent', () => {
-    renderMenu('running', { trigger: true, edit: false, delete: false });
+  it('should only keep delete for delete-only permission', () => {
+    renderMenu(
+      'success',
+      { trigger: false, edit: false, delete: true },
+      undefined,
+      true
+    );
+
+    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('re-deploy-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+  });
+
+  it('should gate pause, resume and kill behind edit permission', () => {
+    renderMenu(
+      'running',
+      { trigger: true, edit: false, delete: true },
+      undefined,
+      true
+    );
 
     expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
+    expect(screen.queryByTestId('resume-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('kill-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('edit-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('delete-button')).toBeInTheDocument();
   });
 
   it('should render nothing when the user has no permissions', () => {
@@ -123,30 +184,47 @@ describe('AgentOverflowMenu', () => {
   });
 
   it('should only render whitelisted actions when allowedActions is provided', () => {
-    renderMenu('success', FULL_PERMISSIONS, ['run', 'edit']);
+    renderMenu('success', FULL_PERMISSIONS, ['pause', 'edit'], true);
 
-    expect(screen.getByTestId('run-button')).toBeInTheDocument();
+    expect(screen.getByTestId('pause-button')).toBeInTheDocument();
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.queryByTestId('re-deploy-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
   });
 
-  it('should apply allowedActions to active-state items too', () => {
-    renderMenu('running', FULL_PERMISSIONS, ['run', 'edit']);
+  it('should whitelist resume separately from pause for a disabled agent', () => {
+    renderMenu('success', FULL_PERMISSIONS, ['resume', 'edit'], false);
 
+    expect(screen.getByTestId('resume-button')).toBeInTheDocument();
+    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
+  });
+
+  it('should hide the pause item when only resume is whitelisted', () => {
+    renderMenu('success', FULL_PERMISSIONS, ['resume', 'edit'], true);
+
+    expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
+    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+  });
+
+  it('should apply allowedActions to active-state items too', () => {
+    renderMenu('running', FULL_PERMISSIONS, ['kill', 'edit'], true);
+
+    expect(screen.getByTestId('kill-button')).toBeInTheDocument();
     expect(screen.getByTestId('edit-button')).toBeInTheDocument();
     expect(screen.queryByTestId('pause-button')).not.toBeInTheDocument();
-    expect(screen.queryByTestId('kill-button')).not.toBeInTheDocument();
     expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
   });
 
   it('should still gate whitelisted actions behind permissions', () => {
-    renderMenu('success', { trigger: false, edit: true, delete: false }, [
-      'run',
-      'edit',
-    ]);
+    renderMenu(
+      'success',
+      { trigger: false, edit: true, delete: false },
+      ['pause', 'delete'],
+      true
+    );
 
-    expect(screen.queryByTestId('run-button')).not.toBeInTheDocument();
-    expect(screen.getByTestId('edit-button')).toBeInTheDocument();
+    expect(screen.getByTestId('pause-button')).toBeInTheDocument();
+    expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
   });
 });

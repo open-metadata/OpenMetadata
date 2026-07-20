@@ -16,9 +16,16 @@ import { PipelineType } from '../../../generated/entity/services/ingestionPipeli
 import { Agent, AgentActionPermissions } from '../AgentsPage.interface';
 import AgentCard from './AgentCard.component';
 
-jest.mock('./AgentOverflowMenu.component', () =>
-  jest.fn().mockImplementation(() => <p>AgentOverflowMenu</p>)
-);
+const mockAgentOverflowMenu = jest.fn();
+
+jest.mock('./AgentOverflowMenu.component', () => ({
+  __esModule: true,
+  default: (props: { enabled?: boolean }) => {
+    mockAgentOverflowMenu(props);
+
+    return <p>AgentOverflowMenu</p>;
+  },
+}));
 
 jest.mock('./shared/StatusPill.component', () =>
   jest.fn().mockImplementation(() => <p>StatusPill</p>)
@@ -85,6 +92,22 @@ describe('AgentCard', () => {
       descriptionFirstPart: '',
       descriptionSecondPart: '',
     });
+  });
+
+  it('should forward the enabled agent flag to the overflow menu', () => {
+    renderCard({ ...baseAgent, enabled: true });
+
+    expect(mockAgentOverflowMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: true })
+    );
+  });
+
+  it('should forward a paused agent flag to the overflow menu', () => {
+    renderCard({ ...baseAgent, enabled: false });
+
+    expect(mockAgentOverflowMenu).toHaveBeenCalledWith(
+      expect.objectContaining({ enabled: false })
+    );
   });
 
   it('should show both schedule parts comma-separated when scheduled', () => {

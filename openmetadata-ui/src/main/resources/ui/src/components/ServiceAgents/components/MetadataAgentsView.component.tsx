@@ -144,6 +144,7 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
 
           break;
         case 'pause':
+        case 'resume':
           void toggleAgent(agent);
 
           break;

@@ -23,6 +23,7 @@ interface AgentOverflowMenuProps {
   allowedActions?: string[];
   permissions?: AgentActionPermissions;
   status: AgentStatus;
+  enabled?: boolean;
   onAction: (action: string) => void;
 }
 
@@ -35,6 +36,7 @@ interface MenuItem {
 
 const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   allowedActions,
+  enabled,
   onAction,
   permissions = NO_AGENT_PERMISSIONS,
   status,
@@ -42,41 +44,33 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   const { t } = useTranslation();
   const isActive = status === 'running' || status === 'queued';
 
-  const allItems: MenuItem[] = isActive
-    ? [
-        { id: 'pause', label: t('label.pause'), testId: 'pause-button' },
-        { id: 'kill', label: t('label.kill-run'), testId: 'kill-button' },
-        {
-          id: 'edit',
-          label: t('label.edit-configuration'),
-          testId: 'edit-button',
-        },
-        {
-          danger: true,
-          id: 'delete',
-          label: t('label.delete-agent'),
-          testId: 'delete-button',
-        },
-      ]
-    : [
-        { id: 'run', label: t('label.run-now'), testId: 'run-button' },
-        {
-          id: 'redeploy',
-          label: t('label.re-deploy-sentence'),
-          testId: 're-deploy-button',
-        },
-        {
-          id: 'edit',
-          label: t('label.edit-configuration'),
-          testId: 'edit-button',
-        },
-        {
-          danger: true,
-          id: 'delete',
-          label: t('label.delete-agent'),
-          testId: 'delete-button',
-        },
-      ];
+  const pauseResumeOption: MenuItem = enabled
+    ? { id: 'pause', label: t('label.pause'), testId: 'pause-button' }
+    : { id: 'resume', label: t('label.resume'), testId: 'resume-button' };
+
+  const allItems: MenuItem[] = [
+    pauseResumeOption,
+    ...(isActive
+      ? [{ id: 'kill', label: t('label.kill-run'), testId: 'kill-button' }]
+      : [
+          {
+            id: 'redeploy',
+            label: t('label.re-deploy-sentence'),
+            testId: 're-deploy-button',
+          },
+        ]),
+    {
+      id: 'edit',
+      label: t('label.edit-configuration'),
+      testId: 'edit-button',
+    },
+    {
+      danger: true,
+      id: 'delete',
+      label: t('label.delete-agent'),
+      testId: 'delete-button',
+    },
+  ];
 
   const PERMISSION_BY_ITEM: Record<string, boolean> = {
     run: permissions.trigger,
@@ -84,6 +78,7 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
     edit: permissions.edit,
     kill: permissions.edit,
     pause: permissions.edit,
+    resume: permissions.edit,
     delete: permissions.delete,
   };
 
