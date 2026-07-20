@@ -266,8 +266,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <OwnerLabel
               avatarSize={18}
               isCompactView={false}
-              ownerLabelClassName="tw:text-xs tw:font-normal"
-              ownerRowClassName="tw:gap-1!"
               owners={columnSource?.owners ?? []}
               showLabel={false}
             />
@@ -315,8 +313,6 @@ const ExploreSearchCard: React.FC<ExploreSearchCardProps> = forwardRef<
             <OwnerLabel
               avatarSize={18}
               isCompactView={false}
-              ownerLabelClassName="tw:text-xs tw:font-normal"
-              ownerRowClassName="tw:gap-1!"
               owners={(source?.owners as EntityReference[]) ?? []}
               showLabel={false}
             />

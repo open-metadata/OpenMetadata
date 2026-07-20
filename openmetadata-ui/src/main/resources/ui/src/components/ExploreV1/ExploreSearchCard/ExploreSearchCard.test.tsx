@@ -366,15 +366,18 @@ describe('ExploreSearchCard - Entity type tags', () => {
 });
 
 describe('ExploreSearchCard - Metadata values', () => {
-  it('renders an empty owner value with 12px regular typography', () => {
+  it('uses the no-owner CSS hook without component-level typography overrides', () => {
     renderCard({ owners: [] });
 
-    expect(
-      screen.getByTestId('owner-label').querySelector('.no-owner-text')
-    ).toHaveClass('tw:text-xs', 'tw:font-normal');
+    const noOwnerText = screen
+      .getByTestId('owner-label')
+      .querySelector('.no-owner-text');
+
+    expect(noOwnerText).toHaveClass('no-owner-text', 'text-sm', 'font-medium');
+    expect(noOwnerText).not.toHaveClass('tw:text-xs', 'tw:font-normal');
   });
 
-  it('renders owner values with 12px regular typography', () => {
+  it('uses the owner name CSS hook without component-level typography overrides', () => {
     renderCard({
       owners: [
         {
@@ -387,12 +390,15 @@ describe('ExploreSearchCard - Metadata values', () => {
     });
 
     expect(screen.getByText('Test Owner')).toHaveClass(
+      'owner-avatar-stack-row-name'
+    );
+    expect(screen.getByText('Test Owner')).not.toHaveClass(
       'tw:text-xs',
       'tw:font-normal'
     );
   });
 
-  it('renders owner rows with a 4px gap', () => {
+  it('uses the owner row CSS hook without component-level gap overrides', () => {
     renderCard({
       owners: [
         {
@@ -404,9 +410,10 @@ describe('ExploreSearchCard - Metadata values', () => {
       ],
     });
 
-    expect(screen.getByRole('link', { name: 'Test Owner' })).toHaveClass(
-      'tw:gap-1!'
-    );
+    const ownerLink = screen.getByRole('link', { name: 'Test Owner' });
+
+    expect(ownerLink).toHaveClass('owner-avatar-stack-row');
+    expect(ownerLink).not.toHaveClass('tw:gap-1!');
   });
 });
 

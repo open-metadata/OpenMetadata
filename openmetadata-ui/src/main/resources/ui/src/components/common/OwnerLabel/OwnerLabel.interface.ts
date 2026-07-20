@@ -35,6 +35,5 @@ export interface OwnerLabelProps {
   isAssignee?: boolean;
   onEditClick?: () => void;
   ownerLabelClassName?: string;
-  ownerRowClassName?: string;
   placement?: 'vertical' | 'horizontal';
 }

@@ -26,5 +26,4 @@ export interface NoOwnerFoundProps {
   };
   tooltipText?: string;
   className?: string;
-  ownerLabelClassName?: string;
 }

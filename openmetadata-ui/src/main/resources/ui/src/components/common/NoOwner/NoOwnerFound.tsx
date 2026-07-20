@@ -31,7 +31,6 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
   multiple,
   tooltipText,
   className,
-  ownerLabelClassName,
 }) => {
   const { t } = useTranslation();
 
@@ -104,11 +103,7 @@ export const NoOwnerFound: React.FC<NoOwnerFoundProps> = ({
       )}
 
       {!isCompactView && (
-        <div
-          className={classNames(
-            'no-owner-text',
-            ownerLabelClassName ?? 'text-sm font-medium'
-          )}>
+        <div className="no-owner-text text-sm font-medium">
           {ownerPlaceholder}
         </div>
       )}
