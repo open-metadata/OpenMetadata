@@ -479,7 +479,7 @@ class OpenlineageSource(PipelineServiceSource):
         parts = name[len("table/") :].split("/")
         if len(parts) < 2:
             return None
-        return TableDetails(name=parts[-1].lower(), schema=parts[-2].lower())
+        return TableDetails(name=parts[-1].strip("`").lower(), schema=parts[-2].strip("`").lower())
 
     @staticmethod
     def _parse_slash_table_name(name: str) -> Optional[TableDetails]:  # noqa: UP045
