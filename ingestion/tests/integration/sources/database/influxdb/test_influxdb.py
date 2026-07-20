@@ -22,6 +22,7 @@ Requires a InfluxDB 3 Core container running without auth:
 
 import time
 
+import pytest
 import requests
 
 INFLUXDB_URL = "http://localhost:8181"
@@ -66,6 +67,10 @@ def _wait_for_data(db: str, table: str, retries: int = 10):
 
 def setup_module():
     """Seed test data before running tests."""
+    try:
+        requests.get(f"{INFLUXDB_URL}/health", timeout=5)
+    except requests.exceptions.ConnectionError:
+        pytest.skip("InfluxDB 3 container not running — skipping integration tests")
     _seed_test_data()
     _wait_for_data("testdb", "weather")
 
