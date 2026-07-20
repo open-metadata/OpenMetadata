@@ -481,3 +481,17 @@ CREATE TABLE IF NOT EXISTS task_migration_mapping (
     PRIMARY KEY (old_thread_id),
     KEY idx_task_migration_mapping_new_task_id (new_task_id)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.token'),
+    '$.connection.config.authType',
+    JSON_OBJECT(
+        'token',
+        JSON_EXTRACT(json, '$.connection.config.token')
+    )
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND JSON_EXTRACT(json, '$.connection.config.token') IS NOT NULL
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.connection.config.authType');
