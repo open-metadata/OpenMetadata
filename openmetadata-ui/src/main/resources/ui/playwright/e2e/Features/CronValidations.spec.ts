@@ -47,19 +47,14 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
   test('Validate different cron expressions', async ({ page }) => {
     await redirectToHomePage(page);
 
-    await settingClick(page, GlobalSettingOptions.APPLICATIONS);
-
-    const applicationResponse = page.waitForResponse(
-      '/api/v1/apps/name/SearchIndexingApplication/status?offset=0&limit=1'
-    );
+    // Navigate to Settings > Applications > Search Indexing Application
+    await page.goto('/settings/apps/SearchIndexingApplication');
 
     await page
       .locator(
         '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
       )
       .click();
-
-    await applicationResponse;
 
     await page.click('[data-testid="edit-button"]');
     await page.getByTestId('schedular-card-container').waitFor();
