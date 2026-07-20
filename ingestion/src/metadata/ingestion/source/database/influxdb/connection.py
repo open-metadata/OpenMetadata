@@ -68,30 +68,13 @@ class InfluxDBClient:
     def list_tables(self, database: str) -> list[str]:
         rows = self._query(
             database,
-            "SELECT table_name FROM information_schema.tables",
+            "SELECT table_name, table_schema FROM information_schema.tables",
         )
+        _system_schemas = {"system", "information_schema"}
         return [
             row["table_name"]
             for row in rows
-            if not row["table_name"].startswith("_")
-            and row["table_name"]
-            not in {
-                "distinct_caches",
-                "influxdb_schema",
-                "last_caches",
-                "parquet_files",
-                "processing_engine_logs",
-                "processing_engine_trigger_arguments",
-                "processing_engine_triggers",
-                "queries",
-                "tables",
-                "views",
-                "columns",
-                "df_settings",
-                "schemata",
-                "routines",
-                "parameters",
-            }
+            if row.get("table_schema") not in _system_schemas and not row["table_name"].startswith("_")
         ]
 
     def get_columns(self, database: str, table: str) -> list[dict]:
