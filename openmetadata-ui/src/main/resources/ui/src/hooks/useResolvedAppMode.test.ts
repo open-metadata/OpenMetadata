@@ -42,10 +42,17 @@ const seedUser = (opts?: {
   personaId?: string;
   personaName?: string;
   authenticated?: boolean;
+  applicationsLoaded?: boolean;
 }) => {
-  const { personaId, personaName, authenticated = true } = opts ?? {};
+  const {
+    personaId,
+    personaName,
+    authenticated = true,
+    applicationsLoaded = true,
+  } = opts ?? {};
   useApplicationStore.setState({
     isAuthenticated: authenticated,
+    applicationsLoaded,
     currentUser: authenticated
       ? ({
           id: USER_NAME,
@@ -348,20 +355,32 @@ describe('useResolvedAppMode', () => {
     });
   });
 
-  it('ignores a fresh hint whose mode is not (yet) registered', async () => {
+  it('waits (no write) when the hint mode is not yet registered', async () => {
     seedUser({});
     seedRegistry(false);
     seedHint({ mode: AI_APP_MODE });
 
-    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
-
-    await waitFor(() => {
-      // AI not registered → hint rejected → falls to DEFAULT.
-      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
-      expect(readAppModeSession()).toEqual({
-        personaAppMode: null,
-        mode: DEFAULT_APP_MODE,
-      });
+    const { rerender } = renderHook(() => useResolvedAppMode(), {
+      wrapper: makeWrapper(),
     });
+    rerender();
+
+    // The effect had a chance to run. It should NOT have written the
+    // session tuple or overwritten the hint — falling through to write
+    // DEFAULT here would clobber the hint that a sibling tab set, and
+    // strand every new-tab-from-AI in Classic once the AI route
+    // registers on the next commit. Route registration happens in a
+    // child-of-child component effect (App.tsx) whose flush order is
+    // not guaranteed relative to this resolver's flush, so we can't
+    // rely on `applicationsLoaded` as a give-up signal.
+    expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+    expect(readAppModeSession()).toBeNull();
+    expect(readAppModeSession()).toBeNull();
+
+    const rawHint = globalThis.window.localStorage.getItem(
+      APP_MODE_HINT_STORAGE_KEY
+    );
+
+    expect(JSON.parse(rawHint ?? '{}').mode).toBe(AI_APP_MODE);
   });
 });

@@ -162,9 +162,26 @@ export const useResolvedAppMode = (): void => {
     // should trump both persona and pref within its TTL, matching the
     // sessionStorage-tuple's "manual switch survives until close" rule.
     const hint = validSession ? null : readAppModeHint();
-    if (isAppModeHintFresh(hint) && hint && isModeRegistered(hint.mode)) {
-      writeAppMode(hint.mode, currentPersonaAppMode);
+    if (isAppModeHintFresh(hint) && hint) {
+      if (isModeRegistered(hint.mode)) {
+        writeAppMode(hint.mode, currentPersonaAppMode);
 
+        return;
+      }
+
+      // Hint mode isn't registered YET. Do not fall through — writing
+      // DEFAULT here would call writeAppMode(DEFAULT) which also writes
+      // the hint, clobbering the value the sibling tab set and
+      // stranding every new-tab-from-AI in Classic. Route registration
+      // is asynchronous (App.tsx installs the AI route in its own
+      // effect, which may not have run yet even with applicationsLoaded
+      // === true because React flushes child effects before parent
+      // effects in the same commit). Instead, wait: this effect re-runs
+      // when registeredRoutes changes, and we'll adopt the hint then.
+      // If registration never arrives (user has AskCollate uninstalled
+      // but a sibling tab wrote an AI hint before), the hint expires
+      // naturally after APP_MODE_HINT_TTL_MS and the next re-run falls
+      // through to persona / pref / default.
       return;
     }
 

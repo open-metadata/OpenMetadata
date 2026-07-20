@@ -200,6 +200,30 @@ export const useAppModeStore = create<AppModeStore>((set) => ({
   reset: () => set({ currentMode: DEFAULT_APP_MODE }),
 }));
 
+// Heartbeat: refresh the hint's timestamp on a fixed interval so a tab
+// that's alive but idle (no writes) keeps the hint fresh for sibling /
+// new tabs. Without this, a user reading the page for longer than
+// APP_MODE_HINT_TTL_MS would see a stale hint and any cmd-clicked
+// new tab would boot Classic and 404 on AI-only URLs. Fires at half
+// the TTL so worst-case staleness is ~ (TTL / 2). Also refresh on
+// visibility change so a tab returning from background updates
+// immediately without waiting for the interval.
+const HEARTBEAT_INTERVAL_MS = Math.floor(APP_MODE_HINT_TTL_MS / 2);
+
+const refreshHint = (): void => {
+  writeHint(useAppModeStore.getState().currentMode);
+};
+
+if (hasWindow()) {
+  globalThis.window.setInterval(refreshHint, HEARTBEAT_INTERVAL_MS);
+  globalThis.window.addEventListener('visibilitychange', () => {
+    if (globalThis.document.visibilityState === 'visible') {
+      refreshHint();
+    }
+  });
+  globalThis.window.addEventListener('focus', refreshHint);
+}
+
 export const useAppMode = (): string =>
   useAppModeStore((state) => state.currentMode);
 
