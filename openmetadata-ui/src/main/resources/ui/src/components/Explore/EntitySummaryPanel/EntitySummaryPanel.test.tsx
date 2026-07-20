@@ -21,6 +21,7 @@ import {
 import { usePermissionProvider } from '../../../context/PermissionProvider/PermissionProvider';
 import { EntityType } from '../../../enums/entity.enum';
 import entityUtilClassBase from '../../../utils/EntityUtilClassBase';
+import searchClassBase from '../../../utils/SearchClassBase';
 import EntitySummaryPanel from './EntitySummaryPanel.component';
 import { mockApplicationEntityDetails } from './mocks/ApplicationSummary.mock';
 import { mockDashboardEntityDetails } from './mocks/DashboardSummary.mock';
@@ -236,6 +237,42 @@ jest.mock('../../../rest/tableAPI', () => ({
 }));
 
 describe('EntitySummaryPanel component tests', () => {
+  afterEach(() => {
+    (searchClassBase.getEntitySummaryPanelType as jest.Mock).mockImplementation(
+      (entityType: string) => entityType
+    );
+  });
+
+  it('should fetch extension entities using their original entity type', async () => {
+    const extensionEntityType = 'aiDashboard' as EntityType;
+    const extensionEntity = {
+      ...mockDashboardEntityDetails,
+      entityType: extensionEntityType,
+    };
+
+    (searchClassBase.getEntitySummaryPanelType as jest.Mock).mockReturnValue(
+      EntityType.ALL
+    );
+    (entityUtilClassBase.getEntityByFqn as jest.Mock).mockResolvedValueOnce(
+      extensionEntity
+    );
+
+    render(
+      <EntitySummaryPanel
+        entityDetails={{ details: extensionEntity }}
+        handleClosePanel={mockHandleClosePanel}
+      />
+    );
+
+    await waitFor(() => {
+      expect(entityUtilClassBase.getEntityByFqn).toHaveBeenCalledWith(
+        extensionEntityType,
+        extensionEntity.fullyQualifiedName,
+        'owners,domains,tags,extension'
+      );
+    });
+  });
+
   it('TableSummary should render for table data', async () => {
     render(
       <EntitySummaryPanel

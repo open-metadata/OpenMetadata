@@ -197,15 +197,19 @@ jest.mock('../../rest/dataProductAPI', () => ({
 
 // Mock child components
 jest.mock('../common/DescriptionSection/DescriptionSection', () => {
-  return jest.fn().mockImplementation(({ onDescriptionUpdate }) => (
-    <div data-testid="description-section">
-      <button
-        data-testid="update-description-btn"
-        onClick={() => onDescriptionUpdate?.('New description')}>
-        Update Description
-      </button>
-    </div>
-  ));
+  return jest
+    .fn()
+    .mockImplementation(({ hasPermission, onDescriptionUpdate }) => (
+      <div data-testid="description-section">
+        {hasPermission && (
+          <button
+            data-testid="update-description-btn"
+            onClick={() => onDescriptionUpdate?.('New description')}>
+            Update Description
+          </button>
+        )}
+      </div>
+    ));
 });
 
 jest.mock('../common/OverviewSection/OverviewSection', () => {
@@ -745,7 +749,7 @@ describe('DataAssetSummaryPanelV1', () => {
       expect(screen.queryByTestId('tags-section')).not.toBeInTheDocument();
     });
 
-    it('should render generic sections for explicitly mapped extension types', async () => {
+    it('should render mapped extension sections without edit actions', async () => {
       const extensionEntityProps = {
         ...defaultProps,
         entityType: 'aiDashboard' as EntityType,
@@ -756,7 +760,9 @@ describe('DataAssetSummaryPanelV1', () => {
         render(<DataAssetSummaryPanelV1 {...extensionEntityProps} />);
       });
 
-      expect(screen.getByTestId('update-description-btn')).toBeInTheDocument();
+      expect(
+        screen.queryByTestId('update-description-btn')
+      ).not.toBeInTheDocument();
       expect(screen.getByTestId('owners-section')).toBeInTheDocument();
       expect(screen.getByTestId('tags-section')).toBeInTheDocument();
     });

@@ -299,6 +299,9 @@ export const DataAssetSummaryPanelV1 = ({
   };
   // Columns inherit owners, domains, tier, and data products from their parent table
   // These fields should not be editable on columns
+  // Extension entities can reuse a built-in summary layout, but their update APIs
+  // are not part of the base entity patch map. Keep mapped layouts read-only.
+  const canEditSummary = summaryEntityType === entityType;
 
   const {
     editDomainPermission,
@@ -312,34 +315,43 @@ export const DataAssetSummaryPanelV1 = ({
     () => ({
       // Columns inherit domain from table - not editable
       editDomainPermission:
+        canEditSummary &&
         !isColumnEntity &&
         entityPermissions?.EditAll &&
         !dataAsset.deleted &&
         panelPath !== ENTITY_PATH.dataProductsTab,
       editDescriptionPermission:
+        canEditSummary &&
         (entityPermissions?.EditAll || entityPermissions?.EditDescription) &&
         !dataAsset.deleted,
       editGlossaryTermsPermission:
+        canEditSummary &&
         (entityPermissions?.EditGlossaryTerms || entityPermissions?.EditAll) &&
         !dataAsset.deleted,
       // Columns inherit owners from table - not editable
       editOwnerPermission:
+        canEditSummary &&
         !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditOwners) &&
         !dataAsset.deleted,
       // Columns inherit tier from table - not editable
       editTierPermission:
+        canEditSummary &&
         !isColumnEntity &&
         (entityPermissions?.EditAll || entityPermissions?.EditTier) &&
         !dataAsset.deleted,
       editTagsPermission:
+        canEditSummary &&
         (entityPermissions?.EditAll || entityPermissions?.EditTags) &&
         !dataAsset.deleted,
       // Columns inherit data products from table - not editable
       editDataProductPermission:
-        !isColumnEntity && entityPermissions?.EditAll && !dataAsset.deleted,
+        canEditSummary &&
+        !isColumnEntity &&
+        entityPermissions?.EditAll &&
+        !dataAsset.deleted,
     }),
-    [entityPermissions, dataAsset, isColumnEntity]
+    [canEditSummary, entityPermissions, dataAsset, isColumnEntity, panelPath]
   );
 
   const init = useCallback(async () => {
