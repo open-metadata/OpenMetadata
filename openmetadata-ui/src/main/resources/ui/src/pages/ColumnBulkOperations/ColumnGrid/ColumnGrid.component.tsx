@@ -57,6 +57,7 @@ import {
 } from '../../../components/common/atoms/shared/types';
 import {
   NoDataPlaceholder,
+  NoFilteredResultsPlaceholder,
   NoSearchResultsPlaceholder,
 } from '../../../components/common/EmptyPlaceholder';
 import Loader from '../../../components/common/Loader/Loader';
@@ -1816,7 +1817,7 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   });
 
   // Set up filter selection display
-  const { filterSelectionDisplay } = useFilterSelection({
+  const { filterSelectionDisplay, handleClearAll } = useFilterSelection({
     urlState: columnGridListing.urlState,
     filterConfigs: defaultFilters,
     parsedFilters: columnGridListing.parsedFilters,
@@ -1996,14 +1997,19 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     columnGridListing.selectedEntities,
   ]);
 
-  const hasActiveFiltersOrSearch = Boolean(
-    columnGridListing.urlState?.searchQuery?.trim() ||
-      (columnGridListing.urlState?.filters &&
-        Object.values(columnGridListing.urlState.filters).some(
-          (filterValues: unknown) =>
-            Array.isArray(filterValues) && filterValues.length > 0
-        ))
+  const hasActiveSearch = Boolean(
+    columnGridListing.urlState?.searchQuery?.trim()
   );
+
+  const hasActiveFilters = Boolean(
+    columnGridListing.urlState?.filters &&
+      Object.values(columnGridListing.urlState.filters).some(
+        (filterValues: unknown) =>
+          Array.isArray(filterValues) && filterValues.length > 0
+      )
+  );
+
+  const hasActiveFiltersOrSearch = hasActiveSearch || hasActiveFilters;
 
   const tableColumns = useMemo(
     () => columns.map((c) => ({ id: c.key, labelKey: c.labelKey })),
@@ -2386,6 +2392,28 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   const isColumnDataEmpty =
     !columnGridListing.loading && isEmpty(filteredEntities);
 
+  // Pick the empty state that matches why the list is empty: an active search
+  // shows the "no matching results" hint, active filters show the filter
+  // placeholder with a clear action, and a genuinely empty workspace shows the
+  // onboarding placeholder.
+  const emptyPlaceholder = useMemo(() => {
+    if (hasActiveSearch) {
+      return <NoSearchResultsPlaceholder />;
+    }
+
+    if (hasActiveFilters) {
+      return <NoFilteredResultsPlaceholder onClearFilters={handleClearAll} />;
+    }
+
+    return (
+      <NoDataPlaceholder
+        description={t('message.column-bulk-empty-description')}
+        icon={<TableIcon className="tw:text-secondary" />}
+        title={t('message.no-columns-to-work-with')}
+      />
+    );
+  }, [hasActiveSearch, hasActiveFilters, handleClearAll, t]);
+
   // Content similar to DomainListPage
   const content = useMemo(() => {
     // Show no data placeholder when no data and not loading.
@@ -2393,17 +2421,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
     if (isColumnDataEmpty) {
       return (
         <div
-          className="tw:relative tw:min-h-[calc(100vh-16rem)] tw:bg-[linear-gradient(180deg,rgba(239,248,255,0.8)_0%,rgba(239,248,255,0)_28%,rgba(239,248,255,0)_72%,rgba(239,248,255,0.8)_100%)]"
+          className="tw:relative tw:min-h-[calc(100vh-16rem)] tw:bg-primary"
           data-testid="column-grid-empty-placeholder">
-          {hasActiveFiltersOrSearch ? (
-            <NoSearchResultsPlaceholder />
-          ) : (
-            <NoDataPlaceholder
-              description={t('message.column-bulk-empty-description')}
-              icon={<TableIcon className="tw:text-secondary" />}
-              title={t('message.no-columns-to-work-with')}
-            />
-          )}
+          {emptyPlaceholder}
         </div>
       );
     }
@@ -2423,10 +2443,9 @@ const ColumnGrid: React.FC<ColumnGridProps> = ({
   }, [
     isColumnDataEmpty,
     columnGridListing.totalEntities,
-    hasActiveFiltersOrSearch,
+    emptyPlaceholder,
     dataTable,
     paginationData,
-    t,
   ]);
 
   // When the workspace is genuinely empty (no columns, no active filters) the
