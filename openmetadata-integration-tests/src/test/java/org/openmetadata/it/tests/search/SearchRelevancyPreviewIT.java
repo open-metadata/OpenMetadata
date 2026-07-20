@@ -121,20 +121,27 @@ class SearchRelevancyPreviewIT {
 
     final SearchSettings base = currentSettings();
 
+    // Field selection is proven by which seeded table is IN vs OUT: name-only must match the
+    // name-carrier and exclude the description-carrier (and vice versa). Use
+    // contains/doesNotContain
+    // rather than containsExactly — on the shared cluster a foreign ngram-colliding table can add a
+    // hit without changing which of OUR two tables the searched field selects.
     SearchSettings nameOnly = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(nameOnly, TABLE_INDEX, NAME_FIELD, 5.0);
     nameOnly = SearchSettingsTestHelper.withRankingDisabled(nameOnly, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, query, TABLE_INDEX, nameOnly, 10))
-        .as("searching only 'name' must return only the table whose name carries the token")
-        .containsExactly(tokenInName.getId().toString());
+        .as("searching only 'name' must match the name-carrier, not the description-carrier")
+        .contains(tokenInName.getId().toString())
+        .doesNotContain(tokenInDescription.getId().toString());
 
     SearchSettings descriptionOnly = SearchSettingsTestHelper.copyOf(base);
     SearchSettingsTestHelper.setOnlySearchField(
         descriptionOnly, TABLE_INDEX, DESCRIPTION_FIELD, 5.0);
     descriptionOnly = SearchSettingsTestHelper.withRankingDisabled(descriptionOnly, TABLE_INDEX);
     assertThat(SearchSettingsTestHelper.previewIds(server, query, TABLE_INDEX, descriptionOnly, 10))
-        .as("searching only 'description' must return only the table whose description carries it")
-        .containsExactly(tokenInDescription.getId().toString());
+        .as("searching only 'description' must match the description-carrier, not the name-carrier")
+        .contains(tokenInDescription.getId().toString())
+        .doesNotContain(tokenInName.getId().toString());
   }
 
   @Test
@@ -193,7 +200,8 @@ class SearchRelevancyPreviewIT {
     final DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns);
     final Table exactTable =
         RelevancyFixtures.createTable(schema, exactName, "plaindescription", null);
-    RelevancyFixtures.createTable(schema, exactName + "extra", "plaindescription", null);
+    final Table prefixedTable =
+        RelevancyFixtures.createTable(schema, exactName + "extra", "plaindescription", null);
     awaitIndexed(exactName, 2);
 
     final SearchSettings base = currentSettings();
@@ -210,9 +218,13 @@ class SearchRelevancyPreviewIT {
     SearchSettingsTestHelper.setOnlySearchField(
         standard, TABLE_INDEX, NAME_FIELD, 5.0, FieldBoost.MatchType.STANDARD);
     standard = SearchSettingsTestHelper.withRankingDisabled(standard, TABLE_INDEX);
+    // STANDARD is a fuzzy name.ngram match, so on the shared cluster a foreign ngram-colliding
+    // table can add hits beyond the two we seeded. Assert both seeded ids are present rather than
+    // an exact size (mirrors maxResultHitsClampsTheReturnedHits), which such a foreign hit
+    // inflates.
     assertThat(SearchSettingsTestHelper.previewIds(server, exactName, TABLE_INDEX, standard, 10))
         .as("matchType=standard must match both the exact and the prefixed name")
-        .hasSize(2);
+        .contains(exactTable.getId().toString(), prefixedTable.getId().toString());
   }
 
   @Test
