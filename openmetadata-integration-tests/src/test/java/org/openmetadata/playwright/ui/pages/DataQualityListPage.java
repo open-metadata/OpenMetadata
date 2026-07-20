@@ -186,8 +186,17 @@ public final class DataQualityListPage extends PageObject {
 
   /** Open the page-size dropdown and assert the standard 3 options render. */
   public DataQualityListPage assertPageSizeOptionsCount(final int expected) {
-    openMenu(byTestId("page-size-selection-dropdown"), page.locator(".ant-dropdown-menu"));
-    PlaywrightAssertions.assertThat(page.locator(".ant-dropdown-menu-item")).hasCount(expected);
+    // Scope to the OPEN overlay: every Ant <Dropdown> on the page (nav bar, help, etc.) portals a
+    // .ant-dropdown-menu to <body> and keeps it in the DOM while hidden, so a bare
+    // .ant-dropdown-menu first-matches a foreign hidden menu and the visibility wait times out.
+    // :not(.ant-dropdown-hidden) pins it to the just-opened page-size menu (mirrors the
+    // .ant-select-dropdown idiom above).
+    final Locator pageSizeMenu =
+        page.locator(".ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu");
+    openMenu(byTestId("page-size-selection-dropdown"), pageSizeMenu);
+    PlaywrightAssertions.assertThat(
+            page.locator(".ant-dropdown:not(.ant-dropdown-hidden) .ant-dropdown-menu-item"))
+        .hasCount(expected);
     return this;
   }
 
