@@ -188,11 +188,18 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 : WIDTH_NO_HINT_COLUMN
             }
             onClose={onClose}>
-            {/* Dialog.Header ships no bottom padding, so the body would sit
-                flush against the title. Just enough to separate them — the
-                body's own top padding provides the rest of the breathing
-                room. */}
-            <Dialog.Header className={hasHintColumn ? 'tw:pb-1' : undefined}>
+            {/* Divider under the header per the modal convention agreed in
+                #ui-devs: dividers belong on modals that scroll, and are dropped
+                on ones that do not. This body always scrolls — the columns
+                below own their own overflow, and the single-column variant
+                scrolls too — so it qualifies.
+
+                Dialog draws this divider itself, but only for its `title` prop.
+                This modal builds its own header (featured icon, subtitle,
+                Show Hint) as children, so that path never runs and the rule has
+                to be drawn here. Dialog.Header also ships no bottom padding, so
+                without `pb` the rule would sit against the title. */}
+            <Dialog.Header className="tw:border-b tw:border-secondary tw:pb-4">
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
