@@ -17,7 +17,6 @@ from __future__ import annotations
 
 from copy import deepcopy
 from typing import TYPE_CHECKING, Optional
-from urllib.parse import quote_plus
 
 from sqlalchemy import text
 from sqlalchemy.engine import Engine
@@ -36,11 +35,11 @@ from metadata.core.connections.test_connection.checks.database import (
     DatabaseStep,
     run_sql,
 )
+from metadata.core.connections.test_connection.checks.summary import enumerated
 from metadata.core.connections.test_connection.constants import STEP_TIMEOUT_SECONDS
 from metadata.core.connections.test_connection.network import (
     NETWORK_ERRORS,
-    NetworkUnreachableError,
-    tcp_probe,
+    probe_or_fail,
 )
 from metadata.generated.schema.entity.services.connections.database.databricksConnection import (
     DatabricksConnection as DatabricksConnectionConfig,
@@ -55,8 +54,9 @@ from metadata.ingestion.connections.builders import (
 )
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.source.database.databricks.auth import (
+    catalog_url,
     get_auth_config,
-    normalize_host_port,
+    probe_target,
 )
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.log_filters import (
@@ -84,9 +84,6 @@ if TYPE_CHECKING:
 logger = ingestion_logger()
 
 suppress_user_agent_entry_deprecation_log()
-
-# Databricks dials the workspace over HTTPS; the gate TCP-probes this port.
-DEFAULT_DATABRICKS_PORT = 443
 
 DEFAULT_CATALOG = "main"
 
@@ -136,12 +133,12 @@ DATABRICKS_ERRORS = ErrorPack(
         fix="The referenced schema does not exist or is not visible. Verify the schema name and "
         "that the user has USAGE on it.",
     ),
-    when(Matchers.contains("permission_denied")).diagnose(
-        "Insufficient privileges",
-        fix="Grant the token's user the privileges the failing step needs (USAGE on the catalog / "
-        "schema and SELECT on the system or information_schema tables it reads).",
-    ),
-    when(Matchers.contains("insufficient_permissions")).diagnose(
+    when(
+        Matchers.any_of(
+            Matchers.contains("permission_denied"),
+            Matchers.contains("insufficient_permissions"),
+        )
+    ).diagnose(
         "Insufficient privileges",
         fix="Grant the token's user the privileges the failing step needs (USAGE on the catalog / "
         "schema and SELECT on the system or information_schema tables it reads).",
@@ -152,16 +149,6 @@ DATABRICKS_ERRORS = ErrorPack(
         "authorized to use them.",
     ),
 ).including(NETWORK_ERRORS)
-
-
-def _summarize(rows: Sequence[object], noun: str) -> str:
-    """``N <noun>s enumerated`` (``N+`` at the cap) or ``no <noun>s enumerated``."""
-    count = len(rows)
-    if not count:
-        return f"no {noun}s enumerated"
-    suffix = "+" if count >= DEFAULT_SAMPLE_ROWS else ""
-    plural = noun if count == 1 else f"{noun}s"
-    return f"{count}{suffix} {plural} enumerated"
 
 
 class DatabricksEngineWrapper:
@@ -243,11 +230,7 @@ class DatabricksEngineWrapper:
 
 
 def get_connection_url(connection: DatabricksConnectionConfig) -> str:
-    scheme = connection.scheme.value if connection.scheme else "databricks"
-    url = f"{scheme}://{normalize_host_port(connection.hostPort)}"
-    if connection.catalog:
-        url = f"{url}?catalog={quote_plus(connection.catalog)}"
-    return url
+    return catalog_url(connection.scheme, connection.hostPort, connection.catalog)
 
 
 def get_connection(connection: DatabricksConnectionConfig) -> Engine:
@@ -296,11 +279,7 @@ class DatabricksChecks:
         return self._engine_wrapper.first_catalog or self.service_connection.catalog or DEFAULT_CATALOG
 
     def _probe_target(self) -> tuple[str, int]:
-        host_port = normalize_host_port(self.service_connection.hostPort)
-        host, _, port = host_port.rpartition(":")
-        if host and port.isdigit():
-            return host, int(port)
-        return host_port, DEFAULT_DATABRICKS_PORT
+        return probe_target(self.service_connection.hostPort)
 
     def _list(self, operation: Callable[[], Sequence[object] | None], command: str | None, noun: str) -> Evidence:
         """Run a wrapper listing op, reporting the command and a row-count summary;
@@ -310,15 +289,11 @@ class DatabricksChecks:
         except Exception as cause:
             raise CheckError(cause, Evidence(command=command)) from cause
         rows = list(rows) if rows is not None else []
-        return Evidence(summary=_summarize(rows, noun), command=command)
+        return Evidence(summary=enumerated(len(rows), noun, DEFAULT_SAMPLE_ROWS), command=command)
 
     @check(DatabaseStep.CheckAccess)
     def check_access(self) -> Evidence:
-        host, port = self._probe_target()
-        try:
-            tcp_probe(host, port)
-        except NetworkUnreachableError as error:
-            raise CheckError(error, Evidence(command=f"TCP connect {host}:{port}")) from error
+        probe_or_fail(*self._probe_target())
         return run_sql(self._db.client, "SELECT 1", lambda _: "connection established")
 
     @check(DatabaseStep.GetDatabases)

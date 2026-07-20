@@ -172,6 +172,7 @@ public class AIContextBuilder {
     List<LineageEdgeContext> downstreamEdges = edgeContexts(lineage, false);
     AIContext context =
         new AIContext()
+            .withId(entity.getId())
             .withFullyQualifiedName(entity.getFullyQualifiedName())
             .withEntityType(entityType)
             .withDisplayName(entity.getDisplayName())
@@ -605,6 +606,7 @@ public class AIContextBuilder {
       if (isApproved(term) && canViewKnowledge(Entity.GLOSSARY_TERM, termFqn)) {
         item =
             new KnowledgeItem()
+                .withId(term.getId())
                 .withType(KnowledgeItem.Type.GLOSSARY_TERM)
                 .withName(term.getName())
                 .withDisplayName(term.getDisplayName())
@@ -668,6 +670,7 @@ public class AIContextBuilder {
       if (canViewPill(pill)) {
         item =
             new KnowledgeItem()
+                .withId(pill.getId())
                 .withType(KnowledgeItem.Type.CONTEXT_MEMORY)
                 .withName(pill.getName())
                 .withDisplayName(pill.getDisplayName())
@@ -718,6 +721,7 @@ public class AIContextBuilder {
       if (canViewKnowledge(Entity.METRIC, metric.getFullyQualifiedName())) {
         item =
             new KnowledgeItem()
+                .withId(metric.getId())
                 .withType(KnowledgeItem.Type.METRIC)
                 .withName(metric.getName())
                 .withDisplayName(metric.getDisplayName())
@@ -781,6 +785,7 @@ public class AIContextBuilder {
       if (canViewKnowledge(Entity.PAGE, page.getFullyQualifiedName())) {
         item =
             new KnowledgeItem()
+                .withId(page.getId())
                 .withType(KnowledgeItem.Type.PAGE)
                 .withName(page.getName())
                 .withDisplayName(page.getDisplayName())
