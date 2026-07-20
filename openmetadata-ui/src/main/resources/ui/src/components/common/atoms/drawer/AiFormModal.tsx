@@ -17,9 +17,10 @@ import {
   FeaturedIcon,
   Modal,
   ModalOverlay,
+  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { CheckCircle } from '@untitledui/icons';
+import { CheckCircle, Lightbulb05 } from '@untitledui/icons';
 import { FC, ReactNode } from 'react';
 import { useTranslation } from 'react-i18next';
 
@@ -85,6 +86,16 @@ export interface AiFormModalProps {
    * doc. This prop only drives the modal's width.
    */
   hintOpen?: boolean;
+  /**
+   * Toggles the hint column. Supplying it renders the Show Hint control in the
+   * header; this modal owns that control because the hint column is what it is
+   * for, and three callers had drifted into three copies of the same markup.
+   *
+   * The boolean stays with the caller rather than being internal state: the
+   * form needs it too (`showFieldDocs`), and the form is a child the caller
+   * renders, not something this modal owns.
+   */
+  onHintToggle?: (open: boolean) => void;
   /** Header featured-icon glyph. Defaults to CheckCircle. */
   icon?: FC<{ className?: string }>;
   /** Header featured-icon colour. Defaults to 'gray'. */
@@ -124,6 +135,7 @@ export const AiFormModal: FC<AiFormModalProps> = ({
   submitTestId = 'create-btn',
   cancelTestId = 'cancel-btn',
   hintOpen,
+  onHintToggle,
   submitLabel,
   icon = CheckCircle,
   iconColor = 'gray',
@@ -214,11 +226,30 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                     )}
                   </Box>
                 </Box>
-                {/* shrink-0: the actions (e.g. the Show Hint label + toggle)
-                    must never be compressed, or the label wraps mid-phrase when
-                    the modal narrows. */}
-                <Box align="center" className="tw:shrink-0" direction="row">
+                {/* shrink-0: the Show Hint label + toggle must never be
+                    compressed, or the label wraps mid-phrase when the modal
+                    narrows. whitespace-nowrap on the label for the same
+                    reason. */}
+                <Box align="center" className="tw:shrink-0 tw:gap-4" direction="row">
                   {headerActions}
+                  {onHintToggle && (
+                    <Box align="center" className="tw:gap-2" direction="row">
+                      <Lightbulb05 className="tw:size-4 tw:text-secondary" />
+                      <Typography
+                        className="tw:whitespace-nowrap tw:text-secondary"
+                        size="text-sm"
+                        weight="medium">
+                        {t('label.show-hint')}
+                      </Typography>
+                      <Toggle
+                        aria-label={t('label.show-hint')}
+                        data-testid="show-hint-toggle"
+                        isSelected={hintOpen}
+                        size="sm"
+                        onChange={onHintToggle}
+                      />
+                    </Box>
+                  )}
                 </Box>
               </Box>
             </Dialog.Header>

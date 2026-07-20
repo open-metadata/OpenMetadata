@@ -14,7 +14,6 @@ import {
   Box,
   EmptyPlaceholder,
   HookForm,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
@@ -275,17 +274,6 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
   if (isModalVariant) {
     return (
       <AiFormModal
-        headerActions={
-          <Box align="center" className="tw:gap-2" direction="row">
-            {hintLabel(t('label.show-hint'))}
-            <Toggle
-              aria-label={t('label.show-hint')}
-              isSelected={showHint}
-              size="sm"
-              onChange={setShowHint}
-            />
-          </Box>
-        }
         hintOpen={showHint}
         isSubmitting={form.formState.isSubmitting}
         open={open}
@@ -293,6 +281,7 @@ const TestDefinitionForm: FC<TestDefinitionFormProps> = ({
         subtitle={t('message.page-sub-header-for-test-definitions')}
         title={resolvedTitle}
         onClose={handleDismiss}
+        onHintToggle={setShowHint}
         onSubmit={submitAndClose}>
         <HookForm
           emptyFieldDoc={

@@ -14,7 +14,6 @@ import {
   Box,
   EmptyPlaceholder,
   HookForm,
-  Toggle,
   Typography,
 } from '@openmetadata/ui-core-components';
 import { Lightbulb05 } from '@untitledui/icons';
@@ -438,25 +437,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
   if (isModalVariant) {
     return (
       <AiFormModal
-        headerActions={
-          headerActions ?? (
-            <Box align="center" className="tw:gap-2" direction="row">
-              <Lightbulb05 className="tw:size-4 tw:text-secondary" />
-              <Typography
-                className="tw:whitespace-nowrap tw:text-secondary"
-                size="text-sm"
-                weight="medium">
-                {t('label.show-hint')}
-              </Typography>
-              <Toggle
-                aria-label={t('label.show-hint')}
-                isSelected={showHint}
-                size="sm"
-                onChange={setShowHint}
-              />
-            </Box>
-          )
-        }
+        headerActions={headerActions}
         hintOpen={showHint}
         isSubmitting={form.formState.isSubmitting}
         open={open}
@@ -464,6 +445,7 @@ const TestCaseFormDrawer: FC<TestCaseFormDrawerProps> = ({
         subtitle={t('message.page-sub-header-for-data-quality')}
         title={title ?? defaultTitle}
         onClose={handleDrawerDismiss}
+        onHintToggle={setShowHint}
         onSubmit={form.handleSubmit(
           (data) => submitAndClose(data, handleSubmit, handleDrawerDismiss),
           () => scrollToError()
