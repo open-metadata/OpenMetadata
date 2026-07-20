@@ -1702,7 +1702,7 @@ public class MigrationUtil {
         connectionType == ConnectionType.POSTGRES
             ? "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
                 + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
-                + "ON CONFLICT (fromId, toId, relation) DO UPDATE SET toEntity = EXCLUDED.toEntity, fromEntity = EXCLUDED.fromEntity"
+                + "ON CONFLICT (fromId, toId, relation, relationType) DO UPDATE SET toEntity = EXCLUDED.toEntity, fromEntity = EXCLUDED.fromEntity"
             : "INSERT INTO entity_relationship (fromId, toId, fromEntity, toEntity, relation) "
                 + "VALUES (:fromId, :toId, :fromEntity, :toEntity, :relation) "
                 + "ON DUPLICATE KEY UPDATE toEntity = VALUES(toEntity), fromEntity = VALUES(fromEntity)";
