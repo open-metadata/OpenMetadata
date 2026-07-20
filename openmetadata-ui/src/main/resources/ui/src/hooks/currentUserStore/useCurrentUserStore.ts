@@ -31,6 +31,7 @@ export interface UserPreferences {
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
   marketplaceRecentSearches: MarketplaceRecentSearchEntry[];
+  connectionsViewMode?: 'grid' | 'list';
 }
 
 interface Store {

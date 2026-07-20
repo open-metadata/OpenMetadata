@@ -499,7 +499,8 @@ const TagsContainerV2 = ({
   return (
     <div
       className="w-full tags-container"
-      data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}>
+      data-testid={isGlossaryType ? 'glossary-container' : 'tags-container'}
+      onClick={(e) => e.stopPropagation()}>
       {suggestionDataRender ?? (
         <>
           {tagBody}
