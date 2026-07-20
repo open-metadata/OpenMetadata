@@ -3848,6 +3848,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
         () -> {
           storeEntities(entities);
           storeExtensions(entities);
+          for (T entity : entities) {
+            storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
+          }
           storeRelationshipsInternal(entities);
         });
     setInheritedFields(entities, new Fields(allowedFields));
@@ -3898,6 +3901,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
           updateMany(updatedEntities);
           removeExtensions(originals);
           storeExtensions(updatedEntities);
+          for (T entity : updatedEntities) {
+            storeColumnExtensions(entity.getId(), getColumnsForExtensionPersistence(entity));
+          }
           clearRelationshipsForUpdateMany(updatedEntities);
           storeRelationshipsInternal(updatedEntities);
           // Drop every cached variant for each updated entity so the next GET rebuilds from the
