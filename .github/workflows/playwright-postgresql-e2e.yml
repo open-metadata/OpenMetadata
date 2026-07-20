@@ -396,6 +396,40 @@ jobs:
           retention-days: 1
           if-no-files-found: ignore
 
+      # Dump backend + search-engine logs on failure so flaky E2E failures (e.g.
+      # an entity not appearing in search) can be diagnosed from what the server
+      # and OpenSearch actually did — the Playwright report only captures the
+      # browser side. Runs before Clean Up tears the stack down.
+      - name: Dump server and search logs on failure
+        if: failure()
+        run: |
+          echo "=== Docker container status ==="
+          docker ps -a || true
+          echo ""
+          echo "=== OpenSearch: errors / write-rejections / refresh ==="
+          docker logs openmetadata_opensearch 2>&1 | grep -iE "error|reject|429|too_many|circuit_break|refresh|failed|unassigned" | tail -200 || true
+          echo ""
+          echo "=== Server: search-index write messages (create/update/retry/failures) ==="
+          docker logs openmetadata_server 2>&1 | grep -iE "createEntityIndex|updateEntityIndex|SearchIndexRetry|Failed to (create|update)|Issue creating new search|search index|deferred|search retry" | tail -400 || true
+          echo ""
+          echo "=== Server: full tail ==="
+          docker logs openmetadata_server --tail 2000 2>&1 || echo "No openmetadata_server container found"
+          echo ""
+          echo "=== Saving full logs for artifact ==="
+          docker logs openmetadata_server > "$GITHUB_WORKSPACE/openmetadata_server.log" 2>&1 || true
+          docker logs openmetadata_opensearch > "$GITHUB_WORKSPACE/openmetadata_opensearch.log" 2>&1 || true
+
+      - name: Upload server logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: server-logs-${{ matrix.shardIndex }}
+          path: |
+            openmetadata_server.log
+            openmetadata_opensearch.log
+          retention-days: 2
+          if-no-files-found: ignore
+
       - name: Clean Up
         run: |
           cd ./docker/development
