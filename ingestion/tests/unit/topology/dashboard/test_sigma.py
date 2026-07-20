@@ -266,9 +266,6 @@ class SigmaUnitTest(TestCase):
         self.assertEqual(EXPECTED_DASHBOARD, [res.right for res in results])
 
     def test_yield_dashboard_with_datamodels(self):
-        """
-        Function for testing that dashboard includes dataModels when includeDataModels is True
-        """
         original_flag = self.sigma.source_config.includeDataModels
         self.sigma.source_config.includeDataModels = True
         original_data_models = self.sigma.context.get().dataModels
@@ -278,18 +275,15 @@ class SigmaUnitTest(TestCase):
             results = list(self.sigma.yield_dashboard(MOCK_DASHBOARD_DETAILS))
             dashboard_request = results[0].right
 
-            self.assertIsNotNone(dashboard_request.dataModels)
-            self.assertEqual(len(dashboard_request.dataModels), 2)
-            self.assertEqual(dashboard_request.dataModels[0].root, "mock_sigma.elem1")
-            self.assertEqual(dashboard_request.dataModels[1].root, "mock_sigma.elem2")
+            assert dashboard_request.dataModels is not None
+            assert len(dashboard_request.dataModels) == 2
+            assert dashboard_request.dataModels[0].root == "mock_sigma.model.elem1"
+            assert dashboard_request.dataModels[1].root == "mock_sigma.model.elem2"
         finally:
             self.sigma.source_config.includeDataModels = original_flag
             self.sigma.context.get().__dict__["dataModels"] = original_data_models
 
     def test_yield_dashboard_datamodels_disabled(self):
-        """
-        Function for testing that dataModels is None when includeDataModels is False
-        """
         original_flag = self.sigma.source_config.includeDataModels
         self.sigma.source_config.includeDataModels = False
 
@@ -297,7 +291,7 @@ class SigmaUnitTest(TestCase):
             results = list(self.sigma.yield_dashboard(MOCK_DASHBOARD_DETAILS))
             dashboard_request = results[0].right
 
-            self.assertIsNone(dashboard_request.dataModels)
+            assert dashboard_request.dataModels is None
         finally:
             self.sigma.source_config.includeDataModels = original_flag
 
