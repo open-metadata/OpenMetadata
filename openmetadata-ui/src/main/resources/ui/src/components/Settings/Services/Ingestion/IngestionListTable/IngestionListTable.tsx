@@ -327,7 +327,6 @@ function IngestionListTable({
         dataIndex: 'schedule',
         key: 'schedule',
         width: 150,
-        onCell: () => ({ style: { maxWidth: 150 } }),
         render: renderScheduleField,
       },
       {
