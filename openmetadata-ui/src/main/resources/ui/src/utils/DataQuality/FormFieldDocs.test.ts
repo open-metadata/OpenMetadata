@@ -87,6 +87,30 @@ describe('parseFormFieldDocs', () => {
     expect(JSON.stringify(docs)).not.toContain('Intro paragraph');
   });
 
+  it('drops an unterminated block and keeps parsing the rest', () => {
+    // The old pattern closed a dangling block on the next section's opener,
+    // because `\n$$` matches the start of `\n$$section`. That emitted
+    // `dangling` with a body that was not its own and swallowed `good`
+    // entirely. Skipping the malformed block is the better answer, and
+    // scanning by index — rather than one pattern over the whole file — is
+    // also what keeps parsing linear.
+    const docs = parseFormFieldDocs(
+      [
+        '$$section',
+        '### Dangling $(id="dangling")',
+        'Never closed.',
+        '',
+        '$$section',
+        '### Good $(id="good")',
+        'Closed properly.',
+        '$$',
+      ].join('\n')
+    );
+
+    expect(Object.keys(docs)).toEqual(['good']);
+    expect(docs.good).toBe('Closed properly.');
+  });
+
   it('returns an empty map when there are no sections', () => {
     expect(parseFormFieldDocs('# Heading only, no sections')).toEqual({});
     expect(parseFormFieldDocs('')).toEqual({});

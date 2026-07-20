@@ -13,26 +13,51 @@
 import { fetchMarkdownFile } from '../../rest/miscAPI';
 import { SupportedLocales } from '../i18next/LocalUtil.interface';
 
+const SECTION_OPEN = '$$section';
+const SECTION_CLOSE = '\n$$';
+/**
+ * Matches only the id marker, within one already-delimited block. Bounded on
+ * both sides by literals and with no `.`-style run, so it cannot backtrack.
+ */
+const FIELD_ID = /\$\(id="([^"]+)"\)/;
+
 /**
  * The form documentation markdown files (e.g. `TestCaseForm.md`) that back the
  * classic doc panel are authored as `$$section ... ### <Heading> $(id="field")
  * ... $$` blocks. This extracts each block's body keyed by its field id so the
  * per-field "Form Hint" popover can render the same source instead of a
  * duplicated set of translation strings.
+ *
+ * Split and scan rather than one expression over the whole file. Matching the
+ * block in a single pattern needs two `[\s\S]*?` runs, and every `$$section`
+ * that never completes sends both of them across the remainder of the document
+ * looking for a close that is not there — quadratic in the number of openers.
+ * Locating the delimiters by index is linear and says the same thing.
  */
-const SECTION_REGEX =
-  /\$\$section[\s\S]*?\$\(id="([^"]+)"\)\s*([\s\S]*?)\n\$\$/g;
-
 export const parseFormFieldDocs = (
   markdown: string
 ): Record<string, string> => {
   const docs: Record<string, string> = {};
-  const regex = new RegExp(SECTION_REGEX);
-  let match: RegExpExecArray | null = regex.exec(markdown);
 
-  while (match !== null) {
-    docs[match[1]] = match[2].trim();
-    match = regex.exec(markdown);
+  for (const block of markdown.split(SECTION_OPEN).slice(1)) {
+    const closeAt = block.indexOf(SECTION_CLOSE);
+    // An unterminated block is dropped. This is the one place the behaviour
+    // differs from the old pattern, and deliberately: `\n$$` also matches the
+    // start of `\n$$section`, so the pattern closed a dangling block on the
+    // *next* section's opener — emitting that block with a body that was never
+    // its own, and consuming the following section so it never appeared at
+    // all. Skipping the malformed block keeps the well-formed one. No shipped
+    // doc has an unterminated block, so nothing in the product changes.
+    if (closeAt === -1) {
+      continue;
+    }
+
+    const body = block.slice(0, closeAt);
+    const id = FIELD_ID.exec(body);
+
+    if (id) {
+      docs[id[1]] = body.slice(id.index + id[0].length).trim();
+    }
   }
 
   return docs;
