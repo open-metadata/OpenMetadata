@@ -96,6 +96,7 @@ public class MigrationUtil {
   private static final String RDF_INDEX_APP_NAME = "RdfIndexApp";
   private static final String RDF_OLD_DAILY_CRON = "0 0 * * *";
   private static final String RDF_WEEKLY_CRON = "0 0 * * 6";
+  private static final String ADMIN_USER_NAME = "admin";
 
   /**
    * Per-migration cache of {@code (entityType, entityId) -> resolved domains}. Many migrated tasks
@@ -1637,11 +1638,10 @@ public class MigrationUtil {
             "Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
       }
     }
-    return reference != null ? reference : resolveAdminReference();
-  }
-
-  private static EntityReference resolveAdminReference() {
-    return Entity.getEntityReferenceByName(Entity.USER, "admin", Include.ALL);
+    if (reference == null) {
+      reference = Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+    }
+    return reference;
   }
 
   /**
@@ -1651,15 +1651,14 @@ public class MigrationUtil {
   private static ObjectNode buildUserRef(String userName) {
     ObjectNode ref = null;
     try {
-      ref = userRefToJson(resolveUserReference(userName));
+      EntityReference reference = resolveUserReference(userName);
+      if (reference != null) {
+        ref = (ObjectNode) JsonUtils.readTree(JsonUtils.pojoToJson(reference));
+      }
     } catch (Exception e) {
       LOG.warn("Could not resolve a user reference for '{}': {}", userName, e.getMessage());
     }
     return ref;
-  }
-
-  private static ObjectNode userRefToJson(EntityReference ref) {
-    return ref == null ? null : (ObjectNode) JsonUtils.readTree(JsonUtils.pojoToJson(ref));
   }
 
   /**
@@ -1909,7 +1908,6 @@ public class MigrationUtil {
 
   /** Task workflow cutover + recognizer feedback rewrite + mention-alert wiring for 2.0.0. */
   public static class TaskWorkflow {
-    private static final String ADMIN_USER_NAME = "admin";
     private static final String USER_APPROVAL_TASK_SUBTYPE = "userApprovalTask";
     private static final String RECOGNIZER_APPROVAL_TASK_SUBTYPE =
         "createRecognizerFeedbackApprovalTask";
