@@ -75,6 +75,7 @@ import org.openmetadata.service.jdbi3.ListFilter;
 import org.openmetadata.service.jdbi3.PolicyRepository;
 import org.openmetadata.service.jdbi3.RoleRepository;
 import org.openmetadata.service.jdbi3.TaskRepository;
+import org.openmetadata.service.jdbi3.TestCaseResolutionStatusRepository;
 import org.openmetadata.service.jdbi3.WorkflowDefinitionRepository;
 import org.openmetadata.service.jdbi3.locator.ConnectionType;
 import org.openmetadata.service.migration.utils.SearchSettingsMergeUtil;
@@ -752,10 +753,13 @@ public class MigrationUtil {
         String updatedBy =
             threadJson.has("updatedBy") ? threadJson.get("updatedBy").asText() : createdByName;
 
-        // Look up createdBy user ID from user_entity by name
-        String createdByUserId = lookupUserId(handle, createdByName);
-        if (createdByUserId != null) {
+        // Preserve the original requester: createdBy ref + createdById for the filter.
+        ObjectNode createdByRef = buildUserRef(createdByName);
+        String createdByUserId = null;
+        if (createdByRef != null && createdByRef.has("id")) {
+          createdByUserId = createdByRef.get("id").asText();
           taskJson.put("createdById", createdByUserId);
+          taskJson.set("createdBy", createdByRef);
         }
 
         taskJson.put("createdAt", createdAt);
@@ -763,8 +767,9 @@ public class MigrationUtil {
         taskJson.put("updatedBy", updatedBy);
         taskJson.put("deleted", false);
         taskJson.put("version", 0.1);
-        taskJson.set("comments", JsonUtils.getObjectNode().arrayNode());
-        taskJson.put("commentCount", 0);
+        // Migrate posts -> comments (per-post reactions ride along in taskComment.reactions).
+        // Task has no top-level reactions field, so thread-level reactions are not carried over.
+        migrateThreadPostsToComments(threadJson, taskJson);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
 
         String umbrellaWorkflowInstanceId = umbrellaWorkflowInstanceIds.get(threadId);
@@ -772,12 +777,15 @@ public class MigrationUtil {
           taskJson.put("workflowInstanceId", umbrellaWorkflowInstanceId);
         }
 
-        // Set resolution details for closed tasks
+        // Resolution for closed tasks: keep resolvedBy from the legacy closedBy.
         if ("Closed".equals(oldStatus)) {
           ObjectNode resolution = JsonUtils.getObjectNode();
           resolution.put("type", newStatus.equals("Approved") ? "Approved" : "Completed");
           if (taskDetails.has("closedBy")) {
-            resolution.put("comment", "Migrated from thread-based task system");
+            ObjectNode resolvedBy = buildUserRef(taskDetails.get("closedBy").asText());
+            if (resolvedBy != null) {
+              resolution.set("resolvedBy", resolvedBy);
+            }
           }
           if (taskDetails.has("closedAt")) {
             resolution.put("resolvedAt", taskDetails.get("closedAt").asLong());
@@ -1614,6 +1622,78 @@ public class MigrationUtil {
   }
 
   /**
+   * Resolve a legacy username to a user {@link EntityReference}; shared by both migration paths.
+   * A soft-deleted user keeps its real id; anything unresolvable (hard-deleted / "system" / null)
+   * falls back to the admin user, never a fabricated id. Throws only if admin is also unresolvable.
+   */
+  static EntityReference resolveUserReference(String userName) {
+    if (nullOrEmpty(userName)) {
+      return resolveAdminReference();
+    }
+    try {
+      return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
+    } catch (Exception e) {
+      LOG.debug("Unable to resolve user '{}', falling back to admin: {}", userName, e.getMessage());
+      return resolveAdminReference();
+    }
+  }
+
+  private static EntityReference resolveAdminReference() {
+    return Entity.getEntityReferenceByName(Entity.USER, "admin", Include.ALL);
+  }
+
+  /**
+   * JSON-shaped {@link #resolveUserReference} for the static path (which builds task JSON, not
+   * POJOs). Returns null only if even the admin fallback cannot be resolved.
+   */
+  private static ObjectNode buildUserRef(String userName) {
+    try {
+      return userRefToJson(resolveUserReference(userName));
+    } catch (Exception e) {
+      LOG.warn("Could not resolve a user reference for '{}': {}", userName, e.getMessage());
+      return null;
+    }
+  }
+
+  private static ObjectNode userRefToJson(EntityReference ref) {
+    return ref == null ? null : (ObjectNode) JsonUtils.readTree(JsonUtils.pojoToJson(ref));
+  }
+
+  /**
+   * Migrate a legacy thread's {@code posts[]} (user replies + resolve/close records) into the new
+   * task's {@code comments[]} so the task discussion history survives, and sets {@code commentCount}.
+   * Each post maps to a {@code taskComment} ({id, message, author, createdAt, reactions}). The author
+   * is resolved via {@link #buildUserRef} (soft-deleted users keep their real id; unresolvable ones
+   * fall back to the admin user) — never a synthetic id. A post is skipped only if even that fails.
+   */
+  private static void migrateThreadPostsToComments(JsonNode threadJson, ObjectNode taskJson) {
+    JsonNode posts = threadJson.get("posts");
+    ArrayNode comments = JsonUtils.getObjectNode().arrayNode();
+    if (posts != null && posts.isArray()) {
+      for (JsonNode post : posts) {
+        if (!post.has("message")) {
+          continue;
+        }
+        ObjectNode author = buildUserRef(post.path("from").asText(null));
+        if (author == null) {
+          continue;
+        }
+        ObjectNode comment = JsonUtils.getObjectNode();
+        comment.put("id", post.has("id") ? post.get("id").asText() : UUID.randomUUID().toString());
+        comment.put("message", post.get("message").asText());
+        comment.set("author", author);
+        comment.put("createdAt", post.has("postTs") ? post.get("postTs").asLong() : 0);
+        if (post.has("reactions") && post.get("reactions").isArray()) {
+          comment.set("reactions", post.get("reactions"));
+        }
+        comments.add(comment);
+      }
+    }
+    taskJson.set("comments", comments);
+    taskJson.put("commentCount", comments.size());
+  }
+
+  /**
    * Resolve the domains of the target entity referenced by the task's `about` field.
    * Equivalent to {@code TaskRepository.inheritDomainsFromTargetEntity()} but uses the
    * {@link EntityRepository} layer so inherited domains (e.g. a glossary term inheriting from
@@ -2169,11 +2249,34 @@ public class MigrationUtil {
               task.getId().toString(),
               variables);
           backfilled++;
+
+          // Incident workflows start at NewStage. Replay the test case's pre-upgrade resolution
+          // state (Ack/Assigned + assignee) onto the just-started instance so a migrated incident
+          // is not reset to New / No Owners.
+          if (task.getCategory() == TaskCategory.Incident) {
+            replayMigratedIncidentState(task);
+          }
         }
       } catch (Exception e) {
         LOG.error("Failed to backfill open tasks to workflow instances", e);
       }
       return backfilled;
+    }
+
+    private void replayMigratedIncidentState(Task task) {
+      try {
+        TestCaseResolutionStatusRepository incidentRepository =
+            (TestCaseResolutionStatusRepository)
+                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+        if (incidentRepository.backfillMigratedIncidentTaskStage(task)) {
+          LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
+        }
+      } catch (Exception e) {
+        LOG.warn(
+            "Failed to replay pre-migration incident state for task {}: {}",
+            task.getId(),
+            e.getMessage());
+      }
     }
 
     private int rewriteRecognizerFeedbackDataQualityReviewTasks() {
@@ -2498,20 +2601,7 @@ public class MigrationUtil {
     }
 
     private EntityReference resolveUserReference(String userName) {
-      if (nullOrEmpty(userName)) {
-        return getAdminReference();
-      }
-
-      try {
-        return Entity.getEntityReferenceByName(Entity.USER, userName, Include.ALL);
-      } catch (Exception e) {
-        LOG.debug("Unable to resolve user '{}': {}", userName, e.getMessage());
-        return getAdminReference();
-      }
-    }
-
-    private EntityReference getAdminReference() {
-      return Entity.getEntityReferenceByName(Entity.USER, ADMIN_USER_NAME, Include.ALL);
+      return MigrationUtil.resolveUserReference(userName);
     }
 
     private void upsertTaskMigrationMapping(UUID oldThreadId, UUID newTaskId) {

@@ -282,6 +282,29 @@ public class TestCaseResolutionStatusRepository
         && message.contains(Relationship.PARENT_OF.value());
   }
 
+  /**
+   * Replay a migrated incident task's pre-upgrade resolution state onto its freshly-created
+   * workflow instance. The v200 migration starts every incident workflow at NewStage; without
+   * this, an incident that was Ack/Assigned before the upgrade comes back as New / No Owners.
+   * Reuses the same runtime bridge ({@link #applyLegacyStatusToIncidentTask}) that advances the
+   * workflow on a live TCRS write, keyed off the latest recorded status for the task's test case.
+   * Idempotent: {@link #resolveLegacyTransitionId} returns null (no-op) when already at the stage.
+   */
+  public boolean backfillMigratedIncidentTaskStage(Task task) {
+    if (task == null || task.getAbout() == null) {
+      return false;
+    }
+    String recordFQN = task.getAbout().getFullyQualifiedName();
+    if (recordFQN == null) {
+      return false;
+    }
+    TestCaseResolutionStatus latest = getLatestRecord(recordFQN);
+    if (latest == null) {
+      return false;
+    }
+    return applyLegacyStatusToIncidentTask(latest, recordFQN);
+  }
+
   private boolean applyLegacyStatusToIncidentTask(
       TestCaseResolutionStatus recordEntity, String recordFQN) {
     Task incidentTask = findIncidentTaskForLegacyStatus(recordEntity, recordFQN);
