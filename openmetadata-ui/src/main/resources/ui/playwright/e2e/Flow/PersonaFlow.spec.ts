@@ -47,7 +47,6 @@ const PERSONA_DETAILS = {
   description: `Persona description ${uuid()}.`,
 };
 
-const user = new UserClass();
 const persona1 = new PersonaClass();
 const persona2 = new PersonaClass();
 
@@ -278,14 +277,16 @@ test.describe.serial('Persona operations', () => {
 });
 
 test.describe.serial('Default persona setting and removal flow', () => {
+  const user1 = new UserClass();
+
   test.beforeAll('Setup user for default persona flow', async ({ browser }) => {
     const { apiContext, afterAction } = await createNewPage(browser);
-    await user.create(apiContext);
+    await user1.create(apiContext);
     const adminResponse = await apiContext.get('/api/v1/users/name/admin');
     const adminData = await adminResponse.json();
 
-    await persona1.create(apiContext, [user.responseData.id, adminData.id]);
-    await persona2.create(apiContext, [user.responseData.id]);
+    await persona1.create(apiContext, [user1.responseData.id, adminData.id]);
+    await persona2.create(apiContext, [user1.responseData.id]);
     await afterAction();
   });
 
@@ -294,7 +295,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
     async ({ browser }) => {
       const { apiContext, afterAction } = await createNewPage(browser);
       await Promise.all([
-        user.delete(apiContext),
+        user1.delete(apiContext),
         persona1.delete(apiContext),
         persona2.delete(apiContext),
       ]);
@@ -308,7 +309,8 @@ test.describe.serial('Default persona setting and removal flow', () => {
   }) => {
     const userContext = await browser.newContext({ storageState: undefined });
     const userPage = await userContext.newPage();
-    await user.login(userPage);
+
+    await user1.login(userPage);
 
     test.slow(true);
 
@@ -343,16 +345,16 @@ test.describe.serial('Default persona setting and removal flow', () => {
 
         const searchUser = adminPage.waitForResponse(
           `/api/v1/search/query?q=*${encodeURIComponent(
-            user.responseData.displayName
+            user1.responseData.displayName
           )}*`
         );
         await adminPage
           .getByTestId('searchbar')
-          .fill(user.responseData.displayName);
+          .fill(user1.responseData.displayName);
         await searchUser;
 
         await adminPage
-          .getByRole('listitem', { name: user.responseData.displayName })
+          .getByRole('listitem', { name: user1.responseData.displayName })
           .click();
         await adminPage.getByTestId('selectable-list-update-btn').click();
 
@@ -389,8 +391,8 @@ test.describe.serial('Default persona setting and removal flow', () => {
         ).toContainText(PERSONA_DETAILS.description);
 
         await expect(
-          adminPage.getByTestId(user.responseData.name)
-        ).toContainText(user.responseData.name);
+          adminPage.getByTestId(user1.responseData.name)
+        ).toContainText(user1.responseData.name);
 
         await setPersonaAsDefault(adminPage);
       });
@@ -399,6 +401,7 @@ test.describe.serial('Default persona setting and removal flow', () => {
         await userPage.reload();
         await waitForAllLoadersToDisappear(userPage);
         await checkPersonaInProfile(userPage, PERSONA_DETAILS.displayName);
+        await redirectToHomePage(userPage);
       });
 
       await test.step('Changing default persona', async () => {
