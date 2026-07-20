@@ -254,7 +254,7 @@ public class SearchIndexResourceIT extends BaseEntityIT<SearchIndex, CreateSearc
     request.setFields(
         List.of(
             new SearchIndexField()
-                .withName("title<invalid")
+                .withName("title>invalid")
                 .withDataType(SearchIndexDataType.TEXT)));
 
     assertThrows(

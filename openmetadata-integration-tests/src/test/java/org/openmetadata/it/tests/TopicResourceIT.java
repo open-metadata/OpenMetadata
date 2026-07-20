@@ -265,7 +265,7 @@ public class TopicResourceIT extends BaseEntityIT<Topic, CreateTopic> {
         new MessageSchema()
             .withSchemaType(SchemaType.JSON)
             .withSchemaFields(
-                List.of(new Field().withName("field|invalid").withDataType(FieldDataType.STRING)));
+                List.of(new Field().withName("field>invalid").withDataType(FieldDataType.STRING)));
 
     CreateTopic request = new CreateTopic();
     request.setName(ns.prefix("topic_invalid_schema_field"));

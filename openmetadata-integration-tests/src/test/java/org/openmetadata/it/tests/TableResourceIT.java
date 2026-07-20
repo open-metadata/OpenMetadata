@@ -240,7 +240,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
         List.of(
             new TableConstraint()
                 .withConstraintType(TableConstraint.ConstraintType.UNIQUE)
-                .withColumns(List.of("name<invalid"))));
+                .withColumns(List.of("name>invalid"))));
 
     assertThrows(
         Exception.class,
@@ -254,7 +254,7 @@ public class TableResourceIT extends BaseEntityIT<Table, CreateTable> {
             .withColumns(
                 List.of(
                     new PartitionColumnDetails()
-                        .withColumnName("name|invalid")
+                        .withColumnName("name>invalid")
                         .withIntervalType(PartitionIntervalTypes.COLUMN_VALUE)
                         .withInterval("daily"))));
 

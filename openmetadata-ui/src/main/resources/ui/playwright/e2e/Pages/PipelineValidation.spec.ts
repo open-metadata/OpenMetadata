@@ -79,7 +79,7 @@ test.describe('Pipeline entity name validation', () => {
       data: {
         name: `pw-pipeline-invalid-task-${uuid()}`,
         service: serviceFqn,
-        tasks: [{ name: 'task<invalid' }],
+        tasks: [{ name: 'task>invalid' }],
       },
     });
 

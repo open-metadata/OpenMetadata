@@ -220,7 +220,7 @@ public class PipelineResourceIT extends BaseEntityIT<Pipeline, CreatePipeline> {
     CreatePipeline request = new CreatePipeline();
     request.setName(ns.prefix("pipeline_invalid_task"));
     request.setService(service.getFullyQualifiedName());
-    request.setTasks(List.of(new Task().withName("task<invalid")));
+    request.setTasks(List.of(new Task().withName("task>invalid")));
 
     assertThrows(
         Exception.class,
