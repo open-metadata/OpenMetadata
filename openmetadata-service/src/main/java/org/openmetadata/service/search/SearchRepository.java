@@ -144,6 +144,7 @@ import org.openmetadata.service.resources.settings.SettingsCache;
 import org.openmetadata.service.search.capability.EntityIndexCapability;
 import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
+import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
@@ -152,9 +153,11 @@ import org.openmetadata.service.search.nlq.NLQService;
 import org.openmetadata.service.search.nlq.NLQServiceFactory;
 import org.openmetadata.service.search.opensearch.OpenSearchClient;
 import org.openmetadata.service.search.scripts.SoftDeleteScript;
+import org.openmetadata.service.search.vector.ElasticSearchVectorService;
 import org.openmetadata.service.search.vector.OpenSearchVectorService;
 import org.openmetadata.service.search.vector.VectorEmbeddingHandler;
 import org.openmetadata.service.search.vector.VectorIndexService;
+import org.openmetadata.service.search.vector.VectorSearchQueryBuilder;
 import org.openmetadata.service.search.vector.client.BedrockEmbeddingClient;
 import org.openmetadata.service.search.vector.client.DjlEmbeddingClient;
 import org.openmetadata.service.search.vector.client.EmbeddingClient;
@@ -463,6 +466,7 @@ public class SearchRepository {
                   .canonicalIndex(canonicalIndex)
                   .activeIndex(activeIndex)
                   .stagedIndex(stagedIndex)
+                  .stagedChunkIndex(context.getStagedChunkIndex().orElse(null))
                   .canonicalAliases(canonicalAlias)
                   .existingAliases(existingAliases)
                   .parentAliases(parentAliases)
@@ -540,7 +544,7 @@ public class SearchRepository {
         String indexName = indexMapping.getIndexName(clusterAlias);
         String templateName = "om_" + indexName;
         String indexPattern = indexName + "*";
-        String mappingContent = readIndexMapping(indexMapping);
+        String mappingContent = enrichForElasticsearch(readIndexMapping(indexMapping));
         if (mappingContent != null) {
           searchClient.createOrUpdateIndexTemplate(templateName, indexPattern, mappingContent);
           success++;
@@ -548,9 +552,14 @@ public class SearchRepository {
           failed++;
           LOG.warn("No mapping content found for entity type: {}", entry.getKey());
         }
+      } catch (IllegalStateException e) {
+        // Embedding dimension mismatch (or similar misconfiguration). Surface immediately so
+        // startup/reindex fails loudly and operators must reindex — silencing this would let
+        // a broken vector setup keep running with mismatched dims.
+        throw e;
       } catch (Exception e) {
         failed++;
-        LOG.warn("Failed to create index template for {}: {}", entry.getKey(), e.getMessage());
+        LOG.warn("Failed to create index template for {}", entry.getKey(), e);
       }
     }
     LOG.info(
@@ -568,7 +577,7 @@ public class SearchRepository {
     String indexName = indexMapping.getIndexName(clusterAlias);
     String templateName = "om_" + indexName;
     String indexPattern = indexName + "*";
-    String mappingContent = readIndexMapping(indexMapping);
+    String mappingContent = enrichForElasticsearch(readIndexMapping(indexMapping));
     if (mappingContent == null) {
       throw new IllegalArgumentException("No mapping content found for entity type: " + entityType);
     }
@@ -601,9 +610,10 @@ public class SearchRepository {
         OpenSearchVectorService.init(osClient, embeddingClient);
         this.vectorIndexService = OpenSearchVectorService.getInstance();
       } else {
-        LOG.warn(
-            "Vector embedding is only supported with OpenSearch. Elasticsearch support is planned.");
-        return;
+        var esClient = ((ElasticSearchClient) getSearchClient()).getNewClient();
+        int knnMultiplier = resolveKnnNumCandidatesMultiplier(cfg);
+        ElasticSearchVectorService.init(esClient, embeddingClient, knnMultiplier);
+        this.vectorIndexService = ElasticSearchVectorService.getInstance();
       }
 
       this.vectorEmbeddingHandler = new VectorEmbeddingHandler(vectorIndexService);
@@ -623,8 +633,23 @@ public class SearchRepository {
     }
   }
 
+  private static int resolveKnnNumCandidatesMultiplier(ElasticSearchConfiguration cfg) {
+    NaturalLanguageSearchConfiguration nlCfg = cfg.getNaturalLanguageSearch();
+    if (nlCfg != null
+        && nlCfg.getKnnNumCandidatesMultiplier() != null
+        && nlCfg.getKnnNumCandidatesMultiplier() >= 1) {
+      return nlCfg.getKnnNumCandidatesMultiplier();
+    }
+    return VectorSearchQueryBuilder.DEFAULT_KNN_NUM_CANDIDATES_MULTIPLIER;
+  }
+
   public void ensureHybridSearchPipeline() {
     if (!isVectorEmbeddingEnabled() || !vectorServiceInitialized) {
+      return;
+    }
+    // Hybrid search pipeline is an OpenSearch-specific feature (RRF via _search/pipeline).
+    // Skip silently for Elasticsearch instead of logging a misleading warning every restart.
+    if (!(vectorIndexService instanceof OpenSearchVectorService)) {
       return;
     }
 
@@ -968,6 +993,15 @@ public class SearchRepository {
       mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
     }
     return mapping;
+  }
+
+  private String enrichForElasticsearch(String mappingContent) {
+    if (getSearchType() != ElasticSearchConfiguration.SearchType.ELASTICSEARCH) {
+      return mappingContent;
+    }
+    return nullOrEmpty(mappingContent)
+        ? mappingContent
+        : EsUtils.enrichIndexMappingForElasticsearch(mappingContent);
   }
 
   private String getStoredMapping(IndexMapping indexMapping) {

@@ -54,7 +54,13 @@ from metadata.ingestion.models.topology import (
     TopologyNode,
 )
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    get_connection,
+    run_test_connection,
+    test_connection_common,
+)
 from metadata.ingestion.source.database.glue.models import Column
 from metadata.readers.dataframe.models import DatalakeTableSchemaWrapper
 from metadata.readers.dataframe.reader_factory import SupportedTypes
@@ -174,11 +180,13 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.metadata = metadata
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config: StorageServiceMetadataPipeline = self.config.sourceConfig.config
-        self.connection = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.connection = self._connection.client if self._connection else get_connection(self.service_connection)
 
         # Flag the connection for the test connection
         self.connection_obj = self.connection
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
         # Try to get the global manifest
         self.global_manifest: Optional[ManifestMetadataConfig] = self.get_manifest_file()  # noqa: UP045
@@ -300,7 +308,8 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         """Generate the create container requests based on the received details"""
 
     def close(self):
-        """By default, nothing needs to be closed"""
+        if self._connection is not None:
+            self._connection.close()
 
     def get_services(self) -> Iterable[WorkflowSource]:
         yield self.config
@@ -346,7 +355,10 @@ class StorageServiceSource(TopologyRunnerMixin, Source, ABC):
         self.container_source_state.add(container_fqn)
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.connection_obj, self.service_connection)
+        if self._connection is not None:
+            run_test_connection(self.metadata, self._connection)
+        else:
+            test_connection_common(self.metadata, self.connection_obj, self.service_connection)
 
     def mark_containers_as_deleted(self) -> Iterable[Either[DeleteEntity]]:
         """Method to mark the containers as deleted"""

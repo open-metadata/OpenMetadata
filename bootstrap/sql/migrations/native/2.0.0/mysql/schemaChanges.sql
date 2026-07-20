@@ -503,3 +503,17 @@ SET @ddl = (
 PREPARE stmt FROM @ddl;
 EXECUTE stmt;
 DEALLOCATE PREPARE stmt;
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = JSON_INSERT(
+    JSON_REMOVE(json, '$.connection.config.token'),
+    '$.connection.config.authType',
+    JSON_OBJECT(
+        'token',
+        JSON_EXTRACT(json, '$.connection.config.token')
+    )
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND JSON_EXTRACT(json, '$.connection.config.token') IS NOT NULL
+  AND NOT JSON_CONTAINS_PATH(json, 'one', '$.connection.config.authType');

@@ -58,10 +58,11 @@ class ImageClassBase {
     ];
   }
 
-  public getBlockEditorAttachmentProps():
-    | BlockEditorAttachmentProps
-    | undefined {
+  public getBlockEditorAttachmentProps(
+    entityType?: EntityType
+  ): BlockEditorAttachmentProps | undefined {
     return {
+      allowImageUpload: entityType === EntityType.KNOWLEDGE_PAGE,
       onImageUpload: async (
         file: File,
         entityType?: EntityType,
