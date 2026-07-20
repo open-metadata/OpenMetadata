@@ -13,9 +13,7 @@
 
 import { expect, Page, test } from '@playwright/test';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../constant/config';
-import { GlobalSettingOptions } from '../../constant/settings';
 import { redirectToHomePage } from '../../utils/common';
-import { settingClick } from '../../utils/sidebar';
 
 const inputCronExpression = async (page: Page, cron: string) => {
   await page
