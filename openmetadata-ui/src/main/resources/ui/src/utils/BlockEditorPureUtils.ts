@@ -12,6 +12,7 @@
  */
 
 import { isEmpty } from 'lodash';
+import Showdown from 'showdown';
 import { ENTITY_URL_MAP } from '../constants/Feeds.constants';
 import {
   getEntityDetail,
@@ -99,11 +100,40 @@ export const isHTMLString = (content: string) => {
   }
 };
 
-export const formatClientContent = (htmlString: string) => {
+const _convertMarkdownStringToHtmlString = new Showdown.Converter({
+  ghCodeBlocks: true,
+  encodeEmails: false,
+  ellipsis: false,
+  tables: true,
+  strikethrough: true,
+  simpleLineBreaks: true,
+  openLinksInNewWindow: true,
+  emoji: true,
+  underline: true,
+});
+
+/**
+ * Converts a markdown string to an HTML string. Content that is already HTML
+ * is returned untouched.
+ */
+export const getHtmlStringFromMarkdownString = (content: string) => {
+  return isHTMLString(content)
+    ? content
+    : _convertMarkdownStringToHtmlString.makeHtml(content);
+};
+
+export const formatClientContent = (content: string) => {
   const parser = new DOMParser();
-  const processedContent = isHTMLString(htmlString)
-    ? htmlString
-    : convertMarkdownFormatToHtmlString(htmlString);
+
+  // Markdown must be rendered to HTML *before* it is parsed and sanitised.
+  // Parsing markdown as HTML serialises bare `<` and `>` into entities, which
+  // the downstream markdown renderer then escapes a second time, surfacing
+  // `&gt;` to the user as literal text.
+  const processedContent = isHTMLString(content)
+    ? content
+    : getHtmlStringFromMarkdownString(
+        convertMarkdownFormatToHtmlString(content)
+      );
 
   const doc = parser.parseFromString(processedContent, 'text/html');
 
