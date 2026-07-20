@@ -19,6 +19,8 @@ export interface OwnerAvatarStackProps {
   avatarSize: AvatarSize;
   className?: string;
   ownerDisplayName?: Map<string, ReactNode>;
+  ownerLabelClassName?: string;
+  ownerRowClassName?: string;
   placement?: 'vertical' | 'horizontal';
   maxVisibleOwners?: number;
 }

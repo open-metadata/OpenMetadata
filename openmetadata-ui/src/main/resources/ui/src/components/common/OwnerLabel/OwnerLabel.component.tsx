@@ -47,6 +47,7 @@ export const OwnerLabel = ({
   isAssignee = false,
   onEditClick,
   ownerLabelClassName,
+  ownerRowClassName,
   placement,
 }: OwnerLabelProps) => {
   const { t } = useTranslation();
@@ -115,6 +116,7 @@ export const OwnerLabel = ({
         hasPermission={hasPermission}
         isCompactView={isCompactView}
         multiple={multiple}
+        ownerLabelClassName={ownerLabelClassName}
         owners={owners}
         placeHolder={placeHolder}
         showDashPlaceholder={showDashPlaceholder}
@@ -142,6 +144,8 @@ export const OwnerLabel = ({
               className={className}
               maxVisibleOwners={maxVisibleOwners}
               ownerDisplayName={ownerDisplayName}
+              ownerLabelClassName={ownerLabelClassName}
+              ownerRowClassName={ownerRowClassName}
               owners={owners}
               placement={placement}
             />

@@ -31,6 +31,8 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
   avatarSize,
   className,
   ownerDisplayName,
+  ownerLabelClassName,
+  ownerRowClassName,
   placement = 'horizontal',
   maxVisibleOwners = DEFAULT_MAX_VISIBLE_AVATARS,
 }) => {
@@ -122,7 +124,10 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
     const linkContent = (
       <Link
         aria-label={entityName}
-        className="owner-avatar-stack-row tw:max-w-40"
+        className={classNames(
+          'owner-avatar-stack-row tw:max-w-40',
+          ownerRowClassName
+        )}
         data-testid="owner-link"
         to={ownerPath}>
         <div className="tw:shrink-0">
@@ -131,8 +136,11 @@ export const OwnerAvatarStack: React.FC<OwnerAvatarStackProps> = ({
         <Typography
           ellipsis
           as="span"
-          className="owner-avatar-stack-row-name"
-          size="text-sm">
+          className={classNames(
+            'owner-avatar-stack-row-name',
+            ownerLabelClassName
+          )}
+          size={ownerLabelClassName ? undefined : 'text-sm'}>
           {getOwnerName(owner)}
         </Typography>
       </Link>

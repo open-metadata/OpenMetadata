@@ -12,7 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
-import type { ReactElement } from 'react';
+import type { ReactElement, ReactNode } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
@@ -43,6 +43,7 @@ jest.mock('../../../rest/queries/topicQuery', () => ({
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
+  getUserPath: jest.fn().mockReturnValue('/mock-user'),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -121,6 +122,32 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </nav>
   )),
   Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
+  Typography: jest.fn(
+    ({
+      children,
+      className,
+      size,
+      weight,
+    }: {
+      children: ReactNode;
+      className?: string;
+      size?: string;
+      weight?: string;
+    }) => (
+      <span
+        className={[
+          className,
+          size ? `tw:${size}` : undefined,
+          weight
+            ? `tw:font-${weight === 'regular' ? 'normal' : weight}`
+            : undefined,
+        ]
+          .filter(Boolean)
+          .join(' ')}>
+        {children}
+      </span>
+    )
+  ),
 }));
 
 const baseSource: ExploreSearchCardProps['source'] = {
@@ -335,6 +362,51 @@ describe('ExploreSearchCard - Entity type tags', () => {
 
     expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
     expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
+  });
+});
+
+describe('ExploreSearchCard - Metadata values', () => {
+  it('renders an empty owner value with 12px regular typography', () => {
+    renderCard({ owners: [] });
+
+    expect(
+      screen.getByTestId('owner-label').querySelector('.no-owner-text')
+    ).toHaveClass('tw:text-xs', 'tw:font-normal');
+  });
+
+  it('renders owner values with 12px regular typography', () => {
+    renderCard({
+      owners: [
+        {
+          id: 'owner-id',
+          name: 'test-owner',
+          displayName: 'Test Owner',
+          type: 'user',
+        },
+      ],
+    });
+
+    expect(screen.getByText('Test Owner')).toHaveClass(
+      'tw:text-xs',
+      'tw:font-normal'
+    );
+  });
+
+  it('renders owner rows with a 4px gap', () => {
+    renderCard({
+      owners: [
+        {
+          id: 'owner-id',
+          name: 'test-owner',
+          displayName: 'Test Owner',
+          type: 'user',
+        },
+      ],
+    });
+
+    expect(screen.getByRole('link', { name: 'Test Owner' })).toHaveClass(
+      'tw:gap-1!'
+    );
   });
 });
 
