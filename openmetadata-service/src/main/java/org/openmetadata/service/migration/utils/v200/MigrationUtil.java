@@ -1653,7 +1653,7 @@ public class MigrationUtil {
     try {
       EntityReference reference = resolveUserReference(userName);
       if (reference != null) {
-        ref = (ObjectNode) JsonUtils.readTree(JsonUtils.pojoToJson(reference));
+        ref = (ObjectNode) JsonUtils.valueToTree(reference);
       }
     } catch (Exception e) {
       LOG.warn("Could not resolve a user reference for '{}': {}", userName, e.getMessage());
@@ -2316,9 +2316,8 @@ public class MigrationUtil {
 
     private UUID incidentStateIdFromPayload(Task task) {
       UUID stateId = null;
-      if (task.getPayload() != null) {
-        Map<String, Object> payload = JsonUtils.readOrConvertValue(task.getPayload(), Map.class);
-        Object rawId = payload == null ? null : payload.get("testCaseResolutionStatusId");
+      if (task.getPayload() instanceof Map<?, ?> payload) {
+        Object rawId = payload.get("testCaseResolutionStatusId");
         if (rawId != null) {
           stateId = UUID.fromString(rawId.toString());
         }
