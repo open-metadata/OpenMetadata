@@ -59,22 +59,6 @@ export const waitForAllLoadersToDisappear = async (
   await expect(loaders).toHaveCount(0, { timeout });
 };
 
-/**
- * Force fresh table reads by stripping the client `If-None-Match` header on
- * `/api/v1/tables/**` requests. The server ETag is derived only from the table's
- * version/updatedAt, which child mutations (custom metrics, executable test suites)
- * do not bump — so a post-mutation refetch can receive a not-modified response and
- * render stale data. Removing the conditional header makes the server always return
- * the current body, eliminating that stale-read flake in tests.
- */
-export const forceFreshTableReads = async (page: Page) => {
-  await page.route('**/api/v1/tables/**', async (route) => {
-    const headers = route.request().headers();
-    delete headers['if-none-match'];
-    await route.continue({ headers });
-  });
-};
-
 export const visitEntityPage = async (data: {
   page: Page;
   searchTerm: string;

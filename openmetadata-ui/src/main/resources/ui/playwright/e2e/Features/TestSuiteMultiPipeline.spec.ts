@@ -18,10 +18,7 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
-import {
-  forceFreshTableReads,
-  waitForAllLoadersToDisappear,
-} from '../../utils/entity';
+import { waitForAllLoadersToDisappear } from '../../utils/entity';
 import {
   confirmIngestionPipelineHardDelete,
   submitTestCaseForm,
@@ -43,7 +40,6 @@ test(
     test.slow(true);
 
     await redirectToHomePage(page);
-    await forceFreshTableReads(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
@@ -246,7 +242,6 @@ test(
     test.slow(true);
 
     await redirectToHomePage(page);
-    await forceFreshTableReads(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
