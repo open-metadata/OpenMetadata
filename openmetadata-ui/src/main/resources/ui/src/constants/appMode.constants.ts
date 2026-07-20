@@ -33,6 +33,28 @@
 
 export const APP_MODE_SESSION_KEY = 'omAppMode';
 
+/**
+ * Transient cross-tab hint written to `localStorage` alongside every
+ * `writeAppMode` call. Lets a freshly-opened tab (which has an empty
+ * `sessionStorage`) inherit the mode of a sibling tab when it's within
+ * the TTL window — modern browsers do not copy sessionStorage across
+ * user-opened tabs even for same-origin links, so without this hint
+ * cmd/middle-clicking an AI-only URL from an AI tab lands on Classic
+ * and 404s.
+ *
+ * The hint is NOT the "remember on next login" preference (that stays
+ * on `usePersistentStorage[user].appMode`, written only by the switcher
+ * checkbox). It's short-lived signalling between concurrent tabs.
+ */
+export const APP_MODE_HINT_STORAGE_KEY = 'omAppModeHint';
+
+/**
+ * Age above which the app-mode hint is treated as absent. Long enough
+ * to cover cmd-click → new-tab-load latency; short enough that closing
+ * every tab and returning later reads as a fresh session.
+ */
+export const APP_MODE_HINT_TTL_MS = 60_000;
+
 export const DEFAULT_APP_MODE = 'default';
 
 /**

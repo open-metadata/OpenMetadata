@@ -24,7 +24,13 @@ import { AppMode } from '../generated/type/personaPreferences';
 import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
-import { clearAppMode, readAppModeSession, writeAppMode } from './useAppMode';
+import {
+  clearAppMode,
+  isAppModeHintFresh,
+  readAppModeHint,
+  readAppModeSession,
+  writeAppMode,
+} from './useAppMode';
 import { useAppRoutesRegistry } from './useAppRoutesRegistry';
 
 const PERSONA_APP_MODE_QUERY_KEY = 'persona-app-mode-doc';
@@ -146,6 +152,19 @@ export const useResolvedAppMode = (): void => {
     }
 
     if (validSession && validSession.personaAppMode === currentPersonaAppMode) {
+      return;
+    }
+
+    // Cross-tab hint: when this tab has no session (fresh open, e.g. a
+    // cmd+click from a sibling AI tab), adopt the hint before falling
+    // through to persona / user pref. The hint represents the user's
+    // most-recent active choice across any tab of this browser and
+    // should trump both persona and pref within its TTL, matching the
+    // sessionStorage-tuple's "manual switch survives until close" rule.
+    const hint = validSession ? null : readAppModeHint();
+    if (isAppModeHintFresh(hint) && hint && isModeRegistered(hint.mode)) {
+      writeAppMode(hint.mode, currentPersonaAppMode);
+
       return;
     }
 

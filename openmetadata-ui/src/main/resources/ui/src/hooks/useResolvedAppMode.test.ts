@@ -16,6 +16,8 @@ import { renderHook, waitFor } from '@testing-library/react';
 import { createElement, ReactNode } from 'react';
 import {
   AI_APP_MODE,
+  APP_MODE_HINT_STORAGE_KEY,
+  APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
@@ -94,6 +96,17 @@ const seedSessionTuple = (
   }
 };
 
+const seedHint = (hint: { mode: string; ts?: number } | null) => {
+  if (hint === null) {
+    globalThis.window.localStorage.removeItem(APP_MODE_HINT_STORAGE_KEY);
+  } else {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: hint.mode, ts: hint.ts ?? Date.now() })
+    );
+  }
+};
+
 const makeWrapper = () => {
   const client = new QueryClient({
     defaultOptions: {
@@ -121,6 +134,7 @@ describe('useResolvedAppMode', () => {
   beforeEach(() => {
     useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
     seedSessionTuple(null);
+    seedHint(null);
     seedRegistry(false);
     usePersistentStorage.setState({ preferences: {} } as never);
     seedUser({ authenticated: false });
@@ -275,6 +289,78 @@ describe('useResolvedAppMode', () => {
       expect(readAppModeSession()).toEqual({
         personaAppMode: null,
         mode: AI_APP_MODE,
+      });
+    });
+  });
+
+  it('adopts a fresh cross-tab hint when the session tuple is empty', async () => {
+    seedUser({});
+    seedRegistry(true);
+    // No persona, no user pref → default would win normally. A fresh
+    // hint from a sibling tab should override that.
+    seedHint({ mode: AI_APP_MODE });
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: AI_APP_MODE,
+      });
+    });
+  });
+
+  it('lets the hint trump persona when the tab has no session', async () => {
+    // The user is actively using AI in a sibling tab (hint written).
+    // Persona defaults to Classic — should NOT override the hint on
+    // this new tab, or cmd+click from AI mode would land on Classic
+    // and 404 on AI-only URLs.
+    seedUser({ personaId: 'persona-1', personaName: 'p' });
+    seedRegistry(true);
+    seedHint({ mode: AI_APP_MODE });
+    getDocumentByFQN.mockResolvedValue(personaDoc(AppMode.Classic));
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: DEFAULT_APP_MODE,
+        mode: AI_APP_MODE,
+      });
+    });
+  });
+
+  it('ignores a stale (TTL-expired) hint and falls through to normal precedence', async () => {
+    seedUser({});
+    seedRegistry(true);
+    seedHint({ mode: AI_APP_MODE, ts: Date.now() - APP_MODE_HINT_TTL_MS - 1 });
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: DEFAULT_APP_MODE,
+      });
+    });
+  });
+
+  it('ignores a fresh hint whose mode is not (yet) registered', async () => {
+    seedUser({});
+    seedRegistry(false);
+    seedHint({ mode: AI_APP_MODE });
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      // AI not registered → hint rejected → falls to DEFAULT.
+      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: DEFAULT_APP_MODE,
       });
     });
   });

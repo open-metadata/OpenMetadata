@@ -14,11 +14,15 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
+  APP_MODE_HINT_STORAGE_KEY,
+  APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import {
   clearAppMode,
+  isAppModeHintFresh,
+  readAppModeHint,
   readAppModeSession,
   useAppMode,
   useAppModeStore,
@@ -30,6 +34,7 @@ const resetStore = () => {
     useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
   });
   globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
+  globalThis.window.localStorage.removeItem(APP_MODE_HINT_STORAGE_KEY);
 };
 
 describe('useAppMode hook', () => {
@@ -135,6 +140,21 @@ describe('writeAppMode', () => {
       mode: 'ai',
     });
   });
+
+  it('writes the cross-tab hint to localStorage', () => {
+    writeAppMode('ai');
+
+    const raw = globalThis.window.localStorage.getItem(
+      APP_MODE_HINT_STORAGE_KEY
+    );
+
+    expect(raw).not.toBeNull();
+
+    const parsed = JSON.parse(raw ?? '') as { mode: string; ts: number };
+
+    expect(parsed.mode).toBe('ai');
+    expect(typeof parsed.ts).toBe('number');
+  });
 });
 
 describe('clearAppMode', () => {
@@ -154,6 +174,62 @@ describe('clearAppMode', () => {
     expect(
       globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY)
     ).toBeNull();
+  });
+
+  it('removes the cross-tab hint from localStorage', () => {
+    writeAppMode('ai');
+    clearAppMode();
+
+    expect(
+      globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY)
+    ).toBeNull();
+  });
+});
+
+describe('readAppModeHint / isAppModeHintFresh', () => {
+  beforeEach(resetStore);
+
+  it('returns null when no hint is present', () => {
+    expect(readAppModeHint()).toBeNull();
+    expect(isAppModeHintFresh(null)).toBe(false);
+  });
+
+  it('returns the hint written by writeAppMode', () => {
+    writeAppMode('ai');
+    const hint = readAppModeHint();
+
+    expect(hint?.mode).toBe('ai');
+    expect(typeof hint?.ts).toBe('number');
+    expect(isAppModeHintFresh(hint)).toBe(true);
+  });
+
+  it('treats a hint older than the TTL as stale', () => {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai', ts: Date.now() - APP_MODE_HINT_TTL_MS - 1 })
+    );
+    const hint = readAppModeHint();
+
+    expect(hint?.mode).toBe('ai');
+    expect(isAppModeHintFresh(hint)).toBe(false);
+  });
+
+  it('rejects a malformed hint payload', () => {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      '{not valid'
+    );
+
+    expect(readAppModeHint()).toBeNull();
+  });
+
+  it('rejects a hint missing the ts field', () => {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode: 'ai' })
+    );
+
+    expect(readAppModeHint()).toBeNull();
   });
 });
 

@@ -14,6 +14,8 @@
 import { isUndefined } from 'lodash';
 import { create } from 'zustand';
 import {
+  APP_MODE_HINT_STORAGE_KEY,
+  APP_MODE_HINT_TTL_MS,
   APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
@@ -29,6 +31,20 @@ import {
 export interface AppModeSession {
   personaAppMode: string | null;
   mode: string;
+}
+
+/**
+ * Transient cross-tab hint payload persisted in
+ * `localStorage[APP_MODE_HINT_STORAGE_KEY]`. Written on every
+ * `writeAppMode`; read by the boot resolver when the tab has no
+ * sessionStorage tuple (fresh tab opened from an existing one). Not a
+ * durable preference — the TTL rejects hints older than
+ * `APP_MODE_HINT_TTL_MS`, so a full browser restart / long idle reads
+ * as a clean slate. See `APP_MODE_HINT_STORAGE_KEY` docs.
+ */
+export interface AppModeHint {
+  mode: string;
+  ts: number;
 }
 
 const hasWindow = (): boolean => !isUndefined(globalThis.window);
@@ -100,6 +116,67 @@ const removeSession = (): void => {
   }
 };
 
+const readHint = (): AppModeHint | null => {
+  if (!hasWindow()) {
+    return null;
+  }
+  let raw: string | null = null;
+  try {
+    raw = globalThis.window.localStorage.getItem(APP_MODE_HINT_STORAGE_KEY);
+  } catch {
+    return null;
+  }
+  if (raw === null) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      'mode' in parsed &&
+      'ts' in parsed &&
+      typeof (parsed as AppModeHint).mode === 'string' &&
+      typeof (parsed as AppModeHint).ts === 'number'
+    ) {
+      return parsed as AppModeHint;
+    }
+  } catch {
+    // fall through — malformed payloads are treated as absent
+  }
+
+  return null;
+};
+
+const writeHint = (mode: string): void => {
+  if (!hasWindow()) {
+    return;
+  }
+  try {
+    globalThis.window.localStorage.setItem(
+      APP_MODE_HINT_STORAGE_KEY,
+      JSON.stringify({ mode, ts: Date.now() })
+    );
+  } catch {
+    // Storage disabled / quota exceeded — cross-tab mode inheritance
+    // silently degrades. Tabs still work independently.
+  }
+};
+
+const removeHint = (): void => {
+  if (!hasWindow()) {
+    return;
+  }
+  try {
+    globalThis.window.localStorage.removeItem(APP_MODE_HINT_STORAGE_KEY);
+  } catch {
+    // Same rationale as writeHint.
+  }
+};
+
+const isHintFresh = (hint: AppModeHint | null): boolean =>
+  hint !== null && Date.now() - hint.ts < APP_MODE_HINT_TTL_MS;
+
 interface AppModeStore {
   currentMode: string;
   setMode: (mode: string) => void;
@@ -107,9 +184,18 @@ interface AppModeStore {
 }
 
 const initialSession = readSession();
+// When sessionStorage is empty (fresh tab), fall back to the localStorage
+// hint if it's still fresh. This avoids a visible flash of Classic before
+// the resolver's effect runs and adopts the hint. The hint is only a seed
+// for the in-memory value — the resolver still writes the sessionStorage
+// tuple with proper persona-scoping once it has that context.
+const initialHint = initialSession ? null : readHint();
+const initialMode =
+  initialSession?.mode ??
+  (isHintFresh(initialHint) ? initialHint!.mode : DEFAULT_APP_MODE);
 
 export const useAppModeStore = create<AppModeStore>((set) => ({
-  currentMode: initialSession?.mode ?? DEFAULT_APP_MODE,
+  currentMode: initialMode,
   setMode: (mode) => set({ currentMode: mode }),
   reset: () => set({ currentMode: DEFAULT_APP_MODE }),
 }));
@@ -140,11 +226,15 @@ export const writeAppMode = (
 
   useAppModeStore.getState().setMode(mode);
   writeSession({ personaAppMode: nextPersonaAppMode, mode });
+  // Cross-tab hint: sibling / newly-opened tabs read this at boot when
+  // their sessionStorage is empty (see APP_MODE_HINT_STORAGE_KEY docs).
+  writeHint(mode);
 };
 
 export const clearAppMode = (): void => {
   useAppModeStore.getState().reset();
   removeSession();
+  removeHint();
 };
 
 /**
@@ -153,6 +243,21 @@ export const clearAppMode = (): void => {
  * session is still valid.
  */
 export const readAppModeSession = (): AppModeSession | null => readSession();
+
+/**
+ * Read the cross-tab mode hint. Exposed for the resolver so a newly-
+ * opened tab (empty sessionStorage) can adopt the mode of a sibling
+ * tab that wrote the hint within the TTL window.
+ */
+export const readAppModeHint = (): AppModeHint | null => readHint();
+
+/**
+ * True when the given hint is present and still within its TTL window.
+ * Exposed so consumers (resolver) share the same freshness rule as the
+ * initial in-memory hydration below.
+ */
+export const isAppModeHintFresh = (hint: AppModeHint | null): boolean =>
+  isHintFresh(hint);
 
 /**
  * True when a non-default app mode is active (e.g. Collate's AI mode).
