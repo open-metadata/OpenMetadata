@@ -16,9 +16,12 @@ import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.sql.ResultSet;
 import java.util.ArrayList;
+import java.util.Collection;
 import java.util.Collections;
+import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -40,6 +43,7 @@ import org.openmetadata.schema.entity.policies.accessControl.Rule;
 import org.openmetadata.schema.entity.tasks.Task;
 import org.openmetadata.schema.entity.teams.Role;
 import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
+import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.settings.Settings;
 import org.openmetadata.schema.type.ActivityEventType;
@@ -62,6 +66,7 @@ import org.openmetadata.schema.type.TaskType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
+import org.openmetadata.service.governance.workflows.Workflow;
 import org.openmetadata.service.governance.workflows.WorkflowHandler;
 import org.openmetadata.service.jdbi3.AnnouncementRepository;
 import org.openmetadata.service.jdbi3.CollectionDAO;
@@ -539,7 +544,10 @@ public class MigrationUtil {
         ObjectNode payload = JsonUtils.getObjectNode();
         payload.put("suggestionType", mappedSuggestionType);
 
-        String fieldPath = extractFieldPathFromEntityLink(entityLink);
+        String fieldPath =
+            "Tag".equals(mappedSuggestionType)
+                ? Entity.FIELD_TAGS
+                : extractFieldPathFromEntityLink(entityLink);
         payload.put("fieldPath", fieldPath);
 
         if ("Tag".equals(mappedSuggestionType)) {
@@ -628,6 +636,9 @@ public class MigrationUtil {
     }
 
     LOG.info("Found {} thread-based tasks to migrate", threads.size());
+
+    Map<String, String> umbrellaWorkflowInstanceIds =
+        resolveUmbrellaWorkflowInstanceIdBatch(handle, threads);
 
     long seqVal = getSequenceValue(handle);
     int migrated = 0;
@@ -755,6 +766,11 @@ public class MigrationUtil {
         taskJson.set("comments", JsonUtils.getObjectNode().arrayNode());
         taskJson.put("commentCount", 0);
         taskJson.set("tags", JsonUtils.getObjectNode().arrayNode());
+
+        String umbrellaWorkflowInstanceId = umbrellaWorkflowInstanceIds.get(threadId);
+        if (umbrellaWorkflowInstanceId != null) {
+          taskJson.put("workflowInstanceId", umbrellaWorkflowInstanceId);
+        }
 
         // Set resolution details for closed tasks
         if ("Closed".equals(oldStatus)) {
@@ -940,12 +956,12 @@ public class MigrationUtil {
       String entityFQN = entityLink.getEntityFQN();
 
       ObjectNode aboutRef = JsonUtils.getObjectNode();
-      if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
-        aboutRef.put("id", sourceJson.get("entityId").asText());
-      } else if (sourceJson.has("entityRef")
-          && sourceJson.get("entityRef").has("id")
-          && !sourceJson.get("entityRef").get("id").isNull()) {
-        aboutRef.put("id", sourceJson.get("entityRef").get("id").asText());
+      String entityId = extractEntityIdFromSource(sourceJson);
+      if (entityId == null) {
+        entityId = lookupEntityIdByFqn(entityType, entityFQN);
+      }
+      if (entityId != null) {
+        aboutRef.put("id", entityId);
       }
       aboutRef.put("type", entityType);
       aboutRef.put("fullyQualifiedName", entityFQN);
@@ -956,6 +972,46 @@ public class MigrationUtil {
     } catch (Exception e) {
       LOG.debug("Could not parse entityLink '{}': {}", entityLinkStr, e.getMessage());
     }
+  }
+
+  private static String extractEntityIdFromSource(JsonNode sourceJson) {
+    String resolvedId = null;
+    if (sourceJson.has("entityId") && !sourceJson.get("entityId").isNull()) {
+      resolvedId = sourceJson.get("entityId").asText();
+    } else if (sourceJson.has("entityRef")
+        && sourceJson.get("entityRef").has("id")
+        && !sourceJson.get("entityRef").get("id").isNull()) {
+      resolvedId = sourceJson.get("entityRef").get("id").asText();
+    }
+    return resolvedId;
+  }
+
+  /**
+   * Resolve the target entity's UUID from its fully-qualified name by delegating to the entity's
+   * repository. Suggestion rows and legacy activity threads only carry {@code entityLink} — no
+   * {@code entityId} or {@code entityRef} — so the migration needs to fetch the id here or the
+   * downstream Task V2 resolve endpoint has no anchor to patch. Repositories are available at
+   * migration time because {@code Entity.initializeRepositories()} runs before the v200 data
+   * migration. Returns {@code null} when the entity is missing (deleted upstream, unknown type)
+   * — the caller falls through to a partial {@code about} block with type + FQN only.
+   */
+  private static String lookupEntityIdByFqn(String entityType, String entityFQN) {
+    String resolvedId = null;
+    try {
+      EntityRepository<?> repo = Entity.getEntityRepository(entityType);
+      Object entity =
+          repo.getByName(null, entityFQN, repo.getFields(""), Include.NON_DELETED, true);
+      if (entity instanceof EntityInterface ei && ei.getId() != null) {
+        resolvedId = ei.getId().toString();
+      }
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve entity id for '{}' of type '{}': {}",
+          entityFQN,
+          entityType,
+          e.getMessage());
+    }
+    return resolvedId;
   }
 
   private static String extractFieldPathFromEntityLink(String entityLinkStr) {
@@ -1453,6 +1509,92 @@ public class MigrationUtil {
     handle.createUpdate(sql).bind("id", id).bind("json", json).bind("fqnHash", fqnHash).execute();
   }
 
+  /**
+   * Resolve the pre-2.0 umbrella {@code WorkflowInstance} UUID for a legacy Thread task by
+   * joining Flowable's process-scoped {@code workflowInstanceExecutionId} variable against
+   * {@code workflow_instance_state_time_series}. Setting this on the migrated Task closes the
+   * {@code shouldCreateWorkflowManagedTask} gate so {@code postCreate} does not spawn a
+   * duplicate task-scoped subprocess, leaving a single Flowable userTask for the resolve
+   * endpoint to complete against the existing umbrella. Returns {@code null} for closed threads
+   * (umbrella already ended) and post-2.0 tasks — those fall through the standard workflow-
+   * managed lifecycle.
+   */
+  private static String lookupLegacyUmbrellaWorkflowInstanceId(Handle handle, String threadId) {
+    Map<String, String> batch = lookupLegacyUmbrellaWorkflowInstanceIds(handle, List.of(threadId));
+    return batch.get(threadId);
+  }
+
+  /**
+   * Extract thread ids from a page of raw {@code thread_entity} rows and batch-resolve the
+   * pre-2.0 umbrella {@code workflowInstanceId} for each. Used by
+   * {@link #migrateThreadTasksToTaskEntity} and the equivalent Task V2 cutover so both migration
+   * paths share one join per page instead of two per row.
+   */
+  private static Map<String, String> resolveUmbrellaWorkflowInstanceIdBatch(
+      Handle handle, List<Map<String, Object>> threadRows) {
+    List<String> threadIds = new ArrayList<>(threadRows.size());
+    for (Map<String, Object> row : threadRows) {
+      try {
+        JsonNode json = JsonUtils.readTree(row.get("json").toString());
+        if (json != null && json.hasNonNull("id")) {
+          threadIds.add(json.get("id").asText());
+        }
+      } catch (Exception e) {
+        LOG.debug("Skipping thread row without parseable id: {}", e.getMessage());
+      }
+    }
+    return lookupLegacyUmbrellaWorkflowInstanceIds(handle, threadIds);
+  }
+
+  /**
+   * Batch variant of {@link #lookupLegacyUmbrellaWorkflowInstanceId(Handle, String)} — collapses
+   * the {@code ACT_HI_VARINST -> workflow_instance_state_time_series} join to one SQL per input
+   * page. The v200 migration processes threads and suggestions in 200-item pages; on catalogs
+   * with tens of thousands of pre-2.0 open tasks the per-row variant would issue two full scans
+   * of {@code ACT_HI_VARINST.text_} (unindexed) for every migrated row, holding the CLI JDBI
+   * handle for hours and effectively hanging the upgrade. The batched form scans the join once
+   * per page regardless of page size. Returns a map keyed by thread id; entries are only present
+   * for threads with an active pre-2.0 umbrella process (closed threads / post-2.0 tasks are
+   * absent so callers can fall through to the standard workflow-managed lifecycle).
+   */
+  private static Map<String, String> lookupLegacyUmbrellaWorkflowInstanceIds(
+      Handle handle, Collection<String> threadIds) {
+    Map<String, String> resolved = new HashMap<>();
+    if (threadIds == null || threadIds.isEmpty()) {
+      return resolved;
+    }
+    try {
+      handle
+          .createQuery(
+              "SELECT ct.text_ AS threadId, ws.workflowInstanceId "
+                  + "FROM ACT_HI_VARINST ct "
+                  + "JOIN ACT_HI_VARINST wx "
+                  + "  ON wx.proc_inst_id_ = ct.proc_inst_id_ "
+                  + " AND wx.name_ = 'workflowInstanceExecutionId' "
+                  + "JOIN workflow_instance_state_time_series ws "
+                  + "  ON ws.workflowInstanceExecutionId = wx.text_ "
+                  + "WHERE ct.name_ = 'customTaskId' "
+                  + "  AND ct.text_ IN (<threadIds>)")
+          .bindList("threadIds", List.copyOf(new LinkedHashSet<>(threadIds)))
+          .map(
+              (rs, ctx) -> {
+                String threadId = rs.getString(1);
+                String instanceId = rs.getString(2);
+                if (threadId != null && instanceId != null) {
+                  resolved.putIfAbsent(threadId, instanceId);
+                }
+                return null;
+              })
+          .list();
+    } catch (Exception e) {
+      LOG.debug(
+          "Could not resolve legacy umbrella workflowInstanceIds for {} threads: {}",
+          threadIds.size(),
+          e.getMessage());
+    }
+    return resolved;
+  }
+
   private static String lookupUserId(Handle handle, String userName) {
     if (userName == null || "system".equals(userName)) {
       return null;
@@ -1729,11 +1871,131 @@ public class MigrationUtil {
     public void runRecognizerFeedbackTaskTypeMigration() {
       int seededDefaults = ensureDefaultTaskWorkflows();
       int rewrittenRecognizerFeedbackTasks = rewriteRecognizerFeedbackDataQualityReviewTasks();
+      int rewrittenApprovalEdges = migrateUserApprovalTaskEdgeConditions();
 
       LOG.info(
-          "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}",
+          "Completed recognizer feedback task type migration. seededDefaults={}, rewrittenRecognizerFeedbackTasks={}, rewrittenApprovalEdges={}",
           seededDefaults,
-          rewrittenRecognizerFeedbackTasks);
+          rewrittenRecognizerFeedbackTasks,
+          rewrittenApprovalEdges);
+    }
+
+    /**
+     * Rewrite outbound edges from {@code userApprovalTask} nodes across every WorkflowDefinition
+     * so they use the Task V2 condition scheme ({@code approve}/{@code reject}) instead of the
+     * legacy boolean strings ({@code true}/{@code false}) previously injected by the v1105
+     * MigrationUtil. Existing running Flowable process instances are unaffected — they continue to
+     * execute against their frozen deployed BPMN, and TaskWorkflowHandler falls back to the
+     * deployed BPMN's condition scheme at resolve time.
+     *
+     * <p>Idempotent: WorkflowDefinitions with no legacy conditions on approval outbound edges are
+     * skipped. Duplicate edges (both {@code true} and {@code approve} present after prior migration
+     * runs) are collapsed to a single {@code approve}/{@code reject} edge.
+     *
+     * <p>The {@code createOrUpdate} call intentionally triggers a fresh Flowable BPMN deployment
+     * (via {@code postUpdate}) for each affected definition — the point of the migration is to
+     * emit a new ACT_RE_PROCDEF version whose outbound sequence flows reference
+     * {@code _result == 'approve'} / {@code _result == 'reject'}. Skipping the redeploy would
+     * leave the stale duplicate-edge BPMN in Flowable's repository and future task instances
+     * would still evaluate against the pre-fix conditions. The idempotency guard in
+     * {@link #rewriteApprovalEdgesInPlace} keeps this bounded to definitions that actually carry
+     * legacy conditions.
+     */
+    private int migrateUserApprovalTaskEdgeConditions() {
+      int migrated = 0;
+      try {
+        List<WorkflowDefinition> workflowDefinitions =
+            workflowDefinitionRepository.listAll(EntityUtil.Fields.EMPTY_FIELDS, new ListFilter());
+        for (WorkflowDefinition workflowDefinition : workflowDefinitions) {
+          if (rewriteApprovalEdgesInPlace(workflowDefinition)
+              && persistMigratedApprovalEdges(workflowDefinition)) {
+            migrated++;
+          }
+        }
+      } catch (RuntimeException e) {
+        LOG.error(
+            "[v200] Failed to iterate WorkflowDefinition rows for approval-edge migration: {}",
+            e.getMessage(),
+            e);
+      }
+      return migrated;
+    }
+
+    private boolean persistMigratedApprovalEdges(WorkflowDefinition workflowDefinition) {
+      boolean persisted = false;
+      try {
+        workflowDefinition.setUpdatedBy(ADMIN_USER_NAME);
+        workflowDefinition.setUpdatedAt(System.currentTimeMillis());
+        workflowDefinitionRepository.createOrUpdate(null, workflowDefinition, ADMIN_USER_NAME);
+        LOG.info(
+            "[v200] Migrated approval-edge conditions on workflow '{}'",
+            workflowDefinition.getName());
+        persisted = true;
+      } catch (RuntimeException e) {
+        LOG.error(
+            "[v200] Failed to persist approval-edge condition migration for workflow '{}': {}",
+            workflowDefinition.getName(),
+            e.getMessage());
+      }
+      return persisted;
+    }
+
+    private boolean rewriteApprovalEdgesInPlace(WorkflowDefinition workflowDefinition) {
+      Set<String> approvalNodeNames = collectApprovalNodeNames(workflowDefinition.getNodes());
+      List<EdgeDefinition> edges = workflowDefinition.getEdges();
+      boolean modified = false;
+      if (!approvalNodeNames.isEmpty() && edges != null) {
+        List<EdgeDefinition> rewritten = rewriteEdges(edges, approvalNodeNames);
+        modified = !rewritten.equals(edges);
+        if (modified) {
+          workflowDefinition.setEdges(rewritten);
+        }
+      }
+      return modified;
+    }
+
+    private Set<String> collectApprovalNodeNames(List<WorkflowNodeDefinitionInterface> nodes) {
+      Set<String> approvalNodeNames = new HashSet<>();
+      if (nodes != null) {
+        for (WorkflowNodeDefinitionInterface node : nodes) {
+          if (USER_APPROVAL_TASK_SUBTYPE.equals(node.getSubType())) {
+            approvalNodeNames.add(node.getName());
+          }
+        }
+      }
+      return approvalNodeNames;
+    }
+
+    private List<EdgeDefinition> rewriteEdges(
+        List<EdgeDefinition> edges, Set<String> approvalNodeNames) {
+      List<EdgeDefinition> rewritten = new ArrayList<>(edges.size());
+      Set<String> seenApprovalEdgeKeys = new HashSet<>();
+      for (EdgeDefinition edge : edges) {
+        EdgeDefinition next = rewriteApprovalEdge(edge, approvalNodeNames);
+        if (approvalNodeNames.contains(edge.getFrom())) {
+          String dedupKey = edge.getFrom() + "->" + edge.getTo() + ":" + next.getCondition();
+          if (!seenApprovalEdgeKeys.add(dedupKey)) {
+            continue;
+          }
+        }
+        rewritten.add(next);
+      }
+      return rewritten;
+    }
+
+    private EdgeDefinition rewriteApprovalEdge(EdgeDefinition edge, Set<String> approvalNodeNames) {
+      String condition = edge.getCondition();
+      if (approvalNodeNames.contains(edge.getFrom()) && condition != null) {
+        if (Workflow.LEGACY_APPROVE_CONDITION.equals(condition)) {
+          condition = Workflow.APPROVE_CONDITION;
+        } else if (Workflow.LEGACY_REJECT_CONDITION.equals(condition)) {
+          condition = Workflow.REJECT_CONDITION;
+        }
+      }
+      return new EdgeDefinition()
+          .withFrom(edge.getFrom())
+          .withTo(edge.getTo())
+          .withCondition(condition);
     }
 
     private int ensureDefaultTaskWorkflows() {
@@ -1824,13 +2086,30 @@ public class MigrationUtil {
           break;
         }
 
+        List<Thread> parsedThreads = new ArrayList<>(threadBatch.size());
         for (String threadJson : threadBatch) {
           try {
-            Thread legacyThread = JsonUtils.readValue(threadJson, Thread.class);
-            migrateLegacyThreadTask(legacyThread, stats);
+            parsedThreads.add(JsonUtils.readValue(threadJson, Thread.class));
           } catch (Exception e) {
             stats.failed++;
-            LOG.warn("Failed to parse/migrate legacy thread task JSON: {}", e.getMessage());
+            LOG.warn("Failed to parse legacy thread task JSON: {}", e.getMessage());
+          }
+        }
+
+        Map<String, String> umbrellaWorkflowInstanceIds =
+            lookupLegacyUmbrellaWorkflowInstanceIds(
+                handle,
+                parsedThreads.stream()
+                    .filter(t -> t != null && t.getId() != null)
+                    .map(t -> t.getId().toString())
+                    .toList());
+
+        for (Thread legacyThread : parsedThreads) {
+          try {
+            migrateLegacyThreadTask(legacyThread, stats, umbrellaWorkflowInstanceIds);
+          } catch (Exception e) {
+            stats.failed++;
+            LOG.warn("Failed to migrate legacy thread task: {}", e.getMessage());
           }
         }
 
@@ -1967,7 +2246,10 @@ public class MigrationUtil {
           .list();
     }
 
-    private void migrateLegacyThreadTask(Thread legacyThread, MigrationStats stats) {
+    private void migrateLegacyThreadTask(
+        Thread legacyThread,
+        MigrationStats stats,
+        Map<String, String> umbrellaWorkflowInstanceIds) {
       if (legacyThread == null || legacyThread.getId() == null || legacyThread.getTask() == null) {
         stats.skipped++;
         return;
@@ -1982,7 +2264,7 @@ public class MigrationUtil {
       }
 
       try {
-        Task migratedTask = buildTaskFromLegacyThread(legacyThread);
+        Task migratedTask = buildTaskFromLegacyThread(legacyThread, umbrellaWorkflowInstanceIds);
         Task createdTask = taskRepository.create(null, migratedTask);
         upsertTaskMigrationMapping(legacyThreadId, createdTask.getId());
         stats.migrated++;
@@ -2000,7 +2282,8 @@ public class MigrationUtil {
       }
     }
 
-    private Task buildTaskFromLegacyThread(Thread legacyThread) {
+    private Task buildTaskFromLegacyThread(
+        Thread legacyThread, Map<String, String> umbrellaWorkflowInstanceIds) {
       TaskDetails legacyTaskDetails = legacyThread.getTask();
       TypeAndCategory typeAndCategory = mapLegacyTaskType(legacyTaskDetails.getType());
 
@@ -2036,10 +2319,9 @@ public class MigrationUtil {
           convertPostsToComments(legacyThread.getPosts(), createdByRef, updatedAt);
       task.withComments(comments).withCommentCount(comments.size());
 
-      UUID runtimeWorkflowInstanceId =
-          workflowHandler.getRuntimeWorkflowInstanceId(legacyThread.getId());
-      if (runtimeWorkflowInstanceId != null) {
-        task.setWorkflowInstanceId(runtimeWorkflowInstanceId);
+      String batchedUmbrellaId = umbrellaWorkflowInstanceIds.get(legacyThread.getId().toString());
+      if (batchedUmbrellaId != null) {
+        task.setWorkflowInstanceId(UUID.fromString(batchedUmbrellaId));
       }
 
       if (status != TaskEntityStatus.Open) {

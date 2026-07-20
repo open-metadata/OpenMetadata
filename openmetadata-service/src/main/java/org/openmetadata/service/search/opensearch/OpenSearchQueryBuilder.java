@@ -401,6 +401,19 @@ public class OpenSearchQueryBuilder {
     return Query.of(q -> q.nested(n -> n.path(path).query(query).ignoreUnmapped(true)));
   }
 
+  public static Query constantScoreQuery(Query filter, Float boost) {
+    return Query.of(
+        q ->
+            q.constantScore(
+                cs -> {
+                  cs.filter(filter);
+                  if (boost != null) {
+                    cs.boost(boost);
+                  }
+                  return cs;
+                }));
+  }
+
   public static Query functionScoreQuery(
       Query query,
       List<FunctionScore> functions,
