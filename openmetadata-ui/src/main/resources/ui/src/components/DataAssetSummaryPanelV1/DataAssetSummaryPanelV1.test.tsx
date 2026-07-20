@@ -727,30 +727,38 @@ describe('DataAssetSummaryPanelV1', () => {
       });
     });
 
-    it('should throw error for unsupported entity type', async () => {
+    it('should not render summary sections for unknown entity types', async () => {
       const unsupportedProps = {
         ...defaultProps,
         entityType: 'UNSUPPORTED_TYPE' as EntityType,
       };
 
-      // Suppress console.error for this test
-      const consoleSpy = jest
-        .spyOn(console, 'error')
-        .mockImplementation(() => undefined);
-
       await act(async () => {
         render(<DataAssetSummaryPanelV1 {...unsupportedProps} />);
       });
 
-      // For unsupported entity types, the component should still render the skeleton
       expect(screen.getByTestId('summary-panel-skeleton')).toBeInTheDocument();
-
-      // The description section should not render for unsupported entity types
       expect(
         screen.queryByTestId('update-description-btn')
       ).not.toBeInTheDocument();
+      expect(screen.queryByTestId('owners-section')).not.toBeInTheDocument();
+      expect(screen.queryByTestId('tags-section')).not.toBeInTheDocument();
+    });
 
-      consoleSpy.mockRestore();
+    it('should render generic sections for explicitly mapped extension types', async () => {
+      const extensionEntityProps = {
+        ...defaultProps,
+        entityType: 'aiDashboard' as EntityType,
+        summaryEntityType: EntityType.ALL,
+      };
+
+      await act(async () => {
+        render(<DataAssetSummaryPanelV1 {...extensionEntityProps} />);
+      });
+
+      expect(screen.getByTestId('update-description-btn')).toBeInTheDocument();
+      expect(screen.getByTestId('owners-section')).toBeInTheDocument();
+      expect(screen.getByTestId('tags-section')).toBeInTheDocument();
     });
   });
 

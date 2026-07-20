@@ -63,6 +63,7 @@ import {
 export const DataAssetSummaryPanelV1 = ({
   dataAsset,
   entityType,
+  summaryEntityType = entityType,
   isLoading = false,
   componentType = DRAWER_NAVIGATION_OPTIONS.explore,
   onOwnerUpdate,
@@ -408,7 +409,7 @@ export const DataAssetSummaryPanelV1 = ({
       ? changeSummary?.[changeSummaryParams.fieldPrefix]
       : changeSummary?.description;
 
-    switch (entityType) {
+    switch (summaryEntityType) {
       case EntityType.API_COLLECTION:
       case EntityType.API_ENDPOINT:
       case EntityType.API_SERVICE:
@@ -803,6 +804,7 @@ export const DataAssetSummaryPanelV1 = ({
     }
   }, [
     entityType,
+    summaryEntityType,
     dataAsset,
     entityInfo,
     componentType,

@@ -831,6 +831,11 @@ class SearchClassBase {
     return null;
   }
 
+  /** Lets product extensions reuse a supported summary layout for their entity type. */
+  public getEntitySummaryPanelType(entityType: string): EntityType {
+    return entityType as EntityType;
+  }
+
   public getEntitiesSuggestions(
     _options: Array<Option>
   ): Array<{ suggestions: SearchSuggestions; searchIndex: SearchIndex }> {

@@ -849,6 +849,7 @@ export default function EntitySummaryPanel({
         entityType={type}
         highlights={highlights}
         panelPath={panelPath}
+        summaryEntityType={searchClassBase.getEntitySummaryPanelType(type)}
         onDataProductsUpdate={handleDataProductsUpdate}
         onDescriptionUpdate={handleDescriptionUpdate}
         onDomainUpdate={handleDomainUpdate}

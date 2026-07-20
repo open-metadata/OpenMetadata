@@ -185,6 +185,7 @@ jest.mock('../../../utils/SearchClassBase', () => ({
     getEntityLink: jest.fn().mockReturnValue('/entity/link'),
     getEntityIcon: jest.fn().mockReturnValue(<span>Icon</span>),
     getEntitySummaryComponent: jest.fn().mockReturnValue(null),
+    getEntitySummaryPanelType: jest.fn((entityType: string) => entityType),
   },
 }));
 
