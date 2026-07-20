@@ -29,13 +29,13 @@ import {
   Agent,
   AgentRecentRun,
   AgentRun,
+  AgentStatus as UiAgentStatus,
   LogLevel,
   LogLine,
   RunAttention,
   RunStatus,
   RunStep,
   RunTotals,
-  AgentStatus as UiAgentStatus,
 } from '../AgentsPage.interface';
 
 const RUN_STARTED_AT_FORMAT = 'MMM dd, yyyy · HH:mm';
