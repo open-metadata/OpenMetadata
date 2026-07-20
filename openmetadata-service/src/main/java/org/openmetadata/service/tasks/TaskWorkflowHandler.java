@@ -627,46 +627,114 @@ public class TaskWorkflowHandler {
       Object payload,
       TaskExecutionAction action) {
     try {
-      String targetFqn = entity.getFullyQualifiedName();
-      List<TagLabel> tagsToAdd = null;
-      List<TagLabel> tagsToRemove = null;
-
-      // Try to get tags from payload first (new format with tagsToAdd/tagsToRemove)
-      if (payload != null) {
-        JsonNode payloadNode = JsonUtils.valueToTree(payload);
-        String fieldPath = readPayloadString(payloadNode, action.fieldPathField(), "fieldPath");
-        if (fieldPath != null && !fieldPath.isEmpty()) {
-          targetFqn = resolveTagTargetFqn(entity, fieldPath);
-        }
-
-        tagsToAdd =
-            readTagLabels(payloadNode, action.addTagsField(), "tagsToAdd", "suggestedValue");
-        tagsToRemove = readTagLabels(payloadNode, action.removeTagsField(), "tagsToRemove", null);
-      }
-
-      // If newValue is provided (from resolution), parse it as the final tags to apply
-      // This is used when user edits the suggestion before accepting
-      if (newValue != null && !newValue.isEmpty()) {
-        List<TagLabel> newTags =
-            JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {});
-        if (newTags != null && !newTags.isEmpty()) {
-          tagsToAdd = newTags;
-          // When using newValue, we're replacing, so don't process tagsToRemove separately
-          tagsToRemove = null;
-        }
-      }
-
-      if (tagsToRemove != null && !tagsToRemove.isEmpty()) {
-        repository.applyTagsDelete(tagsToRemove, targetFqn);
-        LOG.info("[TaskWorkflowHandler] Removed {} tags from '{}'", tagsToRemove.size(), targetFqn);
-      }
-
-      if (tagsToAdd != null && !tagsToAdd.isEmpty()) {
-        repository.applyTags(tagsToAdd, targetFqn);
-        LOG.info("[TaskWorkflowHandler] Added {} tags to '{}'", tagsToAdd.size(), targetFqn);
+      TagResolution resolution = resolveTagResolution(payload, newValue, action);
+      if (resolution.hasChanges()) {
+        writeTagUpdate(task, entity, repository, user, resolution);
+      } else {
+        LOG.debug("[TaskWorkflowHandler] No tag changes to apply for task '{}'", task.getId());
       }
     } catch (Exception e) {
       LOG.error("[TaskWorkflowHandler] Failed to apply TagUpdate", e);
+    }
+  }
+
+  private TagResolution resolveTagResolution(
+      Object payload, String newValue, TaskExecutionAction action) {
+    String fieldPath = null;
+    List<TagLabel> tagsToAdd = null;
+    List<TagLabel> tagsToRemove = null;
+    if (payload != null) {
+      JsonNode payloadNode = JsonUtils.valueToTree(payload);
+      fieldPath = readPayloadString(payloadNode, action.fieldPathField(), "fieldPath");
+      tagsToAdd = readTagLabels(payloadNode, action.addTagsField(), "tagsToAdd", "suggestedValue");
+      tagsToRemove = readTagLabels(payloadNode, action.removeTagsField(), "tagsToRemove", null);
+    }
+    // A non-empty resolver-supplied newValue overrides the payload's add/remove split — it is the
+    // final desired tag set (reviewer-edited or reject-with-tags), so we treat it as a full
+    // replace.
+    if (newValue != null && !newValue.isEmpty()) {
+      List<TagLabel> newTags =
+          JsonUtils.readValue(newValue, new TypeReference<List<TagLabel>>() {});
+      if (newTags != null && !newTags.isEmpty()) {
+        tagsToAdd = newTags;
+        tagsToRemove = null;
+      }
+    }
+    return new TagResolution(fieldPath, tagsToAdd, tagsToRemove);
+  }
+
+  private void writeTagUpdate(
+      Task task,
+      EntityInterface entity,
+      EntityRepository<?> repository,
+      String user,
+      TagResolution resolution) {
+    // Entity-level tag tasks route through repository.patch so entity JSON is versioned +
+    // changeDescription generated + change event fires — matching a user-driven PATCH of
+    // entity.tags. Column/field-level tags stay on the direct tag_usage write: reflection-based
+    // in-memory mutation on nested Column objects produces a JSON patch that storeEntity flags as
+    // entityChanged=false (nested tag lists round-trip differently through Jackson), so it
+    // silently drops the tag update. Keeping the DAO path there preserves existing tag-write
+    // behavior (tags apply, no version bump — pre-existing gap).
+    boolean applied = false;
+    if (isEntityLevelTagPath(resolution.fieldPath())) {
+      applied =
+          FieldPathUtils.updateFieldTags(
+              entity,
+              repository,
+              user,
+              resolution.fieldPath(),
+              resolution.tagsToAdd(),
+              resolution.tagsToRemove());
+    }
+    if (applied) {
+      LOG.info(
+          "[TaskWorkflowHandler] Applied entity-level tag update for task '{}' (add={}, remove={})",
+          task.getId(),
+          resolution.addCount(),
+          resolution.removeCount());
+    } else {
+      writeTagsViaDao(task, entity, repository, resolution);
+    }
+  }
+
+  private void writeTagsViaDao(
+      Task task, EntityInterface entity, EntityRepository<?> repository, TagResolution resolution) {
+    String targetFqn = resolveTagTargetFqn(entity, resolution.fieldPath());
+    if (resolution.tagsToRemove() != null && !resolution.tagsToRemove().isEmpty()) {
+      repository.applyTagsDelete(resolution.tagsToRemove(), targetFqn);
+    }
+    if (resolution.tagsToAdd() != null && !resolution.tagsToAdd().isEmpty()) {
+      repository.applyTags(resolution.tagsToAdd(), targetFqn);
+    }
+    LOG.info(
+        "[TaskWorkflowHandler] Applied field-level tag update for task '{}' fieldPath='{}' targetFqn='{}'",
+        task.getId(),
+        resolution.fieldPath(),
+        targetFqn);
+  }
+
+  private boolean isEntityLevelTagPath(String fieldPath) {
+    return fieldPath == null
+        || fieldPath.isEmpty()
+        || "tags".equals(fieldPath)
+        || "entity".equals(fieldPath);
+  }
+
+  /** Resolved payload for a TagUpdate task: field path plus tag additions/removals. */
+  private record TagResolution(
+      String fieldPath, List<TagLabel> tagsToAdd, List<TagLabel> tagsToRemove) {
+    boolean hasChanges() {
+      return (tagsToAdd != null && !tagsToAdd.isEmpty())
+          || (tagsToRemove != null && !tagsToRemove.isEmpty());
+    }
+
+    int addCount() {
+      return tagsToAdd == null ? 0 : tagsToAdd.size();
+    }
+
+    int removeCount() {
+      return tagsToRemove == null ? 0 : tagsToRemove.size();
     }
   }
 
