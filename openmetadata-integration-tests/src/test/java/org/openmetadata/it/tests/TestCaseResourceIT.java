@@ -2795,7 +2795,6 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                   "bulk list derivation must agree with the single read");
             });
 
-    // A passing run does NOT close the incident: the pointer must survive it.
     client
         .testCaseResults()
         .create(
@@ -2805,7 +2804,7 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
                 .withTestCaseStatus(org.openmetadata.schema.tests.type.TestCaseStatus.Success)
                 .withResult("Passing while incident open"));
 
-    Awaitility.await("open incident stays visible while the test passes")
+    Awaitility.await("a passing run hides the incident (rule A)")
         .atMost(90, TimeUnit.SECONDS)
         .pollInterval(Duration.ofSeconds(2))
         .untilAsserted(
@@ -2816,7 +2815,8 @@ public class TestCaseResourceIT extends BaseEntityIT<TestCase, CreateTestCase> {
               assertEquals(
                   org.openmetadata.schema.tests.type.TestCaseStatus.Success,
                   fetched.getTestCaseResult().getTestCaseStatus());
-              assertNotNull(fetched.getIncidentId());
+              assertNull(fetched.getIncidentId());
+              assertNull(bulkListedIncidentId(client, table, testCase));
             });
   }
 

@@ -75,6 +75,7 @@ import org.openmetadata.schema.tests.type.TestCaseFailureReasonType;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.tests.type.TestCaseResolutionStatusTypes;
 import org.openmetadata.schema.tests.type.TestCaseResult;
+import org.openmetadata.schema.tests.type.TestCaseStatus;
 import org.openmetadata.schema.type.ApiStatus;
 import org.openmetadata.schema.type.ChangeDescription;
 import org.openmetadata.schema.type.EntityReference;
@@ -412,7 +413,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
     }
 
     Map<String, TestCaseResult> fqnToResult = new HashMap<>();
-    if (setResults) {
+    if (setResults || setIncidents) {
       List<CollectionDAO.LatestRecordWithFQNHash> records =
           daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(fqns);
       for (CollectionDAO.LatestRecordWithFQNHash record : records) {
@@ -426,7 +427,6 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
       }
     }
 
-    // Ongoing incident = latest unresolved resolution-status record, not the result's stamped id.
     Map<String, UUID> fqnToOngoingIncident = new HashMap<>();
     if (setIncidents) {
       List<CollectionDAO.LatestRecordWithFQNHash> incidentRecords =
@@ -439,7 +439,8 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           if (latest != null
               && latest.getStateId() != null
               && !TestCaseResolutionStatusTypes.Resolved.equals(
-                  latest.getTestCaseResolutionStatusType())) {
+                  latest.getTestCaseResolutionStatusType())
+              && isFailedResult(fqnToResult.get(fqn))) {
             fqnToOngoingIncident.put(fqn, latest.getStateId());
           }
         }
@@ -1075,11 +1076,27 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
 
   /** StateId of the test case's ongoing incident: latest unresolved record, or null if resolved. */
   private UUID getIncidentId(TestCase test) {
+    if (!latestResultIsFailed(test.getFullyQualifiedName())) {
+      return null;
+    }
     TestCaseResolutionStatusRepository tcrsRepo =
         (TestCaseResolutionStatusRepository)
             Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
     TestCaseResolutionStatus latest = tcrsRepo.getLatestRecord(test.getFullyQualifiedName());
     return Boolean.TRUE.equals(tcrsRepo.unresolvedIncident(latest)) ? latest.getStateId() : null;
+  }
+
+  private boolean latestResultIsFailed(String testCaseFqn) {
+    List<CollectionDAO.LatestRecordWithFQNHash> records =
+        daoCollection.dataQualityDataTimeSeriesDao().getLatestRecordBatch(List.of(testCaseFqn));
+    if (records.isEmpty() || records.get(0).getJson() == null) {
+      return false;
+    }
+    return isFailedResult(JsonUtils.readValue(records.get(0).getJson(), TestCaseResult.class));
+  }
+
+  private static boolean isFailedResult(TestCaseResult result) {
+    return result != null && result.getTestCaseStatus() == TestCaseStatus.Failed;
   }
 
   public int getTestCaseCount(List<UUID> testCaseIds) {
