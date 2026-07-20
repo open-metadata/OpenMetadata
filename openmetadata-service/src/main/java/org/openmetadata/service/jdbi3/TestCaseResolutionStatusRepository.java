@@ -331,12 +331,11 @@ public class TestCaseResolutionStatusRepository
       try {
         task = taskRepository.reopenTaskWithWorkflow(task, reopeningUser);
       } catch (Exception e) {
-        LOG.warn(
-            "Failed to reopen incident task {} for {}; falling back to direct TCRS insert",
-            task.getId(),
-            recordFQN,
-            e);
-        return false;
+        LOG.error("Failed to reopen incident task {} for {}", task.getId(), recordFQN, e);
+        if (e instanceof RuntimeException) {
+          throw (RuntimeException) e;
+        }
+        throw new RuntimeException(e);
       }
     }
 
