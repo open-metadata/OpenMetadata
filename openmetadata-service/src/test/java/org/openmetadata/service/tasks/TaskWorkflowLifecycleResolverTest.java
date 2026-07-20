@@ -336,6 +336,33 @@ class TaskWorkflowLifecycleResolverTest {
   }
 
   @Test
+  void builtInDataAccessRequestSchemaAcceptsNumericExpirationDate() {
+    TaskFormSchemaRepository repository = mock(TaskFormSchemaRepository.class);
+
+    try (MockedStatic<Entity> entityMock = Mockito.mockStatic(Entity.class)) {
+      entityMock
+          .when(() -> Entity.getEntityRepository(Entity.TASK_FORM_SCHEMA))
+          .thenReturn(repository);
+      when(repository.resolve(
+              TaskEntityType.DataAccessRequest.value(), TaskCategory.DataAccess.value(), null))
+          .thenReturn(Optional.empty());
+
+      TaskFormSchema schema =
+          TaskWorkflowLifecycleResolver.resolveSchema(
+                  TaskEntityType.DataAccessRequest, TaskCategory.DataAccess, null)
+              .orElseThrow();
+
+      Map<?, ?> properties =
+          assertInstanceOf(
+              Map.class, schema.getFormSchema().getAdditionalProperties().get("properties"));
+      Map<?, ?> expirationDate = assertInstanceOf(Map.class, properties.get("expirationDate"));
+
+      assertEquals("number", expirationDate.get("type"));
+      assertFalse(properties.containsKey("duration"));
+    }
+  }
+
+  @Test
   void resolveBindingDefaultsCategoryForBuiltInTaskTypes() {
     TaskFormSchemaRepository repository = mock(TaskFormSchemaRepository.class);
 

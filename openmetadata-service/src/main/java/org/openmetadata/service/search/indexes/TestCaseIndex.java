@@ -44,6 +44,19 @@ public record TestCaseIndex(TestCase testCase) implements TaggableIndex {
   }
 
   @Override
+  public Map<String, Object> buildSearchIndexDoc(DocBuildContext ctx) {
+    Map<String, Object> doc = TaggableIndex.super.buildSearchIndexDoc(ctx);
+    Long revision = ctx.relationshipRevision();
+    if (revision == null) {
+      revision =
+          TestCaseRepository.getTestSuiteRelationshipRevisions(List.of(testCase.getId()))
+              .getOrDefault(testCase.getId(), 0L);
+    }
+    doc.put(TestCaseRepository.TEST_SUITES_REVISION_FIELD, revision);
+    return doc;
+  }
+
+  @Override
   public void removeNonIndexableFields(Map<String, Object> esDoc) {
     TaggableIndex.super.removeNonIndexableFields(esDoc);
     List<Map<String, Object>> testSuites =
