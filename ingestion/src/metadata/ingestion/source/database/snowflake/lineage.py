@@ -56,6 +56,9 @@ from metadata.ingestion.source.database.snowflake.query_parser import (
     SNOWFLAKE_QUERY_BATCH_SIZE,
     SnowflakeQueryParserSource,
 )
+from metadata.ingestion.source.database.snowflake.semantic_view_lineage import (
+    SnowflakeSemanticViewLineage,
+)
 from metadata.ingestion.source.database.stored_procedures_mixin import (
     StoredProcedureLineageMixin,
 )
@@ -235,6 +238,23 @@ class SnowflakeLineageSource(SnowflakeQueryParserSource, StoredProcedureLineageM
             yield from self._yield_access_history_lineage()  # pyright: ignore[reportReturnType]
             return
         yield from super().yield_query_lineage()
+
+    def _iter(self, *args, **kwargs) -> Iterable[Either[Union[AddLineageRequest, CreateQueryRequest]]]:  # noqa: UP007
+        """Run the base lineage producers, then append semantic view lineage."""
+        yield from super()._iter(*args, **kwargs)
+        if self.source_config.processViewLineage:
+            yield from self.yield_semantic_view_lineage()
+
+    def yield_semantic_view_lineage(self) -> Iterable[Either[AddLineageRequest]]:
+        """Build lineage from Snowflake semantic views to their base tables."""
+        logger.info("Processing Semantic View Lineage")
+        extractor = SnowflakeSemanticViewLineage(
+            service_name=self.config.serviceName,
+            engine=self.engine,
+            database_filter_pattern=self.source_config.databaseFilterPattern,
+            resolve_table_by_fqn=self._get_table_by_fqn,
+        )
+        yield from extractor.iter_lineage()
 
     def _yield_access_history_lineage(self) -> Iterable[Either[AddLineageRequest]]:
         """
