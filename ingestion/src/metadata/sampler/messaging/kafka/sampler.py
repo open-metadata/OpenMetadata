@@ -147,6 +147,9 @@ class KafkaSampler(MessagingSampler):
                 if msg is None:
                     continue
                 if msg.error():
+                    if msg.error().retriable():
+                        logger.debug("Transient Kafka consumer error, retrying: %s", msg.error())
+                        continue
                     logger.warning("Kafka consumer error: %s", msg.error())
                     break
                 if msg.value():

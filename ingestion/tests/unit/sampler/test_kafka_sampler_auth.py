@@ -157,3 +157,36 @@ def test_fetch_messages_reaches_count_before_timeout(mock_time, mock_consumer_cl
     assert messages[0] == {"test": "data1"}
     assert messages[1] == {"test": "data2"}
     mock_consumer.close.assert_called_once()
+
+
+@patch("metadata.sampler.messaging.kafka.sampler.Consumer")
+@patch("metadata.sampler.messaging.kafka.sampler.time.time")
+def test_fetch_messages_skips_transient_error(mock_time, mock_consumer_class):
+    mock_consumer = MagicMock()
+    mock_consumer_class.return_value = mock_consumer
+
+    transient_error = MagicMock()
+    error_detail = MagicMock()
+    error_detail.retriable.return_value = True
+    transient_error.error.return_value = error_detail
+
+    real_msg = MagicMock()
+    real_msg.error.return_value = None
+    real_msg.value.return_value = b'{"test": "data"}'
+
+    mock_consumer.poll.side_effect = [transient_error, real_msg, None]
+    mock_time.side_effect = [0.0, 1.0, 2.0, 3.0]
+
+    connection_config = KafkaConnection(bootstrapServers="localhost:9092", type="Kafka")
+    entity = MagicMock()
+    entity.fullyQualifiedName = FullyQualifiedEntityName("kafka.test-topic")
+    sampler = KafkaSampler(
+        service_connection_config=connection_config,
+        entity=entity,
+        ometa_client=MagicMock(),
+    )
+    messages = sampler._fetch_messages(count=1)
+
+    assert len(messages) == 1
+    assert messages[0] == {"test": "data"}
+    mock_consumer.close.assert_called_once()
