@@ -30,13 +30,17 @@ import {
   WorkflowInstance,
   WorkflowStatus,
 } from '../../generated/governance/workflows/workflowInstance';
-import { getAgentRuns } from '../../rest/applicationAPI';
+import { getAiAutomationRuns } from '../../rest/applicationAPI';
 import {
   getMultiChartsPreviewByName,
   setChartDataStreamConnection,
   stopChartDataStreamConnection,
 } from '../../rest/DataInsightAPI';
 import { searchQuery } from '../../rest/searchAPI';
+import {
+  automationRunToAppRunRecord,
+  getAutomationTemplate,
+} from '../../utils/AgentsStatusWidgetPureUtils';
 import {
   getFormattedAgentsList,
   getFormattedAgentsListFromAgentsLiveInfo,
@@ -224,22 +228,23 @@ const ServiceInsightsTab = ({
         const startTs = workflowStatesData?.mainInstanceState?.startedAt
           ? workflowStatesData.mainInstanceState.startedAt
           : getDayAgoStartGMTinMillis(6);
-        const recentRunStatusesPromise = collateAIagentsList.map((app) =>
-          getAgentRuns(app.name, {
-            service: serviceDetails.id,
-            startTs,
-            endTs,
-          })
+        const recentRunStatusesPromise = collateAIagentsList.map((automation) =>
+          getAiAutomationRuns(automation.id, startTs, endTs)
         );
 
         const statusData = await Promise.allSettled(recentRunStatusesPromise);
 
         recentRunStatuses = statusData.reduce((acc, cv, index) => {
-          const app = collateAIagentsList[index];
+          const automation = collateAIagentsList[index];
+          const template =
+            getAutomationTemplate(automation.name) ?? automation.name;
 
           return {
             ...acc,
-            [app.name]: cv.status === 'fulfilled' ? cv.value.data : [],
+            [template]:
+              cv.status === 'fulfilled'
+                ? cv.value.map(automationRunToAppRunRecord)
+                : [],
           };
         }, {});
       }
@@ -267,10 +272,11 @@ const ServiceInsightsTab = ({
             getPlatformInsightsChartDataFormattingMethod(data.data)
           );
 
-          setAgentsInfo(
+          setAgentsInfo((prev) =>
             getFormattedAgentsListFromAgentsLiveInfo(
               data.ingestionPipelineStatus,
-              data.appStatus
+              data.appStatus,
+              prev.filter((agent) => agent.isCollateAgent)
             )
           );
 

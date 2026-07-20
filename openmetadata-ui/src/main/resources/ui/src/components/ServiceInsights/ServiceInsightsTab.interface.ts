@@ -12,7 +12,7 @@
  */
 
 import { NO_RUNS_STATUS } from '../../constants/ServiceInsightsTab.constants';
-import { App } from '../../generated/entity/applications/app';
+import { CollateAgentAutomation } from '../../rest/applicationAPI';
 import {
   AppRunRecord,
   Status,
@@ -32,7 +32,7 @@ import {
 export interface ServiceInsightsTabProps {
   serviceDetails: ServicesType;
   workflowStatesData?: WorkflowStatesData;
-  collateAIagentsList: App[];
+  collateAIagentsList: CollateAgentAutomation[];
   ingestionPipelines?: IngestionPipeline[];
   isIngestionPipelineLoading: boolean;
   isCollateAIagentsLoading: boolean;

@@ -13,10 +13,27 @@
 
 import { render, screen } from '@testing-library/react';
 import {
+  AppRunRecord,
+  Status,
+} from '../generated/entity/applications/appRunRecord';
+import {
   WorkflowInstance,
   WorkflowStatus,
 } from '../generated/governance/workflows/workflowInstance';
-import { getAgentRunningStatusMessage } from './AgentsStatusWidgetUtils';
+import { PipelineState } from '../generated/entity/services/ingestionPipelines/ingestionPipeline';
+import {
+  AutomationPipelineRun,
+  CollateAgentAutomation,
+} from '../rest/applicationAPI';
+import {
+  automationRunToAppRunRecord,
+  getAutomationTemplate,
+} from './AgentsStatusWidgetPureUtils';
+import {
+  getAgentRunningStatusMessage,
+  getFormattedAgentsList,
+  getFormattedAgentsListFromAgentsLiveInfo,
+} from './AgentsStatusWidgetUtils';
 
 describe('getAgentRunningStatusMessage', () => {
   it('preserves a completed workflow message when no agents are present', () => {
@@ -37,5 +54,165 @@ describe('getAgentRunningStatusMessage', () => {
     expect(screen.getByTestId('agents-status-message')).toHaveTextContent(
       'message.auto-pilot-no-agents-message'
     );
+  });
+});
+
+describe('getAutomationTemplate', () => {
+  it.each([
+    ['mysql_prod_TierAutomation', 'TierAutomation'],
+    ['warehouse_DescriptionAutomation', 'DescriptionAutomation'],
+    ['svc_DataQualityAutomation', 'DataQualityAutomation'],
+  ])('resolves the template suffix of %s', (name, expected) => {
+    expect(getAutomationTemplate(name)).toBe(expected);
+  });
+
+  it('returns undefined for a name with no known template suffix', () => {
+    expect(getAutomationTemplate('SomeOtherApplication')).toBeUndefined();
+  });
+
+  it('does not match a bare template name lacking the service prefix', () => {
+    expect(getAutomationTemplate('TierAutomation')).toBeUndefined();
+  });
+});
+
+describe('automationRunToAppRunRecord', () => {
+  const run = (
+    over: Partial<AutomationPipelineRun> = {}
+  ): AutomationPipelineRun => ({
+    runId: 'run-1',
+    pipelineState: PipelineState.Success,
+    startDate: 1_000,
+    endDate: 4_000,
+    ...over,
+  });
+
+  it('renames the pipeline date fields onto the app-run field names', () => {
+    const result = automationRunToAppRunRecord(run());
+
+    expect(result.startTime).toBe(1_000);
+    expect(result.endTime).toBe(4_000);
+  });
+
+  it('derives execution time from the run window', () => {
+    expect(automationRunToAppRunRecord(run()).executionTime).toBe(3_000);
+  });
+
+  it('measures an unfinished run against the current time', () => {
+    jest.spyOn(Date, 'now').mockReturnValue(9_000);
+
+    expect(
+      automationRunToAppRunRecord(run({ endDate: undefined })).executionTime
+    ).toBe(8_000);
+
+    jest.spyOn(Date, 'now').mockRestore();
+  });
+
+  it('leaves execution time unset when the run has no start date', () => {
+    expect(
+      automationRunToAppRunRecord(
+        run({ startDate: undefined, endDate: undefined })
+      ).executionTime
+    ).toBeUndefined();
+  });
+
+  it.each([
+    [PipelineState.Queued, Status.Pending],
+    [PipelineState.Success, Status.Success],
+    [PipelineState.Failed, Status.Failed],
+    [PipelineState.PartialSuccess, Status.Failed],
+    [PipelineState.Running, Status.Running],
+    [PipelineState.Stopped, Status.Stopped],
+  ])('maps pipeline state %s to app run status %s', (state, expected) => {
+    expect(
+      automationRunToAppRunRecord(run({ pipelineState: state })).status
+    ).toBe(expected);
+  });
+
+  it('leaves status unset for a run with no pipeline state', () => {
+    expect(
+      automationRunToAppRunRecord(run({ pipelineState: undefined })).status
+    ).toBeUndefined();
+  });
+});
+
+describe('getFormattedAgentsList', () => {
+  const automation = (name: string): CollateAgentAutomation => ({
+    id: `${name}-id`,
+    name,
+  });
+
+  it('keys a Collate agent on its template for type and label', () => {
+    const [agent] = getFormattedAgentsList(
+      {},
+      [],
+      [automation('mysql_prod_TierAutomation')]
+    );
+
+    expect(agent.agentType).toBe('TierAutomation');
+    expect(agent.label).toBe('label.auto-tier');
+    expect(agent.isCollateAgent).toBe(true);
+  });
+
+  it('reads run status from the template-keyed run map', () => {
+    const recentRunStatuses: Record<string, AppRunRecord[]> = {
+      TierAutomation: [{ status: Status.Failed } as AppRunRecord],
+    };
+
+    const [agent] = getFormattedAgentsList(
+      recentRunStatuses,
+      [],
+      [automation('mysql_prod_TierAutomation')]
+    );
+
+    expect(agent.status).toBe('Failed');
+  });
+
+  it('orders Collate agents by the AutoPilot template sequence', () => {
+    const agents = getFormattedAgentsList(
+      {},
+      [],
+      [
+        automation('svc_DataQualityAutomation'),
+        automation('svc_TierAutomation'),
+        automation('svc_DescriptionAutomation'),
+      ]
+    );
+
+    expect(agents.map((a) => a.agentType)).toEqual([
+      'TierAutomation',
+      'DescriptionAutomation',
+      'DataQualityAutomation',
+    ]);
+  });
+});
+
+describe('getFormattedAgentsListFromAgentsLiveInfo', () => {
+  it('preserves REST-populated Collate agents when a tick carries no app status', () => {
+    const preserved = getFormattedAgentsList(
+      {},
+      [],
+      [{ id: 'a1', name: 'svc_TierAutomation' }]
+    );
+
+    // A live tick with only ingestion status must not drop the Collate agent.
+    const result = getFormattedAgentsListFromAgentsLiveInfo([], [], preserved);
+
+    expect(result.map((a) => a.agentType)).toEqual(['TierAutomation']);
+  });
+
+  it('prefers live Collate app status over the preserved fallback', () => {
+    const preserved = getFormattedAgentsList(
+      {},
+      [],
+      [{ id: 'a1', name: 'svc_TierAutomation' }]
+    );
+
+    const result = getFormattedAgentsListFromAgentsLiveInfo(
+      [],
+      [{ appName: 'svc_DescriptionAutomation' } as never],
+      preserved
+    );
+
+    expect(result.map((a) => a.agentType)).toEqual(['DescriptionAutomation']);
   });
 });
