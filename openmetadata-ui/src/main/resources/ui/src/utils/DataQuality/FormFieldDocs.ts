@@ -118,7 +118,14 @@ export const loadFormFieldDocs = (
     } catch {
       // Runs after cacheFormDocs below (this await already suspended), so the
       // eviction lands on the entry that was stored, not ahead of it.
-      docsCache.delete(formName);
+      //
+      // Only evict if this failure's promise is still the cached one. The size
+      // cap can drop an in-flight entry, and a later call would then re-fetch
+      // under the same key — deleting by key alone would throw away that newer,
+      // possibly successful fetch on behalf of a request that is already dead.
+      if (docsCache.get(formName) === docs) {
+        docsCache.delete(formName);
+      }
 
       return {};
     }

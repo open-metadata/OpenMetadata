@@ -75,6 +75,12 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
   // after any field holding its doc as a local constant, so the map can open
   // with a field from the bottom of the form.
   const [firstName, setFirstName] = useState<string>();
+  // Re-read on every commit rather than only when `entries` changes. A form
+  // can reorder documented fields it has already mounted — same names, same
+  // docs — which leaves the registry untouched while the field at the top of
+  // the form is now a different one. Keying off `entries` would hold the old
+  // answer. Re-running costs one scoped querySelector, and setting the same
+  // name back is a no-op in React.
   useLayoutEffect(() => {
     // Scope the lookup to the surface this panel belongs to; a bare document
     // query would reach into any other documented form that happens to be
@@ -88,7 +94,7 @@ export const FieldDocPanel: FC<FieldDocPanelProps> = ({
         ?.querySelector('[data-field-doc]')
         ?.getAttribute('data-field-doc') ?? undefined
     );
-  }, [entries]);
+  });
   const firstEntry = firstName ? entries.get(firstName) : undefined;
   // Remembering the last entry is idempotent, so writing it during render is
   // safe under StrictMode's double-invoke.

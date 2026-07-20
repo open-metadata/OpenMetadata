@@ -177,4 +177,38 @@ describe('loadFormFieldDocs', () => {
     expect(mockFetchMarkdownFile).toHaveBeenCalledTimes(2);
     expect(retried.table).toContain('Select the table');
   });
+
+  it('does not evict a newer entry when an older fetch fails late', async () => {
+    // The size cap can drop an in-flight entry, after which a later call
+    // re-fetches under the same key. When the original failure finally lands,
+    // it must not delete that newer promise on its way out.
+    let failFirst: (error: Error) => void = () => undefined;
+    mockFetchMarkdownFile.mockImplementationOnce(
+      () =>
+        new Promise((_resolve, reject) => {
+          failFirst = reject;
+        })
+    );
+
+    const failing = loadFormFieldDocs('SampleFormF');
+
+    // Push the in-flight entry out with enough distinct forms to exceed the cap.
+    mockFetchMarkdownFile.mockResolvedValue(SAMPLE_MD);
+    await Promise.all(
+      Array.from({ length: 51 }, (_unused, index) =>
+        loadFormFieldDocs(`Filler${index}`)
+      )
+    );
+
+    const reFetched = await loadFormFieldDocs('SampleFormF');
+    failFirst(new Error('404 not found'));
+
+    await expect(failing).resolves.toEqual({});
+    // The re-fetch stays cached: a third call reuses it rather than refetching.
+    const callsBefore = mockFetchMarkdownFile.mock.calls.length;
+    const third = await loadFormFieldDocs('SampleFormF');
+
+    expect(mockFetchMarkdownFile).toHaveBeenCalledTimes(callsBefore);
+    expect(third).toBe(reFetched);
+  });
 });
