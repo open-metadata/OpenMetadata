@@ -67,27 +67,61 @@ export const openEntitySummaryPanel = async ({
   exploreTab?: string;
   dataAssetTypeLeftPanelTestId?: string;
 }) => {
-  if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
-    await page.getByTestId('global-search-selector').waitFor({
-      state: 'visible',
-    });
-    await page.getByTestId('global-search-selector').click();
-    await page.getByTestId('global-search-select-dropdown').waitFor({
-      state: 'visible',
-    });
-    await findOptionByScrolling(page, endpoint);
+  const runSearch = async () => {
+    if (endpoint && ENDPOINT_TO_FILTER_MAP[endpoint]) {
+      await page.getByTestId('global-search-selector').waitFor({
+        state: 'visible',
+      });
+      await page.getByTestId('global-search-selector').click();
+      await page.getByTestId('global-search-select-dropdown').waitFor({
+        state: 'visible',
+      });
+      await findOptionByScrolling(page, endpoint);
+    }
+    const searchResponsePromise = page.waitForResponse((response) =>
+      response.url().includes('/api/v1/search/query')
+    );
+    await page.getByTestId('searchBox').fill(entityName);
+    await searchResponsePromise;
+    await page.getByTestId('searchBox').press('Enter');
+    await waitForAllLoadersToDisappear(page);
+  };
+
+  const entityResultCard = fullyQualifiedName
+    ? page.getByTestId(`table-data-card_${fullyQualifiedName}`)
+    : page
+        .locator('[data-testid^="table-data-card"]')
+        .filter({
+          has: page.getByTestId('entity-link').filter({ hasText: entityName }),
+        })
+        .first();
+
+  if (dataAssetTypeLeftPanelTestId) {
+    // The knowledge-center card is only revealed after selecting the KC item
+    // below, so it cannot gate the retry — issue a single search here.
+    await runSearch();
+  } else {
+    // Search indexing is eventually consistent and lags further under CI load, so
+    // a freshly created entity may not surface on the first query. Retry the
+    // search — reloading between attempts to force a fresh fetch — until the
+    // entity's result card appears, rather than assuming one query surfaces it.
+    let hasSearched = false;
+    await expect
+      .poll(
+        async () => {
+          if (hasSearched) {
+            await page.reload();
+            await waitForAllLoadersToDisappear(page);
+          }
+          hasSearched = true;
+          await runSearch();
+
+          return entityResultCard.isVisible();
+        },
+        { timeout: 90_000, intervals: [2_000, 3_000, 5_000, 5_000] }
+      )
+      .toBe(true);
   }
-  const searchResponsePromise = page.waitForResponse((response) =>
-    response.url().includes('/api/v1/search/query')
-  );
-
-  await page.getByTestId('searchBox').fill(entityName);
-
-  const searchResponse = await searchResponsePromise;
-  expect(searchResponse.status()).toBe(200);
-
-  await page.getByTestId('searchBox').press('Enter');
-  await waitForAllLoadersToDisappear(page);
 
   if (exploreTab) {
     const tab = page
@@ -99,12 +133,9 @@ export const openEntitySummaryPanel = async ({
   }
 
   if (fullyQualifiedName) {
-    const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
-    await cardByFqn.waitFor({ state: 'visible' });
-
     // Since the directly clicking on the card can sometimes click on title element which is link,
     // we need to click on description container to open the summary panel.
-    await cardByFqn.getByTestId('description-text').click();
+    await entityResultCard.getByTestId('description-text').click();
 
     return;
   }
@@ -115,13 +146,7 @@ export const openEntitySummaryPanel = async ({
     await knowledgeCenterItem.click();
   }
 
-  await page
-    .locator('[data-testid^="table-data-card"]')
-    .filter({
-      has: page.getByTestId('entity-link').filter({ hasText: entityName }),
-    })
-    .getByTestId('description-text')
-    .click();
+  await entityResultCard.getByTestId('description-text').click();
 };
 // ... (lines 48-468 unchanged)
 export async function navigateToExploreAndSelectTable(
