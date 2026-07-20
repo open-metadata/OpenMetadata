@@ -873,7 +873,7 @@ class PostgresUnitTest(TestCase):
             "procedure_name": "healthy_proc",
             "schema_name": "test_schema",
             "definition": "def1",
-            "procedure_type": "PROCEDURE",
+            "procedure_type": "StoredProcedure",
         }
         good_row._asdict.return_value = dict(good_row._mapping)
 
@@ -889,6 +889,9 @@ class PostgresUnitTest(TestCase):
 
         self.assertEqual([result.name for result in results], ["healthy_proc"])
         self.postgres_source.status.failed.assert_called_once()
+        # the failure must name the offending procedure, not "UNKNOWN"
+        reported_error = self.postgres_source.status.failed.call_args.kwargs["error"]
+        self.assertEqual(reported_error.name, "null_prosrc_func")
 
 
 class TestPostgresCommonMappings(TestCase):
