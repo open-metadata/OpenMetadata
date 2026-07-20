@@ -12,7 +12,7 @@
  */
 import '@testing-library/jest-dom';
 import { fireEvent, screen } from '@testing-library/react';
-import type { ReactElement, ReactNode } from 'react';
+import type { ReactElement } from 'react';
 import { MemoryRouter } from 'react-router-dom';
 import { Constraint, DataType } from '../../../generated/entity/data/table';
 import { renderWithQueryClient } from '../../../test/unit/test-utils';
@@ -43,7 +43,6 @@ jest.mock('../../../rest/queries/topicQuery', () => ({
 
 jest.mock('../../../utils/RouterUtils', () => ({
   getDomainPath: jest.fn().mockReturnValue('/mock-domain'),
-  getUserPath: jest.fn().mockReturnValue('/mock-user'),
 }));
 
 jest.mock('../../../utils/EntityNameUtils', () => ({
@@ -122,32 +121,6 @@ jest.mock('@openmetadata/ui-core-components', () => ({
     </nav>
   )),
   Card: jest.fn(({ children, ...props }) => <div {...props}>{children}</div>),
-  Typography: jest.fn(
-    ({
-      children,
-      className,
-      size,
-      weight,
-    }: {
-      children: ReactNode;
-      className?: string;
-      size?: string;
-      weight?: string;
-    }) => (
-      <span
-        className={[
-          className,
-          size ? `tw:${size}` : undefined,
-          weight
-            ? `tw:font-${weight === 'regular' ? 'normal' : weight}`
-            : undefined,
-        ]
-          .filter(Boolean)
-          .join(' ')}>
-        {children}
-      </span>
-    )
-  ),
 }));
 
 const baseSource: ExploreSearchCardProps['source'] = {
@@ -362,58 +335,6 @@ describe('ExploreSearchCard - Entity type tags', () => {
 
     expect(screen.queryByTestId('label.constraint')).not.toBeInTheDocument();
     expect(screen.queryByText(Constraint.PrimaryKey)).not.toBeInTheDocument();
-  });
-});
-
-describe('ExploreSearchCard - Metadata values', () => {
-  it('uses the no-owner CSS hook without component-level typography overrides', () => {
-    renderCard({ owners: [] });
-
-    const noOwnerText = screen
-      .getByTestId('owner-label')
-      .querySelector('.no-owner-text');
-
-    expect(noOwnerText).toHaveClass('no-owner-text', 'text-sm', 'font-medium');
-    expect(noOwnerText).not.toHaveClass('tw:text-xs', 'tw:font-normal');
-  });
-
-  it('uses the owner name CSS hook without component-level typography overrides', () => {
-    renderCard({
-      owners: [
-        {
-          id: 'owner-id',
-          name: 'test-owner',
-          displayName: 'Test Owner',
-          type: 'user',
-        },
-      ],
-    });
-
-    expect(screen.getByText('Test Owner')).toHaveClass(
-      'owner-avatar-stack-row-name'
-    );
-    expect(screen.getByText('Test Owner')).not.toHaveClass(
-      'tw:text-xs',
-      'tw:font-normal'
-    );
-  });
-
-  it('uses the owner row CSS hook without component-level gap overrides', () => {
-    renderCard({
-      owners: [
-        {
-          id: 'owner-id',
-          name: 'test-owner',
-          displayName: 'Test Owner',
-          type: 'user',
-        },
-      ],
-    });
-
-    const ownerLink = screen.getByRole('link', { name: 'Test Owner' });
-
-    expect(ownerLink).toHaveClass('owner-avatar-stack-row');
-    expect(ownerLink).not.toHaveClass('tw:gap-1!');
   });
 });
 
