@@ -44,18 +44,11 @@ const ARCHIVE_PAGE_SIZE = 15;
 test.describe('Context Center - Archive Page', () => {
   let folder: ContextCenterFolder;
   let documentId = '';
-  let lazyLoadDocumentIds: string[] = [];
   const folderName = `archive-test-folder-${uuid()}`;
   const documentFileName = `archive-test-${uuid()}.txt`;
 
   test.beforeAll(async ({ browser }) => {
-    const namePrefix = `archive-lazy-load-${uuid()}`;
     const { apiContext, afterAction } = await createNewPage(browser);
-
-    const uploads = Array.from({ length: 18 }, (_, i) =>
-      createDisposableArchivedDocument(apiContext, `${namePrefix}-${i}`)
-    );
-    lazyLoadDocumentIds = (await Promise.all(uploads)).map(({ id }) => id);
 
     const folderRes = await apiContext.post(
       '/api/v1/contextCenter/drive/folders',
@@ -82,13 +75,6 @@ test.describe('Context Center - Archive Page', () => {
         )
         .catch(() => undefined);
     }
-    await Promise.all(
-      lazyLoadDocumentIds.map((id) =>
-        apiContext
-          .delete(`/api/v1/contextCenter/drive/files/${id}?hardDelete=true`)
-          .catch(() => undefined)
-      )
-    );
     if (folder?.id) {
       await apiContext
         .delete(
@@ -536,6 +522,59 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 // ─── Suite: Archive lazy-loading (infinite scroll) ──────────────────────────
 
 test.describe('Context Center - Archive Page Lazy Loading', () => {
+  let lazyLoadDocumentIds: string[] = [];
+
+  test.beforeAll(async ({ browser }) => {
+    const namePrefix = `archive-lazy-load-${uuid()}`;
+    const { apiContext, afterAction } = await createNewPage(browser);
+    const uploads = Array.from({ length: 18 }, (_, i) =>
+      createDisposableArchivedDocument(apiContext, `${namePrefix}-${i}`)
+    );
+    lazyLoadDocumentIds = (await Promise.all(uploads)).map(({ id }) => id);
+
+    await expect
+      .poll(
+        async () => {
+          const response = await apiContext.get(
+            '/api/v1/contextCenter/drive/files',
+            {
+              params: { include: 'deleted', orderBy: 'DESC', limit: 100 },
+            }
+          );
+          if (!response.ok()) {
+            return false;
+          }
+
+          const body = (await response.json()) as {
+            data: Array<{ id: string }>;
+          };
+          const archivedIds = new Set(body.data.map(({ id }) => id));
+
+          return lazyLoadDocumentIds.every((id) => archivedIds.has(id));
+        },
+        {
+          intervals: [1000, 2000, 5000],
+          timeout: 60000,
+        }
+      )
+      .toBe(true);
+
+    await afterAction();
+  });
+
+  test.afterAll(async ({ browser }) => {
+    const { apiContext, afterAction } = await createNewPage(browser);
+
+    await Promise.all(
+      lazyLoadDocumentIds.map((id) =>
+        apiContext
+          .delete(`/api/v1/contextCenter/drive/files/${id}?hardDelete=true`)
+          .catch(() => undefined)
+      )
+    );
+    await afterAction();
+  });
+
   test.beforeEach(async ({ page }) => {
     await redirectToHomePage(page);
   });
@@ -560,6 +599,7 @@ test.describe('Context Center - Archive Page Lazy Loading', () => {
 
       const body = await listRes.json();
       expect(body.data.length).toBeLessThanOrEqual(ARCHIVE_PAGE_SIZE);
+      expect(body.paging.after).toBeTruthy();
     });
 
     await expect(archiveView).toBeVisible();
@@ -578,8 +618,10 @@ test.describe('Context Center - Archive Page Lazy Loading', () => {
           res.request().method() === 'GET'
       );
 
-      await archiveView.hover();
-      await page.mouse.wheel(0, 5000);
+      await archiveView.evaluate((element) => {
+        element.scrollTop = element.scrollHeight;
+        element.dispatchEvent(new Event('scroll', { bubbles: true }));
+      });
 
       const moreRes = await moreResPromise;
       expect(moreRes.status()).toBe(200);

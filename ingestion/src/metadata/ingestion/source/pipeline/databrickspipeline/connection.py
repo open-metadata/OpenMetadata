@@ -13,6 +13,7 @@
 Source connection handler
 """
 
+from copy import deepcopy
 from typing import Optional
 
 from metadata.generated.schema.entity.automations.workflow import (
@@ -32,6 +33,7 @@ from metadata.ingestion.connections.builders import (
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
+from metadata.ingestion.source.database.databricks.auth import get_auth_config
 from metadata.ingestion.source.database.databricks.client import DatabricksClient
 from metadata.ingestion.source.database.databricks.log_filters import (
     suppress_user_agent_entry_deprecation_log,
@@ -42,19 +44,25 @@ suppress_user_agent_entry_deprecation_log()
 
 
 def get_connection_url(connection: DatabricksPipelineConnectionConfig) -> str:
-    url = f"databricks://token:{connection.token.get_secret_value()}@{connection.hostPort}"
+    url = f"databricks://{connection.hostPort}"
     return url  # noqa: RET504
 
 
 class DatabricksPipelineConnection(BaseConnection[DatabricksPipelineConnectionConfig, DatabricksClient]):
     def _get_client(self) -> DatabricksClient:
         connection = self.service_connection
+        if not connection.connectionArguments:
+            connection.connectionArguments = init_empty_connection_arguments()
+        if connection.connectionArguments.root is None:
+            connection.connectionArguments.root = {}
         if connection.httpPath:
-            if not connection.connectionArguments:
-                connection.connectionArguments = init_empty_connection_arguments()
-            if connection.connectionArguments.root is None:
-                connection.connectionArguments.root = {}
             connection.connectionArguments.root["http_path"] = connection.httpPath
+
+        auth_args = get_auth_config(connection)
+
+        original_connection_arguments = connection.connectionArguments
+        connection.connectionArguments = deepcopy(original_connection_arguments)
+        connection.connectionArguments.root.update(auth_args)  # pyright: ignore[reportOptionalMemberAccess]
 
         engine = create_generic_db_connection(
             connection=connection,
@@ -63,6 +71,7 @@ class DatabricksPipelineConnection(BaseConnection[DatabricksPipelineConnectionCo
         )
         self._on_close(engine.dispose)
 
+        connection.connectionArguments = original_connection_arguments
         return DatabricksClient(connection, engine)
 
     def test_connection(

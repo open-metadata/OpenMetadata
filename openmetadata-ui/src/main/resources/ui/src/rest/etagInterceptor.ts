@@ -42,6 +42,18 @@ import Qs from 'qs';
  * GET response is 5-50 KB so the cap holds the cache to ~10 MB worst case.
  */
 
+/**
+ * localStorage flag that opts a session out of client-side conditional (If-None-Match) reads.
+ *
+ * The server ETag is derived from the entity's version/updatedAt only, so it does not move for
+ * relationship-only or child mutations (followers, votes, customMetrics, testSuite). A refetch
+ * that races such a mutation can therefore be answered "not modified" and render a stale body.
+ * E2E runs set this flag in the Playwright auth setup, where it is persisted via storageState and
+ * inherited by every spec. Remove once the ETag reflects the requested fields and child state.
+ */
+export const DISABLE_ETAG_CONDITIONAL_READS_KEY =
+  'OM_DISABLE_ETAG_CONDITIONAL_READS';
+
 interface CachedEntry {
   etag: string;
   data: unknown;
