@@ -34,7 +34,13 @@ const emptyState = (
   />
 );
 
-const Demo = ({ showFieldDocs = true }: { showFieldDocs?: boolean }) => {
+const Demo = ({
+  showFieldDocs = true,
+  withDocs = true,
+}: {
+  showFieldDocs?: boolean;
+  withDocs?: boolean;
+}) => {
   const form = useForm({ defaultValues: { title: '', owner: '' } });
 
   // The panel is a real column inside the form surface, so unlike the popover
@@ -51,14 +57,14 @@ const Demo = ({ showFieldDocs = true }: { showFieldDocs?: boolean }) => {
           label: 'Title',
           id: 'title',
           type: FieldTypes.TEXT,
-          doc: TITLE_DOC,
+          doc: withDocs ? TITLE_DOC : undefined,
         })}
         {getField({
           name: 'owner',
           label: 'Owner',
           id: 'owner',
           type: FieldTypes.TEXT,
-          doc: OWNER_DOC,
+          doc: withDocs ? OWNER_DOC : undefined,
         })}
       </HookForm>
     </div>
@@ -74,10 +80,24 @@ export default meta;
 
 type Story = StoryObj<typeof Demo>;
 
-export const ShowsEmptyStateBeforeFocus: Story = {
+export const OpensOnFirstFieldDoc: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
 
+    // Nothing has focus on open, so the panel falls back to the first
+    // registered doc rather than sitting empty while it advertises hints.
+    expect(await canvas.findByText(TITLE_DOC)).toBeInTheDocument();
+    expect(canvas.queryByText(EMPTY)).not.toBeInTheDocument();
+  },
+};
+
+export const ShowsEmptyStateWithoutDocs: Story = {
+  args: { withDocs: false },
+  play: async ({ canvasElement }) => {
+    const canvas = within(canvasElement);
+
+    // The only route to the empty state now: a form where no field carries a
+    // doc at all, such as a read-only view that suppresses them.
     expect(await canvas.findByText(EMPTY)).toBeInTheDocument();
   },
 };
@@ -85,14 +105,18 @@ export const ShowsEmptyStateBeforeFocus: Story = {
 export const ShowsDocOnFocusAndSwapsOnRefocus: Story = {
   play: async ({ canvasElement }) => {
     const canvas = within(canvasElement);
-    await userEvent.click(canvas.getByLabelText('Title'));
 
-    expect(await canvas.findByText(TITLE_DOC)).toBeInTheDocument();
-
+    // Starts on the second field on purpose: the first field's doc is what the
+    // panel already shows, so focusing it would assert nothing.
     await userEvent.click(canvas.getByLabelText('Owner'));
 
     expect(await canvas.findByText(OWNER_DOC)).toBeInTheDocument();
     expect(canvas.queryByText(TITLE_DOC)).not.toBeInTheDocument();
+
+    await userEvent.click(canvas.getByLabelText('Title'));
+
+    expect(await canvas.findByText(TITLE_DOC)).toBeInTheDocument();
+    expect(canvas.queryByText(OWNER_DOC)).not.toBeInTheDocument();
   },
 };
 
