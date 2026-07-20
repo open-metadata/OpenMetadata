@@ -11,13 +11,9 @@
 """
 Named constructors for a ``TestConnectionStepResult``.
 
-Two axes describe a step outcome: ``passed`` is the boolean (did the check do its
-job?), ``status`` is the disposition/severity. ``Warning`` is the non-blocking
-"caution" bucket - either a non-mandatory step that *failed* (the user may just
-miss some metadata) or a step that *passed* but carries a ``caveat`` worth
-noticing. ``passed`` disambiguates the two. A ``Diagnosis`` (a classified failure
-or a caveat) is carried in the ``diagnosis`` field; the raw ``errorLog`` is
-failure-only.
+Two axes: ``passed`` (did the check do its job?) and ``status`` (severity).
+``Warning`` covers both a failed non-mandatory step and a passed one carrying a
+caveat; ``passed`` tells them apart. ``errorLog`` is failure-only.
 """
 
 from __future__ import annotations
