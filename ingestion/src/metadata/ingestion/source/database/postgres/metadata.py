@@ -275,7 +275,7 @@ class PostgresSource(CommonDbSourceService, MultiDBSource):
                     continue
                 yield stored_procedure
             except Exception as exc:
-                logger.error()
+                logger.debug(traceback.format_exc())
                 self.status.failed(
                     error=StackTraceError(
                         name=row._asdict().get("name", "UNKNOWN"),

@@ -848,6 +848,48 @@ class PostgresUnitTest(TestCase):
                 }
                 self.assertEqual(call_args[1]["entity_source_state"], expected_source_state)
 
+    def test_get_stored_procedures_skips_unparseable_row(self):
+        """
+        An unparseable row must be skipped and reported, not abort the whole schema
+        """
+        self.postgres_source.source_config.includeStoredProcedures = True
+        self.postgres_source.source_config.storedProcedureFilterPattern = None
+        self.postgres_source.status = MagicMock()
+
+        mock_engine = MagicMock()
+        self.postgres_source.engine = mock_engine
+
+        # definition is NULL: pg_proc.prosrc is nullable, the model requires a str
+        bad_row = MagicMock()
+        bad_row._mapping = {
+            "procedure_name": "null_prosrc_func",
+            "schema_name": "test_schema",
+            "definition": None,
+            "procedure_type": "Function",
+        }
+        bad_row._asdict.return_value = dict(bad_row._mapping)
+        good_row = MagicMock()
+        good_row._mapping = {
+            "procedure_name": "healthy_proc",
+            "schema_name": "test_schema",
+            "definition": "def1",
+            "procedure_type": "PROCEDURE",
+        }
+        good_row._asdict.return_value = dict(good_row._mapping)
+
+        mock_result = MagicMock()
+        mock_result.all.return_value = [bad_row, good_row]
+
+        mock_conn = MagicMock()
+        mock_conn.execute.return_value = mock_result
+        mock_engine.connect.return_value.__enter__ = MagicMock(return_value=mock_conn)
+        mock_engine.connect.return_value.__exit__ = MagicMock(return_value=False)
+
+        results = list(self.postgres_source._get_stored_procedures_internal("query"))
+
+        self.assertEqual([result.name for result in results], ["healthy_proc"])
+        self.postgres_source.status.failed.assert_called_once()
+
 
 class TestPostgresCommonMappings(TestCase):
     """Verify extended type entries in the shared PostgreSQL ischema_names map."""
