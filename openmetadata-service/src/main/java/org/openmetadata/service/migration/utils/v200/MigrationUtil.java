@@ -46,6 +46,7 @@ import org.openmetadata.schema.governance.workflows.WorkflowDefinition;
 import org.openmetadata.schema.governance.workflows.elements.EdgeDefinition;
 import org.openmetadata.schema.governance.workflows.elements.WorkflowNodeDefinitionInterface;
 import org.openmetadata.schema.settings.Settings;
+import org.openmetadata.schema.tests.type.TestCaseResolutionStatus;
 import org.openmetadata.schema.type.ActivityEventType;
 import org.openmetadata.schema.type.EntityReference;
 import org.openmetadata.schema.type.Include;
@@ -2273,11 +2274,16 @@ public class MigrationUtil {
     private boolean replayMigratedIncidentState(Task task) {
       boolean succeeded = true;
       try {
-        TestCaseResolutionStatusRepository incidentRepository =
-            (TestCaseResolutionStatusRepository)
-                Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
-        if (incidentRepository.reconcileIncidentTaskToLatestStatus(task)) {
-          LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
+        String recordFQN = task.getAbout() == null ? null : task.getAbout().getFullyQualifiedName();
+        if (recordFQN != null) {
+          TestCaseResolutionStatusRepository incidentRepository =
+              (TestCaseResolutionStatusRepository)
+                  Entity.getEntityTimeSeriesRepository(Entity.TEST_CASE_RESOLUTION_STATUS);
+          TestCaseResolutionStatus latest = incidentRepository.getLatestRecord(recordFQN);
+          if (latest != null
+              && incidentRepository.applyLegacyStatusToIncidentTask(latest, recordFQN)) {
+            LOG.info("Replayed pre-migration incident state onto task {}", task.getId());
+          }
         }
       } catch (Exception e) {
         LOG.warn(

@@ -283,29 +283,13 @@ public class TestCaseResolutionStatusRepository
   }
 
   /**
-   * Reconcile an incident task's workflow to the latest recorded {@link TestCaseResolutionStatus}
-   * for its test case, using the same bridge ({@link #applyLegacyStatusToIncidentTask}) that
-   * advances the workflow on a live TCRS write. Idempotent: {@link #resolveLegacyTransitionId}
-   * returns null (no-op) when the task is already at the target stage. One caller is the v200
-   * migration, which starts incident workflows at NewStage and uses this to restore a pre-upgrade
-   * Ack/Assigned state that would otherwise come back as New / No Owners.
+   * Bridge a legacy-style {@link TestCaseResolutionStatus} onto the task-first incident workflow,
+   * advancing the workflow task to match the recorded status. Used by {@link #storeInternal} on
+   * live Ack/Assigned/Resolved writes so existing TCRS clients keep working while Task remains the
+   * source of truth. Idempotent: {@link #resolveLegacyTransitionId} returns null (no-op) when the
+   * task is already at the target stage.
    */
-  public boolean reconcileIncidentTaskToLatestStatus(Task task) {
-    if (task == null || task.getAbout() == null) {
-      return false;
-    }
-    String recordFQN = task.getAbout().getFullyQualifiedName();
-    if (recordFQN == null) {
-      return false;
-    }
-    TestCaseResolutionStatus latest = getLatestRecord(recordFQN);
-    if (latest == null) {
-      return false;
-    }
-    return applyLegacyStatusToIncidentTask(latest, recordFQN);
-  }
-
-  private boolean applyLegacyStatusToIncidentTask(
+  public boolean applyLegacyStatusToIncidentTask(
       TestCaseResolutionStatus recordEntity, String recordFQN) {
     Task incidentTask = findIncidentTaskForLegacyStatus(recordEntity, recordFQN);
     if (incidentTask == null) {
