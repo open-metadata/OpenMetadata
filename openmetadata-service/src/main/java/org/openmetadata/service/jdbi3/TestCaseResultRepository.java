@@ -90,7 +90,7 @@ public class TestCaseResultRepository extends EntityTimeSeriesRepository<TestCas
 
   public Response addTestCaseResult(
       String updatedBy, UriInfo uriInfo, String fqn, TestCaseResult testCaseResult) {
-    TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "", Include.ALL);
+    TestCase testCase = Entity.getEntityByName(TEST_CASE, fqn, "incidentId", Include.ALL);
     if (testCaseResult.getTestCaseStatus() == TestCaseStatus.Success) {
       testCaseRepository.deleteTestCaseFailedRowsSample(testCase.getId());
       autoResolveIncidentOnSuccess(testCase);
