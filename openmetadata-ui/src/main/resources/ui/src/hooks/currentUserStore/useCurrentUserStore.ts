@@ -31,6 +31,13 @@ export interface UserPreferences {
   recentlySearched: RecentlySearchedData[];
   recentlyViewedQuickLinks: RecentlyViewedData[];
   marketplaceRecentSearches: MarketplaceRecentSearchEntry[];
+  /**
+   * Boot-time app-mode preference — the "open in this mode when I log in"
+   * checkbox in the app-mode switcher. `null` means "no explicit preference,
+   * fall back to persona/default at boot." Only the switcher's checkbox
+   * writes this field; runtime mode-switching does NOT touch it.
+   */
+  appMode: string | null;
 }
 
 interface Store {
@@ -51,6 +58,7 @@ const defaultPreferences: UserPreferences = {
   recentlySearched: [],
   recentlyViewedQuickLinks: [],
   marketplaceRecentSearches: [],
+  appMode: null,
 };
 
 export const usePersistentStorage = create<Store>()(

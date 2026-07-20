@@ -13,11 +13,71 @@
 
 import { isUndefined } from 'lodash';
 import { create } from 'zustand';
-import { createJSONStorage, persist } from 'zustand/middleware';
 import {
-  APP_MODE_STORAGE_KEY,
+  APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
+
+/**
+ * Payload persisted in `sessionStorage[APP_MODE_SESSION_KEY]`.
+ * `personaAppMode` is the value the resolver saw from the persona doc
+ * when this tuple was last written. `useResolvedAppMode` compares its
+ * current view of the persona's `appMode` against this snapshot to
+ * decide whether the persona has something new to say (invalidate the
+ * session) or not (respect the tab's chosen mode).
+ */
+export interface AppModeSession {
+  personaAppMode: string | null;
+  mode: string;
+}
+
+const hasWindow = (): boolean => !isUndefined(globalThis.window);
+
+const readSession = (): AppModeSession | null => {
+  if (!hasWindow()) {
+    return null;
+  }
+  const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+  if (raw === null) {
+    return null;
+  }
+  try {
+    const parsed = JSON.parse(raw) as unknown;
+    if (
+      parsed !== null &&
+      typeof parsed === 'object' &&
+      'mode' in parsed &&
+      typeof (parsed as AppModeSession).mode === 'string'
+    ) {
+      const tuple = parsed as AppModeSession;
+      const personaAppMode =
+        typeof tuple.personaAppMode === 'string' ? tuple.personaAppMode : null;
+
+      return { personaAppMode, mode: tuple.mode };
+    }
+  } catch {
+    // fall through — malformed payloads are treated as absent
+  }
+
+  return null;
+};
+
+const writeSession = (tuple: AppModeSession): void => {
+  if (!hasWindow()) {
+    return;
+  }
+  globalThis.window.sessionStorage.setItem(
+    APP_MODE_SESSION_KEY,
+    JSON.stringify(tuple)
+  );
+};
+
+const removeSession = (): void => {
+  if (!hasWindow()) {
+    return;
+  }
+  globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
+};
 
 interface AppModeStore {
   currentMode: string;
@@ -25,44 +85,53 @@ interface AppModeStore {
   reset: () => void;
 }
 
-export const useAppModeStore = create<AppModeStore>()(
-  persist(
-    (set) => ({
-      currentMode: DEFAULT_APP_MODE,
-      setMode: (mode) => set({ currentMode: mode }),
-      reset: () => set({ currentMode: DEFAULT_APP_MODE }),
-    }),
-    {
-      name: APP_MODE_STORAGE_KEY,
-      storage: createJSONStorage(() => localStorage),
-    }
-  )
-);
+const initialSession = readSession();
 
-// Cross-tab sync: persist middleware writes localStorage but doesn't
-// listen for changes from other tabs. Re-hydrate when another tab edits
-// the same key so all tabs converge on the new mode. The listener's
-// natural scope is the page lifetime, so we never remove it; the flag
-// prevents duplicate registrations if the module re-executes (HMR /
-// `jest.resetModules`).
-let storageListenerRegistered = false;
-
-if (!isUndefined(globalThis.window) && !storageListenerRegistered) {
-  storageListenerRegistered = true;
-  globalThis.window.addEventListener('storage', (event) => {
-    if (event.key === APP_MODE_STORAGE_KEY) {
-      void useAppModeStore.persist.rehydrate();
-    }
-  });
-}
+export const useAppModeStore = create<AppModeStore>((set) => ({
+  currentMode: initialSession?.mode ?? DEFAULT_APP_MODE,
+  setMode: (mode) => set({ currentMode: mode }),
+  reset: () => set({ currentMode: DEFAULT_APP_MODE }),
+}));
 
 export const useAppMode = (): string =>
   useAppModeStore((state) => state.currentMode);
 
-export const writeAppMode = (mode: string): void =>
-  useAppModeStore.getState().setMode(mode);
+/**
+ * Write the active app mode.
+ *
+ * - Updates the in-memory Zustand store so subscribers re-render.
+ * - Writes the `sessionStorage` tuple so refreshes inside the same tab
+ *   don't need to re-resolve.
+ *
+ * `personaAppMode` is the persona-scoping key: it captures what the
+ * resolver saw from the persona doc at the moment of write. Callers
+ * that don't know the persona value (the switcher, the desktop lock)
+ * omit it and the current tuple's `personaAppMode` is preserved.
+ */
+export const writeAppMode = (
+  mode: string,
+  personaAppMode?: string | null
+): void => {
+  const nextPersonaAppMode =
+    personaAppMode === undefined
+      ? readSession()?.personaAppMode ?? null
+      : personaAppMode;
 
-export const clearAppMode = (): void => useAppModeStore.getState().reset();
+  useAppModeStore.getState().setMode(mode);
+  writeSession({ personaAppMode: nextPersonaAppMode, mode });
+};
+
+export const clearAppMode = (): void => {
+  useAppModeStore.getState().reset();
+  removeSession();
+};
+
+/**
+ * Read the current session tuple. Exposed for the resolver, which needs
+ * to compare `personaAppMode` snapshots and decide whether the persisted
+ * session is still valid.
+ */
+export const readAppModeSession = (): AppModeSession | null => readSession();
 
 /**
  * True when a non-default app mode is active (e.g. Collate's AI mode).

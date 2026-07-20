@@ -16,13 +16,22 @@
  *
  * The active mode is a string. OM core stays mode-agnostic — it knows
  * about the abstraction (a current mode value, a registry to look up
- * mode-specific routes) but never names specific modes. Consumers
- * (plugins, themes) register their modes at runtime through
- * `useAppRoutesRegistry`. The mode is persisted to `localStorage` via
- * Zustand persist middleware (see `useAppModeStore`).
+ * mode-specific routes, a boot resolver) but never names specific modes.
+ * Consumers (plugins, themes) register their modes at runtime through
+ * `useAppRoutesRegistry`.
+ *
+ * The active mode is scoped to a tab via `sessionStorage`, keyed by the
+ * value below. The stored payload is a tuple:
+ *
+ *   { personaAppMode: string | null, mode: string }
+ *
+ * `personaAppMode` snapshots what the resolver saw from the persona doc
+ * at write time, so the resolver can tell whether the persona has
+ * something new to say (invalidate the session) or not (keep the tab's
+ * chosen mode). See `useResolvedAppMode` for the precedence logic.
  */
 
-export const APP_MODE_STORAGE_KEY = 'om.appMode';
+export const APP_MODE_SESSION_KEY = 'omAppMode';
 
 export const DEFAULT_APP_MODE = 'default';
 

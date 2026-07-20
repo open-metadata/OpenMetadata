@@ -14,11 +14,12 @@
 import { renderHook } from '@testing-library/react';
 import { act } from 'react';
 import {
-  APP_MODE_STORAGE_KEY,
+  APP_MODE_SESSION_KEY,
   DEFAULT_APP_MODE,
 } from '../constants/appMode.constants';
 import {
   clearAppMode,
+  readAppModeSession,
   useAppMode,
   useAppModeStore,
   writeAppMode,
@@ -28,19 +29,19 @@ const resetStore = () => {
   act(() => {
     useAppModeStore.setState({ currentMode: DEFAULT_APP_MODE });
   });
-  globalThis.window.localStorage.removeItem(APP_MODE_STORAGE_KEY);
+  globalThis.window.sessionStorage.removeItem(APP_MODE_SESSION_KEY);
 };
 
 describe('useAppMode hook', () => {
   beforeEach(resetStore);
 
-  it('returns the DEFAULT_APP_MODE when no value is persisted', () => {
+  it('returns DEFAULT_APP_MODE when no session tuple is present', () => {
     const { result } = renderHook(() => useAppMode());
 
     expect(result.current).toBe(DEFAULT_APP_MODE);
   });
 
-  it('returns the persisted value once writeAppMode has set one', () => {
+  it('returns the mode set via writeAppMode', () => {
     act(() => {
       writeAppMode('ai');
     });
@@ -82,20 +83,57 @@ describe('useAppMode hook', () => {
 describe('writeAppMode', () => {
   beforeEach(resetStore);
 
-  it('updates the store state', () => {
+  it('updates the in-memory store', () => {
     writeAppMode('ai');
 
     expect(useAppModeStore.getState().currentMode).toBe('ai');
   });
 
-  it('persists the new mode to localStorage (wrapped by Zustand persist)', () => {
+  it('writes a session tuple to sessionStorage', () => {
+    writeAppMode('ai', 'ai');
+
+    const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+
+    expect(raw).not.toBeNull();
+    expect(JSON.parse(raw ?? '')).toEqual({
+      personaAppMode: 'ai',
+      mode: 'ai',
+    });
+  });
+
+  it('preserves personaAppMode from the existing tuple when omitted', () => {
+    writeAppMode('ai', 'ai');
+    writeAppMode(DEFAULT_APP_MODE);
+
+    const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+
+    expect(JSON.parse(raw ?? '')).toEqual({
+      personaAppMode: 'ai',
+      mode: DEFAULT_APP_MODE,
+    });
+  });
+
+  it('defaults personaAppMode to null when no tuple exists and none is passed', () => {
     writeAppMode('ai');
 
-    const persisted =
-      globalThis.window.localStorage.getItem(APP_MODE_STORAGE_KEY);
+    const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
 
-    expect(persisted).not.toBeNull();
-    expect(JSON.parse(persisted ?? '').state.currentMode).toBe('ai');
+    expect(JSON.parse(raw ?? '')).toEqual({
+      personaAppMode: null,
+      mode: 'ai',
+    });
+  });
+
+  it('accepts an explicit null personaAppMode override', () => {
+    writeAppMode('ai', 'ai');
+    writeAppMode('ai', null);
+
+    const raw = globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY);
+
+    expect(JSON.parse(raw ?? '')).toEqual({
+      personaAppMode: null,
+      mode: 'ai',
+    });
   });
 });
 
@@ -107,5 +145,64 @@ describe('clearAppMode', () => {
     clearAppMode();
 
     expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+  });
+
+  it('removes the session tuple from sessionStorage', () => {
+    writeAppMode('ai');
+    clearAppMode();
+
+    expect(
+      globalThis.window.sessionStorage.getItem(APP_MODE_SESSION_KEY)
+    ).toBeNull();
+  });
+});
+
+describe('readAppModeSession', () => {
+  beforeEach(resetStore);
+
+  it('returns null when no tuple is present', () => {
+    expect(readAppModeSession()).toBeNull();
+  });
+
+  it('returns the parsed tuple when present', () => {
+    globalThis.window.sessionStorage.setItem(
+      APP_MODE_SESSION_KEY,
+      JSON.stringify({ personaAppMode: 'ai', mode: 'ai' })
+    );
+
+    expect(readAppModeSession()).toEqual({
+      personaAppMode: 'ai',
+      mode: 'ai',
+    });
+  });
+
+  it('normalises non-string personaAppMode to null', () => {
+    globalThis.window.sessionStorage.setItem(
+      APP_MODE_SESSION_KEY,
+      JSON.stringify({ personaAppMode: 123, mode: 'ai' })
+    );
+
+    expect(readAppModeSession()).toEqual({
+      personaAppMode: null,
+      mode: 'ai',
+    });
+  });
+
+  it('returns null when the payload is malformed JSON', () => {
+    globalThis.window.sessionStorage.setItem(
+      APP_MODE_SESSION_KEY,
+      '{not valid'
+    );
+
+    expect(readAppModeSession()).toBeNull();
+  });
+
+  it('returns null when the payload is missing `mode`', () => {
+    globalThis.window.sessionStorage.setItem(
+      APP_MODE_SESSION_KEY,
+      JSON.stringify({ personaAppMode: 'ai' })
+    );
+
+    expect(readAppModeSession()).toBeNull();
   });
 });

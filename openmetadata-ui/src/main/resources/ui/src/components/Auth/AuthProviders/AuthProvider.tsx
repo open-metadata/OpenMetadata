@@ -53,6 +53,7 @@ import { AuthProvider as AuthProviderEnum } from '../../../generated/settings/se
 import { withActivePersonaHeader } from '../../../hoc/withActivePersonaHeader';
 import { withDomainFilter } from '../../../hoc/withDomainFilter';
 import { withLanguageHeader } from '../../../hoc/withLanguageHeader';
+import { clearAppMode } from '../../../hooks/useAppMode';
 import { useApplicationStore } from '../../../hooks/useApplicationStore';
 import useCustomLocation from '../../../hooks/useCustomLocation/useCustomLocation';
 import { useExploreCache } from '../../../hooks/useExploreCache';
@@ -238,6 +239,11 @@ export const AuthProvider = ({
     useExploreCache.getState().clearCache();
     clearEtagCache();
     queryClient.clear();
+
+    // Drop the tab-scoped app-mode session so the next user boots into
+    // their own persona/preference-resolved mode rather than inheriting
+    // this user's transient mode.
+    clearAppMode();
 
     setApplicationLoading(false);
 
