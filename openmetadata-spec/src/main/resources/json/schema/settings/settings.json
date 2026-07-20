@@ -42,7 +42,6 @@
         "openLineageSettings",
         "mcpConfiguration",
         "glossaryTermRelationSettings",
-        "searchIndexMappings",
         "startupChecksums"
       ]
     }
@@ -119,9 +118,6 @@
         },
         {
           "$ref": "../configuration/glossaryTermRelationSettings.json"
-        },
-        {
-          "$ref": "../configuration/searchIndexMappings.json"
         },
         {
           "$ref": "../configuration/startupChecksums.json"

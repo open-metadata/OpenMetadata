@@ -252,10 +252,9 @@ REDSHIFT_ERRORS = ErrorPack(
         "Authentication failed",
         fix="Check the username and password, and that the user is allowed to connect.",
     ),
-    when(_sqlstate("28000", "28P01")).diagnose(  # invalid_authorization / invalid_password
-        "Authentication failed",
-        fix="Check the username and password, and that the user is allowed to connect.",
-    ),
+    # No _sqlstate("28000", "28P01") rule: those are connect-phase codes, and libpq
+    # reports a failed connection with no PGresult, so .pgcode is None (verified on
+    # PostgreSQL 15). The message rule above is what catches auth failures.
     when(_database_not_found).diagnose(
         "Database not found",
         fix="Verify the configured database exists and the user is allowed to connect to it.",

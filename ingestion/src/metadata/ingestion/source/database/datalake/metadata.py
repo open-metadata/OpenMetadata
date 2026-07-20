@@ -52,7 +52,10 @@ from metadata.ingestion.api.models import Either
 from metadata.ingestion.api.steps import InvalidSourceException
 from metadata.ingestion.models.ometa_classification import OMetaTagAndClassification
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
-from metadata.ingestion.source.connections import create_connection
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+)
 from metadata.ingestion.source.database.database_service import DatabaseServiceSource
 from metadata.ingestion.source.database.stored_procedures_mixin import QueryByProcedure
 from metadata.ingestion.source.storage.storage_service import (
@@ -97,11 +100,8 @@ class DatalakeSource(DatabaseServiceSource):
         self.table_constraints = None
         self.database_source_state = set()
         self.config_source = self.service_connection.configSource
-        try:
+        with close_on_failure(self._connection):
             self.test_connection()
-        except Exception:
-            self.close()
-            raise
         self.reader = get_reader(config_source=self.config_source, client=self.client.client)
 
     @classmethod
