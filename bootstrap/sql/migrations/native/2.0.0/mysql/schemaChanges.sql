@@ -366,10 +366,30 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INT NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL DEFAULT NULL,
+  claimToken VARCHAR(36) DEFAULT NULL,
   PRIMARY KEY (entityId, entityFqn),
   KEY idx_search_index_retry_queue_status (status),
   KEY idx_search_index_retry_queue_claimed_at (claimedAt)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_0900_ai_ci;
+
+-- Migration statements are deduplicated by checksum. Use a block-specific prepared statement
+-- name so earlier PREPARE/EXECUTE helpers in this file cannot suppress this ALTER.
+SET @search_index_retry_claim_token_ddl = (
+  SELECT IF(
+    EXISTS (
+      SELECT 1
+      FROM information_schema.columns
+      WHERE table_schema = DATABASE()
+        AND table_name = 'search_index_retry_queue'
+        AND column_name = 'claimToken'
+    ),
+    'SELECT 1',
+    'ALTER TABLE search_index_retry_queue ADD COLUMN claimToken VARCHAR(36) DEFAULT NULL'
+  )
+);
+PREPARE search_index_retry_claim_token_stmt FROM @search_index_retry_claim_token_ddl;
+EXECUTE search_index_retry_claim_token_stmt;
+DEALLOCATE PREPARE search_index_retry_claim_token_stmt;
 
 -- ContextMemory entity - reusable Context Center memory.
 CREATE TABLE IF NOT EXISTS context_memory (
