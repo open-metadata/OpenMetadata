@@ -50,12 +50,6 @@ test.describe('Cron Validations', PLAYWRIGHT_BASIC_TEST_TAG_OBJ, () => {
     await page.goto('/settings/apps/SearchIndexingApplication');
     await waitForAllLoadersToDisappear(page);
 
-    await page
-      .locator(
-        '[data-testid="search-indexing-application-card"] [data-testid="config-btn"]'
-      )
-      .click();
-
     await page.click('[data-testid="edit-button"]');
     await page.getByTestId('schedular-card-container').waitFor();
     await page
