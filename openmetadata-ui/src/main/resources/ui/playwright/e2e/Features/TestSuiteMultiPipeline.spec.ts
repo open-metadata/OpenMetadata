@@ -18,7 +18,10 @@ import {
   ObservabilityFeature,
   selectAddObservabilityFeature,
 } from '../../utils/dataQuality';
-import { waitForAllLoadersToDisappear } from '../../utils/entity';
+import {
+  forceFreshTableReads,
+  waitForAllLoadersToDisappear,
+} from '../../utils/entity';
 import {
   confirmIngestionPipelineHardDelete,
   submitTestCaseForm,
@@ -40,6 +43,7 @@ test(
     test.slow(true);
 
     await redirectToHomePage(page);
+    await forceFreshTableReads(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);
@@ -216,12 +220,13 @@ test(
         .click();
       await confirmIngestionPipelineHardDelete(page);
 
-      await expect(
-        page.getByTestId('assign-error-placeholder-Pipeline')
-      ).toContainText(
+      const emptyPlaceholder = page.getByTestId('empty-placeholder');
+      await expect(emptyPlaceholder).toContainText(
         "Add a pipeline to automate the data quality tests at a regular schedule. It's advisable to align the schedule with the frequency of table loads for optimal results"
       );
-      await expect(page.getByTestId('add-placeholder-button')).toBeVisible();
+      await expect(
+        emptyPlaceholder.getByRole('button', { name: /add pipeline/i })
+      ).toBeVisible();
     });
 
     await table.delete(apiContext);
@@ -241,6 +246,7 @@ test(
     test.slow(true);
 
     await redirectToHomePage(page);
+    await forceFreshTableReads(page);
     const { apiContext, afterAction } = await getApiContext(page);
     const table = new TableClass(`multi pipeline !@#$%^&*()_-+=test-${uuid()}`);
     await table.create(apiContext);

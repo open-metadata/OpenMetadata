@@ -94,7 +94,6 @@ const ContextCenterArticlesPage = () => {
   const [isPermissionsLoading, setIsPermissionsLoading] = useState(true);
   const [page, setPage] = useState<KnowledgeCenterPageProps>({
     data: undefined,
-    header: null,
     rightPanel: null,
     title: '',
   });
@@ -333,7 +332,6 @@ const ContextCenterArticlesPage = () => {
     if (fqn) {
       return (
         <KnowledgePageDetailComponent
-          fetchKnowledgePageHierarchy={handleFetchKnowledgePageHierarchy}
           isRightPanelOpen={isRightPanelOpen}
           onPageChange={handlePageChange}
           onToggleRightPanel={handleToggleRightPanel}

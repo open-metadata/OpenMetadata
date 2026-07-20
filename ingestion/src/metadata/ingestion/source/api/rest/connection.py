@@ -13,7 +13,7 @@
 Source connection handler
 """
 
-from typing import Dict, Optional, Union  # noqa: UP035
+from typing import Optional
 
 import requests
 from requests.models import Response
@@ -36,6 +36,7 @@ from metadata.generated.schema.entity.services.connections.api.restConnection im
 from metadata.generated.schema.entity.services.connections.testConnectionResult import (
     TestConnectionResult,
 )
+from metadata.generated.schema.security.ssl.verifySSLConfig import VerifySSL
 from metadata.ingestion.connections.connection import BaseConnection
 from metadata.ingestion.connections.test_connections import test_connection_steps
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
@@ -62,38 +63,35 @@ class InvalidOpenAPISchemaError(Exception):
     """
 
 
-def get_connection(connection: RestConnectionConfig) -> Union[Response, Dict]:  # noqa: UP006, UP007
-    """
-    Create connection.
-    If openAPISchemaURL is provided, fetches the schema via HTTP.
-    Otherwise, reads from the local openAPISchemaFilePath.
-    """
-    schema_conn = connection.openAPISchemaConnection
-    if isinstance(schema_conn, OpenAPISchemaURL):
-        verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL)
-        verify = verify_ssl_fn(connection.sslConfig)
-        if verify is None:
-            verify = True
-        headers = {}
-        if connection.token:
-            headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
-        return requests.get(schema_conn.openAPISchemaURL, headers=headers, verify=verify)
-
-    if isinstance(schema_conn, OpenAPISchemaFilePath):
-        return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
-
-    if isinstance(schema_conn, OpenAPISchemaS3):
-        return parse_openapi_schema_from_s3(
-            s3_url=str(schema_conn.openAPISchemaS3URL),
-            aws_credentials=schema_conn.awsCredentials,
-        )
-
-    raise ValueError(f"Unsupported openAPISchemaConnection type: {type(schema_conn)}")
-
-
 class RestConnection(BaseConnection[RestConnectionConfig, Response | dict]):
     def _get_client(self) -> Response | dict:
-        return get_connection(self.service_connection)
+        """
+        Create connection.
+        If openAPISchemaURL is provided, fetches the schema via HTTP.
+        Otherwise, reads from the local openAPISchemaFilePath.
+        """
+        connection = self.service_connection
+        schema_conn = connection.openAPISchemaConnection
+        if isinstance(schema_conn, OpenAPISchemaURL):
+            verify_ssl_fn = get_verify_ssl_fn(connection.verifySSL or VerifySSL.no_ssl)
+            verify = verify_ssl_fn(connection.sslConfig)
+            if verify is None:
+                verify = True
+            headers = {}
+            if connection.token:
+                headers["Authorization"] = f"Bearer {connection.token.get_secret_value()}"
+            return requests.get(str(schema_conn.openAPISchemaURL), headers=headers, verify=verify)
+
+        if isinstance(schema_conn, OpenAPISchemaFilePath):
+            return parse_openapi_schema_from_file(schema_conn.openAPISchemaFilePath)
+
+        if isinstance(schema_conn, OpenAPISchemaS3):
+            return parse_openapi_schema_from_s3(
+                s3_url=str(schema_conn.openAPISchemaS3URL),
+                aws_credentials=schema_conn.awsCredentials,
+            )
+
+        raise ValueError(f"Unsupported openAPISchemaConnection type: {type(schema_conn)}")
 
     def test_connection(
         self,
