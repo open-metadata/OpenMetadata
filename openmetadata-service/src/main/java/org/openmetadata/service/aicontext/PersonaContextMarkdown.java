@@ -497,13 +497,44 @@ final class PersonaContextMarkdown {
             .append(": ")
             .append(labelOf(item))
             .append('\n');
-    if (!nullOrEmpty(item.getFullyQualifiedName())) {
+    // Prefer an entity link for linkable types; otherwise a bare FQN.
+    String link = entityLink(item);
+    if (link != null) {
+      markdown.append(link).append('\n');
+    } else if (!nullOrEmpty(item.getFullyQualifiedName())) {
       markdown.append('`').append(item.getFullyQualifiedName()).append("`\n");
     }
     if (!nullOrEmpty(item.getContent())) {
       markdown.append('\n').append(item.getContent().strip()).append('\n');
     }
     return markdown.toString();
+  }
+
+  /**
+   * Builds an entity link ({@code [label](#entityType/fqn)}) for a linkable knowledge item, or null
+   * for items with no FQN or a non-linkable type (context memory). The FQN is percent-encoded for
+   * spaces and parentheses.
+   */
+  private static String entityLink(KnowledgeItem item) {
+    if (item.getType() == null || nullOrEmpty(item.getFullyQualifiedName())) {
+      return null;
+    }
+    String entityType =
+        switch (item.getType()) {
+          case METRIC -> "metric";
+          case GLOSSARY_TERM -> "glossaryTerm";
+          case PAGE -> "page";
+          default -> null;
+        };
+    if (entityType == null) {
+      return null;
+    }
+    String encodedFqn =
+        item.getFullyQualifiedName().replace(" ", "%20").replace("(", "%28").replace(")", "%29");
+    // Escape Markdown link-text delimiters so a display name like "Revenue [YTD]" does not
+    // terminate the link text early and produce a broken link.
+    String label = labelOf(item).replace("\\", "\\\\").replace("[", "\\[").replace("]", "\\]");
+    return "[" + label + "](#" + entityType + "/" + encodedFqn + ")";
   }
 
   private static void appendManifest(StringBuilder markdown, List<ManifestEntry> manifest) {

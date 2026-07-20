@@ -29,7 +29,6 @@ import org.openmetadata.schema.type.TaskEntityType;
 import org.openmetadata.schema.utils.JsonUtils;
 import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
-import org.openmetadata.service.util.DurationUtil;
 
 /**
  * Validation helpers for {@link Task} fields. Centralizes assignee/reviewer type checks and
@@ -122,13 +121,12 @@ public final class TaskFieldValidator {
   }
 
   /**
-   * Require a Data Access Request to carry a valid ISO 8601 {@code duration}. Every approved DAR
-   * reaches an {@code expiryTimer} boundary node whose {@code ${accessDuration}} expression is built
-   * from this field; a missing or malformed value leaves that boundary timer unschedulable and fails
-   * the task mid-workflow. Validating at creation turns that latent failure into a clean 400. No-op
-   * for non-DAR tasks.
+   * Require a Data Access Request to carry a future {@code expirationDate}. Every approved DAR
+   * reaches an {@code expiryTimer} boundary node, so a missing or expired timestamp would leave that
+   * boundary timer unschedulable and fail the task mid-workflow. Validating at creation turns that
+   * latent failure into a clean 400. No-op for non-DAR tasks.
    */
-  public static void validateDataAccessRequestDuration(Task task) {
+  public static void validateDataAccessRequestExpiry(Task task) {
     if (task.getType() != TaskEntityType.DataAccessRequest) {
       return;
     }
@@ -136,15 +134,15 @@ public final class TaskFieldValidator {
     if (payload == null) {
       return;
     }
-    String duration = payload.getDuration();
-    if (nullOrEmpty(duration)) {
+    Long expirationDate = payload.getExpirationDate();
+    if (expirationDate == null) {
       throw new IllegalArgumentException(
-          "A Data Access Request requires an access duration (ISO 8601, e.g. 'P14D').");
+          "A Data Access Request requires an access expirationDate timestamp.");
     }
-    if (!DurationUtil.isValidIso8601(duration)) {
+    if (expirationDate <= System.currentTimeMillis()) {
       throw new IllegalArgumentException(
-          "Data Access Request duration is not a valid ISO 8601 duration: '%s'."
-              .formatted(duration));
+          "Data Access Request expirationDate must be a future timestamp: '%s'."
+              .formatted(expirationDate));
     }
   }
 
