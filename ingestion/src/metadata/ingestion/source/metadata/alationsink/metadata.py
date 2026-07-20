@@ -14,7 +14,7 @@ AlationSink source to extract metadata
 """
 
 import traceback
-from typing import Iterable, List, Optional  # noqa: UP035
+from typing import TYPE_CHECKING, Iterable, List, Optional, cast  # noqa: UP035
 
 from metadata.generated.schema.entity.data.database import Database
 from metadata.generated.schema.entity.data.databaseSchema import DatabaseSchema
@@ -35,7 +35,11 @@ from metadata.ingestion.api.models import Either, Entity
 from metadata.ingestion.api.steps import InvalidSourceException, Source
 from metadata.ingestion.ometa.ometa_api import OpenMetadata
 from metadata.ingestion.ometa.utils import model_str
-from metadata.ingestion.source.connections import get_connection, test_connection_common
+from metadata.ingestion.source.connections import (
+    close_on_failure,
+    create_connection,
+    run_test_connection,
+)
 from metadata.ingestion.source.metadata.alationsink.client import AlationSinkClient
 from metadata.ingestion.source.metadata.alationsink.constants import (
     SERVICE_TYPE_MAPPER,
@@ -55,6 +59,9 @@ from metadata.utils import fqn
 from metadata.utils.filters import filter_by_database, filter_by_schema, filter_by_table
 from metadata.utils.helpers import retry_with_docker_host
 from metadata.utils.logger import ingestion_logger
+
+if TYPE_CHECKING:
+    from metadata.ingestion.connections.connection import BaseConnection
 
 logger = ingestion_logger()
 
@@ -81,9 +88,11 @@ class AlationsinkSource(Source):
         self.service_connection = self.config.serviceConnection.root.config
         self.source_config = self.config.sourceConfig.config
 
-        self.alation_sink_client = get_connection(self.service_connection)
+        self._connection = create_connection(self.service_connection)
+        self.alation_sink_client = cast("BaseConnection", self._connection).client
         self.connectors = {}
-        self.test_connection()
+        with close_on_failure(self._connection):
+            self.test_connection()
 
     @classmethod
     def create(cls, config_dict, metadata: OpenMetadata, pipeline_name: Optional[str] = None):  # noqa: UP045
@@ -387,7 +396,8 @@ class AlationsinkSource(Source):
                     self.ingest_schemas(alation_datasource.id, om_database)
 
     def close(self):
-        """Not required to implement"""
+        if self._connection is not None:
+            self._connection.close()
 
     def test_connection(self) -> None:
-        test_connection_common(self.metadata, self.alation_sink_client, self.service_connection)
+        run_test_connection(self.metadata, cast("BaseConnection", self._connection))

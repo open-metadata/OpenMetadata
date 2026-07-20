@@ -65,7 +65,42 @@ def _contains_any(*tokens: str) -> Matcher:
     return match
 
 
+ENTRA_ERRORS_DOC = "https://learn.microsoft.com/en-us/entra/identity-platform/reference-error-codes"
+
+
+def _token_error(code: str) -> Matcher:
+    """Match an AADSTS code in a token-acquisition failure.
+
+    Gated on InvalidSourceException so a status-coded REST error echoing an AADSTS
+    code still classifies by its status.
+    """
+    lowered = code.lower()
+    return lambda error: Matchers.exception(InvalidSourceException)(error) and lowered in chain_text(error)
+
+
 POWERBI_ERRORS = ErrorPack(
+    # MSAL returns its error as a dict, which the client interpolates into the
+    # InvalidSourceException message - that is what makes the code matchable text.
+    # Codes: ENTRA_ERRORS_DOC.
+    when(_token_error("AADSTS7000215")).diagnose(
+        "Invalid client secret",
+        fix="Microsoft Entra rejected the Client Secret (AADSTS7000215). Check it was copied "
+        "whole, has not expired, and is the secret *value* rather than the secret ID.",
+        doc=ENTRA_ERRORS_DOC,
+    ),
+    when(_token_error("AADSTS700016")).diagnose(
+        "Application not found in this tenant",
+        fix="The app registration was not found in this directory (AADSTS700016). Check the "
+        "Client ID and Tenant ID match the same tenant, and that an administrator has "
+        "installed or consented to the application there.",
+        doc=ENTRA_ERRORS_DOC,
+    ),
+    when(_token_error("AADSTS90002")).diagnose(
+        "Tenant not found",
+        fix="Microsoft Entra does not know this tenant (AADSTS90002). Check the Tenant ID is the "
+        "correct GUID or tenant name for your organization.",
+        doc=ENTRA_ERRORS_DOC,
+    ),
     # CheckAccess acquires the OAuth token, so a bad secret fails there as an
     # InvalidSourceException - not here. Any 401/403 from a REST call therefore
     # means the token was accepted but Power BI would not authorize the call, so
@@ -95,6 +130,11 @@ POWERBI_ERRORS = ErrorPack(
         "Resource not found",
         fix="The requested resource was not found (404). Check the API URL and that the configured "
         "tenant/workspace exists and is visible to the service principal.",
+    ),
+    when(http_status(429)).diagnose(
+        "Rate limited by Power BI",
+        fix="Power BI is throttling this service principal (429). Retry once the current window "
+        "has elapsed; the admin APIs throttle per user per time window.",
     ),
     # Kept last: authority/instance-discovery failures are MSAL ValueErrors that
     # carry no HTTP status, so a broad substring match here must not shadow a
@@ -136,7 +176,7 @@ class PowerBIChecks:
     @check(DashboardStep.GetDashboards)
     def get_dashboards(self) -> Evidence:
         return fetch_list(
-            lambda: self._client().fetch_dashboards(),
+            lambda: self._client().test_fetch_dashboards(),
             noun="dashboard",
             command="fetch dashboards",
             empty_caveat=Diagnosis(
