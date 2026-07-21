@@ -72,6 +72,8 @@ jobs:
         uses: actions/checkout@v4
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - name: Cache Maven Dependencies
         id: cache-output
         uses: actions/cache@v4
