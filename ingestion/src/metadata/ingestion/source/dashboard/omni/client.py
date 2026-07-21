@@ -233,7 +233,15 @@ class OmniApiClient:
                 continue
             base = filename.split("/")[-1]
             if filename.endswith(".view"):
-                views[base[: -len(".view")]] = cls._parse_view(content)
+                view_key = base[: -len(".view")]
+                if view_key in views:
+                    logger.debug(
+                        "View name %r appears more than once in model %s (e.g. %s); the last definition wins",
+                        view_key,
+                        model.id,
+                        filename,
+                    )
+                views[view_key] = cls._parse_view(content)
             elif filename.endswith(".topic"):
                 topic_defs[base[: -len(".topic")]] = content
 
@@ -249,7 +257,12 @@ class OmniApiClient:
                 continue
             seen_names.add(topic_name)
             base_view = cls._first(topic_def, _BASE_VIEW_KEYS) or topic_name
-            view = views.get(base_view, {})
+            view = views.get(base_view)
+            if view is None:
+                # ``base_view`` may be schema-qualified (e.g. ``analytics/orders``)
+                # while view files are keyed by their unqualified leaf name.
+                leaf = base_view.replace("/", ".").split(".")[-1]
+                view = views.get(leaf, {})
             topics.append(
                 OmniTopic(
                     model_id=model.id,

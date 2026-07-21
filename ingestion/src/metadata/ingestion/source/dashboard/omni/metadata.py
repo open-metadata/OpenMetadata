@@ -168,6 +168,14 @@ class OmniSource(DashboardServiceSource):
         if not table_ref:
             return None
         matches = self._topic_index.get(table_ref) or []
+        if not matches:
+            # Tile / base-view references can be schema-qualified (e.g.
+            # ``analytics.orders`` or ``analytics/orders``) while the index is
+            # keyed by the unqualified Omni view/topic identifier. Fall back to
+            # the leaf so qualified references still resolve.
+            leaf = table_ref.replace("/", ".").split(".")[-1]
+            if leaf != table_ref:
+                matches = self._topic_index.get(leaf) or []
         if len(matches) == 1:
             return matches[0]
         if len(matches) > 1:
