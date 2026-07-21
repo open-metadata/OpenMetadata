@@ -16,8 +16,10 @@ package org.openmetadata.service.openlineage;
 import static org.openmetadata.common.utils.CommonUtil.nullOrEmpty;
 
 import java.util.Arrays;
-import java.util.LinkedHashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import org.openmetadata.schema.api.lineage.openlineage.DatasetFacets;
 import org.openmetadata.schema.api.lineage.openlineage.SymlinkIdentifier;
@@ -36,6 +38,10 @@ import org.openmetadata.schema.api.lineage.openlineage.SymlinksFacet;
  *   <li>Hive warehouse paths: {@code …/<database>.db/<table>}
  *   <li>Short slash-form names without dots: {@code <database>/<table>}
  * </ul>
+ *
+ * <p>Each candidate carries the namespace of the identifier it came from (a symlink's own namespace,
+ * e.g. a Glue ARN, or the dataset namespace) so the resolver can scope lookups by that namespace
+ * rather than always falling back to the dataset namespace.
  */
 public final class OpenLineageDatasetNameNormalizer {
 
@@ -43,21 +49,48 @@ public final class OpenLineageDatasetNameNormalizer {
   private static final String HIVE_WAREHOUSE_DB_SUFFIX = ".db";
   private static final int MAX_SLASH_SEGMENTS = 3;
 
+  private static final Set<String> STORAGE_URI_SCHEMES =
+      Set.of("gs://", "s3://", "s3a://", "abfss://", "abfs://", "wasbs://", "adl://");
+
   private OpenLineageDatasetNameNormalizer() {}
+
+  /** A dot-form table-name candidate together with the namespace of the identifier it came from. */
+  public record DatasetCandidate(String tableName, String namespace) {}
+
+  /** Returns true when the namespace is a cloud object-storage URI (Glue/Iceberg physical path). */
+  public static boolean isStorageNamespace(String namespace) {
+    boolean result = false;
+    if (!nullOrEmpty(namespace)) {
+      String lower = namespace.toLowerCase(Locale.ROOT);
+      for (String scheme : STORAGE_URI_SCHEMES) {
+        if (lower.startsWith(scheme)) {
+          result = true;
+          break;
+        }
+      }
+    }
+    return result;
+  }
 
   /**
    * Returns ordered, de-duplicated dot-form table-name candidates for a dataset: every symlink
    * identifier first (in event order), then the dataset name itself. Every candidate is guaranteed
    * to have at least two dot-separated parts; unparsable identifiers are skipped.
+   *
+   * <p>Symlink identifiers are a strong table signal, so their short slash-form names are honored.
+   * The dataset name is only treated as a short slash-form {@code db/table} when its namespace is
+   * not a storage URI — otherwise arbitrary object-storage paths like {@code folder/subfolder} would
+   * synthesize spurious {@code folder.subfolder} candidates and risk false-positive edges.
    */
-  public static List<String> extractCandidates(
+  public static List<DatasetCandidate> extractCandidates(
       String datasetNamespace, String datasetName, DatasetFacets facets) {
-    Set<String> candidates = new LinkedHashSet<>();
+    Map<String, DatasetCandidate> candidates = new LinkedHashMap<>();
     for (SymlinkIdentifier identifier : symlinkIdentifiers(facets)) {
-      addCandidate(candidates, normalize(identifier.getNamespace(), identifier.getName()));
+      addCandidate(candidates, normalize(identifier.getName(), true), identifier.getNamespace());
     }
-    addCandidate(candidates, normalize(datasetNamespace, datasetName));
-    return List.copyOf(candidates);
+    boolean datasetNameIsStrongSignal = !isStorageNamespace(datasetNamespace);
+    addCandidate(candidates, normalize(datasetName, datasetNameIsStrongSignal), datasetNamespace);
+    return List.copyOf(candidates.values());
   }
 
   private static List<SymlinkIdentifier> symlinkIdentifiers(DatasetFacets facets) {
@@ -69,20 +102,21 @@ public final class OpenLineageDatasetNameNormalizer {
     return result;
   }
 
-  private static void addCandidate(Set<String> candidates, String candidate) {
-    if (candidate != null) {
-      candidates.add(candidate);
+  private static void addCandidate(
+      Map<String, DatasetCandidate> candidates, String tableName, String namespace) {
+    if (tableName != null) {
+      candidates.putIfAbsent(tableName, new DatasetCandidate(tableName, namespace));
     }
   }
 
-  private static String normalize(String namespace, String name) {
+  private static String normalize(String name, boolean allowShortSlash) {
     String result = null;
     if (!nullOrEmpty(name)) {
       String trimmed = name.trim();
       if (isGlueForm(trimmed)) {
         result = normalizeGlueForm(trimmed);
       } else if (trimmed.contains("/")) {
-        result = normalizePathForm(trimmed);
+        result = normalizePathForm(trimmed, allowShortSlash);
       } else if (isDotForm(trimmed)) {
         result = trimmed;
       }
@@ -99,10 +133,10 @@ public final class OpenLineageDatasetNameNormalizer {
     return segments[1] + "." + segments[2];
   }
 
-  private static String normalizePathForm(String name) {
+  private static String normalizePathForm(String name, boolean allowShortSlash) {
     String[] segments = splitPathSegments(name);
     String result = normalizeHiveWarehousePath(segments);
-    if (result == null && isShortSlashForm(name, segments)) {
+    if (result == null && allowShortSlash && isShortSlashForm(name, segments)) {
       result = String.join(".", segments);
     }
     return result;

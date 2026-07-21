@@ -19,7 +19,6 @@ import static org.openmetadata.schema.type.Include.NON_DELETED;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import java.util.Set;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.extern.slf4j.Slf4j;
 import org.openmetadata.schema.api.lineage.openlineage.DatasetFacets;
@@ -42,12 +41,10 @@ import org.openmetadata.service.Entity;
 import org.openmetadata.service.exception.EntityNotFoundException;
 import org.openmetadata.service.jdbi3.EntityRepository;
 import org.openmetadata.service.jdbi3.ListFilter;
+import org.openmetadata.service.openlineage.OpenLineageDatasetNameNormalizer.DatasetCandidate;
 
 @Slf4j
 public class OpenLineageEntityResolver {
-
-  private static final Set<String> STORAGE_URI_SCHEMES =
-      Set.of("gs://", "s3://", "s3a://", "abfss://", "abfs://", "wasbs://", "adl://");
 
   private final Map<String, EntityReference> tableCache = new ConcurrentHashMap<>();
   private final Map<String, EntityReference> pipelineCache = new ConcurrentHashMap<>();
@@ -138,16 +135,7 @@ public class OpenLineageEntityResolver {
   }
 
   public boolean isStorageDataset(String namespace) {
-    if (nullOrEmpty(namespace)) {
-      return false;
-    }
-    String lower = namespace.toLowerCase();
-    for (String scheme : STORAGE_URI_SCHEMES) {
-      if (lower.startsWith(scheme)) {
-        return true;
-      }
-    }
-    return false;
+    return OpenLineageDatasetNameNormalizer.isStorageNamespace(namespace);
   }
 
   public EntityReference resolveContainer(String namespace, String name) {
@@ -232,7 +220,7 @@ public class OpenLineageEntityResolver {
   }
 
   private String resolveTableFqn(String namespace, String datasetName, DatasetFacets facets) {
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(namespace, datasetName, facets);
     String result = null;
     if (candidates.isEmpty()) {
@@ -243,8 +231,8 @@ public class OpenLineageEntityResolver {
           namespace);
     }
     String datasourceName = extractDatasourceName(facets);
-    for (String candidate : candidates) {
-      result = resolveCandidateFqn(namespace, datasourceName, candidate);
+    for (DatasetCandidate candidate : candidates) {
+      result = resolveCandidateFqn(candidate.namespace(), datasourceName, candidate.tableName());
       if (result != null) {
         break;
       }
@@ -262,14 +250,27 @@ public class OpenLineageEntityResolver {
     String table = parts[parts.length - 1];
 
     String result = resolveViaNamespaceMapping(namespace, database, schema, table);
-    if (result == null && datasourceName != null) {
-      result = searchTableByFqnPattern(datasourceName + ".%." + schema + "." + table);
+    if (result == null) {
+      result = resolveViaDatasource(datasourceName, database, schema, table);
     }
     if (result == null && database != null) {
       result = searchTableByFqnSuffix(database + "." + schema + "." + table);
     }
+    if (result == null && datasourceName != null) {
+      result = searchTableByFqnPattern(datasourceName + ".%." + schema + "." + table);
+    }
     if (result == null) {
       result = searchTableByFqnSuffix(schema + "." + table);
+    }
+    return result;
+  }
+
+  private String resolveViaDatasource(
+      String datasourceName, String database, String schema, String table) {
+    String result = null;
+    if (datasourceName != null && database != null) {
+      result =
+          searchTableByFqnPattern(datasourceName + "." + database + "." + schema + "." + table);
     }
     return result;
   }
@@ -405,7 +406,7 @@ public class OpenLineageEntityResolver {
 
   private EntityReference createTableInternal(
       String namespace, String name, DatasetFacets facets, String updatedBy) {
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(namespace, name, facets);
     if (candidates.isEmpty()) {
       LOG.warn("Cannot create table, invalid name format: {}", name);
@@ -414,8 +415,8 @@ public class OpenLineageEntityResolver {
 
     String table = null;
     String schemaFqn = null;
-    for (String candidate : candidates) {
-      String[] parts = candidate.split("\\.");
+    for (DatasetCandidate candidate : candidates) {
+      String[] parts = candidate.tableName().split("\\.");
       schemaFqn = findSchemaFqn(parts);
       if (schemaFqn != null) {
         table = parts[parts.length - 1];

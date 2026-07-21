@@ -21,12 +21,17 @@ import org.junit.jupiter.api.Test;
 import org.openmetadata.schema.api.lineage.openlineage.DatasetFacets;
 import org.openmetadata.schema.api.lineage.openlineage.SymlinkIdentifier;
 import org.openmetadata.schema.api.lineage.openlineage.SymlinksFacet;
+import org.openmetadata.service.openlineage.OpenLineageDatasetNameNormalizer.DatasetCandidate;
 
 class OpenLineageDatasetNameNormalizerTest {
 
   private DatasetFacets facetsWithSymlinks(SymlinkIdentifier... identifiers) {
     return new DatasetFacets()
         .withSymlinks(new SymlinksFacet().withIdentifiers(List.of(identifiers)));
+  }
+
+  private List<String> tableNames(List<DatasetCandidate> candidates) {
+    return candidates.stream().map(DatasetCandidate::tableName).toList();
   }
 
   @Test
@@ -38,13 +43,34 @@ class OpenLineageDatasetNameNormalizerTest {
                 .withName("table/db_refined_55586/dr_564_pdudrik_3829")
                 .withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(
             "s3://bucket",
             "refined_zone/cloud_city/db_refined_55586.db/dr_564_pdudrik_3829",
             facets);
 
-    assertEquals("db_refined_55586.dr_564_pdudrik_3829", candidates.get(0));
+    assertEquals("db_refined_55586.dr_564_pdudrik_3829", candidates.get(0).tableName());
+  }
+
+  @Test
+  void extractCandidates_glueSymlink_carriesSymlinkNamespaceNotDatasetNamespace() {
+    DatasetFacets facets =
+        facetsWithSymlinks(
+            new SymlinkIdentifier()
+                .withNamespace("arn:aws:glue:us-west-2:181882839756")
+                .withName("table/db_refined_55586/dr_564_pdudrik_3829")
+                .withType("TABLE"));
+
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates(
+            "s3://bucket",
+            "refined_zone/cloud_city/db_refined_55586.db/dr_564_pdudrik_3829",
+            facets);
+
+    assertEquals(
+        "arn:aws:glue:us-west-2:181882839756",
+        candidates.get(0).namespace(),
+        "Glue symlink candidate must carry the Glue ARN namespace so it can drive service mapping");
   }
 
   @Test
@@ -56,10 +82,10 @@ class OpenLineageDatasetNameNormalizerTest {
                 .withName("table/my_db/my_table")
                 .withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates("ns", "irrelevant", facets);
 
-    assertEquals("my_db.my_table", candidates.get(0));
+    assertEquals("my_db.my_table", candidates.get(0).tableName());
   }
 
   @Test
@@ -71,10 +97,10 @@ class OpenLineageDatasetNameNormalizerTest {
                 .withName("my_db.my_table")
                 .withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates("hdfs://nn", "path", facets);
 
-    assertEquals("my_db.my_table", candidates.get(0));
+    assertEquals("my_db.my_table", candidates.get(0).tableName());
   }
 
   @Test
@@ -86,10 +112,10 @@ class OpenLineageDatasetNameNormalizerTest {
                 .withName("main_catalog.sales.orders")
                 .withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates("dbfs", "path", facets);
 
-    assertEquals("main_catalog.sales.orders", candidates.get(0));
+    assertEquals("main_catalog.sales.orders", candidates.get(0).tableName());
   }
 
   @Test
@@ -105,11 +131,11 @@ class OpenLineageDatasetNameNormalizerTest {
                 .withName("hive_db.hive_table")
                 .withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(
             "s3://bucket", "a/deep/opaque/storage/path", facets);
 
-    assertEquals(List.of("glue_db.glue_table", "hive_db.hive_table"), candidates);
+    assertEquals(List.of("glue_db.glue_table", "hive_db.hive_table"), tableNames(candidates));
   }
 
   @Test
@@ -121,15 +147,15 @@ class OpenLineageDatasetNameNormalizerTest {
                 .withName("hive_db.hive_table")
                 .withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(
             "postgresql://host:5432", "public.users", facets);
 
-    assertEquals(List.of("hive_db.hive_table", "public.users"), candidates);
+    assertEquals(List.of("hive_db.hive_table", "public.users"), tableNames(candidates));
   }
 
   @Test
-  void extractCandidates_duplicateCandidates_deduplicated() {
+  void extractCandidates_duplicateCandidates_deduplicatedKeepingSymlinkNamespace() {
     DatasetFacets facets =
         facetsWithSymlinks(
             new SymlinkIdentifier()
@@ -137,33 +163,67 @@ class OpenLineageDatasetNameNormalizerTest {
                 .withName("public.users")
                 .withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(
             "postgresql://host:5432", "public.users", facets);
 
-    assertEquals(List.of("public.users"), candidates);
+    assertEquals(1, candidates.size());
+    assertEquals("public.users", candidates.get(0).tableName());
+    assertEquals(
+        "hive://metastore:9083",
+        candidates.get(0).namespace(),
+        "Deduplication must keep the first (symlink) candidate's namespace, not the dataset's");
   }
 
   @Test
   void extractCandidates_hiveWarehousePath_derivesSchemaAndTable() {
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(
             "s3://bucket", "refined_zone/cloud_city/db_refined_55586.db/dr_564_pdudrik_3829", null);
 
-    assertEquals(List.of("db_refined_55586.dr_564_pdudrik_3829"), candidates);
+    assertEquals(List.of("db_refined_55586.dr_564_pdudrik_3829"), tableNames(candidates));
   }
 
   @Test
-  void extractCandidates_shortSlashFormWithoutDots_convertedToDots() {
-    List<String> candidates =
+  void extractCandidates_shortSlashFormNonStorageNamespace_convertedToDots() {
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates("hdfs://nn", "my_db/my_table", null);
 
-    assertEquals(List.of("my_db.my_table"), candidates);
+    assertEquals(List.of("my_db.my_table"), tableNames(candidates));
+  }
+
+  @Test
+  void extractCandidates_shortSlashFormStorageNamespace_skipped() {
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates("s3://bucket", "folder/subfolder", null);
+
+    assertTrue(
+        candidates.isEmpty(),
+        "A storage path folder/subfolder must not synthesize a folder.subfolder table candidate");
+  }
+
+  @Test
+  void extractCandidates_shortSlashFromSymlinkKept_evenWithStorageDataset() {
+    DatasetFacets facets =
+        facetsWithSymlinks(
+            new SymlinkIdentifier()
+                .withNamespace("hive://metastore:9083")
+                .withName("my_db/my_table")
+                .withType("TABLE"));
+
+    List<DatasetCandidate> candidates =
+        OpenLineageDatasetNameNormalizer.extractCandidates(
+            "s3://bucket", "folder/subfolder", facets);
+
+    assertEquals(
+        List.of("my_db.my_table"),
+        tableNames(candidates),
+        "A symlink is a strong table signal, so its short slash-form name is still honored");
   }
 
   @Test
   void extractCandidates_deepPathWithoutDbMarker_skipped() {
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates(
             "s3://bucket", "a/very/deep/storage/path", null);
 
@@ -172,7 +232,7 @@ class OpenLineageDatasetNameNormalizerTest {
 
   @Test
   void extractCandidates_singleTokenName_skipped() {
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates("ns", "orders", null);
 
     assertTrue(candidates.isEmpty());
@@ -190,9 +250,19 @@ class OpenLineageDatasetNameNormalizerTest {
         facetsWithSymlinks(
             new SymlinkIdentifier().withNamespace("ns").withName("").withType("TABLE"));
 
-    List<String> candidates =
+    List<DatasetCandidate> candidates =
         OpenLineageDatasetNameNormalizer.extractCandidates("pg://h", "public.users", facets);
 
-    assertEquals(List.of("public.users"), candidates);
+    assertEquals(List.of("public.users"), tableNames(candidates));
+  }
+
+  @Test
+  void isStorageNamespace_recognizesObjectStoreSchemes() {
+    assertTrue(OpenLineageDatasetNameNormalizer.isStorageNamespace("s3://bucket"));
+    assertTrue(OpenLineageDatasetNameNormalizer.isStorageNamespace("S3A://Bucket"));
+    assertTrue(
+        OpenLineageDatasetNameNormalizer.isStorageNamespace("abfss://c@a.dfs.core.windows.net"));
+    assertTrue(!OpenLineageDatasetNameNormalizer.isStorageNamespace("postgresql://host:5432"));
+    assertTrue(!OpenLineageDatasetNameNormalizer.isStorageNamespace(null));
   }
 }
