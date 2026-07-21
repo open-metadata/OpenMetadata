@@ -13,9 +13,10 @@
 
 import { Dropdown } from '@openmetadata/ui-core-components';
 import { DotsVertical } from '@untitledui/icons';
-import { FC } from 'react';
+import { FC, Key, useCallback, useRef, useState } from 'react';
 import { Button as AriaButton } from 'react-aria-components';
 import { useTranslation } from 'react-i18next';
+import Loader from '../../common/Loader/Loader';
 import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
 import { NO_AGENT_PERMISSIONS } from '../utils/agents.utils';
 
@@ -24,7 +25,7 @@ interface AgentOverflowMenuProps {
   permissions?: AgentActionPermissions;
   status: AgentStatus;
   enabled?: boolean;
-  onAction: (action: string) => void;
+  onAction: (action: string) => void | Promise<void>;
 }
 
 interface MenuItem {
@@ -42,7 +43,39 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   status,
 }) => {
   const { t } = useTranslation();
+  const [isOpen, setIsOpen] = useState(false);
+  const [pendingAction, setPendingAction] = useState<string | null>(null);
+  // react-aria closes the menu synchronously in the same press handler that
+  // fires `onAction`, so a state update would land too late to block it.
+  const pendingActionRef = useRef<string | null>(null);
   const isActive = status === 'running' || status === 'queued';
+
+  const handleOpenChange = useCallback((open: boolean) => {
+    if (open || !pendingActionRef.current) {
+      setIsOpen(open);
+    }
+  }, []);
+
+  const handleAction = useCallback(
+    (key: Key) => {
+      const action = String(key);
+      const result = onAction(action);
+
+      if (result instanceof Promise) {
+        const settle = () => {
+          pendingActionRef.current = null;
+          setPendingAction(null);
+          setIsOpen(false);
+        };
+        pendingActionRef.current = action;
+        setPendingAction(action);
+        void result.then(settle, settle);
+      } else {
+        setIsOpen(false);
+      }
+    },
+    [onAction]
+  );
 
   // `enabled` defaults to true in the IngestionPipeline schema, so an absent
   // flag means the agent is running and only an explicit false means paused.
@@ -95,7 +128,7 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
   }
 
   return (
-    <Dropdown.Root>
+    <Dropdown.Root isOpen={isOpen} onOpenChange={handleOpenChange}>
       <AriaButton
         aria-label={t('label.more-action-plural')}
         className={
@@ -107,11 +140,15 @@ const AgentOverflowMenu: FC<AgentOverflowMenuProps> = ({
         <DotsVertical size={18} />
       </AriaButton>
       <Dropdown.Popover data-testid="actions-dropdown">
-        <Dropdown.Menu onAction={(key) => onAction(String(key))}>
+        <Dropdown.Menu onAction={handleAction}>
           {items.map((item) => (
             <Dropdown.Item
               data-testid={item.testId}
+              icon={() =>
+                pendingAction === item.id ? <Loader size="x-small" /> : null
+              }
               id={item.id}
+              isDisabled={Boolean(pendingAction)}
               key={item.id}
               textValue={item.label}>
               <span className={item.danger ? 'tw:text-error-primary' : ''}>

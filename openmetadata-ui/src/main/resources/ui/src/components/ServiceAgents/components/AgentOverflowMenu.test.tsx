@@ -11,14 +11,39 @@
  *  limitations under the License.
  */
 
-import { render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { ReactNode } from 'react';
 import { AgentActionPermissions, AgentStatus } from '../AgentsPage.interface';
 import AgentOverflowMenu from './AgentOverflowMenu.component';
 
+// react-aria fires the menu's `onAction` and then closes the trigger within the
+// same press, so the mocked item replicates that ordering.
+const mockMenuAction: { current?: (key: string) => void } = {};
+const mockOpenChange: { current?: (open: boolean) => void } = {};
+
 jest.mock('@openmetadata/ui-core-components', () => ({
   Dropdown: {
-    Root: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    Root: ({
+      children,
+      isOpen,
+      onOpenChange,
+    }: {
+      children: ReactNode;
+      isOpen?: boolean;
+      onOpenChange?: (open: boolean) => void;
+    }) => {
+      mockOpenChange.current = onOpenChange;
+
+      return (
+        <div data-open={String(Boolean(isOpen))} data-testid="dropdown-root">
+          <button
+            data-testid="open-dropdown"
+            onClick={() => onOpenChange?.(true)}
+          />
+          {children}
+        </div>
+      );
+    },
     Popover: ({
       children,
       ...props
@@ -26,14 +51,38 @@ jest.mock('@openmetadata/ui-core-components', () => ({
       children: ReactNode;
       'data-testid'?: string;
     }) => <div data-testid={props['data-testid']}>{children}</div>,
-    Menu: ({ children }: { children: ReactNode }) => <div>{children}</div>,
+    Menu: ({
+      children,
+      onAction,
+    }: {
+      children: ReactNode;
+      onAction?: (key: string) => void;
+    }) => {
+      mockMenuAction.current = onAction;
+
+      return <div>{children}</div>;
+    },
     Item: ({
       children,
+      id,
+      isDisabled,
       ...props
     }: {
       children: ReactNode;
+      id?: string;
+      isDisabled?: boolean;
       'data-testid'?: string;
-    }) => <button data-testid={props['data-testid']}>{children}</button>,
+    }) => (
+      <button
+        data-testid={props['data-testid']}
+        disabled={isDisabled}
+        onClick={() => {
+          mockMenuAction.current?.(id ?? '');
+          mockOpenChange.current?.(false);
+        }}>
+        {children}
+      </button>
+    ),
   },
 }));
 
@@ -226,5 +275,83 @@ describe('AgentOverflowMenu', () => {
 
     expect(screen.getByTestId('pause-button')).toBeInTheDocument();
     expect(screen.queryByTestId('delete-button')).not.toBeInTheDocument();
+  });
+
+  it('should keep the menu open with a loader while an async action is pending', async () => {
+    let resolveAction: () => void = () => undefined;
+    mockOnAction.mockReturnValue(
+      new Promise<void>((resolve) => {
+        resolveAction = resolve;
+      })
+    );
+    renderMenu('success', FULL_PERMISSIONS, undefined, true);
+
+    fireEvent.click(screen.getByTestId('open-dropdown'));
+    fireEvent.click(screen.getByTestId('re-deploy-button'));
+
+    expect(mockOnAction).toHaveBeenCalledWith('redeploy');
+    expect(screen.getByTestId('dropdown-root')).toHaveAttribute(
+      'data-open',
+      'true'
+    );
+    expect(
+      within(screen.getByTestId('re-deploy-button')).getByTestId('loader')
+    ).toBeInTheDocument();
+    expect(screen.getByTestId('pause-button')).toBeDisabled();
+    expect(screen.getByTestId('delete-button')).toBeDisabled();
+
+    await act(async () => {
+      resolveAction();
+    });
+
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dropdown-root')).toHaveAttribute(
+      'data-open',
+      'false'
+    );
+    expect(screen.getByTestId('pause-button')).not.toBeDisabled();
+  });
+
+  it('should close the menu without a loader for a synchronous action', () => {
+    mockOnAction.mockReturnValue(undefined);
+    renderMenu('success', FULL_PERMISSIONS, undefined, true);
+
+    fireEvent.click(screen.getByTestId('open-dropdown'));
+    fireEvent.click(screen.getByTestId('edit-button'));
+
+    expect(mockOnAction).toHaveBeenCalledWith('edit');
+    expect(screen.getByTestId('dropdown-root')).toHaveAttribute(
+      'data-open',
+      'false'
+    );
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.getByTestId('pause-button')).not.toBeDisabled();
+  });
+
+  it('should close the menu and clear the loader when an async action rejects', async () => {
+    let rejectAction: () => void = () => undefined;
+    mockOnAction.mockReturnValue(
+      new Promise<void>((_, reject) => {
+        rejectAction = () => reject(new Error('failed'));
+      })
+    );
+    renderMenu('running', FULL_PERMISSIONS, undefined, true);
+
+    fireEvent.click(screen.getByTestId('open-dropdown'));
+    fireEvent.click(screen.getByTestId('kill-button'));
+
+    expect(
+      within(screen.getByTestId('kill-button')).getByTestId('loader')
+    ).toBeInTheDocument();
+
+    await act(async () => {
+      rejectAction();
+    });
+
+    expect(screen.queryByTestId('loader')).not.toBeInTheDocument();
+    expect(screen.getByTestId('dropdown-root')).toHaveAttribute(
+      'data-open',
+      'false'
+    );
   });
 });

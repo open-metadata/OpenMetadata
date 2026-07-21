@@ -129,25 +129,17 @@ const MetadataAgentsView: FC<MetadataAgentsViewProps> = ({
   }, [deleteTarget, onRefresh]);
 
   const onAction = useCallback(
-    (action: string, agent: Agent) => {
+    (action: string, agent: Agent): void | Promise<void> => {
       switch (action) {
         case 'run':
-          void runAgent(agent);
-
-          break;
+          return runAgent(agent);
         case 'redeploy':
-          void redeployAgent(agent);
-
-          break;
+          return redeployAgent(agent);
         case 'kill':
-          void killAgent(agent);
-
-          break;
+          return killAgent(agent);
         case 'pause':
         case 'resume':
-          void toggleAgent(agent);
-
-          break;
+          return toggleAgent(agent);
         case 'edit':
           navigate(
             connectionsRouterClassBase.getEditIngestionPath(

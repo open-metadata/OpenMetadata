@@ -12,6 +12,7 @@
  */
 
 import {
+  Badge,
   Box,
   Button,
   Card,
@@ -55,7 +56,7 @@ interface AgentCardProps {
   agent: Agent;
   allowedActions?: string[];
   permissions?: AgentActionPermissions;
-  onAction: (action: string, agent: Agent) => void;
+  onAction: (action: string, agent: Agent) => void | Promise<void>;
   onLogs: (agent: Agent) => void;
   onRun: (agent: Agent) => void;
   onRunDetails: (agent: Agent, runId?: string) => void;
@@ -154,46 +155,60 @@ const AgentCard: FC<AgentCardProps> = ({
           <Box
             align="center"
             className={`tw:gap-3.5${isRunning ? ' tw:mb-2' : ''}`}>
-            <StatusPill status={agent.status} />
-            {isRunning && (
-              <Metric
-                dataTestId="agent-assets-metric"
-                icon={unitIcon}
-                label={unitVerbLabel}
-                value={fmtNum(agent.assets)}
-              />
-            )}
-            {isRunning && (
-              <Metric
-                dataTestId="agent-eta-metric"
-                icon={<Clock size={15} />}
-                value={etaLabel}
-              />
-            )}
-            {showLastRunMetric && (
-              <Metric
-                icon={unitIcon}
-                label={`${unitLabel}${finishedSuffix}`}
-                value={fmtNum(agent.assets)}
-              />
-            )}
-            {isQueued && agent.after && (
-              <span className="tw:text-sm tw:text-tertiary">
-                {t('label.starts-after')}{' '}
-                <strong className="tw:font-semibold tw:text-secondary">
-                  {agent.after}
-                </strong>
-              </span>
-            )}
-            {isFailed && agent.failStep && (
-              <Metric
-                icon={<AlertCircle size={15} />}
-                label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
-                  'label.before-error'
-                )}`}
-                tone="error"
-                value={`${t('label.failed-at')} ${agent.failStep}`}
-              />
+            {agent.enabled ? (
+              <>
+                <StatusPill status={agent.status} />
+                {isRunning && (
+                  <Metric
+                    dataTestId="agent-assets-metric"
+                    icon={unitIcon}
+                    label={unitVerbLabel}
+                    value={fmtNum(agent.assets)}
+                  />
+                )}
+                {isRunning && (
+                  <Metric
+                    dataTestId="agent-eta-metric"
+                    icon={<Clock size={15} />}
+                    value={etaLabel}
+                  />
+                )}
+                {showLastRunMetric && (
+                  <Metric
+                    icon={unitIcon}
+                    label={`${unitLabel}${finishedSuffix}`}
+                    value={fmtNum(agent.assets)}
+                  />
+                )}
+                {isQueued && agent.after && (
+                  <span className="tw:text-sm tw:text-tertiary">
+                    {t('label.starts-after')}{' '}
+                    <strong className="tw:font-semibold tw:text-secondary">
+                      {agent.after}
+                    </strong>
+                  </span>
+                )}
+                {isFailed && agent.failStep && (
+                  <Metric
+                    icon={<AlertCircle size={15} />}
+                    label={`· ${fmtNum(agent.assets)} ${unitLabel} ${t(
+                      'label.before-error'
+                    )}`}
+                    tone="error"
+                    value={`${t('label.failed-at')} ${agent.failStep}`}
+                  />
+                )}
+              </>
+            ) : (
+              <Badge
+                className="tw:gap-1.5 tw:font-semibold"
+                color="warning"
+                data-testid="paused-pipeline-badge"
+                size="sm"
+                type="pill-color">
+                <span className="tw:size-1.5 tw:rounded-full tw:bg-utility-yellow-500" />
+                {t('label.paused')}
+              </Badge>
             )}
           </Box>
           {isRunning && (
