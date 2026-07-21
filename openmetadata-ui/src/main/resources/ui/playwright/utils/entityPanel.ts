@@ -101,6 +101,7 @@ export const openEntitySummaryPanel = async ({
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
+    await page.mouse.move(0, 0);
     await page.keyboard.press('Escape');
     await expect(
       page.locator('.ant-popover:not(.ant-popover-hidden)')
