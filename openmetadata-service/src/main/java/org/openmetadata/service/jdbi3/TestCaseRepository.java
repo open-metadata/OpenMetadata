@@ -1035,10 +1035,7 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
                     testCaseResolutionStatusRepository.deleteById(child.getId(), true);
                   } catch (Exception e) {
                     LOG.error(
-                        "Error recursively hard deleting {} {}",
-                        child.getType(),
-                        child.getId(),
-                        e);
+                        "Error recursively hard deleting {} {}", child.getType(), child.getId(), e);
                   }
                 }
               });
