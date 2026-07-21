@@ -248,7 +248,8 @@ export interface OntologyExpression {
      */
     individualIri?: string;
     /**
-     * Named individuals used by an enumeration expression.
+     * Named individuals used by an enumeration expression. Presence is enforced per expression
+     * kind by the OWL profile guard.
      */
     individualIris?: string[];
     kind:            ExpressionKind;
@@ -257,7 +258,8 @@ export interface OntologyExpression {
      */
     literal?: Literal;
     /**
-     * Nested expressions for intersection and union expressions.
+     * Nested expressions for intersection and union expressions. Minimum operand counts are
+     * enforced per expression kind by the OWL profile guard.
      */
     operands?: OntologyExpression[];
     /**

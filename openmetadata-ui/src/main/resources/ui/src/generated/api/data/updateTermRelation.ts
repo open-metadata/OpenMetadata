@@ -14,12 +14,18 @@
  * Typed mutable fields for an existing glossary-term relationship.
  */
 export interface UpdateTermRelation {
+    /**
+     * How this relation edge originated.
+     */
     provenance?: Provenance;
     /**
      * New stable relationship-type name.
      */
     relationType?: string;
-    status?:       EntityStatus;
+    /**
+     * Approval status of this relation edge.
+     */
+    status?: Status;
 }
 
 /**
@@ -33,10 +39,9 @@ export enum Provenance {
 }
 
 /**
- * Status of an entity. It is used for governance and is applied to all the entities in the
- * catalog.
+ * Approval status of this relation edge.
  */
-export enum EntityStatus {
+export enum Status {
     Approved = "Approved",
     Archived = "Archived",
     Deprecated = "Deprecated",
