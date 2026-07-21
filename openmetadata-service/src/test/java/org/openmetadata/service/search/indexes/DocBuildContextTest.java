@@ -1,5 +1,6 @@
 package org.openmetadata.service.search.indexes;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertSame;
@@ -21,6 +22,7 @@ class DocBuildContextTest {
 
     assertSame(first, second);
     assertNull(first.prefetchedUpstreamLineage());
+    assertNull(first.relationshipRevision());
   }
 
   @Test
@@ -65,5 +67,22 @@ class DocBuildContextTest {
 
     assertTrue(ctx.serviceStylePrefetch().prefetched());
     assertSame(style, ctx.serviceStylePrefetch().style().orElseThrow());
+  }
+
+  @Test
+  void carriesPrefetchedTestSuiteRelationshipRevision() {
+    DocBuildContext ctx =
+        DocBuildContext.of(null, DocBuildContext.ServiceStylePrefetch.notPrefetched(), 42L);
+
+    assertEquals(42L, ctx.relationshipRevision());
+  }
+
+  @Test
+  void relationshipRevisionFactorySkipsOtherPrefetches() {
+    DocBuildContext ctx = DocBuildContext.withRelationshipRevision(43L);
+
+    assertEquals(43L, ctx.relationshipRevision());
+    assertNull(ctx.prefetchedUpstreamLineage());
+    assertFalse(ctx.serviceStylePrefetch().prefetched());
   }
 }

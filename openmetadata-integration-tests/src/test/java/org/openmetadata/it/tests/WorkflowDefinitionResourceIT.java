@@ -3464,12 +3464,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3576,12 +3576,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveEntity",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveEntity",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -3973,12 +3973,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approval",
                   "to": "endApproved",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "approval",
                   "to": "endRejected",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4056,12 +4056,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "userApproval",
                   "to": "setTask",
-                  "condition": "false"
+                  "condition": "reject"
                 },
                 {
                   "from": "setTask",
@@ -4699,7 +4699,7 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "approvalTask",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ]
             }
@@ -4713,8 +4713,8 @@ public class WorkflowDefinitionResourceIT {
           assertThrows(
               OpenMetadataException.class,
               () -> client.workflowDefinitions().validate(missingTrueConditionWorkflow));
-      assertTrue(missingTrueEx.getMessage().contains("must have both TRUE and FALSE"));
-      LOG.debug("UserApprovalTask missing TRUE condition correctly rejected");
+      assertTrue(missingTrueEx.getMessage().contains("must have both approve and reject"));
+      LOG.debug("UserApprovalTask missing approve condition correctly rejected");
 
       // Test 16 (Test 10 in original): Valid conditional task with both TRUE and FALSE
       String validConditionalJson =
@@ -5339,9 +5339,9 @@ public class WorkflowDefinitionResourceIT {
                       ],
                       "edges": [
                         {"from": "StartNode", "to": "UserApproval"},
-                        {"from": "UserApproval", "to": "SetDescription", "condition": "true"},
+                        {"from": "UserApproval", "to": "SetDescription", "condition": "approve"},
                         {"from": "SetDescription", "to": "EndNode"},
-                        {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                        {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
                       ],
                       "config": {"storeStageStatus": true}
                     }
@@ -5842,9 +5842,9 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "StartNode", "to": "UserApproval"},
-                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "true"},
+                {"from": "UserApproval", "to": "SetStatusApproved", "condition": "approve"},
                 {"from": "SetStatusApproved", "to": "EndNode"},
-                {"from": "UserApproval", "to": "EndNode", "condition": "false"}
+                {"from": "UserApproval", "to": "EndNode", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -6129,8 +6129,8 @@ public class WorkflowDefinitionResourceIT {
                   ],
                   "edges": [
                     {"from": "Start", "to": "UserApproval"},
-                    {"from": "UserApproval", "to": "End", "condition": "true"},
-                    {"from": "UserApproval", "to": "End", "condition": "false"}
+                    {"from": "UserApproval", "to": "End", "condition": "approve"},
+                    {"from": "UserApproval", "to": "End", "condition": "reject"}
                   ],
                   "config": {"storeStageStatus": true}
                 }
@@ -6361,12 +6361,12 @@ public class WorkflowDefinitionResourceIT {
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "true"
+                  "condition": "approve"
                 },
                 {
                   "from": "ApproveTag",
                   "to": "end",
-                  "condition": "false"
+                  "condition": "reject"
                 }
               ],
               "config": {
@@ -7531,8 +7531,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ],
               "config": {"storeStageStatus": false}
             }
@@ -7857,8 +7857,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -8145,8 +8145,8 @@ public class WorkflowDefinitionResourceIT {
               ],
               "edges": [
                 {"from": "start", "to": "ApproveTable"},
-                {"from": "ApproveTable", "to": "endApproved", "condition": "true"},
-                {"from": "ApproveTable", "to": "endRejected", "condition": "false"}
+                {"from": "ApproveTable", "to": "endApproved", "condition": "approve"},
+                {"from": "ApproveTable", "to": "endRejected", "condition": "reject"}
               ]
             }
             """
@@ -9698,12 +9698,12 @@ public class WorkflowDefinitionResourceIT {
             {
               "from": "userApproval",
               "to": "setApproved",
-              "condition": "true"
+              "condition": "approve"
             },
             {
               "from": "userApproval",
               "to": "setRejected",
-              "condition": "false"
+              "condition": "reject"
             },
             {
               "from": "setApproved",
@@ -10125,8 +10125,8 @@ public class WorkflowDefinitionResourceIT {
           "edges": [
             {"from": "start", "to": "setStatusInReview"},
             {"from": "setStatusInReview", "to": "ApprovalTask"},
-            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "true"},
-            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "false"},
+            {"from": "ApprovalTask", "to": "setStatusApproved", "condition": "approve"},
+            {"from": "ApprovalTask", "to": "setStatusRejected", "condition": "reject"},
             {"from": "setStatusApproved", "to": "endApproved"},
             {"from": "setStatusRejected", "to": "endRejected"}
           ],
@@ -10563,8 +10563,8 @@ public class WorkflowDefinitionResourceIT {
             { "from": "start", "to": "checkChangeDesc" },
             { "from": "checkChangeDesc", "to": "userApproval", "condition": "true" },
             { "from": "checkChangeDesc", "to": "setDraft", "condition": "false" },
-            { "from": "userApproval", "to": "setApproved", "condition": "true" },
-            { "from": "userApproval", "to": "setRejected", "condition": "false" },
+            { "from": "userApproval", "to": "setApproved", "condition": "approve" },
+            { "from": "userApproval", "to": "setRejected", "condition": "reject" },
             { "from": "setApproved", "to": "end" },
             { "from": "setRejected", "to": "end" },
             { "from": "setDraft", "to": "end" }

@@ -1,13 +1,12 @@
-from datetime import datetime  # noqa: I001
+import random
+from datetime import datetime
 
 import pytest
 from dirty_equals import IsApprox, IsPositiveInt
 from pydantic import BaseModel
-from sqlalchemy import VARBINARY
+from sqlalchemy import VARBINARY, MetaData, create_engine, text
 from sqlalchemy import Column as SQAColumn
-from sqlalchemy import MetaData
 from sqlalchemy import Table as SQATable
-from sqlalchemy import create_engine, text
 from sqlalchemy.dialects import postgresql
 from sqlalchemy.engine import Connection, make_url
 from sqlalchemy.sql import sqltypes
@@ -36,6 +35,7 @@ class TestParameters(BaseModel):
     table2_fqn: str
     expected: TestCaseResult
     table_profile_config: TableProfilerConfig = None
+    deterministic_sample_salt: str | None = None
 
     def __init__(self, *args, **kwargs):
         if args:
@@ -105,13 +105,11 @@ class TestParameters(BaseModel):
                     ],
                 ),
                 "POSTGRES_SERVICE.dvdrental.public.customer",
-                TestCaseResult.model_construct(
+                TestCaseResult(
                     timestamp=int(datetime.now().timestamp() * 1000),
                     testCaseStatus=TestCaseStatus.Success,
                     failedRows=0,
-                    # we use approximations around the 99.5 confidence interval since the
-                    # sampling in data diff uses hash based partitioning
-                    passedRows=IsApprox(10, delta=15) & IsPositiveInt,
+                    passedRows=11,
                 ),
                 TableProfilerConfig(
                     profileSampleConfig=ProfileSampleConfig(
@@ -122,6 +120,7 @@ class TestParameters(BaseModel):
                         },
                     ),
                 ),
+                "abcde",
             ),
             (
                 TestCaseDefinition(
@@ -366,6 +365,7 @@ def test_happy_paths(
     prepare_data,
     ingest_postgres_metadata,
     ingest_mysql_service,
+    monkeypatch: pytest.MonkeyPatch,
     patched_metadata,
     parameters: TestParameters,
     sink_config,
@@ -408,6 +408,9 @@ def test_happy_paths(
     )
     if parameters.table_profile_config:
         metadata.create_or_update_table_profiler_config(table1.fullyQualifiedName.root, parameters.table_profile_config)
+    if parameters.deterministic_sample_salt:
+        sample_salt = parameters.deterministic_sample_salt
+        monkeypatch.setattr(random, "choices", lambda *_args, **_kwargs: list(sample_salt))
     workflow_config = {
         "source": {
             "type": "postgres",

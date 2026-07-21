@@ -56,6 +56,11 @@ MODEL_HYPERPARAMS = {
     "l1_ratio": {"name": "l1_ratio", "value": "1.0", "description": None},
 }
 
+# An earlier registered version with distinct hyperparameters. Ingestion must
+# surface the newest version's run, so these values must never reach the entity;
+# seeing them would mean the connector selected a stale version.
+PREVIOUS_HYPERPARAMS = {"alpha": "0.2", "l1_ratio": "0.3"}
+
 MODEL_NAME = "ElasticnetWineModel"
 MODEL_DESCRIPTION = "ElasticNet model predicting wine quality"
 
@@ -65,6 +70,32 @@ def eval_metrics(actual, pred):
     mae = mean_absolute_error(actual, pred)
     r2 = r2_score(actual, pred)
     return rmse, mae, r2
+
+
+def log_registered_model(model, signature):
+    """Log a model version under MODEL_NAME, retrying transient artifact errors."""
+    tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
+
+    for attempt in range(5):
+        try:
+            if tracking_url_type_store != "file":
+                mlflow.sklearn.log_model(
+                    model,
+                    "model",
+                    registered_model_name=MODEL_NAME,
+                    signature=signature,
+                )
+            else:
+                mlflow.sklearn.log_model(model, "model")
+            break
+        except Exception as exc:
+            if attempt < 4:
+                logging.getLogger(__name__).warning(
+                    "Retry %d/5: log_model failed (%s: %s), retrying...", attempt + 1, type(exc).__name__, exc
+                )
+                time.sleep(5 * (attempt + 1))
+            else:
+                raise
 
 
 @pytest.fixture(scope="module")
@@ -110,12 +141,24 @@ def create_data(mlflow_environment):
 
     alpha = float(MODEL_HYPERPARAMS["alpha"]["value"])
     l1_ratio = float(MODEL_HYPERPARAMS["l1_ratio"]["value"])
+    prev_alpha = float(PREVIOUS_HYPERPARAMS["alpha"])
+    prev_l1_ratio = float(PREVIOUS_HYPERPARAMS["l1_ratio"])
+
+    signature = infer_signature(train_x, ElasticNet().fit(train_x, train_y).predict(train_x))
+
+    # Register an older version first so the model carries more than one version.
+    # latest_versions only ever holds the newest, so ingestion must surface the
+    # version 2 run below — never these hyperparameters.
+    with mlflow.start_run():
+        lr_prev = ElasticNet(alpha=prev_alpha, l1_ratio=prev_l1_ratio, random_state=42)
+        lr_prev.fit(train_x, train_y)
+        mlflow.log_param("alpha", prev_alpha)
+        mlflow.log_param("l1_ratio", prev_l1_ratio)
+        log_registered_model(lr_prev, signature)
 
     with mlflow.start_run():
         lr = ElasticNet(alpha=alpha, l1_ratio=l1_ratio, random_state=42)
         lr.fit(train_x, train_y)
-
-        signature = infer_signature(train_x, lr.predict(train_x))
 
         predicted_qualities = lr.predict(test_x)
 
@@ -127,28 +170,7 @@ def create_data(mlflow_environment):
         mlflow.log_metric("r2", r2)
         mlflow.log_metric("mae", mae)
 
-        tracking_url_type_store = urlparse(mlflow.get_tracking_uri()).scheme
-
-        for attempt in range(5):
-            try:
-                if tracking_url_type_store != "file":
-                    mlflow.sklearn.log_model(
-                        lr,
-                        "model",
-                        registered_model_name=MODEL_NAME,
-                        signature=signature,
-                    )
-                else:
-                    mlflow.sklearn.log_model(lr, "model")
-                break
-            except Exception as exc:
-                if attempt < 4:
-                    logging.getLogger(__name__).warning(
-                        "Retry %d/5: log_model failed (%s: %s), retrying...", attempt + 1, type(exc).__name__, exc
-                    )
-                    time.sleep(5 * (attempt + 1))
-                else:
-                    raise
+        log_registered_model(lr, signature)
 
     # Describing the model bumps RegisteredModel.last_updated_timestamp past the
     # version's, which must not hide the version from the registry listing.
@@ -218,6 +240,11 @@ def test_mlflow(ingest_mlflow, metadata, service):
         assert model.mlHyperParameters[i].name == hp["name"]
         assert model.mlHyperParameters[i].value == hp["value"]
         assert model.mlHyperParameters[i].description == hp["description"]
+
+    # The model has two versions; ingestion must surface the newest one's run,
+    # so the older version's hyperparameters must be absent.
+    ingested_values = {hp.value for hp in model.mlHyperParameters}
+    assert not ingested_values & set(PREVIOUS_HYPERPARAMS.values())
 
     # Assert MLStore is as expected
     assert "mlops.local.com" in model.mlStore.storage
