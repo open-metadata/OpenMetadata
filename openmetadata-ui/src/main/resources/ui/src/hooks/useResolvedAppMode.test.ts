@@ -265,15 +265,16 @@ describe('useResolvedAppMode', () => {
     });
   });
 
-  it('preserves the session tuple across refresh even if the target mode is not yet registered', async () => {
+  it('preserves the session tuple across refresh while applications is still loading', async () => {
     // Refresh scenario: sessionStorage has `mode: 'ai'` from a previous
     // switch. On boot, this resolver runs BEFORE App.tsx has registered
     // the AI route (React flushes child effects before parent effects
     // in the same commit). Old code called clearAppMode() here, which
     // wiped the tuple and reset the tab to Classic on every refresh.
-    // New behavior: keep the session tuple, wait for the route to
-    // register, then find the tuple valid on the next re-run.
-    seedUser({});
+    // New behavior: while `applicationsLoaded === false` (route
+    // registration hasn't run yet), keep the session tuple and wait
+    // for the next re-run when the AI route registers.
+    seedUser({ applicationsLoaded: false });
     seedRegistry(false);
     seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
     useAppModeStore.setState({ currentMode: AI_APP_MODE });
@@ -287,6 +288,29 @@ describe('useResolvedAppMode', () => {
     expect(readAppModeSession()).toEqual({
       personaAppMode: null,
       mode: AI_APP_MODE,
+    });
+  });
+
+  it('clears the stale session tuple once applications has loaded and the mode is truly uninstalled', async () => {
+    // Applications finished loading and the AI route still isn't in
+    // the registry → AskCollate is genuinely uninstalled. Drop this
+    // tab's session so it reverts to default. The hint gets rewritten
+    // to `default` by the subsequent `writeAppMode(DEFAULT)` — that's
+    // correct: the previous `ai` hint pointed at an uninstalled mode
+    // and is genuinely stale now.
+    seedUser({ applicationsLoaded: true });
+    seedRegistry(false);
+    seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
+    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: DEFAULT_APP_MODE,
+      });
     });
   });
 
@@ -362,8 +386,8 @@ describe('useResolvedAppMode', () => {
     });
   });
 
-  it('waits (no write) when the hint mode is not yet registered', async () => {
-    seedUser({});
+  it('waits (no write) when the hint mode is not yet registered and applications is still loading', async () => {
+    seedUser({ applicationsLoaded: false });
     seedRegistry(false);
     seedHint({ mode: AI_APP_MODE });
 
@@ -372,16 +396,11 @@ describe('useResolvedAppMode', () => {
     });
     rerender();
 
-    // The effect had a chance to run. It should NOT have written the
-    // session tuple or overwritten the hint — falling through to write
-    // DEFAULT here would clobber the hint that a sibling tab set, and
-    // strand every new-tab-from-AI in Classic once the AI route
-    // registers on the next commit. Route registration happens in a
-    // child-of-child component effect (App.tsx) whose flush order is
-    // not guaranteed relative to this resolver's flush, so we can't
-    // rely on `applicationsLoaded` as a give-up signal.
+    // Applications still loading → wait; do NOT fall through to write
+    // DEFAULT, which would clobber the hint a sibling tab set and
+    // strand the next new-tab-from-AI in Classic once the AI route
+    // registers on the next commit.
     expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
-    expect(readAppModeSession()).toBeNull();
     expect(readAppModeSession()).toBeNull();
 
     const rawHint = globalThis.window.localStorage.getItem(
@@ -389,5 +408,31 @@ describe('useResolvedAppMode', () => {
     );
 
     expect(JSON.parse(rawHint ?? '{}').mode).toBe(AI_APP_MODE);
+  });
+
+  it('falls through when the hint mode is unregistered AND applications has loaded (plugin uninstalled)', async () => {
+    // applications finished loading and the hint's mode still isn't
+    // in the registry → the plugin is truly uninstalled. Fall through
+    // to persona / pref / default (which overwrites the stale hint,
+    // correctly reflecting reality).
+    seedUser({ applicationsLoaded: true });
+    seedRegistry(false);
+    seedHint({ mode: AI_APP_MODE });
+
+    renderHook(() => useResolvedAppMode(), { wrapper: makeWrapper() });
+
+    await waitFor(() => {
+      expect(useAppModeStore.getState().currentMode).toBe(DEFAULT_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: DEFAULT_APP_MODE,
+      });
+    });
+
+    const rawHint = globalThis.window.localStorage.getItem(
+      APP_MODE_HINT_STORAGE_KEY
+    );
+
+    expect(JSON.parse(rawHint ?? '{}').mode).toBe(DEFAULT_APP_MODE);
   });
 });

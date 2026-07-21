@@ -280,6 +280,19 @@ export const clearAppMode = (): void => {
 };
 
 /**
+ * Clear only this tab's session tuple (and the in-memory store), NOT
+ * the cross-tab hint. Used by the resolver's stale-mode cleanup — a
+ * single tab discovering that its session's mode is unregistered
+ * shouldn't wipe the shared hint that sibling tabs may legitimately
+ * be using for cross-tab mode inheritance. The hint has its own TTL
+ * and heartbeat guards.
+ */
+export const clearAppModeSessionOnly = (): void => {
+  useAppModeStore.getState().reset();
+  removeSession();
+};
+
+/**
  * Read the current session tuple. Exposed for the resolver, which needs
  * to compare `personaAppMode` snapshots and decide whether the persisted
  * session is still valid.

@@ -25,6 +25,7 @@ import { getDocumentByFQN } from '../rest/DocStoreAPI';
 import { useCurrentUserPreferences } from './currentUserStore/useCurrentUserStore';
 import { useApplicationStore } from './useApplicationStore';
 import {
+  clearAppModeSessionOnly,
   isAppModeHintFresh,
   readAppModeHint,
   readAppModeSession,
@@ -101,6 +102,12 @@ export const useResolvedAppMode = (): void => {
   );
   const currentUser = useApplicationStore((state) => state.currentUser);
   const isAuthenticated = useApplicationStore((state) => state.isAuthenticated);
+  // `applicationsLoaded` distinguishes "route registration hasn't run
+  // yet" (wait) from "the plugin owning this mode is genuinely
+  // uninstalled" (clear the stale session).
+  const applicationsLoaded = useApplicationStore(
+    (state) => state.applicationsLoaded
+  );
   const registeredRoutes = useAppRoutesRegistry((state) => state.routes);
   const { preferences } = useCurrentUserPreferences();
 
@@ -142,21 +149,24 @@ export const useResolvedAppMode = (): void => {
     const isModeRegistered = (mode: string): boolean =>
       mode === DEFAULT_APP_MODE || mode in registeredRoutes;
 
-    // If the session refers to a mode that isn't in the registry,
-    // WAIT — don't clear it. On refresh, the resolver's effect fires
-    // BEFORE App.tsx's route-registration effect (React commits
-    // child-of-child effects first), so a valid `mode: 'ai'` session
-    // would briefly look unregistered and get wiped, reverting the
-    // user's mode to Classic on every reload. This effect re-runs
-    // when `registeredRoutes` changes and finds the session valid
-    // then. If the mode never registers (plugin genuinely
-    // uninstalled), the session persists but AppRouter falls back to
-    // its default routes since the registry has no matching entry —
-    // visible but non-destructive.
+    // If the session refers to a mode that isn't in the registry:
+    //   - While applications is still loading, WAIT — route
+    //     registration hasn't run yet (React flushes child effects
+    //     before parent effects, so App.tsx's registerRoutes call
+    //     lags the resolver on refresh). Clearing here would revert
+    //     a valid AI session to Classic on every reload.
+    //   - Once applications has loaded and the mode still isn't
+    //     registered, the plugin owning the mode is truly
+    //     uninstalled. Clear ONLY this tab's session tuple (not the
+    //     shared hint — sibling tabs might legitimately be using it)
+    //     and fall through to compute a fresh candidate.
     const validSession =
       session && isModeRegistered(session.mode) ? session : null;
     if (session && !validSession) {
-      return;
+      if (!applicationsLoaded) {
+        return;
+      }
+      clearAppModeSessionOnly();
     }
 
     if (validSession && validSession.personaAppMode === currentPersonaAppMode) {
@@ -177,20 +187,17 @@ export const useResolvedAppMode = (): void => {
         return;
       }
 
-      // Hint mode isn't registered YET. Do not fall through — writing
-      // DEFAULT here would call writeAppMode(DEFAULT) which also writes
-      // the hint, clobbering the value the sibling tab set and
-      // stranding every new-tab-from-AI in Classic. Route registration
-      // is asynchronous (App.tsx installs the AI route in its own
-      // effect, which may not have run yet even with applicationsLoaded
-      // === true because React flushes child effects before parent
-      // effects in the same commit). Instead, wait: this effect re-runs
-      // when registeredRoutes changes, and we'll adopt the hint then.
-      // If registration never arrives (user has AskCollate uninstalled
-      // but a sibling tab wrote an AI hint before), the hint expires
-      // naturally after APP_MODE_HINT_TTL_MS and the next re-run falls
-      // through to persona / pref / default.
-      return;
+      // Hint mode isn't registered. Wait only if applications is still
+      // loading (route registration hasn't run yet). Once applications
+      // has loaded and the hint's mode still isn't registered, the
+      // hint is stale (its owning plugin is uninstalled) — fall
+      // through to persona / pref / default. Note that falling through
+      // here calls writeAppMode(DEFAULT) which also writes the hint;
+      // that's correct in this branch because the old hint pointed at
+      // an uninstalled mode.
+      if (!applicationsLoaded) {
+        return;
+      }
     }
 
     const preferredMode = preferences.appMode ?? null;
@@ -214,5 +221,6 @@ export const useResolvedAppMode = (): void => {
     defaultPersonaId,
     preferences.appMode,
     registeredRoutes,
+    applicationsLoaded,
   ]);
 };
