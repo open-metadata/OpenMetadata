@@ -1030,8 +1030,16 @@ public class TestCaseRepository extends EntityRepository<TestCase> {
           .execute(
               () -> {
                 for (CollectionDAO.EntityRelationshipRecord child : children) {
-                  LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
-                  testCaseResolutionStatusRepository.deleteById(child.getId(), hardDelete);
+                  try {
+                    LOG.info("Recursively hard deleting {} {}", child.getType(), child.getId());
+                    testCaseResolutionStatusRepository.deleteById(child.getId(), true);
+                  } catch (Exception e) {
+                    LOG.error(
+                        "Error recursively hard deleting {} {}",
+                        child.getType(),
+                        child.getId(),
+                        e);
+                  }
                 }
               });
     }
