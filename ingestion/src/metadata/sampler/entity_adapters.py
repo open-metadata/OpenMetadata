@@ -30,13 +30,17 @@ from __future__ import annotations
 
 from abc import ABC, abstractmethod
 from copy import deepcopy
-from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar
+from typing import TYPE_CHECKING, Any, ClassVar, Generic, TypeVar, cast
 
 from metadata.generated.schema.entity.data.container import Container
 from metadata.generated.schema.entity.data.table import Column, Table
+from metadata.generated.schema.entity.data.topic import Topic
 from metadata.generated.schema.entity.services.serviceType import ServiceType
 from metadata.generated.schema.metadataIngestion.databaseServiceAutoClassificationPipeline import (
     DatabaseServiceAutoClassificationPipeline,
+)
+from metadata.generated.schema.metadataIngestion.messagingServiceAutoClassificationPipeline import (
+    MessagingServiceAutoClassificationPipeline,
 )
 from metadata.generated.schema.metadataIngestion.storageServiceAutoClassificationPipeline import (
     StorageServiceAutoClassificationPipeline,
@@ -52,7 +56,11 @@ from metadata.sampler.config import (
 from metadata.sampler.config_utils import build_database_service_conn_config
 from metadata.sampler.models import SampleConfig
 from metadata.sampler.partition import get_partition_details
-from metadata.sampler.sampler_config import DatabaseSamplerConfig, StorageSamplerConfig
+from metadata.sampler.sampler_config import (
+    DatabaseSamplerConfig,
+    MessagingSamplerConfig,
+    StorageSamplerConfig,
+)
 
 if TYPE_CHECKING:
     from collections.abc import Callable
@@ -194,6 +202,41 @@ class ContainerAdapter(EntityAdapter[Container]):
             "ometa_client": metadata,
             "entity": entity,
             "config": StorageSamplerConfig(
+                sample_data_count=source_config.sampleDataCount,
+            ),
+        }
+
+
+@register_adapter(entity=Topic, pipeline=MessagingServiceAutoClassificationPipeline)
+class TopicAdapter(EntityAdapter[Topic]):
+    pipeline_config_class = MessagingServiceAutoClassificationPipeline
+    service_type = ServiceType.Messaging
+    patch_fields: ClassVar[list[str]] = ["tags", "messageSchema"]
+
+    def get_columns(self, entity: Topic) -> list[Column] | None:
+        if entity.messageSchema and hasattr(entity.messageSchema, "schemaFields"):
+            return cast("list[Column]", entity.messageSchema.schemaFields)
+        return None
+
+    def set_columns(self, entity: Topic, columns: list[Column]) -> None:
+        if entity.messageSchema:
+            entity.messageSchema.schemaFields = cast("Any", columns)
+
+    def build_sampler_kwargs(
+        self,
+        config: OpenMetadataWorkflowConfig,
+        metadata: OpenMetadata,
+        entity: Topic,
+        profiler_config: Any,
+        source_config: Any,
+    ) -> dict | None:
+        if config.source.serviceConnection is None or config.source.serviceConnection.root is None:
+            return None
+        return {
+            "service_connection_config": deepcopy(config.source.serviceConnection.root.config),
+            "ometa_client": metadata,
+            "entity": entity,
+            "config": MessagingSamplerConfig(
                 sample_data_count=source_config.sampleDataCount,
             ),
         }
