@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 
-import { act, fireEvent, render, screen } from '@testing-library/react';
+import { act, fireEvent, render, screen, within } from '@testing-library/react';
 import { createRef } from 'react';
 import { DEFAULT_SCHEDULE_CRON_DAILY } from '../../../../../constants/Schedular.constants';
 import { LOADING_STATE } from '../../../../../enums/common.enum';
@@ -117,6 +117,26 @@ describe('ScheduleIntervalStep', () => {
       cron: DEFAULT_SCHEDULE_CRON_DAILY,
       retries: 3,
       raiseOnError: false,
+    });
+  });
+
+  it('should clamp a negative retries value to zero before deploying', async () => {
+    const ref = createRef<ScheduleIntervalHandle>();
+    renderStep({}, ref);
+
+    fireEvent.change(
+      within(screen.getByTestId('retries')).getByRole('spinbutton'),
+      { target: { value: '-5' } }
+    );
+
+    await act(async () => {
+      ref.current?.submit();
+    });
+
+    expect(mockOnDeploy).toHaveBeenCalledWith({
+      cron: DEFAULT_SCHEDULE_CRON_DAILY,
+      retries: 0,
+      raiseOnError: true,
     });
   });
 

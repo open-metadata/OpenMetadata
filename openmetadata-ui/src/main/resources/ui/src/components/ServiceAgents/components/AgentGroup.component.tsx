@@ -94,7 +94,9 @@ const AgentGroup: FC<AgentGroupProps> = ({
           ))}
       </Box>
       {agents.length === 0 && emptyPlaceholder ? (
-        <Box className="tw:relative tw:min-h-80 tw:w-full">
+        <Box
+          className="tw:relative tw:min-h-80 tw:w-full"
+          data-testid="agent-group-empty-placeholder">
           {emptyPlaceholder}
         </Box>
       ) : (

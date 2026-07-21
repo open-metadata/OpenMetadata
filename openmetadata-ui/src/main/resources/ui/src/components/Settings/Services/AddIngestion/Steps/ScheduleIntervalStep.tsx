@@ -21,7 +21,6 @@ import {
   HookForm,
   Typography,
 } from '@openmetadata/ui-core-components';
-import { RuleObject } from 'antd/lib/form';
 import { LoadingState } from 'Models';
 import {
   forwardRef,
@@ -75,7 +74,7 @@ const validateCron = async (value?: string) => {
 
   if (value) {
     try {
-      await cronValidator({} as RuleObject, value);
+      await cronValidator({}, value);
     } catch (error) {
       result = (error as Error).message;
     }
@@ -133,7 +132,7 @@ const ScheduleIntervalStep = forwardRef<
   const handleFinish = (data: ScheduleIntervalStepFormData) => {
     onDeploy?.({
       cron: data.cron || undefined,
-      retries: Number(data.retries ?? 0),
+      retries: Math.max(0, Number(data.retries ?? 0)),
       raiseOnError: data.raiseOnError ?? true,
     });
   };
@@ -154,6 +153,7 @@ const ScheduleIntervalStep = forwardRef<
       id: 'root/retries',
       props: {
         'data-testid': 'retries',
+        min: 0,
         onFocus: () => onFocus?.('root/retries'),
       },
     }),
