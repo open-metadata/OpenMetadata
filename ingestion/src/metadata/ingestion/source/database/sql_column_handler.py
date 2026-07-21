@@ -352,12 +352,13 @@ class SqlColumnHandlerMixin:
                 col_obj = self._process_complex_col_type(column=column, parsed_string=parsed_string)
                 om_column = col_obj
 
-                if column.get("children"):
+                source_children = column.get("children")
+                if source_children:
                     # Prioritize source-provided children for column processing.
                     # If 'children' are directly provided in the source metadata,
                     # process and assign them to the output column, overriding any derived children.
                     # Currently, this is only used for BigQuery.
-                    om_column.children = [process_column(children) for children in column.get("children")]
+                    om_column.children = [process_column(child) for child in source_children]
             om_column.tags = self.get_column_tag_labels(table_name=table_name, column=column)
             return om_column
 
