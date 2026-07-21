@@ -910,7 +910,22 @@ test.describe('Bulk Edit Entity', () => {
         true
       );
 
+      // Scope the wait to THIS test's own dry-run validate call for
+      // parentTermFqn, same reasoning as the export step above — trusting
+      // the loading-mask alone races with concurrent bulk-edit jobs run by
+      // other tests under the same admin session (fullyParallel + shared
+      // storageState), which can render another job's result here.
+      const bulkEditValidateResponse = page.waitForResponse(
+        (response) =>
+          response.url().includes('/glossaryTerms/name/') &&
+          response.url().includes(encodeURIComponent(parentTermFqn)) &&
+          response.url().includes('importAsync') &&
+          response.url().includes('dryRun=true')
+      );
+
       await page.getByRole('button', { name: 'Next' }).click();
+      await bulkEditValidateResponse;
+
       const loader = page.locator(
         '.inovua-react-toolkit-load-mask__background-layer'
       );
