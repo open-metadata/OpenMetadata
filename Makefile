@@ -61,6 +61,9 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 
 .PHONY: install_antlr_cli
 ANTLR_VERSION := 4.9.2
+# Dots escaped so the banner match below is a real version match, not a
+# regex wildcard, and so 4.9.20 cannot satisfy a 4.9.2 check.
+ANTLR_VERSION_RE := $(subst .,\.,$(ANTLR_VERSION))
 # install_antlr_cli resolves the CLI in three steps, cheapest first:
 #
 #   1. Already on PATH at the pinned version -> nothing to do.
@@ -89,7 +92,7 @@ ANTLR_INSTALL_DIR ?= /usr/local/bin
 install_antlr_cli:  ## Install antlr CLI locally
 	@set -eu; \
 	if command -v antlr4 > /dev/null 2>&1 \
-		&& antlr4 2>&1 | grep -q "Version $(ANTLR_VERSION)"; then \
+		&& antlr4 2>&1 | grep -Eq 'Version $(ANTLR_VERSION_RE)([^0-9]|$$)'; then \
 		echo "ANTLR $(ANTLR_VERSION) already available at $$(command -v antlr4); nothing to do."; \
 		exit 0; \
 	fi; \
@@ -103,7 +106,7 @@ install_antlr_cli:  ## Install antlr CLI locally
 			$(ANTLR_VERSION)|$(ANTLR_VERSION)[-+~]*) \
 				if apt-get install -y -qq antlr4 > /dev/null 2>&1; then \
 					if command -v antlr4 > /dev/null 2>&1 \
-						&& antlr4 2>&1 | grep -q "Version $(ANTLR_VERSION)"; then \
+						&& antlr4 2>&1 | grep -Eq 'Version $(ANTLR_VERSION_RE)([^0-9]|$$)'; then \
 						echo "Installed ANTLR $$candidate from the distro archive."; \
 						exit 0; \
 					fi; \
@@ -120,6 +123,14 @@ install_antlr_cli:  ## Install antlr CLI locally
 	jar_file=$$(mktemp); \
 	cli_file=$$(mktemp "$(ANTLR_INSTALL_DIR)/.antlr4.XXXXXX"); \
 	trap 'rm -f "$$jar_file" "$$cli_file"' EXIT; \
+	if command -v shasum > /dev/null 2>&1; then \
+		sha_check="shasum -a 256 --check"; \
+	elif command -v sha256sum > /dev/null 2>&1; then \
+		sha_check="sha256sum --check"; \
+	else \
+		echo "Neither shasum nor sha256sum is available; cannot verify the ANTLR download." >&2; \
+		exit 1; \
+	fi; \
 	urls=$$(printf '%s\n%s\n' "$(ANTLR_COMPLETE_JAR_URL)" "$(ANTLR_COMPLETE_JAR_FALLBACK_URL)" | awk 'NF && !seen[$$0]++'); \
 	attempt=1; \
 	while :; do \
@@ -128,7 +139,7 @@ install_antlr_cli:  ## Install antlr CLI locally
 				--retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
 				--connect-timeout 15 --max-time 60 \
 				--output "$$jar_file" "$$url" \
-				&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | shasum -a 256 --check \
+				&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | $$sha_check \
 				&& jar tf "$$jar_file" > /dev/null; then \
 				break 2; \
 			fi; \
