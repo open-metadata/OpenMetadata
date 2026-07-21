@@ -303,7 +303,14 @@ public class TestCaseResolutionStatusRepository
         && message.contains(Relationship.PARENT_OF.value());
   }
 
-  private boolean applyLegacyStatusToIncidentTask(
+  /**
+   * Bridge a legacy-style {@link TestCaseResolutionStatus} onto the task-first incident workflow,
+   * advancing the workflow task to match the recorded status. Used by {@link #storeInternal} on
+   * live Ack/Assigned/Resolved writes so existing TCRS clients keep working while Task remains the
+   * source of truth. Idempotent: {@link #resolveLegacyTransitionId} returns null (no-op) when the
+   * task is already at the target stage.
+   */
+  public boolean applyLegacyStatusToIncidentTask(
       TestCaseResolutionStatus recordEntity, String recordFQN) {
     Task incidentTask = findIncidentTaskForLegacyStatus(recordEntity, recordFQN);
     if (incidentTask == null) {
