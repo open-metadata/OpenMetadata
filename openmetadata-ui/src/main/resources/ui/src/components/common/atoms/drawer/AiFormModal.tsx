@@ -189,24 +189,24 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 : WIDTH_NO_HINT_COLUMN
             }
             onClose={onClose}>
-            {/* Rule plus shadow, the pairing every sticky edge in the product
-                already uses — the SSO form's action bar and the classic test
-                case form's both set a 1px @grey-200 border and a shadow
-                together, and `@grey-200` is the value `border-secondary`
-                resolves to.
+            {/* Matches the pagination bar's scroll edge, which is what design
+                pointed at — core-components' Pagination sets
+                `relative z-[1] bg-primary shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]`
+                on its top edge. Offset mirrored here, since this edge casts
+                down rather than up.
 
-                The shadow is `@box-shadow-sticky-reverse` (the one on the
-                Explore pagination's top border, which is what design pointed
-                at) with the offset mirrored, since this edge casts down rather
-                than up. Its 0.078 alpha is the reason it works here: 0.04 was
-                invisible against the near-white form column, 0.1 spread into a
-                smudge across two columns with different backgrounds.
+                The geometry is the point: 1px offset and 4px blur hug the edge.
+                Earlier attempts borrowed the drawer's 13px/16px, which spreads
+                into a smudge on a header that spans two columns with different
+                backgrounds. `bg-primary` matters too — an opaque strip is what
+                the shadow sits on, so scrolling content passes cleanly beneath
+                rather than tinting it.
 
-                `relative z-10` lifts the header over the scrolling body, which
-                paints after and would otherwise cover the shadow. Dialog.Header
-                ships no bottom padding, so `pb` keeps the subtitle off the
-                rule. */}
-            <Dialog.Header className="tw:relative tw:z-10 tw:border-b tw:border-secondary tw:pb-4 tw:shadow-[0px_13px_16px_-4px_rgba(10,13,18,0.078)]">
+                No border: the reference has none on its shadowed edge.
+
+                Dialog.Header ships no bottom padding, so `pb` keeps the
+                subtitle off the edge. */}
+            <Dialog.Header className="tw:relative tw:z-[1] tw:bg-primary tw:pb-4 tw:shadow-[0_1px_4px_0_rgba(0,0,0,0.05)]">
               {/* pr-10 reserves room for the absolutely-positioned close button
                   (lg = 44px at right-3) so the Show Hint toggle doesn't sit
                   under the X. */}
@@ -291,12 +291,12 @@ export const AiFormModal: FC<AiFormModalProps> = ({
                 columns and the footer here — the hint column visibly stops
                 short of it. The columns already run to the modal's edges, so
                 the footer sits directly against them. */}
-            {/* Dialog.Footer already carries the rule and z-10; this adds the
-                matching shadow, cast upward — the orientation the token was
-                written for. */}
+            {/* The pagination bar's edge verbatim — same orientation, so no
+                mirroring. `border-t-0` drops Dialog's rule to match it: the
+                reference separates with the shadow alone. */}
             <Dialog.Footer
               className={classNames(
-                'tw:shadow-[0px_-13px_16px_-4px_rgba(10,13,18,0.078)]',
+                'tw:border-t-0 tw:shadow-[0_-1px_4px_0_rgba(0,0,0,0.05)]',
                 { 'tw:mt-0 tw:sm:mt-0': hasHintColumn }
               )}>
               <Button
