@@ -102,7 +102,8 @@ jobs:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           fetch-depth: 0
           filter: blob:none
-
+          allow-unsafe-pr-checkout: true
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"
