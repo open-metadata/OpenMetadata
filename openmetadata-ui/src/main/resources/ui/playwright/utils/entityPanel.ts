@@ -11,7 +11,7 @@
  *  limitations under the License.
  */
 import { expect, Page } from '@playwright/test';
-import { redirectToExplorePage } from './common';
+import { clickOutside, redirectToExplorePage } from './common';
 
 import { ENDPOINT_TO_FILTER_MAP } from '../constant/explore';
 import { EntityClass } from '../support/entity/EntityClass';
@@ -101,8 +101,7 @@ export const openEntitySummaryPanel = async ({
   if (fullyQualifiedName) {
     const cardByFqn = page.getByTestId(`table-data-card_${fullyQualifiedName}`);
     await cardByFqn.waitFor({ state: 'visible' });
-    await page.mouse.move(0, 0);
-    await page.keyboard.press('Escape');
+    await clickOutside(page);
     await expect(
       page.locator('.ant-popover:not(.ant-popover-hidden)')
     ).toHaveCount(0);
