@@ -179,7 +179,7 @@ class SqlColumnHandlerMixin:
             foreign_constraints = []
         try:
             pk_constraints = inspector.get_pk_constraint(table_name, schema_name)
-        except (NotImplementedError, NoSuchTableError):
+        except (NotImplementedError, KeyError, NoSuchTableError):
             logger.debug(
                 f"Cannot obtain primary key constraints for table [{schema_name}.{table_name}]: NotImplementedError"
             )
