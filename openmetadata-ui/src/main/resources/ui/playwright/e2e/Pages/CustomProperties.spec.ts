@@ -248,7 +248,7 @@ const ALL_ENTITIES: CRUDEntity[] = [
     makeInstance: () => new DashboardDataModelClass(),
   },
   { key: 'entity_metric', makeInstance: () => new MetricClass() },
-  // { key: 'entity_chart', makeInstance: () => new ChartClass() },
+  { key: 'entity_chart', makeInstance: () => new ChartClass() },
   // Part-3 entities
   { key: 'entity_apiCollection', makeInstance: () => new ApiCollectionClass() },
   { key: 'entity_apiEndpoint', makeInstance: () => new ApiEndpointClass() },
