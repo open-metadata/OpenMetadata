@@ -26,12 +26,19 @@ from metadata.generated.schema.type.basic import ProfileSampleType
 from metadata.sampler.config import resolve_static_sampling_config
 from metadata.sampler.pandas.sampler import DatalakeSampler
 from metadata.utils.datalake.datalake_utils import DatalakeColumnWrapper
+from metadata.utils.logger import profiler_logger
 from metadata.utils.sqa_like_column import SQALikeColumn
 
 if TYPE_CHECKING:
     from metadata.ingestion.source.database.burstiq.client import BurstIQClient
 
+logger = profiler_logger()
+
 _PAGE_SIZE = 5_000
+
+# Cap rows pulled when no profileSample is set, so an unbounded chain can't OOM
+# the worker. Set profileSample on the table to profile more.
+_MAX_PROFILE_ROWS = 1_000_000
 
 _NUMERIC_TYPES = {
     DataType.INT,
@@ -161,7 +168,13 @@ class BurstIQSampler(DatalakeSampler):
         """
         static = resolve_static_sampling_config(self.sample_config.profileSampleConfig)
         if not static or not static.profileSample:
-            return None
+            logger.warning(
+                "No profileSample set for chain '%s'; capping profile at %d rows "
+                "to bound memory. Set profileSample on the table to profile more.",
+                chain,
+                _MAX_PROFILE_ROWS,
+            )
+            return _MAX_PROFILE_ROWS
         if static.profileSampleType == ProfileSampleType.ROWS:
             return int(static.profileSample)
         if static.profileSampleType == ProfileSampleType.PERCENTAGE:

@@ -37,7 +37,11 @@ from metadata.generated.schema.type.entityReference import EntityReference
 from metadata.generated.schema.type.samplingConfig import ProfileSampleConfig
 from metadata.generated.schema.type.staticSamplingConfig import StaticSamplingConfig
 from metadata.sampler.models import SampleConfig
-from metadata.sampler.pandas.burstiq.sampler import _PAGE_SIZE, BurstIQSampler
+from metadata.sampler.pandas.burstiq.sampler import (
+    _MAX_PROFILE_ROWS,
+    _PAGE_SIZE,
+    BurstIQSampler,
+)
 from metadata.utils.constants import SAMPLE_DATA_MAX_CELL_LENGTH
 from metadata.utils.sqa_like_column import SQALikeColumn
 
@@ -138,6 +142,11 @@ class TestBurstIQSamplerRawDataset:
 
         mock_client.get_chain_metrics.assert_not_called()
         assert sum(len(df) for df in dfs) == 10
+
+    def test_no_sample_caps_at_max_profile_rows(self, sampler):
+        sampler.sample_config = SampleConfig()
+
+        assert sampler._compute_total_limit("TestChain") == _MAX_PROFILE_ROWS
 
     def test_empty_chain_yields_single_empty_dataframe(self, sampler, mock_client):
         sampler.sample_config = SampleConfig()
