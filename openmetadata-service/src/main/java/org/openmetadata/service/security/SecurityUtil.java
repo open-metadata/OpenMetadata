@@ -382,15 +382,12 @@ public final class SecurityUtil {
       return;
     }
     if (enforcePrincipalDomain) {
-      if (allowedDomains == null || allowedDomains.isEmpty()) {
-        // Validate against the principal domain if allowed domains are not supplied
-        if (!domain.equals(principalDomain)) {
-          throw AuthenticationException.invalidEmailMessage(principalDomain);
-        }
-      }
-      // Validate against allowed domains if supplied
-      else if (!allowedDomains.contains(domain)) {
-        throw AuthenticationException.invalidEmailMessage(domain);
+      // Domains are case-insensitive; IdPs (e.g. Azure preferred_username/UPN) preserve the
+      // casing configured in the tenant, which rarely matches the configured domain verbatim
+      Set<String> expectedDomains =
+          nullOrEmpty(allowedDomains) ? Set.of(principalDomain) : allowedDomains;
+      if (expectedDomains.stream().noneMatch(domain::equalsIgnoreCase)) {
+        throw AuthenticationException.invalidEmailMessage(domain, expectedDomains);
       }
     }
   }
