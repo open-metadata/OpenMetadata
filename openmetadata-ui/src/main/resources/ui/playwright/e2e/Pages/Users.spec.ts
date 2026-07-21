@@ -1157,11 +1157,10 @@ test.describe('User Profile Persona Interactions', () => {
         .locator('[data-testid="persona-select-list"] .ant-select-clear')
         .click();
 
-      const updateUserResponse = adminPage.waitForResponse(
+      const updateUserPromise = adminPage.waitForResponse(
         (response) =>
           response.url().includes('/api/v1/users/') &&
-          response.request().method() === 'PATCH' &&
-          response.status() === 200
+          response.request().method() === 'PATCH'
       );
 
       // Save the changes
@@ -1170,8 +1169,8 @@ test.describe('User Profile Persona Interactions', () => {
         .click();
 
       // Wait for the API call to complete and verify no personas are shown
-      await updateUserResponse;
-
+      const updateUserResponse = await updateUserPromise;
+      expect(updateUserResponse.status()).toBe(200);
       await expect(
         adminPage
           .getByTestId('persona-details-card')
