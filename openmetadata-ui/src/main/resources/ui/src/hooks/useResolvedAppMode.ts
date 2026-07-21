@@ -12,7 +12,7 @@
  */
 
 import { useQuery } from '@tanstack/react-query';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { AI_APP_MODE, DEFAULT_APP_MODE } from '../constants/appMode.constants';
 import { EntityType } from '../enums/entity.enum';
 import { Document } from '../generated/entity/docStore/document';
@@ -102,14 +102,44 @@ export const useResolvedAppMode = (): void => {
   );
   const currentUser = useApplicationStore((state) => state.currentUser);
   const isAuthenticated = useApplicationStore((state) => state.isAuthenticated);
-  // `applicationsLoaded` distinguishes "route registration hasn't run
-  // yet" (wait) from "the plugin owning this mode is genuinely
-  // uninstalled" (clear the stale session).
+  // `applicationsLoaded` alone is NOT safe as the "give up on the
+  // session's mode" signal: the route-registration effect (in the
+  // downstream Collate plugin's `App.tsx`) lives on a parent
+  // component. React flushes effects child-first, so on the commit
+  // where `applicationsLoaded` flips true the resolver's effect fires
+  // BEFORE the parent's `registerRoutes(AI_APP_MODE, ...)` call. In
+  // that window a genuinely-installed AI mode looks unregistered, and
+  // clearing here would strand a manually-switched AI tab in Classic
+  // on refresh.
+  //
+  // Instead we track a `registrySettled` flag that flips true one
+  // effect-flush tick AFTER `applicationsLoaded` — long enough for
+  // the parent's registerRoutes call to run and the resulting Zustand
+  // update to propagate through a follow-up render. Only then is a
+  // still-missing mode treated as genuinely uninstalled.
   const applicationsLoaded = useApplicationStore(
     (state) => state.applicationsLoaded
   );
   const registeredRoutes = useAppRoutesRegistry((state) => state.routes);
   const { preferences } = useCurrentUserPreferences();
+
+  const [registrySettled, setRegistrySettled] = useState(false);
+  useEffect(() => {
+    if (!applicationsLoaded) {
+      setRegistrySettled(false);
+
+      return;
+    }
+    // setTimeout(0) — not queueMicrotask — because we need to land
+    // AFTER React's current effect flush completes (peer components'
+    // useEffects run in the same synchronous microtask batch and
+    // then Zustand's subscribers get notified). setTimeout re-enters
+    // through the task queue, guaranteeing the parent's
+    // registerRoutes has taken effect before we set the flag.
+    const id = setTimeout(() => setRegistrySettled(true), 0);
+
+    return () => clearTimeout(id);
+  }, [applicationsLoaded]);
 
   const hasDefaultPersona = Boolean(defaultPersonaId && defaultPersonaName);
 
@@ -150,20 +180,19 @@ export const useResolvedAppMode = (): void => {
       mode === DEFAULT_APP_MODE || mode in registeredRoutes;
 
     // If the session refers to a mode that isn't in the registry:
-    //   - While applications is still loading, WAIT — route
-    //     registration hasn't run yet (React flushes child effects
-    //     before parent effects, so App.tsx's registerRoutes call
-    //     lags the resolver on refresh). Clearing here would revert
-    //     a valid AI session to Classic on every reload.
-    //   - Once applications has loaded and the mode still isn't
-    //     registered, the plugin owning the mode is truly
-    //     uninstalled. Clear ONLY this tab's session tuple (not the
-    //     shared hint — sibling tabs might legitimately be using it)
-    //     and fall through to compute a fresh candidate.
+    //   - Until `registrySettled` flips true (one effect-flush tick
+    //     after applicationsLoaded), WAIT — the parent's
+    //     `registerRoutes(...)` may not have run yet (child-first
+    //     effect flush order). Clearing here would revert a valid AI
+    //     session to Classic on every reload.
+    //   - Once settled and the mode still isn't registered, the
+    //     plugin owning the mode is truly uninstalled. Clear ONLY
+    //     this tab's session tuple (not the shared hint — sibling
+    //     tabs might legitimately be using it) and fall through.
     const validSession =
       session && isModeRegistered(session.mode) ? session : null;
     if (session && !validSession) {
-      if (!applicationsLoaded) {
+      if (!registrySettled) {
         return;
       }
       clearAppModeSessionOnly();
@@ -187,15 +216,15 @@ export const useResolvedAppMode = (): void => {
         return;
       }
 
-      // Hint mode isn't registered. Wait only if applications is still
-      // loading (route registration hasn't run yet). Once applications
-      // has loaded and the hint's mode still isn't registered, the
-      // hint is stale (its owning plugin is uninstalled) — fall
-      // through to persona / pref / default. Note that falling through
-      // here calls writeAppMode(DEFAULT) which also writes the hint;
-      // that's correct in this branch because the old hint pointed at
-      // an uninstalled mode.
-      if (!applicationsLoaded) {
+      // Hint mode isn't registered. Wait until `registrySettled` (see
+      // above) to distinguish "route registration hasn't run yet"
+      // from "the plugin is genuinely uninstalled." Once settled and
+      // the hint's mode still isn't registered, fall through to
+      // persona / pref / default. Note that falling through here
+      // calls writeAppMode(DEFAULT) which also updates the hint —
+      // that's correct in this branch because the old hint pointed
+      // at a mode that isn't installed for this user.
+      if (!registrySettled) {
         return;
       }
     }
@@ -221,6 +250,6 @@ export const useResolvedAppMode = (): void => {
     defaultPersonaId,
     preferences.appMode,
     registeredRoutes,
-    applicationsLoaded,
+    registrySettled,
   ]);
 };

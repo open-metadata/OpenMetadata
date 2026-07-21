@@ -314,6 +314,50 @@ describe('useResolvedAppMode', () => {
     });
   });
 
+  it('preserves a valid AI session when the AI route registers in a follow-up commit after applicationsLoaded flips', async () => {
+    // Reproduces the flush-order race the reviewer flagged: the
+    // parent plugin's registerRoutes(AI) call fires in a follow-up
+    // React commit AFTER `applicationsLoaded` flips true (child
+    // effects run before parent effects). If the resolver eagerly
+    // cleared the session on the flip-tick, a manually-switched AI
+    // tab (persona/pref still Classic) would revert to Classic on
+    // refresh — the exact regression this PR set out to prevent.
+    // With `registrySettled` gating cleanup, the session survives.
+    seedUser({ applicationsLoaded: true });
+    seedRegistry(false);
+    seedSessionTuple({ personaAppMode: null, mode: AI_APP_MODE });
+    useAppModeStore.setState({ currentMode: AI_APP_MODE });
+
+    const { rerender } = renderHook(() => useResolvedAppMode(), {
+      wrapper: makeWrapper(),
+    });
+
+    // First flush: applicationsLoaded=true, registry=empty,
+    // registrySettled=false → WAIT (do not clear).
+    rerender();
+
+    expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+    expect(readAppModeSession()).toEqual({
+      personaAppMode: null,
+      mode: AI_APP_MODE,
+    });
+
+    // Simulate the parent's registerRoutes call from the follow-up
+    // commit — the AI route becomes registered.
+    seedRegistry(true);
+
+    await waitFor(() => {
+      // Session is still AI (never cleared). validSession is now
+      // truthy and personaAppMode matches (null on both sides) →
+      // resolver is a no-op.
+      expect(useAppModeStore.getState().currentMode).toBe(AI_APP_MODE);
+      expect(readAppModeSession()).toEqual({
+        personaAppMode: null,
+        mode: AI_APP_MODE,
+      });
+    });
+  });
+
   it('swallows persona fetch errors and falls back to user pref / default', async () => {
     seedUser({ personaId: 'persona-1', personaName: 'p' });
     seedRegistry(true);
