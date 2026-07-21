@@ -95,8 +95,25 @@ def _get_provisioned_cluster_identifier(host: str) -> str:
     return host.split(".")[0]  # noqa: PLC0207
 
 
+def _non_standard_host_hint(host: str) -> str:
+    """
+    Actionable guidance when the identifier was parsed from a hostname that
+    does not look like a standard Redshift endpoint, e.g. a PrivateLink/VPC
+    endpoint or a custom DNS name.
+    """
+    hint = ""
+    if not host.endswith(".redshift.amazonaws.com") and not host.endswith(".redshift-serverless.amazonaws.com"):
+        hint = (
+            " [Hint: the identifier was derived from your hostname, which does not look"
+            " like a standard Redshift endpoint. If you connect via a PrivateLink/VPC"
+            " endpoint or a custom DNS name, set 'clusterIdentifier', or 'workgroupName'"
+            " for Serverless, in the connection settings.]"
+        )
+    return hint
+
+
 def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
-    workgroup = _get_serverless_workgroup(host)
+    workgroup = connection.workgroupName or _get_serverless_workgroup(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_serverless_client()
 
@@ -105,13 +122,14 @@ def _get_serverless_iam_credentials(connection: RedshiftConnectionConfig, host: 
         response = aws_client.get_credentials(**kwargs)
         return response["dbUser"], response["dbPassword"]
     except Exception as exc:
+        hint = "" if connection.workgroupName else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift Serverless workgroup '{workgroup}': {exc}{hint}"
         ) from exc
 
 
 def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host: str) -> tuple:
-    cluster_identifier = _get_provisioned_cluster_identifier(host)
+    cluster_identifier = connection.clusterIdentifier or _get_provisioned_cluster_identifier(host)
     try:
         aws_client = AWSClient(config=connection.authType.awsConfig).get_redshift_client()
 
@@ -126,18 +144,32 @@ def _get_provisioned_iam_credentials(connection: RedshiftConnectionConfig, host:
         response = aws_client.get_cluster_credentials(**kwargs)
         return response["DbUser"], response["DbPassword"]
     except Exception as exc:
+        hint = "" if connection.clusterIdentifier else _non_standard_host_hint(host)
         raise SourceConnectionException(
-            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}"
+            f"Failed to retrieve IAM credentials for Redshift cluster '{cluster_identifier}': {exc}{hint}"
         ) from exc
 
 
 def _get_redshift_iam_credentials(connection: RedshiftConnectionConfig) -> tuple:
     """
     Get temporary credentials for Redshift using IAM authentication.
-    Detects Serverless vs Provisioned from the host and uses the appropriate API.
+    An explicit clusterIdentifier or workgroupName on the connection takes
+    precedence over hostname parsing, which cannot work for PrivateLink/VPC
+    endpoint or custom DNS hostnames. Otherwise detects Serverless vs
+    Provisioned from the host and uses the appropriate API.
     """
     host = connection.hostPort.split(":")[0]
 
+    if connection.clusterIdentifier and connection.workgroupName:
+        raise SourceConnectionException(
+            "Both 'clusterIdentifier' and 'workgroupName' are set on the connection."
+            " Set only one: 'clusterIdentifier' for a provisioned cluster or"
+            " 'workgroupName' for Redshift Serverless."
+        )
+    if connection.workgroupName:
+        return _get_serverless_iam_credentials(connection, host)
+    if connection.clusterIdentifier:
+        return _get_provisioned_iam_credentials(connection, host)
     if _is_serverless_host(host):
         return _get_serverless_iam_credentials(connection, host)
     return _get_provisioned_iam_credentials(connection, host)
