@@ -381,6 +381,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     return epoch == null ? 0L : epoch.get();
   }
 
+  @VisibleForTesting
+  static long writeEpochById(String entityType, UUID id) {
+    return readEpochById(new ImmutablePair<>(entityType, id));
+  }
+
+  @VisibleForTesting
+  static long writeEpochByName(String entityType, String fqn) {
+    return readEpochByName(cacheNameKey(entityType, fqn));
+  }
+
   private static void bumpWriteEpoch(String entityType, UUID id, String fqn) {
     if (id != null) {
       try {
@@ -3624,6 +3634,9 @@ public abstract class EntityRepository<T extends EntityInterface> {
     if (entityType == null) {
       return;
     }
+    // A remote write races local loaders exactly like a local write. Bump the epoch before
+    // evicting so a loader that already read stale Redis/DB data cannot repopulate L1 afterward.
+    bumpWriteEpoch(entityType, id, fqn);
     if (id != null) {
       CACHE_WITH_ID.invalidate(new ImmutablePair<>(entityType, id));
     }
@@ -4134,6 +4147,21 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
   public final PutResponse<T> update(
       UriInfo uriInfo, T original, T updated, String updatedBy, String impersonatedBy) {
+    return updateInternal(uriInfo, original, updated, updatedBy, impersonatedBy, false);
+  }
+
+  public final PutResponse<T> updateIfCurrent(
+      UriInfo uriInfo, T original, T updated, String updatedBy) {
+    return updateInternal(uriInfo, original, updated, updatedBy, null, true);
+  }
+
+  private PutResponse<T> updateInternal(
+      UriInfo uriInfo,
+      T original,
+      T updated,
+      String updatedBy,
+      String impersonatedBy,
+      boolean requireCurrentVersion) {
     // Get all the fields in the original entity that can be updated during PUT operation
     try (var ignored = phase("putHydrateOriginal")) {
       setFieldsInternal(original, putFields);
@@ -4150,9 +4178,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
     }
 
     // Update the attributes and relationships of an entity
-    EntityUpdater entityUpdater = getUpdater(original, updated, Operation.PUT, null);
+    EntityUpdater entityUpdater =
+        requireCurrentVersion
+            ? getUpdater(original, updated, Operation.PUT, null, true)
+            : getUpdater(original, updated, Operation.PUT, null);
     try (var ignored = phase("putEntityUpdate")) {
-      entityUpdater.update();
+      if (requireCurrentVersion) {
+        entityUpdater.updateWithOptimisticLocking();
+      } else {
+        entityUpdater.update();
+      }
     }
     EventType change =
         entityUpdater.incrementalFieldsChanged() ? EventType.ENTITY_UPDATED : ENTITY_NO_CHANGE;
@@ -4895,19 +4930,6 @@ public abstract class EntityRepository<T extends EntityInterface> {
     // still-visible DB row; clearing again here guarantees the next read goes back to the
     // (now empty) DB and observes the deletion.
     invalidate(entityInterface);
-    // Mark the entity as not-found in the negative cache. Without this, a concurrent reader
-    // racing the deletion can re-populate Guava L1 / Redis between our invalidate() calls
-    // from the still-visible DB row (the loader fetches it just before the commit lands).
-    // The marker short-circuits the read path on the L1-miss branch — see find()/findByName()
-    // where isMarkedNotFound* is consulted after CACHE_WITH_*.getIfPresent() returns null —
-    // so once the next read misses L1 (because the post-commit invalidate above cleared it),
-    // the loader is skipped and we throw EntityNotFoundException directly. A stale L1 entry
-    // that survives the two invalidate passes is NOT caught by this marker (getIfPresent
-    // returns it before the loader/negative-cache path runs); the second invalidate makes
-    // that case rare in practice, and it expires within the L1 TTL. Marker TTL
-    // (notFoundTtlSeconds, default 30 s) outlasts any in-flight request window;
-    // recreate-with-same-id paths clear the marker via CacheBundle.invalidateEntity() in
-    // postCreate.
     markEntityNotFound(entityInterface);
   }
 
@@ -4920,7 +4942,8 @@ public abstract class EntityRepository<T extends EntityInterface> {
       notFoundCache.markNotFoundById(entityType, entity.getId());
     }
     if (entity.getFullyQualifiedName() != null) {
-      notFoundCache.markNotFoundByName(entityType, entity.getFullyQualifiedName());
+      notFoundCache.markNotFoundByName(
+          entityType, cacheNameKey(entityType, entity.getFullyQualifiedName()).getRight());
     }
   }
 
@@ -10678,15 +10701,16 @@ public abstract class EntityRepository<T extends EntityInterface> {
       // Race guard — epoch mismatch means a writer ran during the load; throw so Guava skips
       // caching the now-stale value and find() re-reads via the bypass path.
       long startEpoch = readEpochByName(fqnPair);
-      String json = loadInternal(fqnPair);
+      String json = loadInternal(fqnPair, startEpoch);
       if (readEpochByName(fqnPair) != startEpoch) {
+        evictExternalCache(fqnPair, json);
         throw new LoaderRaceException("Concurrent write during loadByName: " + fqnPair);
       }
       return json;
     }
 
     @NonNull
-    private String loadInternal(@NotNull Pair<String, String> fqnPair) {
+    private String loadInternal(@NotNull Pair<String, String> fqnPair, long startEpoch) {
       String entityType = fqnPair.getLeft();
       String fqn = fqnPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
@@ -10694,7 +10718,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       EntityDAO<?> dao = repository.getDao();
 
       // Try to load from external cache first (read-through) for cacheable entity types.
-      if (isCacheableEntityType(entityType)) {
+      if (isCacheableEntityType(entityType) && readEpochByName(fqnPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           Optional<String> cachedJson = cachedEntityDao.getByName(entityType, fqn);
@@ -10756,7 +10780,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
       }
 
       // Populate Redis on miss so subsequent reads (incl. cross-instance) can hit cache
-      if (isCacheableEntityType(entityType)) {
+      if (isCacheableEntityType(entityType) && readEpochByName(fqnPair) == startEpoch) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
           try {
@@ -10772,6 +10796,24 @@ public abstract class EntityRepository<T extends EntityInterface> {
 
       return json;
     }
+
+    private void evictExternalCache(Pair<String, String> fqnPair, String json) {
+      var cachedEntityDao = CacheBundle.getCachedEntityDao();
+      if (cachedEntityDao == null) {
+        return;
+      }
+      cachedEntityDao.deleteByName(fqnPair.getLeft(), fqnPair.getRight());
+      try {
+        EntityRepository<? extends EntityInterface> repository =
+            Entity.getEntityRepository(fqnPair.getLeft());
+        EntityInterface entity = JsonUtils.readValue(json, repository.getEntityClass());
+        if (entity.getId() != null) {
+          cachedEntityDao.deleteBase(fqnPair.getLeft(), entity.getId());
+        }
+      } catch (Exception e) {
+        LOG.debug("Failed to evict raced cache entry by id for {}", fqnPair, e);
+      }
+    }
   }
 
   static class EntityLoaderWithId extends CacheLoader<Pair<String, UUID>, String> {
@@ -10779,15 +10821,19 @@ public abstract class EntityRepository<T extends EntityInterface> {
     public @NonNull String load(@NotNull Pair<String, UUID> idPair) {
       // See EntityLoaderWithName.load for the race-guard rationale.
       long startEpoch = readEpochById(idPair);
-      String json = loadInternal(idPair);
+      String json = loadInternal(idPair, startEpoch);
       if (readEpochById(idPair) != startEpoch) {
+        var cachedEntityDao = CacheBundle.getCachedEntityDao();
+        if (cachedEntityDao != null) {
+          cachedEntityDao.deleteBase(idPair.getLeft(), idPair.getRight());
+        }
         throw new LoaderRaceException("Concurrent write during loadById: " + idPair);
       }
       return json;
     }
 
     @NonNull
-    private String loadInternal(@NotNull Pair<String, UUID> idPair) {
+    private String loadInternal(@NotNull Pair<String, UUID> idPair, long startEpoch) {
       String entityType = idPair.getLeft();
       UUID id = idPair.getRight();
       EntityRepository<? extends EntityInterface> repository =
@@ -10798,12 +10844,12 @@ public abstract class EntityRepository<T extends EntityInterface> {
       if (isCacheableEntityType(entityType)) {
         var cachedEntityDao = CacheBundle.getCachedEntityDao();
         if (cachedEntityDao != null) {
-          String cachedJson = cachedEntityDao.getBase(id, entityType);
-          if (cachedJson != null && !cachedJson.isEmpty()) {
+          Optional<String> cachedJson = cachedEntityDao.getBase(id, entityType);
+          if (cachedJson.isPresent()) {
             LOG.debug("CACHE HIT: Loading entity from Redis cache: {} {}", entityType, id);
             try {
               Class<? extends EntityInterface> entityClass = repository.getEntityClass();
-              EntityInterface entity = JsonUtils.readValue(cachedJson, entityClass);
+              EntityInterface entity = JsonUtils.readValue(cachedJson.get(), entityClass);
               if (entity.getId() == null) {
                 LOG.error(
                     "CACHE ERROR: Cached entity has null ID! Evicting. Type: {}, Expected ID: {}",
@@ -10811,7 +10857,7 @@ public abstract class EntityRepository<T extends EntityInterface> {
                     id);
                 cachedEntityDao.deleteBase(entityType, id);
               } else {
-                return cachedJson;
+                return cachedJson.get();
               }
             } catch (Exception e) {
               LOG.warn(
@@ -10854,6 +10900,13 @@ public abstract class EntityRepository<T extends EntityInterface> {
           LOG.error("Entity from database is invalid for caching: {} {}", entityType, id);
           throw new IllegalStateException(
               String.format("Invalid entity from database: %s %s", entityType, id));
+        }
+      }
+
+      if (isCacheableEntityType(entityType) && readEpochById(idPair) == startEpoch) {
+        var cachedEntityDao = CacheBundle.getCachedEntityDao();
+        if (cachedEntityDao != null) {
+          cachedEntityDao.putBase(entityType, id, json);
         }
       }
 

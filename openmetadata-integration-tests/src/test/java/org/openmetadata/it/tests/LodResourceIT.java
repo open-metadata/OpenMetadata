@@ -77,8 +77,10 @@ public class LodResourceIT {
     assumeTrue(
         OpenMetadataApplicationConfigHolder.isInitialized(),
         "LOD dereference tests mutate the in-process server config; skipping in external mode.");
-    RdfConfiguration rdfConfig = OpenMetadataApplicationConfigHolder.getInstance().getRdfConfiguration();
-    assumeTrue(rdfConfig != null, "Server RDF configuration is not present; skipping LodResourceIT.");
+    RdfConfiguration rdfConfig =
+        OpenMetadataApplicationConfigHolder.getInstance().getRdfConfiguration();
+    assumeTrue(
+        rdfConfig != null, "Server RDF configuration is not present; skipping LodResourceIT.");
     originalDereferenceableIris = rdfConfig.getDereferenceableIris();
     rdfConfig.setDereferenceableIris(true);
   }
@@ -88,7 +90,8 @@ public class LodResourceIT {
     if (!OpenMetadataApplicationConfigHolder.isInitialized()) {
       return;
     }
-    RdfConfiguration rdfConfig = OpenMetadataApplicationConfigHolder.getInstance().getRdfConfiguration();
+    RdfConfiguration rdfConfig =
+        OpenMetadataApplicationConfigHolder.getInstance().getRdfConfiguration();
     if (rdfConfig != null) {
       rdfConfig.setDereferenceableIris(originalDereferenceableIris);
     }
@@ -99,7 +102,8 @@ public class LodResourceIT {
     Table table = createTable(ns);
 
     HttpResponse<String> response =
-        dereference(ENTITY_TYPE_TABLE, table.getId().toString(), TURTLE, SdkClients.getAdminToken());
+        dereference(
+            ENTITY_TYPE_TABLE, table.getId().toString(), TURTLE, SdkClients.getAdminToken());
 
     assertEquals(303, response.statusCode(), "dereference must return a 303 See-Other redirect");
     String location = location(response);
@@ -117,7 +121,8 @@ public class LodResourceIT {
     Table table = createTable(ns);
 
     HttpResponse<String> response =
-        dereference(ENTITY_TYPE_TABLE, table.getId().toString(), TURTLE, SdkClients.getAdminToken());
+        dereference(
+            ENTITY_TYPE_TABLE, table.getId().toString(), TURTLE, SdkClients.getAdminToken());
 
     assertEquals(303, response.statusCode());
     assertTrue(
@@ -130,7 +135,8 @@ public class LodResourceIT {
     Table table = createTable(ns);
 
     HttpResponse<String> response =
-        dereference(ENTITY_TYPE_TABLE, table.getId().toString(), JSON_LD, SdkClients.getAdminToken());
+        dereference(
+            ENTITY_TYPE_TABLE, table.getId().toString(), JSON_LD, SdkClients.getAdminToken());
 
     assertEquals(303, response.statusCode());
     assertTrue(

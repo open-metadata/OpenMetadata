@@ -278,7 +278,11 @@ public class RdfGraphExploreIT {
         () -> "turtle export should return 200 but got " + response.statusCode());
     assertTrue(
         contentType(response).contains(MEDIA_TYPE_TURTLE),
-        () -> "turtle export Content-Type must be " + MEDIA_TYPE_TURTLE + " but was " + contentType(response));
+        () ->
+            "turtle export Content-Type must be "
+                + MEDIA_TYPE_TURTLE
+                + " but was "
+                + contentType(response));
     String body = response.body();
     assertFalse(body.isBlank(), "turtle export body must not be blank");
     assertTrue(
@@ -427,7 +431,13 @@ public class RdfGraphExploreIT {
       String format)
       throws Exception {
     return exportRawWithToken(
-        entityId, entityType, depth, entityTypes, relationshipTypes, format, SdkClients.getAdminToken());
+        entityId,
+        entityType,
+        depth,
+        entityTypes,
+        relationshipTypes,
+        format,
+        SdkClients.getAdminToken());
   }
 
   private HttpResponse<String> exportRawWithToken(

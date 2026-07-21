@@ -317,8 +317,10 @@ CREATE TABLE IF NOT EXISTS search_index_retry_queue (
   entityType VARCHAR(128) NOT NULL,
   retryCount INTEGER NOT NULL DEFAULT 0,
   claimedAt TIMESTAMP NULL,
+  claimToken VARCHAR(36) NULL,
   PRIMARY KEY (entityId, entityFqn)
 );
+ALTER TABLE search_index_retry_queue ADD COLUMN IF NOT EXISTS claimToken VARCHAR(36) NULL;
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_status
   ON search_index_retry_queue (status);
 CREATE INDEX IF NOT EXISTS idx_search_index_retry_queue_claimed_at
@@ -542,3 +544,21 @@ CREATE UNIQUE INDEX IF NOT EXISTS relationship_id_unique
   ON entity_relationship (relationshipId);
 CREATE INDEX IF NOT EXISTS entity_relationship_type_id_index
   ON entity_relationship (relationshipTypeId);
+
+-- Index the executionId column on the workflow instance state series so both the v200
+-- umbrella-id lookup during migration and the runtime resolveInstanceIdViaExecutionVariable
+-- fallback avoid full-scanning this table (single row per stage transition; grows unbounded
+-- on active clusters).
+CREATE INDEX IF NOT EXISTS idx_wf_instance_state_execution_id
+    ON workflow_instance_state_time_series (workflowInstanceExecutionId);
+
+-- Migrate Databricks Pipeline connection: move top-level token into authType.token (Personal Access Token)
+UPDATE pipeline_service_entity
+SET json = jsonb_set(
+    json #- '{connection,config,token}',
+    '{connection,config,authType}',
+    jsonb_build_object('token', json #> '{connection,config,token}')
+)
+WHERE serviceType = 'DatabricksPipeline'
+  AND json #> '{connection,config,token}' IS NOT NULL
+  AND NOT jsonb_exists(json #> '{connection,config}', 'authType');

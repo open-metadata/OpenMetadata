@@ -11,7 +11,6 @@
  *  limitations under the License.
  */
 import { expect } from '@playwright/test';
-import { get } from 'lodash';
 import { PLAYWRIGHT_BASIC_TEST_TAG_OBJ } from '../../../constant/config';
 import { SidebarItem } from '../../../constant/sidebar';
 import { ApiEndpointClass } from '../../../support/entity/ApiEndpointClass';
@@ -35,8 +34,8 @@ import {
   getDefaultAdminAPIContext,
   redirectToHomePage,
 } from '../../../utils/common';
-import { waitForAllLoadersToDisappear } from '../../../utils/entity';
 import { clickLineageNode, visitLineageTab } from '../../../utils/lineage';
+import { waitForSearchIndexed } from '../../../utils/polling';
 import { sidebarClick } from '../../../utils/sidebar';
 import { test } from '../../fixtures/pages';
 
@@ -88,13 +87,14 @@ test.describe(
         await entity.visitEntityPage(page, searchTerm);
         await visitLineageTab(page);
 
-        const nodeFqn = entity.entityResponseData?.['fullyQualifiedName'] ?? '';
+        const nodeFqn =
+          entity.entityResponseData?.['fullyQualifiedName'] || searchTerm;
 
         await clickLineageNode(page, nodeFqn);
 
         const lineagePanel = page.getByTestId('lineage-entity-panel');
         await expect(lineagePanel).toBeVisible();
-        await waitForAllLoadersToDisappear(page);
+        await expect(lineagePanel.getByTestId('overview-tab')).toBeVisible();
 
         const customPropertiesTab = lineagePanel.getByTestId(
           'custom-properties-tab'
@@ -113,13 +113,41 @@ test.describe(
 
 test.describe('Verify custom properties tab is NOT visible for unsupported entity types in platform lineage', () => {
   const unsupportedServices = [
-    { service: new DatabaseServiceClass(), type: 'databaseService' },
-    { service: new MessagingServiceClass(), type: 'messagingService' },
-    { service: new DashboardServiceClass(), type: 'dashboardService' },
-    { service: new PipelineServiceClass(), type: 'pipelineService' },
-    { service: new MlmodelServiceClass(), type: 'mlmodelService' },
-    { service: new StorageServiceClass(), type: 'storageService' },
-    { service: new ApiServiceClass(), type: 'apiService' },
+    {
+      service: new DatabaseServiceClass(),
+      type: 'databaseService',
+      searchIndex: 'database_service_search_index',
+    },
+    {
+      service: new MessagingServiceClass(),
+      type: 'messagingService',
+      searchIndex: 'messaging_service_search_index',
+    },
+    {
+      service: new DashboardServiceClass(),
+      type: 'dashboardService',
+      searchIndex: 'dashboard_service_search_index',
+    },
+    {
+      service: new PipelineServiceClass(),
+      type: 'pipelineService',
+      searchIndex: 'pipeline_service_search_index',
+    },
+    {
+      service: new MlmodelServiceClass(),
+      type: 'mlmodelService',
+      searchIndex: 'mlmodel_service_search_index',
+    },
+    {
+      service: new StorageServiceClass(),
+      type: 'storageService',
+      searchIndex: 'storage_service_search_index',
+    },
+    {
+      service: new ApiServiceClass(),
+      type: 'apiService',
+      searchIndex: 'api_service_search_index',
+    },
   ];
 
   test.beforeAll(async ({ browser }) => {
@@ -132,6 +160,15 @@ test.describe('Verify custom properties tab is NOT visible for unsupported entit
       createEntityArray.push(service.create(apiContext));
     }
     await Promise.all(createEntityArray);
+    await Promise.all(
+      unsupportedServices.map(({ service, searchIndex }) =>
+        waitForSearchIndexed(
+          apiContext,
+          service.entityResponseData.fullyQualifiedName,
+          searchIndex
+        )
+      )
+    );
 
     await afterAction();
   });
@@ -144,7 +181,7 @@ test.describe('Verify custom properties tab is NOT visible for unsupported entit
     test(`Verify custom properties tab is NOT visible for ${type} in platform lineage`, async ({
       page,
     }) => {
-      const serviceFqn = get(service, 'entityResponseData.fullyQualifiedName');
+      const serviceFqn = service.entity.name;
 
       await sidebarClick(page, SidebarItem.LINEAGE);
 
@@ -156,21 +193,33 @@ test.describe('Verify custom properties tab is NOT visible for unsupported entit
         .getByTestId('search-entity-select')
         .locator('.ant-select-selection-search-input');
 
-      const searchResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/search/query')
-      );
+      const searchResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+        const query = url.searchParams.get('q')?.replaceAll('\\', '') ?? '';
+
+        return (
+          url.pathname.endsWith('/api/v1/search/query') &&
+          response.request().method() === 'GET' &&
+          query.includes(serviceFqn)
+        );
+      });
       await searchInput.fill(service.entity.name);
 
       const searchResponseResult = await searchResponse;
       expect(searchResponseResult.status()).toBe(200);
 
       const nodeSuggestion = page.getByTestId(`node-suggestion-${serviceFqn}`);
-      //small timeout to wait for the node suggestion to be visible in dropdown
       await expect(nodeSuggestion).toBeVisible();
 
-      const lineageResponse = page.waitForResponse((response) =>
-        response.url().includes('/api/v1/lineage/getLineage')
-      );
+      const lineageResponse = page.waitForResponse((response) => {
+        const url = new URL(response.url());
+
+        return (
+          url.pathname.endsWith('/api/v1/lineage/getLineage') &&
+          response.request().method() === 'GET' &&
+          url.searchParams.get('fqn') === serviceFqn
+        );
+      });
 
       await nodeSuggestion.click();
 
@@ -185,7 +234,7 @@ test.describe('Verify custom properties tab is NOT visible for unsupported entit
 
       const lineagePanel = page.getByTestId('lineage-entity-panel');
       await expect(lineagePanel).toBeVisible();
-      await waitForAllLoadersToDisappear(page);
+      await expect(lineagePanel.getByTestId('overview-tab')).toBeVisible();
 
       const customPropertiesTab = lineagePanel.getByTestId(
         'custom-properties-tab'

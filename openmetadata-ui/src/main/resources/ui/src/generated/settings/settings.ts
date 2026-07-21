@@ -48,7 +48,6 @@ export enum SettingType {
     ProfilerConfiguration = "profilerConfiguration",
     SandboxModeEnabled = "sandboxModeEnabled",
     ScimConfiguration = "scimConfiguration",
-    SearchIndexMappings = "searchIndexMappings",
     SearchSettings = "searchSettings",
     SecretsManagerConfiguration = "secretsManagerConfiguration",
     SecurityConfiguration = "securityConfiguration",
@@ -112,11 +111,6 @@ export enum SettingType {
  * relations between glossary terms.
  *
  * Administrator-managed SPARQL query templates available across the installation.
- *
- * Admin-editable Elasticsearch/OpenSearch index mappings, persisted in settings and keyed
- * by language and entity type. The stored mapping is the effective mapping used when an
- * index is (re)created; it already carries the field-safety guards (ignore_above,
- * ignore_malformed, mapping limits) baked in at seed time.
  */
 export interface PipelineServiceClientConfiguration {
     /**
@@ -655,11 +649,6 @@ export interface PipelineServiceClientConfiguration {
      * Installation query templates visible to SPARQL console users.
      */
     queryTemplates?: SavedSparqlQuery[];
-    /**
-     * Mappings keyed by search index mapping language (e.g. 'en', 'jp', 'ru', 'zh'), then by
-     * entity type (e.g. 'table', 'topic'). Each leaf value is the raw index mapping document.
-     */
-    languages?: { [key: string]: any };
 }
 
 export interface AllowedFieldValueBoostFields {
@@ -1376,6 +1365,11 @@ export interface LDAPConfiguration {
      * Port of the server
      */
     port: number;
+    /**
+     * Enable transitive group membership resolution for Active Directory nested groups using
+     * LDAP_MATCHING_RULE_IN_CHAIN.
+     */
+    recursiveGroupMembership?: boolean;
     /**
      * Admin role name
      */

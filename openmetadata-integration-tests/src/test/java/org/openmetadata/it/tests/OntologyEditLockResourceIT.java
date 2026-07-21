@@ -97,7 +97,8 @@ public class OntologyEditLockResourceIT {
     setGlossaryOwner(glossary.getId(), owner);
 
     HttpResponse<String> held =
-        acquire(SdkClients.getAdminToken(), glossaryLeaseRequest(glossary.getId(), "admin-session"));
+        acquire(
+            SdkClients.getAdminToken(), glossaryLeaseRequest(glossary.getId(), "admin-session"));
     assertEquals(HTTP_OK, held.statusCode(), held.body());
 
     HttpResponse<String> contended =
@@ -256,8 +257,8 @@ public class OntologyEditLockResourceIT {
       String token, String resourceType, UUID resourceId, String sessionId) throws Exception {
     String path =
         lockPath(resourceType, resourceId) + "?sessionId=" + URI.create("").resolve(sessionId);
-    return send(token, "DELETE", lockPath(resourceType, resourceId) + "?sessionId=" + sessionId,
-        null);
+    return send(
+        token, "DELETE", lockPath(resourceType, resourceId) + "?sessionId=" + sessionId, null);
   }
 
   private static String lockPath(String resourceType, UUID resourceId) {
@@ -302,16 +303,16 @@ public class OntologyEditLockResourceIT {
             owner.getId());
     HttpRequest request =
         HttpRequest.newBuilder()
-            .uri(URI.create(String.format("%s/v1/glossaries/%s", SdkClients.getServerUrl(),
-                glossaryId)))
+            .uri(
+                URI.create(
+                    String.format("%s/v1/glossaries/%s", SdkClients.getServerUrl(), glossaryId)))
             .header("Authorization", "Bearer " + SdkClients.getAdminToken())
             .header("Content-Type", "application/json-patch+json")
             .timeout(Duration.ofSeconds(30))
             .method("PATCH", HttpRequest.BodyPublishers.ofString(patch))
             .build();
     HttpResponse<String> response = HTTP_CLIENT.send(request, HttpResponse.BodyHandlers.ofString());
-    assertEquals(HTTP_OK, response.statusCode(), "failed to set glossary owner: " + response.body());
+    assertEquals(
+        HTTP_OK, response.statusCode(), "failed to set glossary owner: " + response.body());
   }
 }
-</content>
-</invoke>

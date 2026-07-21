@@ -116,10 +116,7 @@ public class RdfSemanticSearchIT {
     int limit = 5;
     HttpResponse<String> response =
         get(
-            "/v1/rdf/search/semantic?q="
-                + encode("table")
-                + "&type=table&limit="
-                + limit,
+            "/v1/rdf/search/semantic?q=" + encode("table") + "&type=table&limit=" + limit,
             SdkClients.getAdminToken());
 
     assertEquals(200, response.statusCode(), response.body());
@@ -191,9 +188,7 @@ public class RdfSemanticSearchIT {
   @Test
   void findSimilarMissingEntityReturnsEmptyResults() throws Exception {
     HttpResponse<String> response =
-        get(
-            "/v1/rdf/search/similar/table/" + UUID.randomUUID(),
-            SdkClients.getAdminToken());
+        get("/v1/rdf/search/similar/table/" + UUID.randomUUID(), SdkClients.getAdminToken());
 
     assertEquals(200, response.statusCode(), response.body());
     JsonNode results = assertJsonArray(response.body());
@@ -241,9 +236,7 @@ public class RdfSemanticSearchIT {
   @Test
   void getRecommendationsMissingUserReturnsEmptyResults() throws Exception {
     HttpResponse<String> response =
-        get(
-            "/v1/rdf/search/recommendations/" + UUID.randomUUID(),
-            SdkClients.getAdminToken());
+        get("/v1/rdf/search/recommendations/" + UUID.randomUUID(), SdkClients.getAdminToken());
 
     assertEquals(200, response.statusCode(), response.body());
     JsonNode results = assertJsonArray(response.body());
@@ -335,5 +328,3 @@ public class RdfSemanticSearchIT {
     return URLEncoder.encode(value, StandardCharsets.UTF_8);
   }
 }
-</content>
-</invoke>

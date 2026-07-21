@@ -83,6 +83,7 @@ import java.util.Set;
 import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 import java.util.function.Function;
 import java.util.function.Predicate;
 import java.util.stream.Collectors;
@@ -105,7 +106,6 @@ import org.openmetadata.schema.api.search.SearchSettings;
 import org.openmetadata.schema.configuration.AssetCertificationSettings;
 import org.openmetadata.schema.configuration.LLMConfiguration;
 import org.openmetadata.schema.configuration.LLMEmbeddingsConfig;
-import org.openmetadata.schema.configuration.SearchIndexMappings;
 import org.openmetadata.schema.dataInsight.DataInsightChartResult;
 import org.openmetadata.schema.entity.classification.Tag;
 import org.openmetadata.schema.entity.data.Pipeline;
@@ -118,6 +118,7 @@ import org.openmetadata.schema.search.SearchRequest;
 import org.openmetadata.schema.service.configuration.elasticsearch.ElasticSearchConfiguration;
 import org.openmetadata.schema.service.configuration.elasticsearch.NaturalLanguageSearchConfiguration;
 import org.openmetadata.schema.settings.SettingsType;
+import org.openmetadata.schema.system.StepStats;
 import org.openmetadata.schema.tests.DataQualityReport;
 import org.openmetadata.schema.tests.TestSuite;
 import org.openmetadata.schema.type.AssetCertification;
@@ -146,6 +147,7 @@ import org.openmetadata.service.search.capability.EntityIndexCapabilityRegistry;
 import org.openmetadata.service.search.elasticsearch.ElasticSearchClient;
 import org.openmetadata.service.search.elasticsearch.EsUtils;
 import org.openmetadata.service.search.indexes.ColumnSearchIndex;
+import org.openmetadata.service.search.indexes.DocBuildContext;
 import org.openmetadata.service.search.indexes.PipelineExecutionIndex;
 import org.openmetadata.service.search.indexes.SearchIndex;
 import org.openmetadata.service.search.lineage.LineageDomainFilter;
@@ -202,6 +204,116 @@ public class SearchRepository {
     public void run() {
       esWrite.run();
     }
+  }
+
+  public record ScriptedPartialUpdate(
+      String script, Map<String, Object> parameters, boolean scriptedUpsert) {
+    public ScriptedPartialUpdate(String script, Map<String, Object> parameters) {
+      this(script, parameters, false);
+    }
+
+    /**
+     * Converts null document fields into explicit removals for the relationship-preserving
+     * scripted-upsert contract. Omitting a null parameter leaves the old value untouched in the
+     * existing search document.
+     */
+    public Map<String, Object> parametersForIndexing() {
+      if (!scriptedUpsert || parameters.values().stream().noneMatch(Objects::isNull)) {
+        return parameters;
+      }
+
+      Map<String, Object> normalizedParameters = new LinkedHashMap<>();
+      Set<String> fieldsToRemove = new TreeSet<>();
+      Object configuredRemovals = parameters.get("fieldsToRemove");
+      if (configuredRemovals instanceof Iterable<?> removals) {
+        for (Object field : removals) {
+          if (field != null) {
+            fieldsToRemove.add(field.toString());
+          }
+        }
+      }
+      parameters.forEach(
+          (field, value) -> {
+            if ("fieldsToRemove".equals(field)) {
+              return;
+            }
+            if (value == null) {
+              fieldsToRemove.add(field);
+            } else {
+              normalizedParameters.put(field, value);
+            }
+          });
+      if (!fieldsToRemove.isEmpty()) {
+        normalizedParameters.put("fieldsToRemove", List.copyOf(fieldsToRemove));
+      }
+      return normalizedParameters;
+    }
+  }
+
+  private record RelationshipRevisionSpec(
+      String relationshipField,
+      String revisionField,
+      String replacementScript,
+      String documentUpdateScript) {}
+
+  private static RelationshipRevisionSpec relationshipRevisionSpec(
+      String relationshipField, String revisionField) {
+    String replacementScript =
+        """
+        if (ctx._source.%2$s == null || params.%2$s >= ctx._source.%2$s) {
+          ctx._source.%1$s = params.%1$s;
+          ctx._source.%2$s = params.%2$s;
+        }
+        """
+            .formatted(relationshipField, revisionField);
+    String documentUpdateScript =
+        """
+        def preserveRelationship = ctx._source.containsKey('%1$s') || ctx._source.containsKey('%2$s');
+        for (k in params.keySet()) {
+          if (k != 'fieldsToRemove' && (!preserveRelationship || (k != '%1$s' && k != '%2$s'))) {
+            ctx._source.put(k, params.get(k));
+          }
+        }
+        if (params.containsKey('fieldsToRemove')) {
+          for (field in params.fieldsToRemove) {
+            if (!preserveRelationship || (field != '%1$s' && field != '%2$s')) {
+              ctx._source.remove(field);
+            }
+          }
+        }
+        """
+            .formatted(relationshipField, revisionField);
+    return new RelationshipRevisionSpec(
+        relationshipField, revisionField, replacementScript, documentUpdateScript);
+  }
+
+  private static RelationshipRevisionSpec relationshipRevisionSpec(EntityInterface entity) {
+    if (entity == null || entity.getEntityReference() == null) {
+      return null;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (Entity.TEST_CASE.equals(entityType)) {
+      return TEST_CASE_RELATIONSHIP_REVISION;
+    }
+    if (Entity.TEST_SUITE.equals(entityType)
+        && entity instanceof TestSuite testSuite
+        && Boolean.FALSE.equals(testSuite.getBasic())) {
+      return TEST_SUITE_RELATIONSHIP_REVISION;
+    }
+    return null;
+  }
+
+  public static void applyRelationshipRevision(
+      EntityInterface entity, Map<String, Object> document, Long relationshipRevision) {
+    if (relationshipRevision == null) {
+      return;
+    }
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null) {
+      throw new IllegalArgumentException(
+          "Relationship revisions can only update test cases and logical test suites");
+    }
+    document.put(revisionSpec.revisionField(), relationshipRevision);
   }
 
   /**
@@ -343,8 +455,15 @@ public class SearchRepository {
           "extension",
           "queryUsedIn",
           "votes",
-          "pipelineStatus",
-          TEST_SUITES);
+          "pipelineStatus");
+
+  private static final String TESTS = "tests";
+  private static final String TEST_SUITES_REVISION = "testSuitesRevision";
+  private static final String TESTS_REVISION = "testsRevision";
+  private static final RelationshipRevisionSpec TEST_CASE_RELATIONSHIP_REVISION =
+      relationshipRevisionSpec(TEST_SUITES, TEST_SUITES_REVISION);
+  private static final RelationshipRevisionSpec TEST_SUITE_RELATIONSHIP_REVISION =
+      relationshipRevisionSpec(TESTS, TESTS_REVISION);
 
   @Getter private final ElasticSearchConfiguration searchConfiguration;
   @Getter private final int maxDBConnections;
@@ -979,16 +1098,11 @@ public class SearchRepository {
   }
 
   /**
-   * The effective index mapping for an entity. Prefers the admin-editable mapping persisted in the
-   * {@code searchIndexMappings} setting (already field-safety hardened at seed time); falls back to
-   * the hardened classpath resource when no stored slice exists (e.g. fresh-install first boot, or a
-   * newly added entity type not yet seeded).
+   * The effective index mapping for an entity: the bundled classpath resource, field-safety hardened
+   * on the fly by {@link SearchIndexSettings#harden} at index-creation time.
    */
   public String readIndexMapping(IndexMapping indexMapping) {
-    String mapping = getStoredMapping(indexMapping);
-    if (mapping == null) {
-      mapping = getHardenedResourceMapping(indexMapping);
-    }
+    String mapping = getHardenedResourceMapping(indexMapping);
     if (isVectorEmbeddingEnabled() && embeddingClient != null && mapping != null) {
       mapping = reformatVectorIndexWithDimension(mapping, embeddingClient.getDimension());
     }
@@ -1002,42 +1116,6 @@ public class SearchRepository {
     return nullOrEmpty(mappingContent)
         ? mappingContent
         : EsUtils.enrichIndexMappingForElasticsearch(mappingContent);
-  }
-
-  private String getStoredMapping(IndexMapping indexMapping) {
-    String result = null;
-    String entityType = resolveEntityType(indexMapping);
-    if (entityType != null) {
-      Object mapping = lookupStoredMapping(language.toLowerCase(Locale.ROOT), entityType);
-      if (mapping != null) {
-        result = JsonUtils.pojoToJson(mapping);
-      }
-    }
-    return result;
-  }
-
-  private Object lookupStoredMapping(String mappingLanguage, String entityType) {
-    Object result = null;
-    SearchIndexMappings stored =
-        SettingsCache.getSettingOrDefault(
-            SettingsType.SEARCH_INDEX_MAPPINGS, null, SearchIndexMappings.class);
-    if (stored != null && stored.getLanguages() != null) {
-      Map<String, Object> byEntity = stored.getLanguages().get(mappingLanguage);
-      if (byEntity != null) {
-        result = byEntity.get(entityType);
-      }
-    }
-    return result;
-  }
-
-  private String resolveEntityType(IndexMapping indexMapping) {
-    return entityIndexMap == null || indexMapping == null
-        ? null
-        : entityIndexMap.entrySet().stream()
-            .filter(entry -> entry.getValue().getIndexName().equals(indexMapping.getIndexName()))
-            .map(Map.Entry::getKey)
-            .findFirst()
-            .orElse(null);
   }
 
   private String getHardenedResourceMapping(IndexMapping indexMapping) {
@@ -1093,6 +1171,7 @@ public class SearchRepository {
       SearchIndexRetryQueue.enqueue(
           entityId,
           entity.getFullyQualifiedName(),
+          entityType,
           SearchIndexRetryQueue.failureReason("createEntityIndex", ie));
       LOG.error(
           "Issue creating new search document for entity [{}] and entityType [{}]",
@@ -1349,6 +1428,7 @@ public class SearchRepository {
             SearchIndexRetryQueue.enqueue(
                 entity.getId() != null ? entity.getId().toString() : null,
                 entity.getFullyQualifiedName(),
+                entityType,
                 "createEntitiesIndex: Search client unavailable");
           }
           return;
@@ -1515,11 +1595,11 @@ public class SearchRepository {
    * entity to the durable retry outbox. Returns {@code false} (run inline) for every non-flush
    * caller — the post-commit search-index handler, reindex apps, lineage jobs.
    */
-  private boolean deferEntityIndex(EntityInterface entity) {
+  private boolean deferEntityIndex(EntityInterface entity, Long relationshipRevision) {
     EntityReference ref = entity.getEntityReference();
     return deferSearchWrite(
         new DeferredSearchWrite(
-            () -> updateEntityIndex(entity),
+            () -> updateEntityIndex(entity, relationshipRevision),
             "updateEntityIndex",
             entity.getId() != null ? entity.getId().toString() : null,
             entity.getFullyQualifiedName(),
@@ -1531,11 +1611,15 @@ public class SearchRepository {
    * This method is used by SearchIndexHandler.
    */
   public void updateEntityIndex(EntityInterface entity) {
+    updateEntityIndex(entity, null);
+  }
+
+  public void updateEntityIndex(EntityInterface entity, Long relationshipRevision) {
     if (entity == null) {
       LOG.warn("Entity is null, cannot update index.");
       return;
     }
-    if (deferEntityIndex(entity)) {
+    if (deferEntityIndex(entity, relationshipRevision)) {
       return;
     }
 
@@ -1561,35 +1645,55 @@ public class SearchRepository {
       String scriptTxt = DEFAULT_UPDATE_SCRIPT;
       Map<String, Object> doc = new HashMap<>();
 
-      ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
-      ChangeDescription changeDescription;
+      ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
 
-      if (!isNullOrEmptyChangeDescription(incrementalChangeDescription)) {
-        changeDescription = incrementalChangeDescription;
-      } else {
-        changeDescription = entity.getChangeDescription();
-      }
-
-      boolean isNonVersionedUpdate =
-          changeDescription != null
-              && entity.getChangeDescription() != null
-              && Objects.equals(
-                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
-      if (isNonVersionedUpdate && canUseScriptedPartialUpdate(changeDescription)) {
-        scriptTxt = getScriptWithParams(entity, doc, changeDescription);
-      } else {
-        if (isNonVersionedUpdate && changeDescription != null) {
-          LOG.debug(
-              "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
-              entityType,
-              entityId,
-              getChangedFieldNames(changeDescription));
+      if (relationshipRevision != null) {
+        RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+        if (revisionSpec == null) {
+          throw new IllegalArgumentException(
+              "Relationship revisions can only update test cases and logical test suites");
         }
-        SearchIndex elasticSearchIndex = searchIndexFactory.buildIndex(entityType, entity);
-        doc = elasticSearchIndex.buildSearchIndexDoc();
+        SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+        doc =
+            new HashMap<>(
+                searchIndex.buildSearchIndexDoc(
+                    DocBuildContext.withRelationshipRevision(relationshipRevision)));
         doc =
             SearchIndexUtils.stripDocMapIfOversized(
                 doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+        applyRelationshipRevision(entity, doc, relationshipRevision);
+        scriptTxt = revisionSpec.replacementScript();
+      } else {
+        boolean isNonVersionedUpdate =
+            changeDescription != null
+                && entity.getChangeDescription() != null
+                && Objects.equals(
+                    entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+        ScriptedPartialUpdate partialUpdate =
+            buildScriptedPartialUpdate(entity, changeDescription, isNonVersionedUpdate);
+        if (partialUpdate != null) {
+          scriptTxt = partialUpdate.script();
+          doc = partialUpdate.parameters();
+        } else {
+          if (isNonVersionedUpdate && changeDescription != null) {
+            LOG.debug(
+                "Falling back to full document indexing for non-versioned update. entityType={}, entityId={}, changedFields={}",
+                entityType,
+                entityId,
+                getChangedFieldNames(changeDescription));
+          }
+          SearchIndex searchIndex = searchIndexFactory.buildIndex(entityType, entity);
+          doc = searchIndex.buildSearchIndexDoc();
+          doc =
+              SearchIndexUtils.stripDocMapIfOversized(
+                  doc, SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES, entityId, entityType);
+          ScriptedPartialUpdate relationshipDocumentUpdate =
+              buildRelationshipDocumentUpdate(entity, doc);
+          if (relationshipDocumentUpdate != null) {
+            scriptTxt = relationshipDocumentUpdate.script();
+            doc = relationshipDocumentUpdate.parametersForIndexing();
+          }
+        }
       }
 
       searchClient.updateEntity(getWriteIndexName(indexMapping), entityId, doc, scriptTxt);
@@ -1612,12 +1716,7 @@ public class SearchRepository {
       if (requiresPropagation(changeDescription, entityType, entity)) {
         // Time propagation operations
         startTime = System.currentTimeMillis();
-        propagateInheritedFieldsToChildren(
-            entityType, entityId, changeDescription, indexMapping, entity);
-        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-        propagateCertificationTags(entityType, entity, changeDescription);
-        propagateServiceStyle(entityType, entity, changeDescription);
-        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+        propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
         propagateTime = System.currentTimeMillis() - startTime;
 
         LOG.info(
@@ -1648,10 +1747,7 @@ public class SearchRepository {
         Metrics.counter("search.index.propagation.skipped", tags).increment();
       }
     } catch (Exception ie) {
-      SearchIndexRetryQueue.enqueue(
-          entityId,
-          entity.getFullyQualifiedName(),
-          SearchIndexRetryQueue.failureReason("updateEntityIndex", ie));
+      enqueueEntityRetry(entity, "updateEntityIndex", ie);
       LOG.error(
           "Issue updating the search document for entity [{}] and entityType [{}]",
           entityId,
@@ -1772,9 +1868,24 @@ public class SearchRepository {
    * @param entities List of entities to update in the search index
    */
   public void updateEntitiesIndex(List<? extends EntityInterface> entities) {
+    updateEntitiesIndexInternal(entities, Map.of());
+  }
+
+  public void updateEntitiesIndex(
+      List<? extends EntityInterface> entities, Map<UUID, Long> relationshipRevisions) {
+    updateEntitiesIndexInternal(entities, relationshipRevisions);
+  }
+
+  private void updateEntitiesIndexInternal(
+      List<? extends EntityInterface> entities, Map<UUID, Long> suppliedRelationshipRevisions) {
     if (entities == null || entities.isEmpty()) {
       return;
     }
+
+    Map<UUID, Long> relationshipRevisions =
+        suppliedRelationshipRevisions == null
+            ? Map.of()
+            : Map.copyOf(suppliedRelationshipRevisions);
 
     // Keep only the latest state per (entityType, entityId) within the same bulk call.
     // This avoids repeated writes/propagation for duplicates in a single request.
@@ -1811,53 +1922,181 @@ public class SearchRepository {
     int batchSize = 100;
     int maxConcurrentRequests = 5;
     long maxPayloadSizeBytes = SearchClusterMetrics.DEFAULT_BULK_PAYLOAD_SIZE_BYTES;
+    List<EntityInterface> propagationCandidates = new ArrayList<>();
 
     // Process each entity type separately to ensure correct index routing
     for (Map.Entry<String, List<EntityInterface>> entry : entitiesByType.entrySet()) {
       String entityType = entry.getKey();
       List<EntityInterface> typeEntities = entry.getValue();
+      Map<String, EntityInterface> typeEntitiesById =
+          typeEntities.stream()
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      entity -> entity.getId().toString(), Function.identity()));
+      Map<String, EntityInterface> typeEntitiesByFqn =
+          typeEntities.stream()
+              .filter(entity -> !nullOrEmpty(entity.getFullyQualifiedName()))
+              .collect(
+                  Collectors.toUnmodifiableMap(
+                      EntityInterface::getFullyQualifiedName,
+                      Function.identity(),
+                      (first, ignored) -> first));
 
       if (!getSearchClient().isClientAvailable()) {
         for (EntityInterface entity : typeEntities) {
-          SearchIndexRetryQueue.enqueue(
-              entity.getId() != null ? entity.getId().toString() : null,
-              entity.getFullyQualifiedName(),
-              "updateEntitiesBulk: Search client unavailable");
+          enqueueEntityRetry(entity, "updateEntitiesBulk: Search client unavailable");
         }
         continue;
       }
 
       BulkSink bulkSink = null;
+      boolean bulkWriteAttempted = false;
+      boolean bulkWriteReturned = false;
+      Set<String> failedEntityIds = ConcurrentHashMap.newKeySet();
+      Set<String> failedEntityFqns = ConcurrentHashMap.newKeySet();
+      AtomicInteger recordedBulkFailures = new AtomicInteger();
       try {
         bulkSink = createBulkSink(batchSize, maxConcurrentRequests, maxPayloadSizeBytes);
+        bulkSink.setFailureCallback(
+            (failedEntityType, failedEntityId, failedEntityFqn, errorMessage, stage) -> {
+              recordedBulkFailures.incrementAndGet();
+              if (!nullOrEmpty(failedEntityId)) {
+                failedEntityIds.add(failedEntityId);
+              }
+              if (!nullOrEmpty(failedEntityFqn)) {
+                failedEntityFqns.add(failedEntityFqn);
+              }
+              EntityInterface failedEntity =
+                  !nullOrEmpty(failedEntityId) ? typeEntitiesById.get(failedEntityId) : null;
+              if (failedEntity == null && !nullOrEmpty(failedEntityFqn)) {
+                failedEntity = typeEntitiesByFqn.get(failedEntityFqn);
+              }
+              String failureReason = "updateEntitiesBulk " + stage + ": " + errorMessage;
+              if (failedEntity != null) {
+                enqueueEntityRetry(failedEntity, failureReason);
+              } else {
+                SearchIndexRetryQueue.enqueue(
+                    failedEntityId, failedEntityFqn, failedEntityType, failureReason);
+              }
+            });
         Map<String, Object> contextData = new HashMap<>();
         contextData.put(ReindexingUtil.ENTITY_TYPE_KEY, entityType);
+        contextData.put(BulkSink.SCRIPTED_PARTIAL_UPDATES_CONTEXT_KEY, true);
+        if (!relationshipRevisions.isEmpty()) {
+          contextData.put(BulkSink.RELATIONSHIP_REVISIONS_CONTEXT_KEY, relationshipRevisions);
+        }
         ReindexingUtil.populateDocBuildContext(contextData, entityType, typeEntities);
+        bulkWriteAttempted = true;
         bulkSink.write(typeEntities, contextData);
-        bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+        bulkWriteReturned = true;
+        boolean completed = bulkSink.flushAndAwait(60); // Wait up to 60 seconds for completion
+        StepStats sinkStats = bulkSink.getStats();
+        if (!completed
+            || recordedBulkFailures.get() > 0
+            || (sinkStats != null
+                && Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0) > 0)) {
+          throw new IOException(
+              "Bulk entity update did not complete successfully for type " + entityType);
+        }
+        propagationCandidates.addAll(typeEntities);
       } catch (Exception e) {
         LOG.error("Error during bulk entity update in search index for type {}", entityType, e);
-        for (EntityInterface entity : typeEntities) {
-          try {
-            updateEntityIndex(entity);
-          } catch (Exception ex) {
-            LOG.error(
-                "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+        boolean bulkSinkQuiescent = false;
+        StepStats finalSinkStats = null;
+        if (bulkSink != null) {
+          bulkSinkQuiescent = closeBulkSinkAndCheckQuiescent(bulkSink);
+          finalSinkStats = bulkSink.getStats();
+          bulkSink = null;
+        }
+        if (!bulkWriteAttempted) {
+          for (EntityInterface entity : typeEntities) {
+            try {
+              Long relationshipRevision = relationshipRevisions.get(entity.getId());
+              if (relationshipRevision == null) {
+                updateEntityIndex(entity);
+              } else {
+                updateEntityIndex(entity, relationshipRevision);
+              }
+            } catch (Exception ex) {
+              LOG.error(
+                  "Error updating entity {} in search index", entity.getFullyQualifiedName(), ex);
+            }
+          }
+        } else {
+          Set<String> confirmedEntityIds = new HashSet<>();
+          if (bulkWriteReturned && bulkSinkQuiescent && finalSinkStats != null) {
+            addConfirmedPropagationCandidates(
+                typeEntities,
+                finalSinkStats,
+                recordedBulkFailures.get(),
+                failedEntityIds,
+                failedEntityFqns,
+                propagationCandidates,
+                confirmedEntityIds);
+          }
+          for (EntityInterface entity : typeEntities) {
+            String entityId = entity.getId().toString();
+            String entityFqn = entity.getFullyQualifiedName();
+            if (confirmedEntityIds.contains(entityId)
+                || failedEntityIds.contains(entityId)
+                || (entityFqn != null && failedEntityFqns.contains(entityFqn))) {
+              continue;
+            }
+            enqueueEntityRetry(
+                entity,
+                "updateEntitiesBulk: outcome unknown after bulk write; skipped stale fallback",
+                e);
           }
         }
       } finally {
         if (bulkSink != null) {
-          try {
-            bulkSink.close();
-          } catch (Exception e) {
-            LOG.warn("Error closing bulk sink", e);
-          }
+          closeBulkSinkAndCheckQuiescent(bulkSink);
         }
       }
     }
 
-    // Run fan-out propagation once after all bulk doc updates are flushed.
-    propagateEntitiesAfterBulkFlush(dedupedEntities.values());
+    propagateEntitiesAfterBulkFlush(propagationCandidates);
+  }
+
+  private boolean closeBulkSinkAndCheckQuiescent(BulkSink bulkSink) {
+    try {
+      bulkSink.close();
+      return bulkSink.getActiveBulkRequestCount() == 0;
+    } catch (Exception e) {
+      LOG.warn("Error closing bulk sink", e);
+      return false;
+    }
+  }
+
+  private void addConfirmedPropagationCandidates(
+      List<EntityInterface> entities,
+      StepStats sinkStats,
+      int recordedFailures,
+      Set<String> failedEntityIds,
+      Set<String> failedEntityFqns,
+      List<EntityInterface> propagationCandidates,
+      Set<String> confirmedEntityIds) {
+    int failedRecords = Optional.ofNullable(sinkStats.getFailedRecords()).orElse(0);
+    if (failedRecords == 0 && recordedFailures == 0) {
+      propagationCandidates.addAll(entities);
+      entities.forEach(entity -> confirmedEntityIds.add(entity.getId().toString()));
+      return;
+    }
+    if (recordedFailures < failedRecords) {
+      LOG.warn(
+          "Skipping bulk propagation because only {} of {} failed records were identified",
+          recordedFailures,
+          failedRecords);
+      return;
+    }
+    for (EntityInterface entity : entities) {
+      if (!failedEntityIds.contains(entity.getId().toString())
+          && (entity.getFullyQualifiedName() == null
+              || !failedEntityFqns.contains(entity.getFullyQualifiedName()))) {
+        propagationCandidates.add(entity);
+        confirmedEntityIds.add(entity.getId().toString());
+      }
+    }
   }
 
   private void propagateEntitiesAfterBulkFlush(Iterable<EntityInterface> entities) {
@@ -1887,12 +2126,7 @@ public class SearchRepository {
       candidates++;
       try {
         IndexMapping indexMapping = entityIndexMap.get(entityType);
-        propagateInheritedFieldsToChildren(
-            entityType, entity.getId().toString(), changeDescription, indexMapping, entity);
-        propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
-        propagateCertificationTags(entityType, entity, changeDescription);
-        propagateServiceStyle(entityType, entity, changeDescription);
-        propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+        propagateEntitySearchChanges(entity, entityType, changeDescription, indexMapping);
         propagated++;
       } catch (Exception e) {
         LOG.error(
@@ -1910,6 +2144,64 @@ public class SearchRepository {
           propagated,
           System.currentTimeMillis() - startTime);
     }
+  }
+
+  void propagateEntityAfterRetry(
+      EntityInterface entity, ChangeDescription propagationChangeDescription) throws IOException {
+    if (entity == null || entity.getId() == null || entity.getEntityReference() == null) {
+      return;
+    }
+    String entityType = entity.getEntityReference().getType();
+    if (!checkIfIndexingIsSupported(entityType)
+        || !requiresPropagation(propagationChangeDescription, entityType, entity)) {
+      return;
+    }
+    propagateEntitySearchChanges(
+        entity, entityType, propagationChangeDescription, entityIndexMap.get(entityType));
+  }
+
+  private void propagateEntitySearchChanges(
+      EntityInterface entity,
+      String entityType,
+      ChangeDescription changeDescription,
+      IndexMapping indexMapping)
+      throws IOException {
+    propagateInheritedFieldsToChildren(
+        entityType, entity.getId().toString(), changeDescription, indexMapping, entity);
+    propagateGlossaryTags(entityType, entity.getFullyQualifiedName(), changeDescription);
+    propagateCertificationTags(entityType, entity, changeDescription);
+    propagateServiceStyle(entityType, entity, changeDescription);
+    propagateToRelatedEntities(entityType, changeDescription, indexMapping, entity);
+  }
+
+  private void enqueueEntityRetry(EntityInterface entity, String failureReason) {
+    if (entity == null) {
+      return;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (!isNullOrEmptyChangeDescription(changeDescription)) {
+      SearchIndexRetryQueue.enqueueWithPropagation(entity, changeDescription, failureReason);
+      return;
+    }
+    String entityType =
+        entity.getEntityReference() != null ? entity.getEntityReference().getType() : "";
+    SearchIndexRetryQueue.enqueue(
+        entity.getId() != null ? entity.getId().toString() : null,
+        entity.getFullyQualifiedName(),
+        entityType,
+        failureReason);
+  }
+
+  private void enqueueEntityRetry(EntityInterface entity, String operation, Throwable failure) {
+    if (entity == null) {
+      return;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (!isNullOrEmptyChangeDescription(changeDescription)) {
+      SearchIndexRetryQueue.enqueueWithPropagation(entity, changeDescription, operation, failure);
+      return;
+    }
+    SearchIndexRetryQueue.enqueue(entity, operation, failure);
   }
 
   public void updateEntitiesBulk(List<? extends EntityInterface> entities) {
@@ -3132,11 +3424,6 @@ public class SearchRepository {
         Map<String, Object> doc = JsonUtils.getMap(entity);
         fieldAddParams.put("newPipelineStatus", doc.get("pipelineStatus"));
       }
-      if (fieldChange.getName().equalsIgnoreCase(TEST_SUITES)) {
-        scriptTxt.append("ctx._source.testSuites = params.testSuites;");
-        Map<String, Object> doc = JsonUtils.getMap(entity);
-        fieldAddParams.put(TEST_SUITES, doc.get(TEST_SUITES));
-      }
       if (fieldChange.getName().equalsIgnoreCase("extension")) {
         String entityType = entity.getEntityReference().getType();
         List<Map<String, Object>> customPropertiesTyped =
@@ -3150,10 +3437,78 @@ public class SearchRepository {
     return scriptTxt.toString();
   }
 
+  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(EntityInterface entity) {
+    return buildBulkScriptedPartialUpdate(entity, null);
+  }
+
+  public ScriptedPartialUpdate buildRelationshipDocumentUpdate(
+      EntityInterface entity, Map<String, Object> document) {
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null || document == null) {
+      return null;
+    }
+    return new ScriptedPartialUpdate(
+        revisionSpec.documentUpdateScript(), new HashMap<>(document), true);
+  }
+
+  public ScriptedPartialUpdate buildBulkScriptedPartialUpdate(
+      EntityInterface entity, Long relationshipRevision) {
+    RelationshipRevisionSpec revisionSpec = relationshipRevisionSpec(entity);
+    if (revisionSpec == null || relationshipRevision == null) {
+      return null;
+    }
+    ChangeDescription changeDescription = getEffectiveChangeDescription(entity);
+    if (changeDescription != null) {
+      if (!Set.of(revisionSpec.relationshipField()).equals(getChangedFieldNames(changeDescription))
+          || !hasRelationshipReplacement(changeDescription, revisionSpec.relationshipField())) {
+        return null;
+      }
+      boolean isNonVersionedUpdate =
+          entity.getChangeDescription() != null
+              && Objects.equals(
+                  entity.getVersion(), entity.getChangeDescription().getPreviousVersion());
+      if (!isNonVersionedUpdate) {
+        return null;
+      }
+    }
+    Map<String, Object> parameters = new HashMap<>();
+    Object relationships = JsonUtils.getMap(entity).get(revisionSpec.relationshipField());
+    parameters.put(
+        revisionSpec.relationshipField(), relationships == null ? List.of() : relationships);
+    parameters.put(revisionSpec.revisionField(), relationshipRevision);
+    return new ScriptedPartialUpdate(revisionSpec.replacementScript(), parameters);
+  }
+
+  private ScriptedPartialUpdate buildScriptedPartialUpdate(
+      EntityInterface entity, ChangeDescription changeDescription, boolean isNonVersionedUpdate) {
+    if (!isNonVersionedUpdate || !canUseScriptedPartialUpdate(changeDescription)) {
+      return null;
+    }
+    Map<String, Object> parameters = new HashMap<>();
+    String script = getScriptWithParams(entity, parameters, changeDescription);
+    return new ScriptedPartialUpdate(script, parameters);
+  }
+
+  private ChangeDescription getEffectiveChangeDescription(EntityInterface entity) {
+    ChangeDescription incrementalChangeDescription = entity.getIncrementalChangeDescription();
+    return !isNullOrEmptyChangeDescription(incrementalChangeDescription)
+        ? incrementalChangeDescription
+        : entity.getChangeDescription();
+  }
+
   private boolean canUseScriptedPartialUpdate(ChangeDescription changeDescription) {
     Set<String> changedFieldNames = getChangedFieldNames(changeDescription);
     return !changedFieldNames.isEmpty()
-        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains);
+        && changedFieldNames.stream().allMatch(PARTIAL_SCRIPT_SUPPORTED_FIELDS::contains)
+        && !hasRelationshipReplacement(changeDescription, TEST_SUITES)
+        && !hasRelationshipReplacement(changeDescription, TESTS);
+  }
+
+  private boolean hasRelationshipReplacement(
+      ChangeDescription changeDescription, String relationshipField) {
+    return changeDescription != null
+        && listOrEmpty(changeDescription.getFieldsUpdated()).stream()
+            .anyMatch(fieldChange -> relationshipField.equals(fieldChange.getName()));
   }
 
   private Set<String> getChangedFieldNames(ChangeDescription changeDescription) {
@@ -3686,7 +4041,8 @@ public class SearchRepository {
   private boolean shouldSkipStreamingIndexing(
       String entityType, String entityId, String entityFqn, String operation) {
     if (!getSearchClient().isClientAvailable()) {
-      SearchIndexRetryQueue.enqueue(entityId, entityFqn, operation + ": Search client unavailable");
+      SearchIndexRetryQueue.enqueue(
+          entityId, entityFqn, entityType, operation + ": Search client unavailable");
       return true;
     }
     return false;

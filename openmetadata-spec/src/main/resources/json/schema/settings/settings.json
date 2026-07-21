@@ -42,8 +42,7 @@
         "openLineageSettings",
         "mcpConfiguration",
         "glossaryTermRelationSettings",
-        "sparqlQuerySettings",
-        "searchIndexMappings"
+        "sparqlQuerySettings"
       ]
     }
   },
@@ -122,9 +121,6 @@
         },
         {
           "$ref": "../configuration/sparqlQuerySettings.json"
-        },
-        {
-          "$ref": "../configuration/searchIndexMappings.json"
         }
       ]
     }

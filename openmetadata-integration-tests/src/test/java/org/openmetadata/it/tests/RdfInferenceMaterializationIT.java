@@ -17,15 +17,12 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import java.net.URI;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
-import java.util.ArrayList;
-import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Tag;
@@ -34,7 +31,6 @@ import org.junit.jupiter.api.condition.EnabledIfSystemProperty;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.api.parallel.Execution;
 import org.junit.jupiter.api.parallel.ExecutionMode;
-import org.openmetadata.it.auth.JwtAuthProvider;
 import org.openmetadata.it.factories.GlossaryTestFactory;
 import org.openmetadata.it.factories.UserTestFactory;
 import org.openmetadata.it.util.NamespaceCleanup;
@@ -139,8 +135,7 @@ public class RdfInferenceMaterializationIT {
   @Test
   void upsertRejectsInvalidRuleBodyWith400(final TestNamespace namespace) throws Exception {
     final String name = "bad-" + namespace.uniqueShortId();
-    final InferenceRule invalid =
-        ruleWithBody(name, "SELECT ?subject WHERE { ?subject ?p ?o }");
+    final InferenceRule invalid = ruleWithBody(name, "SELECT ?subject WHERE { ?subject ?p ?o }");
     final HttpResponse<String> response =
         adminRequest("PUT", RULES_PATH + "/" + name, json(invalid));
 
@@ -166,8 +161,7 @@ public class RdfInferenceMaterializationIT {
 
   @Test
   void getRuleAsNonAdminReturns403(final TestNamespace namespace) throws Exception {
-    assertEquals(
-        403, nonAdminRequest("GET", RULES_PATH + "/anything", null).statusCode());
+    assertEquals(403, nonAdminRequest("GET", RULES_PATH + "/anything", null).statusCode());
   }
 
   @Test
@@ -179,9 +173,7 @@ public class RdfInferenceMaterializationIT {
 
   @Test
   void deleteRuleAsNonAdminReturns403(final TestNamespace namespace) throws Exception {
-    assertEquals(
-        403,
-        nonAdminRequest("DELETE", RULES_PATH + "/anything", null).statusCode());
+    assertEquals(403, nonAdminRequest("DELETE", RULES_PATH + "/anything", null).statusCode());
   }
 
   @Test

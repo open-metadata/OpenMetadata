@@ -174,7 +174,10 @@ public class RdfSqlResourceIT {
     String contentType = response.headers().firstValue("Content-Type").orElse("");
     assertTrue(
         contentType.startsWith(expectedPrefix),
-        "Expected Content-Type starting with '" + expectedPrefix + "' but got '" + contentType
+        "Expected Content-Type starting with '"
+            + expectedPrefix
+            + "' but got '"
+            + contentType
             + "'");
     assertNotNull(response.body());
   }
