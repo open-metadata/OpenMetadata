@@ -23,11 +23,10 @@ import {
   createDisposableArchivedDocument,
   getDocumentRowByName,
   getDocumentSearchInput,
-  getFolderExpandBtn,
-  getFolderTreeItem,
   navigateToArchive,
   navigateToDocuments,
   openUploadModal,
+  revealFolderRow,
   selectFolderInSidebar,
   softDeleteDocument,
   uploadFileViaModal,
@@ -75,13 +74,15 @@ test.describe('Context Center - Archive Page', () => {
 
     await test.step('navigate to documents page and verify folder is in sidebar', async () => {
       await navigateToDocuments(page);
-      await expect(getFolderTreeItem(page, folderName)).toBeVisible();
+      const folderRow = await revealFolderRow(page, folderName);
+      await expect(folderRow).toBeVisible();
     });
 
     // ── 2. Expand icon NOT visible on empty folder ───────────────────────────
 
     await test.step('expand icon is not visible for an empty folder', async () => {
-      const expandBtn = getFolderExpandBtn(page, folderName);
+      const folderRow = await revealFolderRow(page, folderName);
+      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
       await expect(expandBtn).toHaveClass(/tw:invisible/);
     });
 
@@ -100,7 +101,8 @@ test.describe('Context Center - Archive Page', () => {
     // ── 4. Expand icon IS visible after upload ───────────────────────────────
 
     await test.step('expand icon is visible after uploading a file to the folder', async () => {
-      const expandBtn = getFolderExpandBtn(page, folderName);
+      const folderRow = await revealFolderRow(page, folderName);
+      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
       await expect(expandBtn).not.toHaveClass(/tw:invisible/);
     });
 
@@ -117,7 +119,8 @@ test.describe('Context Center - Archive Page', () => {
     // ── 6. Expand folder in sidebar, file is visible ─────────────────────────
 
     await test.step('expanding folder in sidebar shows the uploaded file', async () => {
-      const expandBtn = getFolderExpandBtn(page, folderName);
+      const folderRow = await revealFolderRow(page, folderName);
+      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
       await expandBtn.click();
 
       await expect(
@@ -137,7 +140,8 @@ test.describe('Context Center - Archive Page', () => {
     // ── 8. Expand icon NOT visible after delete ──────────────────────────────
 
     await test.step('expand icon is not visible after deleting the only file', async () => {
-      const expandBtn = getFolderExpandBtn(page, folderName);
+      const folderRow = await revealFolderRow(page, folderName);
+      const expandBtn = folderRow.locator('button[slot="chevron"]').first();
       await expect(expandBtn).toHaveClass(/tw:invisible/);
     });
 
@@ -378,7 +382,8 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 
     await test.step('navigate to documents page and verify folder in sidebar', async () => {
       await navigateToDocuments(page);
-      await expect(getFolderTreeItem(page, folderName)).toBeVisible();
+      const folderRow = await revealFolderRow(page, folderName);
+      await expect(folderRow).toBeVisible();
     });
 
     // ── 2. Upload document to folder via UI ──────────────────────────────────
@@ -407,7 +412,11 @@ test.describe('Context Center - Folder Delete: file absent from search and archi
 
     await test.step('soft-delete the folder via API', async () => {
       const folderId = folder.id;
-      await getFolderTreeItem(page, folder?.displayName || folder.name).hover(); // reveals the hidden delete button
+      const folderRow = await revealFolderRow(
+        page,
+        folder?.displayName || folder.name
+      );
+      await folderRow.hover(); // reveals the hidden delete button
 
       const deleteFolderBtn = page.getByTestId(`delete-folder-btn-${folderId}`);
       await deleteFolderBtn.scrollIntoViewIfNeeded();

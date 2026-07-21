@@ -244,6 +244,36 @@ export const getFolderTreeItem = (page: Page, folderName: string): Locator =>
 export const getFolderExpandBtn = (page: Page, folderName: string): Locator =>
   getFolderTreeItem(page, folderName).locator('button[slot="chevron"]').first();
 
+/**
+ * The sidebar folder tree is paginated (FOLDER_PAGE_SIZE), so a folder
+ * created earlier in a test/suite run may not be on the currently loaded
+ * page. Callers that need to interact with a folder row (expand it, hover
+ * it, etc.) should go through this instead of `getFolderTreeItem` directly,
+ * which only returns a locator without ensuring the row has been paginated
+ * into view. Tests asserting a folder is NOT yet present (e.g. before a
+ * scroll) should keep using `getFolderTreeItem` + `toHaveCount(0)` directly.
+ */
+export const revealFolderRow = async (
+  page: Page,
+  folderName: string
+): Promise<Locator> => {
+  const target = getFolderTreeItem(page, folderName);
+  if (!(await target.isVisible())) {
+    const tree = page.getByRole('treegrid', { name: 'Folders' });
+    await scrollUntilResponse(
+      page,
+      tree,
+      target,
+      (res) =>
+        res.url().includes('/api/v1/contextCenter/drive/folders') &&
+        res.url().includes('after=') &&
+        res.request().method() === 'GET'
+    );
+  }
+
+  return target;
+};
+
 export const getDocumentSearchInput = (page: Page): Locator =>
   page.getByTestId('search-input').getByLabel('Search Documents');
 
@@ -277,7 +307,8 @@ export const selectFolderInSidebar = async (
   page: Page,
   folderName: string
 ): Promise<void> => {
-  await getFolderTreeItem(page, folderName).click();
+  const target = await revealFolderRow(page, folderName);
+  await target.click();
   await waitForAllLoadersToDisappear(page);
 };
 
@@ -644,6 +675,35 @@ const scrollNearestScrollableAncestor = async (locator: Locator) => {
     }
     current?.scrollBy({ top: 3000 });
   });
+};
+
+/**
+ * Scrolls the nearest scrollable ancestor of `containerLocator` until
+ * `targetLocator` becomes visible, waiting on `responseMatcher` after each
+ * scroll to give the pagination fetch a render+network tick to land. Mirrors
+ * `scrollHierarchyToNode`'s stale-tolerant retry loop so callers don't have
+ * to hand-roll scroll-then-waitForResponse races for every dropdown/list.
+ */
+export const scrollUntilResponse = async (
+  page: Page,
+  containerLocator: Locator,
+  targetLocator: Locator,
+  responseMatcher: (response: Response) => boolean,
+  maxAttempts = 10
+) => {
+  for (
+    let attempt = 0;
+    attempt < maxAttempts && !(await targetLocator.isVisible());
+    attempt++
+  ) {
+    const responsePromise = page
+      .waitForResponse(responseMatcher, { timeout: 5000 })
+      .catch(() => null);
+    await scrollNearestScrollableAncestor(containerLocator);
+    await responsePromise;
+  }
+
+  await expect(targetLocator).toBeVisible();
 };
 
 export const scrollHierarchyToNode = async (
