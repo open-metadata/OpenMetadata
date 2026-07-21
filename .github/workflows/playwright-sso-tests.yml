@@ -26,6 +26,7 @@
 name: SSO Playwright E2E Tests
 
 on:
+  merge_group:
   pull_request_target:
     types:
       - labeled
@@ -124,7 +125,7 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
         with:
-          ref: ${{ github.event_name == 'pull_request_target' && github.event.pull_request.merge_commit_sha || github.sha }}
+          ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
 
       - name: Cache Maven Dependencies
         id: cache-output
@@ -296,7 +297,7 @@ jobs:
         continue-on-error: true
         env:
           MATRIX_OUTCOME: ${{ needs.sso-auth-tests.result }}
-          SOURCE_SHA: ${{ github.event.pull_request.merge_commit_sha }}
+          SOURCE_SHA: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
         run: |
           python3 .github/scripts/classify_playwright_outcome.py \
             --report-glob 'results/sso-results-json-*/sso-results.json' \
