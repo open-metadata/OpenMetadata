@@ -117,10 +117,14 @@ const CoreArrayField = (props: FieldProps) => {
       {fieldLabel && <Label isRequired={required}>{fieldLabel}</Label>}
       <div
         className={[
-          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5 tw:ring-1 tw:ring-inset tw:transition-shadow tw:duration-100 tw:ease-linear',
-          isInvalid ? 'tw:ring-error_subtle' : 'tw:ring-primary',
+          // Border drawn with outline, not a ring: WebKit does not pixel-snap box-shadow,
+          // so rings thin/vanish in Safari when zoomed out. `transition-shadow` animated
+          // only box-shadow, so it must name the outline properties now.
+          'tw:flex tw:flex-wrap tw:items-center tw:gap-1.5 tw:min-h-10 tw:rounded-lg tw:bg-primary tw:px-2 tw:py-1.5',
+          'tw:outline-1 tw:-outline-offset-1 tw:transition-[outline-color,outline-width] tw:duration-100 tw:ease-linear',
+          isInvalid ? 'tw:outline-error_subtle' : 'tw:outline-primary',
           isDisabled
-            ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:ring-disabled'
+            ? 'tw:cursor-not-allowed tw:bg-disabled_subtle tw:outline-disabled'
             : '',
         ]
           .filter(Boolean)
@@ -128,7 +132,7 @@ const CoreArrayField = (props: FieldProps) => {
         {value.map((v, idx) => (
           <span
             className="tw:inline-flex tw:items-center tw:gap-1 tw:rounded-md
-          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:ring-1 tw:ring-inset tw:ring-brand-200"
+          tw:bg-utility-brand-50 tw:px-2 tw:py-0.5 tw:text-xs tw:font-medium tw:text-brand-700 tw:outline-1 tw:-outline-offset-1 tw:outline-brand-200"
             key={`${v}-${idx}`}>
             {v}
             {!isDisabled && (
