@@ -102,10 +102,15 @@ install_antlr_cli:  ## Install antlr CLI locally
 		case "$$candidate" in \
 			$(ANTLR_VERSION)|$(ANTLR_VERSION)[-+~]*) \
 				if apt-get install -y -qq antlr4 > /dev/null 2>&1; then \
-					echo "Installed ANTLR $$candidate from the distro archive."; \
-					exit 0; \
+					if command -v antlr4 > /dev/null 2>&1 \
+						&& antlr4 2>&1 | grep -q "Version $(ANTLR_VERSION)"; then \
+						echo "Installed ANTLR $$candidate from the distro archive."; \
+						exit 0; \
+					fi; \
+					echo "Distro package installed, but antlr4 on PATH resolves to $$(command -v antlr4 2>/dev/null || echo none) which is not $(ANTLR_VERSION); falling back to pinned download." >&2; \
+				else \
+					echo "apt-get install antlr4 failed; falling back to pinned download." >&2; \
 				fi; \
-				echo "apt-get install antlr4 failed; falling back to pinned download." >&2; \
 				;; \
 			*) \
 				echo "Distro ANTLR candidate '$$candidate' is not $(ANTLR_VERSION); using pinned download." >&2; \
