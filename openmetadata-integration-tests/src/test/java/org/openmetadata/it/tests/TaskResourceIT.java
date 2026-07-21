@@ -2276,6 +2276,100 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
   }
 
   @Test
+  void testResolveColumnTagUpdateBumpsVersionAndRecordsChangeDescription(TestNamespace ns) {
+    DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
+    DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
+    Table table = TableTestFactory.createWithColumns(ns, schema.getFullyQualifiedName());
+    String columnName = table.getColumns().get(0).getName();
+    String fieldPath = "columns." + columnName + ".tags";
+    Double initialVersion = table.getVersion();
+
+    List<TagLabel> tagsToAdd =
+        List.of(
+            new TagLabel()
+                .withTagFQN("PersonalData.Personal")
+                .withSource(TagLabel.TagSource.CLASSIFICATION)
+                .withLabelType(TagLabel.LabelType.MANUAL)
+                .withState(TagLabel.State.CONFIRMED)
+                .withName("Personal"));
+
+    Map<String, Object> payloadMap =
+        Map.of(
+            "fieldPath",
+            fieldPath,
+            "tagsToAdd",
+            tagsToAdd,
+            "tagsToRemove",
+            List.of(),
+            "currentTags",
+            List.of(),
+            "operation",
+            "Add");
+    Payload resolvePayload = JsonUtils.convertValue(payloadMap, Payload.class);
+
+    CreateTask request =
+        new CreateTask()
+            .withName(ns.prefix("col-tag-update-audit"))
+            .withDescription("Add tag to column and expect versioned audit")
+            .withCategory(TaskCategory.MetadataUpdate)
+            .withType(TaskEntityType.TagUpdate)
+            .withAbout(entityLink("table", table.getFullyQualifiedName()))
+            .withPayload(payloadMap);
+
+    Task task = SdkClients.adminClient().tasks().create(request);
+    assertEquals(TaskEntityStatus.Open, task.getStatus());
+
+    ResolveTask resolveRequest =
+        new ResolveTask()
+            .withResolutionType(TaskResolutionType.Approved)
+            .withNewValue(JsonUtils.pojoToJson(tagsToAdd))
+            .withPayload(resolvePayload)
+            .withComment("Approved - apply column tag");
+
+    Task resolvedTask =
+        SdkClients.adminClient().tasks().resolve(task.getId().toString(), resolveRequest);
+    assertEquals(TaskEntityStatus.Approved, resolvedTask.getStatus());
+
+    Table updatedTable =
+        SdkClients.adminClient()
+            .tables()
+            .getByName(table.getFullyQualifiedName(), "tags,columns,changeDescription");
+
+    assertTrue(
+        updatedTable.getVersion() > initialVersion,
+        "Column-level TagUpdate must bump the entity version: "
+            + initialVersion
+            + " -> "
+            + updatedTable.getVersion());
+
+    assertNotNull(
+        updatedTable.getChangeDescription(),
+        "Column-level TagUpdate must populate changeDescription");
+    boolean columnTagsInAdded =
+        updatedTable.getChangeDescription().getFieldsAdded().stream()
+            .anyMatch(f -> fieldPath.equals(f.getName()));
+    assertTrue(
+        columnTagsInAdded,
+        "changeDescription.fieldsAdded must record '"
+            + fieldPath
+            + "'; got: "
+            + updatedTable.getChangeDescription().getFieldsAdded());
+
+    List<TagLabel> columnTags = updatedTable.getColumns().get(0).getTags();
+    assertNotNull(columnTags, "Column should have tags after task resolution");
+    assertTrue(
+        columnTags.stream().anyMatch(t -> "PersonalData.Personal".equals(t.getTagFQN())),
+        "Column must carry the applied tag");
+    assertTrue(
+        columnTags.stream()
+            .filter(t -> "PersonalData.Personal".equals(t.getTagFQN()))
+            .findFirst()
+            .map(t -> "admin".equals(t.getAppliedBy()))
+            .orElse(false),
+        "Applied tag must record appliedBy=admin (versioned path); got: " + columnTags);
+  }
+
+  @Test
   void testResolveDescriptionUpdateTaskAppliesDescription(TestNamespace ns) {
     DatabaseService service = DatabaseServiceTestFactory.createPostgres(ns);
     DatabaseSchema schema = DatabaseSchemaTestFactory.createSimple(ns, service);
