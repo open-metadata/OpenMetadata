@@ -61,7 +61,15 @@ generate:  ## Generate the pydantic models from the JSON Schemas to the ingestio
 
 .PHONY: install_antlr_cli
 ANTLR_VERSION := 4.9.2
-ANTLR_COMPLETE_JAR_URL := https://repo1.maven.org/maven2/org/antlr/antlr4/$(ANTLR_VERSION)/antlr4-$(ANTLR_VERSION)-complete.jar
+# Override ANTLR_MAVEN_BASE to pull from an internal Maven mirror (e.g. the
+# in-cluster Pulp proxy) instead of Maven Central, which rate-limits shared CI
+# egress IPs. The fallback base is tried if the primary is unreachable, so the
+# default (both = Central) stays correct on GitHub-hosted runners and locally.
+ANTLR_MAVEN_BASE ?= https://repo1.maven.org/maven2
+ANTLR_MAVEN_FALLBACK_BASE ?= https://repo1.maven.org/maven2
+ANTLR_COMPLETE_JAR_PATH := org/antlr/antlr4/$(ANTLR_VERSION)/antlr4-$(ANTLR_VERSION)-complete.jar
+ANTLR_COMPLETE_JAR_URL := $(ANTLR_MAVEN_BASE)/$(ANTLR_COMPLETE_JAR_PATH)
+ANTLR_COMPLETE_JAR_FALLBACK_URL := $(ANTLR_MAVEN_FALLBACK_BASE)/$(ANTLR_COMPLETE_JAR_PATH)
 ANTLR_COMPLETE_JAR_SHA256 := bb117b1476691dc2915a318efd36f8957c0ad93447fb1dac01107eb15fe137cd
 ANTLR_INSTALL_DIR ?= /usr/local/bin
 
@@ -70,16 +78,20 @@ install_antlr_cli:  ## Install antlr CLI locally
 	jar_file=$$(mktemp); \
 	cli_file=$$(mktemp "$(ANTLR_INSTALL_DIR)/.antlr4.XXXXXX"); \
 	trap 'rm -f "$$jar_file" "$$cli_file"' EXIT; \
+	urls=$$(printf '%s\n%s\n' "$(ANTLR_COMPLETE_JAR_URL)" "$(ANTLR_COMPLETE_JAR_FALLBACK_URL)" | awk 'NF && !seen[$$0]++'); \
 	attempt=1; \
 	while :; do \
-		if curl --fail --location --silent --show-error \
-			--retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
-			--connect-timeout 15 --max-time 60 \
-			--output "$$jar_file" "$(ANTLR_COMPLETE_JAR_URL)" \
-			&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | shasum -a 256 --check \
-			&& jar tf "$$jar_file" > /dev/null; then \
-			break; \
-		fi; \
+		for url in $$urls; do \
+			if curl --fail --location --silent --show-error \
+				--retry 3 --retry-all-errors --retry-delay 2 --retry-max-time 120 \
+				--connect-timeout 15 --max-time 60 \
+				--output "$$jar_file" "$$url" \
+				&& printf '%s  %s\n' "$(ANTLR_COMPLETE_JAR_SHA256)" "$$jar_file" | shasum -a 256 --check \
+				&& jar tf "$$jar_file" > /dev/null; then \
+				break 2; \
+			fi; \
+			echo "ANTLR $(ANTLR_VERSION) download failed from $$url (attempt $$attempt)" >&2; \
+		done; \
 		if [ "$$attempt" -ge 3 ]; then \
 			echo "Failed to download a valid ANTLR $(ANTLR_VERSION) CLI after $$attempt attempts" >&2; \
 			exit 1; \
