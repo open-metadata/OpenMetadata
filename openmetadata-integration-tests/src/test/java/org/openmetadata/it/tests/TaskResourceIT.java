@@ -2407,6 +2407,9 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
         "Column-level TagUpdate must emit an entityUpdated change event for the parent table; got: "
             + events.path("data"));
 
+    // Search by id (single UUID term) instead of fullyQualifiedName phrase — long dotted FQNs
+    // can inflate the boolean-clause count under parallel test load and trip the shard-level
+    // maxClauseCount limit ([search_phase_execution_exception] all shards failed).
     Awaitility.await("search index reflects column tag after TagUpdate")
         .atMost(Duration.ofSeconds(30))
         .pollInterval(Duration.ofMillis(500))
@@ -2421,9 +2424,7 @@ public class TaskResourceIT extends BaseEntityIT<Task, CreateTask> {
                           null,
                           RequestOptions.builder()
                               .queryParam("index", "table_search_index")
-                              .queryParam(
-                                  "q",
-                                  "fullyQualifiedName:\"" + table.getFullyQualifiedName() + "\"")
+                              .queryParam("q", "id:" + table.getId().toString())
                               .build());
               JsonNode search = JsonUtils.readTree(searchJson);
               JsonNode hits = search.path("hits").path("hits");
