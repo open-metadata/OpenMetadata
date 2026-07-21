@@ -49,7 +49,7 @@ RUN apt-get -qq update \
   # curl/libcurl* -> 7.88.1-10+deb12u15, libmariadb3 -> 1:10.11.18-0+deb12u1,
   # wget -> tracked; upstream fix pending, no-op until Debian ships it).
   # --only-upgrade is a no-op for packages not present in the base image.
-  # Upgrade libmariadb3 together with the mysqlclient dev packages that
+  # Upgrade libmariadb3 together with the mysqlclient dev packages that,
   # exact-pin it, so apt keeps them consistent instead of removing
   # libmariadb-dev / default-libmysqlclient-dev (which drops pkg-config's
   # .pc files and breaks the mysqlclient source build later).
