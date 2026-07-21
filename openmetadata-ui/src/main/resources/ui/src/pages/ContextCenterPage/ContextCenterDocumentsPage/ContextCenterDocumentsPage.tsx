@@ -96,6 +96,7 @@ const ContextCenterDocumentsPage: FC = () => {
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const fetchGenerationRef = useRef(0);
   const isLoadingMoreRef = useRef(false);
+  const isLoadingMoreFoldersRef = useRef(false);
   const folderViewRef = useRef<DocumentFolderViewHandle>(null);
 
   const fetchGlobalFileCount = useCallback(async () => {
@@ -120,9 +121,10 @@ const ContextCenterDocumentsPage: FC = () => {
   }, [fetchGlobalFileCount]);
 
   const fetchMoreFolders = useCallback(async () => {
-    if (!foldersAfter) {
+    if (!foldersAfter || isLoadingMoreFoldersRef.current) {
       return;
     }
+    isLoadingMoreFoldersRef.current = true;
     setIsLoadingMoreFolders(true);
     try {
       const response = await listFolders({ after: foldersAfter });
@@ -131,6 +133,7 @@ const ContextCenterDocumentsPage: FC = () => {
     } catch (err) {
       showErrorToast(err as AxiosError);
     } finally {
+      isLoadingMoreFoldersRef.current = false;
       setIsLoadingMoreFolders(false);
     }
   }, [foldersAfter]);
