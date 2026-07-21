@@ -230,13 +230,13 @@ class SupersetAPISource(SupersetSourceMixin):
                             "Data model filtered out.",
                         )
                     result = datasource_json.result
-                    data_model_request = CreateDashboardDataModelRequest(
+                    data_model_request = CreateDashboardDataModelRequest(  # pyright: ignore[reportCallIssue]
                         name=EntityName(str(datasource_json.id)),
                         displayName=result.table_name,
                         description=Markdown(result.description) if result.description else None,
                         sql=SqlQuery(result.sql) if result.sql else None,
                         sourceUrl=(
-                            SourceUrl(f"{clean_uri(self.service_connection.hostPort)}{result.url}")
+                            SourceUrl(f"{clean_uri(str(self.service_connection.hostPort))}{result.url}")
                             if result.url
                             else None
                         ),
