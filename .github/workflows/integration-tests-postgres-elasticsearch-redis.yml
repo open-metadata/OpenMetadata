@@ -132,7 +132,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
-
+          persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:
@@ -237,7 +237,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
-
+          persist-credentials: false
       - name: Cache Maven dependencies
         uses: actions/cache@v4
         with:

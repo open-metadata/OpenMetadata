@@ -103,7 +103,7 @@ jobs:
           fetch-depth: 0
           filter: blob:none
           allow-unsafe-pr-checkout: true
-
+          persist-credentials: false
       - uses: actions/setup-node@v4
         with:
           node-version-file: "${{ env.UI_WORKING_DIRECTORY }}/.nvmrc"

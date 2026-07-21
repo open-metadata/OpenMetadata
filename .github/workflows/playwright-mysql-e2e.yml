@@ -100,7 +100,7 @@ jobs:
         with:
           ref: ${{ github.event_name == 'merge_group' && github.sha || github.event.pull_request.head.sha }}
           allow-unsafe-pr-checkout: true
-
+          persist-credentials: false
       - name: Detect ingestion-only changes
         id: changes
         if: ${{ github.event_name == 'pull_request_target' }}
