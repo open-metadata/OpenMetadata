@@ -24,6 +24,7 @@ import org.apache.jena.query.QueryFactory;
 import org.apache.jena.query.QueryParseException;
 import org.apache.jena.update.UpdateException;
 import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateRequest;
 import org.openmetadata.service.rdf.federation.SparqlFederationGuard;
 
 /** Coordinates guarded SPARQL reads and validated SPARQL updates. */
@@ -51,15 +52,17 @@ public final class RdfSparqlService {
         : inferredQuery(query.sparql(), format, inference.externalName);
   }
 
-  public void update(String sparql) {
+  public void update(final String sparql) {
     requireQuery(sparql, "SPARQL update body is required");
     SparqlQueryLimits.requireBoundedText(sparql);
+    final UpdateRequest request;
     try {
-      UpdateFactory.create(sparql);
+      request = UpdateFactory.create(sparql);
     } catch (QueryParseException | UpdateException exception) {
       throw new IllegalArgumentException(
           "Invalid SPARQL UPDATE: " + exception.getMessage(), exception);
     }
+    federationGuard.enforceUpdate(request);
     repository.executeSparqlUpdate(sparql);
   }
 

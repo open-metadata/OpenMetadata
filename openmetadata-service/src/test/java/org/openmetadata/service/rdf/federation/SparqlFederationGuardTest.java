@@ -1,5 +1,6 @@
 package org.openmetadata.service.rdf.federation;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -7,6 +8,8 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import java.util.List;
 import java.util.Set;
+import org.apache.jena.update.UpdateFactory;
+import org.apache.jena.update.UpdateRequest;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
@@ -249,5 +252,47 @@ class SparqlFederationGuardTest {
     void emptyListForNoService() {
       assertTrue(disabled().serviceEndpoints("SELECT ?s WHERE { ?s a ?t }").isEmpty());
     }
+  }
+
+  @Nested
+  @DisplayName("Update requests")
+  class UpdateRequests {
+
+    @Test
+    @DisplayName("Disallowed SERVICE in an update is rejected")
+    void disallowedServiceRejected() {
+      final UpdateRequest request = UpdateFactory.create(updateWithService(DBPEDIA));
+
+      final SparqlFederationGuard.FederationDisallowedException exception =
+          assertThrows(
+              SparqlFederationGuard.FederationDisallowedException.class,
+              () -> withAllowlist(WIKIDATA).enforceUpdate(request));
+
+      assertEquals(DBPEDIA, exception.getBlockedEndpoint());
+    }
+
+    @Test
+    @DisplayName("Allowlisted SERVICE in an update is accepted")
+    void allowlistedServiceAccepted() {
+      final UpdateRequest request = UpdateFactory.create(updateWithService(WIKIDATA));
+
+      assertDoesNotThrow(() -> withAllowlist(WIKIDATA).enforceUpdate(request));
+    }
+
+    @Test
+    @DisplayName("SERVICE text in inserted data does not trigger the guard")
+    void serviceTextInInsertedDataAllowed() {
+      final UpdateRequest request =
+          UpdateFactory.create(
+              "INSERT DATA { <urn:subject> <urn:predicate> \"SERVICE <" + DBPEDIA + ">\" }");
+
+      assertDoesNotThrow(() -> disabled().enforceUpdate(request));
+    }
+  }
+
+  private static String updateWithService(final String endpoint) {
+    return "INSERT { ?subject <urn:copied> ?object } WHERE { SERVICE <"
+        + endpoint
+        + "> { ?subject ?predicate ?object } }";
   }
 }
