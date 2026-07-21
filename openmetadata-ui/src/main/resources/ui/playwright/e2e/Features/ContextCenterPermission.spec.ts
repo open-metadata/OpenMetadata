@@ -13,9 +13,9 @@
 
 import {
   APIRequestContext,
-  test as base,
   expect,
   Page,
+  test as base,
 } from '@playwright/test';
 import { KnowledgeCenterClass } from '../../support/entity/KnowledgeCenterClass';
 import { UserClass } from '../../support/user/UserClass';
@@ -172,12 +172,9 @@ test.describe('Context Center Permissions', () => {
     });
     await articleEntity.create(apiContext);
 
-    await apiContext.post(
-      '/api/v1/contextCenter/drive/folders',
-      {
-        data: { name: `cc_permission_folder_${uuid()}` },
-      }
-    );
+    await apiContext.post('/api/v1/contextCenter/drive/folders', {
+      data: { name: `cc_permission_folder_${uuid()}` },
+    });
 
     documentName = `cc-permission-doc-${uuid()}.txt`;
     const docRes = await apiContext.post(

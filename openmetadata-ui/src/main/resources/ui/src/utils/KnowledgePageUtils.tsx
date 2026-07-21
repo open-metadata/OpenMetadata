@@ -118,13 +118,13 @@ export const getLink = (knowledgePage: KnowledgePage, testIdPrefix: string) => {
       <Box align="center" gap={2}>
         {isQuickLink ? (
           <QuickLinkIcon
-            className='tw:shrink-0'
+            className="tw:shrink-0"
             height={16}
             style={{ verticalAlign: 'middle' }}
             width={16}
           />
         ) : (
-          <FileIcon className='tw:shrink-0' height={16} width={16} />
+          <FileIcon className="tw:shrink-0" height={16} width={16} />
         )}
 
         <span className="tw:truncate">

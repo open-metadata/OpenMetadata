@@ -926,7 +926,9 @@ test.describe(
         ).toBeVisible();
 
         const rows = page.locator('[data-testid^="memory-row-"]');
-        await expect(rows.first().getByText('Cited 999999 times')).toBeVisible();
+        await expect(
+          rows.first().getByText('Cited 999999 times')
+        ).toBeVisible();
 
         // lastUsedAt is rendered next to the usage count as
         // "Cited N times · Last {relative-time}" — assert the "Last" label

@@ -202,7 +202,11 @@ const KnowledgePageListRightPanel: FC<KnowledgePageListRightPanelProps> = ({
         <WidgetCard
           title={t('label.recently-viewed')}
           titleIcon={
-            <EyeIcon className="tw:text-quaternary tw:shrink-0" height={16} width={16} />
+            <EyeIcon
+              className="tw:text-quaternary tw:shrink-0"
+              height={16}
+              width={16}
+            />
           }>
           {isEmpty(recentlyViewed) ? (
             <Typography className="tw:text-quaternary" size="text-xs">
