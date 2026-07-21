@@ -42,14 +42,24 @@ export const waitForSearchIndexed = async (
     const response = await apiContext.get(
       `/api/v1/search/query?q=${encodeURIComponent(
         entityFqn
-      )}&index=${index}&from=0&size=1`
+      )}&index=${index}&from=0&size=10`
     );
 
     if (response.ok()) {
       const data = await response.json();
-      const totalHits = data?.hits?.total?.value ?? data?.hits?.total ?? 0;
+      // `q=` is a full-text query, not an exact-FQN filter: a query like
+      // "org.team.mysql.abc123" tokenizes into "org"/"team"/"mysql"/"abc123"
+      // and can match unrelated already-indexed documents sharing a common
+      // token (e.g. any other "mysql" service). `hits.total > 0` alone can
+      // therefore resolve before the entity we're actually waiting on is
+      // indexed. Require an exact FQN match among the returned hits.
+      const hits: Array<{ _source?: { fullyQualifiedName?: string } }> =
+        data?.hits?.hits ?? [];
+      const isIndexed = hits.some(
+        (hit) => hit._source?.fullyQualifiedName === entityFqn
+      );
 
-      if (totalHits > 0) {
+      if (isIndexed) {
         return;
       }
     }
